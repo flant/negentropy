@@ -1,0 +1,6 @@
+root_password = "[PASSWORD]"
+gcp_vault_bucket = "[VAULT_BUCKET_NAME]"
+gcp_image_bucket = "[TEMPORARY_BUCKET_NAME]"
+gcp_project = "[PROJECT]"
+gcp_zone = "[ZONE]"
+gcp_builder_service_account = "[BASE_IMAGE_BUILDER_SA_EMAIL]"
