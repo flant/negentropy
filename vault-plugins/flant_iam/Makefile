@@ -31,9 +31,8 @@ clean:
 	rm -f ./build/flant_iam
 
 fmt:
-	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	@$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix
-	pushd tests && yarn run prettier --write **/*.js
+	pushd tests && yarn run prettier --write ./**.js && popd
 
 deps:
 	go mod tidy
