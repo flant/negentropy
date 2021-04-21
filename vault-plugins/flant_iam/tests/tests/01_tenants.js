@@ -7,7 +7,6 @@ const {
     anotherToken,
 } = require("./lib")
 
-
 const TEN = "tenant"
 const tenId = (id) => TEN + "/" + id
 
@@ -17,27 +16,42 @@ class Tenants {
     }
 
     create(payload, opts = {}) {
-        return this.client.post("/tenant", payload, { ...expectStatus(201), ...opts })
+        return this.client.post("/tenant", payload, {
+            ...expectStatus(201),
+            ...opts,
+        })
     }
 
     read(id, opts = {}) {
-        return this.client.get(`/tenant/${id}`, { ...expectStatus(200), ...opts })
+        return this.client.get(`/tenant/${id}`, {
+            ...expectStatus(200),
+            ...opts,
+        })
     }
 
     update(id, payload, opts = {}) {
-        return this.client.post(`/tenant/${id}`, payload, { ...expectStatus(204), ...opts })
+        return this.client.post(`/tenant/${id}`, payload, {
+            ...expectStatus(204),
+            ...opts,
+        })
     }
 
     delete(id, opts = {}) {
-        return this.client.delete(`/tenant/${id}`, { ...expectStatus(204), ...opts })
+        return this.client.delete(`/tenant/${id}`, {
+            ...expectStatus(204),
+            ...opts,
+        })
     }
 
     list(opts = {}) {
-        return this.client.get(`/tenant?list=true`, { ...expectStatus(200), ...opts })
+        return this.client.get("/tenant?list=true", {
+            ...expectStatus(200),
+            ...opts,
+        })
     }
 }
 
-describe("Tenants", function() {
+describe("Tenants", function () {
     const rootClient = getClient(rootToken)
     const root = new Tenants(rootClient)
     const worder = new Worder()
@@ -50,7 +64,7 @@ describe("Tenants", function() {
     // })
 
     it("responds with 404 on inexisting", async () => {
-        await root.read("no-such", { validateStatus: (s) => s == 404 })
+        await root.read("no-such", { validateStatus: (s) => s === 404 })
     })
 
     it("cannot be created without name", async () => {
@@ -73,9 +87,13 @@ describe("Tenants", function() {
 
     it("can be read", async () => {
         const payload = { name: worder.gen() }
-        const { data: creationData } = await root.create(payload, expectStatus(204))
-        console.log("creationData", creationData)
 
+        const { data: body } = await root.create(payload)
+        const id = body.data.id
+
+        const { data: tenant } = await root.read(id)
+        expect(tenant.data).to.include.keys("name")
+        expect(tenant.data.name).to.eq(payload.name)
     })
 
     it("can be listed", async () => {

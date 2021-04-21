@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"strings"
 
+	log "github.com/hashicorp/go-hclog"
+
 	"github.com/hashicorp/errwrap"
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/pborman/uuid"
 )
 
 const (
@@ -22,16 +24,16 @@ var _ logical.Factory = Factory
 
 // Factory configures and returns Mock backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	if conf == nil {
+		return nil, fmt.Errorf("configuration passed into backend is nil")
+	}
+
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 		Paths: framework.PathAppend(
-			tenantPaths(),
+			tenantPaths(conf.Logger),
 		),
-	}
-
-	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
 
 	if err := b.Setup(ctx, conf); err != nil {
@@ -41,8 +43,8 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func tenantPaths() []*framework.Path {
-	b := backend{}
+func tenantPaths(logger log.Logger) []*framework.Path {
+	b := backend{logger}
 	return []*framework.Path{
 
 		/*{
@@ -77,7 +79,7 @@ func tenantPaths() []*framework.Path {
 					Summary:  "Deletes the tenant by ID.",
 				},
 			},
-			//ExistenceCheck: b.handleExistenceCheck,
+			// ExistenceCheck: b.handleExistenceCheck,
 		},
 		//{
 		//	Pattern: "tenant/?",
@@ -91,8 +93,19 @@ func tenantPaths() []*framework.Path {
 	}
 }
 
-type backend struct{}
+type backend struct {
+	logger log.Logger
+}
 
+func genUUID() string {
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		id = genUUID()
+	}
+	return id
+}
+
+// nolint:unused
 func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
@@ -133,6 +146,7 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 	return resp, nil
 }
 
+// nolint:unused
 func (b *backend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
@@ -167,13 +181,15 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	}
 
 	successStatus := http.StatusOK
-	rawID, ok := data.GetOk(tenantUUID)
-	if !ok {
+	id := (data.Get(tenantUUID).(string))
+	b.logger.Info("got id?", id)
+	if id == "" {
 		// the creation here
-		rawID = uuid.New()
+		id = genUUID()
 		successStatus = http.StatusCreated
+		b.logger.Info("creation detected, generated new id", id)
 	}
-	id := rawID.(string)
+	b.logger.Info("final id", id)
 
 	name, ok := data.GetOk("name")
 	if !ok {
