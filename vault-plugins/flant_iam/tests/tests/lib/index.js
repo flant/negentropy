@@ -24,7 +24,11 @@ function getClient(token) {
             ? JSON.stringify(err.response.data, null, 2)
             : ""
 
-        const prefixize = (pad, text) => text.split("\n").map(s => pad + s).join("\n")
+        const prefixize = (pad, text) =>
+            text
+                .split("\n")
+                .map((s) => pad + s)
+                .join("\n")
 
         const msg = [
             "\n",
