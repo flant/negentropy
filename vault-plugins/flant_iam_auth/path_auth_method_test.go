@@ -2,6 +2,8 @@ package jwtauth
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"reflect"
@@ -494,228 +496,160 @@ func TestPath_Create(t *testing.T) {
 	})
 }
 
-//func TestPath_OIDCCreate(t *testing.T) {
-//	t.Run("both explicit and default method_type", func(t *testing.T) {
-//		b, storage := getBackend(t)
-//
-//		data := map[string]interface{}{
-//			"bound_audiences": "vault",
-//			"bound_claims": map[string]interface{}{
-//				"foo": 10,
-//				"bar": "baz",
-//			},
-//			"oidc_scopes":           []string{"email", "profile"},
-//			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-//			"claim_mappings": map[string]string{
-//				"foo": "a",
-//				"bar": "b",
-//			},
-//			"user_claim":        "user",
-//			"groups_claim":      "groups",
-//			"policies":          "test",
-//			"period":            "3s",
-//			"ttl":               "1s",
-//			"num_uses":          12,
-//			"max_ttl":           "5s",
-//			"expiration_leeway": "300s",
-//			"not_before_leeway": "300s",
-//			"clock_skew_leeway": "1s",
-//		}
-//
-//		expected := &authMethodConfig{
-//			TokenParams: tokenutil.TokenParams{
-//				TokenPolicies: []string{"test"},
-//				TokenPeriod:   3 * time.Second,
-//				TokenTTL:      1 * time.Second,
-//				TokenMaxTTL:   5 * time.Second,
-//				TokenNumUses:  12,
-//			},
-//			MethodType:      "oidc",
-//			Policies:        []string{"test"},
-//			Period:          3 * time.Second,
-//			BoundAudiences:  []string{"vault"},
-//			BoundClaimsType: "string",
-//			BoundClaims: map[string]interface{}{
-//				"foo": json.Number("10"),
-//				"bar": "baz",
-//			},
-//			AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
-//			ClaimMappings: map[string]string{
-//				"foo": "a",
-//				"bar": "b",
-//			},
-//			OIDCScopes:       []string{"email", "profile"},
-//			UserClaim:        "user",
-//			GroupsClaim:      "groups",
-//			TTL:              1 * time.Second,
-//			MaxTTL:           5 * time.Second,
-//			ExpirationLeeway: 300 * time.Second,
-//			NotBeforeLeeway:  300 * time.Second,
-//			ClockSkewLeeway:  1 * time.Second,
-//			NumUses:          12,
-//		}
-//
-//		for _, roleType := range []string{"", "oidc"} {
-//			data["method_type"] = roleType
-//			req := &logical.Request{
-//				Operation: logical.CreateOperation,
-//				Path:      "authMethodConfig/plugin-test",
-//				Storage:   storage,
-//				Data:      data,
-//			}
-//
-//			resp, err := b.HandleRequest(context.Background(), req)
-//			if err != nil || (resp != nil && resp.IsError()) {
-//				t.Fatalf("err:%s resp:%#v\n", err, resp)
-//			}
-//			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), storage, "plugin-test")
-//			if err != nil {
-//				t.Fatal(err)
-//			}
-//
-//			if diff := deep.Equal(expected, actual); diff != nil {
-//				t.Fatal(diff)
-//			}
-//		}
-//	})
-//
-//	t.Run("invalid reserved metadata key authMethodConfig", func(t *testing.T) {
-//		b, storage := getBackend(t)
-//
-//		data := map[string]interface{}{
-//			"bound_audiences": "vault",
-//			"bound_claims": map[string]interface{}{
-//				"foo": 10,
-//				"bar": "baz",
-//			},
-//			"oidc_scopes":           []string{"email", "profile"},
-//			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-//			"claim_mappings": map[string]string{
-//				"foo":        "a",
-//				"some_claim": "authMethodConfig",
-//			},
-//			"user_claim":        "user",
-//			"groups_claim":      "groups",
-//			"policies":          "test",
-//			"period":            "3s",
-//			"ttl":               "1s",
-//			"num_uses":          12,
-//			"max_ttl":           "5s",
-//			"expiration_leeway": "300s",
-//			"not_before_leeway": "300s",
-//			"clock_skew_leeway": "1s",
-//		}
-//
-//		req := &logical.Request{
-//			Operation: logical.CreateOperation,
-//			Path:      "authMethodConfig/test2",
-//			Storage:   storage,
-//			Data:      data,
-//		}
-//
-//		resp, err := b.HandleRequest(context.Background(), req)
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		if resp != nil && !resp.IsError() {
-//			t.Fatalf("expected error")
-//		}
-//		if !strings.Contains(resp.Error().Error(), `metadata key "authMethodConfig" is reserved`) {
-//			t.Fatalf("unexpected err: %v", resp)
-//		}
-//	})
-//
-//	t.Run("invalid duplicate metadata destination", func(t *testing.T) {
-//		b, storage := getBackend(t)
-//
-//		data := map[string]interface{}{
-//			"bound_audiences": "vault",
-//			"bound_claims": map[string]interface{}{
-//				"foo": 10,
-//				"bar": "baz",
-//			},
-//			"oidc_scopes":           []string{"email", "profile"},
-//			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-//			"claim_mappings": map[string]string{
-//				"foo": "a",
-//				"bar": "a",
-//			},
-//			"user_claim":        "user",
-//			"groups_claim":      "groups",
-//			"policies":          "test",
-//			"period":            "3s",
-//			"ttl":               "1s",
-//			"num_uses":          12,
-//			"max_ttl":           "5s",
-//			"expiration_leeway": "300s",
-//			"not_before_leeway": "300s",
-//			"clock_skew_leeway": "1s",
-//		}
-//
-//		req := &logical.Request{
-//			Operation: logical.CreateOperation,
-//			Path:      "authMethodConfig/test2",
-//			Storage:   storage,
-//			Data:      data,
-//		}
-//
-//		resp, err := b.HandleRequest(context.Background(), req)
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		if resp != nil && !resp.IsError() {
-//			t.Fatalf("expected error")
-//		}
-//		if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
-//			t.Fatalf("unexpected err: %v", resp)
-//		}
-//	})
-//
-//	t.Run("custom expiration_leeway and not_before_leeway values", func(t *testing.T) {
-//		b, storage := getBackend(t)
-//
-//		data := map[string]interface{}{
-//			"user_claim":        "user",
-//			"expiration_leeway": "5s",
-//			"not_before_leeway": "5s",
-//			"bound_claims": map[string]interface{}{
-//				"foo": "a",
-//				"bar": "b",
-//			},
-//			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-//		}
-//
-//		req := &logical.Request{
-//			Operation: logical.CreateOperation,
-//			Path:      "authMethodConfig/test3",
-//			Storage:   storage,
-//			Data:      data,
-//		}
-//
-//		resp, err := b.HandleRequest(context.Background(), req)
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		if resp != nil && resp.IsError() {
-//			t.Fatalf("unexpected error: %s", resp.Error().Error())
-//		}
-//
-//		actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), storage, "test3")
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//
-//		expectedDuration := "5s"
-//		if actual.ExpirationLeeway.String() != expectedDuration {
-//			t.Fatalf("expiration_leeway - expected: %s, got: %s", expectedDuration, actual.ExpirationLeeway)
-//		}
-//
-//		if actual.NotBeforeLeeway.String() != expectedDuration {
-//			t.Fatalf("not_before_leeway - expected: %s, got: %s", expectedDuration, actual.NotBeforeLeeway)
-//		}
-//	})
-//}
-//
+func TestPath_OIDCCreate(t *testing.T) {
+	t.Run("both explicit and default method_type", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		data := map[string]interface{}{
+			"bound_audiences": "vault",
+			"bound_claims": map[string]interface{}{
+				"foo": 10,
+				"bar": "baz",
+			},
+			"oidc_scopes":           []string{"email", "profile"},
+			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+			"claim_mappings": map[string]string{
+				"foo": "a",
+				"bar": "b",
+			},
+			"user_claim":   "user",
+			"groups_claim": "groups",
+		}
+
+		expected := &authMethodConfig{
+			TokenParams: tokenutil.TokenParams{
+				TokenPolicies:   []string{},
+				TokenBoundCIDRs: []*sockaddr.SockAddrMarshaler{},
+			},
+			MethodType:      "oidc",
+			BoundAudiences:  []string{"vault"},
+			BoundClaimsType: "string",
+			BoundClaims: map[string]interface{}{
+				"foo": json.Number("10"),
+				"bar": "baz",
+			},
+			AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
+			ClaimMappings: map[string]string{
+				"foo": "a",
+				"bar": "b",
+			},
+			OIDCScopes:  []string{"email", "profile"},
+			UserClaim:   "user",
+			GroupsClaim: "groups",
+		}
+
+		for _, methodType := range []string{methodTypeOIDC} {
+			data["method_type"] = methodType
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "auth_method/plugin-test",
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), storage, "plugin-test")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := deep.Equal(expected, actual); diff != nil {
+				t.Fatal(diff)
+			}
+		}
+	})
+
+	t.Run("invalid reserved metadata key authMethod", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		data := map[string]interface{}{
+			"method_type":     methodTypeOIDC,
+			"bound_audiences": "vault",
+			"bound_claims": map[string]interface{}{
+				"foo": 10,
+				"bar": "baz",
+			},
+			"oidc_scopes":           []string{"email", "profile"},
+			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+			"claim_mappings": map[string]string{
+				"foo":        "a",
+				"some_claim": "authMethodConfig",
+			},
+			"user_claim":   "user",
+			"groups_claim": "groups",
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "auth_method/test2",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp != nil && !resp.IsError() {
+			t.Fatalf("expected error")
+		}
+		if !strings.Contains(resp.Error().Error(), `metadata key "authMethodConfig" is reserved`) {
+			t.Fatalf("unexpected err: %v", resp)
+		}
+	})
+
+	t.Run("invalid duplicate metadata destination", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		data := map[string]interface{}{
+			"method_type":     methodTypeOIDC,
+			"bound_audiences": "vault",
+			"bound_claims": map[string]interface{}{
+				"foo": 10,
+				"bar": "baz",
+			},
+			"oidc_scopes":           []string{"email", "profile"},
+			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+			"claim_mappings": map[string]string{
+				"foo": "a",
+				"bar": "a",
+			},
+			"user_claim":        "user",
+			"groups_claim":      "groups",
+			"policies":          "test",
+			"period":            "3s",
+			"ttl":               "1s",
+			"num_uses":          12,
+			"max_ttl":           "5s",
+			"expiration_leeway": "300s",
+			"not_before_leeway": "300s",
+			"clock_skew_leeway": "1s",
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "auth_method/test2",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp != nil && !resp.IsError() {
+			t.Fatalf("expected error")
+		}
+		if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
+			t.Fatalf("unexpected err: %v", resp)
+		}
+	})
+
+}
+
 //func TestPath_Read(t *testing.T) {
 //	b, storage := getBackend(t)
 //
@@ -771,7 +705,7 @@ func TestPath_Create(t *testing.T) {
 //
 //	req := &logical.Request{
 //		Operation: logical.CreateOperation,
-//		Path:      "authMethodConfig/plugin-test",
+//		Path:      "auth_method/plugin-test",
 //		Storage:   storage,
 //		Data:      data,
 //	}
@@ -784,7 +718,7 @@ func TestPath_Create(t *testing.T) {
 //	readTest := func() {
 //		req = &logical.Request{
 //			Operation: logical.ReadOperation,
-//			Path:      "authMethodConfig/plugin-test",
+//			Path:      "auth_method/plugin-test",
 //			Storage:   storage,
 //		}
 //
@@ -851,65 +785,65 @@ func TestPath_Create(t *testing.T) {
 //	// reads will populate the `bound_claims_type` with "string".
 //	readTest()
 //}
-//
-//func TestPath_Delete(t *testing.T) {
-//	b, storage := getBackend(t)
-//
-//	data := map[string]interface{}{
-//		"method_type":         "jwt",
-//		"bound_subject":     "testsub",
-//		"bound_audiences":   "vault",
-//		"user_claim":        "user",
-//		"groups_claim":      "groups",
-//		"bound_cidrs":       "127.0.0.1/8",
-//		"policies":          "test",
-//		"period":            "3s",
-//		"ttl":               "1s",
-//		"num_uses":          12,
-//		"max_ttl":           "5s",
-//		"expiration_leeway": "300s",
-//		"not_before_leeway": "300s",
-//	}
-//
-//	req := &logical.Request{
-//		Operation: logical.CreateOperation,
-//		Path:      "authMethodConfig/plugin-test",
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err := b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	req = &logical.Request{
-//		Operation: logical.DeleteOperation,
-//		Path:      "authMethodConfig/plugin-test",
-//		Storage:   storage,
-//	}
-//
-//	resp, err = b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	if resp != nil {
-//		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
-//	}
-//
-//	req = &logical.Request{
-//		Operation: logical.ReadOperation,
-//		Path:      "authMethodConfig/plugin-test",
-//		Storage:   storage,
-//	}
-//
-//	resp, err = b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	if resp != nil {
-//		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
-//	}
-//}
+
+func TestPath_Delete(t *testing.T) {
+	b, storage := getBackend(t)
+
+	data := map[string]interface{}{
+		"method_type":       "jwt",
+		"bound_subject":     "testsub",
+		"bound_audiences":   "vault",
+		"user_claim":        "user",
+		"groups_claim":      "groups",
+		"bound_cidrs":       "127.0.0.1/8",
+		"policies":          "test",
+		"period":            "3s",
+		"ttl":               "1s",
+		"num_uses":          12,
+		"max_ttl":           "5s",
+		"expiration_leeway": "300s",
+		"not_before_leeway": "300s",
+	}
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "auth_method/plugin-test",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.DeleteOperation,
+		Path:      "auth_method/plugin-test",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if resp != nil {
+		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "auth_method/plugin-test",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if resp != nil {
+		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
+	}
+}
