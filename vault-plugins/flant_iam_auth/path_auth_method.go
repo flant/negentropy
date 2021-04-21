@@ -23,16 +23,14 @@ const (
 	boundClaimsTypeGlob   = "glob"
 )
 
-type AuthMethodType string
-
 const (
-	methodTypeJWT        = AuthMethodType("jwt")
-	methodTypeOIDC       = AuthMethodType("oidc")
-	methodTypeOwn        = AuthMethodType("jwt_own")
-	methodTypeSAPassword = AuthMethodType("service_account_password")
+	methodTypeJWT        = "jwt"
+	methodTypeOIDC       = "oidc"
+	methodTypeOwn        = "jwt_own"
+	methodTypeSAPassword = "service_account_password"
 )
 
-var authMethodTypes = []AuthMethodType{methodTypeOwn, methodTypeJWT, methodTypeOIDC, methodTypeSAPassword}
+var authMethodTypes = []string{methodTypeOwn, methodTypeJWT, methodTypeOIDC, methodTypeSAPassword}
 
 func pathAuthMethodList(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -173,7 +171,7 @@ user was actively authenticated.`,
 type authMethodConfig struct {
 	tokenutil.TokenParams
 
-	MethodType AuthMethodType `json:"method_type"`
+	MethodType string `json:"method_type"`
 
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
@@ -196,14 +194,6 @@ type authMethodConfig struct {
 	AllowedRedirectURIs []string               `json:"allowed_redirect_uris"`
 	VerboseOIDCLogging  bool                   `json:"verbose_oidc_logging"`
 	MaxAge              time.Duration          `json:"max_age"`
-
-	// Deprecated by TokenParams
-	Policies   []string                      `json:"policies"`
-	NumUses    int                           `json:"num_uses"`
-	TTL        time.Duration                 `json:"ttl"`
-	MaxTTL     time.Duration                 `json:"max_ttl"`
-	Period     time.Duration                 `json:"period"`
-	BoundCIDRs []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
 }
 
 // authMethodConfig takes a storage backend and the name and returns the authMethodConfig's storage
@@ -231,44 +221,25 @@ func (b *flantIamAuthBackend) authMethod(ctx context.Context, s logical.Storage,
 		role.BoundClaimsType = boundClaimsTypeString
 	}
 
-	if role.TokenTTL == 0 && role.TTL > 0 {
-		role.TokenTTL = role.TTL
-	}
-	if role.TokenMaxTTL == 0 && role.MaxTTL > 0 {
-		role.TokenMaxTTL = role.MaxTTL
-	}
-	if role.TokenPeriod == 0 && role.Period > 0 {
-		role.TokenPeriod = role.Period
-	}
-	if role.TokenNumUses == 0 && role.NumUses > 0 {
-		role.TokenNumUses = role.NumUses
-	}
-	if len(role.TokenPolicies) == 0 && len(role.Policies) > 0 {
-		role.TokenPolicies = role.Policies
-	}
-	if len(role.TokenBoundCIDRs) == 0 && len(role.BoundCIDRs) > 0 {
-		role.TokenBoundCIDRs = role.BoundCIDRs
-	}
-
 	return role, nil
 }
 
 // pathAuthMethodExistenceCheck returns whether the authMethodConfig with the given name exists or not.
 func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-	role, err := b.authMethod(ctx, req.Storage, data.Get("name").(string))
+	methodName, err := b.authMethod(ctx, req.Storage, data.Get("name").(string))
 	if err != nil {
 		return false, err
 	}
-	return role != nil, nil
+	return methodName != nil, nil
 }
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *flantIamAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, rolePrefix)
+	methods, err := req.Storage.List(ctx, rolePrefix)
 	if err != nil {
 		return nil, err
 	}
-	return logical.ListResponse(roles), nil
+	return logical.ListResponse(methods), nil
 }
 
 // pathAuthMethodRead grabs a read lock and reads the options set on the authMethodConfig from the storage
@@ -319,13 +290,13 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 
 // pathAuthMethodDelete removes the authMethodConfig from storage
 func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roleName := data.Get("name").(string)
-	if roleName == "" {
+	methodName := data.Get("name").(string)
+	if methodName == "" {
 		return logical.ErrorResponse("authMethodConfig name required"), nil
 	}
 
 	// Delete the authMethodConfig itself
-	if err := req.Storage.Delete(ctx, rolePrefix+roleName); err != nil {
+	if err := req.Storage.Delete(ctx, rolePrefix+methodName); err != nil {
 		return nil, err
 	}
 
@@ -354,7 +325,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		method = new(authMethodConfig)
 	}
 
-	methodType := data.Get("method_type").(AuthMethodType)
+	methodType := data.Get("method_type").(string)
 	if methodType == "" {
 		return logical.ErrorResponse("missing method_type"), nil
 	}
@@ -396,15 +367,15 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 	}
 
 	if !(methodType == methodTypeOwn || methodType == methodTypeSAPassword) {
-		method.TokenTTL = 0
-		method.MaxTTL = 0
-		method.TokenPolicies = []string{}
-		method.TokenBoundCIDRs = []*sockaddr.SockAddrMarshaler{}
-		method.TokenExplicitMaxTTL = 0
-		method.TokenNoDefaultPolicy = true
-		method.TokenNumUses = 0
-		method.TokenPeriod = 0
-		method.TokenType = logical.TokenTypeDefault
+		method.TokenParams.TokenTTL = 0
+		method.TokenParams.TokenMaxTTL = 0
+		method.TokenParams.TokenPolicies = []string{}
+		method.TokenParams.TokenBoundCIDRs = []*sockaddr.SockAddrMarshaler{}
+		method.TokenParams.TokenExplicitMaxTTL = 0
+		method.TokenParams.TokenNoDefaultPolicy = false
+		method.TokenParams.TokenNumUses = 0
+		method.TokenParams.TokenPeriod = 0
+		method.TokenParams.TokenType = logical.TokenTypeDefault
 	}
 
 	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
@@ -492,7 +463,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 
 	if method.MethodType == methodTypeOIDC && len(method.AllowedRedirectURIs) == 0 {
 		return logical.ErrorResponse(
-			"'allowed_redirect_uris' must be set if 'role_type' is 'oidc' or unspecified."), nil
+			"'allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified."), nil
 	}
 
 	// OIDC verification will enforce that the audience match the configured client_id.
@@ -502,7 +473,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			len(method.TokenBoundCIDRs) == 0 &&
 			method.BoundSubject == "" &&
 			len(method.BoundClaims) == 0 {
-			return logical.ErrorResponse("must have at least one bound constraint when creating/updating a authMethodConfig"), nil
+			return logical.ErrorResponse("must have at least one bound constraint when creating/updating a authMethod"), nil
 		}
 	}
 
