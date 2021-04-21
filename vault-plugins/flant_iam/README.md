@@ -17,3 +17,8 @@ After `start.sh` is run, do
 make deps 
 make test
 ```
+
+## Format
+
+It would be wonderful if you run `make fmt` before pushing. 
+It reduces diff clutter and saves your time.
