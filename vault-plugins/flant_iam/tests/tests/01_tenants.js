@@ -98,7 +98,7 @@ describe("Tenants", function () {
 
     it("can be listed", async () => {
         const payload = { name: worder.gen() }
-        await root.create(payload, expectStatus(204))
+        await root.create(payload)
 
         const { data } = await root.list(expectStatus(200))
 
@@ -107,7 +107,7 @@ describe("Tenants", function () {
 
     it("has identifying fields in list", async () => {
         const payload = { name: worder.gen() }
-        await root.create(payload, expectStatus(204))
+        await root.create(payload)
 
         const { data: body } = await root.list()
 

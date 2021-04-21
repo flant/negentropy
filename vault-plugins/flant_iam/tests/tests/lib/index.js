@@ -19,14 +19,22 @@ function getClient(token) {
     instance.interceptors.response.use(null, (err) => {
         // Log and throw further
         const sent = err.request.method + " " + err.request.path
-        const status = "Status " + err.response.status
+        const status = `STATUS: ${err.response.status}`
         const body = err.response.data
             ? JSON.stringify(err.response.data, null, 2)
             : ""
-        const msg = ["\n", sent, status, body].join("\n")
 
-        console.error(msg)
+        const prefixize = (pad, text) => text.split("\n").map(s => pad + s).join("\n")
 
+        const msg = [
+            "\n",
+            prefixize("     →  ", sent),
+            "",
+            prefixize("     ←  ", [status, body].join("\n")),
+        ].join("\n")
+
+        // console.error(msg)
+        err.message += msg
         throw err
     })
 
