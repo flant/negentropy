@@ -7,7 +7,8 @@
     "axios": "^0.21.1",
     "chai": "^4.3.4",
     "faker": "^5.5.3",
-    "mocha": "^8.3.2"
+    "mocha": "^8.3.2",
+    "prettier": "^2.2.1"
   },
   "scripts": {
     "test": "mocha tests"

@@ -33,6 +33,7 @@ clean:
 fmt:
 	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	@$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix
+	pushd tests && yarn run prettier --write **/*.js
 
 deps:
 	go mod tidy
