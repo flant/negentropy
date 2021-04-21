@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TOOL=vault-plugin-auth-jwt
+TOOL=vault-plugin-flant_iam_auth
 #
 # This script builds the application from source for multiple platforms.
 set -e

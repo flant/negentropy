@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/pkg"
 	"sync"
 
 	"github.com/hashicorp/cap/jwt"
@@ -14,8 +15,7 @@ import (
 )
 
 const (
-	configPath string = "config"
-	rolePrefix string = "role/"
+	rolePrefix string = "authMethodConfig/"
 )
 
 // Factory is used by framework
@@ -27,26 +27,28 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 	return b, nil
 }
 
-type jwtAuthBackend struct {
+type flantIamAuthBackend struct {
 	*framework.Backend
 
 	l            sync.RWMutex
 	provider     *oidc.Provider
 	validator    *jwt.Validator
-	cachedConfig *jwtConfig
 	oidcRequests *cache.Cache
 
-	providerCtx       context.Context
-	providerCtxCancel context.CancelFunc
+	providerCtx              context.Context
+	providerCtxCancel        context.CancelFunc
+	authSourceStorageFactory pkg.PrefixStorageRequestFactory
 }
 
-func backend() *jwtAuthBackend {
-	b := new(jwtAuthBackend)
+func backend() *flantIamAuthBackend {
+	const authSourcePrefix = "authSource/"
+	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
-	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
+	//b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
+	b.authSourceStorageFactory = pkg.NewPrefixStorageRequestFactory(authSourcePrefix)
 
 	b.Backend = &framework.Backend{
-		AuthRenew:   b.pathLoginRenew,
+		//AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
 		Help:        backendHelp,
@@ -55,25 +57,25 @@ func backend() *jwtAuthBackend {
 				"login",
 				"oidc/auth_url",
 				"oidc/callback",
-
 				// Uncomment to mount simple UI handler for local development
 				// "ui",
 			},
 			SealWrapStorage: []string{
 				"config",
+				authSourcePrefix,
 			},
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
-				pathLogin(b),
-				pathRoleList(b),
-				pathRole(b),
-				pathConfig(b),
+				pathAuthMethodList(b),
+				pathAuthMethod(b),
+				pathAuthSource(b),
+				pathAuthSourceList(b),
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
 			},
-			pathOIDC(b),
+			//pathOIDC(b),
 		),
 		Clean: b.cleanup,
 	}
@@ -81,7 +83,7 @@ func backend() *jwtAuthBackend {
 	return b
 }
 
-func (b *jwtAuthBackend) cleanup(_ context.Context) {
+func (b *flantIamAuthBackend) cleanup(_ context.Context) {
 	b.l.Lock()
 	if b.providerCtxCancel != nil {
 		b.providerCtxCancel()
@@ -92,25 +94,24 @@ func (b *jwtAuthBackend) cleanup(_ context.Context) {
 	b.l.Unlock()
 }
 
-func (b *jwtAuthBackend) invalidate(ctx context.Context, key string) {
+func (b *flantIamAuthBackend) invalidate(ctx context.Context, key string) {
 	switch key {
 	case "config":
 		b.reset()
 	}
 }
 
-func (b *jwtAuthBackend) reset() {
+func (b *flantIamAuthBackend) reset() {
 	b.l.Lock()
 	if b.provider != nil {
 		b.provider.Done()
 	}
 	b.provider = nil
-	b.cachedConfig = nil
 	b.validator = nil
 	b.l.Unlock()
 }
 
-func (b *jwtAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) {
+func (b *flantIamAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -128,7 +129,7 @@ func (b *jwtAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) 
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
-func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error) {
+func (b *flantIamAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 

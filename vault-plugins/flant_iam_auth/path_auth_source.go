@@ -3,21 +3,16 @@ package jwtauth
 import (
 	"context"
 	"crypto"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -27,10 +22,15 @@ const (
 	responseModeFormPost = "form_post" // Response as an HTML Form
 )
 
-func pathConfig(b *jwtAuthBackend) *framework.Path {
+func pathAuthSource(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: `config`,
+		Pattern: `auth_source/` + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "auth source name",
+				Required:    true,
+			},
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
 				Description: `OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
@@ -68,7 +68,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"default_role": {
 				Type:        framework.TypeLowerCaseString,
-				Description: "The default role to use if none is provided during login. If not set, a role is required during login.",
+				Description: "The default authMethodConfig to use if none is provided during login. If not set, a authMethodConfig is required during login.",
 			},
 			"jwt_validation_pubkeys": {
 				Type:        framework.TypeCommaStringSlice,
@@ -100,14 +100,19 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathConfigRead,
-				Summary:  "Read the current JWT authentication backend configuration.",
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathAuthSourceWrite,
+				Summary:  "Write authentication source name passed name.",
 			},
 
-			logical.UpdateOperation: &framework.PathOperation{
-				Callback:    b.pathConfigWrite,
-				Summary:     "Configure the JWT authentication backend.",
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathAuthSourceRead,
+				Summary:  "Read authentication source.",
+			},
+
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback:    b.pathAuthSourceDelete,
+				Summary:     "Delete authentication source.",
 				Description: confHelpDesc,
 			},
 		},
@@ -117,15 +122,24 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 	}
 }
 
-func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtConfig, error) {
+func pathAuthSourceList(b *flantIamAuthBackend) *framework.Path {
+	return &framework.Path{
+		Pattern: "auth_source/?",
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback:    b.pathAuthSourceList,
+				Summary:     "Delete authentication source.",
+				Description: confHelpDesc,
+			},
+		},
+	}
+}
+
+func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.Storage, name string) (*jwtConfig, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if b.cachedConfig != nil {
-		return b.cachedConfig, nil
-	}
-
-	entry, err := s.Get(ctx, configPath)
+	entry, err := s.Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -146,13 +160,16 @@ func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtCon
 		config.ParsedJWTPubKeys = append(config.ParsedJWTPubKeys, key)
 	}
 
-	b.cachedConfig = config
-
 	return config, nil
 }
 
-func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	config, err := b.config(ctx, req.Storage)
+func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	sourceName, errorResp := nameFromRequest(d)
+	if errorResp != nil {
+		return errorResp, nil
+	}
+
+	config, err := b.authSourceConfig(ctx, b.authSourceStorageFactory(req), sourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +215,8 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 	return resp, nil
 }
 
-func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+
 	config := &jwtConfig{
 		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
 		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
@@ -218,10 +236,18 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	// Check if the config already exists, to determine if this is a create or
 	// an update, since req.Operation is always 'update' in this handler, and
 	// there's no existence check defined.
-	existingConfig, err := b.config(ctx, req.Storage)
+
+	sourceName, errorResp := nameFromRequest(d)
+	if errorResp != nil {
+		return errorResp, nil
+	}
+
+	storage := b.authSourceStorageFactory(req)
+	existingConfig, err := b.authSourceConfig(ctx, storage, sourceName)
 	if err != nil {
 		return nil, err
 	}
+
 	if nsInState, ok := d.GetOk("namespace_in_state"); ok {
 		config.NamespaceInState = nsInState.(bool)
 	} else if existingConfig == nil {
@@ -323,11 +349,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("invalid provider_config: %s", err), nil
 	}
 
-	entry, err := logical.StorageEntryJSON(configPath, config)
-	if err != nil {
-		return nil, err
-	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
+	if err := storage.PutEntry(ctx, sourceName, config); err != nil {
 		return nil, err
 	}
 
@@ -336,7 +358,30 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	return nil, nil
 }
 
-func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
+func (b *flantIamAuthBackend) pathAuthSourceList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	sources, err := b.authSourceStorageFactory(req).AllKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return logical.ListResponse(sources), nil
+}
+
+func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	sourceName, errorResp := nameFromRequest(d)
+	if errorResp != nil {
+		return errorResp, nil
+	}
+
+	err := b.authSourceStorageFactory(req).Delete(ctx, sourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (b *flantIamAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
 	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
 	for i, a := range config.JWTSupportedAlgs {
 		supportedSigAlgs[i] = oidc.Alg(a)
@@ -359,33 +404,6 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 	}
 
 	return provider, nil
-}
-
-// createCAContext returns a context with custom TLS client, configured with the root certificates
-// from caPEM. If no certificates are configured, the original context is returned.
-func (b *jwtAuthBackend) createCAContext(ctx context.Context, caPEM string) (context.Context, error) {
-	if caPEM == "" {
-		return ctx, nil
-	}
-
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM([]byte(caPEM)); !ok {
-		return nil, errors.New("could not parse CA PEM value successfully")
-	}
-
-	tr := cleanhttp.DefaultPooledTransport()
-	if certPool != nil {
-		tr.TLSClientConfig = &tls.Config{
-			RootCAs: certPool,
-		}
-	}
-	tc := &http.Client{
-		Transport: tr,
-	}
-
-	caCtx := context.WithValue(ctx, oauth2.HTTPClient, tc)
-
-	return caCtx, nil
 }
 
 type jwtConfig struct {
@@ -430,6 +448,14 @@ func (c jwtConfig) authType() int {
 	}
 
 	return unconfigured
+}
+
+func toAlg(a []string) []jwt.Alg {
+	alg := make([]jwt.Alg, len(a))
+	for i, e := range a {
+		alg[i] = jwt.Alg(e)
+	}
+	return alg
 }
 
 // hasType returns whether the list of response types includes the requested

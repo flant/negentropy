@@ -72,7 +72,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		callbackPort = port
 	}
 
-	role := m["role"]
+	role := m["authMethodConfig"]
 
 	authURL, clientNonce, err := fetchAuthURL(c, role, mount, callbackPort, callbackMethod, callbackHost)
 	if err != nil {
@@ -170,9 +170,9 @@ func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMetho
 
 	redirectURI := fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackport)
 	data := map[string]interface{}{
-		"role":         role,
-		"redirect_uri": redirectURI,
-		"client_nonce": clientNonce,
+		"authMethodConfig": role,
+		"redirect_uri":     redirectURI,
+		"client_nonce":     clientNonce,
 	}
 
 	secret, err := c.Logical().Write(fmt.Sprintf("auth/%s/oidc/auth_url", mount), data)
@@ -185,7 +185,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMetho
 	}
 
 	if authURL == "" {
-		return "", "", fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check Vault logs for more information.", role, redirectURI)
+		return "", "", fmt.Errorf("Unable to authorize authMethodConfig %q with redirect_uri %q. Check Vault logs for more information.", role, redirectURI)
 	}
 
 	return authURL, clientNonce, nil
@@ -266,11 +266,11 @@ func (h *CLIHandler) Help() string {
 Usage: vault login -method=oidc [CONFIG K=V...]
 
   The OIDC auth method allows users to authenticate using an OIDC provider.
-  The provider must be configured as part of a role by the operator.
+  The provider must be configured as part of a authMethodConfig by the operator.
 
-  Authenticate using role "engineering":
+  Authenticate using authMethodConfig "engineering":
 
-      $ vault login -method=oidc role=engineering
+      $ vault login -method=oidc authMethodConfig=engineering
       Complete the login via your OIDC provider. Launching browser to:
 
           https://accounts.google.com/o/oauth2/v2/...
@@ -280,8 +280,8 @@ Usage: vault login -method=oidc [CONFIG K=V...]
 
 Configuration:
 
-  role=<string>
-      Vault role of type "OIDC" to use for authentication.
+  authMethodConfig=<string>
+      Vault authMethodConfig of type "OIDC" to use for authentication.
 
   listenaddress=<string>
     Optional address to bind the OIDC callback listener to (default: localhost).

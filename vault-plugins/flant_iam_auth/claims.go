@@ -72,7 +72,7 @@ func extractMetadata(logger log.Logger, allClaims map[string]interface{}, claimM
 // presence of any audience in the received claim is considered an error.
 func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 	if strict && len(boundAudiences) == 0 && len(audClaim) > 0 {
-		return errors.New("audience claim found in JWT but no audiences bound to the role")
+		return errors.New("audience claim found in JWT but no audiences bound to the auth method")
 	}
 
 	if len(boundAudiences) > 0 {

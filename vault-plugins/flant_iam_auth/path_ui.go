@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func pathUI(b *jwtAuthBackend) *framework.Path {
+func pathUI(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `ui$`,
 
@@ -19,7 +19,7 @@ func pathUI(b *jwtAuthBackend) *framework.Path {
 	}
 }
 
-func (b *jwtAuthBackend) pathUI(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *flantIamAuthBackend) pathUI(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	data, err := ioutil.ReadFile("test_ui.html")
 	if err != nil {
 		panic(err)

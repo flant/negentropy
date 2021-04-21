@@ -1,4 +1,4 @@
-TOOL?=vault-plugin-auth-jwt
+TOOL?=vault-plugin-flant_iam_auth
 TEST?=$$(go list ./... | grep -v /vendor/)
 EXTERNAL_TOOLS=\
 	github.com/mitchellh/gox

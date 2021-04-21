@@ -2,7 +2,7 @@
 set -e
 
 MNT_PATH="oidc"
-PLUGIN_NAME="vault-plugin-auth-jwt"
+PLUGIN_NAME="vault-plugin-flant_iam_auth"
 PLUGIN_CATALOG_NAME="oidc"
 
 #

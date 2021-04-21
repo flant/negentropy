@@ -8,15 +8,12 @@ import (
 )
 
 // Provider-specific configuration interfaces
-// All providers must implement the CustomProvider interface, and may implement
+// AllKeys providers must implement the CustomProvider interface, and may implement
 // others as needed.
 
 // ProviderMap returns a map of provider names to custom types
 func ProviderMap() map[string]CustomProvider {
-	return map[string]CustomProvider{
-		"azure":  &AzureProvider{},
-		"gsuite": &GSuiteProvider{},
-	}
+	return map[string]CustomProvider{}
 }
 
 // CustomProvider - Any custom provider must implement this interface
@@ -54,11 +51,11 @@ func NewProviderConfig(ctx context.Context, jc *jwtConfig, providerMap map[strin
 
 // UserInfoFetcher - Optional support for custom user info handling
 type UserInfoFetcher interface {
-	FetchUserInfo(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole) error
+	FetchUserInfo(context.Context, *flantIamAuthBackend, map[string]interface{}, *authMethodConfig) error
 }
 
 // GroupsFetcher - Optional support for custom groups handling
 type GroupsFetcher interface {
 	// FetchGroups queries for groups claims during login
-	FetchGroups(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole, oauth2.TokenSource) (interface{}, error)
+	FetchGroups(context.Context, *flantIamAuthBackend, map[string]interface{}, *authMethodConfig, oauth2.TokenSource) (interface{}, error)
 }
