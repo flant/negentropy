@@ -8,9 +8,9 @@ const {
 } = require("./lib")
 
 const TEN = "tenant"
-const tenId = id => TEN + "/" + id
+const tenId = (id) => TEN + "/" + id
 
-describe("Tenants", function() {
+describe("Tenants", function () {
     const root = getClient(rootToken)
     const worder = new Worder()
 
@@ -24,7 +24,6 @@ describe("Tenants", function() {
     it("responds with 400 on inexisting", async () => {
         await root.get(tenId("no-such"), { validateStatus: (s) => s >= 400 })
     })
-
 
     it("cannot be created without name", async () => {
         await root.post(TEN, {}, expectStatus(400))

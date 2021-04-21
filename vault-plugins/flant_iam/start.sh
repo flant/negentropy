@@ -21,11 +21,14 @@ id=$(docker run \
   vault \
   server -dev -dev-plugin-dir=/vault/plugins -dev-root-token-id=root)
 
-docker exec -it "$id" sh -c "
+docker exec "$id" sh -c "
 sleep 1 \
 && vault secrets enable -path=flant_iam flant_iam \
-&& vault token create -orphan -policy=root -field=token > /vault/testdata/token \
-&& sh
+&& vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
+docker logs -f  dev-vault
+# docker exec -it dev-vault sh
+
 # make enable
+# vault path-help flant_iam

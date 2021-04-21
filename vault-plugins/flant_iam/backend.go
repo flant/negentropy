@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	tenantIdKey = "tid"
+	tenantUUID = "id"
 )
 
 var _ logical.Factory = Factory
@@ -42,29 +42,29 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 func tenantPaths() []*framework.Path {
 	b := backend{}
 	return []*framework.Path{
+
+		//{
+		//	Pattern: "tenant",
+		//	Operations: map[logical.Operation]framework.OperationHandler{
+		//		logical.CreateOperation: &framework.PathOperation{
+		//			Callback: b.create,
+		//			Summary:  "Create a tenant.",
+		//		},
+		//	},
+		//},
 		{
-			Pattern: "tenant" + framework.OptionalParamRegex(tenantIdKey),
+			Pattern: "tenant/" + framework.GenericNameRegex(tenantUUID),
 			Fields: map[string]*framework.FieldSchema{
-				tenantIdKey: {
-					Type:        framework.TypeString,
-					Description: "ID of a tenant",
-				},
+				tenantUUID: {Type: framework.TypeString, Description: "ID of a tenant"},
+				"name":     {Type: framework.TypeString, Description: "Tenant name"},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleList,
-					Summary:  "Lists all tenants IDs.",
-				},
-				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleWrite,
-					Summary:  "Create a tenant.",
-				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead,
 					Summary:  "Retrieve the tenant by ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleWrite,
+					Callback: b.create,
 					Summary:  "Update the tenant by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
@@ -72,8 +72,17 @@ func tenantPaths() []*framework.Path {
 					Summary:  "Deletes the tenant by ID.",
 				},
 			},
-			ExistenceCheck: b.handleExistenceCheck,
+			//ExistenceCheck: b.handleExistenceCheck,
 		},
+		//{
+		//	Pattern: "tenant/?",
+		//	Operations: map[logical.Operation]framework.OperationHandler{
+		//		logical.ListOperation: &framework.PathOperation{
+		//			Callback: b.handleList,
+		//			Summary:  "Lists all tenants IDs.",
+		//		},
+		//	},
+		//},
 	}
 }
 
@@ -93,16 +102,17 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	path := data.Get(tenantIdKey).(string)
+	id := data.Get(tenantUUID).(string)
 
 	// Decode the data
 	var rawData map[string]interface{}
-	fetchedData, err := req.Storage.Get(ctx, path)
+	fetchedData, err := req.Storage.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if fetchedData == nil {
-		resp := logical.ErrorResponse("No value at %v%v", req.MountPoint, path)
+		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, id)
+		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
 		return resp, nil
 	}
 
@@ -123,7 +133,7 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	path := data.Get(tenantIdKey).(string)
+	path := data.Get(tenantUUID).(string)
 
 	// Decode the data
 	fetchedData, err := req.Storage.List(ctx, path)
@@ -146,14 +156,20 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	return resp, nil
 }
 
-func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) create(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	// Check to make sure that kv pairs provided
-	if len(req.Data) == 0 {
-		return nil, fmt.Errorf("data must be provided to store in secret")
+	name, ok, err := data.GetOkErr("name")
+	if !ok {
+		return nil, fmt.Errorf("tenant name must be provided")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(name.(string)) == 0 {
+		return nil, fmt.Errorf("tenant name must not be empty")
 	}
 
 	// JSON encode the data
@@ -162,7 +178,7 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
 	}
 
-	path := data.Get(tenantIdKey).(string)
+	path := data.Get(tenantUUID).(string)
 	key := path
 	entry := &logical.StorageEntry{
 		Key:   key,
@@ -177,7 +193,7 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
-	path := data.Get(tenantIdKey).(string)
+	path := data.Get(tenantUUID).(string)
 	err := req.Storage.Delete(ctx, path)
 
 	return nil, err
