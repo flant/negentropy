@@ -1,4 +1,4 @@
-module github.com/flant/negentropy/tree/flant-iam/vault-plugins/flant_iam
+module github.com/flant/negentropy/vault-plugins/flant_iam
 
 go 1.12
 

@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	mock "github.com/flant/negentropy/tree/flant-iam/vault-plugins/flant_iam"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
@@ -22,7 +22,7 @@ func main() {
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
 	err = plugin.Serve(&plugin.ServeOpts{
-		BackendFactoryFunc: mock.Factory,
+		BackendFactoryFunc: iam.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
