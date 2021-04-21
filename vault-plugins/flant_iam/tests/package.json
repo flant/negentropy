@@ -1,0 +1,15 @@
+{
+  "name": "flant_iam",
+  "version": "1.0.0",
+  "main": "tests/lib/index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "axios": "^0.21.1",
+    "chai": "^4.3.4",
+    "faker": "^5.5.3",
+    "mocha": "^8.3.2"
+  },
+  "scripts": {
+    "test": "mocha tests"
+  }
+}
