@@ -12,8 +12,8 @@ id=$(docker run \
   --cap-add=IPC_LOCK \
   -d \
   -p 8200:8200 \
-  -v $(pwd)/build:/vault/plugins \
-  -v $(pwd)/tests/data:/vault/testdata \
+  -v "$(pwd)/build:/vault/plugins" \
+  -v "$(pwd)/tests/data:/vault/testdata" \
   --name=dev-vault --rm \
   -e VAULT_API_ADDR=http://127.0.0.1:8200 \
   -e VAULT_ADDR=http://127.0.0.1:8200 \
