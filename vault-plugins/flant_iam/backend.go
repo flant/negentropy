@@ -77,8 +77,7 @@ func tenantPaths() []*framework.Path {
 	}
 }
 
-type backend struct {
-}
+type backend struct{}
 
 func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)

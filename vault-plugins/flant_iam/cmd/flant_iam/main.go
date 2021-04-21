@@ -1,10 +1,11 @@
 package main
 
 import (
+	"log"
 	"os"
 
+	mock "github.com/flant/negentropy/tree/flant-iam/vault-plugins/flant_iam"
 	"github.com/hashicorp/go-hclog"
-	mock "github.com/hashicorp/vault-guides/plugins/vault-plugin-secrets-mock"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )
@@ -12,12 +13,15 @@ import (
 func main() {
 	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
+	err := flags.Parse(os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	err := plugin.Serve(&plugin.ServeOpts{
+	err = plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: mock.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})

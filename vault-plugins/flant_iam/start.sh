@@ -3,13 +3,10 @@
 set -eou pipefail
 set -x
 
-env GOOS=linux GOARCH=amd64 go build -o ./build/flant_iam ./cmd/flant_iam/
-
+env OS=linux make build
 
 docker stop dev-vault 2>/dev/null || true
-docker rm   dev-vault 2>/dev/null || true
-
-set -e
+docker rm dev-vault 2>/dev/null || true
 
 id=$(docker run \
   --cap-add=IPC_LOCK \
@@ -30,4 +27,5 @@ sleep 1 \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token \
 && sh
 "
-# vault secrets enable -path=flant_iam flant_iam
+
+# make enable
