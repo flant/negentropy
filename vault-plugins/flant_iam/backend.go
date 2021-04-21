@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/pborman/uuid"
 )
 
 const (
@@ -43,17 +45,20 @@ func tenantPaths() []*framework.Path {
 	b := backend{}
 	return []*framework.Path{
 
-		//{
-		//	Pattern: "tenant",
-		//	Operations: map[logical.Operation]framework.OperationHandler{
-		//		logical.CreateOperation: &framework.PathOperation{
-		//			Callback: b.create,
-		//			Summary:  "Create a tenant.",
-		//		},
-		//	},
-		//},
+		/*{
+			Pattern: "tenant/new",
+			Fields: map[string]*framework.FieldSchema{
+				"name": {Type: framework.TypeString, Description: "Tenant name"},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.create,
+					Summary:  "Create a tenant.",
+				},
+			},
+		},*/
 		{
-			Pattern: "tenant/" + framework.GenericNameRegex(tenantUUID),
+			Pattern: "tenant" + framework.OptionalParamRegex(tenantUUID),
 			Fields: map[string]*framework.FieldSchema{
 				tenantUUID: {Type: framework.TypeString, Description: "ID of a tenant"},
 				"name":     {Type: framework.TypeString, Description: "Tenant name"},
@@ -64,7 +69,7 @@ func tenantPaths() []*framework.Path {
 					Summary:  "Retrieve the tenant by ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.create,
+					Callback: b.handleWrite,
 					Summary:  "Update the tenant by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
@@ -156,20 +161,26 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	return resp, nil
 }
 
-func (b *backend) create(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	name, ok, err := data.GetOkErr("name")
+	successStatus := http.StatusOK
+	rawID, ok := data.GetOk(tenantUUID)
 	if !ok {
-		return nil, fmt.Errorf("tenant name must be provided")
+		// the creation here
+		rawID = uuid.New()
+		successStatus = http.StatusCreated
 	}
-	if err != nil {
-		return nil, err
+	id := rawID.(string)
+
+	name, ok := data.GetOk("name")
+	if !ok {
+		return nil, &logical.StatusBadRequest{Err: "tenant name must not be empty"}
 	}
 	if len(name.(string)) == 0 {
-		return nil, fmt.Errorf("tenant name must not be empty")
+		return nil, &logical.StatusBadRequest{Err: "tenant name must not be empty"}
 	}
 
 	// JSON encode the data
@@ -178,15 +189,22 @@ func (b *backend) create(ctx context.Context, req *logical.Request, data *framew
 		return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
 	}
 
-	path := data.Get(tenantUUID).(string)
-	key := path
 	entry := &logical.StorageEntry{
-		Key:   key,
+		Key:   id,
 		Value: buf,
 	}
-	err = req.Storage.Put(ctx, entry)
 
-	return nil, err
+	err = req.Storage.Put(ctx, entry)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"id": id,
+		},
+	}
+	return logical.RespondWithStatusCode(resp, req, successStatus)
 }
 
 func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

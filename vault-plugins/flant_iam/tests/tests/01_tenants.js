@@ -7,11 +7,39 @@ const {
     anotherToken,
 } = require("./lib")
 
+
 const TEN = "tenant"
 const tenId = (id) => TEN + "/" + id
 
-describe("Tenants", function () {
-    const root = getClient(rootToken)
+class Tenants {
+    constructor(client) {
+        this.client = client
+    }
+
+    create(payload, opts = {}) {
+        return this.client.post("/tenant", payload, { ...expectStatus(201), ...opts })
+    }
+
+    read(id, opts = {}) {
+        return this.client.get(`/tenant/${id}`, { ...expectStatus(200), ...opts })
+    }
+
+    update(id, payload, opts = {}) {
+        return this.client.post(`/tenant/${id}`, payload, { ...expectStatus(204), ...opts })
+    }
+
+    delete(id, opts = {}) {
+        return this.client.delete(`/tenant/${id}`, { ...expectStatus(204), ...opts })
+    }
+
+    list(opts = {}) {
+        return this.client.get(`/tenant?list=true`, { ...expectStatus(200), ...opts })
+    }
+}
+
+describe("Tenants", function() {
+    const rootClient = getClient(rootToken)
+    const root = new Tenants(rootClient)
     const worder = new Worder()
 
     // afterEach("cleanup", async function () {
@@ -21,40 +49,49 @@ describe("Tenants", function () {
     //     worder.clean()
     // })
 
-    it("responds with 400 on inexisting", async () => {
-        await root.get(tenId("no-such"), { validateStatus: (s) => s >= 400 })
+    it("responds with 404 on inexisting", async () => {
+        await root.read("no-such", { validateStatus: (s) => s == 404 })
     })
 
     it("cannot be created without name", async () => {
-        await root.post(TEN, {}, expectStatus(400))
+        await root.create({}, expectStatus(400))
     })
 
     it("cannot be created with empty name", async () => {
-        await root.post(TEN, { name: "" }, expectStatus(400))
+        await root.create({ name: "" }, expectStatus(400))
     })
 
     it("can be created with a name", async () => {
         const payload = { name: worder.gen() }
-        const { data } = await root.post(TEN, payload, expectStatus(204))
+
+        const { data: body } = await root.create(payload)
+
+        expect(body).to.exist.and.to.include.key("data")
+        expect(body.data).to.have.key("id")
+        expect(body.data.id).to.be.a("string").of.length.above(10)
+    })
+
+    it("can be read", async () => {
+        const payload = { name: worder.gen() }
+        const { data: creationData } = await root.create(payload, expectStatus(204))
+        console.log("creationData", creationData)
+
     })
 
     it("can be listed", async () => {
         const payload = { name: worder.gen() }
-        await root.post(TEN, payload, expectStatus(204))
+        await root.create(payload, expectStatus(204))
 
-        const { data } = await root.get("tenant?list=true", expectStatus(200))
+        const { data } = await root.list(expectStatus(200))
 
         expect(data.data).to.be("array").and.to.be.not.empty
     })
 
-    it("have identifying fields in list", async () => {
+    it("has identifying fields in list", async () => {
         const payload = { name: worder.gen() }
-        await root.post(TEN, payload, expectStatus(204))
+        await root.create(payload, expectStatus(204))
 
-        const { data: body } = await root.get(
-            "tenant?list=true",
-            expectStatus(200),
-        )
+        const { data: body } = await root.list()
 
         expect(body.data).to.be("array").and.to.be.not.empty
         const tenant = body.data[0]
