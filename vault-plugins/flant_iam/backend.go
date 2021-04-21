@@ -21,7 +21,7 @@ var _ logical.Factory = Factory
 // Factory configures and returns Mock backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
-		Help:        strings.TrimSpace(mockHelp),
+		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 		Paths: framework.PathAppend(
 			tenantPaths(),
@@ -45,9 +45,9 @@ func tenantPaths() []*framework.Path {
 		{
 			Pattern: "tenant" + framework.OptionalParamRegex(tenantIdKey),
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
+				tenantIdKey: {
 					Type:        framework.TypeString,
-					Description: "Specifies the path of the secret.",
+					Description: "ID of a tenant",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -183,6 +183,6 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	return nil, err
 }
 
-const mockHelp = `
-The Mock backend is a dummy secrets backend that stores kv pairs in a map.
+const commonHelp = `
+IAM API here
 `
