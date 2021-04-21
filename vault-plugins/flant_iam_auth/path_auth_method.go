@@ -173,6 +173,8 @@ type authMethodConfig struct {
 
 	MethodType string `json:"method_type"`
 
+	Source string `json:"source"`
+
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
 
@@ -343,6 +345,33 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 	}
 
 	method.MethodType = methodType
+
+	if methodType == methodTypeJWT || methodType == methodTypeOIDC {
+		sourceName := data.Get("source").(string)
+		if sourceName == "" {
+			return logical.ErrorResponse("missing source_name"), nil
+		}
+
+		source, err := b.authSource(ctx, req, sourceName)
+		if err != nil {
+			return nil, err
+		}
+
+		if source == nil {
+			return logical.ErrorResponse(fmt.Sprintf("'%s': auth source not found", sourceName)), nil
+		}
+
+		authType := source.authType()
+		if methodType == methodTypeJWT && !(authType == StaticKeys || authType == JWKS) {
+			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need jwt based source", sourceName)), nil
+		}
+
+		if methodType == methodTypeOIDC && !(authType == OIDCFlow || authType == OIDCDiscovery) {
+			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need OIDC based source", sourceName)), nil
+		}
+
+		method.Source = sourceName
+	}
 
 	if err := method.ParseTokenFields(req, data); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest

@@ -135,6 +135,10 @@ func pathAuthSourceList(b *flantIamAuthBackend) *framework.Path {
 	}
 }
 
+func (b *flantIamAuthBackend) authSource(ctx context.Context, req *logical.Request, name string) (*jwtConfig, error) {
+	return b.authSourceConfig(ctx, b.authSourceStorageFactory(req), name)
+}
+
 func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.Storage, name string) (*jwtConfig, error) {
 	b.l.Lock()
 	defer b.l.Unlock()

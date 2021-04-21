@@ -17,11 +17,13 @@ import (
 
 const authSourceTestName = "a"
 
-var authSourceTestPath = fmt.Sprintf("auth_source/%s", authSourceTestName)
+func getAuthSourcePath(name string) string {
+	return fmt.Sprintf("auth_source/%s", name)
+}
 
-func TestAuthSource_WriteInStorage(t *testing.T) {
-	b, storage := getBackend(t)
+var authSourceTestPath = getAuthSourcePath(authSourceTestName)
 
+func creteTestJWTBasedSource(t *testing.T, b logical.Backend, storage logical.Storage, name string) (*logical.Response, map[string]interface{}) {
 	// Create a config with too many token verification schemes
 	data := map[string]interface{}{
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
@@ -30,15 +32,47 @@ func TestAuthSource_WriteInStorage(t *testing.T) {
 
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Path:      authSourceTestPath,
+		Path:      getAuthSourcePath(name),
 		Storage:   storage,
 		Data:      data,
 	}
 
-	_, err := b.HandleRequest(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("not create source err:%v resp:%v", err, resp.Error())
 	}
+
+	return resp, data
+}
+
+func creteTestOIDCBasedSource(t *testing.T, b logical.Backend, storage logical.Storage, name string) (*logical.Response, map[string]interface{}) {
+	// First we provide an invalid CA cert to verify that it is in fact paying
+	// attention to the value we specify
+	data := map[string]interface{}{
+		"oidc_discovery_url": "https://team-vault.auth0.com/",
+		"oidc_client_id":     "abc",
+		"oidc_client_secret": "def",
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      getAuthSourcePath(name),
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || resp.IsError() {
+		t.Fatal("not create source")
+	}
+
+	return resp, data
+}
+
+func TestAuthSource_WriteInStorage(t *testing.T) {
+	b, storage := getBackend(t)
+
+	_, data := creteTestJWTBasedSource(t, b, storage, authSourceTestName)
 
 	dataFromStore, err := storage.Get(context.TODO(), fmt.Sprintf("%s/%s", "authSource", authSourceTestName))
 	if err != nil {

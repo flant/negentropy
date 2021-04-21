@@ -37,9 +37,12 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	return b, config.StorageView
 }
 
-func TestPath_Create(t *testing.T) {
+func TestAuthMethod_Create(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
 			"method_type":     methodTypeJWT,
@@ -48,6 +51,7 @@ func TestPath_Create(t *testing.T) {
 			"user_claim":      "user",
 			"groups_claim":    "groups",
 			"bound_cidrs":     "127.0.0.1/8",
+			"source":          sourceName,
 		}
 
 		expected := &authMethodConfig{
@@ -61,6 +65,7 @@ func TestPath_Create(t *testing.T) {
 			BoundClaimsType: "string",
 			UserClaim:       "user",
 			GroupsClaim:     "groups",
+			Source:          sourceName,
 		}
 
 		req := &logical.Request{
@@ -84,11 +89,80 @@ func TestPath_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("need source name for jwt and oidc", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		for _, methodType := range []string{methodTypeOIDC, methodTypeJWT} {
+			data := map[string]interface{}{
+				"method_type":     methodType,
+				"bound_subject":   "testsub",
+				"bound_audiences": "vault",
+				"user_claim":      "user",
+				"groups_claim":    "groups",
+				"bound_cidrs":     "127.0.0.1/8",
+			}
+
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "auth_method/plugin-test-source",
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || resp == nil {
+				t.Fatalf("err:%s or response is nil", err)
+			}
+
+			if resp.Error().Error() != "missing source_name" {
+				t.Fatalf("must return need source name error")
+			}
+		}
+
+	})
+
+	t.Run("check source is exists for jwt and oidc", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		for _, methodType := range []string{methodTypeOIDC, methodTypeJWT} {
+			data := map[string]interface{}{
+				"method_type":     methodType,
+				"bound_subject":   "testsub",
+				"bound_audiences": "vault",
+				"user_claim":      "user",
+				"groups_claim":    "groups",
+				"bound_cidrs":     "127.0.0.1/8",
+				"source":          "no",
+			}
+
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "auth_method/plugin-test-source-no",
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || resp == nil {
+				t.Fatalf("err:%s or response is nil", err)
+			}
+
+			if resp.Error().Error() != "'no': auth source not found" {
+				t.Fatalf("must return no auth source error")
+			}
+		}
+
+	})
+
 	t.Run("no user claim", func(t *testing.T) {
 		b, storage := getBackend(t)
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"policies":    "test",
 			"method_type": methodTypeJWT,
+			"source":      sourceName,
 		}
 
 		req := &logical.Request{
@@ -112,10 +186,15 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("no binding", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type": methodTypeJWT,
 			"user_claim":  "user",
 			"policies":    "test",
+			"source":      sourceName,
 		}
 
 		req := &logical.Request{
@@ -139,11 +218,16 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has bound subject", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":   methodTypeJWT,
 			"user_claim":    "user",
 			"policies":      "test",
 			"bound_subject": "testsub",
+			"source":        sourceName,
 		}
 
 		req := &logical.Request{
@@ -164,12 +248,16 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has audience", func(t *testing.T) {
 		b, storage := getBackend(t)
-		// Test has audience
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":     methodTypeJWT,
 			"user_claim":      "user",
 			"policies":        "test",
 			"bound_audiences": "vault",
+			"source":          sourceName,
 		}
 
 		req := &logical.Request{
@@ -218,6 +306,10 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has bound claims", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type": methodTypeJWT,
 			"user_claim":  "user",
@@ -226,6 +318,7 @@ func TestPath_Create(t *testing.T) {
 				"foo": 10,
 				"bar": "baz",
 			},
+			"source": sourceName,
 		}
 
 		req := &logical.Request{
@@ -298,8 +391,23 @@ func TestPath_Create(t *testing.T) {
 	})
 
 	t.Run("storing zero leeways for jwt and oidc and sa", func(t *testing.T) {
-		for _, methodType := range []string{methodTypeOIDC, methodTypeJWT, methodTypeSAPassword} {
+		type sourceCreator func(*testing.T, logical.Backend, logical.Storage, string)
+		methods := map[string]sourceCreator{
+			methodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+				creteTestOIDCBasedSource(t, b, s, n)
+			},
+			methodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+				creteTestJWTBasedSource(t, b, s, n)
+			},
+			methodTypeSAPassword: func(*testing.T, logical.Backend, logical.Storage, string) {},
+		}
+
+		for methodType, sourceCreator := range methods {
 			b, storage := getBackend(t)
+
+			sourceName := "a"
+			sourceCreator(t, b, storage, sourceName)
+
 			data := map[string]interface{}{
 				"method_type": methodType,
 				"user_claim":  "user",
@@ -313,6 +421,7 @@ func TestPath_Create(t *testing.T) {
 				"not_before_leeway":     "5s",
 				"clock_skew_leeway":     "5s",
 				"allowed_redirect_uris": []string{"https://example.com"},
+				"source":                sourceName,
 			}
 
 			req := &logical.Request{
@@ -399,6 +508,10 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("storing an invalid bound_claim_type", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":       methodTypeJWT,
 			"user_claim":        "user",
@@ -408,6 +521,7 @@ func TestPath_Create(t *testing.T) {
 				"foo": 10,
 				"bar": "baz",
 			},
+			"source": sourceName,
 		}
 
 		req := &logical.Request{
@@ -431,6 +545,10 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("with invalid glob in claim", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":       methodTypeJWT,
 			"user_claim":        "user",
@@ -440,6 +558,8 @@ func TestPath_Create(t *testing.T) {
 				"bar": "baz",
 				"foo": 25,
 			},
+
+			"source": sourceName,
 		}
 
 		req := &logical.Request{
@@ -461,8 +581,12 @@ func TestPath_Create(t *testing.T) {
 		}
 	})
 
-	t.Run("authMethodConfig with invalid glob in claim array", func(t *testing.T) {
+	t.Run("authMethod with invalid glob in claim array", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "a"
+		creteTestJWTBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":       methodTypeJWT,
 			"user_claim":        "user",
@@ -474,6 +598,8 @@ func TestPath_Create(t *testing.T) {
 			"bound_claims": map[string]interface{}{
 				"foo": []interface{}{"baz", 10},
 			},
+
+			"source": sourceName,
 		}
 
 		req := &logical.Request{
@@ -496,9 +622,12 @@ func TestPath_Create(t *testing.T) {
 	})
 }
 
-func TestPath_OIDCCreate(t *testing.T) {
-	t.Run("both explicit and default method_type", func(t *testing.T) {
+func TestAuthMethod_OIDCCreate(t *testing.T) {
+	t.Run("create oidc", func(t *testing.T) {
 		b, storage := getBackend(t)
+
+		sourceName := "b"
+		creteTestOIDCBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
 			"bound_audiences": "vault",
@@ -514,6 +643,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			},
 			"user_claim":   "user",
 			"groups_claim": "groups",
+			"source":       sourceName,
 		}
 
 		expected := &authMethodConfig{
@@ -536,6 +666,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			OIDCScopes:  []string{"email", "profile"},
 			UserClaim:   "user",
 			GroupsClaim: "groups",
+			Source:      sourceName,
 		}
 
 		for _, methodType := range []string{methodTypeOIDC} {
@@ -565,6 +696,9 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("invalid reserved metadata key authMethod", func(t *testing.T) {
 		b, storage := getBackend(t)
 
+		sourceName := "b"
+		creteTestOIDCBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":     methodTypeOIDC,
 			"bound_audiences": "vault",
@@ -580,6 +714,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			},
 			"user_claim":   "user",
 			"groups_claim": "groups",
+			"source":       sourceName,
 		}
 
 		req := &logical.Request{
@@ -604,6 +739,9 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("invalid duplicate metadata destination", func(t *testing.T) {
 		b, storage := getBackend(t)
 
+		sourceName := "b"
+		creteTestOIDCBasedSource(t, b, storage, sourceName)
+
 		data := map[string]interface{}{
 			"method_type":     methodTypeOIDC,
 			"bound_audiences": "vault",
@@ -627,6 +765,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			"expiration_leeway": "300s",
 			"not_before_leeway": "300s",
 			"clock_skew_leeway": "1s",
+			"source":            sourceName,
 		}
 
 		req := &logical.Request{
@@ -650,7 +789,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 
 }
 
-//func TestPath_Read(t *testing.T) {
+//func TestAuthMethod_Read(t *testing.T) {
 //	b, storage := getBackend(t)
 //
 //	data := map[string]interface{}{
@@ -786,11 +925,14 @@ func TestPath_OIDCCreate(t *testing.T) {
 //	readTest()
 //}
 
-func TestPath_Delete(t *testing.T) {
+func TestAuthMethod_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
+	sourceName := "a"
+	creteTestJWTBasedSource(t, b, storage, sourceName)
+
 	data := map[string]interface{}{
-		"method_type":       "jwt",
+		"method_type":       methodTypeJWT,
 		"bound_subject":     "testsub",
 		"bound_audiences":   "vault",
 		"user_claim":        "user",
@@ -803,6 +945,7 @@ func TestPath_Delete(t *testing.T) {
 		"max_ttl":           "5s",
 		"expiration_leeway": "300s",
 		"not_before_leeway": "300s",
+		"source":            sourceName,
 	}
 
 	req := &logical.Request{
