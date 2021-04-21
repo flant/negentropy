@@ -7,7 +7,7 @@ const {
     anotherToken,
 } = require("./lib")
 
-describe("Arbitrary key-value management", function () {
+describe.skip("Arbitrary key-value management", function () {
     const root = getClient(rootToken)
     const worder = new Worder()
 
