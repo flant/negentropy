@@ -349,7 +349,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 	if methodType == methodTypeJWT || methodType == methodTypeOIDC {
 		sourceName := data.Get("source").(string)
 		if sourceName == "" {
-			return logical.ErrorResponse("missing source_name"), nil
+			return logical.ErrorResponse("missing source"), nil
 		}
 
 		source, err := b.authSource(ctx, req, sourceName)

@@ -89,6 +89,52 @@ func TestAuthMethod_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("oidc need oids source jwt need jwt source", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
+			methodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+				creteTestJWTBasedSource(t, b, s, n)
+			},
+
+			methodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+				creteTestOIDCBasedSource(t, b, s, n)
+			},
+		}
+
+		for methodType, sourceCreator := range methods {
+			sourceName := "a"
+			sourceCreator(t, b, storage, sourceName)
+
+			data := map[string]interface{}{
+				"method_type":     methodType,
+				"bound_subject":   "testsub",
+				"bound_audiences": "vault",
+				"user_claim":      "user",
+				"groups_claim":    "groups",
+				"bound_cidrs":     "127.0.0.1/8",
+				"source":          sourceName,
+			}
+
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "auth_method/plugin-test",
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatalf("err:%v\n", err)
+			}
+
+			if resp == nil || !resp.IsError() || !strings.Contains(resp.Error().Error(), "incorrect source") {
+				t.Fatalf("need incorect source error")
+			}
+		}
+
+	})
+
 	t.Run("need source name for jwt and oidc", func(t *testing.T) {
 		b, storage := getBackend(t)
 
@@ -114,7 +160,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("err:%s or response is nil", err)
 			}
 
-			if resp.Error().Error() != "missing source_name" {
+			if resp.Error().Error() != "missing source" {
 				t.Fatalf("must return need source name error")
 			}
 		}
@@ -391,8 +437,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	})
 
 	t.Run("storing zero leeways for jwt and oidc and sa", func(t *testing.T) {
-		type sourceCreator func(*testing.T, logical.Backend, logical.Storage, string)
-		methods := map[string]sourceCreator{
+		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
 			methodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
 				creteTestOIDCBasedSource(t, b, s, n)
 			},
