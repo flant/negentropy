@@ -10,50 +10,122 @@ const {
 const TEN = "tenant"
 const tenId = (id) => TEN + "/" + id
 
-class Tenants {
+class CRUD {
     constructor(client) {
         this.client = client
     }
 
-    create(payload, opts = {}) {
-        return this.client.post("/tenant", payload, {
+    get(endpoint, opts) {
+        return this.client.get(endpoint, opts)
+    }
+
+    post(endpoint, payload, opts) {
+        return this.client.post(endpoint, payload, opts)
+    }
+
+    delete(endpoint, opts) {
+        return this.client.delete(endpoint, opts)
+    }
+}
+
+class API {
+    constructor(client, endpointBuilder) {
+        this.client = new CRUD(client)
+        this.endpointBuilder = endpointBuilder
+    }
+
+    create({ params = {}, query = {}, payload, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.create(params, query)
+        return this.client.post(endpoint, payload, {
             ...expectStatus(201),
             ...opts,
         })
     }
 
-    read(id, opts = {}) {
-        return this.client.get(`/tenant/${id}`, {
+    read({ params = {}, query = {}, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.read(params, query)
+        return this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,
         })
     }
 
-    update(id, payload, opts = {}) {
-        return this.client.post(`/tenant/${id}`, payload, {
+    update({ params = {}, query = {}, payload, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.update(params, query)
+        return this.client.post(endpoint, payload, {
             ...expectStatus(200),
             ...opts,
         })
     }
 
-    delete(id, opts = {}) {
-        return this.client.delete(`/tenant/${id}`, {
+    delete({ params = {}, query = {}, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.delete(params, query)
+        return this.client.delete(endpoint, {
             ...expectStatus(204),
             ...opts,
         })
     }
 
-    list(opts = {}) {
-        return this.client.get("/tenant?list=true", {
+    list({ params = {}, query = {}, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.list(params, query)
+        return this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,
         })
     }
 }
 
+class TenantEndpointBuilder {
+    create(p = {}, q = {}) {
+        return "/tenant"
+    }
+
+    read(p = {}, q = {}) {
+        return `/tenant/${p.tenant}`
+    }
+
+    update(p = {}, q = {}) {
+        return `/tenant/${p.tenant}`
+    }
+
+    delete(p = {}, q = {}) {
+        return `/tenant/${p.tenant}`
+    }
+
+    list(p = {}, q = {}) {
+        return "/tenant?list=true"
+    }
+}
+
+class TenantAPI {
+    constructor(client) {
+        this.api = new API(client, new TenantEndpointBuilder())
+    }
+
+    create(payload, opts) {
+        return this.api.create({ payload, opts })
+    }
+
+    read(id, opts) {
+        return this.api.read({ params: { tenant: id }, opts })
+    }
+
+    update(id, payload, opts) {
+        return this.api.update({ params: { tenant: id }, payload, opts })
+    }
+
+    delete(id, opts) {
+        return this.api.delete({ params: { tenant: id }, opts })
+    }
+
+    list(opts) {
+        return this.api.list({ opts })
+    }
+}
+
 describe("Tenants", function () {
     const rootClient = getClient(rootToken)
-    const root = new Tenants(rootClient)
+    const root = new TenantAPI(rootClient)
     const worder = new Worder()
 
     function genTenantPayload(override = {}) {
@@ -215,7 +287,7 @@ describe("Tenants", function () {
         })
 
         function runWithClient(client, expectedStatus) {
-            const unauth = new Tenants(client)
+            const unauth = new TenantAPI(client)
             const opts = expectStatus(expectedStatus)
 
             it(`cannot create, gets ${expectedStatus}`, async () => {
