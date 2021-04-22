@@ -54,7 +54,7 @@ func (a *JwtAuthenticator) Auth(ctx context.Context, d *framework.FieldData) (*l
 	// in the audience claim should result in an error.
 	aud, ok := getClaim(a.logger, allClaims, "aud").([]interface{})
 	if ok && len(aud) > 0 && len(a.authMethod.BoundAudiences) == 0 {
-		return nil, fmt.Errorf("audience claim found in JWT but no audiences bound to the authMethodConfig")
+		return nil, fmt.Errorf("audience claim found in JWT but no audiences bound to the method")
 	}
 
 	alias, groupAliases, err := a.createIdentity(allClaims, a.authMethod)
@@ -66,7 +66,7 @@ func (a *JwtAuthenticator) Auth(ctx context.Context, d *framework.FieldData) (*l
 		return nil, fmt.Errorf("error validating claims: %s", err.Error())
 	}
 
-	tokenMetadata := map[string]string{"authMethodConfig": a.methodName}
+	tokenMetadata := map[string]string{"flantIamAuthMethod": a.methodName}
 	for k, v := range alias.Metadata {
 		tokenMetadata[k] = v
 	}
@@ -75,10 +75,8 @@ func (a *JwtAuthenticator) Auth(ctx context.Context, d *framework.FieldData) (*l
 		DisplayName:  alias.Name,
 		Alias:        alias,
 		GroupAliases: groupAliases,
-		InternalData: map[string]interface{}{
-			"authMethodConfig": a.methodName,
-		},
-		Metadata: tokenMetadata,
+		InternalData: map[string]interface{}{},
+		Metadata:     tokenMetadata,
 	}, nil
 }
 

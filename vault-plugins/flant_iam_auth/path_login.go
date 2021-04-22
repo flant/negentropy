@@ -45,7 +45,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	authMethodName := d.Get("method").(string)
 
 	if authMethodName == "" {
-		return logical.ErrorResponse("missing authMethodConfig"), nil
+		return logical.ErrorResponse("missing method"), nil
 	}
 
 	authMethod, err := b.authMethodForRequest(ctx, req, authMethodName)
@@ -53,7 +53,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return nil, err
 	}
 	if authMethod == nil {
-		return logical.ErrorResponse(" %q could not be found", authMethodName), nil
+		return logical.ErrorResponse("method %q could not be found", authMethodName), nil
 	}
 
 	var authenticator Authenticator
@@ -75,6 +75,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 
 		authenticator = &JwtAuthenticator{
 			authMethod:   authMethod,
+			methodName:   authMethodName,
 			logger:       b.Logger(),
 			authSource:   authSource,
 			jwtValidator: jwtValidator,
@@ -99,6 +100,8 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	}
 
 	authMethod.PopulateTokenAuth(auth)
+
+	auth.InternalData["method"] = authMethodName
 
 	return &logical.Response{
 		Auth: auth,

@@ -14,7 +14,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-var reservedMetadata = []string{"authMethodConfig"}
+var reservedMetadata = []string{"flantIamAuthMethod"}
 
 const (
 	claimDefaultLeeway    = 150

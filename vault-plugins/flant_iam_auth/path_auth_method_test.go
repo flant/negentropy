@@ -731,7 +731,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid reserved metadata key authMethod", func(t *testing.T) {
+	t.Run("invalid reserved metadata key method", func(t *testing.T) {
 		b, storage := getBackend(t)
 
 		sourceName := "b"
@@ -748,7 +748,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
 			"claim_mappings": map[string]string{
 				"foo":        "a",
-				"some_claim": "authMethodConfig",
+				"some_claim": "flantIamAuthMethod",
 			},
 			"user_claim":   "user",
 			"groups_claim": "groups",
@@ -769,7 +769,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 		if resp != nil && !resp.IsError() {
 			t.Fatalf("expected error")
 		}
-		if !strings.Contains(resp.Error().Error(), `metadata key "authMethodConfig" is reserved`) {
+		if !strings.Contains(resp.Error().Error(), `metadata key "flantIamAuthMethod" is reserved`) {
 			t.Fatalf("unexpected err: %v", resp)
 		}
 	})
