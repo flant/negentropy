@@ -3,7 +3,6 @@ package jwtauth
 import (
 	"context"
 	"encoding/json"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/pkg"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
@@ -80,7 +79,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
-		actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), pkg.NewPrefixStorage("method/", storage), "plugin-test")
+		actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "plugin-test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -416,7 +415,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), pkg.NewPrefixStorage("method/", storage), "test8")
+			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test8")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -485,7 +484,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), pkg.NewPrefixStorage("method/", storage), "test9")
+			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test9")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -535,7 +534,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), pkg.NewPrefixStorage("method/", storage), "test9")
+			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test9")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -728,7 +727,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), pkg.NewPrefixStorage("method/", storage), "plugin-test")
+			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "plugin-test")
 			if err != nil {
 				t.Fatal(err)
 			}

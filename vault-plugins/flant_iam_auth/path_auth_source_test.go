@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/pkg"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/stretchr/testify/assert"
 	"reflect"
@@ -219,7 +218,7 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 		NamespaceInState:     true,
 	}
 
-	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
+	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), NewPrefixStorage("source/", storage), authSourceTestName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +429,7 @@ func TestAuthSource_OIDC_Write(t *testing.T) {
 		NamespaceInState:     true,
 	}
 
-	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
+	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), NewPrefixStorage("source/", storage), authSourceTestName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +546,7 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
+			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), NewPrefixStorage("source/", storage), authSourceTestName)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})
@@ -654,7 +653,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
+			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), NewPrefixStorage("source/", storage), authSourceTestName)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})

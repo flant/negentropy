@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/pkg"
 	"sync"
 
 	"github.com/hashicorp/cap/jwt"
@@ -33,8 +32,8 @@ type flantIamAuthBackend struct {
 
 	providerCtx              context.Context
 	providerCtxCancel        context.CancelFunc
-	authSourceStorageFactory pkg.PrefixStorageRequestFactory
-	authMethodStorageFactory pkg.PrefixStorageRequestFactory
+	authSourceStorageFactory PrefixStorageRequestFactory
+	authMethodStorageFactory PrefixStorageRequestFactory
 }
 
 func backend() *flantIamAuthBackend {
@@ -43,8 +42,8 @@ func backend() *flantIamAuthBackend {
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	//b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	b.authSourceStorageFactory = pkg.NewPrefixStorageRequestFactory(authSourcePrefix)
-	b.authMethodStorageFactory = pkg.NewPrefixStorageRequestFactory(authMethodPrefix)
+	b.authSourceStorageFactory = NewPrefixStorageRequestFactory(authSourcePrefix)
+	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.Backend = &framework.Backend{
 		//AuthRenew:   b.pathLoginRenew,
