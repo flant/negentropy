@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eou pipefail
+set -eo pipefail
 set -x
 
 pushd ..
@@ -12,6 +12,7 @@ docker rm dev-vault 2>/dev/null || true
 
 id=$(docker run \
   --cap-add=IPC_LOCK \
+  --network=host \
   -d \
   -p 8200:8200 \
   -v "$(pwd)/../build:/vault/plugins" \
@@ -30,8 +31,7 @@ sleep 1 \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
-docker logs -f  dev-vault
-# docker exec -it dev-vault sh
+ docker exec -it dev-vault sh
 
 # make enable
 # vault path-help flant_iam

@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type userBackend struct {
 	logical.Backend
-	storage *memdb.MemDB
+	storage *io.MemoryStore
 }
 
-func userPaths(b logical.Backend, storage *memdb.MemDB) []*framework.Path {
+func userPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
 	bb := &userBackend{
 		Backend: b,
 		storage: storage,

@@ -14,6 +14,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 	schema := TenantSchema()
 	others := []*memdb.DBSchema{
 		UserSchema(),
+		ReplicaSchema(),
 	}
 
 	for _, o := range others {
@@ -27,10 +28,6 @@ func mergeSchema() (*memdb.DBSchema, error) {
 	return schema, nil
 }
 
-func NewDB() (*memdb.MemDB, error) {
-	schema, err := mergeSchema()
-	if err != nil {
-		return nil, err
-	}
-	return memdb.NewMemDB(schema)
+func GetSchema() (*memdb.DBSchema, error) {
+	return mergeSchema()
 }
