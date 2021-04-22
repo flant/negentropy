@@ -20,7 +20,7 @@ id=$(docker run \
   -e VAULT_API_ADDR=http://127.0.0.1:8200 \
   -e VAULT_ADDR=http://127.0.0.1:8200 \
   -e VAULT_TOKEN=root \
-  -e VAULT_LOG_LEVEL=info \
+  -e VAULT_LOG_LEVEL=debug \
   vault \
   server -dev -dev-plugin-dir=/vault/plugins -dev-root-token-id=root)
 
