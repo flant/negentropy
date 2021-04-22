@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/hashicorp/go-hclog"
-
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -28,13 +26,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
 
-	b := &framework.Backend{
-		Help:        strings.TrimSpace(commonHelp),
-		BackendType: logical.TypeLogical,
-		Paths: framework.PathAppend(
-			tenantPaths(conf.Logger),
-		),
-	}
+	b := newBackend()
 
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
@@ -43,8 +35,25 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func tenantPaths(logger log.Logger) []*framework.Path {
-	b := backend{logger}
+func newBackend() logical.Backend {
+	b := &backend{}
+
+	b.Backend = &framework.Backend{
+		Help:        strings.TrimSpace(commonHelp),
+		BackendType: logical.TypeLogical,
+		Paths: framework.PathAppend(
+			b.paths(),
+		),
+	}
+
+	return b
+}
+
+type backend struct {
+	logical.Backend
+}
+
+func (b *backend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: "tenant" + framework.OptionalParamRegex(tenantUUID),
@@ -88,18 +97,6 @@ func tenantPaths(logger log.Logger) []*framework.Path {
 	}
 }
 
-type backend struct {
-	logger log.Logger
-}
-
-func genUUID() string {
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		id = genUUID()
-	}
-	return id
-}
-
 // nolint:unused
 func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)
@@ -115,7 +112,7 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	b.logger.Info("handleRead", "path", req.Path)
+	b.Logger().Info("handleRead", "path", req.Path)
 	id := data.Get(tenantUUID).(string)
 
 	// Decode the data
@@ -148,10 +145,11 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	b.logger.Info("handleList", "path", req.Path)
+	key := req.Path
+	b.Logger().Info("handleList", "key", key)
 
 	// Decode the data
-	fetchedData, err := req.Storage.List(ctx, "tenant")
+	fetchedData, err := req.Storage.List(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +161,7 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	// Generate the response
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"keys": fetchedData,
+			"ids": fetchedData,
 		},
 	}
 
@@ -175,18 +173,17 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	b.logger.Info("handleWrite", "path", req.Path)
-
 	successStatus := http.StatusOK
 	id := data.Get(tenantUUID).(string)
-	b.logger.Info("got id?", id)
 	if id == "" {
 		// the creation here
 		id = genUUID()
 		successStatus = http.StatusCreated
-		b.logger.Info("creation detected, generated new id", id)
+		b.Logger().Info("creating")
 	}
-	b.logger.Info("final id", id)
+
+	key := "tenant/" + id
+	b.Logger().Info("writing", "key", key)
 
 	name, ok := data.GetOk("name")
 	if !ok {
@@ -203,10 +200,9 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	}
 
 	entry := &logical.StorageEntry{
-		Key:   "tenant/" + id,
+		Key:   key,
 		Value: buf,
 	}
-
 	err = req.Storage.Put(ctx, entry)
 	if err != nil {
 		return nil, err
@@ -224,12 +220,21 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
-	b.logger.Info("handleDelete", "path", req.Path)
 
-	path := data.Get(tenantUUID).(string)
-	err := req.Storage.Delete(ctx, path)
+	key := req.Path
+	b.Logger().Info("handleDelete", "key", key)
+
+	err := req.Storage.Delete(ctx, key)
 
 	return nil, err
+}
+
+func genUUID() string {
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		id = genUUID()
+	}
+	return id
 }
 
 const commonHelp = `
