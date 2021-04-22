@@ -16,15 +16,15 @@ type layerBackend struct {
 	logical.Backend
 }
 
-func (b layerBackend) paths(km *keyManager) []*framework.Path {
+func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
+	fields := schema.Fields()
+	fields[km.IDField()] = &framework.FieldSchema{Type: framework.TypeString, Description: "ID of a " + km.entryName}
+
 	return []*framework.Path{
 		{
 			// using optional param in order to cover creation endpoint with empty id
 			Pattern: km.EntryPattern(),
-			Fields: map[string]*framework.FieldSchema{
-				km.IDField(): {Type: framework.TypeString, Description: "ID of a " + km.entryName},
-				"name":       {Type: framework.TypeString, Description: km.entryName + " name"},
-			},
+			Fields:  fields,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				// POST, create or update
 				logical.UpdateOperation: &framework.PathOperation{

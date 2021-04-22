@@ -46,8 +46,8 @@ func newBackend() logical.Backend {
 	}
 
 	b.Paths = framework.PathAppend(
-		backendLayer.paths(tenantKeys),
-		backendLayer.paths(userKeys),
+		backendLayer.paths(tenantKeys, TenantSchema{}),
+		backendLayer.paths(userKeys, UserSchema{}),
 	)
 
 	return b
