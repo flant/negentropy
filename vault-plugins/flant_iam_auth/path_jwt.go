@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -90,21 +91,26 @@ var jwtConfigFields = map[string]*framework.FieldSchema{
 		Description: `Issuer URL to be used in the iss claim of the token. 
 The issuer is a case sensitive URL using the https scheme that contains scheme, 
 host, and optionally, port number and path components, but no query or fragment components.`,
-		Default: "https://auth.negentropy.flant.com/",
+		Default:  "https://auth.negentropy.flant.com/",
+		Required: true,
 	},
 	"own_audience": {
 		Type:        framework.TypeString,
 		Description: "Value of the audience claim.",
+		Default:     "limbo",
+		Required:    true,
 	},
 	"rotation_period": {
 		Type:        framework.TypeDurationSecond,
 		Description: "Force rotate public/private key pair.",
 		Default:     "1d",
+		Required:    true,
 	},
 	"preliminary_announce_period": {
 		Type:        framework.TypeDurationSecond,
 		Description: "Publish the key in advance after specified amount of time.",
 		Default:     "1d",
+		Required:    true,
 	},
 }
 
@@ -148,9 +154,19 @@ func (b *jwtAuthBackend) handleJWTStatusRead(ctx context.Context, req *logical.R
 		return nil, err
 	}
 
-	config := []byte("{}")
+	var config []byte
 	if entry != nil {
 		config = entry.Value
+	} else {
+		rawConfig := make(map[string]interface{})
+		for key, field := range jwtConfigFields {
+			rawConfig[key] = field.Default
+		}
+
+		config, err = json.Marshal(rawConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data := map[string]interface{}{
