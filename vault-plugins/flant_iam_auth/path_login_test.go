@@ -1,13 +1,17 @@
 package jwtauth
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -63,7 +67,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 				"bound_issuer":           "https://team-vault.auth0.com/",
 				"jwt_validation_pubkeys": ecdsaPubKey,
 			}
-		} /*else {
+		} else {
 			p := newOIDCProvider(t)
 			cb.closeServerFunc = p.server.Close
 
@@ -76,7 +80,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 				"jwks_url":    p.server.URL + "/certs",
 				"jwks_ca_pem": cert,
 			}
-		}*/
+		}
 	}
 
 	req := &logical.Request{
@@ -198,7 +202,7 @@ func getTestOIDC(t *testing.T) string {
 
 func TestLogin_JWT(t *testing.T) {
 	testLogin_JWT(t, false)
-	//	testLogin_JWT(t, true)
+	testLogin_JWT(t, true)
 }
 
 func testLogin_JWT(t *testing.T, jwks bool) {
@@ -1335,3 +1339,139 @@ AwEHoUQDQgAE+C3CyjVWdeYtIqgluFJlwZmoonphsQbj9Nfo5wrEutv+3RTFnDQh
 vttUajcFAcl4beR+jHFYC00vSO4i5jZ64g==
 -----END EC PRIVATE KEY-----`
 )
+
+// oidcProvider is local server the mocks the basis endpoints used by the
+// OIDC callback process.
+type oidcProvider struct {
+	t            *testing.T
+	server       *httptest.Server
+	clientID     string
+	clientSecret string
+	code         string
+	customClaims map[string]interface{}
+}
+
+func newOIDCProvider(t *testing.T) *oidcProvider {
+	o := new(oidcProvider)
+	o.t = t
+	o.server = httptest.NewTLSServer(o)
+
+	return o
+}
+
+func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.URL.Path {
+	case "/.well-known/openid-configuration":
+		w.Write([]byte(strings.Replace(`
+			{
+				"issuer": "%s",
+				"authorization_endpoint": "%s/auth",
+				"token_endpoint": "%s/token",
+				"jwks_uri": "%s/certs",
+				"userinfo_endpoint": "%s/userinfo"
+			}`, "%s", o.server.URL, -1)))
+	case "/certs":
+		a := getTestJWKS(o.t, ecdsaPubKey)
+		w.Write(a)
+	case "/certs_missing":
+		w.WriteHeader(404)
+	case "/certs_invalid":
+		w.Write([]byte("It's not a keyset!"))
+	case "/token":
+		code := r.FormValue("code")
+
+		if code != o.code {
+			w.WriteHeader(401)
+			break
+		}
+
+		stdClaims := sqjwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    o.server.URL,
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Expiry:    sqjwt.NewNumericDate(time.Now().Add(5 * time.Second)),
+			Audience:  sqjwt.Audience{o.clientID},
+		}
+		jwtData, _ := getTestJWT(o.t, ecdsaPrivKey, stdClaims, o.customClaims)
+		w.Write([]byte(fmt.Sprintf(`
+			{
+				"access_token":"%s",
+				"id_token":"%s"
+			}`,
+			jwtData,
+			jwtData,
+		)))
+	case "/userinfo":
+		w.Write([]byte(`
+			{
+				"sub": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+				"color":"red",
+				"temperature":"76"
+			}`))
+
+	default:
+		o.t.Fatalf("unexpected path: %q", r.URL.Path)
+	}
+}
+
+// getTLSCert returns the certificate for this provider in PEM format
+func (o *oidcProvider) getTLSCert() (string, error) {
+	cert := o.server.Certificate()
+	block := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}
+
+	pemBuf := new(bytes.Buffer)
+	if err := pem.Encode(pemBuf, block); err != nil {
+		return "", err
+	}
+
+	return pemBuf.String(), nil
+}
+
+func getQueryParam(t *testing.T, inputURL, param string) string {
+	t.Helper()
+
+	m, err := url.ParseQuery(inputURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := m[param]
+	if !ok {
+		t.Fatalf("query param %q not found", param)
+	}
+	return v[0]
+}
+
+// getTestJWKS converts a pem-encoded public key into JWKS data suitable
+// for a verification endpoint response
+func getTestJWKS(t *testing.T, pubKey string) []byte {
+	t.Helper()
+
+	block, _ := pem.Decode([]byte(pubKey))
+	if block == nil {
+		t.Fatal("unable to decode public key")
+	}
+	input := block.Bytes
+
+	pub, err := x509.ParsePKIXPublicKey(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := jose.JSONWebKey{
+		Key: pub,
+	}
+	jwks := jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{jwk},
+	}
+
+	data, err := json.Marshal(jwks)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return data
+}
