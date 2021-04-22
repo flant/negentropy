@@ -79,7 +79,6 @@ func (b *backend) paths() []*framework.Path {
 					Summary:  "Deletes the tenant by ID.",
 				},
 			},
-			// ExistenceCheck: b.handleExistenceCheck,
 		},
 		{
 			Pattern: "tenant/?",
@@ -95,16 +94,6 @@ func (b *backend) paths() []*framework.Path {
 			},
 		},
 	}
-}
-
-// nolint:unused
-func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-	out, err := req.Storage.Get(ctx, req.Path)
-	if err != nil {
-		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
-	}
-
-	return out != nil, nil
 }
 
 func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
