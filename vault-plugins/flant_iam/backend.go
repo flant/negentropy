@@ -56,21 +56,22 @@ type backend struct {
 func (b *backend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
+			// using optional param in order to cover creation endpoint with empty id
 			Pattern: "tenant" + framework.OptionalParamRegex(tenantUUID),
 			Fields: map[string]*framework.FieldSchema{
 				tenantUUID: {Type: framework.TypeString, Description: "ID of a tenant"},
 				"name":     {Type: framework.TypeString, Description: "Tenant name"},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				// GET
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead,
-					Summary:  "Retrieve the tenant by ID.",
-				},
 				// POST, create or update
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWrite,
 					Summary:  "Update the tenant by ID.",
+				},
+				// GET
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleRead,
+					Summary:  "Retrieve the tenant by ID.",
 				},
 				// DELETE
 				logical.DeleteOperation: &framework.PathOperation{
@@ -96,10 +97,6 @@ func (b *backend) paths() []*framework.Path {
 }
 
 func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	b.Logger().Info("handleRead", "path", req.Path)
 	id := data.Get(tenantUUID).(string)
 
@@ -129,10 +126,6 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 // nolint:unused
 func (b *backend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	key := req.Path
 	b.Logger().Info("handleList", "key", key)
 
@@ -157,10 +150,6 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 }
 
 func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	successStatus := http.StatusOK
 	id := data.Get(tenantUUID).(string)
 	if id == "" {
@@ -205,10 +194,6 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 }
 
 func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	key := req.Path
 	b.Logger().Info("handleDelete", "key", key)
 

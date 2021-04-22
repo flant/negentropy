@@ -56,6 +56,10 @@ describe("Tenants", function () {
     const root = new Tenants(rootClient)
     const worder = new Worder()
 
+    function genTenantPayload() {
+        return { name: worder.gen() }
+    }
+
     // afterEach("cleanup", async function () {
     //     const clean = s => root.delete(`tenant/${s}`, expectStatus(204))
     //     const promises = worder.list().map(clean)
@@ -102,7 +106,7 @@ describe("Tenants", function () {
     })
 
     it("can be created", async () => {
-        const payload = { name: worder.gen() }
+        const payload = genTenantPayload()
 
         const { data: body } = await root.create(payload)
 
@@ -112,7 +116,7 @@ describe("Tenants", function () {
     })
 
     it("can be read", async () => {
-        const payload = { name: worder.gen() }
+        const payload = genTenantPayload()
 
         const { data: body } = await root.create(payload)
         const id = body.data.id
@@ -127,8 +131,8 @@ describe("Tenants", function () {
     })
 
     it("can be updated", async () => {
-        const createPld = { name: worder.gen() }
-        const updatePld = { name: worder.gen() }
+        const createPld = genTenantPayload()
+        const updatePld = genTenantPayload()
 
         // create
         const { data: body1 } = await root.create(createPld)
@@ -146,7 +150,7 @@ describe("Tenants", function () {
     })
 
     it("can be deleted", async () => {
-        const createPld = { name: worder.gen() }
+        const createPld = genTenantPayload()
 
         const { data: body1 } = await root.create(createPld)
         const id = body1.data.id
@@ -157,7 +161,7 @@ describe("Tenants", function () {
     })
 
     it("can be listed", async () => {
-        const payload = { name: worder.gen() }
+        const payload = genTenantPayload()
         await root.create(payload)
 
         const { data } = await root.list()
@@ -166,7 +170,7 @@ describe("Tenants", function () {
     })
 
     it("has identifying fields in list", async () => {
-        const payload = { name: worder.gen() }
+        const payload = genTenantPayload()
         const { data: creationBody } = await root.create(payload)
         const id = creationBody.data.id
 
@@ -176,4 +180,43 @@ describe("Tenants", function () {
         const { ids } = listBody.data
         expect(ids).to.include(id)
     })
+
+    describe("access", function() {
+        describe("when unauthenticated", function() {
+            runWithClient(getClient(), 400)
+        })
+
+        describe("when unauthorized", function() {
+            runWithClient(getClient("xxx"), 403)
+        })
+
+        function runWithClient(client, expectedStatus) {
+            const unauth = new Tenants(client)
+            const opts = expectStatus(expectedStatus)
+
+            it(`cannot create, gets ${expectedStatus}`, async () => {
+                await unauth.create(genTenantPayload(), opts)
+            })
+
+            it(`cannot list, gets ${expectedStatus}`, async () => {
+                await unauth.list(opts)
+            })
+
+            it(`cannot read, gets ${expectedStatus}`, async () => {
+                const { data } = await root.create(genTenantPayload())
+                await unauth.read(data.data.id, opts)
+            })
+
+            it(`cannot update, gets ${expectedStatus}`, async () => {
+                const { data } = await root.create(genTenantPayload())
+                await unauth.update(data.data.id, genTenantPayload(), opts)
+            })
+
+            it(`cannot delete, gets ${expectedStatus}`, async () => {
+                const { data } = await root.create(genTenantPayload())
+                await unauth.delete(data.data.id, opts)
+            })
+        }
+    })
 })
+

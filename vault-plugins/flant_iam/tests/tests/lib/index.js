@@ -7,42 +7,20 @@ const baseUrl = "http://127.0.0.1:8200/v1/"
 const pluginPath = "flant_iam"
 
 function getClient(token) {
-    const instance = A.create({
-        baseURL: baseUrl + pluginPath,
-        headers: {
-            "X-Vault-Token": token,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-    })
+    const baseURL = baseUrl + pluginPath
 
-    instance.interceptors.response.use(null, (err) => {
-        // Log and throw further
-        const sent = err.request.method + " " + err.request.path
-        const status = `STATUS: ${err.response.status}`
-        const body = err.response.data
-            ? JSON.stringify(err.response.data, null, 2)
-            : ""
+    const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+    }
 
-        const prefixize = (pad, text) =>
-            text
-                .split("\n")
-                .map((s) => pad + s)
-                .join("\n")
+    if (token) {
+        headers["X-Vault-Token"] = token
+    }
 
-        const msg = [
-            "\n",
-            prefixize("     →  ", sent),
-            "",
-            prefixize("     ←  ", [status, body].join("\n")),
-        ].join("\n")
-
-        // console.error(msg)
-        err.message += msg
-        throw err
-    })
-
-    return instance
+    const client = A.create({ baseURL, headers })
+    client.interceptors.response.use(null, axiosErrFormatter)
+    return client
 }
 
 function expectStatus(expectedStatus) {
@@ -85,4 +63,39 @@ module.exports = {
     expectStatus,
     anotherToken: getSecondRootToken(),
     rootToken: "root",
+}
+
+/**
+ * axiosErrFormatter lets us read prettified response errors. Used in the axios error interception reponse hook.
+ *
+ * @param {Error} err
+ *
+ * @example ```
+ *      client.interceptors.response.use(null, axiosErrFormatter)
+ *  ```
+ */
+function axiosErrFormatter(err) {
+    // Log and throw further
+    const sent = err.request.method + " " + err.request.path
+    const status = `STATUS: ${err.response.status}`
+    const body = err.response.data
+        ? JSON.stringify(err.response.data, null, 2)
+        : ""
+
+    const prefixize = (pad, text) =>
+        text
+            .split("\n")
+            .map((s) => pad + s)
+            .join("\n")
+
+    const msg = [
+        "\n",
+        prefixize("     →  ", sent),
+        "",
+        prefixize("     ←  ", [status, body].join("\n")),
+    ].join("\n")
+
+    // console.error(msg)
+    err.message += msg
+    throw err
 }
