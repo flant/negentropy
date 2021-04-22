@@ -41,7 +41,7 @@ func backend() *flantIamAuthBackend {
 	const authMethodPrefix = "method/"
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
-	//b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
+	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 	b.authSourceStorageFactory = NewPrefixStorageRequestFactory(authSourcePrefix)
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
@@ -75,7 +75,7 @@ func backend() *flantIamAuthBackend {
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
 			},
-			//pathOIDC(b),
+			pathOIDC(b),
 		),
 		Clean: b.cleanup,
 	}
