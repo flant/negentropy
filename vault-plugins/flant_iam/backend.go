@@ -199,7 +199,6 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
 	}
 
-
 	entry := &logical.StorageEntry{
 		Key:   key,
 		Value: buf,
