@@ -28,17 +28,17 @@ func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				// POST, create or update
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleWrite(km),
+					Callback: b.handleWrite(km, schema),
 					Summary:  "Update the " + km.entryName + " by ID.",
 				},
 				// GET
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead(km),
+					Callback: b.handleRead(km, schema),
 					Summary:  "Retrieve the " + km.entryName + " by ID.",
 				},
 				// DELETE
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete(km),
+					Callback: b.handleDelete(km, schema),
 					Summary:  "Deletes the " + km.entryName + " by ID.",
 				},
 			},
@@ -49,7 +49,7 @@ func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				// GET
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleList(km),
+					Callback: b.handleList(km, schema),
 					Summary:  "Lists all " + km.entryName + "s IDs.",
 				},
 			},
@@ -57,7 +57,7 @@ func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
 	}
 }
 
-func (b *layerBackend) handleRead(km *keyManager) framework.OperationFunc {
+func (b *layerBackend) handleRead(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Info("handleRead", "path", req.Path)
 		key := req.Path
@@ -85,7 +85,7 @@ func (b *layerBackend) handleRead(km *keyManager) framework.OperationFunc {
 }
 
 // nolint:unused
-func (b *layerBackend) handleList(km *keyManager) framework.OperationFunc {
+func (b *layerBackend) handleList(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := req.Path
 		b.Logger().Info("handleList", "key", key)
@@ -110,7 +110,7 @@ func (b *layerBackend) handleList(km *keyManager) framework.OperationFunc {
 	}
 }
 
-func (b *layerBackend) handleWrite(km *keyManager) framework.OperationFunc {
+func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get(km.IDField()).(string)
 		successStatus := http.StatusOK
@@ -138,12 +138,9 @@ func (b *layerBackend) handleWrite(km *keyManager) framework.OperationFunc {
 
 		b.Logger().Info("writing", "key", key)
 
-		name, ok := data.GetOk("name")
-		if !ok {
-			return nil, &logical.StatusBadRequest{Err: "tenant name must not be empty"}
-		}
-		if len(name.(string)) == 0 {
-			return nil, &logical.StatusBadRequest{Err: "tenant name must not be empty"}
+		err = schema.Validate(data)
+		if err != nil {
+			return nil, &logical.StatusBadRequest{Err: err.Error()}
 		}
 
 		// JSON encode the data
@@ -170,7 +167,7 @@ func (b *layerBackend) handleWrite(km *keyManager) framework.OperationFunc {
 	}
 }
 
-func (b *layerBackend) handleDelete(km *keyManager) framework.OperationFunc {
+func (b *layerBackend) handleDelete(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := req.Path
 		b.Logger().Info("handleDelete", "key", key)
