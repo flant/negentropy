@@ -10,7 +10,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 
 	"github.com/hashicorp/errwrap"
-	uuid "github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -66,15 +66,18 @@ func tenantPaths(logger log.Logger) []*framework.Path {
 				"name":     {Type: framework.TypeString, Description: "Tenant name"},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				// GET
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead,
 					Summary:  "Retrieve the tenant by ID.",
 				},
+				// POST
 				// create + update
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWrite,
 					Summary:  "Update the tenant by ID.",
 				},
+				// DELETE
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete,
 					Summary:  "Deletes the tenant by ID.",
@@ -82,15 +85,24 @@ func tenantPaths(logger log.Logger) []*framework.Path {
 			},
 			// ExistenceCheck: b.handleExistenceCheck,
 		},
-		//{
-		//	Pattern: "tenant/?",
-		//	Operations: map[logical.Operation]framework.OperationHandler{
-		//		logical.ListOperation: &framework.PathOperation{
-		//			Callback: b.handleList,
-		//			Summary:  "Lists all tenants IDs.",
-		//		},
-		//	},
-		//},
+		{
+			Pattern: "tenant/?",
+			Fields: map[string]*framework.FieldSchema{
+				"name": {Type: framework.TypeString, Description: "Tenant name"},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				// GET
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleList,
+					Summary:  "Lists all tenants IDs.",
+				},
+				//// POST
+				//logical.CreateOperation: &framework.PathOperation{
+				//	Callback: b.handleWrite,
+				//	Summary:  "Create a tenant.",
+				//},
+			},
+		},
 	}
 }
 
@@ -121,11 +133,12 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
+	b.logger.Info("handleRead", "path", req.Path)
 	id := data.Get(tenantUUID).(string)
 
 	// Decode the data
 	var rawData map[string]interface{}
-	fetchedData, err := req.Storage.Get(ctx, id)
+	fetchedData, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -153,15 +166,15 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	path := data.Get(tenantUUID).(string)
+	b.logger.Info("handleList", "path", req.Path)
 
 	// Decode the data
-	fetchedData, err := req.Storage.List(ctx, path)
+	fetchedData, err := req.Storage.List(ctx, "tenant")
 	if err != nil {
 		return nil, err
 	}
 	if fetchedData == nil {
-		resp := logical.ErrorResponse("No value in the list %v%v", req.MountPoint, path)
+		resp := logical.ErrorResponse("No value in the list %v%v", req.MountPoint, "tenant")
 		return resp, nil
 	}
 
@@ -169,7 +182,6 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	resp := &logical.Response{
 		Data: map[string]interface{}{
 			"keys": fetchedData,
-			"peys": fetchedData,
 		},
 	}
 
@@ -181,8 +193,10 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, fmt.Errorf("client token empty")
 	}
 
+	b.logger.Info("handleWrite", "path", req.Path)
+
 	successStatus := http.StatusOK
-	id := (data.Get(tenantUUID).(string))
+	id := data.Get(tenantUUID).(string)
 	b.logger.Info("got id?", id)
 	if id == "" {
 		// the creation here
@@ -207,7 +221,7 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	}
 
 	entry := &logical.StorageEntry{
-		Key:   id,
+		Key:   "tenant/" + id,
 		Value: buf,
 	}
 
@@ -228,6 +242,8 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
+	b.logger.Info("handleDelete", "path", req.Path)
+
 	path := data.Get(tenantUUID).(string)
 	err := req.Storage.Delete(ctx, path)
 

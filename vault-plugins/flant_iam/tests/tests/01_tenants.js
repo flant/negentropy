@@ -100,9 +100,9 @@ describe("Tenants", function () {
         const payload = { name: worder.gen() }
         await root.create(payload)
 
-        const { data } = await root.list(expectStatus(200))
+        const { data } = await root.list()
 
-        expect(data.data).to.be("array").and.to.be.not.empty
+        expect(data.data).to.be.an("array").and.to.be.not.empty
     })
 
     it("has identifying fields in list", async () => {
@@ -111,7 +111,7 @@ describe("Tenants", function () {
 
         const { data: body } = await root.list()
 
-        expect(body.data).to.be("array").and.to.be.not.empty
+        expect(body.data).to.be.an("array").and.to.be.not.empty
         const tenant = body.data[0]
         expect(tenant).to.include.keys("id", "name")
         expect(tenant.name).to.eq(payload.name)

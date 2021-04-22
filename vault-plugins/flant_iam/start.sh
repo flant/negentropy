@@ -33,3 +33,4 @@ docker logs -f  dev-vault
 
 # make enable
 # vault path-help flant_iam
+# vault read flant_iam/tenant/bcfa63ba-41fd-d33b-c13e-ef03daed0aa2
