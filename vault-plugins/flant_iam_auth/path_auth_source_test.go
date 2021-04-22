@@ -74,7 +74,7 @@ func TestAuthSource_WriteInStorage(t *testing.T) {
 
 	_, data := creteTestJWTBasedSource(t, b, storage, authSourceTestName)
 
-	dataFromStore, err := storage.Get(context.TODO(), fmt.Sprintf("%s/%s", "authSource", authSourceTestName))
+	dataFromStore, err := storage.Get(context.TODO(), fmt.Sprintf("%s/%s", "source", authSourceTestName))
 	if err != nil {
 		t.Fatalf("storage returns error %v", err)
 	}
@@ -108,7 +108,6 @@ func TestAuthSource_Read(t *testing.T) {
 		"jwks_url":               "",
 		"jwks_ca_pem":            "",
 		"bound_issuer":           "http://vault.example.com/",
-		"provider_config":        map[string]interface{}{},
 		"namespace_in_state":     false,
 	}
 
@@ -217,11 +216,10 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
 		BoundIssuer:          "http://vault.example.com/",
-		ProviderConfig:       map[string]interface{}{},
 		NamespaceInState:     true,
 	}
 
-	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("authSource/", storage), authSourceTestName)
+	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,11 +427,10 @@ func TestAuthSource_OIDC_Write(t *testing.T) {
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 		OIDCClientID:         "abc",
 		OIDCClientSecret:     "def",
-		ProviderConfig:       map[string]interface{}{},
 		NamespaceInState:     true,
 	}
 
-	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("authSource/", storage), authSourceTestName)
+	conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,73 +487,6 @@ func TestAuthSource_OIDC_Write(t *testing.T) {
 	}
 }
 
-func TestAuthSource_OIDC_Write_ProviderConfig(t *testing.T) {
-	b, storage := getBackend(t)
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      authSourceTestPath,
-		Storage:   storage,
-		Data:      nil,
-	}
-
-	t.Run("unknown provider in provider_config", func(t *testing.T) {
-		req.Data = map[string]interface{}{
-			"oidc_discovery_url": "https://team-vault.auth0.com/",
-			"provider_config": map[string]interface{}{
-				"provider": "unknown",
-			},
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		assert.NoError(t, err)
-		assert.True(t, resp.IsError())
-		assert.EqualError(t, resp.Error(), "invalid provider_config: provider \"unknown\" not found in custom providers")
-	})
-
-	t.Run("provider_config missing provider", func(t *testing.T) {
-		req.Data = map[string]interface{}{
-			"oidc_discovery_url": "https://team-vault.auth0.com/",
-			"provider_config": map[string]interface{}{
-				"not-provider": "oops",
-			},
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		assert.NoError(t, err)
-		assert.True(t, resp.IsError())
-		assert.EqualError(t, resp.Error(), "invalid provider_config: 'provider' field not found in provider_config")
-	})
-
-	t.Run("provider_config not set", func(t *testing.T) {
-		req.Data = map[string]interface{}{
-			"oidc_discovery_url": "https://team-vault.auth0.com/",
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
-
-		expected := &authSource{
-			JWTValidationPubKeys: []string{},
-			JWTSupportedAlgs:     []string{},
-			OIDCResponseTypes:    []string{},
-			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-			ProviderConfig:       map[string]interface{}{},
-			NamespaceInState:     true,
-		}
-
-		conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("authSource/", storage), authSourceTestName)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if diff := deep.Equal(expected, conf); diff != nil {
-			t.Fatal(diff)
-		}
-	})
-}
-
 func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 	type testCase struct {
 		create   map[string]interface{}
@@ -573,7 +503,6 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 		"namespace_in_state true": {
@@ -587,7 +516,6 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 		"namespace_in_state false": {
@@ -601,7 +529,6 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 	}
@@ -620,7 +547,7 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("authSource/", storage), authSourceTestName)
+			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})
@@ -650,7 +577,6 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 		"existing false, update something else": {
@@ -669,7 +595,6 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 		"existing true, update to false": {
@@ -687,7 +612,6 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 		"existing true, update something else": {
@@ -706,7 +630,6 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
 			},
 		},
 	}
@@ -731,7 +654,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("authSource/", storage), authSourceTestName)
+			conf, err := b.(*flantIamAuthBackend).authSourceConfig(context.Background(), pkg.NewPrefixStorage("source/", storage), authSourceTestName)
 			assert.NoError(t, err)
 			assert.Equal(t, &test.expected, conf)
 		})

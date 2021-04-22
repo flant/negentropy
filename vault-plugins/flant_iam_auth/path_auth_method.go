@@ -236,7 +236,7 @@ func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, 
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *flantIamAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	methods, err := req.Storage.List(ctx, rolePrefix)
+	methods, err := b.authMethodStorageFactory(req).AllKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *log
 	}
 
 	// Delete the authMethodConfig itself
-	if err := req.Storage.Delete(ctx, rolePrefix+methodName); err != nil {
+	if err := b.authMethodStorageFactory(req).Delete(ctx, methodName); err != nil {
 		return nil, err
 	}
 
@@ -312,8 +312,9 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return logical.ErrorResponse("missing auth method name"), nil
 	}
 
+	authMethodStorage := b.authMethodStorageFactory(req)
 	// Check if the auth already exists
-	method, err := b.authMethod(ctx, req.Storage, methodName)
+	method, err := b.authMethod(ctx, authMethodStorage, methodName)
 	if err != nil {
 		return nil, err
 	}
@@ -523,12 +524,8 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			`may be present in OIDC responses.`)
 	}
 
-	// Store the entry.
-	entry, err := logical.StorageEntryJSON(rolePrefix+methodName, method)
+	err = authMethodStorage.PutEntry(ctx, methodName, method)
 	if err != nil {
-		return nil, err
-	}
-	if err = req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
 

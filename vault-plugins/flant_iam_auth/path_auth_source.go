@@ -216,7 +216,6 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 		JWTValidationPubKeys: d.Get("jwt_validation_pubkeys").([]string),
 		JWTSupportedAlgs:     d.Get("jwt_supported_algs").([]string),
 		BoundIssuer:          d.Get("bound_issuer").(string),
-		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
 	}
 
 	// Check if the config already exists, to determine if this is a create or
@@ -388,20 +387,19 @@ func (b *flantIamAuthBackend) createProvider(config *authSource) (*oidc.Provider
 }
 
 type authSource struct {
-	OIDCDiscoveryURL     string                 `json:"oidc_discovery_url"`
-	OIDCDiscoveryCAPEM   string                 `json:"oidc_discovery_ca_pem"`
-	OIDCClientID         string                 `json:"oidc_client_id"`
-	OIDCClientSecret     string                 `json:"oidc_client_secret"`
-	OIDCResponseMode     string                 `json:"oidc_response_mode"`
-	OIDCResponseTypes    []string               `json:"oidc_response_types"`
-	JWKSURL              string                 `json:"jwks_url"`
-	JWKSCAPEM            string                 `json:"jwks_ca_pem"`
-	JWTValidationPubKeys []string               `json:"jwt_validation_pubkeys"`
-	JWTSupportedAlgs     []string               `json:"jwt_supported_algs"`
-	BoundIssuer          string                 `json:"bound_issuer"`
-	DefaultRole          string                 `json:"default_role"`
-	ProviderConfig       map[string]interface{} `json:"provider_config"`
-	NamespaceInState     bool                   `json:"namespace_in_state"`
+	OIDCDiscoveryURL     string   `json:"oidc_discovery_url"`
+	OIDCDiscoveryCAPEM   string   `json:"oidc_discovery_ca_pem"`
+	OIDCClientID         string   `json:"oidc_client_id"`
+	OIDCClientSecret     string   `json:"oidc_client_secret"`
+	OIDCResponseMode     string   `json:"oidc_response_mode"`
+	OIDCResponseTypes    []string `json:"oidc_response_types"`
+	JWKSURL              string   `json:"jwks_url"`
+	JWKSCAPEM            string   `json:"jwks_ca_pem"`
+	JWTValidationPubKeys []string `json:"jwt_validation_pubkeys"`
+	JWTSupportedAlgs     []string `json:"jwt_supported_algs"`
+	BoundIssuer          string   `json:"bound_issuer"`
+	DefaultRole          string   `json:"default_role"`
+	NamespaceInState     bool     `json:"namespace_in_state"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 }

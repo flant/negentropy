@@ -14,10 +14,6 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-const (
-	rolePrefix string = "authMethod/"
-)
-
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
 	b := backend()
@@ -42,8 +38,8 @@ type flantIamAuthBackend struct {
 }
 
 func backend() *flantIamAuthBackend {
-	const authSourcePrefix = "authSource/"
-	const authMethodPrefix = "authMethod/"
+	const authSourcePrefix = "source/"
+	const authMethodPrefix = "method/"
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	//b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
