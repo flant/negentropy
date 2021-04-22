@@ -145,10 +145,11 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	b.Logger().Info("handleList", "path", req.Path)
+	key := req.Path
+	b.Logger().Info("handleList", "key", key)
 
 	// Decode the data
-	fetchedData, err := req.Storage.List(ctx, "tenant")
+	fetchedData, err := req.Storage.List(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +161,7 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	// Generate the response
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"keys": fetchedData,
+			"ids": fetchedData,
 		},
 	}
 
@@ -172,18 +173,17 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	b.Logger().Info("handleWrite", "path", req.Path)
-
 	successStatus := http.StatusOK
 	id := data.Get(tenantUUID).(string)
-	b.Logger().Info("got id?", id)
 	if id == "" {
 		// the creation here
 		id = genUUID()
 		successStatus = http.StatusCreated
-		b.Logger().Info("creation detected, generated new id", id)
+		b.Logger().Info("creating")
 	}
-	b.Logger().Info("final id", id)
+
+	key := "tenant/" + id
+	b.Logger().Info("writing", "key", key)
 
 	name, ok := data.GetOk("name")
 	if !ok {
@@ -199,11 +199,11 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 		return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
 	}
 
+
 	entry := &logical.StorageEntry{
-		Key:   "tenant/" + id,
+		Key:   key,
 		Value: buf,
 	}
-
 	err = req.Storage.Put(ctx, entry)
 	if err != nil {
 		return nil, err
@@ -221,10 +221,11 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
-	b.Logger().Info("handleDelete", "path", req.Path)
 
-	path := data.Get(tenantUUID).(string)
-	err := req.Storage.Delete(ctx, path)
+	key := req.Path
+	b.Logger().Info("handleDelete", "key", key)
+
+	err := req.Storage.Delete(ctx, key)
 
 	return nil, err
 }

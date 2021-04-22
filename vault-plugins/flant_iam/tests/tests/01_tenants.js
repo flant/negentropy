@@ -31,7 +31,7 @@ class Tenants {
 
     update(id, payload, opts = {}) {
         return this.client.post(`/tenant/${id}`, payload, {
-            ...expectStatus(204),
+            ...expectStatus(200),
             ...opts,
         })
     }
@@ -96,24 +96,54 @@ describe("Tenants", function () {
         expect(tenant.data.name).to.eq(payload.name)
     })
 
+    it("can be updated", async () => {
+        const createPld = { name: worder.gen() }
+        const updatePld = { name: worder.gen() }
+
+        // create
+        const { data: body1 } = await root.create(createPld)
+        const id = body1.data.id
+
+        // update
+        const { data: body2 } = await root.update(id, updatePld)
+
+        // read
+        const { data: body3 } = await root.read(id)
+        const tenant = body3.data
+
+        expect(tenant).to.include.all.keys("name")
+        expect(tenant.name).to.eq(updatePld.name)
+    })
+
+    it("can be deleted", async () => {
+        const createPld = { name: worder.gen() }
+
+        const { data: body1 } = await root.create(createPld)
+        const id = body1.data.id
+
+        await root.delete(id)
+
+        await root.read(id, expectStatus(404))
+    })
+
     it("can be listed", async () => {
         const payload = { name: worder.gen() }
         await root.create(payload)
 
         const { data } = await root.list()
 
-        expect(data.data).to.be.an("array").and.to.be.not.empty
+        expect(data.data).to.be.an("object")
     })
 
     it("has identifying fields in list", async () => {
         const payload = { name: worder.gen() }
-        await root.create(payload)
+        const { data: creationBody } = await root.create(payload)
+        const id = creationBody.data.id
 
-        const { data: body } = await root.list()
+        const { data: listBody } = await root.list()
 
-        expect(body.data).to.be.an("array").and.to.be.not.empty
-        const tenant = body.data[0]
-        expect(tenant).to.include.keys("id", "name")
-        expect(tenant.name).to.eq(payload.name)
+        expect(listBody.data).to.be.an("object").and.have.key("ids")
+        const { ids } = listBody.data
+        expect(ids).to.include(id)
     })
 })
