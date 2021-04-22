@@ -116,7 +116,7 @@ func (b *flantIamAuthBackend) reset() {
 	b.l.Unlock()
 }
 
-func (b *flantIamAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) {
+func (b *flantIamAuthBackend) getProvider(config *authSource) (*oidc.Provider, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -134,7 +134,7 @@ func (b *flantIamAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, er
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
-func (b *flantIamAuthBackend) jwtValidator(methodName string, config *jwtConfig) (*jwt.Validator, error) {
+func (b *flantIamAuthBackend) jwtValidator(methodName string, config *authSource) (*jwt.Validator, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 

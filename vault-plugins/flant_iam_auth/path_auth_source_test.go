@@ -81,7 +81,7 @@ func TestAuthSource_WriteInStorage(t *testing.T) {
 	if dataFromStore == nil {
 		t.Fatal("storage returns nil data")
 	} else {
-		out := &jwtConfig{}
+		out := &authSource{}
 		err = dataFromStore.DecodeJSON(out)
 		if err != nil {
 			t.Fatal("does not decode entry")
@@ -211,7 +211,7 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := &jwtConfig{
+	expected := &authSource{
 		ParsedJWTPubKeys:     []crypto.PublicKey{pubkey},
 		JWTValidationPubKeys: []string{testJWTPubKey},
 		JWTSupportedAlgs:     []string{},
@@ -422,7 +422,7 @@ func TestAuthSource_OIDC_Write(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	expected := &jwtConfig{
+	expected := &authSource{
 		JWTValidationPubKeys: []string{},
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
@@ -537,7 +537,7 @@ func TestAuthSource_OIDC_Write_ProviderConfig(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		expected := &jwtConfig{
+		expected := &authSource{
 			JWTValidationPubKeys: []string{},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
@@ -560,14 +560,14 @@ func TestAuthSource_OIDC_Write_ProviderConfig(t *testing.T) {
 func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 	type testCase struct {
 		create   map[string]interface{}
-		expected jwtConfig
+		expected authSource
 	}
 	tests := map[string]testCase{
 		"namespace_in_state not specified": {
 			create: map[string]interface{}{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     true,
 				OIDCResponseTypes:    []string{},
@@ -581,7 +581,7 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     true,
 				OIDCResponseTypes:    []string{},
@@ -595,7 +595,7 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     false,
 				OIDCResponseTypes:    []string{},
@@ -632,7 +632,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 	type testCase struct {
 		existing map[string]interface{}
 		update   map[string]interface{}
-		expected jwtConfig
+		expected authSource
 	}
 	tests := map[string]testCase{
 		"existing false, update to true": {
@@ -644,7 +644,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     true,
 				OIDCResponseTypes:    []string{},
@@ -662,7 +662,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"default_role":       "ui",
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     false,
 				DefaultRole:          "ui",
@@ -681,7 +681,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     false,
 				OIDCResponseTypes:    []string{},
@@ -699,7 +699,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"default_role":       "ui",
 			},
-			expected: jwtConfig{
+			expected: authSource{
 				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 				NamespaceInState:     true,
 				DefaultRole:          "ui",

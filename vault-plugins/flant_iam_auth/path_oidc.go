@@ -448,7 +448,7 @@ const (
 //
 //// createOIDCRequest makes an expiring request object, associated with a random state ID
 //// that is passed throughout the OAuth process. A nonce is also included in the auth process.
-//func (b *flantIamAuthBackend) createOIDCRequest(config *jwtConfig, role *authMethodConfig, rolename, redirectURI, clientNonce string) (*oidcRequest, error) {
+//func (b *flantIamAuthBackend) createOIDCRequest(config *authSource, role *authMethodConfig, rolename, redirectURI, clientNonce string) (*oidcRequest, error) {
 //	options := []oidc.Option{
 //		oidc.WithAudiences(role.BoundAudiences...),
 //		oidc.WithScopes(role.OIDCScopes...),

@@ -135,11 +135,11 @@ func pathAuthSourceList(b *flantIamAuthBackend) *framework.Path {
 	}
 }
 
-func (b *flantIamAuthBackend) authSource(ctx context.Context, req *logical.Request, name string) (*jwtConfig, error) {
+func (b *flantIamAuthBackend) authSource(ctx context.Context, req *logical.Request, name string) (*authSource, error) {
 	return b.authSourceConfig(ctx, b.authSourceStorageFactory(req), name)
 }
 
-func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.Storage, name string) (*jwtConfig, error) {
+func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.Storage, name string) (*authSource, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -151,7 +151,7 @@ func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.St
 		return nil, nil
 	}
 
-	config := &jwtConfig{}
+	config := &authSource{}
 	if err := entry.DecodeJSON(config); err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 
 func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 
-	config := &jwtConfig{
+	config := &authSource{
 		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
 		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
 		OIDCClientID:         d.Get("oidc_client_id").(string),
@@ -362,7 +362,7 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 	return nil, nil
 }
 
-func (b *flantIamAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
+func (b *flantIamAuthBackend) createProvider(config *authSource) (*oidc.Provider, error) {
 	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
 	for i, a := range config.JWTSupportedAlgs {
 		supportedSigAlgs[i] = oidc.Alg(a)
@@ -387,7 +387,7 @@ func (b *flantIamAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider,
 	return provider, nil
 }
 
-type jwtConfig struct {
+type authSource struct {
 	OIDCDiscoveryURL     string                 `json:"oidc_discovery_url"`
 	OIDCDiscoveryCAPEM   string                 `json:"oidc_discovery_ca_pem"`
 	OIDCClientID         string                 `json:"oidc_client_id"`
@@ -415,7 +415,7 @@ const (
 )
 
 // authType classifies the authorization type/flow based on config parameters.
-func (c jwtConfig) authType() int {
+func (c authSource) authType() int {
 	switch {
 	case len(c.ParsedJWTPubKeys) > 0:
 		return StaticKeys
@@ -441,7 +441,7 @@ func toAlg(a []string) []jwt.Alg {
 
 // hasType returns whether the list of response types includes the requested
 // type. The default type is 'code' so that special case is handled as well.
-func (c jwtConfig) hasType(t string) bool {
+func (c authSource) hasType(t string) bool {
 	if len(c.OIDCResponseTypes) == 0 && t == responseTypeCode {
 		return true
 	}

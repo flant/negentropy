@@ -85,7 +85,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(expected, actual) {
-			t.Fatalf("Unexpected authMethodConfig data: expected %#v\n got %#v\n", expected, actual)
+			t.Fatalf("Unexpected authMethod data: expected %#v\n got %#v\n", expected, actual)
 		}
 	})
 

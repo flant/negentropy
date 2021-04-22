@@ -12,7 +12,7 @@ import (
 type JwtAuthenticator struct {
 	jwtValidator *jwt.Validator
 	authMethod   *authMethodConfig
-	authSource   *jwtConfig
+	authSource   *authSource
 	logger       log.Logger
 	methodName   string
 }
