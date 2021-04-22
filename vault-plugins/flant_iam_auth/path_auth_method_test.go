@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-test/deep"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"reflect"
 	"strings"
@@ -55,10 +54,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		}
 
 		expected := &authMethodConfig{
-			TokenParams: tokenutil.TokenParams{
-				TokenPolicies:   []string{},
-				TokenBoundCIDRs: []*sockaddr.SockAddrMarshaler{},
-			},
+			TokenParams:     tokenutil.TokenParams{},
 			MethodType:      methodTypeJWT,
 			BoundSubject:    "testsub",
 			BoundAudiences:  []string{"vault"},
@@ -692,10 +688,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 		}
 
 		expected := &authMethodConfig{
-			TokenParams: tokenutil.TokenParams{
-				TokenPolicies:   []string{},
-				TokenBoundCIDRs: []*sockaddr.SockAddrMarshaler{},
-			},
+			TokenParams:     tokenutil.TokenParams{},
 			MethodType:      "oidc",
 			BoundAudiences:  []string{"vault"},
 			BoundClaimsType: "string",

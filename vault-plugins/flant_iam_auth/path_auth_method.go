@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
@@ -393,18 +392,6 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		if tokenClockSkewLeeway, ok := data.GetOk("clock_skew_leeway"); ok {
 			method.ClockSkewLeeway = time.Duration(tokenClockSkewLeeway.(int)) * time.Second
 		}
-	}
-
-	if !(methodType == methodTypeOwn || methodType == methodTypeSAPassword) {
-		method.TokenParams.TokenTTL = 0
-		method.TokenParams.TokenMaxTTL = 0
-		method.TokenParams.TokenPolicies = []string{}
-		method.TokenParams.TokenBoundCIDRs = []*sockaddr.SockAddrMarshaler{}
-		method.TokenParams.TokenExplicitMaxTTL = 0
-		method.TokenParams.TokenNoDefaultPolicy = false
-		method.TokenParams.TokenNumUses = 0
-		method.TokenParams.TokenPeriod = 0
-		method.TokenParams.TokenType = logical.TokenTypeDefault
 	}
 
 	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
