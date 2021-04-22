@@ -46,19 +46,6 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 func tenantPaths(logger log.Logger) []*framework.Path {
 	b := backend{logger}
 	return []*framework.Path{
-
-		/*{
-			Pattern: "tenant/new",
-			Fields: map[string]*framework.FieldSchema{
-				"name": {Type: framework.TypeString, Description: "Tenant name"},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.create,
-					Summary:  "Create a tenant.",
-				},
-			},
-		},*/
 		{
 			Pattern: "tenant" + framework.OptionalParamRegex(tenantUUID),
 			Fields: map[string]*framework.FieldSchema{
@@ -96,11 +83,6 @@ func tenantPaths(logger log.Logger) []*framework.Path {
 					Callback: b.handleList,
 					Summary:  "Lists all tenants IDs.",
 				},
-				//// POST
-				//logical.CreateOperation: &framework.PathOperation{
-				//	Callback: b.handleWrite,
-				//	Summary:  "Create a tenant.",
-				//},
 			},
 		},
 	}
