@@ -201,7 +201,7 @@ type authMethodConfig struct {
 // authMethodConfig takes a storage backend and the name and returns the authMethodConfig's storage
 // entry
 func (b *flantIamAuthBackend) authMethod(ctx context.Context, s logical.Storage, name string) (*authMethodConfig, error) {
-	raw, err := s.Get(ctx, rolePrefix+name)
+	raw, err := s.Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -214,16 +214,15 @@ func (b *flantIamAuthBackend) authMethod(ctx context.Context, s logical.Storage,
 		return nil, err
 	}
 
-	// Report legacy roles as type "jwt"
-	if role.MethodType == "" {
-		role.MethodType = "jwt"
-	}
-
 	if role.BoundClaimsType == "" {
 		role.BoundClaimsType = boundClaimsTypeString
 	}
 
 	return role, nil
+}
+
+func (b *flantIamAuthBackend) authMethodForRequest(ctx context.Context, r *logical.Request, name string) (*authMethodConfig, error) {
+	return b.authMethod(ctx, b.authMethodStorageFactory(r), name)
 }
 
 // pathAuthMethodExistenceCheck returns whether the authMethodConfig with the given name exists or not.

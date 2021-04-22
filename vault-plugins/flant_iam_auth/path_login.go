@@ -1,298 +1,137 @@
 package jwtauth
 
-//
-//import (
-//	"context"
-//	"errors"
-//	"fmt"
-//
-//	"github.com/hashicorp/cap/jwt"
-//	"github.com/hashicorp/errwrap"
-//	"github.com/hashicorp/vault/sdk/framework"
-//	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-//	"github.com/hashicorp/vault/sdk/logical"
-//	"golang.org/x/oauth2"
-//)
-//
-//func pathLogin(b *flantIamAuthBackend) *framework.Path {
-//	return &framework.Path{
-//		Pattern: `login$`,
-//		Fields: map[string]*framework.FieldSchema{
-//			"authMethodConfig": {
-//				Type:        framework.TypeLowerCaseString,
-//				Description: "The authMethodConfig to log in against.",
-//			},
-//			"jwt": {
-//				Type:        framework.TypeString,
-//				Description: "The signed JWT to validate.",
-//			},
-//		},
-//
-//		Operations: map[logical.Operation]framework.OperationHandler{
-//			logical.UpdateOperation: &framework.PathOperation{
-//				Callback: b.pathLogin,
-//				Summary:  pathLoginHelpSyn,
-//			},
-//			logical.AliasLookaheadOperation: &framework.PathOperation{
-//				Callback: b.pathLogin,
-//			},
-//		},
-//
-//		HelpSynopsis:    pathLoginHelpSyn,
-//		HelpDescription: pathLoginHelpDesc,
-//	}
-//}
-//
-//func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-//	config, err := b.config(ctx, req.Storage)
-//	if err != nil {
-//		return nil, err
-//	}
-//	if config == nil {
-//		return logical.ErrorResponse("could not load configuration"), nil
-//	}
-//
-//	roleName := d.Get("authMethodConfig").(string)
-//	if roleName == "" {
-//		roleName = config.DefaultRole
-//	}
-//	if roleName == "" {
-//		return logical.ErrorResponse("missing authMethodConfig"), nil
-//	}
-//
-//	role, err := b.authMethod(ctx, req.Storage, roleName)
-//	if err != nil {
-//		return nil, err
-//	}
-//	if role == nil {
-//		return logical.ErrorResponse("authMethodConfig %q could not be found", roleName), nil
-//	}
-//
-//	if role.MethodType == "oidc" {
-//		return logical.ErrorResponse("authMethodConfig with oidc role_type is not allowed"), nil
-//	}
-//
-//	token := d.Get("jwt").(string)
-//	if len(token) == 0 {
-//		return logical.ErrorResponse("missing token"), nil
-//	}
-//
-//	if len(role.TokenBoundCIDRs) > 0 {
-//		if req.Connection == nil {
-//			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
-//			return nil, logical.ErrPermissionDenied
-//		}
-//		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, role.TokenBoundCIDRs) {
-//			return nil, logical.ErrPermissionDenied
-//		}
-//	}
-//
-//	// Get the JWT validator based on the configured auth type
-//	validator, err := b.jwtValidator(config)
-//	if err != nil {
-//		return logical.ErrorResponse("error configuring token validator: %s", err.Error()), nil
-//	}
-//
-//	// Validate JWT supported algorithms if they've been provided. Otherwise,
-//	// ensure that the signing algorithm is a member of the supported set.
-//	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
-//	if len(signingAlgorithms) == 0 {
-//		signingAlgorithms = []jwt.Alg{
-//			jwt.RS256, jwt.RS384, jwt.RS512, jwt.ES256, jwt.ES384,
-//			jwt.ES512, jwt.PS256, jwt.PS384, jwt.PS512, jwt.EdDSA,
-//		}
-//	}
-//
-//	// Set expected claims values to assert on the JWT
-//	expected := jwt.Expected{
-//		Issuer:            config.BoundIssuer,
-//		Subject:           role.BoundSubject,
-//		Audiences:         role.BoundAudiences,
-//		SigningAlgorithms: signingAlgorithms,
-//		NotBeforeLeeway:   role.NotBeforeLeeway,
-//		ExpirationLeeway:  role.ExpirationLeeway,
-//		ClockSkewLeeway:   role.ClockSkewLeeway,
-//	}
-//
-//	// Validate the JWT by verifying its signature and asserting expected claims values
-//	allClaims, err := validator.Validate(ctx, token, expected)
-//	if err != nil {
-//		return logical.ErrorResponse("error validating token: %s", err.Error()), nil
-//	}
-//
-//	// If there are no bound audiences for the authMethodConfig, then the existence of any audience
-//	// in the audience claim should result in an error.
-//	aud, ok := getClaim(b.Logger(), allClaims, "aud").([]interface{})
-//	if ok && len(aud) > 0 && len(role.BoundAudiences) == 0 {
-//		return logical.ErrorResponse("audience claim found in JWT but no audiences bound to the authMethodConfig"), nil
-//	}
-//
-//	alias, groupAliases, err := b.createIdentity(ctx, allClaims, role, nil)
-//	if err != nil {
-//		return logical.ErrorResponse(err.Error()), nil
-//	}
-//
-//	if err := validateBoundClaims(b.Logger(), role.BoundClaimsType, role.BoundClaims, allClaims); err != nil {
-//		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
-//	}
-//
-//	tokenMetadata := map[string]string{"authMethodConfig": roleName}
-//	for k, v := range alias.Metadata {
-//		tokenMetadata[k] = v
-//	}
-//
-//	auth := &logical.Auth{
-//		DisplayName:  alias.Name,
-//		Alias:        alias,
-//		GroupAliases: groupAliases,
-//		InternalData: map[string]interface{}{
-//			"authMethodConfig": roleName,
-//		},
-//		Metadata: tokenMetadata,
-//	}
-//
-//	role.PopulateTokenAuth(auth)
-//
-//	return &logical.Response{
-//		Auth: auth,
-//	}, nil
-//}
-//
-//func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-//	roleName := req.Auth.InternalData["authMethodConfig"].(string)
-//	if roleName == "" {
-//		return nil, errors.New("failed to fetch role_name during renewal")
-//	}
-//
-//	// Ensure that the Role still exists.
-//	role, err := b.authMethod(ctx, req.Storage, roleName)
-//	if err != nil {
-//		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", roleName), err)
-//	}
-//	if role == nil {
-//		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", roleName)
-//	}
-//
-//	resp := &logical.Response{Auth: req.Auth}
-//	resp.Auth.TTL = role.TokenTTL
-//	resp.Auth.MaxTTL = role.TokenMaxTTL
-//	resp.Auth.Period = role.TokenPeriod
-//	return resp, nil
-//}
-//
-//// createIdentity creates an alias and set of groups aliases based on the authMethodConfig
-//// definition and received claims.
-//func (b *flantIamAuthBackend) createIdentity(ctx context.Context, allClaims map[string]interface{}, role *authMethodConfig, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
-//	userClaimRaw, ok := allClaims[role.UserClaim]
-//	if !ok {
-//		return nil, nil, fmt.Errorf("claim %q not found in token", role.UserClaim)
-//	}
-//	userName, ok := userClaimRaw.(string)
-//	if !ok {
-//		return nil, nil, fmt.Errorf("claim %q could not be converted to string", role.UserClaim)
-//	}
-//
-//	pConfig, err := NewProviderConfig(ctx, b.cachedConfig, ProviderMap())
-//	if err != nil {
-//		return nil, nil, fmt.Errorf("failed to load custom provider config: %s", err)
-//	}
-//
-//	if err := b.fetchUserInfo(ctx, pConfig, allClaims, role); err != nil {
-//		return nil, nil, err
-//	}
-//
-//	metadata, err := extractMetadata(b.Logger(), allClaims, role.ClaimMappings)
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//
-//	alias := &logical.Alias{
-//		Name:     userName,
-//		Metadata: metadata,
-//	}
-//
-//	var groupAliases []*logical.Alias
-//
-//	if role.GroupsClaim == "" {
-//		return alias, groupAliases, nil
-//	}
-//
-//	groupsClaimRaw, err := b.fetchGroups(ctx, pConfig, allClaims, role, tokenSource)
-//	if err != nil {
-//		return nil, nil, fmt.Errorf("failed to fetch groups: %s", err)
-//	}
-//
-//	groups, ok := normalizeList(groupsClaimRaw)
-//
-//	if !ok {
-//		return nil, nil, fmt.Errorf("%q claim could not be converted to string list", role.GroupsClaim)
-//	}
-//	for _, groupRaw := range groups {
-//		group, ok := groupRaw.(string)
-//		if !ok {
-//			return nil, nil, fmt.Errorf("value %v in groups claim could not be parsed as string", groupRaw)
-//		}
-//		if group == "" {
-//			continue
-//		}
-//		groupAliases = append(groupAliases, &logical.Alias{
-//			Name: group,
-//		})
-//	}
-//
-//	return alias, groupAliases, nil
-//}
-//
-//// Checks if there's a custom provider_config and calls FetchUserInfo() if implemented.
-//func (b *flantIamAuthBackend) fetchUserInfo(ctx context.Context, pConfig CustomProvider, allClaims map[string]interface{}, role *authMethodConfig) error {
-//	// Fetch user info from custom provider if it's implemented
-//	if pConfig != nil {
-//		if uif, ok := pConfig.(UserInfoFetcher); ok {
-//			return uif.FetchUserInfo(ctx, b, allClaims, role)
-//		}
-//	}
-//
-//	return nil
-//}
-//
-//// Checks if there's a custom provider_config and calls FetchGroups() if implemented
-//func (b *flantIamAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider, allClaims map[string]interface{}, role *authMethodConfig, tokenSource oauth2.TokenSource) (interface{}, error) {
-//	// If the custom provider implements interface GroupsFetcher, call it,
-//	// otherwise fall through to the default method
-//	if pConfig != nil {
-//		if gf, ok := pConfig.(GroupsFetcher); ok {
-//			groupsRaw, err := gf.FetchGroups(ctx, b, allClaims, role, tokenSource)
-//			if err != nil {
-//				return nil, err
-//			}
-//
-//			// Add groups obtained by provider-specific fetching to the claims
-//			// so that they can be used for bound_claims validation on the authMethodConfig.
-//			allClaims["groups"] = groupsRaw
-//		}
-//	}
-//	groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)
-//
-//	if groupsClaimRaw == nil {
-//		return nil, fmt.Errorf("%q claim not found in token", role.GroupsClaim)
-//	}
-//
-//	return groupsClaimRaw, nil
-//}
-//
-//func toAlg(a []string) []jwt.Alg {
-//	alg := make([]jwt.Alg, len(a))
-//	for i, e := range a {
-//		alg[i] = jwt.Alg(e)
-//	}
-//	return alg
-//}
-//
-//const (
-//	pathLoginHelpSyn = `
-//	Authenticates to Vault using a JWT (or OIDC) token.
-//	`
-//	pathLoginHelpDesc = `
-//Authenticates JWTs.
-//`
-//)
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/cidrutil"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+
+func pathLogin(b *flantIamAuthBackend) *framework.Path {
+	return &framework.Path{
+		Pattern: `login$`,
+		Fields: map[string]*framework.FieldSchema{
+			"method": {
+				Type:        framework.TypeLowerCaseString,
+				Description: "The auth method.",
+			},
+
+			"jwt": {
+				Type:        framework.TypeString,
+				Description: "The signed JWT to validate.",
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLogin,
+				Summary:  pathLoginHelpSyn,
+			},
+			logical.AliasLookaheadOperation: &framework.PathOperation{
+				Callback: b.pathLogin,
+			},
+		},
+
+		HelpSynopsis:    pathLoginHelpSyn,
+		HelpDescription: pathLoginHelpDesc,
+	}
+}
+
+func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	authMethodName := d.Get("method").(string)
+
+	if authMethodName == "" {
+		return logical.ErrorResponse("missing authMethodConfig"), nil
+	}
+
+	authMethod, err := b.authMethodForRequest(ctx, req, authMethodName)
+	if err != nil {
+		return nil, err
+	}
+	if authMethod == nil {
+		return logical.ErrorResponse(" %q could not be found", authMethodName), nil
+	}
+
+	var authenticator Authenticator
+
+	switch authMethod.MethodType {
+	case methodTypeJWT:
+		authSource, err := b.authSource(ctx, req, authMethod.Source)
+		if err != nil {
+			return nil, err
+		}
+		if authSource == nil {
+			return logical.ErrorResponse("not found auth method"), nil
+		}
+
+		jwtValidator, err := b.jwtValidator(authMethodName, authSource)
+		if err != nil {
+			return nil, err
+		}
+
+		authenticator = &JwtAuthenticator{
+			authMethod:   authMethod,
+			logger:       b.Logger(),
+			authSource:   authSource,
+			jwtValidator: jwtValidator,
+		}
+	default:
+		return logical.ErrorResponse("unsupported auth method"), nil
+	}
+
+	if len(authMethod.TokenBoundCIDRs) > 0 {
+		if req.Connection == nil {
+			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
+			return nil, logical.ErrPermissionDenied
+		}
+		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, authMethod.TokenBoundCIDRs) {
+			return nil, logical.ErrPermissionDenied
+		}
+	}
+
+	auth, err := authenticator.Auth(ctx, d)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	authMethod.PopulateTokenAuth(auth)
+
+	return &logical.Response{
+		Auth: auth,
+	}, nil
+}
+
+func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	authMethodName := req.Auth.InternalData["authMethodConfig"].(string)
+	if authMethodName == "" {
+		return nil, errors.New("failed to fetch role_name during renewal")
+	}
+
+	// Ensure that the Role still exists.
+	authMethod, err := b.authMethod(ctx, req.Storage, authMethodName)
+	if err != nil {
+		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", authMethodName), err)
+	}
+	if authMethod == nil {
+		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", authMethodName)
+	}
+
+	resp := &logical.Response{Auth: req.Auth}
+	resp.Auth.TTL = authMethod.TokenTTL
+	resp.Auth.MaxTTL = authMethod.TokenMaxTTL
+	resp.Auth.Period = authMethod.TokenPeriod
+	return resp, nil
+}
+
+const (
+	pathLoginHelpSyn = `
+	Authenticates to Vault using a JWT (or OIDC) token.
+	`
+	pathLoginHelpDesc = `
+Authenticates JWTs.
+`
+)

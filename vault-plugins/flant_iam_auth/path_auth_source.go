@@ -181,23 +181,6 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 		return nil, nil
 	}
 
-	provider, err := NewProviderConfig(ctx, config, ProviderMap())
-	if err != nil {
-		return nil, err
-	}
-
-	// Omit sensitive keys from provider-specific config
-	providerConfig := make(map[string]interface{})
-	if provider != nil {
-		for k, v := range config.ProviderConfig {
-			providerConfig[k] = v
-		}
-
-		for _, k := range provider.SensitiveKeys() {
-			delete(providerConfig, k)
-		}
-	}
-
 	resp := &logical.Response{
 		Data: map[string]interface{}{
 			"oidc_discovery_url":     config.OIDCDiscoveryURL,
@@ -211,7 +194,6 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 			"jwks_url":               config.JWKSURL,
 			"jwks_ca_pem":            config.JWKSCAPEM,
 			"bound_issuer":           config.BoundIssuer,
-			"provider_config":        providerConfig,
 			"namespace_in_state":     config.NamespaceInState,
 		},
 	}
@@ -346,11 +328,6 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	case responseModeFormPost:
 	default:
 		return logical.ErrorResponse("invalid response_mode: %q", config.OIDCResponseMode), nil
-	}
-
-	// Validate provider_config
-	if _, err := NewProviderConfig(ctx, config, ProviderMap()); err != nil {
-		return logical.ErrorResponse("invalid provider_config: %s", err), nil
 	}
 
 	if err := storage.PutEntry(ctx, sourceName, config); err != nil {

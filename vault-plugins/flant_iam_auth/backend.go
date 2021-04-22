@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	rolePrefix string = "authMethodConfig/"
+	rolePrefix string = "authMethod/"
 )
 
 // Factory is used by framework
@@ -32,20 +32,23 @@ type flantIamAuthBackend struct {
 
 	l            sync.RWMutex
 	provider     *oidc.Provider
-	validator    *jwt.Validator
+	validators   map[string]*jwt.Validator
 	oidcRequests *cache.Cache
 
 	providerCtx              context.Context
 	providerCtxCancel        context.CancelFunc
 	authSourceStorageFactory pkg.PrefixStorageRequestFactory
+	authMethodStorageFactory pkg.PrefixStorageRequestFactory
 }
 
 func backend() *flantIamAuthBackend {
 	const authSourcePrefix = "authSource/"
+	const authMethodPrefix = "authMethod/"
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	//b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 	b.authSourceStorageFactory = pkg.NewPrefixStorageRequestFactory(authSourcePrefix)
+	b.authMethodStorageFactory = pkg.NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.Backend = &framework.Backend{
 		//AuthRenew:   b.pathLoginRenew,
@@ -63,6 +66,7 @@ func backend() *flantIamAuthBackend {
 			SealWrapStorage: []string{
 				"config",
 				authSourcePrefix,
+				authMethodPrefix,
 			},
 		},
 		Paths: framework.PathAppend(
@@ -71,6 +75,7 @@ func backend() *flantIamAuthBackend {
 				pathAuthMethod(b),
 				pathAuthSource(b),
 				pathAuthSourceList(b),
+				pathLogin(b),
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
@@ -107,7 +112,7 @@ func (b *flantIamAuthBackend) reset() {
 		b.provider.Done()
 	}
 	b.provider = nil
-	b.validator = nil
+	b.validators = make(map[string]*jwt.Validator)
 	b.l.Unlock()
 }
 
@@ -129,12 +134,12 @@ func (b *flantIamAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, er
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
-func (b *flantIamAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error) {
+func (b *flantIamAuthBackend) jwtValidator(methodName string, config *jwtConfig) (*jwt.Validator, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if b.validator != nil {
-		return b.validator, nil
+	if v, ok := b.validators[methodName]; ok {
+		return v, nil
 	}
 
 	var err error
@@ -161,9 +166,9 @@ func (b *flantIamAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, e
 		return nil, fmt.Errorf("JWT validator configuration error: %w", err)
 	}
 
-	b.validator = validator
+	b.validators[methodName] = validator
 
-	return b.validator, nil
+	return validator, nil
 }
 
 const (
