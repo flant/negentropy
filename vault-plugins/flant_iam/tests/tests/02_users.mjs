@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { genUserPayload, UserEndpointBuilder } from "./lib/user.mjs"
 import { API } from "./lib/api.mjs"
 
-describe("Users", function() {
+describe("Users", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
     const rootUserAPI = new API(rootClient, new UserEndpointBuilder())
@@ -135,12 +135,12 @@ describe("Users", function() {
         })
     })
 
-    describe("access", function() {
-        describe("when unauthenticated", function() {
+    describe("access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 
