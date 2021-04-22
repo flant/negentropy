@@ -63,19 +63,43 @@ describe("Tenants", function () {
     //     worder.clean()
     // })
 
-    it("responds with 404 on inexisting", async () => {
-        await root.read("no-such", { validateStatus: (s) => s === 404 })
+    describe("name data types", () => {
+        const invalidCases = [
+            {
+                title: "number allowed",
+                payload: { name: 0 },
+                validateStatus: (x) => x === 201,
+            },
+            {
+                title: "absent name field forbidden",
+                payload: {},
+                validateStatus: (x) => x === 400,
+            },
+            {
+                title: "empty string forbidden",
+                payload: { name: "" },
+                validateStatus: (x) => x === 400,
+            },
+            {
+                title: "array forbidden",
+                payload: { name: ["a"] },
+                validateStatus: (x) => x >= 400, // 500 is allowed
+            },
+            {
+                title: "object forbidden",
+                payload: { name: { a: 1 } },
+                validateStatus: (x) => x >= 400, // 500 is allowed
+            },
+        ]
+
+        invalidCases.forEach((x) =>
+            it(x.title, async () => {
+                await root.create(x.payload, { validateStatus: x.validateStatus })
+            }),
+        )
     })
 
-    it("cannot be created without name", async () => {
-        await root.create({}, expectStatus(400))
-    })
-
-    it("cannot be created with empty name", async () => {
-        await root.create({ name: "" }, expectStatus(400))
-    })
-
-    it("can be created with a name", async () => {
+    it("can be created", async () => {
         const payload = { name: worder.gen() }
 
         const { data: body } = await root.create(payload)
@@ -94,6 +118,10 @@ describe("Tenants", function () {
         const { data: tenant } = await root.read(id)
         expect(tenant.data).to.include.keys("name")
         expect(tenant.data.name).to.eq(payload.name)
+    })
+
+    it("responds with 404 on inexisting", async () => {
+        await root.read("no-such", { validateStatus: (s) => s === 404 })
     })
 
     it("can be updated", async () => {
