@@ -56,7 +56,6 @@ type backend struct {
 func (b *backend) paths() []*framework.Path {
 	tb := &tenantBackend{b}
 	return tb.paths()
-
 }
 
 type tenantBackend struct {
