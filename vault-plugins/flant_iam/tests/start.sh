@@ -3,7 +3,9 @@
 set -eou pipefail
 set -x
 
-env OS=linux make build
+pushd ..
+env OS=linux make build 
+popd
 
 docker stop dev-vault 2>/dev/null || true
 docker rm dev-vault 2>/dev/null || true
@@ -12,13 +14,13 @@ id=$(docker run \
   --cap-add=IPC_LOCK \
   -d \
   -p 8200:8200 \
-  -v "$(pwd)/build:/vault/plugins" \
-  -v "$(pwd)/tests/data:/vault/testdata" \
+  -v "$(pwd)/../build:/vault/plugins" \
+  -v "$(pwd)/data:/vault/testdata" \
   --name=dev-vault --rm \
   -e VAULT_API_ADDR=http://127.0.0.1:8200 \
   -e VAULT_ADDR=http://127.0.0.1:8200 \
   -e VAULT_TOKEN=root \
-  -e VAULT_LOG_LEVEL=info \
+  -e VAULT_LOG_LEVEL=debug \
   vault \
   server -dev -dev-plugin-dir=/vault/plugins -dev-root-token-id=root)
 

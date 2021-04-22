@@ -32,7 +32,7 @@ clean:
 
 fmt:
 	-@$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix
-	-@pushd tests && yarn run prettier --write ./**.js && popd
+	-@pushd tests && yarn run prettier --write ./tests/**.mjs && popd
 
 deps:
 	go mod tidy
