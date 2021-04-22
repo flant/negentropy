@@ -84,8 +84,14 @@ func (b *TokenController) handleConfigurationRead(ctx context.Context, req *logi
 	return &logical.Response{Data: data}, nil
 }
 
-func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	entry, err := logical.StorageEntryJSON("jwt/configuration", req.Data)
+func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	fields.Raw = req.Data
+	err := fields.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	entry, err := logical.StorageEntryJSON("jwt/configuration", fields.Raw)
 	if err != nil {
 		return nil, err
 	}

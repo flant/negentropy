@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	njwt "github.com/flant/negentropy/vault-plugins/lib/jwt"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -34,6 +35,8 @@ type flantIamAuthBackend struct {
 	providerCtxCancel        context.CancelFunc
 	authSourceStorageFactory PrefixStorageRequestFactory
 	authMethodStorageFactory PrefixStorageRequestFactory
+
+	tokenController *njwt.TokenController
 }
 
 func backend() *flantIamAuthBackend {
@@ -45,6 +48,8 @@ func backend() *flantIamAuthBackend {
 	b.authSourceStorageFactory = NewPrefixStorageRequestFactory(authSourcePrefix)
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
+	b.tokenController = njwt.NewTokenController()
+
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
@@ -55,6 +60,7 @@ func backend() *flantIamAuthBackend {
 				"login",
 				"oidc/auth_url",
 				"oidc/callback",
+				"jwks",
 				// Uncomment to mount simple UI handler for local development
 				// "ui",
 			},
@@ -74,6 +80,13 @@ func backend() *flantIamAuthBackend {
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
+			},
+			[]*framework.Path{
+				njwt.PathEnable(b.tokenController),
+				njwt.PathDisable(b.tokenController),
+				njwt.PathConfigure(b.tokenController),
+				njwt.PathJWKS(b.tokenController),
+				njwt.PathRotateKey(b.tokenController),
 			},
 			pathOIDC(b),
 		),
