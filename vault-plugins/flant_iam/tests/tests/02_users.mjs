@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { genUserPayload, UserEndpointBuilder } from "./lib/user.mjs"
 import { API } from "./lib/api.mjs"
 
-describe("Users", function () {
+describe("Users", function() {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
     const rootUserAPI = new API(rootClient, new UserEndpointBuilder())
@@ -135,12 +135,12 @@ describe("Users", function () {
         })
     })
 
-    describe("access", function () {
-        describe("when unauthenticated", function () {
+    describe("access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -170,7 +170,6 @@ describe("Users", function () {
                 const { data } = await rootUserAPI.create({
                     params,
                     payload,
-                    opts,
                 })
                 const uid = data.data.id
 
@@ -192,6 +191,7 @@ describe("Users", function () {
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
                 const { data } = await rootUserAPI.create({ params, payload })
+                const uid = data.data.id
                 await unauth.delete({
                     params: { ...params, user: uid },
                     opts,

@@ -80,7 +80,7 @@ export class API {
         })
     }
 
-    list({ params = {}, query = {}, opts = {} } = {}) {
+    list({ params = {}, query = { list: true }, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.collection(params, query)
         return this.client.get(endpoint, {
             ...expectStatus(200),
