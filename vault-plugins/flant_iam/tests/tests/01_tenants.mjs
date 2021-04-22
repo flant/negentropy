@@ -1,6 +1,11 @@
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantAPI } from "./lib/tenant.mjs"
+import {
+    genTenantPayload,
+    TenantAPI,
+    TenantEndpointBuilder,
+} from "./lib/tenant.mjs"
 import { expect } from "chai"
+import { API } from "./lib/api.mjs"
 
 describe("Tenants", function () {
     const rootClient = getClient(rootToken)

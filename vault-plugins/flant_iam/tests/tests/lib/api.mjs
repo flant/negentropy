@@ -1,4 +1,5 @@
 import { expectStatus } from "./client.mjs"
+import { join } from "path"
 
 class CRUD {
     constructor(client) {
@@ -18,6 +19,29 @@ class CRUD {
     }
 }
 
+export function stringifyQuery(q = {}) {
+    if (!q || Object.keys(q).length === 0) {
+        return ""
+    }
+    return "?" + new URLSearchParams(q).toString()
+}
+
+// Example class, not to be used
+export class ExampleEndpointBuilder {
+    constructor() {
+        this.prefix = "items"
+    }
+
+    one(p = {}, q = {}) {
+        return join(this.prefix, p.item) + stringifyQuery(q)
+    }
+
+    collection(p = {}, q = {}) {
+        return this.prefix + stringifyQuery(q)
+    }
+}
+
+
 export class API {
     constructor(client, endpointBuilder) {
         this.client = new CRUD(client)
@@ -25,7 +49,7 @@ export class API {
     }
 
     create({ params = {}, query = {}, payload, opts = {} } = {}) {
-        const endpoint = this.endpointBuilder.create(params, query)
+        const endpoint = this.endpointBuilder.collection(params, query)
         return this.client.post(endpoint, payload, {
             ...expectStatus(201),
             ...opts,
@@ -33,7 +57,7 @@ export class API {
     }
 
     read({ params = {}, query = {}, opts = {} } = {}) {
-        const endpoint = this.endpointBuilder.read(params, query)
+        const endpoint = this.endpointBuilder.one(params, query)
         return this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,
@@ -41,7 +65,7 @@ export class API {
     }
 
     update({ params = {}, query = {}, payload, opts = {} } = {}) {
-        const endpoint = this.endpointBuilder.update(params, query)
+        const endpoint = this.endpointBuilder.one(params, query)
         return this.client.post(endpoint, payload, {
             ...expectStatus(200),
             ...opts,
@@ -49,7 +73,7 @@ export class API {
     }
 
     delete({ params = {}, query = {}, opts = {} } = {}) {
-        const endpoint = this.endpointBuilder.delete(params, query)
+        const endpoint = this.endpointBuilder.one(params, query)
         return this.client.delete(endpoint, {
             ...expectStatus(204),
             ...opts,
@@ -57,7 +81,7 @@ export class API {
     }
 
     list({ params = {}, query = {}, opts = {} } = {}) {
-        const endpoint = this.endpointBuilder.list(params, query)
+        const endpoint = this.endpointBuilder.collection(params, query)
         return this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,

@@ -1,25 +1,14 @@
-import { API } from "./api.mjs"
+import { API, stringifyQuery } from "./api.mjs"
 import Faker from "faker"
+import { join } from "path"
 
 export class TenantEndpointBuilder {
-    create(p = {}, q = {}) {
-        return "/tenant"
+    one(p = {}, q = {}) {
+        return join("/tenant", p.tenant) + stringifyQuery(q)
     }
 
-    read(p = {}, q = {}) {
-        return `/tenant/${p.tenant}`
-    }
-
-    update(p = {}, q = {}) {
-        return `/tenant/${p.tenant}`
-    }
-
-    delete(p = {}, q = {}) {
-        return `/tenant/${p.tenant}`
-    }
-
-    list(p = {}, q = {}) {
-        return "/tenant?list=true"
+    collection(p = {}, q = {}) {
+        return "/tenant" + stringifyQuery(q)
     }
 }
 
@@ -33,19 +22,23 @@ export class TenantAPI {
     }
 
     read(id, opts) {
-        return this.api.read({ params: { tenant: id }, opts })
+        const params = { tenant: id }
+        return this.api.read({ params, opts })
     }
 
     update(id, payload, opts) {
-        return this.api.update({ params: { tenant: id }, payload, opts })
+        const params = { tenant: id }
+        return this.api.update({ params, payload, opts })
     }
 
     delete(id, opts) {
-        return this.api.delete({ params: { tenant: id }, opts })
+        const params = { tenant: id }
+        return this.api.delete({ params, opts })
     }
 
     list(opts) {
-        return this.api.list({ opts })
+        const query = { list: true }
+        return this.api.list({ query, opts })
     }
 }
 
