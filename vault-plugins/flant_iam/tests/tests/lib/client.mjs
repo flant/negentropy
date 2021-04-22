@@ -1,12 +1,27 @@
-const A = require("axios")
-const F = require("faker")
-const fs = require("fs")
-const path = require("path")
+import A from "axios"
+
+import fs from "fs"
+
+import path from "path"
 
 const baseUrl = "http://127.0.0.1:8200/v1/"
 const pluginPath = "flant_iam"
 
-function getClient(token) {
+function getSecondRootToken() {
+    const token = fs.readFileSync(path.resolve("./data/token"))
+    return token.toString().trim()
+}
+
+export const rootToken = "root"
+export const anotherToken = getSecondRootToken()
+
+export function expectStatus(expectedStatus) {
+    return {
+        validateStatus: (x) => x === expectedStatus,
+    }
+}
+
+export function getClient(token) {
     const baseURL = baseUrl + pluginPath
 
     const headers = {
@@ -21,48 +36,6 @@ function getClient(token) {
     const client = A.create({ baseURL, headers })
     client.interceptors.response.use(null, axiosErrFormatter)
     return client
-}
-
-function expectStatus(expectedStatus) {
-    return {
-        validateStatus: (x) => x === expectedStatus,
-    }
-}
-
-class Worder {
-    constructor() {
-        this.set = new Set()
-    }
-
-    gen(prefix = "") {
-        const word = F.lorem.word()
-        this.set.add(word)
-        // console.log("Worder gen", word)
-        return word
-    }
-
-    list() {
-        // console.log("Worder list", Array.from(this.set))
-        return Array.from(this.set)
-    }
-
-    clean() {
-        // console.log("Worder clean")
-        this.set = new Set()
-    }
-}
-
-function getSecondRootToken() {
-    const token = fs.readFileSync(path.resolve("./data/token"))
-    return token.toString().trim()
-}
-
-module.exports = {
-    getClient,
-    Worder,
-    expectStatus,
-    anotherToken: getSecondRootToken(),
-    rootToken: "root",
 }
 
 /**
