@@ -46,7 +46,7 @@ func backend() *flantIamAuthBackend {
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.Backend = &framework.Backend{
-		//AuthRenew:   b.pathLoginRenew,
+		AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
 		Help:        backendHelp,

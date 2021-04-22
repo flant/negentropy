@@ -109,7 +109,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 }
 
 func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	authMethodName := req.Auth.InternalData["authMethodConfig"].(string)
+	authMethodName := req.Auth.InternalData["flantIamAuthMethod"].(string)
 	if authMethodName == "" {
 		return nil, errors.New("failed to fetch role_name during renewal")
 	}
