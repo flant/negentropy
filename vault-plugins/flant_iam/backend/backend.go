@@ -37,49 +37,25 @@ func newBackend() logical.Backend {
 		BackendType: logical.TypeLogical,
 	}
 
-	tenants := &layerBackend{b}
-	km := &keyManager{
+	backendLayer := &layerBackend{b}
+
+	tenantKeys := &keyManager{
 		idField:   "tenant_id",
 		entryName: "tenant",
 	}
-	b.Paths = framework.PathAppend(tenants.paths(km))
+
+	userKeys := &keyManager{
+		idField:   "user_id",
+		entryName: "user",
+		parent:    tenantKeys,
+	}
+
+	b.Paths = framework.PathAppend(
+		backendLayer.paths(tenantKeys),
+		backendLayer.paths(userKeys),
+	)
 
 	return b
-}
-
-type keyManager struct {
-	// must never collide with any other field name
-	idField   string
-	entryName string
-	parent    *keyManager
-}
-
-func (km *keyManager) IDField() string {
-	return km.idField
-}
-
-func (km *keyManager) GenerateID() string {
-	return genUUID()
-}
-
-func (km *keyManager) EntryPattern() string {
-	p := km.entryName + framework.OptionalParamRegex(km.IDField())
-	if km.parent != nil {
-		return km.parent.EntryPattern() + "/" + p
-	}
-	return p
-}
-
-func (km *keyManager) ListPattern() string {
-	return km.listPattern() + "/?"
-}
-
-func (km *keyManager) listPattern() string {
-	p := km.entryName
-	if km.parent != nil {
-		return km.listPattern() + "/" + p
-	}
-	return p
 }
 
 type layerBackend struct {
