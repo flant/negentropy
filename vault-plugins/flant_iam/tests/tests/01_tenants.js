@@ -56,8 +56,11 @@ describe("Tenants", function () {
     const root = new Tenants(rootClient)
     const worder = new Worder()
 
-    function genTenantPayload() {
-        return { name: worder.gen() }
+    function genTenantPayload(override = {}) {
+        return {
+            name: worder.gen(),
+            ...override,
+        }
     }
 
     // afterEach("cleanup", async function () {
@@ -67,42 +70,48 @@ describe("Tenants", function () {
     //     worder.clean()
     // })
 
-    describe("name data types", () => {
-        const invalidCases = [
-            {
-                title: "number allowed",
-                payload: { name: 0 },
-                validateStatus: (x) => x === 201,
-            },
-            {
-                title: "absent name field forbidden",
-                payload: {},
-                validateStatus: (x) => x === 400,
-            },
-            {
-                title: "empty string forbidden",
-                payload: { name: "" },
-                validateStatus: (x) => x === 400,
-            },
-            {
-                title: "array forbidden",
-                payload: { name: ["a"] },
-                validateStatus: (x) => x >= 400, // 500 is allowed
-            },
-            {
-                title: "object forbidden",
-                payload: { name: { a: 1 } },
-                validateStatus: (x) => x >= 400, // 500 is allowed
-            },
-        ]
+    describe("payload", () => {
+        describe("name", () => {
+            const invalidCases = [
+                {
+                    title: "number allowed",
+                    payload: genTenantPayload({ name: 0 }),
+                    validateStatus: (x) => x === 201,
+                },
+                {
+                    title: "absent name field forbidden",
+                    payload: (() => {
+                        const p = genTenantPayload({})
+                        delete p.name
+                        return p
+                    })(),
+                    validateStatus: (x) => x === 400,
+                },
+                {
+                    title: "empty string forbidden",
+                    payload: genTenantPayload({ name: "" }),
+                    validateStatus: (x) => x === 400,
+                },
+                {
+                    title: "array forbidden",
+                    payload: genTenantPayload({ name: ["a"] }),
+                    validateStatus: (x) => x >= 400, // 500 is allowed
+                },
+                {
+                    title: "object forbidden",
+                    payload: genTenantPayload({ name: { a: 1 } }),
+                    validateStatus: (x) => x >= 400, // 500 is allowed
+                },
+            ]
 
-        invalidCases.forEach((x) =>
-            it(x.title, async () => {
-                await root.create(x.payload, {
-                    validateStatus: x.validateStatus,
-                })
-            }),
-        )
+            invalidCases.forEach((x) =>
+                it(x.title, async () => {
+                    await root.create(x.payload, {
+                        validateStatus: x.validateStatus,
+                    })
+                }),
+            )
+        })
     })
 
     it("can be created", async () => {
@@ -181,12 +190,27 @@ describe("Tenants", function () {
         expect(ids).to.include(id)
     })
 
-    describe("access", function() {
-        describe("when unauthenticated", function() {
+    describe("when does not exist", () => {
+        const opts = expectStatus(404)
+        it("cannot read, gets 404", async () => {
+            await root.read("no-such", opts)
+        })
+
+        it("cannot update, gets 404", async () => {
+            await root.update("no-such", genTenantPayload(), opts)
+        })
+
+        it("cannot delete, gets 404", async () => {
+            await root.delete("no-such", opts)
+        })
+    })
+
+    describe("access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -219,4 +243,3 @@ describe("Tenants", function () {
         }
     })
 })
-

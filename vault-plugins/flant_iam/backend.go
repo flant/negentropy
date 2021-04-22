@@ -80,6 +80,7 @@ func (b *backend) paths() []*framework.Path {
 				},
 			},
 		},
+
 		{
 			Pattern: "tenant/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -96,13 +97,26 @@ func (b *backend) paths() []*framework.Path {
 	}
 }
 
+// checkExistence checks for the existence.
+//
+// DO NOT USE IT IN THE logical.Backend#ExistenceCheck!
+// IT DOES NOT COMPLY WITH THE KEY-VALUE STORAGE LOGIC.
+func (b *backend) checkExistence(ctx context.Context, s logical.Storage, key string) (bool, error) {
+	out, err := s.Get(ctx, key)
+	if err != nil {
+		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
+	}
+	return out != nil, nil
+}
+
 func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Info("handleRead", "path", req.Path)
 	id := data.Get(tenantUUID).(string)
+	key := req.Path
 
 	// Decode the data
 	var rawData map[string]interface{}
-	fetchedData, err := req.Storage.Get(ctx, req.Path)
+	fetchedData, err := req.Storage.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -152,14 +166,28 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	successStatus := http.StatusOK
 	id := data.Get(tenantUUID).(string)
+	isCreating := false
+
 	if id == "" {
 		// the creation here
 		id = genUUID()
 		successStatus = http.StatusCreated
+		isCreating = true
 		b.Logger().Info("creating")
 	}
 
 	key := "tenant/" + id
+
+	exists, err := b.checkExistence(ctx, req.Storage, key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists && !isCreating {
+		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, key)
+		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
+		return resp, nil
+	}
+
 	b.Logger().Info("writing", "key", key)
 
 	name, ok := data.GetOk("name")
@@ -197,7 +225,17 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	key := req.Path
 	b.Logger().Info("handleDelete", "key", key)
 
-	err := req.Storage.Delete(ctx, key)
+	exists, err := b.checkExistence(ctx, req.Storage, key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, key)
+		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
+		return resp, nil
+	}
+
+	err = req.Storage.Delete(ctx, key)
 
 	return nil, err
 }
