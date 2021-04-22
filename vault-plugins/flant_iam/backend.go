@@ -54,6 +54,16 @@ type backend struct {
 }
 
 func (b *backend) paths() []*framework.Path {
+	tb := &tenantBackend{b}
+	return tb.paths()
+
+}
+
+type tenantBackend struct {
+	backend *backend
+}
+
+func (b tenantBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
 			// using optional param in order to cover creation endpoint with empty id
@@ -65,17 +75,17 @@ func (b *backend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				// POST, create or update
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleWrite,
+					Callback: b.backend.handleWrite,
 					Summary:  "Update the tenant by ID.",
 				},
 				// GET
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead,
+					Callback: b.backend.handleRead,
 					Summary:  "Retrieve the tenant by ID.",
 				},
 				// DELETE
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete,
+					Callback: b.backend.handleDelete,
 					Summary:  "Deletes the tenant by ID.",
 				},
 			},
@@ -89,7 +99,7 @@ func (b *backend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				// GET
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleList,
+					Callback: b.backend.handleList,
 					Summary:  "Lists all tenants IDs.",
 				},
 			},
@@ -97,21 +107,8 @@ func (b *backend) paths() []*framework.Path {
 	}
 }
 
-// checkExistence checks for the existence.
-//
-// DO NOT USE IT IN THE logical.Backend#ExistenceCheck!
-// IT DOES NOT COMPLY WITH THE KEY-VALUE STORAGE LOGIC.
-func (b *backend) checkExistence(ctx context.Context, s logical.Storage, key string) (bool, error) {
-	out, err := s.Get(ctx, key)
-	if err != nil {
-		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
-	}
-	return out != nil, nil
-}
-
 func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Info("handleRead", "path", req.Path)
-	id := data.Get(tenantUUID).(string)
 	key := req.Path
 
 	// Decode the data
@@ -121,16 +118,13 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, err
 	}
 	if fetchedData == nil {
-		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, id)
-		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
-		return resp, nil
+		return errNotFoundResponse(req, key), nil
 	}
 
 	if err := jsonutil.DecodeJSON(fetchedData.Value, &rawData); err != nil {
 		return nil, errwrap.Wrapf("json decoding failed: {{err}}", err)
 	}
 
-	// Generate the response
 	resp := &logical.Response{
 		Data: rawData,
 	}
@@ -149,8 +143,7 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, err
 	}
 	if fetchedData == nil {
-		resp := logical.ErrorResponse("No value in the list %v%v", req.MountPoint, "tenant")
-		return resp, nil
+		fetchedData = []string{}
 	}
 
 	// Generate the response
@@ -230,13 +223,10 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 	if !exists {
-		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, key)
-		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
-		return resp, nil
+		return errNotFoundResponse(req, key), nil
 	}
 
 	err = req.Storage.Delete(ctx, key)
-
 	return nil, err
 }
 
@@ -246,6 +236,23 @@ func genUUID() string {
 		id = genUUID()
 	}
 	return id
+}
+
+// checkExistence checks for the existence.
+//
+// DO NOT USE IT IN THE logical.Backend#ExistenceCheck! It does not comply with the key-value storage logic.
+func (b *backend) checkExistence(ctx context.Context, s logical.Storage, key string) (bool, error) {
+	out, err := s.Get(ctx, key)
+	if err != nil {
+		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
+	}
+	return out != nil, nil
+}
+
+func errNotFoundResponse(req *logical.Request, key string) *logical.Response {
+	errResp := logical.ErrorResponse("Not found %v%v", req.MountPoint, key)
+	resp, _ := logical.RespondWithStatusCode(errResp, req, http.StatusNotFound)
+	return resp
 }
 
 const commonHelp = `
