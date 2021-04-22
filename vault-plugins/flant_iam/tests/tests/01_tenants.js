@@ -94,7 +94,9 @@ describe("Tenants", function () {
 
         invalidCases.forEach((x) =>
             it(x.title, async () => {
-                await root.create(x.payload, { validateStatus: x.validateStatus })
+                await root.create(x.payload, {
+                    validateStatus: x.validateStatus,
+                })
             }),
         )
     })

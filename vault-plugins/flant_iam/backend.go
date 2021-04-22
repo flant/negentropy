@@ -67,8 +67,7 @@ func (b *backend) paths() []*framework.Path {
 					Callback: b.handleRead,
 					Summary:  "Retrieve the tenant by ID.",
 				},
-				// POST
-				// create + update
+				// POST, create or update
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWrite,
 					Summary:  "Update the tenant by ID.",
