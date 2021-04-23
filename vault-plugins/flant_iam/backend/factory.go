@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/key"
 )
 
 var _ logical.Factory = Factory
@@ -32,29 +34,27 @@ func newBackend() logical.Backend {
 		BackendType: logical.TypeLogical,
 	}
 
-	backendLayer := &layerBackend{b}
-
-	tenantKeys := &keyManager{
-		idField:   "tenant_id",
-		entryName: "tenant",
-	}
-
-	userKeys := &keyManager{idField: "user_id", entryName: "user", parent: tenantKeys}
-	projectKeys := &keyManager{idField: "project_id", entryName: "project", parent: tenantKeys}
-	serviceAccountKeys := &keyManager{idField: "service_account_id", entryName: "service_account", parent: tenantKeys}
-	groupKeys := &keyManager{idField: "group_id", entryName: "group", parent: tenantKeys}
-	roleKeys := &keyManager{idField: "role_id", entryName: "role", parent: tenantKeys}
+	tenantKeys := key.NewManager("tenant_id", "tenant")
 
 	b.Paths = framework.PathAppend(
-		backendLayer.paths(tenantKeys, TenantSchema{}),
-		backendLayer.paths(userKeys, UserSchema{}),
-		backendLayer.paths(projectKeys, ProjectSchema{}),
-		backendLayer.paths(serviceAccountKeys, ServiceAccountSchema{}),
-		backendLayer.paths(groupKeys, GroupSchema{}),
-		backendLayer.paths(roleKeys, RoleSchema{}),
+		layerBackendPaths(b, tenantKeys, &TenantSchema{}),
+		layerBackendPaths(b, tenantKeys.Child("user_id", "user"), &UserSchema{}),
+		layerBackendPaths(b, tenantKeys.Child("project_id", "project"), &ProjectSchema{}),
+		layerBackendPaths(b, tenantKeys.Child("service_account_id", "service_account"), &ServiceAccountSchema{}),
+		layerBackendPaths(b, tenantKeys.Child("group_id", "group"), &GroupSchema{}),
+		layerBackendPaths(b, tenantKeys.Child("role_id", "role"), &RoleSchema{}),
 	)
 
 	return b
+}
+
+func layerBackendPaths(b *framework.Backend, keyman *key.Manager, schema Schema) []*framework.Path {
+	bb := &layerBackend{
+		Backend: b,
+		keyman:  keyman,
+		schema:  schema,
+	}
+	return bb.paths()
 }
 
 const commonHelp = `

@@ -3,15 +3,33 @@ package backend
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
 )
+
+func genUUID() string {
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		id = genUUID()
+	}
+	return id
+}
+
+type uuidGenerator struct{}
+
+func (g *uuidGenerator) GenerateID() string {
+	return genUUID()
+}
 
 type Schema interface {
 	Fields() map[string]*framework.FieldSchema
 	Validate(*framework.FieldData) error
+	GenerateID() string
 }
 
-type TenantSchema struct{}
+type TenantSchema struct {
+	uuidGenerator
+}
 
 func (s TenantSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
@@ -32,7 +50,9 @@ func (s TenantSchema) Validate(data *framework.FieldData) error {
 	return nil
 }
 
-type UserSchema struct{}
+type UserSchema struct {
+	uuidGenerator
+}
 
 func (s UserSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
@@ -57,7 +77,9 @@ func (s UserSchema) Validate(data *framework.FieldData) error {
 	return nil // TODO
 }
 
-type ProjectSchema struct{}
+type ProjectSchema struct {
+	uuidGenerator
+}
 
 func (s ProjectSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
@@ -70,7 +92,9 @@ func (s ProjectSchema) Validate(data *framework.FieldData) error {
 	return nil // TODO
 }
 
-type ServiceAccountSchema struct{}
+type ServiceAccountSchema struct {
+	uuidGenerator
+}
 
 func (s ServiceAccountSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{}
@@ -80,7 +104,9 @@ func (s ServiceAccountSchema) Validate(data *framework.FieldData) error {
 	return nil // TODO
 }
 
-type GroupSchema struct{}
+type GroupSchema struct {
+	uuidGenerator
+}
 
 func (s GroupSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
@@ -93,7 +119,9 @@ func (s GroupSchema) Validate(data *framework.FieldData) error {
 	return nil // TODO
 }
 
-type RoleSchema struct{}
+type RoleSchema struct {
+	uuidGenerator
+}
 
 func (s RoleSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{

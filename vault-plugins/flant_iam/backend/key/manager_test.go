@@ -1,24 +1,15 @@
-package backend
+package key
 
 import "testing"
 
 func Test_nested_keyManeger(t *testing.T) {
-	parent := &keyManager{
+	parent := &Manager{
 		idField:   "pid",
 		entryName: "parent",
 	}
 
-	child := &keyManager{
-		idField:   "cid",
-		entryName: "child",
-		parent:    parent,
-	}
-
-	grandchild := &keyManager{
-		idField:   "gid",
-		entryName: "grandchild",
-		parent:    child,
-	}
+	child := parent.Child("cid", "child")
+	grandchild := child.Child("gid", "grandchild")
 
 	{
 		want := "parent(/(?P<pid>\\w(([\\w-.]+)?\\w)?))?"
