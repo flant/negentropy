@@ -39,8 +39,9 @@ func (s UserSchema) Fields() map[string]*framework.FieldSchema {
 		// TODO unique within tenant
 		"login": {Type: framework.TypeString, Description: "User login"},
 
-		// TODO unique within tenant ?
-		"email":        {Type: framework.TypeString, Description: "User email"},
+		// TODO unique globally or per tenant?
+		"email": {Type: framework.TypeString, Description: "User email"},
+
 		"mobile_phone": {Type: framework.TypeString, Description: "User mobile_phone"},
 
 		"first_name":   {Type: framework.TypeString, Description: "User first_name"},
@@ -60,13 +61,13 @@ type ProjectSchema struct{}
 
 func (s ProjectSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant
+		// TODO unique within tenant?
 		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
 	}
 }
 
 func (s ProjectSchema) Validate(data *framework.FieldData) error {
-	return nil
+	return nil // TODO
 }
 
 type ServiceAccountSchema struct{}
@@ -76,31 +77,31 @@ func (s ServiceAccountSchema) Fields() map[string]*framework.FieldSchema {
 }
 
 func (s ServiceAccountSchema) Validate(data *framework.FieldData) error {
-	return nil
+	return nil // TODO
 }
 
 type GroupSchema struct{}
 
 func (s GroupSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant
+		// TODO unique within tenant?
 		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
 	}
 }
 
 func (s GroupSchema) Validate(data *framework.FieldData) error {
-	return nil
+	return nil // TODO
 }
 
 type RoleSchema struct{}
 
 func (s RoleSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant
+		// TODO unique within tenant?
 		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
 	}
 }
 
 func (s RoleSchema) Validate(data *framework.FieldData) error {
-	return nil
+	return nil // TODO
 }
