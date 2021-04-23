@@ -83,10 +83,6 @@ describe("Tenants", function () {
         expect(tenant.data.name).to.eq(payload.name)
     })
 
-    it("responds with 404 on inexisting", async () => {
-        await root.read("no-such", { validateStatus: (s) => s === 404 })
-    })
-
     it("can be updated", async () => {
         const createPld = genTenantPayload()
         const updatePld = genTenantPayload()

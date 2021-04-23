@@ -8,12 +8,11 @@ const baseUrl = "http://127.0.0.1:8200/v1/"
 const pluginPath = "flant_iam"
 
 function getSecondRootToken() {
-    const token = fs.readFileSync(path.resolve("./data/token"))
+    const token = fs.readFileSync(path.resolve(__dirname, "./data/token"))
     return token.toString().trim()
 }
 
 export const rootToken = "root"
-export const anotherToken = getSecondRootToken()
 
 export function expectStatus(expectedStatus) {
     return {

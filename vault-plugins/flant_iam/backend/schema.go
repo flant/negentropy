@@ -31,7 +31,7 @@ type UserSchema struct{}
 
 func (s UserSchema) Fields() map[string]*framework.FieldSchema {
 	return map[string]*framework.FieldSchema{
-		"login":             {Type: framework.TypeString, Description: "User login"},
+		"login":             {Type: framework.TypeString, Description: "User login"}, // TODO unique within tenant
 		"first_name":        {Type: framework.TypeString, Description: "User first_name"},
 		"last_name":         {Type: framework.TypeString, Description: "User last_name"},
 		"display_name":      {Type: framework.TypeString, Description: "User display_name"},
@@ -44,4 +44,44 @@ func (s UserSchema) Fields() map[string]*framework.FieldSchema {
 
 func (s UserSchema) Validate(data *framework.FieldData) error {
 	return nil // TODO
+}
+
+type ProjectSchema struct{}
+
+func (s ProjectSchema) Fields() map[string]*framework.FieldSchema {
+	return map[string]*framework.FieldSchema{}
+}
+
+func (s ProjectSchema) Validate(data *framework.FieldData) error {
+	return nil
+}
+
+type ServiceAccountSchema struct{}
+
+func (s ServiceAccountSchema) Fields() map[string]*framework.FieldSchema {
+	return map[string]*framework.FieldSchema{}
+}
+
+func (s ServiceAccountSchema) Validate(data *framework.FieldData) error {
+	return nil
+}
+
+type GroupSchema struct{}
+
+func (s GroupSchema) Fields() map[string]*framework.FieldSchema {
+	return map[string]*framework.FieldSchema{}
+}
+
+func (s GroupSchema) Validate(data *framework.FieldData) error {
+	return nil
+}
+
+type RoleSchema struct{}
+
+func (s RoleSchema) Fields() map[string]*framework.FieldSchema {
+	return map[string]*framework.FieldSchema{}
+}
+
+func (s RoleSchema) Validate(data *framework.FieldData) error {
+	return nil
 }
