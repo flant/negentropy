@@ -18,7 +18,12 @@ type layerBackend struct {
 
 func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
 	fields := schema.Fields()
-	fields[km.IDField()] = &framework.FieldSchema{Type: framework.TypeString, Description: "ID of a " + km.entryName}
+
+	// adding the field to make it accessible within handlers
+	fields[km.IDField()] = &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Description: "ID of a " + km.entryName,
+	}
 
 	return []*framework.Path{
 		{

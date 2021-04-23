@@ -37,22 +37,6 @@ export function genUserPayload(override = {}) {
     }
 }
 
-export function genProjectPayload(override = {}) {
-    return {
-        identifier: Faker.internet.userName(),
-        ...override,
-    }
-}
-
-export function genGroupPayload(override = {}) {
-    return {
-        name: Faker.lorem.word(),
-        // users,
-        // groups,
-        // serviceAccounts
-        ...override,
-    }
-}
 
 export function genServiceAccountPayload(override = {}) {
     return {
@@ -63,9 +47,27 @@ export function genServiceAccountPayload(override = {}) {
     }
 }
 
+export function genProjectPayload(override = {}) {
+    return {
+        identifier: Faker.internet.userName(),
+        ...override,
+    }
+}
+
+export function genGroupPayload(override = {}) {
+    return {
+        identifier: Faker.lorem.word(),
+        // users,
+        // groups,
+        // serviceAccounts
+        ...override,
+    }
+}
+
+
 export function genRolePayload(override = {}) {
     return {
-        name: Faker.lorem.word(),
+        identifier: Faker.lorem.word(),
         // users,
         // groups,
         // serviceAccounts

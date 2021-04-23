@@ -1,11 +1,6 @@
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import {
-    genTenantPayload,
-    TenantAPI,
-    TenantEndpointBuilder,
-} from "./lib/tenant.mjs"
+import { genTenantPayload, TenantAPI } from "./lib/tenant.mjs"
 import { expect } from "chai"
-import { API } from "./lib/api.mjs"
 
 describe("Tenants", function () {
     const rootClient = getClient(rootToken)
@@ -19,35 +14,35 @@ describe("Tenants", function () {
     // })
 
     describe("payload", () => {
-        describe("name", () => {
+        describe("identifier", () => {
             const invalidCases = [
                 {
                     title: "number allowed",
-                    payload: genTenantPayload({ name: 0 }),
+                    payload: genTenantPayload({ identifier: 100 }),
                     validateStatus: (x) => x === 201,
                 },
                 {
                     title: "absent name field forbidden",
                     payload: (() => {
                         const p = genTenantPayload({})
-                        delete p.name
+                        delete p.identifier
                         return p
                     })(),
                     validateStatus: (x) => x === 400,
                 },
                 {
                     title: "empty string forbidden",
-                    payload: genTenantPayload({ name: "" }),
-                    validateStatus: (x) => x === 400,
+                    payload: genTenantPayload({ identifier: "" }),
+                    validateStatus: (x) => x >= 400, // 500 is allowed
                 },
                 {
                     title: "array forbidden",
-                    payload: genTenantPayload({ name: ["a"] }),
+                    payload: genTenantPayload({ identifier: ["a"] }),
                     validateStatus: (x) => x >= 400, // 500 is allowed
                 },
                 {
                     title: "object forbidden",
-                    payload: genTenantPayload({ name: { a: 1 } }),
+                    payload: genTenantPayload({ identifier: { a: 1 } }),
                     validateStatus: (x) => x >= 400, // 500 is allowed
                 },
             ]
@@ -79,8 +74,7 @@ describe("Tenants", function () {
         const id = body.data.id
 
         const { data: tenant } = await root.read(id)
-        expect(tenant.data).to.include.keys("name")
-        expect(tenant.data.name).to.eq(payload.name)
+        expect(tenant.data).to.deep.eq(payload)
     })
 
     it("can be updated", async () => {
@@ -98,8 +92,7 @@ describe("Tenants", function () {
         const { data: body3 } = await root.read(id)
         const tenant = body3.data
 
-        expect(tenant).to.include.all.keys("name")
-        expect(tenant.name).to.eq(updatePld.name)
+        expect(tenant).to.deep.eq(updatePld)
     })
 
     it("can be deleted", async () => {

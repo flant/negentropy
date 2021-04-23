@@ -50,6 +50,8 @@ function axiosErrFormatter(err) {
     // Log and throw further
     const sent = err.request.method + " " + err.request.path
     const status = `STATUS: ${err.response.status}`
+    const sentBody = err.response.config.data ? JSON.stringify(JSON.parse(err.response.config.data), null, 2)
+        : ""
     const body = err.response.data
         ? JSON.stringify(err.response.data, null, 2)
         : ""
@@ -62,7 +64,7 @@ function axiosErrFormatter(err) {
 
     const msg = [
         "\n",
-        prefixize("     →  ", sent),
+        prefixize("     →  ", [sent, sentBody].join("\n")),
         "",
         prefixize("     ←  ", [status, body].join("\n")),
     ].join("\n")
