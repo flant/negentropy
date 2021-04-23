@@ -44,7 +44,7 @@ export class TenantAPI {
 
 export function genTenantPayload(override = {}) {
     return {
-        name: Faker.lorem.word(),
+        identifier: Faker.internet.domainWord(),
         ...override,
     }
 }

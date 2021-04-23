@@ -8,12 +8,11 @@ const baseUrl = "http://127.0.0.1:8200/v1/"
 const pluginPath = "flant_iam"
 
 function getSecondRootToken() {
-    const token = fs.readFileSync(path.resolve("./data/token"))
+    const token = fs.readFileSync(path.resolve(__dirname, "./data/token"))
     return token.toString().trim()
 }
 
 export const rootToken = "root"
-export const anotherToken = getSecondRootToken()
 
 export function expectStatus(expectedStatus) {
     return {
@@ -51,6 +50,8 @@ function axiosErrFormatter(err) {
     // Log and throw further
     const sent = err.request.method + " " + err.request.path
     const status = `STATUS: ${err.response.status}`
+    const sentBody = err.response.config.data ? JSON.stringify(JSON.parse(err.response.config.data), null, 2)
+        : ""
     const body = err.response.data
         ? JSON.stringify(err.response.data, null, 2)
         : ""
@@ -63,7 +64,7 @@ function axiosErrFormatter(err) {
 
     const msg = [
         "\n",
-        prefixize("     →  ", sent),
+        prefixize("     →  ", [sent, sentBody].join("\n")),
         "",
         prefixize("     ←  ", [status, body].join("\n")),
     ].join("\n")
