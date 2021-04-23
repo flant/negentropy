@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/hashicorp/errwrap"
@@ -15,9 +14,19 @@ import (
 
 type layerBackend struct {
 	logical.Backend
-
 	keyman *key.Manager
 	schema Schema
+	sender KafkaSender
+}
+
+func layerBackendPaths(b *framework.Backend, keyman *key.Manager, schema Schema, sender KafkaSender) []*framework.Path {
+	bb := &layerBackend{
+		Backend: b,
+		keyman:  keyman,
+		schema:  schema,
+		sender:  sender,
+	}
+	return bb.paths()
 }
 
 func (b layerBackend) paths() []*framework.Path {
@@ -66,29 +75,155 @@ func (b layerBackend) paths() []*framework.Path {
 	}
 }
 
+func getKey(sch Schema, path, id string) (string, bool) {
+	isCreating := id == ""
+	if isCreating {
+		key := path + "/" + sch.GenerateID()
+		return key, isCreating
+	}
+	return path, isCreating
+}
+
+func (b *layerBackend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	// creating or updating?
+	id := data.Get(b.keyman.IDField()).(string)
+	key, isCreating := getKey(b.schema, req.Path, id)
+	repo := Repository{b.schema}
+
+	// Validation
+
+	// TODO: validation should depend on the storage
+	//      validate field uniqueness
+	//      validate resource_version
+
+	_, err := repo.Get(ctx, req.Storage, key)
+	if err != nil && err != ErrNotFound {
+		return nil, err
+	}
+
+	isUpdating := !isCreating
+	if isUpdating && err == ErrNotFound {
+		// nothing to update
+		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, key)
+		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
+		return resp, nil
+	}
+
+	b.Logger().Debug("writing", "key", key)
+
+	err = b.schema.Validate(data)
+	if err != nil {
+		return nil, &logical.StatusBadRequest{Err: err.Error()}
+	}
+
+	// Storing
+	input, err := b.schema.ParseData(data)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO resource version
+	// if stored.Version() > input.Version() {
+	//	return nil, &logical.StatusBadRequest{Err: "input resource version is older than stored one"}
+	// }
+
+	err = repo.Put(ctx, req.Storage, key, input)
+	if err != nil {
+		return nil, err
+	}
+
+	message := &Message{
+		Meta: Meta{
+			Type: b.schema.Type(),
+			Id:   data.Get(b.keyman.IDField()).(string),
+			Key:  key,
+		},
+		Data: input,
+	}
+
+	err = b.sender.Send(ctx, message, b.schema.SyncTopics())
+	if err != nil {
+		b.Logger().Warn("cannot send data to broker", "key", key, "error", err)
+	}
+
+	// Response
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"id": id,
+		},
+	}
+
+	successStatus := http.StatusOK
+	if isCreating {
+		successStatus = http.StatusCreated
+	}
+	return logical.RespondWithStatusCode(resp, req, successStatus)
+}
+
+func (b *layerBackend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	key := req.Path
+	repo := Repository{b.schema}
+	b.Logger().Debug("handleDelete", "key", key)
+
+	// Ensure it exists
+	stored, err := repo.Get(ctx, req.Storage, key)
+
+	if err == ErrNotFound {
+		// nothing to update
+		return errNotFoundResponse(req, key), nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Deletion
+
+	// TODO: cascade deletion
+
+	err = req.Storage.Delete(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	message := &Message{
+		Meta: Meta{
+			Type: b.schema.Type(),
+			Id:   data.Get(b.keyman.IDField()).(string),
+			Key:  key,
+		},
+		Data: stored,
+	}
+
+	// TODO: Real kafka
+	err = b.sender.Delete(ctx, message, b.schema.SyncTopics())
+	return nil, err
+}
+
 func (b *layerBackend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("handleRead", "path", req.Path)
 	key := req.Path
 
 	// Reading
 
-	var rawData map[string]interface{}
-	fetchedData, err := req.Storage.Get(ctx, key)
+	var raw map[string]interface{}
+	fetched, err := req.Storage.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 
 	// Response
 
-	if fetchedData == nil {
+	if fetched == nil {
 		return errNotFoundResponse(req, key), nil
 	}
 
-	if err := jsonutil.DecodeJSON(fetchedData.Value, &rawData); err != nil {
+	if err := jsonutil.DecodeJSON(fetched.Value, &raw); err != nil {
 		return nil, errwrap.Wrapf("json decoding failed: {{err}}", err)
 	}
 	resp := &logical.Response{
-		Data: rawData,
+		Data: raw,
 	}
 
 	return resp, nil
@@ -119,106 +254,6 @@ func (b *layerBackend) handleList(ctx context.Context, req *logical.Request, dat
 	}
 
 	return resp, nil
-}
-
-func (b *layerBackend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// creating or updating?
-
-	id := data.Get(b.keyman.IDField()).(string)
-	successStatus := http.StatusOK
-	isCreating := false
-	key := req.Path
-
-	if id == "" {
-		// the creation here
-		id = b.schema.GenerateID()
-		key = req.Path + "/" + id
-		successStatus = http.StatusCreated
-		isCreating = true
-		b.Logger().Debug("creating")
-	}
-
-	// Validation
-
-	// TODO: validation should depend on the storage
-	//      validate field uniqueness
-	//      validate resource_version
-
-	exists, err := checkExistence(ctx, req.Storage, key)
-	if err != nil {
-		return nil, err
-	}
-	if !exists && !isCreating {
-		errResp := logical.ErrorResponse("No value at %v%v", req.MountPoint, key)
-		resp, _ := logical.RespondWithStatusCode(errResp, req, 404)
-		return resp, nil
-	}
-
-	b.Logger().Debug("writing", "key", key)
-
-	err = b.schema.Validate(data)
-	if err != nil {
-		return nil, &logical.StatusBadRequest{Err: err.Error()}
-	}
-
-	// Storing
-
-	buf, err := json.Marshal(req.Data)
-	if err != nil {
-		return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
-	}
-
-	entry := &logical.StorageEntry{
-		Key:   key,
-		Value: buf,
-	}
-	// TODO send to kafka
-	err = req.Storage.Put(ctx, entry)
-	if err != nil {
-		return nil, err
-	}
-
-	// Response
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"id": id,
-		},
-	}
-	return logical.RespondWithStatusCode(resp, req, successStatus)
-}
-
-func (b *layerBackend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	key := req.Path
-	b.Logger().Debug("handleDelete", "key", key)
-
-	// Validation
-
-	exists, err := checkExistence(ctx, req.Storage, key)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return errNotFoundResponse(req, key), nil
-	}
-
-	// Deletion
-
-	// TODO: cascade deletion
-	// TODO send to kafka about every deletion
-	err = req.Storage.Delete(ctx, key)
-	return nil, err
-}
-
-// checkExistence checks for the existence.
-//
-// DO NOT USE IT IN THE logical.Backend#ExistenceCheck! It does not comply with the key-value storage logic.
-func checkExistence(ctx context.Context, storage logical.Storage, key string) (bool, error) {
-	out, err := storage.Get(ctx, key)
-	if err != nil {
-		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
-	}
-	return out != nil, nil
 }
 
 func errNotFoundResponse(req *logical.Request, key string) *logical.Response {

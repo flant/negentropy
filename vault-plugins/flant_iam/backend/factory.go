@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -19,7 +20,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
 
-	b := newBackend()
+	b := newBackend(conf)
 
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
@@ -28,35 +29,48 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend() logical.Backend {
+func newBackend(conf *logical.BackendConfig) logical.Backend {
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 	}
+	var (
+		tenantKeys         = key.NewManager("tenant_id", "tenant")
+		userKeys           = tenantKeys.Child("user_id", "user")
+		projectKeys        = tenantKeys.Child("project_id", "project")
+		serviceAccountKeys = tenantKeys.Child("service_account_id", "service_account")
+		groupKeys          = tenantKeys.Child("group_id", "group")
+		roleKeys           = tenantKeys.Child("role_id", "role")
+	)
 
-	tenantKeys := key.NewManager("tenant_id", "tenant")
+	sender := FakeKafka{conf.Logger}
 
 	b.Paths = framework.PathAppend(
-		layerBackendPaths(b, tenantKeys, &TenantSchema{}),
-		layerBackendPaths(b, tenantKeys.Child("user_id", "user"), &UserSchema{}),
-		layerBackendPaths(b, tenantKeys.Child("project_id", "project"), &ProjectSchema{}),
-		layerBackendPaths(b, tenantKeys.Child("service_account_id", "service_account"), &ServiceAccountSchema{}),
-		layerBackendPaths(b, tenantKeys.Child("group_id", "group"), &GroupSchema{}),
-		layerBackendPaths(b, tenantKeys.Child("role_id", "role"), &RoleSchema{}),
+		layerBackendPaths(b, tenantKeys, &TenantSchema{}, sender),
+		layerBackendPaths(b, userKeys, &UserSchema{}, sender),
+		layerBackendPaths(b, projectKeys, &ProjectSchema{}, sender),
+		layerBackendPaths(b, serviceAccountKeys, &ServiceAccountSchema{}, sender),
+		layerBackendPaths(b, groupKeys, &GroupSchema{}, sender),
+		layerBackendPaths(b, roleKeys, &RoleSchema{}, sender),
 	)
 
 	return b
 }
 
-func layerBackendPaths(b *framework.Backend, keyman *key.Manager, schema Schema) []*framework.Path {
-	bb := &layerBackend{
-		Backend: b,
-		keyman:  keyman,
-		schema:  schema,
-	}
-	return bb.paths()
-}
-
 const commonHelp = `
 IAM API here
 `
+
+type FakeKafka struct {
+	logger log.Logger
+}
+
+func (f FakeKafka) Send(ctx context.Context, marshaller EntityMarshaller, topics []Topic) error {
+	f.logger.Debug("sending to store", "key", marshaller.Key())
+	return nil
+}
+
+func (f FakeKafka) Delete(ctx context.Context, marshaller EntityMarshaller, topics []Topic) error {
+	f.logger.Debug("sending to delete", "key", marshaller.Key())
+	return nil
+}

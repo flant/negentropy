@@ -1,11 +1,21 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/hashicorp/vault/sdk/logical"
 )
+
+type uuidGenerator struct{}
+
+func (g *uuidGenerator) GenerateID() string {
+	return genUUID()
+}
 
 func genUUID() string {
 	id, err := uuid.GenerateUUID()
@@ -15,121 +25,52 @@ func genUUID() string {
 	return id
 }
 
-type uuidGenerator struct{}
-
-func (g *uuidGenerator) GenerateID() string {
-	return genUUID()
-}
-
+// Schema contains specific entity type data
 type Schema interface {
+	Type() string
 	Fields() map[string]*framework.FieldSchema
 	Validate(*framework.FieldData) error
 	GenerateID() string
+
+	SyncTopics() []Topic
+	ParseEntry(*logical.StorageEntry) (Data, error)
+	ParseData(data *framework.FieldData) (Data, error)
 }
 
-type TenantSchema struct {
-	uuidGenerator
+var ErrNotFound = fmt.Errorf("not found")
+
+type Repository struct {
+	schema Schema
 }
 
-func (s TenantSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant
-		"identifier": {
-			Type:        framework.TypeNameString,
-			Description: "Identifier for humans and machines",
-			Required:    true, // seems to work for doc, not validation
-		},
+func (r *Repository) Put(ctx context.Context, storage logical.Storage, key string, data Data) error {
+	buf, err := jsonutil.EncodeJSON(data)
+	if err != nil {
+		return errwrap.Wrapf("json encoding failed: {{err}}", err)
 	}
-}
 
-func (s TenantSchema) Validate(data *framework.FieldData) error {
-	name, ok := data.GetOk("identifier")
-	if !ok || len(name.(string)) == 0 {
-		return fmt.Errorf("tenant identifier must not be empty")
+	entry := &logical.StorageEntry{
+		Key:   key,
+		Value: buf,
 	}
-	return nil
+
+	err = storage.Put(ctx, entry)
+	return err
 }
 
-type UserSchema struct {
-	uuidGenerator
-}
-
-func (s UserSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant
-		"login": {Type: framework.TypeString, Description: "User login"},
-
-		// TODO unique globally or per tenant?
-		"email": {Type: framework.TypeString, Description: "User email"},
-
-		"mobile_phone": {Type: framework.TypeString, Description: "User mobile_phone"},
-
-		"first_name":   {Type: framework.TypeString, Description: "User first_name"},
-		"last_name":    {Type: framework.TypeString, Description: "User last_name"},
-		"display_name": {Type: framework.TypeString, Description: "User display_name"},
-
-		"additional_emails": {Type: framework.TypeCommaStringSlice, Description: "User additional_emails"},
-		"additional_phones": {Type: framework.TypeCommaStringSlice, Description: "User additional_phones"},
+func (r *Repository) Get(ctx context.Context, storage logical.Storage, key string) (Data, error) {
+	entry, err := storage.Get(ctx, key)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func (s UserSchema) Validate(data *framework.FieldData) error {
-	return nil // TODO
-}
-
-type ProjectSchema struct {
-	uuidGenerator
-}
-
-func (s ProjectSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant?
-		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
+	if entry == nil {
+		return nil, ErrNotFound
 	}
-}
 
-func (s ProjectSchema) Validate(data *framework.FieldData) error {
-	return nil // TODO
-}
-
-type ServiceAccountSchema struct {
-	uuidGenerator
-}
-
-func (s ServiceAccountSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{}
-}
-
-func (s ServiceAccountSchema) Validate(data *framework.FieldData) error {
-	return nil // TODO
-}
-
-type GroupSchema struct {
-	uuidGenerator
-}
-
-func (s GroupSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant?
-		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
+	data, err := r.schema.ParseEntry(entry)
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (s GroupSchema) Validate(data *framework.FieldData) error {
-	return nil // TODO
-}
-
-type RoleSchema struct {
-	uuidGenerator
-}
-
-func (s RoleSchema) Fields() map[string]*framework.FieldSchema {
-	return map[string]*framework.FieldSchema{
-		// TODO unique within tenant?
-		"identifier": {Type: framework.TypeNameString, Description: "Identifier for humans and machines"},
-	}
-}
-
-func (s RoleSchema) Validate(data *framework.FieldData) error {
-	return nil // TODO
+	return data, nil
 }
