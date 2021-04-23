@@ -59,15 +59,19 @@ func (b layerBackend) paths(km *keyManager, schema Schema) []*framework.Path {
 
 func (b *layerBackend) handleRead(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Info("handleRead", "path", req.Path)
+		b.Logger().Debug("handleRead", "path", req.Path)
 		key := req.Path
 
-		// Decode the data
+		// Reading
+
 		var rawData map[string]interface{}
 		fetchedData, err := req.Storage.Get(ctx, key)
 		if err != nil {
 			return nil, err
 		}
+
+		// Response
+
 		if fetchedData == nil {
 			return errNotFoundResponse(req, key), nil
 		}
@@ -75,7 +79,6 @@ func (b *layerBackend) handleRead(km *keyManager, schema Schema) framework.Opera
 		if err := jsonutil.DecodeJSON(fetchedData.Value, &rawData); err != nil {
 			return nil, errwrap.Wrapf("json decoding failed: {{err}}", err)
 		}
-
 		resp := &logical.Response{
 			Data: rawData,
 		}
@@ -88,9 +91,10 @@ func (b *layerBackend) handleRead(km *keyManager, schema Schema) framework.Opera
 func (b *layerBackend) handleList(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := req.Path
-		b.Logger().Info("handleList", "key", key)
+		b.Logger().Debug("handleList", "key", key)
 
-		// Decode the data
+		// Reading
+
 		fetchedData, err := req.Storage.List(ctx, key)
 		if err != nil {
 			return nil, err
@@ -99,7 +103,9 @@ func (b *layerBackend) handleList(km *keyManager, schema Schema) framework.Opera
 			fetchedData = []string{}
 		}
 
-		// Generate the response
+		// Response
+
+		// TODO the list can contain more data
 		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"ids": fetchedData,
@@ -112,6 +118,8 @@ func (b *layerBackend) handleList(km *keyManager, schema Schema) framework.Opera
 
 func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// creating or updating?
+
 		id := data.Get(km.IDField()).(string)
 		successStatus := http.StatusOK
 		isCreating := false
@@ -123,8 +131,14 @@ func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.Oper
 			key = req.Path + "/" + id
 			successStatus = http.StatusCreated
 			isCreating = true
-			b.Logger().Info("creating")
+			b.Logger().Debug("creating")
 		}
+
+		// Validation
+
+		// TODO: validation should depend on the storage
+		//      validate field uniqueness
+		//      validate resource_version
 
 		exists, err := checkExistence(ctx, req.Storage, key)
 		if err != nil {
@@ -136,14 +150,15 @@ func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.Oper
 			return resp, nil
 		}
 
-		b.Logger().Info("writing", "key", key)
+		b.Logger().Debug("writing", "key", key)
 
 		err = schema.Validate(data)
 		if err != nil {
 			return nil, &logical.StatusBadRequest{Err: err.Error()}
 		}
 
-		// JSON encode the data
+		// Storing
+
 		buf, err := json.Marshal(req.Data)
 		if err != nil {
 			return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
@@ -153,10 +168,13 @@ func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.Oper
 			Key:   key,
 			Value: buf,
 		}
+		// TODO send to kafka
 		err = req.Storage.Put(ctx, entry)
 		if err != nil {
 			return nil, err
 		}
+
+		// Response
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
@@ -170,7 +188,9 @@ func (b *layerBackend) handleWrite(km *keyManager, schema Schema) framework.Oper
 func (b *layerBackend) handleDelete(km *keyManager, schema Schema) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := req.Path
-		b.Logger().Info("handleDelete", "key", key)
+		b.Logger().Debug("handleDelete", "key", key)
+
+		// Validation
 
 		exists, err := checkExistence(ctx, req.Storage, key)
 		if err != nil {
@@ -180,6 +200,10 @@ func (b *layerBackend) handleDelete(km *keyManager, schema Schema) framework.Ope
 			return errNotFoundResponse(req, key), nil
 		}
 
+		// Deletion
+
+		// TODO: cascade deletion
+		// TODO send to kafka about every deletion
 		err = req.Storage.Delete(ctx, key)
 		return nil, err
 	}
