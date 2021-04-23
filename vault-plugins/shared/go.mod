@@ -1,6 +1,6 @@
-module github.com/flant/negentropy/vault-plugins/lib
+module github.com/flant/negentropy/vault-plugins/shared
 
-go 1.14
+go 1.15
 
 require (
 	github.com/hashicorp/go-hclog v0.14.1 // indirect

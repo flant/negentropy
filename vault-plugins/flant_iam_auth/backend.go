@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	njwt "github.com/flant/negentropy/vault-plugins/lib/jwt"
+	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/vault/sdk/framework"
