@@ -6,12 +6,12 @@ import (
 )
 
 const (
-	TenantType = "tenant"
+	TenantType = "tenant" // also, memdb schema name
 	TenantPK   = "id"
 )
 
 type Tenant struct {
-	Id         string `json:"id"`
+	Id         string `json:"id"` // TenantPK
 	Identifier string `json:"identifier"`
 }
 
@@ -26,8 +26,8 @@ func (t *Tenant) Unmarshal(data []byte) error {
 
 func TenantSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{Tables: map[string]*memdb.TableSchema{
-		"tenant": {
-			Name: "tenant",
+		TenantType: {
+			Name: TenantType,
 			Indexes: map[string]*memdb.IndexSchema{
 				TenantPK: {
 					Name:   TenantPK,
@@ -47,9 +47,4 @@ func TenantSchema() *memdb.DBSchema {
 			},
 		},
 	}}
-}
-
-type Marshaller interface {
-	Marshal(bool) ([]byte, error)
-	Unmarshal([]byte) error
 }
