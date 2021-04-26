@@ -2,7 +2,7 @@ import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genTenantPayload, TenantAPI } from "./lib/tenant.mjs"
 import { expect } from "chai"
 
-describe("Tenants", function () {
+describe("Tenants", function() {
     const rootClient = getClient(rootToken)
     const root = new TenantAPI(rootClient)
 
@@ -74,7 +74,29 @@ describe("Tenants", function () {
         const id = body.data.id
 
         const { data: tenant } = await root.read(id)
-        expect(tenant.data).to.deep.eq(payload)
+        expect(tenant.data).to.deep.eq({ ...payload, id })
+    })
+
+    it("can be read by id", async () => {
+        const payload1 = genTenantPayload()
+        const payload2 = genTenantPayload()
+        const payload3 = genTenantPayload()
+
+        const { data: body1 } = await root.create(payload1)
+        const id1 = body1.data.id
+        const { data: body2 } = await root.create(payload2)
+        const id2 = body2.data.id
+        const { data: body3 } = await root.create(payload3)
+        const id3 = body3.data.id
+
+
+        const { data: resp1 } = await root.read(id1)
+        const { data: resp2 } = await root.read(id2)
+        const { data: resp3 } = await root.read(id3)
+
+        expect(resp1.data).to.deep.eq({ ...payload1, id: id1 })
+        expect(resp2.data).to.deep.eq({ ...payload2, id: id2 })
+        expect(resp3.data).to.deep.eq({ ...payload3, id: id3 })
     })
 
     it("can be updated", async () => {
@@ -92,7 +114,7 @@ describe("Tenants", function () {
         const { data: body3 } = await root.read(id)
         const tenant = body3.data
 
-        expect(tenant).to.deep.eq(updatePld)
+        expect(tenant).to.deep.eq({ ...updatePld, id })
     })
 
     it("can be deleted", async () => {
@@ -142,12 +164,12 @@ describe("Tenants", function () {
         })
     })
 
-    describe("access", function () {
-        describe("when unauthenticated", function () {
+    describe("access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 

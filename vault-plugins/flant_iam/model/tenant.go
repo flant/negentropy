@@ -29,18 +29,18 @@ func TenantSchema() *memdb.DBSchema {
 		"tenant": {
 			Name: "tenant",
 			Indexes: map[string]*memdb.IndexSchema{
-				"id": {
-					Name:   "id",
+				TenantPK: {
+					Name:   TenantPK,
 					Unique: true,
 					Indexer: &memdb.UUIDFieldIndex{
-						Field: "id",
+						Field: "Id",
 					},
 				},
 				"identifier": {
 					Name:   "identifier",
 					Unique: true,
 					Indexer: &memdb.StringFieldIndex{
-						Field:     "identifier",
+						Field:     "Identifier",
 						Lowercase: true,
 					},
 				},

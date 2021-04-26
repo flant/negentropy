@@ -30,7 +30,7 @@ func (b tenantBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
 			// using optional param in order to cover creation endpoint with empty id
-			Pattern: "tenant/" + uuid.Pattern("id"),
+			Pattern: "tenant" + uuid.OptionalPathParam("id"),
 			Fields: map[string]*framework.FieldSchema{
 				"id": {
 					Type:        framework.TypeString,
@@ -119,6 +119,7 @@ func (b *tenantBackend) handleWrite(ctx context.Context, req *logical.Request, d
 
 	err = tx.Insert(model.TenantType, tenant)
 	if err != nil {
+		b.Logger().Debug("cannot save tenant", "err", err.Error())
 		return logical.ErrorResponse("cannot save tenant"), nil
 	}
 	defer tx.Commit()
@@ -192,7 +193,7 @@ func (b *tenantBackend) handleRead(ctx context.Context, req *logical.Request, da
 	}
 
 	var responseData map[string]interface{}
-	err = jsonutil.DecodeJSON(tenantJSON, responseData)
+	err = jsonutil.DecodeJSON(tenantJSON, &responseData)
 	if err != nil {
 		return nil, err
 	}
