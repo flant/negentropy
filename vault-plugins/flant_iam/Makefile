@@ -12,7 +12,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-all: fmt build start
+all: fmt build start openapi
 
 build:
 	GOOS="$(OS)" GOARCH="$(GOARCH)" go build -o build/flant_iam cmd/flant_iam/main.go
@@ -38,6 +38,9 @@ deps:
 	go mod tidy
 	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	pushd tests && yarn && popd
+
+openapi:
+	curl -s -H "X-Vault-Token: root" "http://127.0.0.1:8200/v1/sys/internal/specs/openapi" | jq > openapi.json
 
 test:
 	go test -race ./...
