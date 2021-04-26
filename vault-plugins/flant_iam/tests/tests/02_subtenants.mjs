@@ -38,7 +38,7 @@ const subtenants = [
     },
 ]
 
-describe("Subtenant", function () {
+describe.skip("Subtenant", function () {
     // TODO: add tests for fields that are unique within a tenant
     for (const subtenant of subtenants) {
         describe(subtenant.name, function () {

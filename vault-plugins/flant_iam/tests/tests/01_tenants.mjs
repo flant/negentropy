@@ -3,7 +3,7 @@ import { genTenantPayload, TenantAPI } from "./lib/tenant.mjs"
 import { expect } from "chai"
 import { v4 as uuidv4 } from "uuid"
 
-describe("Tenants", function () {
+describe("Tenants", function() {
     const rootClient = getClient(rootToken)
     const root = new TenantAPI(rootClient)
 
@@ -164,12 +164,12 @@ describe("Tenants", function () {
         })
     })
 
-    describe("no access", function () {
-        describe("when unauthenticated", function () {
+    describe("no access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -202,15 +202,15 @@ describe("Tenants", function () {
         }
     })
 
-    describe("privileged access", function () {
+    describe("privileged access", function() {
         it(`creates`, async () => {
             const p = genTenantPayload()
             p.id = uuidv4()
 
             const { data: body } = await root.createPriveleged(p)
 
-            const tenant = body.data
-            expect(tenant).to.deep.eq(p)
+            const id = body.data.id
+            expect(id).to.deep.eq(p.id)
         })
     })
 })
