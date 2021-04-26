@@ -1,4 +1,4 @@
-package backend
+package uuid
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-func TestUUIDParam(t *testing.T) {
+func Test_Pattern(t *testing.T) {
 
-	uuid := genUUID()
+	uuid := New()
 
 	tests := []struct {
 		name        string
@@ -43,7 +43,7 @@ func TestUUIDParam(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			name := "name"
 
-			pattern := "^" + UUIDParam(name) + "$"
+			pattern := "^" + Pattern(name) + "$"
 			re, err := regexp.Compile(pattern)
 			if err != nil {
 				t.Fatalf("UUID regex does not compile: %v", err)
@@ -51,16 +51,16 @@ func TestUUIDParam(t *testing.T) {
 
 			match := findMatch(re, name, test.input)
 			if match != test.expectMatch {
-				t.Fatalf("expected input %q to match %q", test.expectMatch, match)
+				t.Fatalf("expected input %q to match by %q, but it matched %q", test.input, test.expectMatch, match)
 			}
 
 		})
 	}
 }
 
-func TestOptionalUUIDParam(t *testing.T) {
+func Test_OptionalPathParam(t *testing.T) {
 
-	uuid := genUUID()
+	uuid := New()
 
 	tests := []struct {
 		name        string
@@ -99,7 +99,7 @@ func TestOptionalUUIDParam(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			name := "name"
 
-			pattern := OptionalUUIDParam(name)
+			pattern := OptionalPathParam(name)
 			re, err := regexp.Compile(pattern)
 			if err != nil {
 				t.Fatalf("UUID regex does not compile: %v", err)
@@ -107,7 +107,7 @@ func TestOptionalUUIDParam(t *testing.T) {
 
 			match := findMatch(re, name, test.input)
 			if match != test.expectMatch {
-				t.Fatalf("expected input %q to match %q", test.expectMatch, match)
+				t.Fatalf("expected pattern %q to match input %q by %q, but it matched %q", pattern, test.input, test.expectMatch, match)
 			}
 
 		})
