@@ -108,6 +108,7 @@ func (b *tenantBackend) handleWrite(ctx context.Context, req *logical.Request, d
 			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
 		}
 		tenant = raw.(*model.Tenant)
+		tenant.Identifier = data.Get("identifier").(string)
 	}
 
 	// Validation
