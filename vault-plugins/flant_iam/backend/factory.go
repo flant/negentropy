@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -43,15 +42,14 @@ func newBackend(conf *logical.BackendConfig) logical.Backend {
 		roleKeys           = tenantKeys.Child("role_id", "role")
 	)
 
-	sender := FakeKafka{conf.Logger}
 
 	b.Paths = framework.PathAppend(
-		layerBackendPaths(b, tenantKeys, &TenantSchema{}, sender),
-		layerBackendPaths(b, userKeys, &UserSchema{}, sender),
-		layerBackendPaths(b, projectKeys, &ProjectSchema{}, sender),
-		layerBackendPaths(b, serviceAccountKeys, &ServiceAccountSchema{}, sender),
-		layerBackendPaths(b, groupKeys, &GroupSchema{}, sender),
-		layerBackendPaths(b, roleKeys, &RoleSchema{}, sender),
+		tenantPaths(b),
+		layerBackendPaths(b, userKeys, &UserSchema{}),
+		layerBackendPaths(b, projectKeys, &ProjectSchema{}),
+		layerBackendPaths(b, serviceAccountKeys, &ServiceAccountSchema{}),
+		layerBackendPaths(b, groupKeys, &GroupSchema{}),
+		layerBackendPaths(b, roleKeys, &RoleSchema{}),
 	)
 
 	return b
@@ -60,17 +58,3 @@ func newBackend(conf *logical.BackendConfig) logical.Backend {
 const commonHelp = `
 IAM API here
 `
-
-type FakeKafka struct {
-	logger log.Logger
-}
-
-func (f FakeKafka) Send(ctx context.Context, marshaller EntityMarshaller, topics []Topic) error {
-	f.logger.Debug("sending to store", "key", marshaller.Key())
-	return nil
-}
-
-func (f FakeKafka) Delete(ctx context.Context, marshaller EntityMarshaller, topics []Topic) error {
-	f.logger.Debug("sending to delete", "key", marshaller.Key())
-	return nil
-}

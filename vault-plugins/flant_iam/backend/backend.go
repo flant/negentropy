@@ -16,15 +16,13 @@ type layerBackend struct {
 	logical.Backend
 	keyman *key.Manager
 	schema Schema
-	sender KafkaSender
 }
 
-func layerBackendPaths(b *framework.Backend, keyman *key.Manager, schema Schema, sender KafkaSender) []*framework.Path {
+func layerBackendPaths(b *framework.Backend, keyman *key.Manager, schema Schema) []*framework.Path {
 	bb := &layerBackend{
 		Backend: b,
 		keyman:  keyman,
 		schema:  schema,
-		sender:  sender,
 	}
 	return bb.paths()
 }
@@ -132,20 +130,6 @@ func (b *layerBackend) handleWrite(ctx context.Context, req *logical.Request, da
 		return nil, err
 	}
 
-	message := &Message{
-		Meta: Meta{
-			Type: b.schema.Type(),
-			Id:   data.Get(b.keyman.IDField()).(string),
-			Key:  key,
-		},
-		Data: input,
-	}
-
-	err = b.sender.Send(ctx, message, b.schema.SyncTopics())
-	if err != nil {
-		b.Logger().Warn("cannot send data to broker", "key", key, "error", err)
-	}
-
 	// Response
 
 	resp := &logical.Response{
@@ -167,7 +151,7 @@ func (b *layerBackend) handleDelete(ctx context.Context, req *logical.Request, d
 	b.Logger().Debug("handleDelete", "key", key)
 
 	// Ensure it exists
-	stored, err := repo.Get(ctx, req.Storage, key)
+	_, err := repo.Get(ctx, req.Storage, key)
 
 	if err == ErrNotFound {
 		// nothing to update
@@ -187,17 +171,6 @@ func (b *layerBackend) handleDelete(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	message := &Message{
-		Meta: Meta{
-			Type: b.schema.Type(),
-			Id:   data.Get(b.keyman.IDField()).(string),
-			Key:  key,
-		},
-		Data: stored,
-	}
-
-	// TODO: Real kafka
-	err = b.sender.Delete(ctx, message, b.schema.SyncTopics())
 	return nil, err
 }
 

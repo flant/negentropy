@@ -6,9 +6,9 @@ require (
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/golangci/golangci-lint v1.38.0 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
+	github.com/google/uuid v1.0.0
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-hclog v0.9.2
-	github.com/hashicorp/go-uuid v1.0.1
 	github.com/hashicorp/vault/api v1.0.2
 	github.com/hashicorp/vault/sdk v0.1.11
 	github.com/kr/text v0.2.0 // indirect

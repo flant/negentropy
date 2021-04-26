@@ -5,25 +5,10 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
-
-type uuidGenerator struct{}
-
-func (g *uuidGenerator) GenerateID() string {
-	return genUUID()
-}
-
-func genUUID() string {
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		id = genUUID()
-	}
-	return id
-}
 
 // Schema contains specific entity type data
 type Schema interface {
