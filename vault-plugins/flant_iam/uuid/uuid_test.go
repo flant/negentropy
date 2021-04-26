@@ -8,7 +8,6 @@ import (
 )
 
 func Test_Pattern(t *testing.T) {
-
 	uuid := New()
 
 	tests := []struct {
@@ -53,13 +52,11 @@ func Test_Pattern(t *testing.T) {
 			if match != test.expectMatch {
 				t.Fatalf("expected input %q to match by %q, but it matched %q", test.input, test.expectMatch, match)
 			}
-
 		})
 	}
 }
 
 func Test_OptionalPathParam(t *testing.T) {
-
 	uuid := New()
 
 	tests := []struct {
@@ -109,10 +106,8 @@ func Test_OptionalPathParam(t *testing.T) {
 			if match != test.expectMatch {
 				t.Fatalf("expected pattern %q to match input %q by %q, but it matched %q", pattern, test.input, test.expectMatch, match)
 			}
-
 		})
 	}
-
 }
 
 func findMatch(re *regexp.Regexp, name, input string) string {
