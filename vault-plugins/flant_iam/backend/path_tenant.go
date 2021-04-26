@@ -229,14 +229,9 @@ func (b *tenantBackend) handleList(ctx context.Context, req *logical.Request, da
 
 	// Respond
 
-	body, err := jsonutil.EncodeJSON(tenants)
-	if err != nil {
-		return nil, err
-	}
-
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"ids": body,
+			"ids": tenants,
 		},
 	}
 
