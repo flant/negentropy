@@ -89,8 +89,7 @@ func (b tenantBackend) paths() []*framework.Path {
 			},
 		},
 		{
-			// using optional param in order to cover creation endpoint with empty id
-			//Pattern: "tenant" + uuid.OptionalTrailingParam("id"),
+
 			Pattern: "tenant/" + uuid.Pattern("id") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"id": {
