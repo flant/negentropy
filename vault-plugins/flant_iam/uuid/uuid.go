@@ -22,11 +22,19 @@ func Pattern(name string) string {
 	return fmt.Sprintf(`(?P<%s>%s)`, name, uuidPattern)
 }
 
-func OptionalPathParam(name string) string {
+func OptionalTrailingParam(name string) string {
 	return optional(Pattern(name)) + "$"
 }
 
 // OptionalParamRegex should be just as strict as framework.GenericNameRegex, but optional
 func optional(pattern string) string {
 	return fmt.Sprintf("(/%s)?", pattern)
+}
+
+func IsValid(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	_, err := uuid.Parse(s)
+	return err == nil
 }

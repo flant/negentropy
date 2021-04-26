@@ -30,7 +30,7 @@ func (b tenantBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
 			// using optional param in order to cover creation endpoint with empty id
-			Pattern: "tenant" + uuid.OptionalPathParam("id"),
+			Pattern: "tenant" + uuid.OptionalTrailingParam("id"),
 			Fields: map[string]*framework.FieldSchema{
 				"id": {
 					Type:        framework.TypeString,
@@ -39,7 +39,7 @@ func (b tenantBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
-					Required:    true, // seems to work for doc, not validation
+					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -67,6 +67,27 @@ func (b tenantBackend) paths() []*framework.Path {
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList,
 					Summary:  "Lists all tenants IDs.",
+				},
+			},
+		},
+		{
+			Pattern: "tenant/privileged$",
+			Fields: map[string]*framework.FieldSchema{
+				"id": {
+					Type:        framework.TypeString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleWrite,
+					Summary:  "Create tenant with preexistent ID.",
 				},
 			},
 		},
