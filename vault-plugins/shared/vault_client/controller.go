@@ -74,7 +74,7 @@ func (c *VaultClientController) ApiClient() (*api.Client, error) {
 	c.clientLock.RLock()
 	defer c.clientLock.RUnlock()
 
-	if c.apiClient != nil {
+	if c.apiClient == nil {
 		return nil, ClientNotInitError
 	}
 
