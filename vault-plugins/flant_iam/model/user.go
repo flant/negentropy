@@ -13,7 +13,7 @@ const (
 type User struct {
 	UUID       string `json:"uuid"` // ID
 	TenantUUID string `json:"tenant_uuid"`
-
+	Version    string `json:"resource_version"`
 	// TODO identifier
 	// TODO full_identifier (<identifier>@<tenant_identifier>)
 	// TODO resource_version

@@ -31,3 +31,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 func GetSchema() (*memdb.DBSchema, error) {
 	return mergeSchema()
 }
+
+func NewResourceVersion() string {
+	return ""
+}
