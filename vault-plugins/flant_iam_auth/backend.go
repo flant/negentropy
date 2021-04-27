@@ -39,8 +39,8 @@ type flantIamAuthBackend struct {
 	authSourceStorageFactory PrefixStorageRequestFactory
 	authMethodStorageFactory PrefixStorageRequestFactory
 
-	tokenController  *njwt.TokenController
-	accessController *vault_client.VaultClientController
+	tokenController       *njwt.TokenController
+	accessVaultController *vault_client.VaultClientController
 }
 
 func backend() *flantIamAuthBackend {
@@ -53,7 +53,7 @@ func backend() *flantIamAuthBackend {
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.tokenController = njwt.NewTokenController()
-	b.accessController = vault_client.NewVaultClientController(func() log.Logger {
+	b.accessVaultController = vault_client.NewVaultClientController(func() log.Logger {
 		return b.Logger()
 	})
 
@@ -62,7 +62,7 @@ func backend() *flantIamAuthBackend {
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
 		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
-			return b.accessController.RenewSecretId(ctx, request)
+			return b.accessVaultController.OnPeriodical(ctx, request)
 		},
 		Help: backendHelp,
 		PathsSpecial: &logical.Paths{
@@ -99,7 +99,7 @@ func backend() *flantIamAuthBackend {
 				njwt.PathRotateKey(b.tokenController),
 			},
 			[]*framework.Path{
-				vault_client.PathConfigure(b.accessController),
+				vault_client.PathConfigure(b.accessVaultController),
 			},
 			pathOIDC(b),
 		),
@@ -115,7 +115,7 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 		return err
 	}
 
-	err = b.accessController.Init(config.StorageView)
+	err = b.accessVaultController.Init(config.StorageView)
 	if err != nil && !errors.Is(err, vault_client.NotSetConfError) {
 		return err
 	}

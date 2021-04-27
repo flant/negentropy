@@ -15,6 +15,7 @@ type vaultAccessConfig struct {
 	SecretId          string        `json:"secret_id"`
 	RoleId            string        `json:"role_id"`
 	SecretIdTtlSec    time.Duration `json:"secret_id_ttl"`
+	TokenTtlSec       time.Duration `json:"token_ttl"`
 	ApproleMountPoint string        `json:"approle_mount_point"`
 	LastRenewTime     time.Time     `json:"last_renew_time"`
 }

@@ -85,11 +85,39 @@ func (c *VaultClientController) ApiClient() (*api.Client, error) {
 	return c.apiClient, nil
 }
 
-// RenewSecretId must be called in periodical function
+func (c *VaultClientController) renewLease() error {
+	c.getLogger().Info("Run renew lease")
+	clientApi, err := c.ApiClient()
+	if err != nil {
+		return err
+	}
+
+	err = prolongAccessToken(clientApi, 120)
+	if err != nil {
+		c.getLogger().Info(" prolong")
+	}
+	return err
+}
+
+// OnPeriodical must be called in periodical function
 // if store don't contains configuration it may return NotSetConfError error
 // it is normal case
-func (c *VaultClientController) RenewSecretId(ctx context.Context, r *logical.Request) error {
+func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
 	logger := c.getLogger()
+
+	apiClient, err := c.ApiClient()
+	if err != nil && errors.Is(err, ClientNotInitError) {
+		logger.Info("not init client nothing to renew")
+		return nil
+	}
+
+	// always renew current token
+	err = c.renewLease()
+	if err != nil {
+		logger.Error(fmt.Sprintf("not prolong lease %v", err))
+	} else {
+		logger.Info(fmt.Sprintf("token prolong success"))
+	}
 
 	store := c.storageFactory(r.Storage)
 
@@ -105,12 +133,6 @@ func (c *VaultClientController) RenewSecretId(ctx context.Context, r *logical.Re
 
 	if need, remain := accessConf.IsNeedToRenewSecretId(time.Now()); !need {
 		logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
-		return nil
-	}
-
-	apiClient, err := c.ApiClient()
-	if err != nil && errors.Is(err, ClientNotInitError) {
-		logger.Info("not init client nothing to renew")
 		return nil
 	}
 

@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"net/url"
-	"time"
 )
 
 func PathConfigure(c *VaultClientController) *framework.Path {
@@ -53,6 +52,11 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 			"secret_id_ttl": {
 				Type:        framework.TypeDurationSecond,
 				Description: "Secret id time to life. Min 120s (2 minutes)",
+				Required:    true,
+			},
+			"token_ttl": {
+				Type:        framework.TypeDurationSecond,
+				Description: "Token id time to life. Min 20s",
 				Required:    true,
 			},
 		},
@@ -114,13 +118,15 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	secretIdTtlRaw, ok := d.GetOk("secret_id_ttl")
-	var okCast bool
-	secretIdTtlSec, okCast := secretIdTtlRaw.(int)
-	if !ok || !okCast || secretIdTtlSec < 120 {
-		return logical.ErrorResponse("incorrect secret_id_ttl must be >= 120s"), nil
+	config.SecretIdTtlSec, errResp = utils.DurationSecParam(d, "secret_id_ttl", 120)
+	if errResp != nil {
+		return errResp, nil
 	}
-	config.SecretIdTtlSec = time.Duration(secretIdTtlSec)
+
+	config.TokenTtlSec, errResp = utils.DurationSecParam(d, "token_ttl", 90)
+	if errResp != nil {
+		return errResp, nil
+	}
 
 	config.ApproleMountPoint, errResp = utils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {

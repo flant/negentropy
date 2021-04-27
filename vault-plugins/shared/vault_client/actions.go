@@ -85,3 +85,19 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 
 	return nil
 }
+
+func prolongAccessToken(apiClient *api.Client, increment int) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		_, err = apiClient.Auth().Token().Renew(apiClient.Token(), increment)
+
+		if err != nil {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		return nil
+	}
+
+	return err
+}
