@@ -1,0 +1,8 @@
+apiVersion: authd.negentropy.example.com/v1
+kind: AuthdSocketConfig
+path: /var/run/sock3.sock
+user: root
+group: root
+mode: 0600
+allowedPolicies:
+  - policy: server.*
