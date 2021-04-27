@@ -91,6 +91,10 @@ func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *lo
 		return nil, err
 	}
 
+	if fields.Raw == nil {
+		return nil, fmt.Errorf("cannot update configuration because values were not provided")
+	}
+
 	entry, err := logical.StorageEntryJSON("jwt/configuration", fields.Raw)
 	if err != nil {
 		return nil, err

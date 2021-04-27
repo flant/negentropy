@@ -97,6 +97,11 @@ func (b *TokenController) handleJWTEnableCreate(ctx context.Context, req *logica
 		if err != nil {
 			return nil, err
 		}
+
+		err = rotationTimestamp(ctx, req.Storage, b.now)
+		if err != nil {
+			return nil, err
+		}
 		return switchJWT(ctx, req, true)
 	}
 

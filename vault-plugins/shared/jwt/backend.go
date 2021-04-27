@@ -3,11 +3,11 @@ package jwt
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/square/go-jose.v2"
 )
 
 // Factory is used by framework
@@ -43,60 +43,104 @@ func backend() *jwtAuthBackend {
 				PathRotateKey(b.tokenController),
 			},
 		),
+		PeriodicFunc: b.tokenController.rotateKeys,
 	}
 
 	return b
 }
 
 type TokenController struct {
+	now func() time.Time
 	// mu sync.RWMutex
 }
 
 func NewTokenController() *TokenController {
-	return &TokenController{}
+	return &TokenController{now: time.Now}
 }
 
-func (b *TokenController) rotateKeys(ctx context.Context, logger hclog.Logger, req logical.Request) {
+func (b *TokenController) rotateKeys(ctx context.Context, req *logical.Request) error {
 	entry, err := req.Storage.Get(ctx, "jwt/enable")
 	if err != nil {
-		logger.Warn(err.Error())
-		return
+		return err
 	}
 
 	var enabled bool
 	if entry != nil {
 		err = entry.DecodeJSON(&enabled)
 		if err != nil {
-			logger.Warn(err.Error())
-			return
+			return err
 		}
 	}
 
 	if !enabled {
-		return
+		return nil
 	}
 
-	entry, err = req.Storage.Get(ctx, "jwt/jwks")
+	shouldRotate, shouldPublish, err := b.shouldRotateOrPublish(ctx, req.Storage)
 	if err != nil {
-		logger.Warn(err.Error())
-		return
+		return err
 	}
 
-	keys := make([]byte, 0)
-	if entry != nil {
-		keys = entry.Value
-	}
-
-	keysSet := jose.JSONWebKeySet{}
-	if len(keys) > 0 {
-		if err := json.Unmarshal(keys, &keysSet); err != nil {
-			logger.Warn(err.Error())
-			return
+	if shouldRotate {
+		err := removeFirstKey(ctx, req.Storage)
+		if err != nil {
+			return err
 		}
-	} else {
-		logger.Warn("cannot find keys in the store")
-		return
+	} else if shouldPublish {
+		err := generateOrRotateKeys(ctx, req.Storage)
+		if err != nil {
+			return err
+		}
+
+		err = rotationTimestamp(ctx, req.Storage, b.now)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (b *TokenController) shouldRotateOrPublish(ctx context.Context, storage logical.Storage) (bool, bool, error) {
+	config, err := getConfig(ctx, storage)
+	if err != nil {
+		return false, false, err
+	}
+
+	rotateEvery, err := time.ParseDuration(config["rotation_period"].(string))
+	if err != nil {
+		return false, false, err
+	}
+
+	publishKeyBefore, err := time.ParseDuration(config["preliminary_announce_period"].(string))
+	if err != nil {
+		return false, false, err
+	}
+
+	lastRotationTime, err := storage.Get(ctx, "jwt/keys_last_rotation")
+	if err != nil {
+		return false, false, err
+	}
+
+	if lastRotationTime == nil {
+		return false, false, fmt.Errorf("rotation timestamp not in the store")
+	}
+
+	var timeSeconds int64
+	err = json.Unmarshal(lastRotationTime.Value, &timeSeconds)
+	if err != nil {
+		return false, false, err
+	}
+
+	lastRotation := time.Unix(timeSeconds, 0)
+	now := b.now()
+
+	if lastRotation.Add(rotateEvery).After(now) {
+		return true, false, nil
+	} else if lastRotation.Add(rotateEvery).Add(-publishKeyBefore).After(now) {
+		return false, true, nil
+	}
+	return false, false, nil
 }
 
 const (
