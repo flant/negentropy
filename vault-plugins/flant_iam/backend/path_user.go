@@ -298,7 +298,7 @@ func NewUserRepository(tx *memdb.Txn) *UserRepository {
 	}
 }
 
-func (r UserRepository) Create(user *model.User) error {
+func (r *UserRepository) Create(user *model.User) error {
 	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
 	if err != nil {
 		return err
@@ -314,7 +314,7 @@ func (r UserRepository) Create(user *model.User) error {
 	return nil
 }
 
-func (r UserRepository) GetById(id string) (*model.User, error) {
+func (r *UserRepository) GetById(id string) (*model.User, error) {
 	raw, err := r.db.First(model.UserType, model.ID, id)
 	if err != nil {
 		return nil, err
@@ -326,7 +326,7 @@ func (r UserRepository) GetById(id string) (*model.User, error) {
 	return user, nil
 }
 
-func (r UserRepository) Update(user *model.User) error {
+func (r *UserRepository) Update(user *model.User) error {
 	stored, err := r.GetById(user.UUID)
 	if err != nil {
 		return err
@@ -357,7 +357,7 @@ func (r UserRepository) Update(user *model.User) error {
 	return nil
 }
 
-func (r UserRepository) Delete(id string) error {
+func (r *UserRepository) Delete(id string) error {
 	user, err := r.GetById(id)
 	if err != nil {
 		return err
@@ -366,7 +366,7 @@ func (r UserRepository) Delete(id string) error {
 	return r.db.Delete(model.UserType, user)
 }
 
-func (r UserRepository) List(tenantID string) ([]string, error) {
+func (r *UserRepository) List(tenantID string) ([]string, error) {
 	iter, err := r.db.Get(model.UserType, model.TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
@@ -382,4 +382,9 @@ func (r UserRepository) List(tenantID string) ([]string, error) {
 		ids = append(ids, u.UUID)
 	}
 	return ids, nil
+}
+
+func (r *UserRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(model.UserType, model.TenantForeignPK, tenantUUID)
+	return err
 }

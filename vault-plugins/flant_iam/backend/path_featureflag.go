@@ -165,7 +165,7 @@ func NewFeatureFlagRepository(tx *memdb.Txn) *FeatureFlagRepository {
 	return &FeatureFlagRepository{tx}
 }
 
-func (r FeatureFlagRepository) Create(ff *model.FeatureFlag) error {
+func (r *FeatureFlagRepository) Create(ff *model.FeatureFlag) error {
 	_, err := r.Get(ff.Name)
 	if err == ErrNotFound {
 		return r.db.Insert(model.FeatureFlagType, ff)
@@ -176,7 +176,7 @@ func (r FeatureFlagRepository) Create(ff *model.FeatureFlag) error {
 	return ErrAlreadyExists
 }
 
-func (r FeatureFlagRepository) Get(name string) (*model.FeatureFlag, error) {
+func (r *FeatureFlagRepository) Get(name string) (*model.FeatureFlag, error) {
 	raw, err := r.db.First(model.FeatureFlagType, model.ID, name)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (r FeatureFlagRepository) Get(name string) (*model.FeatureFlag, error) {
 	return raw.(*model.FeatureFlag), nil
 }
 
-func (r FeatureFlagRepository) Delete(name string) error {
+func (r *FeatureFlagRepository) Delete(name string) error {
 	// TODO Cannot be deleted when in use by role, tenant, or project
 	featureFlag, err := r.Get(name)
 	if err != nil {
@@ -196,7 +196,7 @@ func (r FeatureFlagRepository) Delete(name string) error {
 	return r.db.Delete(model.FeatureFlagType, featureFlag)
 }
 
-func (r FeatureFlagRepository) List() ([]string, error) {
+func (r *FeatureFlagRepository) List() ([]string, error) {
 	iter, err := r.db.Get(model.FeatureFlagType, model.ID)
 	if err != nil {
 		return nil, err

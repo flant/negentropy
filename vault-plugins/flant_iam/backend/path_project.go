@@ -298,7 +298,7 @@ func NewProjectRepository(tx *memdb.Txn) *ProjectRepository {
 	}
 }
 
-func (r ProjectRepository) Create(project *model.Project) error {
+func (r *ProjectRepository) Create(project *model.Project) error {
 	_, err := r.tenantRepo.GetById(project.TenantUUID)
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func (r ProjectRepository) Create(project *model.Project) error {
 	return nil
 }
 
-func (r ProjectRepository) GetById(id string) (*model.Project, error) {
+func (r *ProjectRepository) GetById(id string) (*model.Project, error) {
 	raw, err := r.db.First(model.ProjectType, model.ID, id)
 	if err != nil {
 		return nil, err
@@ -325,7 +325,7 @@ func (r ProjectRepository) GetById(id string) (*model.Project, error) {
 	return project, nil
 }
 
-func (r ProjectRepository) Update(project *model.Project) error {
+func (r *ProjectRepository) Update(project *model.Project) error {
 	stored, err := r.GetById(project.UUID)
 	if err != nil {
 		return err
@@ -350,7 +350,7 @@ func (r ProjectRepository) Update(project *model.Project) error {
 	return nil
 }
 
-func (r ProjectRepository) Delete(id string) error {
+func (r *ProjectRepository) Delete(id string) error {
 	project, err := r.GetById(id)
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (r ProjectRepository) Delete(id string) error {
 	return r.db.Delete(model.ProjectType, project)
 }
 
-func (r ProjectRepository) List(tenantID string) ([]string, error) {
+func (r *ProjectRepository) List(tenantID string) ([]string, error) {
 	iter, err := r.db.Get(model.ProjectType, model.TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
@@ -375,4 +375,9 @@ func (r ProjectRepository) List(tenantID string) ([]string, error) {
 		ids = append(ids, u.UUID)
 	}
 	return ids, nil
+}
+
+func (r *ProjectRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(model.ProjectType, model.TenantForeignPK, tenantUUID)
+	return err
 }

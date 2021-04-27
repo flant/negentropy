@@ -258,18 +258,21 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 
 type TenantRepository struct {
 	db *memdb.Txn // called "db" not to provoke transaction semantics
+
 }
 
 func NewTenantRepository(tx *memdb.Txn) *TenantRepository {
-	return &TenantRepository{tx}
+	return &TenantRepository{
+		db: tx,
+	}
 }
 
-func (r TenantRepository) Create(t *model.Tenant) error {
+func (r *TenantRepository) Create(t *model.Tenant) error {
 	t.Version = model.NewResourceVersion()
 	return r.db.Insert(model.TenantType, t)
 }
 
-func (r TenantRepository) GetById(id string) (*model.Tenant, error) {
+func (r *TenantRepository) GetById(id string) (*model.Tenant, error) {
 	raw, err := r.db.First(model.TenantType, model.ID, id)
 	if err != nil {
 		return nil, err
@@ -280,7 +283,7 @@ func (r TenantRepository) GetById(id string) (*model.Tenant, error) {
 	return raw.(*model.Tenant), nil
 }
 
-func (r TenantRepository) Update(updated *model.Tenant) error {
+func (r *TenantRepository) Update(updated *model.Tenant) error {
 	stored, err := r.GetById(updated.UUID)
 	if err != nil {
 		return err
@@ -298,7 +301,18 @@ func (r TenantRepository) Update(updated *model.Tenant) error {
 	return r.db.Insert(model.TenantType, updated)
 }
 
-func (r TenantRepository) Delete(id string) error {
+func (r *TenantRepository) Delete(id string) error {
+	userRepo := NewUserRepository(r.db)
+	err := userRepo.DeleteByTenant(id)
+	if err != nil {
+		return err
+	}
+	projectRepo := NewProjectRepository(r.db)
+	err = projectRepo.DeleteByTenant(id)
+	if err != nil {
+		return err
+	}
+
 	tenant, err := r.GetById(id)
 	if err != nil {
 		return err
@@ -307,7 +321,7 @@ func (r TenantRepository) Delete(id string) error {
 	return r.db.Delete(model.TenantType, tenant)
 }
 
-func (r TenantRepository) List() ([]string, error) {
+func (r *TenantRepository) List() ([]string, error) {
 	iter, err := r.db.Get(model.TenantType, model.ID)
 	if err != nil {
 		return nil, err

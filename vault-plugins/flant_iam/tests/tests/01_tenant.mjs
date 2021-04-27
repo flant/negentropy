@@ -18,7 +18,7 @@ describe("Tenants", function () {
         describe("identifier", () => {
             const invalidCases = [
                 {
-                    title: "number allowed",
+                    title: "number allowed", // the matter of fact ¯\_(ツ)_/¯
                     payload: genTenantPayload({ identifier: 100 }),
                     validateStatus: (x) => x === 201,
                 },

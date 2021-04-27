@@ -2,7 +2,7 @@ import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { FeatureFlagAPI, genFeatureFlag } from "./lib/feature_flag.mjs"
 import { expect } from "chai"
 
-describe("Feature flag", function() {
+describe("Feature flag", function () {
     const rootClient = getClient(rootToken)
     const root = new FeatureFlagAPI(rootClient)
 
@@ -15,11 +15,21 @@ describe("Feature flag", function() {
 
     describe("payload", () => {
         describe("name", () => {
+            after("clean", async () => {
+                const { data } = await root.list()
+                const deletions = data.data.names.map((name) =>
+                    root.delete(name),
+                )
+                await Promise.all(deletions)
+            })
+
             const invalidCases = [
                 {
-                    title: "number forbidden",
-                    payload: genFeatureFlag({ name: 100 }),
-                    validateStatus: (x) => x >= 400,
+                    title: "number allowed",  // the matter of fact ¯\_(ツ)_/¯
+                    payload: genFeatureFlag({
+                        name: Math.round(Math.random() * 1e9),
+                    }),
+                    validateStatus: (x) => x === 201,
                 },
                 {
                     title: "absent name forbidden",
@@ -63,12 +73,9 @@ describe("Feature flag", function() {
         const { data: body } = await root.create(payload)
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "name",
-        )
+        expect(body.data).to.include.keys("name")
         expect(body.data.name).to.eq(payload.name)
     })
-
 
     it("can be listed", async () => {
         const payload = genFeatureFlag()
@@ -90,7 +97,6 @@ describe("Feature flag", function() {
         expect(listBody.data.names).to.include(name)
     })
 
-
     it("can be deleted", async () => {
         const createPld = genFeatureFlag()
 
@@ -103,7 +109,6 @@ describe("Feature flag", function() {
         expect(listBody.data.names).to.not.include(name)
     })
 
-
     describe("when does not exist", () => {
         const opts = expectStatus(404)
 
@@ -112,12 +117,12 @@ describe("Feature flag", function() {
         })
     })
 
-    describe("no access", function() {
-        describe("when unauthenticated", function() {
+    describe("no access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 

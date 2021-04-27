@@ -7,7 +7,7 @@ import {
 } from "./lib/subtenant.mjs"
 import { API } from "./lib/api.mjs"
 
-//    /tenant/{tid}/project/{uid}
+//    /tenant/{tid}/project/{pid}
 
 describe("Project", function () {
     const rootClient = getClient(rootToken)
@@ -70,7 +70,7 @@ describe("Project", function () {
             params: { tenant: tid },
             payload,
         })
-        const uid = created.data.uuid
+        const pid = created.data.uuid
         const generated = {
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
@@ -79,7 +79,7 @@ describe("Project", function () {
 
         // read
         const { data: read } = await rootProjectClient.read({
-            params: { tenant: tid, project: uid },
+            params: { tenant: tid, project: pid },
         })
 
         expect(read.data).to.deep.eq(
@@ -123,10 +123,10 @@ describe("Project", function () {
 
         // create
         const project = await createProject(tid)
-        const uid = project.uuid
+        const pid = project.uuid
 
         // delete
-        const params = { tenant: tid, project: uid }
+        const params = { tenant: tid, project: pid }
         await rootProjectClient.delete({ params })
 
         // read
@@ -137,7 +137,7 @@ describe("Project", function () {
         // create
         const tid = await createTenantId()
         const project = await createProject(tid)
-        const uid = project.uuid
+        const pid = project.uuid
 
         // delete
         const params = { tenant: tid }
@@ -145,7 +145,18 @@ describe("Project", function () {
 
         expect(body.data).to.be.an("object").and.include.keys("uuids")
         expect(body.data.uuids).to.be.an("array").of.length(1) // if not 1, maybe projects are not filtered by tenants
-        expect(body.data.uuids[0]).to.eq(uid)
+        expect(body.data.uuids[0]).to.eq(pid)
+    })
+
+    it("can be deleted by the tenant deletion", async () => {
+        const tid = await createTenantId()
+        const project = await createProject(tid)
+
+        await rootTenantAPI.delete({ params: { tenant: tid } })
+
+        const params = { tenant: tid, project: project.uuid }
+        const opts = expectStatus(404)
+        await rootProjectClient.read({ params, opts })
     })
 
     describe("when does not exist", () => {
@@ -209,10 +220,10 @@ describe("Project", function () {
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const pid = data.data.uuid
 
                 await unauth.read({
-                    params: { ...params, project: uid },
+                    params: { ...params, project: pid },
                     opts,
                 })
             })
@@ -222,9 +233,9 @@ describe("Project", function () {
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const pid = data.data.uuid
                 await unauth.update({
-                    params: { ...params, project: uid },
+                    params: { ...params, project: pid },
                     payload,
                     opts,
                 })
@@ -235,9 +246,9 @@ describe("Project", function () {
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const pid = data.data.uuid
                 await unauth.delete({
-                    params: { ...params, project: uid },
+                    params: { ...params, project: pid },
                     opts,
                 })
             })

@@ -146,6 +146,17 @@ describe("User", function () {
         expect(body.data.uuids[0]).to.eq(uid)
     })
 
+    it("can be deleted by the tenant deletion", async () => {
+        const tid = await createTenantId()
+        const user = await createUser(tid)
+
+        await rootTenantAPI.delete({ params: { tenant: tid } })
+
+        const params = { tenant: tid, user: user.uuid }
+        const opts = expectStatus(404)
+        await rootUserClient.read({ params, opts })
+    })
+
     describe("when does not exist", () => {
         const opts = expectStatus(404)
         const params = { user: "no-such" }
