@@ -37,6 +37,12 @@ func UserSchema() *memdb.DBSchema {
 							Field: "Version",
 						},
 					},
+					"identifier": {
+						Name: "identifier",
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Identifier",
+						},
+					},
 				},
 			},
 		},
@@ -44,12 +50,11 @@ func UserSchema() *memdb.DBSchema {
 }
 
 type User struct {
-	UUID       string `json:"uuid"` // ID
-	TenantUUID string `json:"tenant_uuid"`
-	Version    string `json:"resource_version"`
-	// TODO identifier
-	// TODO full_identifier (<identifier>@<tenant_identifier>)
-
+	UUID           string `json:"uuid"` // ID
+	TenantUUID     string `json:"tenant_uuid"`
+	Version        string `json:"resource_version"`
+	Identifier     string `json:"identifier"`
+	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
 }
 
 func (u *User) ObjType() string {

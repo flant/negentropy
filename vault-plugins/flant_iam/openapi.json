@@ -986,6 +986,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "uuid": {
                     "type": "string",
                     "description": "ID of a user",
@@ -993,7 +998,8 @@
                   }
                 },
                 "required": [
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1053,13 +1059,19 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "resource_version": {
                     "type": "string",
                     "description": "Resource version"
                   }
                 },
                 "required": [
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1132,8 +1144,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }

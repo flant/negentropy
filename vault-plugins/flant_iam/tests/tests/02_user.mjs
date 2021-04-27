@@ -17,10 +17,15 @@ describe("User", function () {
         return genUserPayload(override)
     }
 
-    async function createTenantId() {
+    async function createTenant() {
         const payload = genTenantPayload()
         const { data } = await rootTenantAPI.create({ payload })
-        return data.data.uuid
+        return data.data
+    }
+
+    async function createTenantId() {
+        const tenant = await createTenant()
+        return tenant.uuid
     }
 
     async function createUser(tid) {
@@ -54,8 +59,8 @@ describe("User", function () {
     })
 
     it("can be read", async () => {
-        const tid = await createTenantId()
-
+        const tenant = await createTenant()
+        const tid = tenant.uuid
         // create
         const payload = genPayload()
         const { data: created } = await rootUserClient.create({
@@ -63,14 +68,26 @@ describe("User", function () {
             payload,
         })
         const uid = created.data.uuid
+        const generated = {
+            uuid: created.data.uuid,
+            tenant_uuid: created.data.tenant_uuid,
+            resource_version: created.data.resource_version,
+            full_identifier: payload.identifier + "@" + tenant.identifier,
+        }
 
         // read
         const { data: read } = await rootUserClient.read({
             params: { tenant: tid, user: uid },
         })
 
-        expect(read.data).to.deep.eq(created.data)
-        expect(read.data).to.contain({ uuid: uid, tenant_uuid: tid })
+        expect(read.data).to.deep.eq(
+            { ...payload, ...generated },
+            "must have generated fields",
+        )
+        expect(read.data).to.deep.eq(
+            created.data,
+            "reading and creation responses should contain the same data",
+        )
         expect(read.data.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)

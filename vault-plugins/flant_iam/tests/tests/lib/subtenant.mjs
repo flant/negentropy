@@ -32,7 +32,7 @@ export function genUserPayload(override = {}) {
         //
         // mobile_phone: Faker.phone.phoneNumber(),
         // additional_phones: [],
-
+        identifier: Faker.internet.userName(),
         ...override,
     }
 }

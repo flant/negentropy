@@ -38,6 +38,11 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -64,6 +69,11 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -80,7 +90,6 @@ func (b userBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/?",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -112,6 +121,11 @@ func (b userBackend) paths() []*framework.Path {
 				"resource_version": {
 					Type:        framework.TypeString,
 					Description: "Resource version",
+					Required:    true,
+				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
 			},
@@ -162,6 +176,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 		user := &model.User{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Identifier: data.Get("identifier").(string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -190,6 +205,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
+			Identifier: data.Get("identifier").(string),
 		}
 
 		repo := NewUserRepository(tx)
@@ -271,16 +287,30 @@ func (b *userBackend) handleList() framework.OperationFunc {
 }
 
 type UserRepository struct {
-	db *memdb.Txn // called "db" not to provoke transaction semantics
+	db         *memdb.Txn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
 }
 
 func NewUserRepository(tx *memdb.Txn) *UserRepository {
-	return &UserRepository{tx}
+	return &UserRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
+	}
 }
 
 func (r UserRepository) Create(user *model.User) error {
+	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
+	if err != nil {
+		return err
+	}
+
 	user.Version = model.NewResourceVersion()
-	return r.db.Insert(model.UserType, user)
+	err = r.db.Insert(model.UserType, user)
+	if err != nil {
+		return err
+	}
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+	return nil
 }
 
 func (r UserRepository) GetById(id string) (*model.User, error) {
@@ -291,27 +321,45 @@ func (r UserRepository) GetById(id string) (*model.User, error) {
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	return raw.(*model.User), nil
+	user := raw.(*model.User)
+
+	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
+	if err != nil {
+		return nil, err
+	}
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+	return user, nil
 }
 
-func (r UserRepository) Update(updated *model.User) error {
-	stored, err := r.GetById(updated.UUID)
+func (r UserRepository) Update(user *model.User) error {
+	stored, err := r.GetById(user.UUID)
 	if err != nil {
 		return err
 	}
 
 	// Validate
-	if stored.TenantUUID != updated.TenantUUID {
+	if stored.TenantUUID != user.TenantUUID {
 		return ErrNotFound
 	}
-	if stored.Version != updated.Version {
+	if stored.Version != user.Version {
 		return ErrVersionMismatch
 	}
-	updated.Version = model.NewResourceVersion()
+	user.Version = model.NewResourceVersion()
 
 	// Update
 
-	return r.db.Insert(model.UserType, updated)
+	err = r.db.Insert(model.UserType, user)
+	if err != nil {
+		return err
+	}
+
+	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
+	if err != nil {
+		return err
+	}
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+
+	return nil
 }
 
 func (r UserRepository) Delete(id string) error {
