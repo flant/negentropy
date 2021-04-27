@@ -924,6 +924,178 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/project": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all projects IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidProject",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create project with preexistent ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a project",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the project by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the project by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the project by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/user": {
       "parameters": [
         {
@@ -1070,8 +1242,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
