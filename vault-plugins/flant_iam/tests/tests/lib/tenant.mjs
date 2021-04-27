@@ -10,6 +10,11 @@ export class TenantEndpointBuilder {
     collection(p = {}, q = {}) {
         return "/tenant" + stringifyQuery(q)
     }
+
+
+    privileged(p = {}, q = {}) {
+        return join("/tenant", "privileged") + stringifyQuery(q)
+    }
 }
 
 export class TenantAPI {
@@ -19,6 +24,10 @@ export class TenantAPI {
 
     create(payload, opts) {
         return this.api.create({ payload, opts })
+    }
+
+    createPriveleged(payload, opts) {
+        return this.api.createPriveleged({ payload, opts })
     }
 
     read(id, opts) {

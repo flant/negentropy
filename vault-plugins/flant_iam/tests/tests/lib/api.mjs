@@ -14,6 +14,11 @@ class CRUD {
         return this.client.post(endpoint, payload, opts)
     }
 
+
+    put(endpoint, payload, opts) {
+        return this.client.put(endpoint, payload, opts)
+    }
+
     delete(endpoint, opts) {
         return this.client.delete(endpoint, opts)
     }
@@ -39,6 +44,11 @@ export class ExampleEndpointBuilder {
     collection(p = {}, q = {}) {
         return this.prefix + stringifyQuery(q)
     }
+
+    privileged(p = {}, q = {}) {
+        return join(this.prefix, "privileged") + stringifyQuery(q)
+    }
+
 }
 
 
@@ -50,6 +60,14 @@ export class API {
 
     create({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.collection(params, query)
+        return this.client.post(endpoint, payload, {
+            ...expectStatus(201),
+            ...opts,
+        })
+    }
+
+    createPriveleged({ params = {}, query = {}, payload, opts = {} } = {}) {
+        const endpoint = this.endpointBuilder.privileged(params, query)
         return this.client.post(endpoint, payload, {
             ...expectStatus(201),
             ...opts,

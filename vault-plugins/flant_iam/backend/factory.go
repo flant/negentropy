@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 var _ logical.Factory = Factory
@@ -17,8 +19,10 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
 
-	b := newBackend()
-
+	b, err := newBackend(conf)
+	if err != nil {
+		return nil, err
+	}
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
 	}
@@ -26,35 +30,23 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend() logical.Backend {
+func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 	}
 
-	backendLayer := &layerBackend{b}
-
-	tenantKeys := &keyManager{
-		idField:   "tenant_id",
-		entryName: "tenant",
+	storage, err := model.NewDB()
+	if err != nil {
+		return nil, err
 	}
 
-	userKeys := &keyManager{idField: "user_id", entryName: "user", parent: tenantKeys}
-	projectKeys := &keyManager{idField: "project_id", entryName: "project", parent: tenantKeys}
-	serviceAccountKeys := &keyManager{idField: "service_account_id", entryName: "service_account", parent: tenantKeys}
-	groupKeys := &keyManager{idField: "group_id", entryName: "group", parent: tenantKeys}
-	roleKeys := &keyManager{idField: "role_id", entryName: "role", parent: tenantKeys}
-
 	b.Paths = framework.PathAppend(
-		backendLayer.paths(tenantKeys, TenantSchema{}),
-		backendLayer.paths(userKeys, UserSchema{}),
-		backendLayer.paths(projectKeys, ProjectSchema{}),
-		backendLayer.paths(serviceAccountKeys, ServiceAccountSchema{}),
-		backendLayer.paths(groupKeys, GroupSchema{}),
-		backendLayer.paths(roleKeys, RoleSchema{}),
+		tenantPaths(b, storage),
+		userPaths(b, storage),
 	)
 
-	return b
+	return b, nil
 }
 
 const commonHelp = `
