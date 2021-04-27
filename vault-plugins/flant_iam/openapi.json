@@ -724,20 +724,20 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "string",
-                    "description": "ID of a tenant",
-                    "pattern": "\\w([\\w-.]*\\w)?"
-                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a tenant",
+                    "pattern": "\\w([\\w-.]*\\w)?"
                   }
                 },
                 "required": [
-                  "identifier",
-                  "id"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -750,10 +750,152 @@
         }
       }
     },
-    "/flant_iam/tenant/{id}": {
+    "/flant_iam/tenant/{tenant_uuid}/user": {
       "parameters": [
         {
-          "name": "id",
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all users IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidUser",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/user/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create user with preexistent ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidUserPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a user",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/user/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the user by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidUserUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the user by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidUserUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the user by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidUserUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{uuid}": {
+      "parameters": [
+        {
+          "name": "uuid",
           "description": "ID of a tenant",
           "in": "path",
           "schema": {
@@ -765,7 +907,7 @@
       ],
       "get": {
         "summary": "Retrieve the tenant by ID.",
-        "operationId": "getFlant_iamTenantId",
+        "operationId": "getFlant_iamTenantUuid",
         "tags": [
           "secrets"
         ],
@@ -777,7 +919,7 @@
       },
       "post": {
         "summary": "Update the tenant by ID.",
-        "operationId": "postFlant_iamTenantId",
+        "operationId": "postFlant_iamTenantUuid",
         "tags": [
           "secrets"
         ],
@@ -808,7 +950,7 @@
       },
       "delete": {
         "summary": "Deletes the tenant by ID.",
-        "operationId": "deleteFlant_iamTenantId",
+        "operationId": "deleteFlant_iamTenantUuid",
         "tags": [
           "secrets"
         ],
