@@ -46,4 +46,7 @@ test:
 	go test -race ./...
 	pushd tests && yarn && yarn test
 
+precommit: fmt build test openapi
+
+
 .PHONY: build build-linux deps clean fmt start enable test

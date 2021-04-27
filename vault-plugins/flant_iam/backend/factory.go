@@ -88,9 +88,12 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 
 	b.Paths = framework.PathAppend(
-		replicasPaths(b, storage),
 		tenantPaths(b, storage),
 		userPaths(b, storage),
+		projectPaths(b, storage),
+		featureFlagPaths(b, storage),
+
+		replicasPaths(b, storage),
 		mb.KafkaPaths(),
 	)
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 const (
@@ -15,6 +17,8 @@ func mergeSchema() (*memdb.DBSchema, error) {
 	others := []*memdb.DBSchema{
 		UserSchema(),
 		ReplicaSchema(),
+		ProjectSchema(),
+		FeatureFlagSchema(),
 	}
 
 	for _, o := range others {
@@ -30,4 +34,8 @@ func mergeSchema() (*memdb.DBSchema, error) {
 
 func GetSchema() (*memdb.DBSchema, error) {
 	return mergeSchema()
+}
+
+func NewResourceVersion() string {
+	return uuid.New()
 }

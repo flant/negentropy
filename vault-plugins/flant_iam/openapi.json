@@ -3,7 +3,7 @@
   "info": {
     "title": "HashiCorp Vault API",
     "description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
-    "version": "1.7.1",
+    "version": "1.7.0",
     "license": {
       "name": "Mozilla Public License 2.0",
       "url": "https://www.mozilla.org/en-US/MPL/2.0"
@@ -686,6 +686,56 @@
         }
       }
     },
+    "/flant_iam/feature_flag": {
+      "get": {
+        "summary": "Lists all feature flags.",
+        "operationId": "getFlant_iamFeature_flag",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/feature_flag/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Feature flag name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "delete": {
+        "summary": "Deletes the featureFlag by ID.",
+        "operationId": "deleteFlant_iamFeature_flagName",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
@@ -712,8 +762,8 @@
                   }
                 },
                 "required": [
-                  "kafka_endpoints",
-                  "certificate"
+                  "certificate",
+                  "kafka_endpoints"
                 ]
               }
             }
@@ -924,6 +974,178 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/project": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all projects IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidProject",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create project with preexistent ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a project",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the project by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the project by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the project by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/user": {
       "parameters": [
         {
@@ -986,6 +1208,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "uuid": {
                     "type": "string",
                     "description": "ID of a user",
@@ -993,7 +1220,8 @@
                   }
                 },
                 "required": [
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1047,6 +1275,30 @@
         "tags": [
           "secrets"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -1107,10 +1359,15 @@
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
                   }
                 },
                 "required": [
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -5559,36 +5816,6 @@
         }
       }
     },
-    "/sys/pprof/allocs": {
-      "get": {
-        "summary": "Returns a sampling of all past memory allocations.",
-        "description": "Returns a sampling of all past memory allocations.",
-        "operationId": "getSysPprofAllocs",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/sys/pprof/block": {
-      "get": {
-        "summary": "Returns stack traces that led to blocking on synchronization primitives",
-        "description": "Returns stack traces that led to blocking on synchronization primitives",
-        "operationId": "getSysPprofBlock",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/sys/pprof/cmdline": {
       "get": {
         "summary": "Returns the running program's command line.",
@@ -5634,21 +5861,6 @@
         }
       }
     },
-    "/sys/pprof/mutex": {
-      "get": {
-        "summary": "Returns stack traces of holders of contended mutexes",
-        "description": "Returns stack traces of holders of contended mutexes",
-        "operationId": "getSysPprofMutex",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/sys/pprof/profile": {
       "get": {
         "summary": "Returns a pprof-formatted cpu profile payload.",
@@ -5669,21 +5881,6 @@
         "summary": "Returns the program counters listed in the request.",
         "description": "Returns the program counters listed in the request.",
         "operationId": "getSysPprofSymbol",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/sys/pprof/threadcreate": {
-      "get": {
-        "summary": "Returns stack traces that led to the creation of new OS threads",
-        "description": "Returns stack traces that led to the creation of new OS threads",
-        "operationId": "getSysPprofThreadcreate",
         "tags": [
           "system"
         ],

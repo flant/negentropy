@@ -129,11 +129,9 @@ func TestReplicas(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, res.Data["http_raw_body"], "replica not found")
 	})
-
 }
 
 func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
-
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 

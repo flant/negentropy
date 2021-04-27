@@ -18,7 +18,7 @@ describe("Tenants", function () {
         describe("identifier", () => {
             const invalidCases = [
                 {
-                    title: "number allowed",
+                    title: "number allowed", // the matter of fact ¯\_(ツ)_/¯
                     payload: genTenantPayload({ identifier: 100 }),
                     validateStatus: (x) => x === 201,
                 },
@@ -64,18 +64,31 @@ describe("Tenants", function () {
         const { data: body } = await root.create(payload)
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.have.key("uuid")
-        expect(body.data.uuid).to.be.a("string").of.length.above(10)
+        expect(body.data).to.include.keys(
+            "uuid",
+            "identifier",
+            "resource_version",
+        )
+        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(body.data.resource_version)
+            .to.be.a("string")
+            .of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
         const payload = genTenantPayload()
 
-        const { data: body } = await root.create(payload)
-        const uuid = body.data.uuid
+        const { data: created } = await root.create(payload)
+        const { data: read } = await root.read(created.data.uuid)
 
-        const { data: tenant } = await root.read(uuid)
-        expect(tenant.data).to.deep.eq({ ...payload, uuid })
+        expect(read.data).to.deep.eq(created.data)
+        expect(created.data).to.deep.contain({
+            ...payload,
+            uuid: created.data.uuid,
+        })
+        expect(created.data.resource_version)
+            .to.be.a("string")
+            .of.length.greaterThan(5)
     })
 
     it("can be read by id", async () => {
@@ -94,9 +107,9 @@ describe("Tenants", function () {
         const { data: resp2 } = await root.read(id2)
         const { data: resp3 } = await root.read(id3)
 
-        expect(resp1.data).to.deep.eq({ ...payload1, uuid: id1 })
-        expect(resp2.data).to.deep.eq({ ...payload2, uuid: id2 })
-        expect(resp3.data).to.deep.eq({ ...payload3, uuid: id3 })
+        expect(resp1.data).to.contain({ ...payload1, uuid: id1 })
+        expect(resp2.data).to.contain({ ...payload2, uuid: id2 })
+        expect(resp3.data).to.contain({ ...payload3, uuid: id3 })
     })
 
     it("can be updated", async () => {
@@ -106,15 +119,26 @@ describe("Tenants", function () {
         // create
         const { data: body1 } = await root.create(createPld)
         const uuid = body1.data.uuid
+        const resource_version = body1.data.resource_version
 
         // update
-        const { data: body2 } = await root.update(uuid, updatePld)
+        const { data: body2 } = await root.update(uuid, {
+            ...updatePld,
+            resource_version,
+        })
 
         // read
         const { data: body3 } = await root.read(uuid)
         const tenant = body3.data
 
-        expect(tenant).to.deep.eq({ ...updatePld, uuid })
+        expect(tenant).to.contain(
+            { ...updatePld, uuid },
+            "payload must be saved",
+        )
+        expect(tenant.resource_version)
+            .to.be.a("string")
+            .of.length.greaterThan(5)
+            .and.not.to.eq(resource_version, "resource version must be updated")
     })
 
     it("can be deleted", async () => {

@@ -47,29 +47,33 @@ export function getClient(token) {
  *  ```
  */
 function axiosErrFormatter(err) {
-    // Log and throw further
-    const sent = err.request.method + " " + err.request.path
-    const status = `STATUS: ${err.response.status}`
-    const sentBody = err.response.config.data ? JSON.stringify(JSON.parse(err.response.config.data), null, 2)
-        : ""
-    const body = err.response.data
-        ? JSON.stringify(err.response.data, null, 2)
-        : ""
+    try {
+        // Log and throw further
+        const sent = err.request.method + " " + err.request.path
+        const status = `STATUS: ${err.response.status}`
+        const sentBody = err.response.config.data ? JSON.stringify(JSON.parse(err.response.config.data), null, 2)
+            : ""
+        const body = err.response.data
+            ? JSON.stringify(err.response.data, null, 2)
+            : ""
 
-    const prefixize = (pad, text) =>
-        text
-            .split("\n")
-            .map((s) => pad + s)
-            .join("\n")
+        const prefixize = (pad, text) =>
+            text
+                .split("\n")
+                .map((s) => pad + s)
+                .join("\n")
 
-    const msg = [
-        "\n",
-        prefixize("     →  ", [sent, sentBody].join("\n")),
-        "",
-        prefixize("     ←  ", [status, body].join("\n")),
-    ].join("\n")
+        const msg = [
+            "\n",
+            prefixize("     →  ", [sent, sentBody].join("\n")),
+            "",
+            prefixize("     ←  ", [status, body].join("\n")),
+        ].join("\n")
 
-    // console.error(msg)
-    err.message += msg
+        // console.error(msg)
+        err.message += msg
+    } catch (e) {
+    }
+
     throw err
 }

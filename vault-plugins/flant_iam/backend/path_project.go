@@ -5,33 +5,38 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type tenantBackend struct {
+type projectBackend struct {
 	logical.Backend
 	storage *io.MemoryStore
 }
 
-func tenantPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
-	bb := &tenantBackend{
+func projectPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+	bb := &projectBackend{
 		Backend: b,
 		storage: storage,
 	}
 	return bb.paths()
 }
 
-func (b tenantBackend) paths() []*framework.Path {
+func (b projectBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "tenant",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project",
 			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
@@ -41,19 +46,24 @@ func (b tenantBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create tenant.",
+					Summary:  "Create project.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create tenant.",
+					Summary:  "Create project.",
 				},
 			},
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "tenant/privileged",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a project",
+					Required:    true,
+				},
+				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
 					Required:    true,
@@ -67,37 +77,44 @@ func (b tenantBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create tenant with preexistent ID.",
+					Summary:  "Create project with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create tenant with preexistent ID.",
+					Summary:  "Create project with preexistent ID.",
 				},
 			},
 		},
-		// List
+		// Listing
 		{
-			Pattern: "tenant/?",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/?",
+			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all tenants IDs.",
+					Summary:  "Lists all projects IDs.",
 				},
 			},
 		},
 		// Read, update, delete by uuid
 		{
 
-			Pattern: "tenant/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
+					Description: "ID of a project",
 					Required:    true,
 				},
-				"identifier": {
+				"tenant_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
+					Description: "ID of a tenant",
 					Required:    true,
 				},
 				"resource_version": {
@@ -105,86 +122,95 @@ func (b tenantBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the tenant by ID.",
+					Summary:  "Update the project by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the tenant by ID.",
+					Summary:  "Retrieve the project by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the tenant by ID.",
+					Summary:  "Deletes the project by ID.",
 				},
 			},
 		},
 	}
 }
 
-func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
+func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking tenant existence", "path", req.Path, "id", id, "op", req.Operation)
+		tenantID := data.Get(model.TenantForeignPK).(string)
+		b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		repo := NewProjectRepository(tx)
 
-		t, err := repo.GetById(id)
+		obj, err := repo.GetById(id)
 		if err != nil {
 			return false, err
 		}
-		return t != nil, nil
+		exists := obj != nil && obj.TenantUUID == tenantID
+		return exists, nil
 	}
 }
 
-func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
+func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
-		tenant := &model.Tenant{
+		project := &model.Project{
 			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewTenantRepository(tx)
+		repo := NewProjectRepository(tx)
 
-		if err := repo.Create(tenant); err != nil {
-			msg := "cannot create tenant"
+		if err := repo.Create(project); err != nil {
+			msg := "cannot create project"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
-		return responseWithDataAndCode(req, tenant, http.StatusCreated)
+		return responseWithDataAndCode(req, project, http.StatusCreated)
 	}
 }
 
-func (b *tenantBackend) handleUpdate() framework.OperationFunc {
+func (b *projectBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		tenant := &model.Tenant{
+		project := &model.Project{
 			UUID:       id,
-			Identifier: data.Get("identifier").(string),
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
+			Identifier: data.Get("identifier").(string),
 		}
 
-		repo := NewTenantRepository(tx)
-		err := repo.Update(tenant)
+		repo := NewProjectRepository(tx)
+		err := repo.Update(project)
 		if err == ErrNotFound {
-			return responseNotFound(req, model.TenantType)
+			return responseNotFound(req, model.ProjectType)
 		}
 		if err == ErrVersionMismatch {
 			return responseVersionMismatch(req)
@@ -194,20 +220,21 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		}
 		defer tx.Commit()
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		return responseWithDataAndCode(req, project, http.StatusOK)
 	}
 }
 
-func (b *tenantBackend) handleDelete() framework.OperationFunc {
+func (b *projectBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		id := data.Get("uuid").(string)
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewTenantRepository(tx)
+		repo := NewProjectRepository(tx)
 
-		id := data.Get("uuid").(string)
 		err := repo.Delete(id)
 		if err == ErrNotFound {
-			return responseNotFound(req, "tenant not found")
+			return responseNotFound(req, "project not found")
 		}
 		if err != nil {
 			return nil, err
@@ -218,31 +245,33 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 	}
 }
 
-func (b *tenantBackend) handleRead() framework.OperationFunc {
+func (b *projectBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		repo := NewProjectRepository(tx)
 
-		tenant, err := repo.GetById(id)
+		project, err := repo.GetById(id)
 		if err == ErrNotFound {
-			return responseNotFound(req, model.TenantType)
+			return responseNotFound(req, model.ProjectType)
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		return responseWithDataAndCode(req, project, http.StatusOK)
 	}
 }
 
-func (b *tenantBackend) handleList() framework.OperationFunc {
+func (b *projectBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 
-		list, err := repo.List()
+		tx := b.storage.Txn(false)
+		repo := NewProjectRepository(tx)
+
+		list, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
@@ -256,73 +285,81 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 	}
 }
 
-type TenantRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
+type ProjectRepository struct {
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
 }
 
-func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
-	return &TenantRepository{
-		db: tx,
+func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
+	return &ProjectRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
 	}
 }
 
-func (r *TenantRepository) Create(t *model.Tenant) error {
-	t.Version = model.NewResourceVersion()
-	return r.db.Insert(model.TenantType, t)
+func (r *ProjectRepository) Create(project *model.Project) error {
+	_, err := r.tenantRepo.GetById(project.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	project.Version = model.NewResourceVersion()
+	err = r.db.Insert(model.ProjectType, project)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *TenantRepository) GetById(id string) (*model.Tenant, error) {
-	raw, err := r.db.First(model.TenantType, model.ID, id)
+func (r *ProjectRepository) GetById(id string) (*model.Project, error) {
+	raw, err := r.db.First(model.ProjectType, model.ID, id)
 	if err != nil {
 		return nil, err
 	}
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	return raw.(*model.Tenant), nil
+	project := raw.(*model.Project)
+
+	return project, nil
 }
 
-func (r *TenantRepository) Update(updated *model.Tenant) error {
-	stored, err := r.GetById(updated.UUID)
+func (r *ProjectRepository) Update(project *model.Project) error {
+	stored, err := r.GetById(project.UUID)
 	if err != nil {
 		return err
 	}
 
 	// Validate
-
-	if stored.Version != updated.Version {
+	if stored.TenantUUID != project.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != project.Version {
 		return ErrVersionMismatch
 	}
-	updated.Version = model.NewResourceVersion()
+	project.Version = model.NewResourceVersion()
 
 	// Update
 
-	return r.db.Insert(model.TenantType, updated)
+	err = r.db.Insert(model.ProjectType, project)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *TenantRepository) Delete(id string) error {
-	userRepo := NewUserRepository(r.db)
-	err := userRepo.DeleteByTenant(id)
-	if err != nil {
-		return err
-	}
-	projectRepo := NewProjectRepository(r.db)
-	err = projectRepo.DeleteByTenant(id)
+func (r *ProjectRepository) Delete(id string) error {
+	project, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
 
-	tenant, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.TenantType, tenant)
+	return r.db.Delete(model.ProjectType, project)
 }
 
-func (r *TenantRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.TenantType, model.ID)
+func (r *ProjectRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(model.ProjectType, model.TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -333,8 +370,13 @@ func (r *TenantRepository) List() ([]string, error) {
 		if raw == nil {
 			break
 		}
-		t := raw.(*model.Tenant)
-		ids = append(ids, t.UUID)
+		u := raw.(*model.Project)
+		ids = append(ids, u.UUID)
 	}
 	return ids, nil
+}
+
+func (r *ProjectRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(model.ProjectType, model.TenantForeignPK, tenantUUID)
+	return err
 }
