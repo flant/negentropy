@@ -2,7 +2,6 @@ package vault_client
 
 import (
 	"context"
-	"fmt"
 	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -53,7 +52,7 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 			},
 			"secret_id_ttl": {
 				Type:        framework.TypeDurationSecond,
-				Description: "Secret id time to life. Min 10s",
+				Description: "Secret id time to life. Min 120s (2 minutes)",
 				Required:    true,
 			},
 		},
@@ -117,12 +116,11 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 
 	secretIdTtlRaw, ok := d.GetOk("secret_id_ttl")
 	var okCast bool
-	secretIdTtl, okCast := secretIdTtlRaw.(int)
-	c.loggerFactory().Error(fmt.Sprintf("ttl %v", secretIdTtl))
-	if !ok || !okCast || secretIdTtl < 10 {
-		return logical.ErrorResponse("incorrect secret_id_ttl must be >= 10s"), nil
+	secretIdTtlSec, okCast := secretIdTtlRaw.(int)
+	if !ok || !okCast || secretIdTtlSec < 120 {
+		return logical.ErrorResponse("incorrect secret_id_ttl must be >= 120s"), nil
 	}
-	config.SecretIdTtl = time.Duration(secretIdTtl) * time.Second
+	config.SecretIdTtlSec = time.Duration(secretIdTtlSec)
 
 	config.ApproleMountPoint, errResp = utils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {

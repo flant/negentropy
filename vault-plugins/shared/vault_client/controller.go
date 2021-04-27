@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
+	"sync"
+	"time"
 )
 
 var NotSetConfError = fmt.Errorf("access configuration does not set")
@@ -19,12 +19,12 @@ type VaultClientController struct {
 	apiClient  *api.Client
 
 	storageFactory func(s logical.Storage) *accessConfigStorage
-	loggerFactory  func() log.Logger
+	getLogger      func() log.Logger
 }
 
 func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientController {
 	c := &VaultClientController{
-		loggerFactory: loggerFactory,
+		getLogger: loggerFactory,
 	}
 
 	c.storageFactory = func(s logical.Storage) *accessConfigStorage {
@@ -36,6 +36,9 @@ func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientContr
 	return c
 }
 
+// Init initialize api client
+// if store don't contains configuration it may return NotSetConfError error
+// it is normal case
 func (c *VaultClientController) Init(s logical.Storage) error {
 	apiClient, err := c.ApiClient()
 	if err == nil && apiClient != nil {
@@ -57,7 +60,7 @@ func (c *VaultClientController) Init(s logical.Storage) error {
 		return err
 	}
 
-	accessClient := newAccessClient(apiClient, curConf, c.loggerFactory())
+	accessClient := newAccessClient(apiClient, curConf, c.getLogger())
 	auth, err := accessClient.AppRole().Login()
 
 	if err != nil {
@@ -70,6 +73,7 @@ func (c *VaultClientController) Init(s logical.Storage) error {
 	return nil
 }
 
+// ApiClient getting vault api client for communicate between plugins and vault
 func (c *VaultClientController) ApiClient() (*api.Client, error) {
 	c.clientLock.RLock()
 	defer c.clientLock.RUnlock()
@@ -81,6 +85,46 @@ func (c *VaultClientController) ApiClient() (*api.Client, error) {
 	return c.apiClient, nil
 }
 
+// RenewSecretId must be called in periodical function
+// if store don't contains configuration it may return NotSetConfError error
+// it is normal case
+func (c *VaultClientController) RenewSecretId(ctx context.Context, r *logical.Request) error {
+	logger := c.getLogger()
+
+	store := c.storageFactory(r.Storage)
+
+	accessConf, err := store.Get(ctx)
+	if err != nil {
+		return err
+	}
+
+	if accessConf == nil {
+		logger.Info("access not configurated")
+		return nil
+	}
+
+	if need, remain := accessConf.IsNeedToRenewSecretId(time.Now()); !need {
+		logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
+		return nil
+	}
+
+	apiClient, err := c.ApiClient()
+	if err != nil && errors.Is(err, ClientNotInitError) {
+		logger.Info("not init client nothing to renew")
+		return nil
+	}
+
+	// login in with new secret id in gen function
+	err = genNewSecretId(ctx, apiClient, store, accessConf, c.getLogger())
+	if err != nil {
+		return err
+	}
+
+	logger.Info("secret id renewed")
+
+	return nil
+}
+
 func (c *VaultClientController) setApiClient(newClient *api.Client) {
 	c.clientLock.Lock()
 	defer c.clientLock.Unlock()
@@ -89,6 +133,7 @@ func (c *VaultClientController) setApiClient(newClient *api.Client) {
 }
 
 func (c *VaultClientController) setAccessConfig(ctx context.Context, store *accessConfigStorage, curConf *vaultAccessConfig) error {
+	var err error
 	apiClient, err := c.ApiClient()
 	if errors.Is(err, ClientNotInitError) || apiClient == nil {
 		apiClient, err = newApiClient(curConf)
@@ -96,11 +141,15 @@ func (c *VaultClientController) setAccessConfig(ctx context.Context, store *acce
 			return err
 		}
 
-		defer c.setApiClient(apiClient)
+		defer func() {
+			if err == nil {
+				c.setApiClient(apiClient)
+			}
+		}()
 	}
 
 	// login in with new secret id in gen function
-	err = genNewSecretId(ctx, apiClient, store, curConf, c.loggerFactory())
+	err = genNewSecretId(ctx, apiClient, store, curConf, c.getLogger())
 	if err != nil {
 		return err
 	}

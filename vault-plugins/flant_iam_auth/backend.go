@@ -61,7 +61,10 @@ func backend() *flantIamAuthBackend {
 		AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
-		Help:        backendHelp,
+		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
+			return b.accessController.RenewSecretId(ctx, request)
+		},
+		Help: backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
