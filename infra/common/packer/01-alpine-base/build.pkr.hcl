@@ -11,7 +11,7 @@ variable "gcp_project" {
 variable "gcp_zone" {
   type = string
 }
-variable "git_directory_checksum" {
+variable "image_sources_checksum" {
   type = string
 }
 
@@ -78,7 +78,7 @@ variable "ssh_wait_timeout" {
 
 locals {
   version_dashed = regex_replace(var.version, "[.]", "-")
-  image_name = "${var.name}-${var.git_directory_checksum}"
+  image_name = "${var.name}-${var.image_sources_checksum}"
 }
 
 source "qemu" "alpine-base" {
@@ -130,7 +130,8 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts = [
-      "scripts/01-vector.sh",
+      "../../packer-scripts/00-apk.sh",
+      "../../packer-scripts/01-vector.sh",
       "scripts/90-setup.sh"
     ]
   }
@@ -144,7 +145,7 @@ build {
       image_description = "Alpine Linux ${var.version} x86_64 Virtual"
       image_family      = var.name
       image_labels = {
-        git_directory_checksum = "${var.git_directory_checksum}",
+        image_sources_checksum = "${var.image_sources_checksum}",
         version                = local.version_dashed
       }
       image_name = local.image_name

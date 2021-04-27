@@ -2,7 +2,7 @@ variable "root_password" {
   type =  string
   sensitive = true
 }
-variable "gcp_vault_root_source_bucket" {
+variable "gcp_vault_auth_bucket_trailer" {
   type = string
 }
 variable "gcp_project" {
@@ -22,7 +22,7 @@ variable "source_image_family" {
 
 variable "name" {
   type    = string
-  default = "vault-root-source"
+  default = "vault-auth"
 }
 
 variable "version" {
@@ -50,7 +50,7 @@ locals {
   image_name = "${var.name}-${var.image_sources_checksum}"
 }
 
-source "googlecompute" "vault-root-source" {
+source "googlecompute" "vault-auth" {
   source_image_family = var.source_image_family
 
   machine_type        = var.machine_type
@@ -59,7 +59,7 @@ source "googlecompute" "vault-root-source" {
   ssh_password        = var.root_password
 
   disk_size         = var.disk_size
-  image_description = "Vault Root Source ${var.version} based on Alpine Linux x86_64 Virtual"
+  image_description = "Vault Auth ${var.version} based on Alpine Linux x86_64 Virtual"
   image_family      = var.name
   image_labels = {
     image_sources_checksum = var.image_sources_checksum,
@@ -73,17 +73,17 @@ source "googlecompute" "vault-root-source" {
 }
 
 build {
-  sources = ["source.googlecompute.vault-root-source"]
+  sources = ["source.googlecompute.vault-auth"]
 
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "../../../common/packer-scripts/00-apk.sh",
-      "../../../common/packer-scripts/02-vault.sh",
-      "../../../common/packer-scripts/03-vector-enable.sh",
-      "../../../common/packer-scripts/80-read-only.sh",
-      "../../../common/packer-scripts/90-cleanup.sh",
-      "../../../common/packer-scripts/91-minimize.sh"
+      "scripts/00-apk.sh",
+      "scripts/02-vault.sh",
+      "scripts/03-vector-enable.sh",
+      "scripts/80-read-only.sh",
+      "scripts/90-cleanup.sh",
+      "scripts/91-minimize.sh"
     ]
   }
 
@@ -94,15 +94,15 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "GCP_VAULT_ROOT_SOURCE_BUCKET=${var.gcp_vault_root_source_bucket}"
+      "GCP_VAULT_AUTH_BUCKET_TRAILER=${var.gcp_vault_auth_bucket_trailer}"
     ]
-    inline = ["envsubst < /etc/vault.hcl.tpl > /etc/vault.hcl"]
+    inline = ["envsubst '$GCP_VAULT_AUTH_BUCKET_TRAILER' < /etc/vault.hcl.tpl > /etc/vault.hcl"]
   }
 
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "../../../common/packer-scripts/99-sshd.sh"
+      "scripts/99-sshd.sh"
     ]
   }
 }

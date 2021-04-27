@@ -14,9 +14,6 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-infra/packer/**/packer_cache
-infra/packer/**/*-manifest.json
-infra/packer/**/output
-packer.vars.json
+infra/**/packer_cache
+infra/**/output
 variables.pkrvars.hcl
-

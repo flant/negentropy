@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source ../../../include.sh
+source ../../build/include.sh
 
 if image_exists; then
   >&2 echo "Image already exists, skipping build."
@@ -10,6 +10,6 @@ fi
 
 packer build \
   -var-file=../../../variables.pkrvars.hcl \
-  -var 'git_directory_checksum='"$(git_directory_checksum)"'' \
+  -var 'image_sources_checksum='"$(image_sources_checksum)"'' \
   -force \
   build.pkr.hcl

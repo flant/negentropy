@@ -3,9 +3,6 @@ set -exu
 export VECTOR_VERSION=0.13.0
 export VECTOR_SHA256=5de3bf7b9a2ef8df733d94edb00ed3c301c900964367d7698b8e7754d02da276
 
-apk update
-apk add bash ca-certificates curl gettext libcap
-
 mkdir -p /tmp/build && \
 cd /tmp/build && \
 wget https://packages.timber.io/vector/${VECTOR_VERSION}/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz && \

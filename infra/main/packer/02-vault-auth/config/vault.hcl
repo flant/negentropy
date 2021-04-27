@@ -1,5 +1,5 @@
 storage "gcs" {
-  bucket = "$GCP_VAULT_ROOT_SOURCE_BUCKET"
+  bucket = "$HOSTNAME$GCP_VAULT_AUTH_BUCKET_TRAILER"
 }
 
 listener "tcp" {
