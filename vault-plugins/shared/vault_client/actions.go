@@ -2,6 +2,7 @@ package vault_client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
@@ -32,10 +33,12 @@ func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 }
 
 func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, accessConf *vaultAccessConfig, logger log.Logger) error {
-	// login with current secret id
-	err := loginAndSetToken(apiClient, accessConf, logger)
-	if err != nil {
-		return err
+	// login with current secret id if no login current
+	if apiClient.Token() == "" {
+		err := loginAndSetToken(apiClient, accessConf, logger)
+		if err != nil {
+			return err
+		}
 	}
 
 	// generate ne w secret id
@@ -54,6 +57,12 @@ func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessCon
 	err = store.Put(ctx, accessConf)
 	if err != nil {
 		return err
+	}
+
+	err = apiClient.Auth().Token().RevokeSelf("" /*ignored*/)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("does not revoke old access token %v", err))
+		// no return error. token always revoked later
 	}
 
 	// before delete old secret we need login with new secret and set new token
@@ -82,7 +91,6 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 	}
 
 	apiClient.SetToken(loginRes.ClientToken)
-
 	return nil
 }
 
