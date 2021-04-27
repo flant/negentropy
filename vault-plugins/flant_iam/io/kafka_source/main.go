@@ -74,18 +74,18 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 		var inputObject interface{}
 		switch splitted[0] {
 		case model.UserType:
-			inputObject = model.User{}
+			inputObject = &model.User{}
 
 		case model.ReplicaType:
-			inputObject = model.Replica{}
+			inputObject = &model.Replica{}
 
 		case model.TenantType:
-			inputObject = model.Tenant{}
+			inputObject = &model.Tenant{}
 
 		default:
 			return errors.New("is not implemented yet")
 		}
-		err = json.Unmarshal(decrypted, &inputObject)
+		err = json.Unmarshal(decrypted, inputObject)
 		if err != nil {
 			return err
 		}
