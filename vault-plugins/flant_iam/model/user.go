@@ -13,6 +13,19 @@ const (
 type User struct {
 	UUID       string `json:"uuid"` // ID
 	TenantUUID string `json:"tenant_uuid"`
+
+	// TODO identifier
+	// TODO full_identifier (<identifier>@<tenant_identifier>)
+	// TODO resource_version
+
+}
+
+func (u *User) ObjType() string {
+	return UserType
+}
+
+func (u *User) ObjId() string {
+	return u.UUID
 }
 
 func (t *User) Marshal(_ bool) ([]byte, error) {
