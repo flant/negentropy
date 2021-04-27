@@ -13,8 +13,8 @@ describe("User", function () {
     const entrypointBuilder = new SubTenantEntrypointBuilder("user")
     const rootUserClient = new API(rootClient, entrypointBuilder)
 
-    function genPayload() {
-        return genUserPayload()
+    function genPayload(override) {
+        return genUserPayload(override)
     }
 
     async function createTenantId() {
@@ -23,13 +23,13 @@ describe("User", function () {
         return data.data.uuid
     }
 
-    async function createSubtenantId(tid) {
+    async function createUser(tid) {
         const payload = genPayload()
         const { data: body } = await rootUserClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data.uuid
+        return body.data
     }
 
     it("can be created", async () => {
@@ -41,8 +41,16 @@ describe("User", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.have.key("uuid")
-        expect(body.data.uuid).to.be.a("string").of.length.above(10)
+        expect(body.data).to.include.keys(
+            "uuid",
+            "tenant_uuid",
+            "resource_version",
+        )
+        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(body.data.tenant_uuid).to.eq(tid)
+        expect(body.data.resource_version)
+            .to.be.a("string")
+            .of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -50,42 +58,53 @@ describe("User", function () {
 
         // create
         const payload = genPayload()
-        const { data: body } = await rootUserClient.create({
+        const { data: created } = await rootUserClient.create({
             params: { tenant: tid },
             payload,
         })
-        const id = body.data.uuid
+        const uid = created.data.uuid
 
         // read
-        const { data: user } = await rootUserClient.read({
-            params: { tenant: tid, user: id },
+        const { data: read } = await rootUserClient.read({
+            params: { tenant: tid, user: uid },
         })
-        expect(user.data).to.deep.eq({ uuid: id, tenant_uuid: tid })
+
+        expect(read.data).to.deep.eq(created.data)
+        expect(read.data).to.contain({ uuid: uid, tenant_uuid: tid })
+        expect(read.data.resource_version)
+            .to.be.a("string")
+            .of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {
         const tid = await createTenantId()
 
         // create
-        const uid = await createSubtenantId(tid)
+        const created = await createUser(tid)
 
         // update
-        const payload = genPayload()
-        const params = { tenant: tid, user: uid }
-        await rootUserClient.update({ params, payload })
+        const payload = genPayload({
+            resource_version: created.resource_version,
+        })
+        const params = { tenant: tid, user: created.uuid }
+        const { data: updated } = await rootUserClient.update({
+            params,
+            payload,
+        })
 
         // read
-        const { data: body } = await rootUserClient.read({ params })
-        const sub = body.data
+        const { data: read } = await rootUserClient.read({ params })
+        const sub = read.data
 
-        expect(sub).to.deep.eq({ uuid: uid, tenant_uuid: tid })
+        expect(read.data).to.deep.eq(updated.data)
     })
 
     it("can be deleted", async () => {
         const tid = await createTenantId()
 
         // create
-        const uid = await createSubtenantId(tid)
+        const user = await createUser(tid)
+        const uid = user.uuid
 
         // delete
         const params = { tenant: tid, user: uid }
@@ -98,7 +117,8 @@ describe("User", function () {
     it("can be listed", async () => {
         // create
         const tid = await createTenantId()
-        const uid = await createSubtenantId(tid)
+        const user = await createUser(tid)
+        const uid = user.uuid
 
         // delete
         const params = { tenant: tid }

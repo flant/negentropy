@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 const (
@@ -33,5 +35,5 @@ func GetSchema() (*memdb.DBSchema, error) {
 }
 
 func NewResourceVersion() string {
-	return ""
+	return uuid.New()
 }

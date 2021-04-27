@@ -109,6 +109,11 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"resource_version": {
+					Type:        framework.TypeString,
+					Description: "Resource version",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -132,7 +137,7 @@ func (b userBackend) paths() []*framework.Path {
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking user existence", "path", req.Path, "id", id)
+		b.Logger().Debug("checking user existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
@@ -165,6 +170,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 		user := &model.User{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Version:    model.NewResourceVersion(),
 		}
 
 		// Validation
@@ -179,19 +185,18 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		err := tx.Insert(model.UserType, user)
 		if err != nil {
-			b.Logger().Debug("cannot create user", "err", err.Error())
-			return logical.ErrorResponse("cannot create user"), nil
+			msg := "cannot create user"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
 		// Response
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid": id,
-			},
+		resp, err := responseWithData(user)
+		if err != nil {
+			return nil, err
 		}
-
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
@@ -212,31 +217,44 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
 		}
 
-		user := raw.(*model.User)
-		// user.TenantUUID = data.Get(model.TenantForeignPK).(string)
+		stored := raw.(*model.User)
 
-		// Validation
+		// Validate
 
-		// TODO: validation should depend on the storage
-		//      validate field uniqueness
-		//      validate resource_version
-		// feature flags
+		updated := &model.User{
+			UUID:       id,
+			TenantUUID: data.Get("tenant_uuid").(string),
+			Version:    data.Get("resource_version").(string),
+		}
 
-		err = tx.Insert(model.UserType, user)
+		if stored.TenantUUID != updated.TenantUUID {
+			rr := logical.ErrorResponse("user not found")
+			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		}
+
+		if stored.Version != updated.Version {
+			rr := logical.ErrorResponse("user version mismatch")
+			return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+		}
+
+		updated.Version = model.NewResourceVersion()
+
+		// Update
+
+		err = tx.Insert(model.UserType, updated)
 		if err != nil {
-			b.Logger().Debug("cannot save user", "err", err.Error())
-			return logical.ErrorResponse("cannot save user"), nil
+			msg := "cannot save user"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
 		// Response
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid": id,
-			},
+		resp, err := responseWithData(updated)
+		if err != nil {
+			return nil, err
 		}
-
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

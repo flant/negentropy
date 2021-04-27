@@ -10,6 +10,39 @@ const (
 
 )
 
+func UserSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			UserType: {
+				Name: UserType,
+				Indexes: map[string]*memdb.IndexSchema{
+					ID: {
+						Name:   ID,
+						Unique: true,
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					TenantForeignPK: {
+						Name:   TenantForeignPK,
+						Unique: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
+					"version": {
+						Name: "version",
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Version",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 type User struct {
 	UUID       string `json:"uuid"` // ID
 	TenantUUID string `json:"tenant_uuid"`
@@ -35,31 +68,4 @@ func (t *User) Marshal(_ bool) ([]byte, error) {
 func (t *User) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
-}
-
-func UserSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			UserType: {
-				Name: UserType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					TenantForeignPK: {
-						Name:   TenantForeignPK,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
-					},
-				},
-			},
-		},
-	}
 }

@@ -100,6 +100,11 @@ func (b tenantBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"resource_version": {
+					Type:        framework.TypeString,
+					Description: "Resource version",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -123,11 +128,12 @@ func (b tenantBackend) paths() []*framework.Path {
 func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking tenant existence", "path", req.Path, "id", id)
+		b.Logger().Debug("checking tenant existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
+
 		tx := b.storage.Txn(false)
 
 		raw, err := tx.First(model.TenantType, model.ID, id)
@@ -155,6 +161,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tenant := &model.Tenant{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
+			Version:    model.NewResourceVersion(),
 		}
 
 		// Validation
@@ -177,12 +184,10 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		// Response
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid": id,
-			},
+		resp, err := responseWithData(tenant)
+		if err != nil {
+			return nil, err
 		}
-
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
@@ -191,9 +196,10 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
+		// Find
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-
 		raw, err := tx.First(model.TenantType, model.ID, id)
 		if err != nil {
 			return nil, err
@@ -202,32 +208,39 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			rr := logical.ErrorResponse("tenant not found")
 			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
 		}
+		stored := raw.(*model.Tenant)
 
-		tenant := raw.(*model.Tenant)
-		tenant.Identifier = data.Get("identifier").(string)
+		// Validate
 
-		// Validation
+		updated := &model.Tenant{
+			UUID:       id,
+			Identifier: data.Get("identifier").(string),
+			Version:    data.Get("resource_version").(string),
+		}
 
-		// TODO: validation should depend on the storage
-		//      validate field uniqueness
-		//      validate resource_version
-		// feature flags
+		if stored.Version != updated.Version {
+			rr := logical.ErrorResponse("tenant version mismatch")
+			return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+		}
 
-		err = tx.Insert(model.TenantType, tenant)
+		updated.Version = model.NewResourceVersion()
+
+		// Update
+
+		err = tx.Insert(model.TenantType, updated)
 		if err != nil {
-			b.Logger().Debug("cannot save tenant", "err", err.Error())
-			return logical.ErrorResponse("cannot save tenant"), nil
+			msg := "cannot save tenant"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
 		// Response
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid": id,
-			},
+		resp, err := responseWithData(updated)
+		if err != nil {
+			return nil, err
 		}
-
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

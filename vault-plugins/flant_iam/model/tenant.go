@@ -32,6 +32,12 @@ func TenantSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					"version": {
+						Name: "version",
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Version",
+						},
+					},
 				},
 			},
 		},

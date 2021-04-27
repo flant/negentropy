@@ -1047,6 +1047,24 @@
         "tags": [
           "secrets"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -1107,9 +1125,14 @@
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
                   }
                 },
                 "required": [
+                  "resource_version",
                   "identifier"
                 ]
               }
