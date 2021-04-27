@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -287,11 +286,11 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 }
 
 type ProjectRepository struct {
-	db         *memdb.Txn // called "db" not to provoke transaction semantics
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
 
-func NewProjectRepository(tx *memdb.Txn) *ProjectRepository {
+func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
 	return &ProjectRepository{
 		db:         tx,
 		tenantRepo: NewTenantRepository(tx),

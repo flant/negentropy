@@ -257,11 +257,11 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 }
 
 type TenantRepository struct {
-	db *memdb.Txn // called "db" not to provoke transaction semantics
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 
 }
 
-func NewTenantRepository(tx *memdb.Txn) *TenantRepository {
+func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
 	return &TenantRepository{
 		db: tx,
 	}

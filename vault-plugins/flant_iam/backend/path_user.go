@@ -8,9 +8,10 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type userBackend struct {
@@ -287,11 +288,11 @@ func (b *userBackend) handleList() framework.OperationFunc {
 }
 
 type UserRepository struct {
-	db         *memdb.Txn // called "db" not to provoke transaction semantics
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
 
-func NewUserRepository(tx *memdb.Txn) *UserRepository {
+func NewUserRepository(tx *io.MemoryStoreTxn) *UserRepository {
 	return &UserRepository{
 		db:         tx,
 		tenantRepo: NewTenantRepository(tx),

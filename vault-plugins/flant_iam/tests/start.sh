@@ -4,7 +4,7 @@ set -eo pipefail
 set -x
 
 pushd ..
-env OS=linux make build 
+env OS=linux make build
 popd
 
 docker stop dev-vault 2>/dev/null || true
@@ -30,7 +30,7 @@ sleep 1 \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
- docker exec -it dev-vault sh
+# docker exec -it dev-vault sh
 
 # make enable
 # vault path-help flant_iam

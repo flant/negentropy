@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -158,10 +157,10 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 }
 
 type FeatureFlagRepository struct {
-	db *memdb.Txn // called "db" not to provoke transaction semantics
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
-func NewFeatureFlagRepository(tx *memdb.Txn) *FeatureFlagRepository {
+func NewFeatureFlagRepository(tx *io.MemoryStoreTxn) *FeatureFlagRepository {
 	return &FeatureFlagRepository{tx}
 }
 

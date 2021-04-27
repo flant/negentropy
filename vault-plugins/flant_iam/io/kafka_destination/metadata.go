@@ -46,7 +46,6 @@ func (mkd *MetadataKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.T
 	}
 
 	return []kafka.Message{msg}, nil
-
 }
 
 func (mkd *MetadataKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {

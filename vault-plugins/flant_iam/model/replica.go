@@ -21,6 +21,7 @@ type Replica struct {
 func (r Replica) Marshal(_ bool) ([]byte, error) {
 	return json.Marshal(r)
 }
+
 func (r Replica) ObjType() string {
 	return ReplicaType
 }
