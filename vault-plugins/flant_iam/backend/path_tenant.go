@@ -33,11 +33,6 @@ func (b tenantBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant",
 			Fields: map[string]*framework.FieldSchema{
-				"uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
-					Required:    false,
-				},
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
@@ -46,11 +41,11 @@ func (b tenantBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(false),
 					Summary:  "Create tenant.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(false),
 					Summary:  "Create tenant.",
 				},
 			},
@@ -72,11 +67,11 @@ func (b tenantBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(true),
 					Summary:  "Create tenant with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(true),
 					Summary:  "Create tenant with preexistent ID.",
 				},
 			},
@@ -86,7 +81,7 @@ func (b tenantBackend) paths() []*framework.Path {
 			Pattern: "tenant/?",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleList,
+					Callback: b.handleList(),
 					Summary:  "Lists all tenants IDs.",
 				},
 			},
@@ -107,18 +102,18 @@ func (b tenantBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence,
+			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleUpdate,
+					Callback: b.handleUpdate(),
 					Summary:  "Update the tenant by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead,
+					Callback: b.handleRead(),
 					Summary:  "Retrieve the tenant by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete,
+					Callback: b.handleDelete(),
 					Summary:  "Deletes the tenant by ID.",
 				},
 			},
@@ -126,199 +121,218 @@ func (b tenantBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *tenantBackend) handleExistence(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-	b.Logger().Debug("existance", "path", req.Path, "data", data)
+func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+		b.Logger().Debug("existence", "path", req.Path, "data", data)
 
-	id := data.Get("uuid").(string)
-	if !uuid.IsValid(id) {
-		return false, fmt.Errorf("id must be valid UUIDv4")
+		id := data.Get("uuid").(string)
+		if !uuid.IsValid(id) {
+			return false, fmt.Errorf("id must be valid UUIDv4")
+		}
+		tx := b.storage.Txn(false)
+
+		raw, err := tx.First(model.TenantType, model.ID, id)
+		if err != nil {
+			return false, err
+		}
+
+		return raw != nil, nil
 	}
-	tx := b.storage.Txn(false)
-
-	raw, err := tx.First(model.TenantType, model.ID, id)
-	if err != nil {
-		return false, err
-	}
-
-	return raw != nil, nil
 }
 
-func (b *tenantBackend) handleCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	id := data.Get("uuid").(string)
-	if id == "" {
-		id = uuid.New()
+func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		var id string
+
+		if expectID {
+			// for privileged access
+			id = data.Get("uuid").(string)
+		}
+
+		if id == "" {
+			id = uuid.New()
+		}
+
+		tenant := &model.Tenant{
+			UUID:       id,
+			Identifier: data.Get("identifier").(string),
+		}
+
+		// Validation
+
+		// TODO: validation should depend on the storage
+		//      validate field uniqueness
+		//      validate resource_version
+		// feature flags
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		err := tx.Insert(model.TenantType, tenant)
+		if err != nil {
+			msg := "cannot create tenant"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
+		}
+		defer tx.Commit()
+
+		// Response
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuid": id,
+			},
+		}
+
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
-
-	tenant := &model.Tenant{
-		UUID:       id,
-		Identifier: data.Get("identifier").(string),
-	}
-
-	// Validation
-
-	// TODO: validation should depend on the storage
-	//      validate field uniqueness
-	//      validate resource_version
-	// feature flags
-
-	tx := b.storage.Txn(true)
-	defer tx.Abort()
-
-	err := tx.Insert(model.TenantType, tenant)
-	if err != nil {
-		b.Logger().Debug("cannot create tenant", "err", err.Error())
-		return logical.ErrorResponse("cannot create tenant"), nil
-	}
-	defer tx.Commit()
-
-	// Response
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"uuid": id,
-		},
-	}
-
-	return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 }
 
-func (b *tenantBackend) handleUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	id := data.Get("uuid").(string)
+func (b *tenantBackend) handleUpdate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		id := data.Get("uuid").(string)
 
-	tx := b.storage.Txn(true)
-	defer tx.Abort()
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
 
-	raw, err := tx.First(model.TenantType, model.ID, id)
-	if err != nil {
-		return nil, err
+		raw, err := tx.First(model.TenantType, model.ID, id)
+		if err != nil {
+			return nil, err
+		}
+		if raw == nil {
+			rr := logical.ErrorResponse("tenant not found")
+			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		}
+
+		tenant := raw.(*model.Tenant)
+		tenant.Identifier = data.Get("identifier").(string)
+
+		// Validation
+
+		// TODO: validation should depend on the storage
+		//      validate field uniqueness
+		//      validate resource_version
+		// feature flags
+
+		err = tx.Insert(model.TenantType, tenant)
+		if err != nil {
+			b.Logger().Debug("cannot save tenant", "err", err.Error())
+			return logical.ErrorResponse("cannot save tenant"), nil
+		}
+		defer tx.Commit()
+
+		// Response
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuid": id,
+			},
+		}
+
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
-	if raw == nil {
-		rr := logical.ErrorResponse("tenant not found")
-		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-	}
-
-	tenant := raw.(*model.Tenant)
-	tenant.Identifier = data.Get("identifier").(string)
-
-	// Validation
-
-	// TODO: validation should depend on the storage
-	//      validate field uniqueness
-	//      validate resource_version
-	// feature flags
-
-	err = tx.Insert(model.TenantType, tenant)
-	if err != nil {
-		b.Logger().Debug("cannot save tenant", "err", err.Error())
-		return logical.ErrorResponse("cannot save tenant"), nil
-	}
-	defer tx.Commit()
-
-	// Response
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"uuid": id,
-		},
-	}
-
-	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *tenantBackend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tx := b.storage.Txn(true)
-	defer tx.Abort()
+func (b *tenantBackend) handleDelete() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
 
-	// Verify existence
+		// Verify existence
 
-	id := data.Get("uuid").(string)
-	raw, err := tx.First(model.TenantType, model.ID, id)
-	if err != nil {
-		return nil, err
+		id := data.Get("uuid").(string)
+		raw, err := tx.First(model.TenantType, model.ID, id)
+		if err != nil {
+			return nil, err
+		}
+		if raw == nil {
+			rr := logical.ErrorResponse("tenant not found")
+			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		}
+
+		// Delete
+
+		// FIXME: cascade deletion, e.g. deleteTenant()
+		err = tx.Delete(model.TenantType, raw)
+		if err != nil {
+			return nil, err
+		}
+		defer tx.Commit()
+
+		// Respond
+
+		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
-	if raw == nil {
-		rr := logical.ErrorResponse("tenant not found")
-		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-	}
-
-	// Delete
-
-	// FIXME: cascade deletion, e.g. deleteTenant()
-	err = tx.Delete(model.TenantType, raw)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Commit()
-
-	// Respond
-
-	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }
 
-func (b *tenantBackend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tx := b.storage.Txn(false)
-	id := data.Get("uuid").(string)
+func (b *tenantBackend) handleRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(false)
+		id := data.Get("uuid").(string)
 
-	// Find
+		// Find
 
-	raw, err := tx.First(model.TenantType, model.ID, id)
-	if err != nil {
-		return nil, err
+		raw, err := tx.First(model.TenantType, model.ID, id)
+		if err != nil {
+			return nil, err
+		}
+		if raw == nil {
+			rr := logical.ErrorResponse("tenant not found")
+			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		}
+
+		// Respond
+
+		tenant := raw.(*model.Tenant)
+		tenantJSON, err := tenant.Marshal(false)
+		if err != nil {
+			return nil, err
+		}
+
+		var responseData map[string]interface{}
+		err = jsonutil.DecodeJSON(tenantJSON, &responseData)
+		if err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{
+			Data: responseData,
+		}
+
+		return resp, nil
 	}
-	if raw == nil {
-		rr := logical.ErrorResponse("tenant not found")
-		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-	}
-
-	// Respond
-
-	tenant := raw.(*model.Tenant)
-	tenantJSON, err := tenant.Marshal(false)
-	if err != nil {
-		return nil, err
-	}
-
-	var responseData map[string]interface{}
-	err = jsonutil.DecodeJSON(tenantJSON, &responseData)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{
-		Data: responseData,
-	}
-
-	return resp, nil
 }
 
 // nolint:unused
-func (b *tenantBackend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tx := b.storage.Txn(false)
+func (b *tenantBackend) handleList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(false)
 
-	// Find
+		// Find
 
-	iter, err := tx.Get(model.TenantType, model.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	tenants := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
+		iter, err := tx.Get(model.TenantType, model.ID)
+		if err != nil {
+			return nil, err
 		}
-		t := raw.(*model.Tenant)
-		tenants = append(tenants, t.UUID)
+
+		tenants := []string{}
+		for {
+			raw := iter.Next()
+			if raw == nil {
+				break
+			}
+			t := raw.(*model.Tenant)
+			tenants = append(tenants, t.UUID)
+		}
+
+		// Respond
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuids": tenants,
+			},
+		}
+
+		return resp, nil
 	}
-
-	// Respond
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"uuids": tenants,
-		},
-	}
-
-	return resp, nil
 }
