@@ -25,7 +25,7 @@ describe("Feature flag", function () {
 
             const invalidCases = [
                 {
-                    title: "number allowed",  // the matter of fact ¯\_(ツ)_/¯
+                    title: "number allowed", // the matter of fact ¯\_(ツ)_/¯
                     payload: genFeatureFlag({
                         name: Math.round(Math.random() * 1e9),
                     }),

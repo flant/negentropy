@@ -686,6 +686,7 @@
         }
       }
     },
+<<<<<<< ours
     "/flant_iam/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
@@ -770,6 +771,12 @@
       "get": {
         "summary": "Lists all flant_iam replication backends",
         "operationId": "getFlant_iamReplica",
+=======
+    "/flant_iam/feature_flag": {
+      "get": {
+        "summary": "Lists all feature flags.",
+        "operationId": "getFlant_iamFeature_flag",
+>>>>>>> theirs
         "tags": [
           "secrets"
         ],
@@ -790,6 +797,7 @@
         }
       }
     },
+<<<<<<< ours
     "/flant_iam/replica/{replica_name}": {
       "parameters": [
         {
@@ -798,10 +806,22 @@
           "in": "path",
           "schema": {
             "type": "string"
+=======
+    "/flant_iam/feature_flag/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Feature flag name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+>>>>>>> theirs
           },
           "required": true
         }
       ],
+<<<<<<< ours
       "x-vault-createSupported": true,
       "get": {
         "operationId": "getFlant_iamReplicaReplica_name",
@@ -850,6 +870,11 @@
       },
       "delete": {
         "operationId": "deleteFlant_iamReplicaReplica_name",
+=======
+      "delete": {
+        "summary": "Deletes the featureFlag by ID.",
+        "operationId": "deleteFlant_iamFeature_flagName",
+>>>>>>> theirs
         "tags": [
           "secrets"
         ],
@@ -1170,8 +1195,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1316,8 +1341,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
