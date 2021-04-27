@@ -3,7 +3,7 @@
   "info": {
     "title": "HashiCorp Vault API",
     "description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "license": {
       "name": "Mozilla Public License 2.0",
       "url": "https://www.mozilla.org/en-US/MPL/2.0"
@@ -686,6 +686,180 @@
         }
       }
     },
+    "/flant_iam/kafka/configure_access": {
+      "post": {
+        "summary": "Setup kafka configuration",
+        "operationId": "postFlant_iamKafkaConfigure_access",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "certificate": {
+                    "type": "string",
+                    "description": "x509 certificate to establish Kafka TLS connection"
+                  },
+                  "kafka_endpoints": {
+                    "type": "array",
+                    "description": "List of kafka backends. Ex: 192.168.1.1:9093",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "kafka_endpoints",
+                  "certificate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/kafka/generate_csr": {
+      "parameters": [
+        {
+          "name": "force",
+          "description": "Ensforce private key recreation",
+          "in": "query",
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Generate CSR for kafka endpoint",
+        "operationId": "postFlant_iamKafkaGenerate_csr",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/kafka/public_key": {
+      "get": {
+        "summary": "Return public key",
+        "operationId": "getFlant_iamKafkaPublic_key",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/replica": {
+      "get": {
+        "summary": "Lists all flant_iam replication backends",
+        "operationId": "getFlant_iamReplica",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/replica/{replica_name}": {
+      "parameters": [
+        {
+          "name": "replica_name",
+          "description": "replication name",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "operationId": "getFlant_iamReplicaReplica_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "operationId": "postFlant_iamReplicaReplica_name",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "public_key": {
+                    "type": "string",
+                    "description": "Public rsa key for encryption"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "replication type",
+                    "enum": [
+                      "Vault",
+                      "Metadata"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteFlant_iamReplicaReplica_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant": {
       "get": {
         "summary": "Lists all tenants IDs.",
@@ -736,8 +910,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -5385,6 +5559,36 @@
         }
       }
     },
+    "/sys/pprof/allocs": {
+      "get": {
+        "summary": "Returns a sampling of all past memory allocations.",
+        "description": "Returns a sampling of all past memory allocations.",
+        "operationId": "getSysPprofAllocs",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/pprof/block": {
+      "get": {
+        "summary": "Returns stack traces that led to blocking on synchronization primitives",
+        "description": "Returns stack traces that led to blocking on synchronization primitives",
+        "operationId": "getSysPprofBlock",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/sys/pprof/cmdline": {
       "get": {
         "summary": "Returns the running program's command line.",
@@ -5430,6 +5634,21 @@
         }
       }
     },
+    "/sys/pprof/mutex": {
+      "get": {
+        "summary": "Returns stack traces of holders of contended mutexes",
+        "description": "Returns stack traces of holders of contended mutexes",
+        "operationId": "getSysPprofMutex",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/sys/pprof/profile": {
       "get": {
         "summary": "Returns a pprof-formatted cpu profile payload.",
@@ -5450,6 +5669,21 @@
         "summary": "Returns the program counters listed in the request.",
         "description": "Returns the program counters listed in the request.",
         "operationId": "getSysPprofSymbol",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/pprof/threadcreate": {
+      "get": {
+        "summary": "Returns stack traces that led to the creation of new OS threads",
+        "description": "Returns stack traces that led to the creation of new OS threads",
+        "operationId": "getSysPprofThreadcreate",
         "tags": [
           "system"
         ],

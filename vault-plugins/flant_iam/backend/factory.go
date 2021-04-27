@@ -55,6 +55,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
+	storage.SetLogger(conf.Logger)
+
 	storage.AddKafkaSource(kafka_source.NewMainKafkaSource(mb, "root_source"))
 
 	err = storage.Restore()

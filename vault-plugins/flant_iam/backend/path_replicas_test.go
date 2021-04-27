@@ -15,205 +15,176 @@ package backend
 
 // }
 
-//
-// import (
-// 	"context"
-// 	"crypto/rand"
-// 	"crypto/rsa"
-// 	"crypto/x509"
-// 	"encoding/pem"
-// 	"strings"
-// 	"testing"
-// 	"time"
-//
-// 	log "github.com/hashicorp/go-hclog"
-// 	"github.com/hashicorp/vault/sdk/framework"
-// 	"github.com/hashicorp/vault/sdk/helper/logging"
-// 	"github.com/hashicorp/vault/sdk/logical"
-// 	"github.com/segmentio/kafka-go"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/require"
-//
-// 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
-// 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-// 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
-// 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
-// )
-//
-// type testBroker struct {
-// }
-//
-// func (tb *testBroker) EncryptionPublicKey() *rsa.PublicKey {
-// 	return nil
-// }
-// func (tb *testBroker) EncryptionPrivateKey() *rsa.PrivateKey {
-// 	return nil
-// }
-// func (tb *testBroker) GetKafkaWriter() *kafka.Writer {
-// 	return nil
-// }
-//
-// func (tb *testBroker) CreateTopic(topic ...kafka.TopicConfig) error {
-// 	return nil
-// }
-// func (tb *testBroker) DeleteTopic(topicName ...string) error {
-// 	return nil
-// }
-//
-// func TestReplicas(t *testing.T) {
-// 	b, storage := generateBackend(t)
-//
-// 	pk, _ := rsa.GenerateKey(rand.Reader, 32)
-// 	d := x509.MarshalPKCS1PublicKey(&pk.PublicKey)
-//
-// 	pubS := pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: d})
-// 	pub := strings.Replace(string(pubS), "\n", "\\n", -1)
-//
-// 	t.Run("create replicas", func(t *testing.T) {
-// 		req := &logical.Request{
-// 			Storage:   storage,
-// 			Data:      map[string]interface{}{"topic_type": "Vault", "public_key": pub},
-// 			Path:      "/replica/one",
-// 			Operation: logical.UpdateOperation,
-// 		}
-//
-// 		_, err := b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-//
-// 		req = &logical.Request{
-// 			Storage:   storage,
-// 			Data:      map[string]interface{}{"topic_type": "Metadata", "public_key": pub},
-// 			Path:      "/replica/two",
-// 			Operation: logical.UpdateOperation,
-// 		}
-//
-// 		_, err = b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-//
-// 		req = &logical.Request{
-// 			Storage:   storage,
-// 			Data:      map[string]interface{}{"topic_type": "Vault", "public_key": pub},
-// 			Path:      "/replica/three",
-// 			Operation: logical.UpdateOperation,
-// 		}
-//
-// 		_, err = b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-// 	})
-//
-// 	t.Run("list replicas", func(t *testing.T) {
-// 		req := &logical.Request{
-// 			Storage:   storage,
-// 			Path:      "/replica",
-// 			Operation: logical.ListOperation,
-// 		}
-//
-// 		resp, err := b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-// 		names := resp.Data["replicas_names"].([]string)
-// 		assert.Len(t, names, 3)
-// 	})
-//
-// 	t.Run("read replica", func(t *testing.T) {
-// 		req := &logical.Request{
-// 			Storage:   storage,
-// 			Path:      "/replica/two",
-// 			Operation: logical.ReadOperation,
-// 		}
-//
-// 		resp, err := b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-// 		data := resp.Data
-// 		assert.Equal(t, "two", data["replica_name"].(string))
-// 		assert.Equal(t, "Metadata", data["topic_type"].(string))
-// 		assert.Equal(t, pub, data["public_key"].(string))
-// 	})
-//
-// 	t.Run("delete replica", func(t *testing.T) {
-// 		req := &logical.Request{
-// 			Storage:   storage,
-// 			Path:      "/replica/one",
-// 			Operation: logical.DeleteOperation,
-// 		}
-//
-// 		_, err := b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-// 	})
-//
-// 	t.Run("read non-existant replica", func(t *testing.T) {
-// 		req := &logical.Request{
-// 			Storage:   storage,
-// 			Path:      "/replica/one",
-// 			Operation: logical.ReadOperation,
-// 		}
-//
-// 		res, err := b.HandleRequest(context.Background(), req)
-// 		require.NoError(t, err)
-// 		assert.Contains(t, res.Data["http_raw_body"], "replica not found")
-// 	})
-//
-// }
-//
-// func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
-//
-// 	defaultLeaseTTLVal := time.Hour * 12
-// 	maxLeaseTTLVal := time.Hour * 24
-//
-// 	config := &logical.BackendConfig{
-// 		Logger: logging.NewVaultLogger(log.Trace),
-//
-// 		System: &logical.StaticSystemView{
-// 			DefaultLeaseTTLVal: defaultLeaseTTLVal,
-// 			MaxLeaseTTLVal:     maxLeaseTTLVal,
-// 		},
-// 		StorageView: &logical.InmemStorage{},
-// 	}
-// 	// b, err := Factory(context.Background(), config)
-// 	// if err != nil {
-// 	// 	t.Fatalf("unable to create backend: %v", err)
-// 	// }
-//
-// 	b := &framework.Backend{
-// 		Help:        strings.TrimSpace(commonHelp),
-// 		BackendType: logical.TypeLogical,
-// 	}
-//
-// 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), config.StorageView)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	mb.SetTestEndpoint("127.0.0.1:9093") // TODO: убери меня нафик
-// 	rs, err := rsa.GenerateKey(rand.Reader, 2048)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	mb.SetRSA(rs)
-//
-// 	schema, err := model.GetSchema()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	storage, err := sharedio.NewMemoryStore(schema, mb)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	// storage.AddKafkaSource(kafka_source.NewMainKafkaSource(mb, "root_source"))
-// 	//
-// 	// err = storage.Restore()
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-//
-// 	// destinations
-// 	storage.AddKafkaDestination(kafka_destination.NewMainKafkaDestination(mb, "root_source"))
-//
-// 	b.Paths = framework.PathAppend(
-// 		replicasPaths(b, storage),
-// 		tenantPaths(b, storage),
-// 		userPaths(b, storage),
-// 	)
-// 	b.Setup(context.TODO(), config)
-//
-// 	return b, config.StorageView
-// }
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"strings"
+	"testing"
+	"time"
+
+	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+)
+
+func TestReplicas(t *testing.T) {
+	b, storage := generateBackend(t)
+
+	pk, _ := rsa.GenerateKey(rand.Reader, 32)
+	d := x509.MarshalPKCS1PublicKey(&pk.PublicKey)
+
+	pubS := pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: d})
+	pub := strings.Replace(string(pubS), "\n", "\\n", -1)
+
+	t.Run("create replicas", func(t *testing.T) {
+		req := &logical.Request{
+			Storage:   storage,
+			Data:      map[string]interface{}{"type": "Vault", "public_key": pub},
+			Path:      "replica/one",
+			Operation: logical.UpdateOperation,
+		}
+
+		_, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+
+		req = &logical.Request{
+			Storage:   storage,
+			Data:      map[string]interface{}{"type": "Metadata", "public_key": pub},
+			Path:      "replica/two",
+			Operation: logical.UpdateOperation,
+		}
+
+		_, err = b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+
+		req = &logical.Request{
+			Storage:   storage,
+			Data:      map[string]interface{}{"type": "Vault", "public_key": pub},
+			Path:      "replica/three",
+			Operation: logical.UpdateOperation,
+		}
+
+		_, err = b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("list replicas", func(t *testing.T) {
+		req := &logical.Request{
+			Storage:   storage,
+			Path:      "replica",
+			Operation: logical.ListOperation,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		names := resp.Data["replicas_names"].([]string)
+		assert.Len(t, names, 3)
+	})
+
+	t.Run("read replica", func(t *testing.T) {
+		req := &logical.Request{
+			Storage:   storage,
+			Path:      "replica/two",
+			Operation: logical.ReadOperation,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		data := resp.Data
+		assert.Equal(t, "two", data["replica_name"].(string))
+		assert.Equal(t, "Metadata", data["type"].(string))
+		assert.Equal(t, pub, data["public_key"].(string))
+	})
+
+	t.Run("delete replica", func(t *testing.T) {
+		req := &logical.Request{
+			Storage:   storage,
+			Path:      "replica/one",
+			Operation: logical.DeleteOperation,
+		}
+
+		_, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("read non-existant replica", func(t *testing.T) {
+		req := &logical.Request{
+			Storage:   storage,
+			Path:      "replica/one",
+			Operation: logical.ReadOperation,
+		}
+
+		res, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		assert.Contains(t, res.Data["http_raw_body"], "replica not found")
+	})
+
+}
+
+func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
+
+	defaultLeaseTTLVal := time.Hour * 12
+	maxLeaseTTLVal := time.Hour * 24
+
+	config := &logical.BackendConfig{
+		Logger: logging.NewVaultLogger(log.Trace),
+
+		System: &logical.StaticSystemView{
+			DefaultLeaseTTLVal: defaultLeaseTTLVal,
+			MaxLeaseTTLVal:     maxLeaseTTLVal,
+		},
+		StorageView: &logical.InmemStorage{},
+	}
+	// b, err := Factory(context.Background(), config)
+	// if err != nil {
+	// 	t.Fatalf("unable to create backend: %v", err)
+	// }
+
+	b := &framework.Backend{
+		Help:        strings.TrimSpace(commonHelp),
+		BackendType: logical.TypeLogical,
+	}
+
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), config.StorageView, "root_store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := model.GetSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	storage, err := sharedio.NewMemoryStore(schema, mb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// storage.AddKafkaSource(kafka_source.NewMainKafkaSource(mb, "root_source"))
+	//
+	// err = storage.Restore()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// destinations
+	storage.AddKafkaDestination(kafka_destination.NewMainKafkaDestination(mb, "root_source"))
+
+	b.Paths = framework.PathAppend(
+		replicasPaths(b, storage),
+		tenantPaths(b, storage),
+		userPaths(b, storage),
+	)
+	b.Setup(context.TODO(), config)
+
+	return b, config.StorageView
+}
