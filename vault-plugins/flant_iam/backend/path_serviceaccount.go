@@ -327,6 +327,23 @@ func (r *ServiceAccountRepository) GetById(id string) (*model.ServiceAccount, er
 	return serviceAccount, nil
 }
 
+/*
+TODO
+	* Из-за того, что в очереди формата TokenGenerationNumber стоит ttl 30 дней – token_ttl не может быть больше 30 дней.
+		См. подробнее следующий пункт и описание формата очереди.
+
+TODO Логика создания/обновления сервис аккаунта:
+	* type object_with_resource_version
+	* type tenanted_object
+	* validate_tenant(запрос, объект из стора)
+	* validate_resource_version(запрос, entry)
+	* пробуем загрузить объект, если объект есть, то:
+	* валидируем resource_version
+	* валидируем тенанта
+	* валидируем builtin_type_name
+	* если объекта нет, то:
+	* валидируем, что нам не передан resource_version
+*/
 func (r *ServiceAccountRepository) Update(serviceAccount *model.ServiceAccount) error {
 	stored, err := r.GetById(serviceAccount.UUID)
 	if err != nil {
@@ -358,6 +375,11 @@ func (r *ServiceAccountRepository) Update(serviceAccount *model.ServiceAccount) 
 	return nil
 }
 
+/*
+TODO
+	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
+	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
+*/
 func (r *ServiceAccountRepository) Delete(id string) error {
 	serviceAccount, err := r.GetById(id)
 	if err != nil {
