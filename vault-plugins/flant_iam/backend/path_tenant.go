@@ -8,9 +8,10 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type tenantBackend struct {
@@ -309,6 +310,12 @@ func (r *TenantRepository) Delete(id string) error {
 	}
 	projectRepo := NewProjectRepository(r.db)
 	err = projectRepo.DeleteByTenant(id)
+	if err != nil {
+		return err
+	}
+
+	saRepo := NewServiceAccountRepository(r.db)
+	err = saRepo.DeleteByTenant(id)
 	if err != nil {
 		return err
 	}

@@ -19,6 +19,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		ReplicaSchema(),
 		ProjectSchema(),
 		FeatureFlagSchema(),
+		ServiceAccountSchema(),
 	}
 
 	for _, o := range others {
