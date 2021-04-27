@@ -127,11 +127,11 @@ func generateOrRotateKeys(ctx context.Context, storage logical.Storage) error {
 // removeFirstKey remove the key if there are more than one
 func removeFirstKey(ctx context.Context, storage logical.Storage) error {
 	return modifyKeys(ctx, storage, func(privateSet, pubicKeySet *jose.JSONWebKeySet) error {
-		if len(privateSet.Keys) > 2 {
-			privateSet.Keys = privateSet.Keys[1:len(privateSet.Keys)]
+		if len(privateSet.Keys) == 2 {
+			privateSet.Keys = privateSet.Keys[1:]
 		}
-		if len(pubicKeySet.Keys) > 2 {
-			pubicKeySet.Keys = pubicKeySet.Keys[1:len(pubicKeySet.Keys)]
+		if len(pubicKeySet.Keys) == 2 {
+			pubicKeySet.Keys = pubicKeySet.Keys[1:]
 		}
 		return nil
 	})

@@ -135,9 +135,9 @@ func (b *TokenController) shouldRotateOrPublish(ctx context.Context, storage log
 	lastRotation := time.Unix(timeSeconds, 0)
 	now := b.now()
 
-	if lastRotation.Add(rotateEvery).After(now) {
+	if !lastRotation.Add(rotateEvery).After(now) {
 		return true, false, nil
-	} else if lastRotation.Add(rotateEvery).Add(-publishKeyBefore).After(now) {
+	} else if !lastRotation.Add(rotateEvery).Add(-publishKeyBefore).After(now) {
 		return false, true, nil
 	}
 	return false, false, nil

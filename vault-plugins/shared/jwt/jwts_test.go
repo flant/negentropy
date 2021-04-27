@@ -12,7 +12,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
+func getBackend(t *testing.T) (*jwtAuthBackend, logical.Storage) {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 
@@ -28,7 +28,8 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	b, err := Factory(context.Background(), config)
 	require.NoError(t, err)
 
-	return b, config.StorageView
+	jwtBackend := b.(*jwtAuthBackend)
+	return jwtBackend, config.StorageView
 }
 
 func enableJWT(t *testing.T, b logical.Backend, storage logical.Storage) {
@@ -70,20 +71,20 @@ func TestJWKS(t *testing.T) {
 
 	// #1 First run
 	firstRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, len(firstRunKeys), 1)
+	require.Equal(t, 1, len(firstRunKeys))
 
 	// #2 Second run (do not rotate first key
 	err := generateOrRotateKeys(context.TODO(), storage)
 	require.NoError(t, err)
 	secondRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, len(secondRunKeys), 2)
+	require.Equal(t, 2, len(secondRunKeys))
 	require.Equal(t, secondRunKeys[0], firstRunKeys[0])
 
 	// #3 Third run (delete first keys, add new key to the end)
 	err = generateOrRotateKeys(context.TODO(), storage)
 	require.NoError(t, err)
 	thisRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, len(thisRunKeys), 2)
+	require.Equal(t, 2, len(thisRunKeys))
 	require.Equal(t, thisRunKeys[0], secondRunKeys[1])
 
 	// #4 Force rotate keys
@@ -97,4 +98,42 @@ func TestJWKS(t *testing.T) {
 	requireValidResponse(t, resp, err)
 	keysAfterRotation := runJWKSTest(t, b, storage)
 	require.Equal(t, len(keysAfterRotation), 1)
+}
+
+func TestJWKSRotation(t *testing.T) {
+	b, storage := getBackend(t)
+	enableJWT(t, b, storage)
+
+	// #1 First run
+	firstRunKeys := runJWKSTest(t, b, storage)
+	require.Equal(t, len(firstRunKeys), 1)
+
+	// #2 Nothing to do
+	err := b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	require.NoError(t, err)
+
+	secondRunKeys := runJWKSTest(t, b, storage)
+	require.Equal(t, firstRunKeys, secondRunKeys)
+
+	// #3 Publish time
+	b.tokenController.now = func() time.Time {
+		return time.Now().Add(time.Hour * 330)
+	}
+	err = b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	require.NoError(t, err)
+
+	thirdRunKeys := runJWKSTest(t, b, storage)
+	require.Equal(t, 2, len(thirdRunKeys))
+	require.Equal(t, thirdRunKeys[0], firstRunKeys[0])
+
+	// #4 Rotation time
+	b.tokenController.now = func() time.Time {
+		return time.Now().Add(time.Hour * 1000)
+	}
+	err = b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	require.NoError(t, err)
+
+	forthRunKeys := runJWKSTest(t, b, storage)
+	require.Equal(t, 1, len(forthRunKeys))
+	require.Equal(t, forthRunKeys[0], thirdRunKeys[1])
 }
