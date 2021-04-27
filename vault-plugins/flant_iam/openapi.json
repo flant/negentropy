@@ -998,8 +998,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -1170,8 +1170,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -1242,8 +1242,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1316,8 +1316,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }

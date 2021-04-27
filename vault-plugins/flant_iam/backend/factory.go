@@ -91,6 +91,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		tenantPaths(b, storage),
 		userPaths(b, storage),
 		projectPaths(b, storage),
+		featureFlagPaths(b, storage),
 
 		replicasPaths(b, storage),
 		mb.KafkaPaths(),

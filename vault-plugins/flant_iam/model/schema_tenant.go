@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
@@ -66,8 +65,4 @@ func (t *Tenant) Marshal(_ bool) ([]byte, error) {
 func (t *Tenant) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
-}
-
-func (t *Tenant) Parse(data *framework.FieldData) error {
-	return nil
 }

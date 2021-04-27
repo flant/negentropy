@@ -305,11 +305,12 @@ func (r UserRepository) Create(user *model.User) error {
 	}
 
 	user.Version = model.NewResourceVersion()
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+
 	err = r.db.Insert(model.UserType, user)
 	if err != nil {
 		return err
 	}
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 	return nil
 }
 
@@ -322,12 +323,6 @@ func (r UserRepository) GetById(id string) (*model.User, error) {
 		return nil, ErrNotFound
 	}
 	user := raw.(*model.User)
-
-	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
-	if err != nil {
-		return nil, err
-	}
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 	return user, nil
 }
 
@@ -348,16 +343,16 @@ func (r UserRepository) Update(user *model.User) error {
 
 	// Update
 
-	err = r.db.Insert(model.UserType, user)
-	if err != nil {
-		return err
-	}
-
 	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
 	if err != nil {
 		return err
 	}
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+
+	err = r.db.Insert(model.UserType, user)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
