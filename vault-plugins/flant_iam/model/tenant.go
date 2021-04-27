@@ -20,6 +20,7 @@ type Tenant struct {
 func (t *Tenant) ObjType() string {
 	return TenantType
 }
+
 func (t *Tenant) ObjId() string {
 	return t.UUID
 }
