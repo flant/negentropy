@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -20,8 +19,10 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
 
-	b := newBackend(conf)
-
+	b, err := newBackend(conf)
+	if err != nil {
+		return nil, err
+	}
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
 	}
@@ -29,24 +30,23 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend(conf *logical.BackendConfig) logical.Backend {
+func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 	}
 
-	// Storage
-	storage, err := memdb.NewMemDB(model.TenantSchema())
+	storage, err := model.NewDB()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	// Paths
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
+		userPaths(b, storage),
 	)
 
-	return b
+	return b, nil
 }
 
 const commonHelp = `

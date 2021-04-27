@@ -9,7 +9,7 @@ import (
 
 func Test_TenantMarshalling(t *testing.T) {
 	ten := &Tenant{
-		Id:         uuid.New(),
+		UUID:       uuid.New(),
 		Identifier: "somefun",
 	}
 
@@ -26,5 +26,12 @@ func Test_TenantMarshalling(t *testing.T) {
 
 	if !reflect.DeepEqual(ten, ten2) {
 		t.Fatalf("tenant changed during marshalling/unmarshalling: was=%v, became=%v", ten, ten2)
+	}
+}
+
+func Test_TenantDbSchema(t *testing.T) {
+	schema := TenantSchema()
+	if err := schema.Validate(); err != nil {
+		t.Fatalf("tenant schema is invalid: %v", err)
 	}
 }

@@ -6,29 +6,29 @@ import (
 )
 
 const (
-	TenantType      = "tenant" // also, memdb schema name
-	TenantForeignPK = "tenant_uuid"
+	UserType = "user" // also, memdb schema name
+
 )
 
-type Tenant struct {
+type User struct {
 	UUID       string `json:"uuid"` // ID
-	Identifier string `json:"identifier"`
+	TenantUUID string `json:"tenant_uuid"`
 }
 
-func (t *Tenant) Marshal(_ bool) ([]byte, error) {
+func (t *User) Marshal(_ bool) ([]byte, error) {
 	return jsonutil.EncodeJSON(t)
 }
 
-func (t *Tenant) Unmarshal(data []byte) error {
+func (t *User) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
 }
 
-func TenantSchema() *memdb.DBSchema {
+func UserSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
-			TenantType: {
-				Name: TenantType,
+			UserType: {
+				Name: UserType,
 				Indexes: map[string]*memdb.IndexSchema{
 					ID: {
 						Name:   ID,
@@ -37,11 +37,11 @@ func TenantSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"identifier": {
-						Name:   "identifier",
+					TenantForeignPK: {
+						Name:   TenantForeignPK,
 						Unique: true,
 						Indexer: &memdb.StringFieldIndex{
-							Field:     "Identifier",
+							Field:     "TenantUUID",
 							Lowercase: true,
 						},
 					},

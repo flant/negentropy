@@ -23,7 +23,7 @@ describe("Tenants", function () {
                     validateStatus: (x) => x === 201,
                 },
                 {
-                    title: "absent name field forbidden",
+                    title: "absent identifier forbidden",
                     payload: (() => {
                         const p = genTenantPayload({})
                         delete p.identifier
@@ -64,18 +64,18 @@ describe("Tenants", function () {
         const { data: body } = await root.create(payload)
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.have.key("id")
-        expect(body.data.id).to.be.a("string").of.length.above(10)
+        expect(body.data).to.have.key("uuid")
+        expect(body.data.uuid).to.be.a("string").of.length.above(10)
     })
 
     it("can be read", async () => {
         const payload = genTenantPayload()
 
         const { data: body } = await root.create(payload)
-        const id = body.data.id
+        const uuid = body.data.uuid
 
-        const { data: tenant } = await root.read(id)
-        expect(tenant.data).to.deep.eq({ ...payload, id })
+        const { data: tenant } = await root.read(uuid)
+        expect(tenant.data).to.deep.eq({ ...payload, uuid })
     })
 
     it("can be read by id", async () => {
@@ -84,19 +84,19 @@ describe("Tenants", function () {
         const payload3 = genTenantPayload()
 
         const { data: body1 } = await root.create(payload1)
-        const id1 = body1.data.id
+        const id1 = body1.data.uuid
         const { data: body2 } = await root.create(payload2)
-        const id2 = body2.data.id
+        const id2 = body2.data.uuid
         const { data: body3 } = await root.create(payload3)
-        const id3 = body3.data.id
+        const id3 = body3.data.uuid
 
         const { data: resp1 } = await root.read(id1)
         const { data: resp2 } = await root.read(id2)
         const { data: resp3 } = await root.read(id3)
 
-        expect(resp1.data).to.deep.eq({ ...payload1, id: id1 })
-        expect(resp2.data).to.deep.eq({ ...payload2, id: id2 })
-        expect(resp3.data).to.deep.eq({ ...payload3, id: id3 })
+        expect(resp1.data).to.deep.eq({ ...payload1, uuid: id1 })
+        expect(resp2.data).to.deep.eq({ ...payload2, uuid: id2 })
+        expect(resp3.data).to.deep.eq({ ...payload3, uuid: id3 })
     })
 
     it("can be updated", async () => {
@@ -105,23 +105,23 @@ describe("Tenants", function () {
 
         // create
         const { data: body1 } = await root.create(createPld)
-        const id = body1.data.id
+        const uuid = body1.data.uuid
 
         // update
-        const { data: body2 } = await root.update(id, updatePld)
+        const { data: body2 } = await root.update(uuid, updatePld)
 
         // read
-        const { data: body3 } = await root.read(id)
+        const { data: body3 } = await root.read(uuid)
         const tenant = body3.data
 
-        expect(tenant).to.deep.eq({ ...updatePld, id })
+        expect(tenant).to.deep.eq({ ...updatePld, uuid })
     })
 
     it("can be deleted", async () => {
         const createPld = genTenantPayload()
 
         const { data: body1 } = await root.create(createPld)
-        const id = body1.data.id
+        const id = body1.data.uuid
 
         await root.delete(id)
 
@@ -140,13 +140,12 @@ describe("Tenants", function () {
     it("has identifying fields in list", async () => {
         const payload = genTenantPayload()
         const { data: creationBody } = await root.create(payload)
-        const id = creationBody.data.id
+        const id = creationBody.data.uuid
 
         const { data: listBody } = await root.list()
 
-        expect(listBody.data).to.be.an("object").and.have.key("ids")
-        const { ids } = listBody.data
-        expect(ids).to.include(id)
+        expect(listBody.data).to.be.an("object").and.have.key("uuids")
+        expect(listBody.data.uuids).to.include(id)
     })
 
     describe("when does not exist", () => {
@@ -187,30 +186,29 @@ describe("Tenants", function () {
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
                 const { data } = await root.create(genTenantPayload())
-                await unauth.read(data.data.id, opts)
+                await unauth.read(data.data.uuid, opts)
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
                 const { data } = await root.create(genTenantPayload())
-                await unauth.update(data.data.id, genTenantPayload(), opts)
+                await unauth.update(data.data.uuid, genTenantPayload(), opts)
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
                 const { data } = await root.create(genTenantPayload())
-                await unauth.delete(data.data.id, opts)
+                await unauth.delete(data.data.uuid, opts)
             })
         }
     })
 
     describe("privileged access", function () {
         it(`creates`, async () => {
-            const p = genTenantPayload()
-            p.id = uuidv4()
+            const payload = genTenantPayload({ uuid: uuidv4() })
 
-            const { data: body } = await root.createPriveleged(p)
+            const { data: body } = await root.createPriveleged(payload)
 
-            const id = body.data.id
-            expect(id).to.deep.eq(p.id)
+            const id = body.data.uuid
+            expect(id).to.deep.eq(payload.uuid)
         })
     })
 })

@@ -29,10 +29,11 @@ func tenantPaths(b logical.Backend, storage *memdb.MemDB) []*framework.Path {
 
 func (b tenantBackend) paths() []*framework.Path {
 	return []*framework.Path{
+		// Creation
 		{
 			Pattern: "tenant",
 			Fields: map[string]*framework.FieldSchema{
-				"id": {
+				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
 					Required:    false,
@@ -54,10 +55,11 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Creation with known uuid in advance
 		{
 			Pattern: "tenant/privileged",
 			Fields: map[string]*framework.FieldSchema{
-				"id": {
+				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
 					Required:    true,
@@ -79,6 +81,7 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// List
 		{
 			Pattern: "tenant/?",
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -88,11 +91,12 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Read, update, delete by uuid
 		{
 
-			Pattern: "tenant/" + uuid.Pattern("id") + "$",
+			Pattern: "tenant/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
-				"id": {
+				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
 					Required:    true,
@@ -125,13 +129,13 @@ func (b tenantBackend) paths() []*framework.Path {
 func (b *tenantBackend) handleExistence(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	b.Logger().Debug("existance", "path", req.Path, "data", data)
 
-	id := data.Get("id").(string)
+	id := data.Get("uuid").(string)
 	if !uuid.IsValid(id) {
 		return false, fmt.Errorf("id must be valid UUIDv4")
 	}
 	tx := b.storage.Txn(false)
 
-	raw, err := tx.First(model.TenantType, model.TenantPK, id)
+	raw, err := tx.First(model.TenantType, model.ID, id)
 	if err != nil {
 		return false, err
 	}
@@ -140,13 +144,13 @@ func (b *tenantBackend) handleExistence(ctx context.Context, req *logical.Reques
 }
 
 func (b *tenantBackend) handleCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	id := data.Get("id").(string)
+	id := data.Get("uuid").(string)
 	if id == "" {
 		id = uuid.New()
 	}
 
 	tenant := &model.Tenant{
-		Id:         id,
+		UUID:       id,
 		Identifier: data.Get("identifier").(string),
 	}
 
@@ -171,7 +175,7 @@ func (b *tenantBackend) handleCreate(ctx context.Context, req *logical.Request, 
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"id": id,
+			"uuid": id,
 		},
 	}
 
@@ -179,12 +183,12 @@ func (b *tenantBackend) handleCreate(ctx context.Context, req *logical.Request, 
 }
 
 func (b *tenantBackend) handleUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	id := data.Get("id").(string)
+	id := data.Get("uuid").(string)
 
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	raw, err := tx.First(model.TenantType, model.TenantPK, id)
+	raw, err := tx.First(model.TenantType, model.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +218,7 @@ func (b *tenantBackend) handleUpdate(ctx context.Context, req *logical.Request, 
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"id": id,
+			"uuid": id,
 		},
 	}
 
@@ -227,8 +231,8 @@ func (b *tenantBackend) handleDelete(ctx context.Context, req *logical.Request, 
 
 	// Verify existence
 
-	id := data.Get("id").(string)
-	raw, err := tx.First(model.TenantType, model.TenantPK, id)
+	id := data.Get("uuid").(string)
+	raw, err := tx.First(model.TenantType, model.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -253,11 +257,11 @@ func (b *tenantBackend) handleDelete(ctx context.Context, req *logical.Request, 
 
 func (b *tenantBackend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	tx := b.storage.Txn(false)
-	id := data.Get("id").(string)
+	id := data.Get("uuid").(string)
 
 	// Find
 
-	raw, err := tx.First(model.TenantType, model.TenantPK, id)
+	raw, err := tx.First(model.TenantType, model.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +297,7 @@ func (b *tenantBackend) handleList(ctx context.Context, req *logical.Request, da
 
 	// Find
 
-	iter, err := tx.Get(model.TenantType, model.TenantPK)
+	iter, err := tx.Get(model.TenantType, model.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -305,14 +309,14 @@ func (b *tenantBackend) handleList(ctx context.Context, req *logical.Request, da
 			break
 		}
 		t := raw.(*model.Tenant)
-		tenants = append(tenants, t.Id)
+		tenants = append(tenants, t.UUID)
 	}
 
 	// Respond
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"ids": tenants,
+			"uuids": tenants,
 		},
 	}
 

@@ -21,17 +21,17 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
 
 export function genUserPayload(override = {}) {
     return {
-        login: Faker.internet.email(),
-
-        first_name: Faker.name.firstName(),
-        last_name: Faker.name.lastName(),
-        display_name: Faker.name.lastName(),
-
-        email: Faker.internet.email(),
-        additional_emails: [],
-
-        mobile_phone: Faker.phone.phoneNumber(),
-        additional_phones: [],
+        // login: Faker.internet.email(),
+        //
+        // first_name: Faker.name.firstName(),
+        // last_name: Faker.name.lastName(),
+        // display_name: Faker.name.lastName(),
+        //
+        // email: Faker.internet.email(),
+        // additional_emails: [],
+        //
+        // mobile_phone: Faker.phone.phoneNumber(),
+        // additional_phones: [],
 
         ...override,
     }
