@@ -1,6 +1,7 @@
 package io
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"reflect"
@@ -93,6 +94,12 @@ func (mst *MemoryStoreTxn) commitWithBlackjack() error {
 
 	// TODO: проверка атомарности
 
+	if mst.memstore.kafkaConnection.Configured() {
+		wr := mst.memstore.kafkaConnection.GetKafkaWriter()
+
+		return wr.WriteMessages(context.Background(), kafkaMessages...)
+	}
+
 	return nil
 }
 
@@ -163,6 +170,10 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 }
 
 func (ms *MemoryStore) Restore() error {
+	if !ms.kafkaConnection.Configured() {
+		log.Println("Kafka is not configured. Skipping restore")
+		return nil
+	}
 	txn := ms.MemDB.Txn(true)
 	ms.kafkaMutex.RLock()
 	defer ms.kafkaMutex.RUnlock()

@@ -48,6 +48,12 @@ func NewMessageBroker(ctx context.Context, storage logical.Storage, selfHealTopi
 		mb.config = config
 	}
 
+	if len(mb.config.Endpoints) > 0 &&
+		mb.config.EncryptionPublicKey != nil &&
+		mb.config.EncryptionPrivateKey != nil {
+		mb.isConfigured = true
+	}
+
 	return mb, nil
 }
 

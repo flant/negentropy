@@ -21,6 +21,8 @@ func (t TopicType) String() string {
 }
 
 type MessageBroker struct {
+	isConfigured bool
+
 	producerSync sync.Once
 	producer     *kafka.Writer
 
@@ -28,14 +30,8 @@ type MessageBroker struct {
 	selfHealTopic string
 }
 
-// SetTestEndpoint only test purposes
-func (mb *MessageBroker) SetTestEndpoint(endpoint string) {
-	mb.config.Endpoints = []string{endpoint}
-}
-
-func (mb *MessageBroker) SetRSA(r *rsa.PrivateKey) {
-	mb.config.EncryptionPublicKey = &r.PublicKey
-	mb.config.EncryptionPrivateKey = r
+func (mb *MessageBroker) Configured() bool {
+	return mb.isConfigured
 }
 
 type BrokerConfig struct {
