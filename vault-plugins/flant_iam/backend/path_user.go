@@ -137,6 +137,7 @@ func (b userBackend) paths() []*framework.Path {
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 		b.Logger().Debug("checking user existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -144,51 +145,37 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
+		repo := NewUserRepository(tx)
 
-		raw, err := tx.First(model.UserType, model.ID, id)
+		obj, err := repo.GetById(id)
 		if err != nil {
 			return false, err
 		}
-
-		return raw != nil, nil
+		exists := obj != nil && obj.TenantUUID == tenantID
+		return exists, nil
 	}
 }
 
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
-
 		user := &model.User{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
-			Version:    model.NewResourceVersion(),
 		}
-
-		// Validation
-
-		// TODO: validation should depend on the storage
-		//      validate field uniqueness
-		//      validate resource_version
-		// feature flags
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		repo := NewUserRepository(tx)
 
-		err := tx.Insert(model.UserType, user)
-		if err != nil {
+		if err := repo.Create(user); err != nil {
 			msg := "cannot create user"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
-		// Response
-
-		resp, err := responseWithData(user)
-		if err != nil {
-			return nil, err
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
+		return responseWithDataAndCode(req, user, http.StatusCreated)
 	}
 }
 
@@ -199,84 +186,45 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		raw, err := tx.First(model.UserType, model.ID, id)
-		if err != nil {
-			return nil, err
-		}
-		if raw == nil {
-			rr := logical.ErrorResponse("user not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
-
-		stored := raw.(*model.User)
-
-		// Validate
-
-		updated := &model.User{
+		user := &model.User{
 			UUID:       id,
-			TenantUUID: data.Get("tenant_uuid").(string),
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 		}
 
-		if stored.TenantUUID != updated.TenantUUID {
-			rr := logical.ErrorResponse("user not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		repo := NewUserRepository(tx)
+		err := repo.Update(user)
+		if err == ErrNotFound {
+			return responseNotFound(req, model.UserType)
 		}
-
-		if stored.Version != updated.Version {
-			rr := logical.ErrorResponse("user version mismatch")
-			return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+		if err == ErrVersionMismatch {
+			return responseVersionMismatch(req)
 		}
-
-		updated.Version = model.NewResourceVersion()
-
-		// Update
-
-		err = tx.Insert(model.UserType, updated)
-		if err != nil {
-			msg := "cannot save user"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
-		}
-		defer tx.Commit()
-
-		// Response
-
-		resp, err := responseWithData(updated)
 		if err != nil {
 			return nil, err
 		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+		defer tx.Commit()
+
+		return responseWithDataAndCode(req, user, http.StatusOK)
 	}
 }
 
 func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		id := data.Get("uuid").(string)
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		repo := NewUserRepository(tx)
 
-		// Verify existence
-
-		id := data.Get("uuid").(string)
-		raw, err := tx.First(model.UserType, model.ID, id)
-		if err != nil {
-			return nil, err
+		err := repo.Delete(id)
+		if err == ErrNotFound {
+			return responseNotFound(req, "user not found")
 		}
-		if raw == nil {
-			rr := logical.ErrorResponse("user not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
-
-		// Delete
-
-		// FIXME: cascade deletion, e.g. deleteUser()
-		err = tx.Delete(model.UserType, raw)
 		if err != nil {
 			return nil, err
 		}
 		defer tx.Commit()
-
-		// Respond
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
@@ -284,57 +232,111 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tx := b.storage.Txn(false)
 		id := data.Get("uuid").(string)
 
-		// Find
+		tx := b.storage.Txn(false)
+		repo := NewUserRepository(tx)
 
-		raw, err := tx.First(model.UserType, model.ID, id)
+		user, err := repo.GetById(id)
+		if err == ErrNotFound {
+			return responseNotFound(req, model.UserType)
+		}
 		if err != nil {
 			return nil, err
 		}
-		if raw == nil {
-			rr := logical.ErrorResponse("user not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
 
-		// Respond
-
-		return responseWithData(raw.(*model.User))
+		return responseWithDataAndCode(req, user, http.StatusOK)
 	}
 }
 
-// nolint:unused
 func (b *userBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tenantID := data.Get(model.TenantForeignPK).(string)
+
 		tx := b.storage.Txn(false)
-		tid := data.Get("tenant_uuid").(string)
+		repo := NewUserRepository(tx)
 
-		// Find
-
-		iter, err := tx.Get(model.UserType, model.TenantForeignPK, tid)
+		list, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
-		users := []string{}
-		for {
-			raw := iter.Next()
-			if raw == nil {
-				break
-			}
-			t := raw.(*model.User)
-			users = append(users, t.UUID)
-		}
-
-		// Respond
-
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": users,
+				"uuids": list,
 			},
 		}
-
 		return resp, nil
 	}
+}
+
+type UserRepository struct {
+	db *memdb.Txn // called "db" not to provoke transaction semantics
+}
+
+func NewUserRepository(tx *memdb.Txn) *UserRepository {
+	return &UserRepository{tx}
+}
+
+func (r UserRepository) Create(user *model.User) error {
+	user.Version = model.NewResourceVersion()
+	return r.db.Insert(model.UserType, user)
+}
+
+func (r UserRepository) GetById(id string) (*model.User, error) {
+	raw, err := r.db.First(model.UserType, model.ID, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*model.User), nil
+}
+
+func (r UserRepository) Update(updated *model.User) error {
+	stored, err := r.GetById(updated.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != updated.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != updated.Version {
+		return ErrVersionMismatch
+	}
+	updated.Version = model.NewResourceVersion()
+
+	// Update
+
+	return r.db.Insert(model.UserType, updated)
+}
+
+func (r UserRepository) Delete(id string) error {
+	user, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(model.UserType, user)
+}
+
+func (r UserRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(model.UserType, model.TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*model.User)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
 }

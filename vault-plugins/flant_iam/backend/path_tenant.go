@@ -237,7 +237,6 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 	}
 }
 
-// nolint:unused
 func (b *tenantBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
