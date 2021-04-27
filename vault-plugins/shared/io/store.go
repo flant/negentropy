@@ -3,10 +3,10 @@ package io
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/segmentio/kafka-go"
 
@@ -43,6 +43,7 @@ type MemoryStore struct {
 
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
+	logger log.Logger
 }
 
 type MemoryStoreTxn struct {
@@ -93,8 +94,7 @@ func (mst *MemoryStoreTxn) commitWithBlackjack() error {
 	}
 
 	// TODO: проверка атомарности
-
-	if mst.memstore.kafkaConnection.Configured() {
+	if mst.memstore.kafkaConnection.Configured() && len(kafkaMessages) > 0 {
 		wr := mst.memstore.kafkaConnection.GetKafkaWriter()
 
 		return wr.WriteMessages(context.Background(), kafkaMessages...)
@@ -107,7 +107,7 @@ func (mst *MemoryStoreTxn) Commit() error {
 	// все посчитать!
 	err := mst.commitWithBlackjack()
 	if err != nil {
-		log.Println("transaction aborted", err)
+		mst.memstore.logger.Error("transaction aborted", err)
 		mst.Txn.Abort()
 		return err
 	}
@@ -132,7 +132,13 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *sharedkafka.MessageBroker) (*M
 		sync.RWMutex{},
 		make([]KafkaSource, 0),
 		make(map[string]KafkaDestination),
-		make([]KafkaDestination, 0)}, nil
+		make([]KafkaDestination, 0),
+		log.New(nil),
+	}, nil
+}
+
+func (ms *MemoryStore) SetLogger(l log.Logger) {
+
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
@@ -171,7 +177,7 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 
 func (ms *MemoryStore) Restore() error {
 	if !ms.kafkaConnection.Configured() {
-		log.Println("Kafka is not configured. Skipping restore")
+		ms.logger.Warn("Kafka is not configured. Skipping restore")
 		return nil
 	}
 	txn := ms.MemDB.Txn(true)

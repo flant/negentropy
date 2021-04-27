@@ -12,7 +12,6 @@ docker rm dev-vault 2>/dev/null || true
 
 id=$(docker run \
   --cap-add=IPC_LOCK \
-  --network=host \
   -d \
   -p 8200:8200 \
   -v "$(pwd)/../build:/vault/plugins" \

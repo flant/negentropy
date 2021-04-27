@@ -26,6 +26,9 @@ func (mkd *MainKafkaDestination) ReplicaName() string {
 }
 
 func (mkd *MainKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+	if !mkd.mb.Configured() {
+		return nil, nil
+	}
 	msg, err := simpleObjectKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey(), mkd.mb.EncryptionPublicKey())
 	if err != nil {
 		return nil, err
@@ -35,6 +38,9 @@ func (mkd *MainKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 }
 
 func (mkd *MainKafkaDestination) ProcessObjectDelete(ms *io.MemoryStore, tnx *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+	if !mkd.mb.Configured() {
+		return nil, nil
+	}
 	msg, err := simpleObjectDeleteKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err

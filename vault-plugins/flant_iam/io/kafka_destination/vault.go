@@ -37,6 +37,9 @@ func (vkd *VaultKafkaDestination) ReplicaName() string {
 }
 
 func (vkd *VaultKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+	if !vkd.mb.Configured() {
+		return nil, nil
+	}
 	msg, err := simpleObjectKafker(vkd.topic, obj, vkd.mb.EncryptionPrivateKey(), vkd.pubKey)
 	if err != nil {
 		return nil, err
@@ -47,6 +50,9 @@ func (vkd *VaultKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn,
 }
 
 func (vkd *VaultKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+	if !vkd.mb.Configured() {
+		return nil, nil
+	}
 	msg, err := simpleObjectDeleteKafker(vkd.topic, obj, vkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err
