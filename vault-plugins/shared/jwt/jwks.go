@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -12,8 +13,43 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// generateOrRotateKeys generates a new keypair and adds it to keys in the storage
-func generateOrRotateKeys(ctx context.Context, storage logical.Storage) error {
+func generateKeys() (*jose.JSONWebKey, *jose.JSONWebKey, error) {
+	pubKey, key, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gen ecdsa key: %v", err)
+	}
+
+	priv := jose.JSONWebKey{
+		Key:       key,
+		KeyID:     newUUID(),
+		Algorithm: string(jose.EdDSA),
+		Use:       "sig",
+	}
+	pub := jose.JSONWebKey{
+		Key:       pubKey,
+		KeyID:     newUUID(),
+		Algorithm: string(jose.EdDSA),
+		Use:       "sig",
+	}
+
+	return &priv, &pub, nil
+}
+
+func rotationTimestamp(ctx context.Context, storage logical.Storage, now func() time.Time) error {
+	timeNow := now().Unix()
+	rotateTime, err := logical.StorageEntryJSON("jwt/keys_last_rotation", timeNow)
+	if err != nil {
+		return err
+	}
+	err = storage.Put(ctx, rotateTime)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func modifyKeys(ctx context.Context, storage logical.Storage, modify func(*jose.JSONWebKeySet, *jose.JSONWebKeySet) error) error {
 	entry, err := storage.Get(ctx, "jwt/jwks")
 	if err != nil {
 		return err
@@ -40,31 +76,9 @@ func generateOrRotateKeys(ctx context.Context, storage logical.Storage) error {
 		}
 	}
 
-	pubKey, key, err := ed25519.GenerateKey(rand.Reader)
+	err = modify(&privateSet, &pubicKeySet)
 	if err != nil {
-		return fmt.Errorf("gen ecdsa key: %v", err)
-	}
-
-	priv := jose.JSONWebKey{
-		Key:       key,
-		KeyID:     newUUID(),
-		Algorithm: string(jose.EdDSA),
-		Use:       "sig",
-	}
-	pub := jose.JSONWebKey{
-		Key:       pubKey,
-		KeyID:     newUUID(),
-		Algorithm: string(jose.EdDSA),
-		Use:       "sig",
-	}
-
-	privateSet.Keys = append(privateSet.Keys, priv)
-	if len(privateSet.Keys) > 2 {
-		privateSet.Keys = privateSet.Keys[1:len(privateSet.Keys)]
-	}
-	pubicKeySet.Keys = append(pubicKeySet.Keys, pub)
-	if len(pubicKeySet.Keys) > 2 {
-		pubicKeySet.Keys = pubicKeySet.Keys[1:len(pubicKeySet.Keys)]
+		return err
 	}
 
 	pubEntry, err := logical.StorageEntryJSON("jwt/jwks", pubicKeySet)
@@ -87,6 +101,40 @@ func generateOrRotateKeys(ctx context.Context, storage logical.Storage) error {
 	}
 
 	return nil
+}
+
+// generateOrRotateKeys generates a new keypair and adds it to keys in the storage
+func generateOrRotateKeys(ctx context.Context, storage logical.Storage) error {
+	return modifyKeys(ctx, storage, func(privateSet, pubicKeySet *jose.JSONWebKeySet) error {
+		priv, pub, err := generateKeys()
+		if err != nil {
+			return err
+		}
+
+		privateSet.Keys = append(privateSet.Keys, *priv)
+		if len(privateSet.Keys) > 2 {
+			privateSet.Keys = privateSet.Keys[1:len(privateSet.Keys)]
+		}
+		pubicKeySet.Keys = append(pubicKeySet.Keys, *pub)
+		if len(pubicKeySet.Keys) > 2 {
+			pubicKeySet.Keys = pubicKeySet.Keys[1:len(pubicKeySet.Keys)]
+		}
+
+		return nil
+	})
+}
+
+// removeFirstKey remove the key if there are more than one
+func removeFirstKey(ctx context.Context, storage logical.Storage) error {
+	return modifyKeys(ctx, storage, func(privateSet, pubicKeySet *jose.JSONWebKeySet) error {
+		if len(privateSet.Keys) > 2 {
+			privateSet.Keys = privateSet.Keys[1:len(privateSet.Keys)]
+		}
+		if len(pubicKeySet.Keys) > 2 {
+			pubicKeySet.Keys = pubicKeySet.Keys[1:len(pubicKeySet.Keys)]
+		}
+		return nil
+	})
 }
 
 func PathJWKS(b *TokenController) *framework.Path {
@@ -164,17 +212,30 @@ func PathRotateKey(b *TokenController) *framework.Path {
 }
 
 func (b *TokenController) handleRotateKeysUpdate(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "jwt/jwks")
+	priv, pub, err := generateKeys()
 	if err != nil {
 		return nil, err
 	}
 
-	err = req.Storage.Delete(ctx, "jwt/private_keys")
+	privEntry, err := logical.StorageEntryJSON("jwt/private_keys", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{*priv}})
+	if err != nil {
+		return nil, err
+	}
+	err = req.Storage.Put(ctx, privEntry)
 	if err != nil {
 		return nil, err
 	}
 
-	err = generateOrRotateKeys(ctx, req.Storage)
+	pubEntry, err := logical.StorageEntryJSON("jwt/jwks", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{*pub}})
+	if err != nil {
+		return nil, err
+	}
+	err = req.Storage.Put(ctx, pubEntry)
+	if err != nil {
+		return nil, err
+	}
+
+	err = rotationTimestamp(ctx, req.Storage, b.now)
 	if err != nil {
 		return nil, err
 	}
