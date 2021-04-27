@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -123,9 +122,9 @@ func (b tenantBackend) paths() []*framework.Path {
 
 func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		b.Logger().Debug("existence", "path", req.Path, "data", data)
-
 		id := data.Get("uuid").(string)
+		b.Logger().Debug("checking tenant existence", "path", req.Path, "id", id)
+
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
@@ -283,23 +282,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		// Respond
 
-		tenant := raw.(*model.Tenant)
-		tenantJSON, err := tenant.Marshal(false)
-		if err != nil {
-			return nil, err
-		}
-
-		var responseData map[string]interface{}
-		err = jsonutil.DecodeJSON(tenantJSON, &responseData)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: responseData,
-		}
-
-		return resp, nil
+		return responseWithData(raw.(*model.Tenant))
 	}
 }
 

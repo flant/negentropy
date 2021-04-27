@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -132,12 +131,13 @@ func (b userBackend) paths() []*framework.Path {
 
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		b.Logger().Debug("existance", "path", req.Path, "data", data)
-
 		id := data.Get("uuid").(string)
+		b.Logger().Debug("checking user existence", "path", req.Path, "id", id)
+
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
+
 		tx := b.storage.Txn(false)
 
 		raw, err := tx.First(model.UserType, model.ID, id)
@@ -291,23 +291,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 		// Respond
 
-		user := raw.(*model.User)
-		userJSON, err := user.Marshal(false)
-		if err != nil {
-			return nil, err
-		}
-
-		var responseData map[string]interface{}
-		err = jsonutil.DecodeJSON(userJSON, &responseData)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: responseData,
-		}
-
-		return resp, nil
+		return responseWithData(raw.(*model.User))
 	}
 }
 

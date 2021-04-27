@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
@@ -9,31 +10,6 @@ const (
 	TenantType      = "tenant" // also, memdb schema name
 	TenantForeignPK = "tenant_uuid"
 )
-
-type Tenant struct {
-	UUID       string `json:"uuid"` // ID
-	Identifier string `json:"identifier"`
-	Version    string `json:"resource_version"`
-	// TODO enabled_by_default_for_new_projects
-	// TODO resource_version
-}
-
-func (t *Tenant) ObjType() string {
-	return TenantType
-}
-
-func (t *Tenant) ObjId() string {
-	return t.UUID
-}
-
-func (t *Tenant) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(t)
-}
-
-func (t *Tenant) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, t)
-	return err
-}
 
 func TenantSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
@@ -60,4 +36,33 @@ func TenantSchema() *memdb.DBSchema {
 			},
 		},
 	}
+}
+
+type Tenant struct {
+	UUID       string `json:"uuid"` // ID
+	Identifier string `json:"identifier"`
+	Version    string `json:"resource_version"`
+	// TODO enabled_by_default_for_new_projects
+	// TODO resource_version
+}
+
+func (t *Tenant) ObjType() string {
+	return TenantType
+}
+
+func (t *Tenant) ObjId() string {
+	return t.UUID
+}
+
+func (t *Tenant) Marshal(_ bool) ([]byte, error) {
+	return jsonutil.EncodeJSON(t)
+}
+
+func (t *Tenant) Unmarshal(data []byte) error {
+	err := jsonutil.DecodeJSON(data, t)
+	return err
+}
+
+func (t *Tenant) Parse(data *framework.FieldData) error {
+	return nil
 }
