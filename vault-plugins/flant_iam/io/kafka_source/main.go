@@ -7,11 +7,13 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -68,20 +70,27 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 			return err
 		}
 
-		// blyat
 		// TODO: need huge switch-case here, with object Unmarshaling
-		// var foo FooBar
-		// err = json.Unmarshal(m.Value, &foo)
-		// if err != nil {
-		// 	return err
-		// }
-		var foo interface{}
-		err = json.Unmarshal(decrypted, &foo)
+		var inputObject interface{}
+		switch splitted[0] {
+		case model.UserType:
+			inputObject = model.User{}
+
+		case model.ReplicaType:
+			inputObject = model.Replica{}
+
+		case model.TenantType:
+			inputObject = model.Tenant{}
+
+		default:
+			return errors.New("is not implemented yet")
+		}
+		err = json.Unmarshal(decrypted, &inputObject)
 		if err != nil {
 			return err
 		}
 
-		err = txn.Insert(splitted[0], foo)
+		err = txn.Insert(splitted[0], inputObject)
 		if err != nil {
 			return err
 		}
