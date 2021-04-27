@@ -13,6 +13,15 @@ const (
 type Tenant struct {
 	UUID       string `json:"uuid"` // ID
 	Identifier string `json:"identifier"`
+	// TODO enabled_by_default_for_new_projects
+	// TODO resource_version
+}
+
+func (t *Tenant) ObjType() string {
+	return TenantType
+}
+func (t *Tenant) ObjId() string {
+	return t.UUID
 }
 
 func (t *Tenant) Marshal(_ bool) ([]byte, error) {
