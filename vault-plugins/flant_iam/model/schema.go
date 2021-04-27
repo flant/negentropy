@@ -12,6 +12,8 @@ const (
 	ID = "id" // required index by all tables
 )
 
+var ErrNotFound = fmt.Errorf("not found")
+
 func mergeSchema() (*memdb.DBSchema, error) {
 	schema := TenantSchema()
 	others := []*memdb.DBSchema{

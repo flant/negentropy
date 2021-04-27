@@ -156,16 +156,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		var id string
-
-		if expectID {
-			// for privileged access
-			id = data.Get("uuid").(string)
-		}
-
-		if id == "" {
-			id = uuid.New()
-		}
+		id := getCreationID(expectID, data)
 
 		user := &model.User{
 			UUID:       id,

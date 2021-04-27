@@ -135,60 +135,36 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
+		repo := NewTenantRepository(tx)
 
-		raw, err := tx.First(model.TenantType, model.ID, id)
+		t, err := repo.GetById(id)
 		if err != nil {
 			return false, err
 		}
-
-		return raw != nil, nil
+		return t != nil, nil
 	}
 }
 
 func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		var id string
-
-		if expectID {
-			// for privileged access
-			id = data.Get("uuid").(string)
-		}
-
-		if id == "" {
-			id = uuid.New()
-		}
-
+		id := getCreationID(expectID, data)
 		tenant := &model.Tenant{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
-			Version:    model.NewResourceVersion(),
 		}
-
-		// Validation
-
-		// TODO: validation should depend on the storage
-		//      validate field uniqueness
-		//      validate resource_version
-		// feature flags
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		repo := NewTenantRepository(tx)
 
-		err := tx.Insert(model.TenantType, tenant)
-		if err != nil {
+		if err := repo.Create(tenant); err != nil {
 			msg := "cannot create tenant"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 		defer tx.Commit()
 
-		// Response
-
-		resp, err := responseWithData(tenant)
-		if err != nil {
-			return nil, err
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
+		return responseWithDataAndCode(req, tenant, http.StatusCreated)
 	}
 }
 
@@ -196,52 +172,29 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
-		// Find
-
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		raw, err := tx.First(model.TenantType, model.ID, id)
-		if err != nil {
-			return nil, err
-		}
-		if raw == nil {
-			rr := logical.ErrorResponse("tenant not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
-		stored := raw.(*model.Tenant)
 
-		// Validate
-
-		updated := &model.Tenant{
+		tenant := &model.Tenant{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
 			Version:    data.Get("resource_version").(string),
 		}
 
-		if stored.Version != updated.Version {
-			rr := logical.ErrorResponse("tenant version mismatch")
-			return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+		repo := NewTenantRepository(tx)
+		err := repo.Update(tenant)
+		if err == ErrNotFound {
+			return responseNotFound(req, model.TenantType)
 		}
-
-		updated.Version = model.NewResourceVersion()
-
-		// Update
-
-		err = tx.Insert(model.TenantType, updated)
-		if err != nil {
-			msg := "cannot save tenant"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+		if err == ErrVersionMismatch {
+			return responseVersionMismatch(req)
 		}
-		defer tx.Commit()
-
-		// Response
-
-		resp, err := responseWithData(updated)
 		if err != nil {
 			return nil, err
 		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+		defer tx.Commit()
+
+		return responseWithDataAndCode(req, tenant, http.StatusOK)
 	}
 }
 
@@ -249,29 +202,17 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-
-		// Verify existence
+		repo := NewTenantRepository(tx)
 
 		id := data.Get("uuid").(string)
-		raw, err := tx.First(model.TenantType, model.ID, id)
-		if err != nil {
-			return nil, err
+		err := repo.Delete(id)
+		if err == ErrNotFound {
+			return responseNotFound(req, "tenant not found")
 		}
-		if raw == nil {
-			rr := logical.ErrorResponse("tenant not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
-
-		// Delete
-
-		// FIXME: cascade deletion, e.g. deleteTenant()
-		err = tx.Delete(model.TenantType, raw)
 		if err != nil {
 			return nil, err
 		}
 		defer tx.Commit()
-
-		// Respond
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
@@ -279,23 +220,20 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 
 func (b *tenantBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tx := b.storage.Txn(false)
 		id := data.Get("uuid").(string)
 
-		// Find
+		tx := b.storage.Txn(false)
+		repo := NewTenantRepository(tx)
 
-		raw, err := tx.First(model.TenantType, model.ID, id)
+		tenant, err := repo.GetById(id)
+		if err == ErrNotFound {
+			return responseNotFound(req, model.TenantType)
+		}
 		if err != nil {
 			return nil, err
 		}
-		if raw == nil {
-			rr := logical.ErrorResponse("tenant not found")
-			return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-		}
 
-		// Respond
-
-		return responseWithData(raw.(*model.Tenant))
+		return responseWithDataAndCode(req, tenant, http.StatusOK)
 	}
 }
 
@@ -303,32 +241,87 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 func (b *tenantBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
+		repo := NewTenantRepository(tx)
 
-		// Find
-
-		iter, err := tx.Get(model.TenantType, model.ID)
+		list, err := repo.List()
 		if err != nil {
 			return nil, err
 		}
 
-		tenants := []string{}
-		for {
-			raw := iter.Next()
-			if raw == nil {
-				break
-			}
-			t := raw.(*model.Tenant)
-			tenants = append(tenants, t.UUID)
-		}
-
-		// Respond
-
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": tenants,
+				"uuids": list,
 			},
 		}
-
 		return resp, nil
 	}
+}
+
+type TenantRepository struct {
+	db *memdb.Txn // called "db" not to provoke transaction semantics
+}
+
+func NewTenantRepository(tx *memdb.Txn) *TenantRepository {
+	return &TenantRepository{tx}
+}
+
+func (r TenantRepository) Create(t *model.Tenant) error {
+	t.Version = model.NewResourceVersion()
+	return r.db.Insert(model.TenantType, t)
+}
+
+func (r TenantRepository) GetById(id string) (*model.Tenant, error) {
+	raw, err := r.db.First(model.TenantType, model.ID, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*model.Tenant), nil
+}
+
+func (r TenantRepository) Update(updated *model.Tenant) error {
+	stored, err := r.GetById(updated.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+
+	if stored.Version != updated.Version {
+		return ErrVersionMismatch
+	}
+	updated.Version = model.NewResourceVersion()
+
+	// Update
+
+	return r.db.Insert(model.TenantType, updated)
+}
+
+func (r TenantRepository) Delete(id string) error {
+	tenant, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(model.TenantType, tenant)
+}
+
+func (r TenantRepository) List() ([]string, error) {
+	iter, err := r.db.Get(model.TenantType, model.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*model.Tenant)
+		ids = append(ids, t.UUID)
+	}
+	return ids, nil
 }
