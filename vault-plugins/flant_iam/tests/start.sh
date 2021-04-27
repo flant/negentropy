@@ -29,6 +29,7 @@ sleep 1 \
 && vault secrets enable -path=flant_iam flant_iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
+docker logs -f  dev-vault
 
 # docker exec -it dev-vault sh
 
