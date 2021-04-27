@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	log "github.com/hashicorp/go-hclog"
 	"sync"
 
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/vault_client"
+
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -17,7 +20,7 @@ import (
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
 	b := backend()
-	if err := b.Setup(ctx, c); err != nil {
+	if err := b.SetupBackend(ctx, c); err != nil {
 		return nil, err
 	}
 	return b, nil
@@ -36,7 +39,8 @@ type flantIamAuthBackend struct {
 	authSourceStorageFactory PrefixStorageRequestFactory
 	authMethodStorageFactory PrefixStorageRequestFactory
 
-	tokenController *njwt.TokenController
+	tokenController  *njwt.TokenController
+	accessController *vault_client.VaultClientController
 }
 
 func backend() *flantIamAuthBackend {
@@ -49,6 +53,9 @@ func backend() *flantIamAuthBackend {
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.tokenController = njwt.NewTokenController()
+	b.accessController = vault_client.NewVaultClientController(func() log.Logger {
+		return b.Logger()
+	})
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
@@ -88,12 +95,29 @@ func backend() *flantIamAuthBackend {
 				njwt.PathJWKS(b.tokenController),
 				njwt.PathRotateKey(b.tokenController),
 			},
+			[]*framework.Path{
+				vault_client.PathConfigure(b.accessController),
+			},
 			pathOIDC(b),
 		),
 		Clean: b.cleanup,
 	}
 
 	return b
+}
+
+func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
+	err := b.Setup(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	err = b.accessController.Init(config.StorageView)
+	if err != nil && !errors.Is(err, vault_client.NotSetConfError) {
+		return err
+	}
+
+	return nil
 }
 
 func (b *flantIamAuthBackend) cleanup(_ context.Context) {

@@ -2,49 +2,51 @@ package vault_client
 
 import (
 	"fmt"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
-	"strings"
 )
 
 type accessClient struct {
+	logger      hclog.Logger
 	apiClient   *api.Client
 	conf        *vaultAccessConfig
 	mountPrefix string
 	rolePrefix  string
 }
 
-func newAccessClient(apiClient *api.Client, accessConf *vaultAccessConfig) *accessClient {
-	apiVer := "/v1"
-	if !strings.HasPrefix(accessConf.ApproleMountPoint, "/") {
-		apiVer = fmt.Sprintf("%s/", apiVer)
-	}
-
-	mountPrefix := fmt.Sprintf("%s%s", apiVer, accessConf.ApproleMountPoint)
-	rolePrefix := fmt.Sprintf("%s%s", mountPrefix, accessConf.RoleName)
+func newAccessClient(apiClient *api.Client, accessConf *vaultAccessConfig, logger hclog.Logger) *accessClient {
+	rolePrefix := fmt.Sprintf("%s/role/%s", accessConf.ApproleMountPoint, accessConf.RoleName)
 
 	return &accessClient{
 		apiClient:   apiClient,
 		conf:        accessConf,
-		mountPrefix: mountPrefix,
+		mountPrefix: accessConf.ApproleMountPoint,
 		rolePrefix:  rolePrefix,
+		logger:      logger,
 	}
 }
 
 func (c *accessClient) AppRole() *AppRole {
-	return &AppRole{client: c}
+	return &AppRole{
+		client: c,
+		logger: c.logger,
+	}
 }
 
 type AppRole struct {
 	client *accessClient
+	logger hclog.Logger
 }
 
 func (c *AppRole) Login() (*api.SecretAuth, error) {
-	secret, err := c.client.apiClient.Logical().Write(c.pluginPath("/login"), map[string]interface{}{
-		"role_id":   c.client.conf.SecretId,
-		"secret_id": c.client.conf.RoleId,
-	})
+	data := map[string]interface{}{
+		"role_id":   c.client.conf.RoleId,
+		"secret_id": c.client.conf.SecretId,
+	}
+	secret, err := c.client.apiClient.Logical().Write(c.pluginPath("/login"), data)
 
 	if err != nil {
+		c.logger.Error(fmt.Sprintf("error while login %v", err))
 		return nil, err
 	}
 
@@ -88,7 +90,7 @@ func (c *AppRole) DeleteSecretId(secretId string) error {
 }
 
 func (c *AppRole) pluginPath(p string) string {
-	return fmt.Sprintf("%s/%s", c.client.mountPrefix, p)
+	return fmt.Sprintf("%s%s", c.client.mountPrefix, p)
 }
 
 func (c *AppRole) rolePath(p string) string {

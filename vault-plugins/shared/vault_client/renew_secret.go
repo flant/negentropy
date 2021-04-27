@@ -2,6 +2,8 @@ package vault_client
 
 import (
 	"context"
+
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -28,15 +30,15 @@ func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	return client, nil
 }
 
-func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, curConf *vaultAccessConfig) error {
+func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, curConf *vaultAccessConfig, logger log.Logger) error {
 	// login with current secret id
-	err := loginAndSetToken(apiClient, curConf)
+	err := loginAndSetToken(apiClient, curConf, logger)
 	if err != nil {
 		return err
 	}
 
 	// generate ne w secret id
-	appRoleCli := newAccessClient(apiClient, curConf).AppRole()
+	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	newSecretId, err := appRoleCli.GenNewSecretId()
 	if err != nil {
@@ -53,7 +55,7 @@ func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessCon
 	}
 
 	// before delete old secret we need login with new secret and set new token
-	err = loginAndSetToken(apiClient, curConf)
+	err = loginAndSetToken(apiClient, curConf, logger)
 	if err != nil {
 		return err
 	}
@@ -69,8 +71,8 @@ func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessCon
 	return nil
 }
 
-func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig) error {
-	appRoleCli := newAccessClient(apiClient, curConf).AppRole()
+func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger log.Logger) error {
+	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	loginRes, err := appRoleCli.Login()
 	if err != nil {

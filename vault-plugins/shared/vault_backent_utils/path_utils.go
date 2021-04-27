@@ -13,7 +13,7 @@ func NotEmptyStringParam(d *framework.FieldData, name string) (string, *logical.
 	raw, ok := d.GetOk(name)
 	val, okCast := raw.(string)
 	if !ok || !okCast || val == "" {
-		return "", MissingParamErr("role_name")
+		return "", MissingParamErr(name)
 	}
 
 	return val, nil

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -18,10 +19,13 @@ type VaultClientController struct {
 	apiClient  *api.Client
 
 	storageFactory func(s logical.Storage) *accessConfigStorage
+	loggerFactory  func() log.Logger
 }
 
-func NewVaultClientController() *VaultClientController {
-	c := &VaultClientController{}
+func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientController {
+	c := &VaultClientController{
+		loggerFactory: loggerFactory,
+	}
 
 	c.storageFactory = func(s logical.Storage) *accessConfigStorage {
 		return &accessConfigStorage{
@@ -53,7 +57,7 @@ func (c *VaultClientController) Init(s logical.Storage) error {
 		return err
 	}
 
-	accessClient := newAccessClient(apiClient, curConf)
+	accessClient := newAccessClient(apiClient, curConf, c.loggerFactory())
 	auth, err := accessClient.AppRole().Login()
 
 	if err != nil {
@@ -96,7 +100,7 @@ func (c *VaultClientController) setAccessConfig(ctx context.Context, store *acce
 	}
 
 	// login in with new secret id in gen function
-	err = genNewSecretId(ctx, apiClient, store, curConf)
+	err = genNewSecretId(ctx, apiClient, store, curConf, c.loggerFactory())
 	if err != nil {
 		return err
 	}

@@ -1,55 +1,44 @@
-TOOL?=vault-plugin-flant_iam_auth
-TEST?=$$(go list ./... | grep -v /vendor/)
-EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox
-BUILD_TAGS?=${TOOL}
-GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
+GOARCH = amd64
 
-# bin generates the releaseable binaries for this plugin
-bin: generate
-	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+UNAME = $(shell uname -s)
 
-default: dev
+ifndef OS
+	ifeq ($(UNAME), Linux)
+		OS = linux
+	else ifeq ($(UNAME), Darwin)
+		OS = darwin
+	endif
+endif
 
-# dev creates binaries for testing Vault locally. These are put
-# into ./bin/ as well as $GOPATH/bin, except for quickdev which
-# is only put into /bin/
-quickdev: generate
-	@CGO_ENABLED=0 go build -i -tags='$(BUILD_TAGS)' -o bin/${TOOL}
-dev: generate
-	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+.DEFAULT_GOAL := all
 
-testcompile: generate
-	@for pkg in $(TEST) ; do \
-		go test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
-	done
+all: build start
 
-# test runs all tests
-test: generate
-	@if [ "$(TEST)" = "./..." ]; then \
-		echo "ERROR: Set TEST to a specific package"; \
-		exit 1; \
-	fi
-	VAULT_ACC=1 go test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout 10m
+build:
+	GOOS="$(OS)" GOARCH="$(GOARCH)" go build -mod=mod -o bin/vault-plugin-flant_iam_auth cmd/vault-plugin-flant-iam-auth/main.go
 
-# generate runs `go generate` to build the dynamically generated
-# source files.
-generate:
-	@go generate $(go list ./... | grep -v /vendor/)
 
-# bootstrap the build by downloading additional tools
-bootstrap:
-	@for tool in  $(EXTERNAL_TOOLS) ; do \
-		echo "Installing/Updating $$tool" ; \
-		go get -u $$tool; \
-	done
+build-linux:
+	GOOS="linux" GOARCH="$(GOARCH)" go build -mod=mod -o bin/vault-plugin-flant_iam_auth cmd/vault-plugin-flant-iam-auth/main.go
+
+start:
+	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./bin
+
+enable:
+	vault secrets enable -path=mock-secrets flant_iam_auth
+
+clean:
+	rm -f ./bin/vault-plugin-flant_iam_auth
 
 fmt:
-	gofmt -w $(GOFMT_FILES)
+	-@$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix
 
-# deps updates all dependencies for this project.
 deps:
-	@echo "==> Updating deps for ${TOOL}"
-	@dep ensure -update
+	go mod tidy
+	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 
-.PHONY: bin default generate test bootstrap fmt deps
+test:
+	go test -race ./...
+	pushd tests && yarn && yarn test
+
+.PHONY: build build-linux deps clean fmt start enable test

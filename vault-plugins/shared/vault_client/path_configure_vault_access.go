@@ -2,18 +2,17 @@ package vault_client
 
 import (
 	"context"
-	"encoding/pem"
-	"net/url"
-	"time"
-
+	"fmt"
 	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"net/url"
+	"time"
 )
 
 func PathConfigure(c *VaultClientController) *framework.Path {
 	return &framework.Path{
-		Pattern: `/configure_vault_access`,
+		Pattern: `configure_vault_access$`,
 
 		Fields: map[string]*framework.FieldSchema{
 			"vault_api_url": {
@@ -42,6 +41,11 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 				Description: "Role name to vault access",
 				Required:    true,
 			},
+			"role_id": {
+				Type:        framework.TypeString,
+				Description: "Role id for approle",
+				Required:    true,
+			},
 			"secret_id": {
 				Type:        framework.TypeString,
 				Description: "Secret to access approle",
@@ -58,6 +62,10 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: c.handleConfigureVaultAccess,
 				Summary:  configureVaultAccessSynopsis,
+			},
+
+			logical.AliasLookaheadOperation: &framework.PathOperation{
+				Callback: c.handleConfigureVaultAccess,
 			},
 		},
 
@@ -83,16 +91,21 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	config.ApiCa, errResp = utils.NotEmptyStringParam(d, "vault_api_ca")
+	//config.ApiCa, errResp = utils.NotEmptyStringParam(d, "vault_api_ca")
+	//if errResp != nil {
+	//	return errResp, nil
+	//}
+	//validPem, _ := pem.Decode([]byte(config.ApiCa))
+	//if validPem == nil {
+	//	return logical.ErrorResponse("incorrect vault_api_ca"), nil
+	//}
+
+	config.RoleName, errResp = utils.NotEmptyStringParam(d, "role_name")
 	if errResp != nil {
 		return errResp, nil
 	}
-	validPem, _ := pem.Decode([]byte(config.ApiCa))
-	if validPem == nil {
-		return logical.ErrorResponse("incorrect vault_api_ca"), nil
-	}
 
-	config.RoleName, errResp = utils.NotEmptyStringParam(d, "role_name")
+	config.RoleId, errResp = utils.NotEmptyStringParam(d, "role_id")
 	if errResp != nil {
 		return errResp, nil
 	}
@@ -104,10 +117,12 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 
 	secretIdTtlRaw, ok := d.GetOk("secret_id_ttl")
 	var okCast bool
-	config.SecretIdTtl, okCast = secretIdTtlRaw.(time.Duration)
-	if !ok || !okCast || config.SecretIdTtl < 10*time.Second {
+	secretIdTtl, okCast := secretIdTtlRaw.(int)
+	c.loggerFactory().Error(fmt.Sprintf("ttl %v", secretIdTtl))
+	if !ok || !okCast || secretIdTtl < 10 {
 		return logical.ErrorResponse("incorrect secret_id_ttl must be >= 10s"), nil
 	}
+	config.SecretIdTtl = time.Duration(secretIdTtl) * time.Second
 
 	config.ApproleMountPoint, errResp = utils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {
