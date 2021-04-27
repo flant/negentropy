@@ -49,7 +49,6 @@ type Tenant struct {
 	Identifier string `json:"identifier"`
 	Version    string `json:"resource_version"`
 	// TODO enabled_by_default_for_new_projects
-	// TODO resource_version
 }
 
 func (t *Tenant) ObjType() string {

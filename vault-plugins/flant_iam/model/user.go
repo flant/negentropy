@@ -49,7 +49,6 @@ type User struct {
 	Version    string `json:"resource_version"`
 	// TODO identifier
 	// TODO full_identifier (<identifier>@<tenant_identifier>)
-	// TODO resource_version
 
 }
 
