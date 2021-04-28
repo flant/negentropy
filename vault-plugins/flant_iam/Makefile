@@ -31,7 +31,7 @@ clean:
 	rm -f ./build/flant_iam
 
 fmt:
-	-@$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix
+	-$$(go env GOPATH)/bin/golangci-lint run ./... -E gofumpt --fix --disable-all
 	-@pushd tests && yarn run prettier --write ./tests/**.mjs && popd
 
 deps:

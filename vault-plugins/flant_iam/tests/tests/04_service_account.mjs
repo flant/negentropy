@@ -1,7 +1,10 @@
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
-import { genServiceAccountPayload, SubTenantEntrypointBuilder } from "./lib/subtenant.mjs"
+import {
+    genServiceAccountPayload,
+    SubTenantEntrypointBuilder,
+} from "./lib/subtenant.mjs"
 import { API } from "./lib/api.mjs"
 
 //    /tenant/{tid}/service_account/{said}
@@ -72,7 +75,8 @@ describe("ServiceAccount", function () {
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
-            full_identifier: payload.identifier + "@serviceaccount." + tenant.identifier,
+            full_identifier:
+                payload.identifier + "@serviceaccount." + tenant.identifier,
         }
 
         // read
