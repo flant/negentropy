@@ -6,9 +6,10 @@ import (
 	"net/url"
 	"strings"
 
-	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 )
 
 func PathConfigure(c *VaultClientController) *framework.Path {
