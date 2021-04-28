@@ -2,6 +2,7 @@ package vault_client
 
 import (
 	"context"
+
 	"github.com/hashicorp/vault/sdk/logical"
 )
 

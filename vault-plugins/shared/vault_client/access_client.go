@@ -2,6 +2,7 @@ package vault_client
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 )

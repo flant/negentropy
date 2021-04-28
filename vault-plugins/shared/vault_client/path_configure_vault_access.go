@@ -3,10 +3,11 @@ package vault_client
 import (
 	"context"
 	"encoding/pem"
+	"net/url"
+
 	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"net/url"
 )
 
 func PathConfigure(c *VaultClientController) *framework.Path {

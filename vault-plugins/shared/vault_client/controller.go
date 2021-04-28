@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
-	"sync"
-	"time"
 )
 
 var NotSetConfError = fmt.Errorf("access configuration does not set")
