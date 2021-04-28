@@ -2,7 +2,11 @@ package jwt
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
@@ -76,7 +80,13 @@ func TestJWTConfigure(t *testing.T) {
 
 	// #4 Generate and verify token
 	{
-		token, err := newPrimaryToken(context.TODO(), storage)
+		options := PrimaryTokenOptions{
+			TTL:        10 * time.Minute,
+			UUID:       "test",
+			SecretSalt: "test",
+		}
+		options.now = func() time.Time { return time.Unix(1619592212, 0) }
+		token, err := NewPrimaryToken(context.TODO(), storage, &options)
 		require.NoError(t, err)
 
 		req := &logical.Request{
@@ -97,5 +107,22 @@ func TestJWTConfigure(t *testing.T) {
 
 		_, err = jsonWebSig.Verify(pubKey.Key.(ed25519.PublicKey))
 		require.NoError(t, err)
+
+		payload := strings.Split(token, ".")[1]
+		decodedPayload, err := base64.StdEncoding.DecodeString(payload + "=")
+		require.NoError(t, err)
+
+		var issuedToken PrimaryTokenClaims
+		err = json.Unmarshal(decodedPayload, &issuedToken)
+		require.NoError(t, err)
+
+		require.Equal(t, PrimaryTokenClaims{
+			Issuer:   "https://test",
+			Audience: "test",
+			Subject:  "test",
+			JTI:      "8dea54dbe241bb7c6e9da12c6df39fbab2b76b6ad04c70f889d14f516df49a26", // "0 test"
+			IssuedAt: 1619592212,
+			Expiry:   1619592812,
+		}, issuedToken)
 	}
 }
