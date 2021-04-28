@@ -67,7 +67,7 @@ func TestPublicKeyGet(t *testing.T) {
 			dd, _ := json.Marshal(tb.broker.config)
 			err = storage.Put(cctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: dd, SealWrap: true})
 			require.NoError(t, err)
-			mb, err := NewMessageBroker(cctx, storage)
+			mb, err := NewMessageBroker(cctx, storage, "test")
 			require.NoError(t, err)
 
 			tb.broker = mb
