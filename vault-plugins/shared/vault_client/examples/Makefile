@@ -43,7 +43,7 @@ write_access_conf:
 		vault_api_host="vault_host" \
 		role_name="good" \
 		secret_id_ttl="120" \
-		approle_mount_point="/auth/approle" \
+		approle_mount_point="/auth/approle/" \
 		secret_id="$$(VAULT_ADDR='http://127.0.0.1:8200' vault write -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')" \
 		role_id="$$(VAULT_ADDR='http://127.0.0.1:8200' vault read -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')" \
 		vault_api_ca="$$(cat conf/ca-cert.pem)" \

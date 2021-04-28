@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/pem"
 	"net/url"
+	"strings"
 
 	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -133,6 +134,10 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 	config.ApproleMountPoint, errResp = utils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {
 		return errResp, nil
+	}
+
+	if strings.HasSuffix(config.ApproleMountPoint, "/") {
+		config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 	}
 
 	err = c.setAccessConfig(ctx, c.storageFactory(req.Storage), config)
