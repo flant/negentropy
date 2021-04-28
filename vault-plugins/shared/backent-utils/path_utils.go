@@ -1,10 +1,11 @@
-package vault_backent_utils
+package backentutils
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"time"
 )
 
 func MissingParamErr(name string) *logical.Response {
@@ -22,12 +23,12 @@ func NotEmptyStringParam(d *framework.FieldData, name string) (string, *logical.
 }
 
 func DurationSecParam(d *framework.FieldData, name string, min int) (time.Duration, *logical.Response) {
-	secretIdTtlRaw, ok := d.GetOk(name)
+	raw, ok := d.GetOk(name)
 	var okCast bool
-	secretIdTtlSec, okCast := secretIdTtlRaw.(int)
-	if !ok || !okCast || secretIdTtlSec < min {
+	val, okCast := raw.(int)
+	if !ok || !okCast || val < min {
 		return 0, logical.ErrorResponse(fmt.Sprintf("incorrect %s must be >= %vs", name, min))
 	}
 
-	return time.Duration(secretIdTtlSec), nil
+	return time.Duration(val), nil
 }

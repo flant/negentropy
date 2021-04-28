@@ -1,4 +1,4 @@
-package vault_client
+package client
 
 import (
 	"fmt"
@@ -41,8 +41,8 @@ type AppRole struct {
 
 func (c *AppRole) Login() (*api.SecretAuth, error) {
 	data := map[string]interface{}{
-		"role_id":   c.client.conf.RoleId,
-		"secret_id": c.client.conf.SecretId,
+		"role_id":   c.client.conf.RoleID,
+		"secret_id": c.client.conf.SecretID,
 	}
 	secret, err := c.client.apiClient.Logical().Write(c.pluginPath("/login"), data)
 
@@ -58,7 +58,7 @@ func (c *AppRole) Login() (*api.SecretAuth, error) {
 	return secret.Auth, nil
 }
 
-func (c *AppRole) GenNewSecretId() (string, error) {
+func (c *AppRole) GenNewSecretID() (string, error) {
 	secret, err := c.client.apiClient.Logical().Write(c.rolePath("/secret-id"), nil)
 
 	if err != nil {
@@ -69,18 +69,18 @@ func (c *AppRole) GenNewSecretId() (string, error) {
 		return "", fmt.Errorf("login error does not contain Auth")
 	}
 
-	secretIdRaw, ok := secret.Data["secret_id"]
-	secretId, okCast := secretIdRaw.(string)
+	secretIDRaw, ok := secret.Data["secret_id"]
+	secretID, okCast := secretIDRaw.(string)
 	if !ok || !okCast {
 		return "", fmt.Errorf("login error does not Auth.secret_id")
 	}
 
-	return secretId, nil
+	return secretID, nil
 }
 
-func (c *AppRole) DeleteSecretId(secretId string) error {
+func (c *AppRole) DeleteSecretID(secretID string) error {
 	_, err := c.client.apiClient.Logical().Write(c.rolePath("/secret-id/destroy"), map[string]interface{}{
-		"secret_id": secretId,
+		"secret_id": secretID,
 	})
 
 	if err != nil {

@@ -1,4 +1,4 @@
-package vault_client
+package client
 
 import (
 	"context"
@@ -10,7 +10,7 @@ type accessConfigStorage struct {
 	parent logical.Storage
 }
 
-func NewAccessConfigStorage(parent logical.Storage) *accessConfigStorage {
+func newAccessConfigStorage(parent logical.Storage) *accessConfigStorage {
 	return &accessConfigStorage{parent: parent}
 }
 

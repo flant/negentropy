@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/flant/negentropy/vault-plugins/shared/vault_client"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -22,12 +22,12 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 // Simple backend for test purposes (treat it like an example)
 type exampleBackend struct {
 	*framework.Backend
-	accessVaultController *vault_client.VaultClientController
+	accessVaultController *client.VaultClientController
 }
 
 func backend() *exampleBackend {
 	b := new(exampleBackend)
-	b.accessVaultController = vault_client.NewVaultClientController(func() log.Logger {
+	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
 		return b.Logger()
 	})
 
@@ -40,7 +40,7 @@ func backend() *exampleBackend {
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
-				vault_client.PathConfigure(b.accessVaultController),
+				client.PathConfigure(b.accessVaultController),
 			},
 
 			[]*framework.Path{
@@ -76,7 +76,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 	}
 
 	err = b.accessVaultController.Init(config.StorageView)
-	if err != nil && !errors.Is(err, vault_client.NotSetConfError) {
+	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 }
 
 func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiClient, err := b.accessVaultController.ApiClient()
+	apiClient, err := b.accessVaultController.APIClient()
 	if err != nil {
 		return nil, err
 	}

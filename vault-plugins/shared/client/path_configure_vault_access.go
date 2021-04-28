@@ -1,4 +1,4 @@
-package vault_client
+package client
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
+	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -83,55 +83,55 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 	config := &vaultAccessConfig{}
 	var errResp *logical.Response
 
-	config.ApiUrl, errResp = utils.NotEmptyStringParam(d, "vault_api_url")
+	config.APIURL, errResp = backendutils.NotEmptyStringParam(d, "vault_api_url")
 	if errResp != nil {
 		return errResp, nil
 	}
-	_, err := url.ParseRequestURI(config.ApiUrl)
+	_, err := url.ParseRequestURI(config.APIURL)
 	if err != nil {
 		return logical.ErrorResponse("incorrect vault_api_url"), nil
 	}
 
-	config.ApiHost, errResp = utils.NotEmptyStringParam(d, "vault_api_host")
+	config.APIHost, errResp = backendutils.NotEmptyStringParam(d, "vault_api_host")
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.ApiCa, errResp = utils.NotEmptyStringParam(d, "vault_api_ca")
+	config.APICa, errResp = backendutils.NotEmptyStringParam(d, "vault_api_ca")
 	if errResp != nil {
 		return errResp, nil
 	}
-	validPem, _ := pem.Decode([]byte(config.ApiCa))
+	validPem, _ := pem.Decode([]byte(config.APICa))
 	if validPem == nil {
 		return logical.ErrorResponse("incorrect vault_api_ca"), nil
 	}
 
-	config.RoleName, errResp = utils.NotEmptyStringParam(d, "role_name")
+	config.RoleName, errResp = backendutils.NotEmptyStringParam(d, "role_name")
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.RoleId, errResp = utils.NotEmptyStringParam(d, "role_id")
+	config.RoleID, errResp = backendutils.NotEmptyStringParam(d, "role_id")
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.SecretId, errResp = utils.NotEmptyStringParam(d, "secret_id")
+	config.SecretID, errResp = backendutils.NotEmptyStringParam(d, "secret_id")
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.SecretIdTtlSec, errResp = utils.DurationSecParam(d, "secret_id_ttl", 120)
+	config.SecretIDTTTLSec, errResp = backendutils.DurationSecParam(d, "secret_id_ttl", 120)
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.TokenTtlSec, errResp = utils.DurationSecParam(d, "token_ttl", 90)
+	config.TokenTTLSec, errResp = backendutils.DurationSecParam(d, "token_ttl", 90)
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.ApproleMountPoint, errResp = utils.NotEmptyStringParam(d, "approle_mount_point")
+	config.ApproleMountPoint, errResp = backendutils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {
 		return errResp, nil
 	}

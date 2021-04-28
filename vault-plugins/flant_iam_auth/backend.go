@@ -7,8 +7,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"sync"
 
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
-	"github.com/flant/negentropy/vault-plugins/shared/vault_client"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
@@ -40,7 +40,7 @@ type flantIamAuthBackend struct {
 	authMethodStorageFactory PrefixStorageRequestFactory
 
 	tokenController       *njwt.TokenController
-	accessVaultController *vault_client.VaultClientController
+	accessVaultController *client.VaultClientController
 }
 
 func backend() *flantIamAuthBackend {
@@ -53,7 +53,7 @@ func backend() *flantIamAuthBackend {
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.tokenController = njwt.NewTokenController()
-	b.accessVaultController = vault_client.NewVaultClientController(func() log.Logger {
+	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
 		return b.Logger()
 	})
 
@@ -99,7 +99,7 @@ func backend() *flantIamAuthBackend {
 				njwt.PathRotateKey(b.tokenController),
 			},
 			[]*framework.Path{
-				vault_client.PathConfigure(b.accessVaultController),
+				client.PathConfigure(b.accessVaultController),
 			},
 			pathOIDC(b),
 		),
@@ -116,7 +116,7 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 	}
 
 	err = b.accessVaultController.Init(config.StorageView)
-	if err != nil && !errors.Is(err, vault_client.NotSetConfError) {
+	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}
 

@@ -1,4 +1,4 @@
-package vault_client
+package client
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
+func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(accessConf.ApiCa))
+	caCertPool.AppendCertsFromPEM([]byte(accessConf.APICa))
 
 	// Setup HTTPS client
 	tlsConfig := &tls.Config{
@@ -29,7 +29,7 @@ func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	httpClient := api.DefaultConfig().HttpClient
 	httpClient.Transport = transport
 	clientConf := &api.Config{
-		Address:    accessConf.ApiUrl,
+		Address:    accessConf.APIURL,
 		HttpClient: httpClient,
 	}
 
@@ -38,12 +38,12 @@ func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 		return nil, err
 	}
 
-	client.AddHeader("host", accessConf.ApiHost)
+	client.AddHeader("host", accessConf.APIHost)
 
 	return client, nil
 }
 
-func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, accessConf *vaultAccessConfig, logger log.Logger) error {
+func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, accessConf *vaultAccessConfig, logger log.Logger) error {
 	// login with current secret id if no login current
 	if apiClient.Token() == "" {
 		err := loginAndSetToken(apiClient, accessConf, logger)
@@ -55,14 +55,14 @@ func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessCon
 	// generate ne w secret id
 	appRoleCli := newAccessClient(apiClient, accessConf, logger).AppRole()
 
-	newSecretId, err := appRoleCli.GenNewSecretId()
+	newSecretID, err := appRoleCli.GenNewSecretID()
 	if err != nil {
 		return err
 	}
 
 	// save new secret id in store
-	oldSecretId := accessConf.SecretId
-	accessConf.SecretId = newSecretId
+	oldSecretID := accessConf.SecretID
+	accessConf.SecretID = newSecretID
 	accessConf.LastRenewTime = time.Now()
 
 	err = store.Put(ctx, accessConf)
@@ -83,8 +83,8 @@ func genNewSecretId(ctx context.Context, apiClient *api.Client, store *accessCon
 	}
 
 	// delete old secret from vault
-	if oldSecretId != "" {
-		err = appRoleCli.DeleteSecretId(oldSecretId)
+	if oldSecretID != "" {
+		err = appRoleCli.DeleteSecretID(oldSecretID)
 		if err != nil {
 			return err
 		}

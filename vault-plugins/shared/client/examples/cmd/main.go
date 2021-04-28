@@ -1,7 +1,7 @@
 package main
 
 import (
-	examples "github.com/flant/negentropy/vault-plugins/shared/vault_client/examples"
+	examples "github.com/flant/negentropy/vault-plugins/shared/client/examples"
 	"github.com/hashicorp/go-hclog"
 	"os"
 
