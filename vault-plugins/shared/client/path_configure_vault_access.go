@@ -100,11 +100,13 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 
 	config.APICa, errResp = backendutils.NotEmptyStringParam(d, "vault_api_ca")
 	if errResp != nil {
-		return errResp, nil
+		config.APICa = ""
 	}
-	validPem, _ := pem.Decode([]byte(config.APICa))
-	if validPem == nil {
-		return logical.ErrorResponse("incorrect vault_api_ca"), nil
+	if config.APICa != "" {
+		validPem, _ := pem.Decode([]byte(config.APICa))
+		if validPem == nil {
+			return logical.ErrorResponse("incorrect vault_api_ca"), nil
+		}
 	}
 
 	config.RoleName, errResp = backendutils.NotEmptyStringParam(d, "role_name")

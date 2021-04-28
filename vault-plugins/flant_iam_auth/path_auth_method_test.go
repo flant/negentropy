@@ -2,7 +2,6 @@ package jwtauth
 
 import (
 	"context"
-	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -13,9 +12,12 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
-func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
+func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 
@@ -29,11 +31,12 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		StorageView: &logical.InmemStorage{},
 	}
 	b, err := Factory(context.Background(), config)
+	fb := b.(*flantIamAuthBackend)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 
-	return b, config.StorageView
+	return fb, config.StorageView
 }
 
 func TestAuthMethod_Create(t *testing.T) {
@@ -44,7 +47,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":     methodTypeJWT,
+			"method_type":     model.MethodTypeJWT,
 			"bound_subject":   "testsub",
 			"bound_audiences": "vault",
 			"user_claim":      "user",
@@ -53,15 +56,16 @@ func TestAuthMethod_Create(t *testing.T) {
 			"source":          sourceName,
 		}
 
-		expected := &authMethodConfig{
+		expected := &model.AuthMethod{
 			TokenParams:     tokenutil.TokenParams{},
-			MethodType:      methodTypeJWT,
+			MethodType:      model.MethodTypeJWT,
 			BoundSubject:    "testsub",
 			BoundAudiences:  []string{"vault"},
 			BoundClaimsType: "string",
 			UserClaim:       "user",
 			GroupsClaim:     "groups",
 			Source:          sourceName,
+			Name:            "plugin-test",
 		}
 
 		req := &logical.Request{
@@ -75,10 +79,17 @@ func TestAuthMethod_Create(t *testing.T) {
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
-		actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "plugin-test")
+
+		actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("plugin-test")
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if actual.UUID == "" {
+			t.Fatal("not set uuid")
+		}
+
+		actual.UUID = ""
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Fatalf("Unexpected authMethod data: expected %#v\n got %#v\n", expected, actual)
@@ -89,11 +100,11 @@ func TestAuthMethod_Create(t *testing.T) {
 		b, storage := getBackend(t)
 
 		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
-			methodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+			model.MethodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
 				creteTestJWTBasedSource(t, b, s, n)
 			},
 
-			methodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+			model.MethodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
 				creteTestOIDCBasedSource(t, b, s, n)
 			},
 		}
@@ -133,7 +144,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	t.Run("need source name for jwt and oidc", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		for _, methodType := range []string{methodTypeOIDC, methodTypeJWT} {
+		for _, methodType := range []string{model.MethodTypeOIDC, model.MethodTypeJWT} {
 			data := map[string]interface{}{
 				"method_type":     methodType,
 				"bound_subject":   "testsub",
@@ -164,7 +175,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	t.Run("check source is exists for jwt and oidc", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		for _, methodType := range []string{methodTypeOIDC, methodTypeJWT} {
+		for _, methodType := range []string{model.MethodTypeOIDC, model.MethodTypeJWT} {
 			data := map[string]interface{}{
 				"method_type":     methodType,
 				"bound_subject":   "testsub",
@@ -200,7 +211,7 @@ func TestAuthMethod_Create(t *testing.T) {
 
 		data := map[string]interface{}{
 			"policies":    "test",
-			"method_type": methodTypeJWT,
+			"method_type": model.MethodTypeJWT,
 			"source":      sourceName,
 		}
 
@@ -230,7 +241,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type": methodTypeJWT,
+			"method_type": model.MethodTypeJWT,
 			"user_claim":  "user",
 			"policies":    "test",
 			"source":      sourceName,
@@ -262,7 +273,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":   methodTypeJWT,
+			"method_type":   model.MethodTypeJWT,
 			"user_claim":    "user",
 			"policies":      "test",
 			"bound_subject": "testsub",
@@ -292,7 +303,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":     methodTypeJWT,
+			"method_type":     model.MethodTypeJWT,
 			"user_claim":      "user",
 			"policies":        "test",
 			"bound_audiences": "vault",
@@ -318,7 +329,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	t.Run("has cidr", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		for _, methodType := range []string{methodTypeOwn, methodTypeSAPassword} {
+		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
 			data := map[string]interface{}{
 				"method_type":       methodType,
 				"user_claim":        "user",
@@ -350,7 +361,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type": methodTypeJWT,
+			"method_type": model.MethodTypeJWT,
 			"user_claim":  "user",
 			"policies":    "test",
 			"bound_claims": map[string]interface{}{
@@ -379,7 +390,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	t.Run("has expiration, not before custom leeways for own type auth", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		for _, methodType := range []string{methodTypeOwn, methodTypeSAPassword} {
+		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
 			data := map[string]interface{}{
 				"method_type":       methodType,
 				"user_claim":        "user",
@@ -408,7 +419,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test8")
+			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test8")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -430,13 +441,13 @@ func TestAuthMethod_Create(t *testing.T) {
 
 	t.Run("storing zero leeways for jwt and oidc and sa", func(t *testing.T) {
 		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
-			methodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+			model.MethodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
 				creteTestOIDCBasedSource(t, b, s, n)
 			},
-			methodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
+			model.MethodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
 				creteTestJWTBasedSource(t, b, s, n)
 			},
-			methodTypeSAPassword: func(*testing.T, logical.Backend, logical.Storage, string) {},
+			model.MethodTypeSAPassword: func(*testing.T, logical.Backend, logical.Storage, string) {},
 		}
 
 		for methodType, sourceCreator := range methods {
@@ -476,7 +487,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test9")
+			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test9")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -496,7 +507,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	t.Run("storing negative leeways", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		for _, methodType := range []string{methodTypeOwn, methodTypeSAPassword} {
+		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
 			data := map[string]interface{}{
 				"method_type":       methodType,
 				"user_claim":        "user",
@@ -525,7 +536,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("did not expect error:%s", resp.Error().Error())
 			}
 
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "test9")
+			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test9")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -549,7 +560,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":       methodTypeJWT,
+			"method_type":       model.MethodTypeJWT,
 			"user_claim":        "user",
 			"policies":          "test",
 			"bound_claims_type": "invalid",
@@ -586,7 +597,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":       methodTypeJWT,
+			"method_type":       model.MethodTypeJWT,
 			"user_claim":        "user",
 			"policies":          "test",
 			"bound_claims_type": "glob",
@@ -624,7 +635,7 @@ func TestAuthMethod_Create(t *testing.T) {
 		creteTestJWTBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":       methodTypeJWT,
+			"method_type":       model.MethodTypeJWT,
 			"user_claim":        "user",
 			"policies":          "test",
 			"clock_skew_leeway": "-1",
@@ -682,13 +693,13 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			"source":       sourceName,
 		}
 
-		expected := &authMethodConfig{
+		expected := &model.AuthMethod{
 			TokenParams:     tokenutil.TokenParams{},
 			MethodType:      "oidc",
 			BoundAudiences:  []string{"vault"},
 			BoundClaimsType: "string",
 			BoundClaims: map[string]interface{}{
-				"foo": json.Number("10"),
+				"foo": 10,
 				"bar": "baz",
 			},
 			AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
@@ -700,9 +711,10 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			UserClaim:   "user",
 			GroupsClaim: "groups",
 			Source:      sourceName,
+			Name:        "plugin-test",
 		}
 
-		for _, methodType := range []string{methodTypeOIDC} {
+		for _, methodType := range []string{model.MethodTypeOIDC} {
 			data["method_type"] = methodType
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
@@ -715,11 +727,16 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
-			actual, err := b.(*flantIamAuthBackend).authMethod(context.Background(), NewPrefixStorage("method/", storage), "plugin-test")
+			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("plugin-test")
 			if err != nil {
 				t.Fatal(err)
 			}
 
+			if actual.UUID == "" {
+				t.Fatal("uuid not set")
+			}
+
+			actual.UUID = ""
 			if diff := deep.Equal(expected, actual); diff != nil {
 				t.Fatal(diff)
 			}
@@ -733,7 +750,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 		creteTestOIDCBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":     methodTypeOIDC,
+			"method_type":     model.MethodTypeOIDC,
 			"bound_audiences": "vault",
 			"bound_claims": map[string]interface{}{
 				"foo": 10,
@@ -776,7 +793,7 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 		creteTestOIDCBasedSource(t, b, storage, sourceName)
 
 		data := map[string]interface{}{
-			"method_type":     methodTypeOIDC,
+			"method_type":     model.MethodTypeOIDC,
 			"bound_audiences": "vault",
 			"bound_claims": map[string]interface{}{
 				"foo": 10,
@@ -964,7 +981,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 	creteTestJWTBasedSource(t, b, storage, sourceName)
 
 	data := map[string]interface{}{
-		"method_type":       methodTypeJWT,
+		"method_type":       model.MethodTypeJWT,
 		"bound_subject":     "testsub",
 		"bound_audiences":   "vault",
 		"user_claim":        "user",

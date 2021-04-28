@@ -4,16 +4,15 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"log"
 	"strings"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	self "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -21,12 +20,17 @@ import (
 type SelfKafkaSource struct {
 	kf        *kafka.MessageBroker
 	decryptor *kafka.Encrypter
+	topic     string
+
+	api *vault.VaultEntityDownstreamApi
 }
 
-func NewSelfKafkaSource(kf *kafka.MessageBroker) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *kafka.MessageBroker, api *vault.VaultEntityDownstreamApi) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: kafka.NewEncrypter(),
+		topic:     kf.PluginConfig.SelfTopicName,
+		api:        api,
 	}
 }
 
@@ -87,21 +91,7 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 			continue
 		}
 
-		// TODO: need huge switch-case here, with object Unmarshaling
-		var inputObject interface{}
-		switch splitted[0] {
-		case model.PendingLoginType:
-			inputObject = &model.PendingLogin{}
-
-		default:
-			return errors.New("is not implemented yet")
-		}
-		err = json.Unmarshal(decrypted, inputObject)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Insert(splitted[0], inputObject)
+		err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
 		if err != nil {
 			return err
 		}
@@ -181,25 +171,11 @@ func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 
 func (sks *SelfKafkaSource) processMessage(source *kafka.SourceInputMessage, store *io.MemoryStore, objType string, data []byte) error {
 	tx := store.Txn(true)
+	defer tx.Abort()
 
-	switch objType {
-	case model.PendingLoginType:
-		// all logic here
-		pl := &model.PendingLogin{}
-		_ = json.Unmarshal(data, pl)
-		err := tx.Insert(model.PendingLoginType, pl)
-		if err != nil {
-			return backoff.Permanent(err)
-		}
-
-	case model.EntityType:
-		pl := &model.Entity{}
-		_ = json.Unmarshal(data, pl)
-		fmt.Println("DO something with", pl)
-
-	default:
-		tx.Abort()
-		return errors.New("not implemented yet")
+	err := self.HandleNewMessageSelfSource(tx, self.NewObjectHandler(store, tx, sks.api), objType, data)
+	if err != nil {
+		return err
 	}
 	return tx.Commit(source)
 }

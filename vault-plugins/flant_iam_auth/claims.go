@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/pointerstructure"
 	"github.com/ryanuber/go-glob"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 // getClaim returns a claim value from allClaims given a provided claim string.
@@ -90,7 +93,7 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 // validateBoundClaims checks that all of the claim:value requirements in boundClaims are
 // met in allClaims.
 func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
-	useGlobs := boundClaimsType == boundClaimsTypeGlob
+	useGlobs := boundClaimsType == model.BoundClaimsTypeGlob
 
 	for claim, expValue := range boundClaims {
 		actValue := getClaim(logger, allClaims, claim)

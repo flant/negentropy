@@ -50,7 +50,7 @@ func (mkd *SelfKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb
 // only models from this plugin
 func (mkd *SelfKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
-	case model.EntityType, model.PendingLoginType:
+	case model.EntityType, model.AuthSourceType, model.EntityAliasType, model.AuthMethodType:
 		return true
 
 	default:
