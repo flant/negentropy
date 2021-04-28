@@ -19,11 +19,13 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
-const defaultMount = "oidc"
-const defaultListenAddress = "localhost"
-const defaultPort = "8250"
-const defaultCallbackHost = "localhost"
-const defaultCallbackMethod = "http"
+const (
+	defaultMount          = "oidc"
+	defaultListenAddress  = "localhost"
+	defaultPort           = "8250"
+	defaultCallbackHost   = "localhost"
+	defaultCallbackMethod = "http"
+)
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
 

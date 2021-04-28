@@ -52,7 +52,6 @@ func TestParseHelp(t *testing.T) {
 			if d != test.detail {
 				t.Fatalf("expected detail: %q, got: %q", test.detail, d)
 			}
-
 		})
 	}
 }

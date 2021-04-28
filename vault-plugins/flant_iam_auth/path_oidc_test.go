@@ -2,13 +2,13 @@ package jwtauth
 
 import (
 	"context"
-	"github.com/go-test/deep"
 	"net/url"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -205,7 +205,6 @@ func TestOIDC_AuthURL(t *testing.T) {
 }
 
 func TestOIDC_AuthURL_namespace(t *testing.T) {
-
 	type testCase struct {
 		namespaceInState    string
 		allowedRedirectURIs []string
@@ -358,7 +357,6 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			if !matchState {
 				t.Fatalf("expected state to match regex: %s, %s", test.expectedStateRegEx, state)
 			}
-
 		})
 	}
 }
@@ -584,7 +582,6 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 
 func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
-
 		// run test with and without bound_cidrs configured
 		for _, useBoundCIDRs := range []bool{false, true} {
 			b, storage, s := getBackendAndServer(t, useBoundCIDRs)

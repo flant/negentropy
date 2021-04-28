@@ -3,15 +3,15 @@ package jwtauth
 import (
 	"context"
 	"encoding/json"
-	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -128,7 +128,6 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("need incorect source error")
 			}
 		}
-
 	})
 
 	t.Run("need source name for jwt and oidc", func(t *testing.T) {
@@ -160,7 +159,6 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("must return need source name error")
 			}
 		}
-
 	})
 
 	t.Run("check source is exists for jwt and oidc", func(t *testing.T) {
@@ -193,7 +191,6 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("must return no auth source error")
 			}
 		}
-
 	})
 
 	t.Run("no user claim", func(t *testing.T) {
@@ -429,7 +426,6 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("clock_skew_leeway - expected: %s, got: %s", expectedDuration, actual.ClockSkewLeeway)
 			}
 		}
-
 	})
 
 	t.Run("storing zero leeways for jwt and oidc and sa", func(t *testing.T) {
@@ -495,7 +491,6 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("not_before_leeway - expected: 0, got: %v", actual.NotBeforeLeeway.Seconds())
 			}
 		}
-
 	})
 
 	t.Run("storing negative leeways", func(t *testing.T) {
@@ -824,10 +819,9 @@ func TestAuthMethod_OIDCCreate(t *testing.T) {
 			t.Fatalf("unexpected err: %v", resp)
 		}
 	})
-
 }
 
-//func TestAuthMethod_Read(t *testing.T) {
+// func TestAuthMethod_Read(t *testing.T) {
 //	b, storage := getBackend(t)
 //
 //	data := map[string]interface{}{

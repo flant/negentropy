@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	log "github.com/hashicorp/go-hclog"
 	"sync"
-
-	"github.com/flant/negentropy/vault-plugins/shared/client"
-	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
+
+	"github.com/flant/negentropy/vault-plugins/shared/client"
+	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 // Factory is used by framework
@@ -138,6 +138,8 @@ func (b *flantIamAuthBackend) invalidate(ctx context.Context, key string) {
 	switch key {
 	case "config":
 		b.reset()
+	default:
+		return
 	}
 }
 

@@ -135,10 +135,8 @@ func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 				if !glob.Glob(expValStr, actValStr) {
 					continue
 				}
-			} else {
-				if actVal != expVal {
-					continue
-				}
+			} else if actVal != expVal {
+				continue
 			}
 			return true, nil
 		}

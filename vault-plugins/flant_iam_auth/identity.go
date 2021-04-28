@@ -2,10 +2,10 @@ package jwtauth
 
 import (
 	"fmt"
-	"golang.org/x/oauth2"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
+	"golang.org/x/oauth2"
 )
 
 // createIdentity creates an alias and set of groups aliases based on the authMethodConfig
