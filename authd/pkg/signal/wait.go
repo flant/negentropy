@@ -1,10 +1,11 @@
 package signal
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
 // WaitForProcessInterruption wait for SIGINT or SIGTERM and run a callback function.
@@ -16,7 +17,7 @@ func WaitForProcessInterruption(cb ...func()) {
 	interruptCh := make(chan os.Signal, 1)
 
 	forcedExit := func(s os.Signal) {
-		fmt.Printf("Forced shutdown by '%s' signal\n", s.String())
+		logrus.Infof("Forced shutdown by '%s' signal", s.String())
 
 		signum := 0
 		switch v := s.(type) {
@@ -33,7 +34,7 @@ func WaitForProcessInterruption(cb ...func()) {
 		switch allowedCount {
 		case 0:
 			if len(cb) > 0 {
-				fmt.Printf("Grace shutdown by '%s' signal\n", sig.String())
+				logrus.Infof("Grace shutdown by '%s' signal", sig.String())
 				cb[0]()
 			} else {
 				forcedExit(sig)

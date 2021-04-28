@@ -1,13 +1,15 @@
 package server
 
 import (
-	"fmt"
-	"github.com/flant/negentropy/authd/pkg/jwt"
-	"github.com/go-chi/chi/v5"
+	"context"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 
 	api "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/authd/pkg/config"
+	"github.com/flant/negentropy/authd/pkg/jwt"
+	"github.com/flant/negentropy/authd/pkg/log"
 	"github.com/flant/negentropy/authd/pkg/vault"
 )
 
@@ -32,17 +34,17 @@ func NewLoginHandler(authdConfig *config.AuthdConfig, authdSocketConfig *config.
 // ServeHTTP does some magic behind the /v1/login.
 func (l *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var loginRequest = new(api.LoginRequest)
-	ServeJSON(w, r, loginRequest, func() (interface{}, int, error) {
+	ServeJSON(w, r, loginRequest, func(ctx context.Context) (interface{}, int, error) {
 		loginRequest.ServerType = chi.URLParam(r, "serverType")
-		return l.HandleLogin(loginRequest)
+		return l.HandleLogin(ctx, loginRequest)
 	})
 }
 
 // HandleLogin do some requests to Vault and returns one of LoginResponse.
-func (l *LoginHandler) HandleLogin(request *api.LoginRequest) (interface{}, int, error) {
+func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginRequest) (interface{}, int, error) {
 	var err error
 
-	fmt.Printf("Request login for '%s' '%s'", request.ServerType, request.Server)
+	log.Debugf(ctx)("Request login for '%s' '%s'", request.ServerType, request.Server)
 
 	vaultServer, err := config.DetectServerAddr(l.AuthdConfig.GetServers(), request.ServerType, request.Server)
 	if err != nil {

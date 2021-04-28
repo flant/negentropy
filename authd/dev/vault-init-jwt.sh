@@ -14,7 +14,18 @@ echo Configure "identity oidc"
 
 vault write identity/oidc/config issuer=http://127.0.0.1:8200
 vault write identity/oidc/key/mykey allowed_client_ids=* algorithm=EdDSA
-vault write identity/oidc/role/myrole key=mykey client_id=authd template='{"username":{{identity.entity.name}} }'
+
+echo Configure JWT auth at /auth/myjwt path
+vault auth enable jwt -path myjwt # /auth/myjwt/...
+echo Configure auth/jwt to trust itself and use tokens from identity/oidc
+vault write auth/myjwt/config jwks_url=http://127.0.0.1:8200/v1/identity/oidc/.well-known/keys bound_issuer=http://127.0.0.1:8200/v1/identity/oidc
+
+MOUNT_ACCESSOR_TOKEN=$(vault auth list -format=json | jq -r '."token/".accessor')
+
+vault write identity/oidc/role/myrole key=mykey client_id=authd template='{"username":'{{identity.entity.aliases.$MOUNT_ACCESSOR_TOKEN.name}}'}'
+
+# {{identity.entity.name}}
+# {{identity.entity.aliases.$MOUNT_ACCESSOR.name}}
 
 echo Create policy
 
@@ -29,13 +40,17 @@ path "ssh/creds/otp_key_role" {
 
 POLICY
 
-echo Create entity and enitity_alias
+echo Create entity and enitity_aliases
 vault write /identity/entity name=testuser policies=testuserpolicy
 ENTITY_ID=$(vault read -format=json /identity/entity/name/testuser | jq -r '.data.id')
 
-MOUNT_ACCESSOR=$(vault auth list -format=json | jq -r '."token/".accessor')
+vault write identity/entity-alias name=testuser-alias canonical_id=$ENTITY_ID mount_accessor=$MOUNT_ACCESSOR_TOKEN
 
-vault write identity/entity-alias name=testuser-alias canonical_id=$ENTITY_ID mount_accessor=$MOUNT_ACCESSOR
+# This entity-alias is used to get proper entity_id and policies in token issued
+# with auth/myjwt/login using generated JWT. It has the same name as enitity-alias for "token/"
+# because "username" field is filled with name from "token/" entity-alias.
+MOUNT_ACCESSOR_MYJWT=$(vault auth list -format=json | jq -r '."myjwt/".accessor')
+vault write identity/entity-alias name=testuser-alias canonical_id=$ENTITY_ID mount_accessor=$MOUNT_ACCESSOR_MYJWT
 
 # List all enitity aliases
 # for id in $(vault list -format=json /identity/entity-alias/id | jq '.[]' -r ) ; do vault read -format=json /identity/entity-alias/id/$id | jq '.data.id + " " + .data.name + " " + (.data.metadata|tostring)' ; done
@@ -52,18 +67,16 @@ echo Create auth token for entity alias
 ENTITY_TOKEN=$(vault write -format=json auth/token/create/myrole \
    entity_alias="testuser-alias" |  jq -r '.auth.client_token')
 
-echo Mount jwt auth plugin at myjwt path
-vault auth enable jwt -path myjwt # /auth/myjwt/...
-
-echo Configure auth/jwt to trust itself and use tokens from identity/oidc
-vault write auth/myjwt/config jwks_url=http://127.0.0.1:8200/v1/identity/oidc/.well-known/keys bound_issuer=https://127.0.0.1:8200/v1/identity/oidc
 
 echo Create authd role in myjwt
-vault write /auth/myjwt/role/authd role_type=jwt bound_audiences=authd user_claim=username token_policies=testuserpolicy
+vault write /auth/myjwt/role/authd role_type=jwt bound_audiences=authd user_claim=username
 
 echo Create JWT for authd. Put it in dev/secret/authd.jwt as stated in conf/main.yaml and do chmod 0600.
-
 VAULT_TOKEN=$ENTITY_TOKEN vault read -format=json identity/oidc/token/myrole | jq -r '.data.token'
+
+echo Enable SSH plugin for simple authd client
+vault secrets enable ssh
+vault write ssh/roles/otp_key_role key_type=otp default_user=testuser cidr_list=127.0.0.0/24
 
 EOF
 

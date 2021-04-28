@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/authd/pkg/util"
@@ -19,6 +20,9 @@ authdClient := new(authd.Client)
 vaultClient, err := authdClient.Login(v1.NewDefaultLoginToAuthServer())
 if err != nil {...}
 vaultClient.SSH().SignKey(...)
+
+go tokenRefresher(vaultClient).Start()
+
 */
 
 type Client struct {
@@ -43,7 +47,8 @@ func (c *Client) newHttpClient() (*http.Client, error) {
 	}, nil
 }
 
-// Login asks authd to return new vault token and returns vault client with server and token.
+// Login asks authd to return new vault token and returns new vault client
+// with specific server and token.
 func (c *Client) Login(loginRequest *v1.LoginRequest) (*api.Client, error) {
 	socketClient, err := c.newHttpClient()
 	if err != nil {
@@ -64,6 +69,10 @@ func (c *Client) Login(loginRequest *v1.LoginRequest) (*api.Client, error) {
 		return nil, err
 	}
 
+	if os.Getenv("AUTHD_DEBUG") == "yes" {
+		req.Params.Set("debug", "yes")
+	}
+
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 	resp, err := cl.RawRequestWithContext(ctx, req)
@@ -80,6 +89,8 @@ func (c *Client) Login(loginRequest *v1.LoginRequest) (*api.Client, error) {
 	bt, _ := json.Marshal(secret)
 	fmt.Printf("secret: %s\n", string(bt))
 
+	// TODO unmarshal Data to struct.
+	// TODO do something with schema.
 	resCfg := &api.Config{
 		Address: "http://" + secret.Data["server"].(string),
 	}
@@ -90,3 +101,8 @@ func (c *Client) Login(loginRequest *v1.LoginRequest) (*api.Client, error) {
 	resCl.SetToken(secret.Auth.ClientToken)
 	return resCl, nil
 }
+
+// TODO create refresher for session token.
+/**
+
+ */

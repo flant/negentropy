@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sirupsen/logrus"
 
 	"github.com/flant/negentropy/authd/pkg/config"
 	utils "github.com/flant/negentropy/authd/pkg/util"
@@ -26,7 +28,6 @@ type VaultProxy struct {
 	Router     chi.Router
 
 	stopped bool
-	//JwtAccessor JwtAccessor // ?
 }
 
 func NewVaultProxy(authdConfig *config.AuthdConfig, authdSocketConfig *config.AuthdSocketConfig) *VaultProxy {
@@ -43,8 +44,7 @@ func (v *VaultProxy) Start() error {
 
 	err := os.MkdirAll(path.Dir(address), os.FileMode(sockCfg.GetMode()))
 	if err != nil {
-		fmt.Printf("Debug HTTP server fail to create socket '%s': %v", address, err)
-		return err
+		return fmt.Errorf("create directories for socket '%s': %v", address, err)
 	}
 
 	exists, err := utils.FileExists(address)
@@ -64,10 +64,11 @@ func (v *VaultProxy) Start() error {
 		return fmt.Errorf("listen on '%s': %v", address, err)
 	}
 
-	fmt.Printf("Listen on %s\n", address)
+	logrus.Infof("Listen on %s.", address)
 
 	v.Router = chi.NewRouter()
 	v.Router.Use(NewStructuredLogger(address))
+	v.Router.Use(DebugAwareLogger)
 	v.Router.Use(middleware.Recoverer)
 
 	SetupLoginHandler(v.Router, v.AuthdConfig, v.AuthdSocketConfig)
@@ -81,7 +82,7 @@ func (v *VaultProxy) Start() error {
 			if v.stopped {
 				return
 			}
-			fmt.Printf("Error starting Debug HTTP server: %s", err)
+			logrus.Errorf("Starting HTTP server for '%s': %v", address, err)
 			os.Exit(1)
 		}
 	}()
@@ -93,10 +94,11 @@ func (v *VaultProxy) Start() error {
 func (v *VaultProxy) Stop() {
 	v.stopped = true
 	idleConnsClosed := make(chan struct{})
-	fmt.Printf("Stop server on '%s'\n", v.SocketPath)
+	logrus.Debugf("Stop server on '%s'...", v.SocketPath)
 	go func() {
-		if err := v.Server.Shutdown(context.Background()); err != nil {
-			fmt.Printf("WARN: stop server on '%s': %v\n", v.SocketPath, err)
+		err := v.Server.Shutdown(context.Background())
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Warnf("Stop server on '%s': %v", v.SocketPath, err)
 		}
 		close(idleConnsClosed)
 	}()

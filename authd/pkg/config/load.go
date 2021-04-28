@@ -21,7 +21,6 @@ func LoadConfigFiles(paths []string) (*AuthdConfig, []*AuthdSocketConfig, error)
 			return nil, nil, err
 		}
 
-		fmt.Printf("got %s in %s\n", vu.Metadata.String(), fPath)
 		switch vu.Metadata.Kind {
 		case AuthdConfigKind:
 			authdConfig = &AuthdConfig{}
@@ -38,9 +37,6 @@ func LoadConfigFiles(paths []string) (*AuthdConfig, []*AuthdSocketConfig, error)
 			authdSocketConfigs = append(authdSocketConfigs, socketConfig)
 		}
 	}
-
-	fmt.Printf("authdConfig %v\n", authdConfig)
-	fmt.Printf("authdSocketConfig %v\n", authdSocketConfigs)
 
 	return authdConfig, authdSocketConfigs, nil
 }

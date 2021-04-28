@@ -54,7 +54,6 @@ func (a *Authd) Start() error {
 		a.Servers = append(a.Servers, srv)
 	}
 
-	fmt.Printf("autht started with conf dir: '%s'\n", a.Config.ConfDirectory)
 	return nil
 }
 

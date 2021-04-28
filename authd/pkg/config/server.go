@@ -49,9 +49,7 @@ func DetectServerAddr(servers []Server, serverType, serverAddr string) (string, 
 }
 
 func GetDefaultServerAddr(servers []Server, serverType string) (string, error) {
-	fmt.Printf("GetDefaultServerAddr got %d servers\n", len(servers))
 	for _, server := range servers {
-		fmt.Printf("check server '%s' '%s'\n", server.Type, server.Domain)
 		if serverType == strings.ToLower(server.Type) {
 			return server.Domain, nil
 		}

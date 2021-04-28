@@ -1,13 +1,13 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 // StructuredLogger is a simple, but powerful implementation of a custom structured
@@ -43,7 +43,7 @@ type StructuredLoggerEntry struct {
 }
 
 func (l *StructuredLoggerEntry) Write(status, bytes int, _ http.Header, elapsed time.Duration, extra interface{}) {
-	fmt.Printf("%s: %s %s %d\n",
+	logrus.Infof("%s: %s %s %d",
 		l.Name,
 		l.Fields["method"],
 		l.Fields["uri"],
@@ -53,7 +53,7 @@ func (l *StructuredLoggerEntry) Write(status, bytes int, _ http.Header, elapsed 
 
 // This will log panics to log
 func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
-	fmt.Printf("%s: %s %s panic: %v\n%s",
+	logrus.Infof("%s: %s %s panic: %v\n%s",
 		l.Name,
 		l.Fields["method"],
 		l.Fields["uri"],
