@@ -56,4 +56,4 @@ reinit_client:
 clean:
 	rm -f ./bin/example-plugin
 
-.PHONY: build build-linux clean start enable test
+.PHONY: build build-linux clean start test
