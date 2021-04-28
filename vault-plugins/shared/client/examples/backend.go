@@ -1,0 +1,159 @@
+package jwt
+
+import (
+	"context"
+	"errors"
+
+	"github.com/flant/negentropy/vault-plugins/shared/client"
+	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+
+// Factory is used by framework
+func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
+	b := backend()
+	if err := b.SetupBackend(ctx, c); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// Simple backend for test purposes (treat it like an example)
+type exampleBackend struct {
+	*framework.Backend
+	accessVaultController *client.VaultClientController
+}
+
+func backend() *exampleBackend {
+	b := new(exampleBackend)
+	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
+		return b.Logger()
+	})
+
+	b.Backend = &framework.Backend{
+		BackendType:  logical.TypeCredential,
+		Help:         backendHelp,
+		PathsSpecial: &logical.Paths{},
+		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
+			return b.accessVaultController.OnPeriodical(ctx, request)
+		},
+		Paths: framework.PathAppend(
+			[]*framework.Path{
+				client.PathConfigure(b.accessVaultController),
+			},
+
+			[]*framework.Path{
+				getPath(b),
+			},
+		),
+	}
+
+	return b
+}
+
+func getPath(b *exampleBackend) *framework.Path {
+	return &framework.Path{
+		Pattern: `read_role$`,
+		Fields:  map[string]*framework.FieldSchema{},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathReadClientRole,
+				Summary:  "test getting role through api",
+			},
+
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathReInit,
+				Summary:  "test getting role through api after reinit client",
+			},
+		},
+
+		HelpSynopsis:    "Syn",
+		HelpDescription: "Desc",
+	}
+}
+
+func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
+	err := b.Setup(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	err = b.accessVaultController.Init(config.StorageView)
+	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
+		return err
+	}
+
+	return nil
+}
+
+func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	apiClient, err := b.accessVaultController.APIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := apiClient.Logical().Read("/auth/approle/role/good/role-id")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"info": "Getting by client",
+			"res":  res.Data,
+			"client": map[string]interface{}{
+				"address": apiClient.Address(),
+				"headers": apiClient.Headers(),
+			},
+		},
+	}, nil
+}
+
+// dont need in your backend use for test
+func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	apiClient, err := b.accessVaultController.APIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	err = apiClient.Auth().Token().RevokeSelf("" /* ignored */)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.accessVaultController.ReInit(req.Storage)
+	if err != nil {
+		return nil, err
+	}
+
+	apiClient, err = b.accessVaultController.APIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := apiClient.Logical().Read("/auth/approle/role/good/role-id")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"info": "Getting by client",
+			"res":  res.Data,
+			"client": map[string]interface{}{
+				"address": apiClient.Address(),
+				"headers": apiClient.Headers(),
+			},
+		},
+	}, nil
+}
+
+const (
+	backendHelp = `
+Example clientApi backend
+`
+)

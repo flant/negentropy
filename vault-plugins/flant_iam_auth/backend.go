@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	log "github.com/hashicorp/go-hclog"
 	"sync"
 
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
+
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -17,7 +20,7 @@ import (
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
 	b := backend()
-	if err := b.Setup(ctx, c); err != nil {
+	if err := b.SetupBackend(ctx, c); err != nil {
 		return nil, err
 	}
 	return b, nil
@@ -36,7 +39,8 @@ type flantIamAuthBackend struct {
 	authSourceStorageFactory PrefixStorageRequestFactory
 	authMethodStorageFactory PrefixStorageRequestFactory
 
-	tokenController *njwt.TokenController
+	tokenController       *njwt.TokenController
+	accessVaultController *client.VaultClientController
 }
 
 func backend() *flantIamAuthBackend {
@@ -49,12 +53,18 @@ func backend() *flantIamAuthBackend {
 	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.tokenController = njwt.NewTokenController()
+	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
+		return b.Logger()
+	})
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
-		Help:        backendHelp,
+		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
+			return b.accessVaultController.OnPeriodical(ctx, request)
+		},
+		Help: backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
@@ -88,12 +98,29 @@ func backend() *flantIamAuthBackend {
 				njwt.PathJWKS(b.tokenController),
 				njwt.PathRotateKey(b.tokenController),
 			},
+			[]*framework.Path{
+				client.PathConfigure(b.accessVaultController),
+			},
 			pathOIDC(b),
 		),
 		Clean: b.cleanup,
 	}
 
 	return b
+}
+
+func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
+	err := b.Setup(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	err = b.accessVaultController.Init(config.StorageView)
+	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
+		return err
+	}
+
+	return nil
 }
 
 func (b *flantIamAuthBackend) cleanup(_ context.Context) {
