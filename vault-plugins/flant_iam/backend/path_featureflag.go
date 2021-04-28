@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -111,7 +112,9 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, featureFlag, http.StatusCreated)
 	}
@@ -131,7 +134,10 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}

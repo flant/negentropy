@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -51,4 +53,14 @@ func responseNotFound(req *logical.Request, who string) (*logical.Response, erro
 func responseVersionMismatch(req *logical.Request) (*logical.Response, error) {
 	rr := logical.ErrorResponse("version mismatch")
 	return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+}
+
+// commit wraps the committing and error logging
+func commit(tx *io.MemoryStoreTxn, logger log.Logger) error {
+	err := tx.Commit()
+	if err != nil {
+		logger.Error("failed to commit", "err", err)
+		return fmt.Errorf("request failed, try again")
+	}
+	return nil
 }

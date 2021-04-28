@@ -163,7 +163,9 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, tenant, http.StatusCreated)
 	}
@@ -193,7 +195,9 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, tenant, http.StatusOK)
 	}
@@ -213,7 +217,9 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
