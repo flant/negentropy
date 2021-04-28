@@ -86,6 +86,12 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 		case model.ProjectType:
 			inputObject = &model.Project{}
 
+		case model.RoleType:
+			inputObject = &model.Role{}
+
+		case model.RoleBindingType:
+			inputObject = &model.RoleBinding{}
+
 		case model.ServiceAccountType:
 			inputObject = &model.ServiceAccount{}
 
