@@ -87,6 +87,8 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 			if !strings.ContainsRune(req.Get(fieldName).(string), '@') {
 				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO:TAG@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\")", fieldName)), nil
 			}
+		default:
+			continue
 		}
 	}
 
