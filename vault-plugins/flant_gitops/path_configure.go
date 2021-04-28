@@ -2,6 +2,7 @@ package flant_gitops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,8 +11,6 @@ import (
 )
 
 const (
-	storageEntryConfigurationKey = "configuration"
-
 	fieldGitRepoUrlName                                 = "git_repo_url"
 	fieldGitBranchName                                  = "git_branch_name"
 	fieldPeriodicityName                                = "periodicity"
@@ -22,11 +21,16 @@ const (
 	fieldBuildCommandName                               = "build_command"
 	fieldBuildTimeoutName                               = "build_timeout"
 	fieldBuildHistoryLimitName                          = "build_history_limit"
+
+	storageEntryConfigurationKey        = "configuration"
+	storageEntryLastSuccessfulCommitKey = fieldLastSuccessfulCommitName
+
+	configurePathPattern = "configure$"
 )
 
 func pathConfigure(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "configure$",
+		Pattern: configurePathPattern,
 		Fields: map[string]*framework.FieldSchema{
 			fieldGitRepoUrlName: {
 				Type:     framework.TypeString,
@@ -40,10 +44,12 @@ func pathConfigure(b *backend) *framework.Path {
 				Type: framework.TypeDurationSecond,
 			},
 			fieldTrustedGpgPublicKeysName: {
-				Type: framework.TypeCommaStringSlice,
+				Type:     framework.TypeCommaStringSlice,
+				Required: true,
 			},
 			fieldRequiredNumberOfVerifiedSignaturesOnCommitName: {
-				Type: framework.TypeInt,
+				Type:     framework.TypeInt,
+				Required: true,
 			},
 			fieldLastSuccessfulCommitName: {
 				Type: framework.TypeString,
@@ -85,7 +91,7 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 		switch fieldName {
 		case fieldBuildDockerImageName:
 			if !strings.ContainsRune(req.Get(fieldName).(string), '@') {
-				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO:TAG@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\")", fieldName)), nil
+				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO[:TAG]@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\")", fieldName)), nil
 			}
 		}
 	}
@@ -100,4 +106,36 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 	}
 
 	return nil, nil
+}
+
+func (b *backend) getConfiguration(ctx context.Context, req *logical.Request) (*framework.FieldData, error) {
+	entry, err := req.Storage.Get(ctx, storageEntryConfigurationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if entry == nil {
+		return nil, fmt.Errorf("no configuration found in storage")
+	}
+
+	data := make(map[string]interface{})
+	if err := json.Unmarshal(entry.Value, &data); err != nil {
+		return nil, err
+	}
+
+	fields := &framework.FieldData{}
+	fields.Raw = data
+	fields.Schema = b.getConfigureFieldSchemaMap()
+
+	return fields, nil
+}
+
+func (b *backend) getConfigureFieldSchemaMap() map[string]*framework.FieldSchema {
+	for _, p := range b.Paths {
+		if p.Pattern == configurePathPattern {
+			return p.Fields
+		}
+	}
+
+	panic("runtime error")
 }
