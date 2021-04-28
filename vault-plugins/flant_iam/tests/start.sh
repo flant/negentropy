@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 
+ci_mode=""
+if [[ "$1" == "--ci-mode" ]]; then
+  ci_mode="true"
+fi
+
 set -eo pipefail
-set -x
 
-pushd ..
-env OS=linux make build
-popd
+if [[ "${ci_mode}x" == "x" ]]; then
+  set -x
 
-docker stop dev-vault 2>/dev/null || true
-docker rm dev-vault 2>/dev/null || true
+  pushd ..
+  env OS=linux make build
+  popd
+
+  docker stop dev-vault 2>/dev/null || true
+  docker rm dev-vault 2>/dev/null || true
+fi
 
 id=$(docker run \
   --cap-add=IPC_LOCK \
@@ -21,16 +29,24 @@ id=$(docker run \
   -e VAULT_ADDR=http://127.0.0.1:8200 \
   -e VAULT_TOKEN=root \
   -e VAULT_LOG_LEVEL=debug \
-  vault \
-  server -dev -dev-plugin-dir=/vault/plugins -dev-root-token-id=root)
+  -e VAULT_DEV_ROOT_TOKEN_ID=root \
+  vault:1.7.1 \
+  server -dev -dev-plugin-dir=/vault/plugins)
 
-docker exec "$id" sh -c "
-sleep 1 \
+echo "Sleep a second or more ..." && sleep 5
+docker ps
+docker logs dev-vault 2>&1
+docker exec "$id" sh -c '
+set -e
+ls -srltah ./vault/plugins \
+&& /vault/plugins/flant_iam version \
 && vault secrets enable -path=flant_iam flant_iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
-"
-docker logs -f  dev-vault
+'
 
+if [[ "${ci_mode}x" == "x" ]]; then
+  docker logs -f  dev-vault
+fi
 # docker exec -it dev-vault sh
 
 # make enable
