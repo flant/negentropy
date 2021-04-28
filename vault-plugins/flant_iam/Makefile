@@ -16,12 +16,12 @@ all: fmt build start openapi
 
 build:
 	mkdir -p build
-	GOOS="$(OS)" GOARCH="$(GOARCH)" go build -o build/flant_iam cmd/flant_iam/main.go
+	CGO_ENABLED=0 GOOS="$(OS)" GOARCH="$(GOARCH)" go build -o build/vault-plugin-flant-iam cmd/flant_iam/main.go
 
 
 build-linux:
-	GOOS="linux" GOARCH="$(GOARCH)" go build -o build/flant_iam cmd/flant_iam/main.go
-	chmod +x build/flant_iam
+	mkdir -p build
+	CGO_ENABLED=0 GOOS="linux" GOARCH="$(GOARCH)" go build -o build/vault-plugin-flant-iam cmd/flant_iam/main.go
 
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./build
