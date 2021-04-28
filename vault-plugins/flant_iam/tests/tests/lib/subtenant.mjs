@@ -69,6 +69,17 @@ export function genGroupPayload(override = {}) {
     }
 }
 
+export function genRoleBindingPayload(override = {}) {
+    return {
+        users: [],
+        groups: [],
+        service_accounts: [],
+        ttl: Faker.datatype.number(),
+        require_mfa: Math.random() > 0.5,
+        ...override,
+    }
+}
+
 
 export function genRolePayload(override = {}) {
     return {

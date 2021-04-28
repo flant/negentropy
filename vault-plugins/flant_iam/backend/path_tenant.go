@@ -309,6 +309,7 @@ func (r *TenantRepository) Delete(id string) error {
 		NewProjectRepository(r.db),
 		NewServiceAccountRepository(r.db),
 		NewGroupRepository(r.db),
+		NewRoleBindingRepository(r.db),
 	)
 	if err != nil {
 		return err
