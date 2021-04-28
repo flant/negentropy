@@ -45,7 +45,6 @@ func (c *AppRole) Login() (*api.SecretAuth, error) {
 		"secret_id": c.client.conf.SecretID,
 	}
 	secret, err := c.client.apiClient.Logical().Write(c.pluginPath("/login"), data)
-
 	if err != nil {
 		c.logger.Error(fmt.Sprintf("error while login %v", err))
 		return nil, err
@@ -60,7 +59,6 @@ func (c *AppRole) Login() (*api.SecretAuth, error) {
 
 func (c *AppRole) GenNewSecretID() (string, error) {
 	secret, err := c.client.apiClient.Logical().Write(c.rolePath("/secret-id"), nil)
-
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +80,6 @@ func (c *AppRole) DeleteSecretID(secretID string) error {
 	_, err := c.client.apiClient.Logical().Write(c.rolePath("/secret-id/destroy"), map[string]interface{}{
 		"secret_id": secretID,
 	})
-
 	if err != nil {
 		return err
 	}

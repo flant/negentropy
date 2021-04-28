@@ -11,20 +11,24 @@ import (
 )
 
 func main() {
+	logger := hclog.New(&hclog.LoggerOptions{})
+
 	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
+	err := flags.Parse(os.Args[1:])
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	err := plugin.Serve(&plugin.ServeOpts{
+	err = plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: flant_gitops.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		logger := hclog.New(&hclog.LoggerOptions{})
-
 		logger.Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}

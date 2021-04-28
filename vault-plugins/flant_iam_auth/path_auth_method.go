@@ -48,7 +48,6 @@ func pathAuthMethodList(b *flantIamAuthBackend) *framework.Path {
 
 // pathRole returns the path configurations for the CRUD operations on roles
 func pathAuthMethod(b *flantIamAuthBackend) *framework.Path {
-
 	p := &framework.Path{
 		Pattern: "auth_method/" + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{

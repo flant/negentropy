@@ -13,9 +13,8 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type MainKafkaSource struct {

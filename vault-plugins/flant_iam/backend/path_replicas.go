@@ -116,7 +116,7 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 		return nil, logical.CodedError(http.StatusBadRequest, "public_key required")
 	}
 
-	publicKeyStr = strings.Replace(publicKeyStr, "\\n", "\n", -1)
+	publicKeyStr = strings.ReplaceAll(publicKeyStr, "\\n", "\n")
 
 	pb, _ := pem.Decode([]byte(publicKeyStr))
 	pk, err := x509.ParsePKCS1PublicKey(pb.Bytes)
@@ -179,7 +179,7 @@ func (b replicaBackend) handleReplicaRead(ctx context.Context, req *logical.Requ
 		Data: map[string]interface{}{
 			"replica_name": replica.Name,
 			"type":         replica.TopicType,
-			"public_key":   strings.Replace(string(pemdata), "\n", "\\n", -1),
+			"public_key":   strings.ReplaceAll(string(pemdata), "\n", "\\n"),
 		},
 	}, nil
 }

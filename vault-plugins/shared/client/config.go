@@ -20,7 +20,6 @@ type vaultAccessConfig struct {
 }
 
 func (c *vaultAccessConfig) IsNeedToRenewSecretID(now time.Time) (bool, int) {
-
 	if c.LastRenewTime.IsZero() {
 		return true, 0
 	}

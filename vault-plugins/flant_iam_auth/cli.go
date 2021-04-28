@@ -19,11 +19,13 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
-const defaultMount = "oidc"
-const defaultListenAddress = "localhost"
-const defaultPort = "8250"
-const defaultCallbackHost = "localhost"
-const defaultCallbackMethod = "http"
+const (
+	defaultMount          = "oidc"
+	defaultListenAddress  = "localhost"
+	defaultPort           = "8250"
+	defaultCallbackHost   = "localhost"
+	defaultCallbackMethod = "http"
+)
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
 
@@ -214,7 +216,7 @@ func openURL(url string) error {
 	case "windows" == runtime.GOOS || isWSL():
 		cmd = "cmd.exe"
 		args = []string{"/c", "start"}
-		url = strings.Replace(url, "&", "^&", -1)
+		url = strings.ReplaceAll(url, "&", "^&")
 	case "darwin" == runtime.GOOS:
 		cmd = "open"
 	default: // "linux", "freebsd", "openbsd", "netbsd"

@@ -9,12 +9,11 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 var _ logical.Factory = Factory

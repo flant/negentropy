@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	cctx = context.Background()
-)
+var cctx = context.Background()
 
 func TestPublicKeyGet(t *testing.T) {
 	t.Run("Kafka is not configured", func(t *testing.T) {
@@ -57,7 +55,7 @@ func TestPublicKeyGet(t *testing.T) {
 		resp, err := b.HandleRequest(cctx, req)
 		require.NoError(t, err)
 		keyPem := resp.Data["public_key"].(string)
-		keyPem = strings.Replace(keyPem, "\\n", "\n", -1)
+		keyPem = strings.ReplaceAll(keyPem, "\\n", "\n")
 		p, _ := pem.Decode([]byte(keyPem))
 		kafkaPublicKey, err := x509.ParsePKCS1PublicKey(p.Bytes)
 		require.NoError(t, err)
@@ -67,7 +65,7 @@ func TestPublicKeyGet(t *testing.T) {
 			dd, _ := json.Marshal(tb.broker.config)
 			err = storage.Put(cctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: dd, SealWrap: true})
 			require.NoError(t, err)
-			mb, err := NewMessageBroker(cctx, storage)
+			mb, err := NewMessageBroker(cctx, storage, "test")
 			require.NoError(t, err)
 
 			tb.broker = mb
@@ -81,7 +79,7 @@ func TestPublicKeyGet(t *testing.T) {
 			resp, err := b.HandleRequest(cctx, req)
 			require.NoError(t, err)
 			keyPem := resp.Data["public_key"].(string)
-			keyPem = strings.Replace(keyPem, "\\n", "\n", -1)
+			keyPem = strings.ReplaceAll(keyPem, "\\n", "\n")
 			p, _ := pem.Decode([]byte(keyPem))
 			kafkaPublicKey, err := x509.ParsePKCS1PublicKey(p.Bytes)
 			require.NoError(t, err)

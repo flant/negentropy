@@ -12,8 +12,10 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-var ErrNotSetConf = fmt.Errorf("access configuration does not set")
-var ErrNotInit = fmt.Errorf("client not init")
+var (
+	ErrNotSetConf = fmt.Errorf("access configuration does not set")
+	ErrNotInit    = fmt.Errorf("client not init")
+)
 
 type VaultClientController struct {
 	clientLock sync.RWMutex
@@ -59,7 +61,6 @@ func (c *VaultClientController) Init(s logical.Storage) error {
 
 	accessClient := newAccessClient(apiClient, curConf, c.getLogger())
 	auth, err := accessClient.AppRole().Login()
-
 	if err != nil {
 		return err
 	}

@@ -138,7 +138,6 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *sharedkafka.MessageBroker) (*M
 }
 
 func (ms *MemoryStore) SetLogger(l log.Logger) {
-
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
@@ -146,6 +145,7 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 	ms.kafkaSources = append(ms.kafkaSources, s)
 	ms.kafkaMutex.Unlock()
 }
+
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
 	ms.kafkaMutex.Lock()
 	ms.replicaDestinations[s.ReplicaName()] = s

@@ -202,7 +202,6 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 }
 
 func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	config := &authSource{
 		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
 		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
@@ -233,12 +232,14 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 		return nil, err
 	}
 
-	if nsInState, ok := d.GetOk("namespace_in_state"); ok {
+	nsInState, ok := d.GetOk("namespace_in_state")
+	switch {
+	case ok:
 		config.NamespaceInState = nsInState.(bool)
-	} else if existingConfig == nil {
+	case existingConfig == nil:
 		// new configs default to true
 		config.NamespaceInState = true
-	} else {
+	default:
 		// maintain the existing value
 		config.NamespaceInState = existingConfig.NamespaceInState
 	}

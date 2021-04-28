@@ -1,22 +1,24 @@
 package main
 
 import (
-	"log"
 	"os"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 )
 
 func main() {
+	logger := hclog.New(&hclog.LoggerOptions{})
+
 	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
@@ -27,8 +29,6 @@ func main() {
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		logger := hclog.New(&hclog.LoggerOptions{})
-
 		logger.Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}

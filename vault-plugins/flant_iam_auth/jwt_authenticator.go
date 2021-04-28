@@ -3,6 +3,7 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/cap/jwt"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"

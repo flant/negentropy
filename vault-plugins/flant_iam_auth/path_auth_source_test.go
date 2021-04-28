@@ -4,14 +4,14 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
 )
 
 const authSourceTestName = "a"
@@ -228,7 +228,7 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 	}
 }
 
-//func TestAuthSource_JWKS_Update(t *testing.T) {
+// func TestAuthSource_JWKS_Update(t *testing.T) {
 //	b, storage := getBackend(t)
 //
 //	s := newOIDCProvider(t)
@@ -284,7 +284,7 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 //	}
 //}
 
-//func TestAuthSource_JWKS_Update_Invalid(t *testing.T) {
+// func TestAuthSource_JWKS_Update_Invalid(t *testing.T) {
 //	b, storage := getBackend(t)
 //
 //	s := newOIDCProvider(t)
@@ -551,7 +551,6 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 			assert.Equal(t, &test.expected, conf)
 		})
 	}
-
 }
 
 func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
@@ -658,7 +657,6 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 			assert.Equal(t, &test.expected, conf)
 		})
 	}
-
 }
 
 const (

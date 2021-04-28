@@ -3,6 +3,7 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
