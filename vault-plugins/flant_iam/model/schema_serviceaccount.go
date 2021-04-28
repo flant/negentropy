@@ -28,8 +28,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 						},
 					},
 					TenantForeignPK: {
-						Name:   TenantForeignPK,
-						Unique: true,
+						Name: TenantForeignPK,
 						Indexer: &memdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
