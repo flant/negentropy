@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -33,7 +34,6 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -42,6 +42,21 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "CIDRs",
+					Required:    true,
+				},
+				"token_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
+					Required:    true,
+				},
+				"token_max_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
 					Required:    true,
 				},
 			},
@@ -73,6 +88,21 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "CIDRs",
+					Required:    true,
+				},
+				"token_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
+					Required:    true,
+				},
+				"token_max_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
 					Required:    true,
 				},
 			},
@@ -129,6 +159,21 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "CIDRs",
+					Required:    true,
+				},
+				"token_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
+					Required:    true,
+				},
+				"token_max_ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: "Token TTL in seconds",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -174,10 +219,17 @@ func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
+		ttl := data.Get("token_ttl").(int)
+		maxttl := data.Get("token_max_ttl").(int)
+
 		serviceAccount := &model.ServiceAccount{
-			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
-			Identifier: data.Get("identifier").(string),
+			UUID:        id,
+			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			BuiltinType: "",
+			Identifier:  data.Get("identifier").(string),
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			TokenTTL:    time.Duration(ttl),
+			TokenMaxTTL: time.Duration(maxttl),
 		}
 
 		tx := b.storage.Txn(true)
@@ -185,7 +237,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 		repo := NewServiceAccountRepository(tx)
 
 		if err := repo.Create(serviceAccount); err != nil {
-			msg := "cannot create serviceAccount"
+			msg := "cannot create service account"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
@@ -198,16 +250,22 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		ttl := data.Get("token_ttl").(int)
+		maxttl := data.Get("token_max_ttl").(int)
+
+		serviceAccount := &model.ServiceAccount{
+			UUID:        id,
+			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			Version:     data.Get("resource_version").(string),
+			Identifier:  data.Get("identifier").(string),
+			BuiltinType: "",
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			TokenTTL:    time.Duration(ttl),
+			TokenMaxTTL: time.Duration(maxttl),
+		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-
-		serviceAccount := &model.ServiceAccount{
-			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
-			Version:    data.Get("resource_version").(string),
-			Identifier: data.Get("identifier").(string),
-		}
 
 		repo := NewServiceAccountRepository(tx)
 		err := repo.Update(serviceAccount)
@@ -236,7 +294,7 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(id)
 		if err == ErrNotFound {
-			return responseNotFound(req, "serviceAccount not found")
+			return responseNotFound(req, "service account not found")
 		}
 		if err != nil {
 			return nil, err
@@ -305,8 +363,11 @@ func (r *ServiceAccountRepository) Create(serviceAccount *model.ServiceAccount) 
 		return err
 	}
 
+	if serviceAccount.Version != "" {
+		return ErrVersionMismatch
+	}
 	serviceAccount.Version = model.NewResourceVersion()
-	serviceAccount.FullIdentifier = serviceAccount.Identifier + "@" + tenant.Identifier
+	serviceAccount.FullIdentifier = model.CalcServiceAccountFullIdentifier(serviceAccount, tenant)
 
 	err = r.db.Insert(model.ServiceAccountType, serviceAccount)
 	if err != nil {
@@ -365,7 +426,7 @@ func (r *ServiceAccountRepository) Update(serviceAccount *model.ServiceAccount) 
 	if err != nil {
 		return err
 	}
-	serviceAccount.FullIdentifier = serviceAccount.Identifier + "@" + tenant.Identifier
+	serviceAccount.FullIdentifier = model.CalcServiceAccountFullIdentifier(serviceAccount, tenant)
 
 	err = r.db.Insert(model.ServiceAccountType, serviceAccount)
 	if err != nil {

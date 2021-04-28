@@ -16,6 +16,10 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     collection(p = {}, q = {}) {
         return join(super.one(p), this.entryName) + stringifyQuery(q)
     }
+
+    privileged(p = {}, q = {}) {
+        return join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
+    }
 }
 
 
@@ -40,6 +44,7 @@ export function genUserPayload(override = {}) {
 
 export function genServiceAccountPayload(override = {}) {
     return {
+        identifier: Faker.internet.userName(),
         allowed_cidrs: [],
         token_ttl: Faker.datatype.number(),
         token_max_ttl: Faker.datatype.number(),

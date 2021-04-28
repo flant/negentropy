@@ -14,11 +14,6 @@ const (
 
 type ServiceAccountObjectType string
 
-const (
-	SaTypeGeneric ServiceAccountObjectType = "generic"
-	SaTypeBuiltin ServiceAccountObjectType = "builtin"
-)
-
 func ServiceAccountSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
@@ -40,48 +35,6 @@ func ServiceAccountSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
-					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Identifier",
-						},
-					},
-					"type": {
-						Name: "type",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Type",
-						},
-					},
-					"full_identifier": {
-						Name: "full_identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "FullIdentifier",
-						},
-					},
-					"cirds": {
-						Name: "cirds",
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "CIRDs",
-						},
-					},
-					"ttl": {
-						Name: "ttl",
-						Indexer: &memdb.IntFieldIndex{
-							Field: "TTL",
-						},
-					},
-					"max_ttl": {
-						Name: "max_ttl",
-						Indexer: &memdb.IntFieldIndex{
-							Field: "MaxTTL",
-						},
-					},
 				},
 			},
 		},
@@ -89,15 +42,15 @@ func ServiceAccountSchema() *memdb.DBSchema {
 }
 
 type ServiceAccount struct {
-	UUID           string `json:"uuid"` // ID
-	TenantUUID     string `json:"tenant_uuid"`
-	Version        string `json:"resource_version"`
-	Type           ServiceAccountObjectType
+	UUID           string        `json:"uuid"` // ID
+	TenantUUID     string        `json:"tenant_uuid"`
+	Version        string        `json:"resource_version"`
+	BuiltinType    string        `json:"-"`
 	Identifier     string        `json:"identifier"`
 	FullIdentifier string        `json:"full_identifier"`
 	CIDRs          []string      `json:"allowed_cidrs"`
-	TTL            time.Duration `json:"token_ttl"`
-	MaxTTL         time.Duration `json:"token_max_ttl"`
+	TokenTTL       time.Duration `json:"token_ttl"`
+	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
 }
 
 func (u *ServiceAccount) ObjType() string {
@@ -115,4 +68,15 @@ func (u *ServiceAccount) Marshal(_ bool) ([]byte, error) {
 func (u *ServiceAccount) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, u)
 	return err
+}
+
+// generic: <identifier>@serviceaccount.<tenant_identifier>
+// builtin: <identifier>@<builtin_serviceaccount_type>.serviceaccount.<tenant_identifier>
+func CalcServiceAccountFullIdentifier(sa *ServiceAccount, tenant *Tenant) string {
+	name := sa.Identifier
+	domain := "serviceaccount." + tenant.Identifier
+	if sa.BuiltinType != "" {
+		domain = sa.BuiltinType + "." + domain
+	}
+	return name + "@" + domain
 }
