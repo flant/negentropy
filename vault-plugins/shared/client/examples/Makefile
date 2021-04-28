@@ -41,12 +41,11 @@ write_access_conf:
 		vault_api_url="https://localhost:8500" \
 		vault_api_host="vault_host" \
 		role_name="good" \
-		secret_id_ttl="120" \
+		secret_id_ttl="120m" \
 		approle_mount_point="/auth/approle/" \
 		secret_id="$$(VAULT_ADDR='https://localhost:8500' vault write -ca-cert=conf/ca-cert.pem -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')" \
 		role_id="$$(VAULT_ADDR='https://localhost:8500' vault read -ca-cert=conf/ca-cert.pem -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')" \
-		vault_api_ca="$$(cat conf/ca-cert.pem)" \
-		token_ttl=90
+		vault_api_ca="$$(cat conf/ca-cert.pem)"
 getting_role:
 	VAULT_ADDR='https://localhost:8500' vault read -ca-cert=conf/ca-cert.pem auth/aa/read_role
 

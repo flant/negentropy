@@ -127,11 +127,6 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	config.TokenTTLSec, errResp = backendutils.DurationSecParam(d, "token_ttl", 90)
-	if errResp != nil {
-		return errResp, nil
-	}
-
 	config.ApproleMountPoint, errResp = backendutils.NotEmptyStringParam(d, "approle_mount_point")
 	if errResp != nil {
 		return errResp, nil
