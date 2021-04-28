@@ -23,7 +23,7 @@ linters:
   - gocritic
   - gofmt
   - goimports
+  - gofumpt
   - golint
   - gosimple
   - govet
-  - unparam
