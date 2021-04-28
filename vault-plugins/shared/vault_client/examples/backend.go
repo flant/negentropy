@@ -99,6 +99,10 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 		Data: map[string]interface{}{
 			"info": "Getting by client",
 			"res":  res.Data,
+			"client": map[string]interface{}{
+				"address": apiClient.Address(),
+				"headers": apiClient.Headers(),
+			},
 		},
 	}, nil
 }

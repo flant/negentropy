@@ -2,7 +2,10 @@ package vault_client
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net/http"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
@@ -10,16 +13,24 @@ import (
 )
 
 func newApiClient(accessConf *vaultAccessConfig) (*api.Client, error) {
-	tlsConf := &api.TLSConfig{
-		CACert: accessConf.ApiCa,
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(accessConf.ApiCa))
+
+	// Setup HTTPS client
+	tlsConfig := &tls.Config{
+		RootCAs:    caCertPool,
+		MinVersion: tls.VersionTLS12,
 	}
-	clientConf := &api.Config{
-		Address: accessConf.ApiUrl,
+	transport := &http.Transport{
+		TLSClientConfig:     tlsConfig,
+		TLSHandshakeTimeout: 10 * time.Second,
 	}
 
-	err := clientConf.ConfigureTLS(tlsConf)
-	if err != nil {
-		return nil, err
+	httpClient := api.DefaultConfig().HttpClient
+	httpClient.Transport = transport
+	clientConf := &api.Config{
+		Address:    accessConf.ApiUrl,
+		HttpClient: httpClient,
 	}
 
 	client, err := api.NewClient(clientConf)

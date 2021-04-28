@@ -2,6 +2,7 @@ package vault_client
 
 import (
 	"context"
+	"encoding/pem"
 	utils "github.com/flant/negentropy/vault-plugins/shared/vault_backent_utils"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -94,14 +95,14 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	//config.ApiCa, errResp = utils.NotEmptyStringParam(d, "vault_api_ca")
-	//if errResp != nil {
-	//	return errResp, nil
-	//}
-	//validPem, _ := pem.Decode([]byte(config.ApiCa))
-	//if validPem == nil {
-	//	return logical.ErrorResponse("incorrect vault_api_ca"), nil
-	//}
+	config.ApiCa, errResp = utils.NotEmptyStringParam(d, "vault_api_ca")
+	if errResp != nil {
+		return errResp, nil
+	}
+	validPem, _ := pem.Decode([]byte(config.ApiCa))
+	if validPem == nil {
+		return logical.ErrorResponse("incorrect vault_api_ca"), nil
+	}
 
 	config.RoleName, errResp = utils.NotEmptyStringParam(d, "role_name")
 	if errResp != nil {
