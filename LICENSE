@@ -1,0 +1,8 @@
+Copyright (c) 2021-present Flant JSC
+
+Portions of this work are licensed as follows:
+
+* All content that resides under the "vault-plugins/" directory of this repository is licensed under the license defined in "vault-plugins/LICENSE".
+* All client-side JavaScript (when served directly or after being compiled, arranged, augmented, or combined), is licensed under the "MIT Expat" license.
+* All third party components incorporated into the work are licensed under the original license provided by the owner of the applicable component.
+* Content outside of the above mentioned directories or restrictions above is available under the "Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License" (https://creativecommons.org/licenses/by-nc-nd/4.0/).
