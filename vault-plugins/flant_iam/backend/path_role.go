@@ -82,7 +82,7 @@ func (b roleBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Read, update, delete by uuid
+		// Read, update, delete by name
 		{
 
 			Pattern: "role/" + framework.GenericNameRegex("name") + "$",
