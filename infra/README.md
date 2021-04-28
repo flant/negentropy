@@ -1,12 +1,28 @@
 # Required roles
-`gcp_builder_service_account` should have:
+SA specified in variable `gcp_builder_service_account` should have:
 1. Compute Storage Admin - to create instance image
 1. Service Account User - don't know for what
 1. Storage Object Admin - to upload temporary image to S3 Storage
 
-`vault-root-source` SA shoud have:
-1. Logging Admin
-1. Storage Admin
+All main and configurator instances SA should have:
+1. Logging Admin - to push logs to Cloud Logs
+
+`vault-conf` instance SA should have:
+1. Storage Object Admin - to access bucket `gcp_vault_conf_bucket`
+
+`vault-conf-conf` instance SA should have:
+1. Storage Object Admin - to access bucket `gcp_vault_conf_conf_bucket`
+
+`vault-root-source` instance SA should have:
+1. Storage Object Admin - to access bucket `gcp_vault_root_source_bucket`
+
+`vault-auth` instance SA should have:
+1. Storage Object Admin - to access buckets `$(hostname).gcp_vault_auth_bucket_trailer`
+
+`kafka` instance SA should have:
+1. Storage Object Admin - to access bucket `kafka_bucket`
+1. CA Service Operation Manager - to download CA
+1. CA Service Certificate Manager - to create new certificate
 
 # Quickstart
 Create `variables.pkrvars.hcl` referencing to `variables.pkrvars.hcl.example`.
