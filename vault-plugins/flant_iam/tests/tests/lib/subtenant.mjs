@@ -62,9 +62,9 @@ export function genProjectPayload(override = {}) {
 export function genGroupPayload(override = {}) {
     return {
         identifier: Faker.lorem.word(),
-        // users,
-        // groups,
-        // serviceAccounts
+        users: [],
+        groups: [],
+        service_accounts: [],
         ...override,
     }
 }
