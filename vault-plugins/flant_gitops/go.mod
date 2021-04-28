@@ -13,6 +13,10 @@ require (
 	github.com/hashicorp/vault/sdk v0.2.0
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/werf/logboek v0.5.4 // indirect
+	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210428180238-a92bb5c827ac // indirect
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
 	golang.org/x/text v0.3.5 // indirect
 )
+
+replace github.com/theupdateframework/go-tuf => github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2
