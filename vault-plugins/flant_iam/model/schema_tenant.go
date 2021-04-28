@@ -16,8 +16,8 @@ func TenantSchema() *memdb.DBSchema {
 			TenantType: {
 				Name: TenantType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
@@ -44,7 +44,7 @@ func TenantSchema() *memdb.DBSchema {
 }
 
 type Tenant struct {
-	UUID       string `json:"uuid"` // ID
+	UUID       string `json:"uuid"` // PK
 	Version    string `json:"resource_version"`
 	Identifier string `json:"identifier"`
 	// TODO enabled_by_default_for_new_projects

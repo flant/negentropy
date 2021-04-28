@@ -3,7 +3,7 @@ import { genTenantPayload, TenantAPI } from "./lib/tenant.mjs"
 import { expect } from "chai"
 import { v4 as uuidv4 } from "uuid"
 
-describe("Tenants", function () {
+describe("Tenant", function () {
     const rootClient = getClient(rootToken)
     const root = new TenantAPI(rootClient)
 

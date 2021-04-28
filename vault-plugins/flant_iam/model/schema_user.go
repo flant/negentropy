@@ -16,8 +16,8 @@ func UserSchema() *memdb.DBSchema {
 			UserType: {
 				Name: UserType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
@@ -49,7 +49,7 @@ func UserSchema() *memdb.DBSchema {
 }
 
 type User struct {
-	UUID           string `json:"uuid"` // ID
+	UUID           string `json:"uuid"` // PK
 	TenantUUID     string `json:"tenant_uuid"`
 	Version        string `json:"resource_version"`
 	Identifier     string `json:"identifier"`

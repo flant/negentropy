@@ -9,7 +9,9 @@ import (
 )
 
 const (
-	ID = "id" // required index by all tables
+	// Index "id" is required by all table.
+	// In the domain, the primary key is not always "id".
+	PK = "id"
 )
 
 func mergeSchema() (*memdb.DBSchema, error) {
@@ -22,6 +24,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		ServiceAccountSchema(),
 		GroupSchema(),
 		RoleBindingSchema(),
+		RoleSchema(),
 	}
 
 	for _, o := range others {

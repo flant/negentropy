@@ -404,7 +404,7 @@ func (r *RoleBindingRepository) Create(roleBinding *model.RoleBinding) error {
 }
 
 func (r *RoleBindingRepository) GetById(id string) (*model.RoleBinding, error) {
-	raw, err := r.db.First(model.RoleBindingType, model.ID, id)
+	raw, err := r.db.First(model.RoleBindingType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}

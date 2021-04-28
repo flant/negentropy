@@ -322,7 +322,7 @@ func (r *UserRepository) Create(user *model.User) error {
 }
 
 func (r *UserRepository) GetById(id string) (*model.User, error) {
-	raw, err := r.db.First(model.UserType, model.ID, id)
+	raw, err := r.db.First(model.UserType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}

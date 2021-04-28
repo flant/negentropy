@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -182,7 +181,7 @@ func (r *FeatureFlagRepository) Create(ff *model.FeatureFlag) error {
 }
 
 func (r *FeatureFlagRepository) Get(name string) (*model.FeatureFlag, error) {
-	raw, err := r.db.First(model.FeatureFlagType, model.ID, name)
+	raw, err := r.db.First(model.FeatureFlagType, model.PK, name)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +201,7 @@ func (r *FeatureFlagRepository) Delete(name string) error {
 }
 
 func (r *FeatureFlagRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.FeatureFlagType, model.ID)
+	iter, err := r.db.Get(model.FeatureFlagType, model.PK)
 	if err != nil {
 		return nil, err
 	}

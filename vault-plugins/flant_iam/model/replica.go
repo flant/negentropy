@@ -41,8 +41,8 @@ func ReplicaSchema() *memdb.DBSchema {
 			ReplicaType: {
 				Name: ReplicaType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.StringFieldIndex{
 							Field: "Name",
