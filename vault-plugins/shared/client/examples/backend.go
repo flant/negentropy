@@ -60,7 +60,12 @@ func getPath(b *exampleBackend) *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathReadClientRole,
-				Summary:  "Read authentication source.",
+				Summary:  "test getting role through api",
+			},
+
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathReInit,
+				Summary:  "test getting role through api after reinit client",
 			},
 		},
 
@@ -85,6 +90,46 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 
 func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	apiClient, err := b.accessVaultController.APIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := apiClient.Logical().Read("/auth/approle/role/good/role-id")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"info": "Getting by client",
+			"res":  res.Data,
+			"client": map[string]interface{}{
+				"address": apiClient.Address(),
+				"headers": apiClient.Headers(),
+			},
+		},
+	}, nil
+}
+
+// dont need in your backend use for test
+func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	apiClient, err := b.accessVaultController.APIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	err = apiClient.Auth().Token().RevokeSelf("" /* ignored */)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.accessVaultController.ReInit(req.Storage)
+	if err != nil {
+		return nil, err
+	}
+
+	apiClient, err = b.accessVaultController.APIClient()
 	if err != nil {
 		return nil, err
 	}

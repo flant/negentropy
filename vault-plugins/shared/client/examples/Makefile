@@ -20,14 +20,13 @@ builddir:
 build:
 	GOOS="$(OS)" GOARCH="$(GOARCH)" go build -mod=mod -o bin/example-plugin cmd/main.go
 
-
 build-linux:
 	GOOS="linux" GOARCH="$(GOARCH)" go build -mod=mod -o bin/example-plugin cmd/main.go
 
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./bin -config=conf/vault.hcl
 
-test: enable_approle create_policy create_role enable_plugin write_access_conf getting_role
+test: enable_approle create_policy create_role enable_plugin write_access_conf getting_role reinit_client
 
 enable_approle:
 	VAULT_ADDR='https://localhost:8500' vault auth enable -ca-cert=conf/ca-cert.pem  approle
@@ -51,6 +50,8 @@ write_access_conf:
 getting_role:
 	VAULT_ADDR='https://localhost:8500' vault read -ca-cert=conf/ca-cert.pem auth/aa/read_role
 
+reinit_client:
+	VAULT_ADDR='https://localhost:8500' vault write -force -ca-cert=conf/ca-cert.pem auth/aa/read_role
 
 clean:
 	rm -f ./bin/example-plugin

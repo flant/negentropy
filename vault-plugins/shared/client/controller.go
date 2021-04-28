@@ -82,6 +82,15 @@ func (c *VaultClientController) APIClient() (*api.Client, error) {
 	return c.apiClient, nil
 }
 
+// ReInit full reinitialisation apiClient
+// don't need to use in regular code. Use Init
+func (c *VaultClientController) ReInit(s logical.Storage) error {
+	// clear client
+	c.setAPIClient(nil)
+	// init from store
+	return c.Init(s)
+}
+
 func (c *VaultClientController) renewLease() error {
 	c.getLogger().Info("Run renew lease")
 	clientAPI, err := c.APIClient()
