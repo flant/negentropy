@@ -29,7 +29,6 @@ func (s *accessConfigStorage) Get(ctx context.Context) (*vaultAccessConfig, erro
 	}
 
 	return config, nil
-
 }
 
 func (s *accessConfigStorage) Put(ctx context.Context, conf *vaultAccessConfig) error {

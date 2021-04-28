@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	cctx = context.Background()
-)
+var cctx = context.Background()
 
 func TestPublicKeyGet(t *testing.T) {
 	t.Run("Kafka is not configured", func(t *testing.T) {

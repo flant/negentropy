@@ -165,10 +165,8 @@ func (mb *MessageBroker) handleGenerateCSR(ctx context.Context, req *logical.Req
 			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 		}
 		mb.config.ConnectionPrivateKey = priv
-	} else {
-		if !force {
-			warnings = []string{"Private key is already exist. Add ?force=true param to recreate it"}
-		}
+	} else if !force {
+		warnings = []string{"Private key is already exist. Add ?force=true param to recreate it"}
 	}
 
 	cr := &x509.CertificateRequest{
