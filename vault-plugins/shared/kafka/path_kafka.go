@@ -70,14 +70,14 @@ func (mb *MessageBroker) handlePublicKeyRead(ctx context.Context, req *logical.R
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"public_key": strings.Replace(string(pemdata), "\n", "\\n", -1),
+			"public_key": strings.ReplaceAll(string(pemdata), "\n", "\\n"),
 		},
 	}, nil
 }
 
 func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	certData := data.Get("certificate").(string)
-	certData = strings.Replace(certData, "\\n", "\n", -1)
+	certData = strings.ReplaceAll(certData, "\\n", "\n")
 
 	// kafka backends
 	endpoints := data.Get("kafka_endpoints").([]string)
@@ -186,7 +186,7 @@ func (mb *MessageBroker) handleGenerateCSR(ctx context.Context, req *logical.Req
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"certificate_request": strings.Replace(string(csrr), "\n", "\\n", -1),
+			"certificate_request": strings.ReplaceAll(string(csrr), "\n", "\\n"),
 		},
 		Warnings: warnings,
 	}, nil

@@ -4,11 +4,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 )
 
 func main() {

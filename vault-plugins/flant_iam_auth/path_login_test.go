@@ -1364,14 +1364,14 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
-		w.Write([]byte(strings.Replace(`
+		w.Write([]byte(strings.ReplaceAll(`
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
 				"token_endpoint": "%s/token",
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
-			}`, "%s", o.server.URL, -1)))
+			}`, "%s", o.server.URL)))
 	case "/certs":
 		a := getTestJWKS(o.t, ecdsaPubKey)
 		w.Write(a)

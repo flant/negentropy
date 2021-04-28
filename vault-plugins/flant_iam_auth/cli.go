@@ -214,7 +214,7 @@ func openURL(url string) error {
 	case "windows" == runtime.GOOS || isWSL():
 		cmd = "cmd.exe"
 		args = []string{"/c", "start"}
-		url = strings.Replace(url, "&", "^&", -1)
+		url = strings.ReplaceAll(url, "&", "^&")
 	case "darwin" == runtime.GOOS:
 		cmd = "open"
 	default: // "linux", "freebsd", "openbsd", "netbsd"
