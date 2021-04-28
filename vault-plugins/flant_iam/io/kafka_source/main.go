@@ -13,8 +13,9 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 type MainKafkaSource struct {
@@ -73,18 +74,31 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 		// TODO: need huge switch-case here, with object Unmarshaling
 		var inputObject interface{}
 		switch splitted[0] {
-		case model.UserType:
-			inputObject = &model.User{}
-
 		case model.ReplicaType:
 			inputObject = &model.Replica{}
+
+		case model.FeatureFlagType:
+			inputObject = &model.FeatureFlag{}
+
+		case model.GroupType:
+			inputObject = &model.Group{}
+
+		case model.ProjectType:
+			inputObject = &model.Project{}
+
+		case model.ServiceAccountType:
+			inputObject = &model.ServiceAccount{}
 
 		case model.TenantType:
 			inputObject = &model.Tenant{}
 
+		case model.UserType:
+			inputObject = &model.User{}
+
 		default:
 			return errors.New("is not implemented yet")
 		}
+
 		err = json.Unmarshal(decrypted, inputObject)
 		if err != nil {
 			return err

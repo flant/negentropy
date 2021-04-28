@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -204,7 +205,9 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit changes: %v", err)
+	}
 
 	replica := raw.(*model.Replica)
 	err = b.deleteTopicForReplica(replica.Name)

@@ -762,8 +762,8 @@
                   }
                 },
                 "required": [
-                  "certificate",
-                  "kafka_endpoints"
+                  "kafka_endpoints",
+                  "certificate"
                 ]
               }
             }
@@ -974,6 +974,226 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/group": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all groups IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidGroup",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/group/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create group with preexistent ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidGroupPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "Group UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "service_accounts": {
+                    "type": "array",
+                    "description": "Service account UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "users": {
+                    "type": "array",
+                    "description": "User UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a group",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "groups",
+                  "service_accounts",
+                  "uuid",
+                  "identifier",
+                  "users"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/group/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a group",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the service account by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidGroupUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the service account by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidGroupUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "Group UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  },
+                  "service_accounts": {
+                    "type": "array",
+                    "description": "Service account UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "users": {
+                    "type": "array",
+                    "description": "User UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier",
+                  "users",
+                  "groups",
+                  "service_accounts"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the service account by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidGroupUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/project": {
       "parameters": [
         {
@@ -1048,8 +1268,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1136,6 +1356,236 @@
       "delete": {
         "summary": "Deletes the project by ID.",
         "operationId": "deleteFlant_iamTenantTenant_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/role_binding": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all roleBindings IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_binding",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create roleBinding with preexistent ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "Group UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "require_mfa": {
+                    "type": "boolean",
+                    "description": "Requires multi-factor authentication"
+                  },
+                  "service_accounts": {
+                    "type": "array",
+                    "description": "Service account UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ttl": {
+                    "type": "integer",
+                    "description": "TTL in seconds",
+                    "format": "seconds"
+                  },
+                  "users": {
+                    "type": "array",
+                    "description": "User UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a roleBinding",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid",
+                  "users",
+                  "groups",
+                  "service_accounts",
+                  "ttl",
+                  "require_mfa"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a roleBinding",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the role binding by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the role binding by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "Group UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "require_mfa": {
+                    "type": "boolean",
+                    "description": "Requires multi-factor authentication"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  },
+                  "service_accounts": {
+                    "type": "array",
+                    "description": "Service account UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ttl": {
+                    "type": "integer",
+                    "description": "TTL in seconds",
+                    "format": "seconds"
+                  },
+                  "users": {
+                    "type": "array",
+                    "description": "User UUIDs",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "users",
+                  "groups",
+                  "service_accounts",
+                  "ttl",
+                  "require_mfa",
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the role binding by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -1237,11 +1687,11 @@
                   }
                 },
                 "required": [
+                  "token_max_ttl",
+                  "uuid",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl",
-                  "token_max_ttl",
-                  "uuid"
+                  "token_ttl"
                 ]
               }
             }
@@ -1329,11 +1779,11 @@
                   }
                 },
                 "required": [
-                  "token_max_ttl",
                   "resource_version",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl"
+                  "token_ttl",
+                  "token_max_ttl"
                 ]
               }
             }
@@ -1432,8 +1882,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }

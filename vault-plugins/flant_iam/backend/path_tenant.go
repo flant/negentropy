@@ -163,7 +163,9 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, tenant, http.StatusCreated)
 	}
@@ -193,7 +195,9 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, tenant, http.StatusOK)
 	}
@@ -213,7 +217,9 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
@@ -303,19 +309,14 @@ func (r *TenantRepository) Update(updated *model.Tenant) error {
 }
 
 func (r *TenantRepository) Delete(id string) error {
-	userRepo := NewUserRepository(r.db)
-	err := userRepo.DeleteByTenant(id)
-	if err != nil {
-		return err
-	}
-	projectRepo := NewProjectRepository(r.db)
-	err = projectRepo.DeleteByTenant(id)
-	if err != nil {
-		return err
-	}
-
-	saRepo := NewServiceAccountRepository(r.db)
-	err = saRepo.DeleteByTenant(id)
+	err := r.deleteNestedObjects(
+		id,
+		NewUserRepository(r.db),
+		NewProjectRepository(r.db),
+		NewServiceAccountRepository(r.db),
+		NewGroupRepository(r.db),
+		NewRoleBindingRepository(r.db),
+	)
 	if err != nil {
 		return err
 	}
@@ -326,6 +327,16 @@ func (r *TenantRepository) Delete(id string) error {
 	}
 
 	return r.db.Delete(model.TenantType, tenant)
+}
+
+func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo) error {
+	for _, r := range repos {
+		err := r.DeleteByTenant(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *TenantRepository) List() ([]string, error) {
@@ -344,4 +355,8 @@ func (r *TenantRepository) List() ([]string, error) {
 		ids = append(ids, t.UUID)
 	}
 	return ids, nil
+}
+
+type SubTenantRepo interface {
+	DeleteByTenant(string) error
 }

@@ -189,7 +189,9 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, user, http.StatusCreated)
 	}
@@ -220,7 +222,9 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return responseWithDataAndCode(req, user, http.StatusOK)
 	}
@@ -241,7 +245,9 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Commit()
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}

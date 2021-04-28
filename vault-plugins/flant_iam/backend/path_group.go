@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -15,24 +14,24 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-type serviceAccountBackend struct {
+type groupBackend struct {
 	logical.Backend
 	storage *io.MemoryStore
 }
 
-func serviceAccountPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
-	bb := &serviceAccountBackend{
+func groupPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+	bb := &groupBackend{
 		Backend: b,
 		storage: storage,
 	}
 	return bb.paths()
 }
 
-func (b serviceAccountBackend) paths() []*framework.Path {
+func (b groupBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/group",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -44,40 +43,40 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"allowed_cidrs": {
+				"users": {
 					Type:        framework.TypeCommaStringSlice,
-					Description: "CIDRs",
+					Description: "User UUIDs",
 					Required:    true,
 				},
-				"token_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"groups": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"token_max_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"service_accounts": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Service account UUIDs",
 					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create serviceAccount.",
+					Summary:  "Create group.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create serviceAccount.",
+					Summary:  "Create group.",
 				},
 			},
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/privileged",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/group/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a serviceAccount",
+					Description: "ID of a group",
 					Required:    true,
 				},
 				"tenant_uuid": {
@@ -90,36 +89,36 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"allowed_cidrs": {
+				"users": {
 					Type:        framework.TypeCommaStringSlice,
-					Description: "CIDRs",
+					Description: "User UUIDs",
 					Required:    true,
 				},
-				"token_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"groups": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"token_max_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"service_accounts": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Service account UUIDs",
 					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create serviceAccount with preexistent ID.",
+					Summary:  "Create group with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create serviceAccount with preexistent ID.",
+					Summary:  "Create group with preexistent ID.",
 				},
 			},
 		},
 		// Listing
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/?",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/group/?",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -130,18 +129,18 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all serviceAccounts IDs.",
+					Summary:  "Lists all groups IDs.",
 				},
 			},
 		},
 		// Read, update, delete by uuid
 		{
 
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/group/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a serviceAccount",
+					Description: "ID of a group",
 					Required:    true,
 				},
 				"tenant_uuid": {
@@ -159,19 +158,19 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"allowed_cidrs": {
+				"users": {
 					Type:        framework.TypeCommaStringSlice,
-					Description: "CIDRs",
+					Description: "User UUIDs",
 					Required:    true,
 				},
-				"token_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"groups": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"token_max_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+				"service_accounts": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Service account UUIDs",
 					Required:    true,
 				},
 			},
@@ -194,18 +193,18 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
+func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
-		b.Logger().Debug("checking serviceAccount existence", "path", req.Path, "id", id, "op", req.Operation)
+		b.Logger().Debug("checking group existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewServiceAccountRepository(tx)
+		repo := NewGroupRepository(tx)
 
 		obj, err := repo.GetById(id)
 		if err != nil {
@@ -216,27 +215,25 @@ func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 	}
 }
 
-func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationFunc {
+func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
-		ttl := data.Get("token_ttl").(int)
-		maxttl := data.Get("token_max_ttl").(int)
 
-		serviceAccount := &model.ServiceAccount{
-			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			BuiltinType: "",
-			Identifier:  data.Get("identifier").(string),
-			CIDRs:       data.Get("allowed_cidrs").([]string),
-			TokenTTL:    time.Duration(ttl),
-			TokenMaxTTL: time.Duration(maxttl),
+		group := &model.Group{
+			UUID:            id,
+			TenantUUID:      data.Get(model.TenantForeignPK).(string),
+			BuiltinType:     "",
+			Identifier:      data.Get("identifier").(string),
+			Users:           data.Get("users").([]string),
+			Groups:          data.Get("groups").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewServiceAccountRepository(tx)
+		repo := NewGroupRepository(tx)
 
-		if err := repo.Create(serviceAccount); err != nil {
+		if err := repo.Create(group); err != nil {
 			msg := "cannot create service account"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -245,34 +242,32 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusCreated)
+		return responseWithDataAndCode(req, group, http.StatusCreated)
 	}
 }
 
-func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
+func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
-		ttl := data.Get("token_ttl").(int)
-		maxttl := data.Get("token_max_ttl").(int)
 
-		serviceAccount := &model.ServiceAccount{
-			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			Version:     data.Get("resource_version").(string),
-			Identifier:  data.Get("identifier").(string),
-			BuiltinType: "",
-			CIDRs:       data.Get("allowed_cidrs").([]string),
-			TokenTTL:    time.Duration(ttl),
-			TokenMaxTTL: time.Duration(maxttl),
+		group := &model.Group{
+			UUID:            id,
+			TenantUUID:      data.Get(model.TenantForeignPK).(string),
+			Version:         data.Get("resource_version").(string),
+			Identifier:      data.Get("identifier").(string),
+			BuiltinType:     "",
+			Users:           data.Get("users").([]string),
+			Groups:          data.Get("groups").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := NewServiceAccountRepository(tx)
-		err := repo.Update(serviceAccount)
+		repo := NewGroupRepository(tx)
+		err := repo.Update(group)
 		if err == ErrNotFound {
-			return responseNotFound(req, model.ServiceAccountType)
+			return responseNotFound(req, model.GroupType)
 		}
 		if err == ErrVersionMismatch {
 			return responseVersionMismatch(req)
@@ -284,17 +279,17 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusOK)
+		return responseWithDataAndCode(req, group, http.StatusOK)
 	}
 }
 
-func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
+func (b *groupBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewServiceAccountRepository(tx)
+		repo := NewGroupRepository(tx)
 
 		err := repo.Delete(id)
 		if err == ErrNotFound {
@@ -311,31 +306,31 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 	}
 }
 
-func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
+func (b *groupBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewServiceAccountRepository(tx)
+		repo := NewGroupRepository(tx)
 
-		serviceAccount, err := repo.GetById(id)
+		group, err := repo.GetById(id)
 		if err == ErrNotFound {
-			return responseNotFound(req, model.ServiceAccountType)
+			return responseNotFound(req, model.GroupType)
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusOK)
+		return responseWithDataAndCode(req, group, http.StatusOK)
 	}
 }
 
-func (b *serviceAccountBackend) handleList() framework.OperationFunc {
+func (b *groupBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewServiceAccountRepository(tx)
+		repo := NewGroupRepository(tx)
 
 		list, err := repo.List(tenantID)
 		if err != nil {
@@ -351,90 +346,73 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	}
 }
 
-type ServiceAccountRepository struct {
+type GroupRepository struct {
 	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
 
-func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
-	return &ServiceAccountRepository{
+func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
+	return &GroupRepository{
 		db:         tx,
 		tenantRepo: NewTenantRepository(tx),
 	}
 }
 
-func (r *ServiceAccountRepository) Create(serviceAccount *model.ServiceAccount) error {
-	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+func (r *GroupRepository) Create(group *model.Group) error {
+	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
 	if err != nil {
 		return err
 	}
 
-	if serviceAccount.Version != "" {
+	if group.Version != "" {
 		return ErrVersionMismatch
 	}
-	serviceAccount.Version = model.NewResourceVersion()
-	serviceAccount.FullIdentifier = model.CalcServiceAccountFullIdentifier(serviceAccount, tenant)
+	group.Version = model.NewResourceVersion()
+	group.FullIdentifier = model.CalcGroupFullIdentifier(group, tenant)
 
-	err = r.db.Insert(model.ServiceAccountType, serviceAccount)
+	err = r.db.Insert(model.GroupType, group)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *ServiceAccountRepository) GetById(id string) (*model.ServiceAccount, error) {
-	raw, err := r.db.First(model.ServiceAccountType, model.ID, id)
+func (r *GroupRepository) GetById(id string) (*model.Group, error) {
+	raw, err := r.db.First(model.GroupType, model.ID, id)
 	if err != nil {
 		return nil, err
 	}
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	serviceAccount := raw.(*model.ServiceAccount)
-	return serviceAccount, nil
+	group := raw.(*model.Group)
+	return group, nil
 }
 
-/*
-TODO
-	* Из-за того, что в очереди формата TokenGenerationNumber стоит ttl 30 дней – token_ttl не может быть больше 30 дней.
-		См. подробнее следующий пункт и описание формата очереди.
-
-TODO Логика создания/обновления сервис аккаунта:
-	* type object_with_resource_version
-	* type tenanted_object
-	* validate_tenant(запрос, объект из стора)
-	* validate_resource_version(запрос, entry)
-	* пробуем загрузить объект, если объект есть, то:
-	* валидируем resource_version
-	* валидируем тенанта
-	* валидируем builtin_type_name
-	* если объекта нет, то:
-	* валидируем, что нам не передан resource_version
-*/
-func (r *ServiceAccountRepository) Update(serviceAccount *model.ServiceAccount) error {
-	stored, err := r.GetById(serviceAccount.UUID)
+func (r *GroupRepository) Update(group *model.Group) error {
+	stored, err := r.GetById(group.UUID)
 	if err != nil {
 		return err
 	}
 
 	// Validate
-	if stored.TenantUUID != serviceAccount.TenantUUID {
+	if stored.TenantUUID != group.TenantUUID {
 		return ErrNotFound
 	}
-	if stored.Version != serviceAccount.Version {
+	if stored.Version != group.Version {
 		return ErrVersionMismatch
 	}
-	serviceAccount.Version = model.NewResourceVersion()
+	group.Version = model.NewResourceVersion()
 
 	// Update
 
-	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
 	if err != nil {
 		return err
 	}
-	serviceAccount.FullIdentifier = model.CalcServiceAccountFullIdentifier(serviceAccount, tenant)
+	group.FullIdentifier = model.CalcGroupFullIdentifier(group, tenant)
 
-	err = r.db.Insert(model.ServiceAccountType, serviceAccount)
+	err = r.db.Insert(model.GroupType, group)
 	if err != nil {
 		return err
 	}
@@ -443,21 +421,23 @@ func (r *ServiceAccountRepository) Update(serviceAccount *model.ServiceAccount) 
 }
 
 /*
-TODO
-	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
-	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
+TODO Clean from everywhere:
+	* other groups
+	* role_bindings
+	* approvals
+	* identity_sharings
 */
-func (r *ServiceAccountRepository) Delete(id string) error {
-	serviceAccount, err := r.GetById(id)
+func (r *GroupRepository) Delete(id string) error {
+	group, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
 
-	return r.db.Delete(model.ServiceAccountType, serviceAccount)
+	return r.db.Delete(model.GroupType, group)
 }
 
-func (r *ServiceAccountRepository) List(tenantID string) ([]string, error) {
-	iter, err := r.db.Get(model.ServiceAccountType, model.TenantForeignPK, tenantID)
+func (r *GroupRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(model.GroupType, model.TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -468,13 +448,13 @@ func (r *ServiceAccountRepository) List(tenantID string) ([]string, error) {
 		if raw == nil {
 			break
 		}
-		u := raw.(*model.ServiceAccount)
+		u := raw.(*model.Group)
 		ids = append(ids, u.UUID)
 	}
 	return ids, nil
 }
 
-func (r *ServiceAccountRepository) DeleteByTenant(tenantUUID string) error {
-	_, err := r.db.DeleteAll(model.ServiceAccountType, model.TenantForeignPK, tenantUUID)
+func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(model.GroupType, model.TenantForeignPK, tenantUUID)
 	return err
 }
