@@ -78,12 +78,12 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "scripts/00-apk.sh",
+      "../../../common/packer-scripts/02-vault.sh",
       "scripts/02-vault.sh",
-      "scripts/03-vector-enable.sh",
-      "scripts/80-read-only.sh",
-      "scripts/90-cleanup.sh",
-      "scripts/91-minimize.sh"
+      "../../../common/packer-scripts/03-vector-enable.sh",
+      "../../../common/packer-scripts/80-read-only.sh",
+      "../../../common/packer-scripts/90-cleanup.sh",
+      "../../../common/packer-scripts/91-minimize.sh"
     ]
   }
 
@@ -102,7 +102,7 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "scripts/99-sshd.sh"
+      "../../../common/packer-scripts/99-sshd.sh"
     ]
   }
 }

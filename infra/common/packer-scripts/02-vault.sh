@@ -2,7 +2,6 @@ set -exu
 
 VAULT_VERSION=1.7.0
 
-apk add --no-cache ca-certificates libcap su-exec tzdata && \
 mkdir -p /tmp/build && \
 cd /tmp/build && \
 wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip && \

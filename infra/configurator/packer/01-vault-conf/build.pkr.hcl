@@ -78,7 +78,6 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "../../../common/packer-scripts/00-apk.sh",
       "../../../common/packer-scripts/02-vault.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
       "../../../common/packer-scripts/04-docker.sh",
