@@ -54,13 +54,13 @@ build {
   sources = ["source.googlecompute.alpine-base-builder"]
 
   provisioner "file" {
-    source      = "../01-alpine-base"
+    source      = "../../"
     destination = "/tmp/"
   }
 
   provisioner "file" {
     source      = "/tmp/variables.pkrvars.hcl"
-    destination = "/tmp/01-alpine-base/variables.pkrvars.hcl"
+    destination = "/tmp/"
   }
 
   provisioner "shell" {

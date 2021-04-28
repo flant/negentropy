@@ -1,7 +1,7 @@
 set -exu
 
-cd /tmp/01-alpine-base && \
+cd /tmp/packer/01-alpine-base && \
 packer build \
-  -var-file=variables.pkrvars.hcl \
+  -var-file=/tmp/variables.pkrvars.hcl \
   -force \
   build.pkr.hcl

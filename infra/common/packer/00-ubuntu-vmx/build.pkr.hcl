@@ -8,7 +8,7 @@ variable "gcp_project" {
 variable "gcp_zone" {
   type = string
 }
-variable "git_directory_checksum" {
+variable "image_sources_checksum" {
   type = string
 }
 
@@ -44,7 +44,7 @@ variable "ssh_wait_timeout" {
 
 locals {
   version_dashed = regex_replace(var.version, "[.]", "-")
-  image_name = "${var.name}-${var.git_directory_checksum}"
+  image_name = "${var.name}-${var.image_sources_checksum}"
 }
 
 source "googlecompute" "ubuntu-vmx" {
@@ -58,7 +58,7 @@ source "googlecompute" "ubuntu-vmx" {
   image_description = "Ubuntu ${var.version} with vmx license enabled"
   image_family      = var.name
   image_labels = {
-    git_directory_checksum = var.git_directory_checksum,
+    image_sources_checksum = var.image_sources_checksum,
     version                = local.version_dashed
   }
   image_licenses = ["projects/vm-options/global/licenses/enable-vmx"]
