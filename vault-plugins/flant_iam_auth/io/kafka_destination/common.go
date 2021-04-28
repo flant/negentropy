@@ -11,37 +11,30 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type commonDest struct {
-	encrypter *kafka.Encrypter
-}
-
-func newCommonDest() commonDest {
-	return commonDest{encrypter: kafka.NewEncrypter()}
-}
-
-func (cd *commonDest) signData(data []byte, pk *rsa.PrivateKey) ([]byte, error) {
+func (mkd *SelfKafkaDestination) signData(data []byte, pk *rsa.PrivateKey) ([]byte, error) {
 	signHash := sha256.Sum256(data)
 	sign, err := rsa.SignPKCS1v15(rand.Reader, pk, crypto.SHA256, signHash[:])
 
 	return sign, err
 }
 
-func (cd *commonDest) encryptData(data []byte, pub *rsa.PublicKey) ([]byte, bool, error) {
-	return cd.encrypter.Encrypt(data, pub)
+func (mkd *SelfKafkaDestination) encryptData(data []byte, pub *rsa.PublicKey) ([]byte, bool, error) {
+	return mkd.encrypter.Encrypt(data, pub)
 }
 
-func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey, includeSensitive bool) (kafka.Message, error) {
+func (mkd *SelfKafkaDestination) simpleObjectKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
-	data, err := obj.Marshal(includeSensitive)
+	data, err := obj.Marshal(true)
 	if err != nil {
 		return kafka.Message{}, err
 	}
-	sign, err := cd.signData(data, pk)
+	sign, err := mkd.signData(data, pk)
 	if err != nil {
 		return kafka.Message{}, err
 	}
+
 	var chunked bool
-	data, chunked, err = cd.encryptData(data, pub)
+	data, chunked, err = mkd.encryptData(data, pub)
 	if err != nil {
 		return kafka.Message{}, err
 	}
@@ -52,6 +45,7 @@ func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObje
 		Value:   data,
 		Headers: map[string][]byte{"signature": sign},
 	}
+
 	if chunked {
 		msg.Headers["chunked"] = []byte("true")
 	}
@@ -59,9 +53,9 @@ func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObje
 	return msg, nil
 }
 
-func (cd *commonDest) simpleObjectDeleteKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey) (kafka.Message, error) {
+func (mkd *SelfKafkaDestination) simpleObjectDeleteKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
-	sign, err := cd.signData(nil, pk)
+	sign, err := mkd.signData(nil, pk)
 	if err != nil {
 		return kafka.Message{}, err
 	}

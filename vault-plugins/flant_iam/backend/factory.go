@@ -41,7 +41,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		BackendType: logical.TypeLogical,
 	}
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView, "root_source")
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 	storage.SetLogger(conf.Logger)
 
-	storage.AddKafkaSource(kafka_source.NewMainKafkaSource(mb, "root_source"))
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb))
 
 	err = storage.Restore()
 	if err != nil {
@@ -65,7 +65,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 
 	// destinations
-	storage.AddKafkaDestination(kafka_destination.NewMainKafkaDestination(mb, "root_source"))
+	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
 	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, model.PK)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
-		mb.KafkaPaths(),
+		kafkaPaths(b, storage),
 	)
 
 	return b, nil

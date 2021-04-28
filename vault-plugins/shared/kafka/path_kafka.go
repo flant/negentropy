@@ -6,31 +6,24 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/segmentio/kafka-go"
 )
 
 const (
-	kafkaConfigPath = "kafka.config"
+	kafkaConfigPath  = "kafka.config"
+	PluginConfigPath = "kafka.plugin.config"
 )
 
-func NewMessageBroker(ctx context.Context, storage logical.Storage, selfHealTopic string) (*MessageBroker, error) {
-	if len(selfHealTopic) == 0 {
-		return nil, errors.New("topic required")
-	}
-	mb := &MessageBroker{
-		selfHealTopic: selfHealTopic,
-	}
+func NewMessageBroker(ctx context.Context, storage logical.Storage) (*MessageBroker, error) {
+	mb := &MessageBroker{}
 
 	// load encryption private key
 	se, err := storage.Get(ctx, kafkaConfigPath)
@@ -48,13 +41,34 @@ func NewMessageBroker(ctx context.Context, storage logical.Storage, selfHealTopi
 		mb.config = config
 	}
 
-	if len(mb.config.Endpoints) > 0 &&
-		mb.config.EncryptionPublicKey != nil &&
-		mb.config.EncryptionPrivateKey != nil {
-		mb.isConfigured = true
+	se, err = storage.Get(ctx, PluginConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	if se != nil {
+		var config PluginConfig
+
+		err = json.Unmarshal(se.Value, &config)
+		if err != nil {
+			return nil, err
+		}
+
+		mb.PluginConfig = config
 	}
 
+	mb.CheckConfig()
+
 	return mb, nil
+}
+
+func (mb *MessageBroker) CheckConfig() {
+	if len(mb.config.Endpoints) > 0 &&
+		mb.config.EncryptionPublicKey != nil &&
+		mb.config.EncryptionPrivateKey != nil &&
+		mb.PluginConfig.SelfTopicName != "" {
+
+		mb.isConfigured = true
+	}
 }
 
 func (mb *MessageBroker) handlePublicKeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -76,39 +90,39 @@ func (mb *MessageBroker) handlePublicKeyRead(ctx context.Context, req *logical.R
 }
 
 func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	certData := data.Get("certificate").(string)
-	certData = strings.ReplaceAll(certData, "\\n", "\n")
-
 	// kafka backends
 	endpoints := data.Get("kafka_endpoints").([]string)
 	if len(endpoints) == 0 {
 		return nil, logical.CodedError(http.StatusBadRequest, "endpoints required")
 	}
+	// TODO: restore cert
+	// certData := data.Get("certificate").(string)
+	// certData = strings.ReplaceAll(certData, "\\n", "\n")
 
 	// validate certificate
-	m, err := x509.MarshalECPrivateKey(mb.config.ConnectionPrivateKey)
-	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	}
+	// m, err := x509.MarshalECPrivateKey(mb.config.ConnectionPrivateKey)
+	// if err != nil {
+	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+	// }
 
-	priv := pem.EncodeToMemory(&pem.Block{
-		Type: "PRIVATE KEY", Bytes: m,
-	})
+	// priv := pem.EncodeToMemory(&pem.Block{
+	// 	Type: "PRIVATE KEY", Bytes: m,
+	// })
 
-	_, err = tls.X509KeyPair([]byte(certData), priv)
-	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	}
+	// _, err = tls.X509KeyPair([]byte(certData), priv)
+	// if err != nil {
+	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+	// }
+	//
+	// p, _ := pem.Decode([]byte(certData))
+	// cert, err := x509.ParseCertificate(p.Bytes)
+	// if err != nil {
+	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+	// }
 
-	p, _ := pem.Decode([]byte(certData))
-	cert, err := x509.ParseCertificate(p.Bytes)
-	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	}
-
-	mb.config.ConnectionCertificate = cert
+	// mb.config.ConnectionCertificate = cert
 	mb.config.Endpoints = endpoints
-
+	// TODO: check kafka connection
 	// generate encryption keys
 	if mb.config.EncryptionPrivateKey == nil {
 		pk, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -120,20 +134,6 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 	}
 
 	d, err := json.Marshal(mb.config)
-	if err != nil {
-		return nil, err
-	}
-
-	t := kafka.TopicConfig{
-		Topic: mb.selfHealTopic,
-		ConfigEntries: []kafka.ConfigEntry{
-			{
-				ConfigName:  "cleanup.policy",
-				ConfigValue: "compact",
-			},
-		},
-	}
-	err = mb.CreateTopic(t)
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +233,10 @@ func (mb *MessageBroker) KafkaPaths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Generate CSR for kafka endpoint",
+					Callback: mb.handleGenerateCSR,
+				},
 				logical.CreateOperation: &framework.PathOperation{
 					Summary:  "Generate CSR for kafka endpoint",
 					Callback: mb.handleGenerateCSR,

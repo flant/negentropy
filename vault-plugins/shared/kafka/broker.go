@@ -5,12 +5,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
-	"net"
+	"fmt"
+	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/segmentio/kafka-go"
+	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // TopicType represents kafka topic type
@@ -20,108 +22,314 @@ func (t TopicType) String() string {
 	return string(t)
 }
 
+type Message struct {
+	Topic   string
+	Key     string
+	Value   []byte
+	Headers map[string][]byte
+}
+
+// SourceInputMessage kafka message from consumer
+type SourceInputMessage struct {
+	TopicPartition   []kafka.TopicPartition
+	ConsumerMetadata *kafka.ConsumerGroupMetadata
+}
+
+func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceInputMessage, error) {
+	pos, err := c.Position([]kafka.TopicPartition{tp})
+	if err != nil {
+		return nil, err
+	}
+	cm, err := c.GetConsumerGroupMetadata()
+	if err != nil {
+		return nil, err
+	}
+	return &SourceInputMessage{
+		TopicPartition:   pos,
+		ConsumerMetadata: cm,
+	}, nil
+}
+
 type MessageBroker struct {
 	isConfigured bool
 
-	producerSync sync.Once
-	producer     *kafka.Writer
+	producerSync      sync.Once
+	producer          *kafka.Producer
+	transProducerSync sync.Once
+	transProducer     *kafka.Producer
 
-	config        BrokerConfig
-	selfHealTopic string
+	config       BrokerConfig
+	PluginConfig PluginConfig
 }
 
 func (mb *MessageBroker) Configured() bool {
 	return mb.isConfigured
 }
 
+func (mb *MessageBroker) CheckConnection(endpoints []string) error {
+	brokers := strings.Join(endpoints, ",")
+	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+		"bootstrap.servers": brokers,
+		"retries":           3,
+	})
+	if err != nil {
+		return err
+	}
+	defer ac.Close()
+
+	id, err := ac.ClusterID(context.TODO())
+	log.Println("id", id)
+	return err
+}
+
+// BrokerConfig connection config
 type BrokerConfig struct {
-	Endpoints []string
+	Endpoints []string `json:"endpoints"`
 
-	ConnectionPrivateKey  *ecdsa.PrivateKey
-	ConnectionCertificate *x509.Certificate
+	ConnectionPrivateKey  *ecdsa.PrivateKey `json:"connection_private_key,omitempty"`
+	ConnectionCertificate *x509.Certificate `json:"connection_cert,omitempty"`
 
-	EncryptionPrivateKey *rsa.PrivateKey
-	EncryptionPublicKey  *rsa.PublicKey
+	EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
+	EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
+}
+
+// PluginConfig plugin configuration
+type PluginConfig struct {
+	SelfTopicName     string           `json:"self_topic_name"`
+	RootTopicName     string           `json:"root_topic_name"`
+	RootPublicKey     *rsa.PublicKey   `json:"root_public_key,omitempty"`
+	PeersPublicKeys   []*rsa.PublicKey `json:"peers_public_keys,omitempty"`
+	PublishQuotaUsage bool             `json:"publish_quota,omitempty"`
 }
 
 func (mb *MessageBroker) EncryptionPrivateKey() *rsa.PrivateKey {
 	return mb.config.EncryptionPrivateKey
 }
 
+func (mb *MessageBroker) GetEndpoints() []string {
+	return mb.config.Endpoints
+}
+
 func (mb *MessageBroker) EncryptionPublicKey() *rsa.PublicKey {
 	return mb.config.EncryptionPublicKey
 }
 
-func (mb *MessageBroker) GetKafkaWriter() *kafka.Writer {
+func (mb *MessageBroker) GetKafkaProducer() *kafka.Producer {
 	return mb.getProducer()
 }
 
-func (mb *MessageBroker) GetKafkaReader(replicaName, topicName string) *kafka.Reader {
-	// TODO: tls
-	rd := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        mb.config.Endpoints,
-		GroupID:        "replica." + replicaName,
-		GroupTopics:    nil,
-		Topic:          topicName,
-		MinBytes:       0,
-		MaxBytes:       1048576 * 4, // 4Mb
-		MaxWait:        15 * time.Second,
-		IsolationLevel: kafka.ReadCommitted, // must have
+func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
+	return mb.getTransactionalProducer()
+}
+
+func (mb *MessageBroker) GetConsumer(replicaName, topicName string, autocommit bool) *kafka.Consumer {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":  brokers,
+		"group.id":           replicaName,
+		"auto.offset.reset":  "earliest",
+		"enable.auto.commit": autocommit,
+		"isolation.level":    "read_committed",
 	})
-
-	return rd
-}
-
-func (mb *MessageBroker) GetRestorationReader(replicaName, topicName string) *kafka.Reader {
-	if replicaName != "" {
-		topicName = topicName + "." + replicaName
-	}
-	// TODO: tls
-	rd := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        mb.config.Endpoints,
-		Topic:          topicName,
-		MinBytes:       1,
-		MaxBytes:       1048576 * 4, // 4Mb
-		MaxWait:        3 * time.Second,
-		IsolationLevel: kafka.ReadCommitted,
-	})
-
-	return rd
-}
-
-func (mb *MessageBroker) GetLastOffset(topic string) (int64, error) {
-	return getPartitionsForTopic(mb.config.Endpoints[0], topic)
-}
-
-func getPartitionsForTopic(endpoint string, topic string) (int64, error) {
-	conn, err := kafka.DialLeader(context.Background(), "tcp", endpoint, topic, 0)
 	if err != nil {
-		return 0, err
+		panic(err)
 	}
-	defer conn.Close()
+	err = c.SubscribeTopics([]string{topicName}, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	return conn.ReadLastOffset()
+	return c
 }
 
-func (mb *MessageBroker) getProducer() *kafka.Writer {
-	mb.producerSync.Do(func() {
-		w := &kafka.Writer{
-			Addr:         kafka.TCP(mb.config.Endpoints...),
-			MaxAttempts:  10,
-			RequiredAcks: kafka.RequireAll,
-			Async:        false,
-			BatchSize:    300,
-			BatchBytes:   1048576 * 4, // 4Mb
-			Transport:    nil,         // TODO: transport
-		}
-
-		mb.producer = w
+func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":  brokers,
+		"auto.offset.reset":  "earliest",
+		"group.id":           false,
+		"enable.auto.commit": true,
+		"isolation.level":    "read_committed",
 	})
+	if err != nil {
+		panic(err)
+	}
+	err = c.SubscribeTopics([]string{topic}, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return c
+}
+
+func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
+	if len(msgs) == 0 {
+		return nil
+	}
+
+	if len(msgs) > 1 {
+		return mb.sendMessages(msgs, sourceInput)
+	}
+
+	return mb.sendSingleMessage(msgs[0])
+}
+
+func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage) error {
+	ctx := context.Background()
+
+	p := mb.GetKafkaTransactionalProducer()
+	err := p.BeginTransaction()
+	if err != nil {
+		return err
+	}
+	log.Println(",sg here323", msgs)
+	for _, msg := range msgs {
+		m := mb.prepareMessage(msg)
+		err = p.Produce(m, nil)
+		if err != nil {
+			log.Println("failed here323")
+			_ = p.AbortTransaction(ctx)
+			return err
+		}
+	}
+
+	log.Println("gpgp here323")
+
+	if source != nil {
+		// source message offset commit
+		err = p.SendOffsetsToTransaction(ctx, source.TopicPartition, source.ConsumerMetadata)
+		if err != nil {
+			_ = p.AbortTransaction(ctx)
+			return err
+		}
+	}
+
+	err = p.CommitTransaction(ctx)
+	if err != nil {
+		log.Println("commitrt here323", err)
+		if err.(kafka.Error).TxnRequiresAbort() {
+			_ = p.AbortTransaction(ctx)
+			return err
+		} else if err.(kafka.Error).IsRetriable() {
+			time.Sleep(500 * time.Millisecond)
+			return mb.sendMessages(msgs, source) // FIXME: not the best recursive call
+		}
+		// treat all other errors as fatal errors
+		return err
+	}
+
+	return nil
+}
+
+func (mb *MessageBroker) sendSingleMessage(msg Message) error {
+	p := mb.GetKafkaProducer()
+	m := mb.prepareMessage(msg)
+	err := p.Produce(m, nil)
+	if err != nil {
+		return fmt.Errorf("producer failed: %s - %s: %v: %+v", err.Error(), p.String(), p, msg)
+	}
+
+	e := <-p.Events()
+	switch ev := e.(type) { // nolint: gocritic
+	case *kafka.Message:
+		if ev.TopicPartition.Error != nil {
+			return fmt.Errorf("delivery failed: %s", e.String())
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func (mb *MessageBroker) prepareMessage(msg Message) *kafka.Message {
+	km := &kafka.Message{
+		TopicPartition: kafka.TopicPartition{
+			Partition: kafka.PartitionAny,
+			Topic:     &msg.Topic,
+		},
+		Value:         msg.Value,
+		Key:           []byte(msg.Key),
+		TimestampType: kafka.TimestampCreateTime,
+	}
+	if len(msg.Headers) > 0 {
+		headers := make([]kafka.Header, 0)
+		for k, v := range msg.Headers {
+			headers = append(headers, kafka.Header{Key: k, Value: v})
+		}
+		km.Headers = headers
+	}
+
+	return km
+}
+
+// func (mb *MessageBroker) GetLastOffset(topic string) (int64, error) {
+// 	ac, := kafka.NewAdminClient()
+// 	ac.
+// 	md, _ :=ac.GetMetadata()
+//
+// 	return getPartitionsForTopic(mb.config.Endpoints[0], topic)
+// }
+//
+// func getPartitionsForTopic(endpoint string, topic string) (int64, error) {
+// 	conn, err := kafka.DialLeader(context.Background(), "tcp", endpoint, topic, 0)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	defer conn.Close()
+//
+// 	return conn.ReadLastOffset()
+// }
+
+func (mb *MessageBroker) getProducer() *kafka.Producer {
+	mb.producerSync.Do(func() {
+		log.Println("FIRST RUN")
+		brokers := strings.Join(mb.config.Endpoints, ",")
+		p, err := kafka.NewProducer(&kafka.ConfigMap{
+			"bootstrap.servers": brokers,
+			// "batch.size": 16384,
+			"client.id": mb.PluginConfig.SelfTopicName,
+		})
+		if err != nil {
+			panic(err)
+		}
+		mb.producer = p
+	})
+	log.Println("From cache")
 
 	return mb.producer
 }
 
-func (mb *MessageBroker) CreateTopic(topics ...kafka.TopicConfig) error {
+func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
+	mb.transProducerSync.Do(func() {
+		brokers := strings.Join(mb.config.Endpoints, ",")
+		p, err := kafka.NewProducer(&kafka.ConfigMap{
+			"bootstrap.servers": brokers,
+			"transactional.id":  mb.PluginConfig.SelfTopicName,
+			// "batch.size": 16384,
+			"client.id": mb.PluginConfig.SelfTopicName,
+		})
+		if err != nil {
+			panic(err)
+		}
+		err = p.InitTransactions(context.TODO())
+		if err != nil {
+			panic(err)
+		}
+		mb.transProducer = p
+	})
+
+	return mb.transProducer
+}
+
+func (mb *MessageBroker) CreateTopic(topic string) error {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+		"bootstrap.servers": brokers,
+	})
+	if err != nil {
+		return err
+	}
+
 	repFactor := 1
 	inSyncReplicas := 1
 	if len(mb.config.Endpoints) > 1 {
@@ -129,88 +337,44 @@ func (mb *MessageBroker) CreateTopic(topics ...kafka.TopicConfig) error {
 		inSyncReplicas = len(mb.config.Endpoints) - 1
 	}
 
-	for i, topic := range topics {
-		topic.ReplicationFactor = repFactor
-		insyncConf := kafka.ConfigEntry{
-			ConfigName:  "min.insync.replicas",
-			ConfigValue: strconv.FormatInt(int64(inSyncReplicas), 10),
-		}
-
-		topic.ConfigEntries = append(topic.ConfigEntries, insyncConf)
-		if topic.NumPartitions == 0 {
-			topic.NumPartitions = 1
-		}
-
-		topics[i] = topic
+	tc := kafka.TopicSpecification{
+		Topic:             topic,
+		NumPartitions:     1,
+		ReplicationFactor: repFactor,
+		Config:            map[string]string{"min.insync.replicas": strconv.FormatInt(int64(inSyncReplicas), 10)},
 	}
-
-	return mb.createTopicsWithFallback(topics)
-}
-
-func (mb *MessageBroker) DeleteTopic(topicName ...string) error {
-	return mb.deleteTopicsWithFallback(topicName)
-}
-
-func (mb *MessageBroker) createTopicsWithFallback(topics []kafka.TopicConfig) error {
-	var err error
-	for _, broker := range mb.config.Endpoints {
-		err = mb.createTopics(broker, topics)
-		if err == nil {
+	res, err := ac.CreateTopics(context.TODO(), []kafka.TopicSpecification{tc})
+	if err != nil {
+		return err
+	}
+	if res[0].Error.Error() != "" {
+		switch res[0].Error.Code() {
+		case kafka.ErrNoError, kafka.ErrTopicAlreadyExists:
 			return nil
+
+		default:
+			return res[0].Error
 		}
 	}
 
-	return err
+	return nil
 }
 
-func (mb *MessageBroker) deleteTopicsWithFallback(topics []string) error {
-	var err error
-	for _, broker := range mb.config.Endpoints {
-		err = mb.deleteTopics(broker, topics)
-		if err == nil {
-			return nil
-		}
-	}
-
-	return err
-}
-
-func (mb *MessageBroker) createTopics(endpoint string, topicConfigs []kafka.TopicConfig) error {
-	conn, err := kafka.Dial("tcp", endpoint)
+func (mb *MessageBroker) DeleteTopic(topicName string) error {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+		"bootstrap.servers": brokers,
+	})
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	controller, err := conn.Controller()
+	res, err := ac.DeleteTopics(context.TODO(), []string{topicName})
 	if err != nil {
 		return err
 	}
-	controllerConn, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
-	if err != nil {
-		return err
+	if res[0].Error.Error() != "" {
+		return res[0].Error
 	}
-	defer controllerConn.Close()
 
-	return controllerConn.CreateTopics(topicConfigs...)
-}
-
-func (mb *MessageBroker) deleteTopics(endpoint string, topics []string) error {
-	conn, err := kafka.Dial("tcp", endpoint)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	controller, err := conn.Controller()
-	if err != nil {
-		return err
-	}
-	controllerConn, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
-	if err != nil {
-		return err
-	}
-	defer controllerConn.Close()
-
-	return controllerConn.DeleteTopics(topics...)
+	return nil
 }

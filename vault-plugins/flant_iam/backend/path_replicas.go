@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/segmentio/kafka-go"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -144,7 +143,7 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	}
 	err = tx.Commit()
 	if err != nil {
-		return nil, logical.CodedError(http.StatusTeapot, err.Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 	}
 
 	b.addReplicaToReplications(*r)
@@ -236,17 +235,7 @@ func (b replicaBackend) removeReplicaFromReplications(replica model.Replica) {
 }
 
 func (b replicaBackend) createTopicForReplica(replicaName string) error {
-	t := kafka.TopicConfig{
-		Topic: "root_source." + replicaName,
-		ConfigEntries: []kafka.ConfigEntry{
-			{
-				ConfigName:  "cleanup.policy",
-				ConfigValue: "compact",
-			},
-		},
-	}
-
-	return b.storage.GetKafkaBroker().CreateTopic(t)
+	return b.storage.GetKafkaBroker().CreateTopic("root_source." + replicaName)
 }
 
 func (b replicaBackend) deleteTopicForReplica(replicaName string) error {

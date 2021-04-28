@@ -1,9 +1,7 @@
 package kafka_source
 
 import (
-	"context"
 	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
@@ -14,25 +12,30 @@ import (
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type MainKafkaSource struct {
-	kf *sharedkafka.MessageBroker
-
-	topic string
+type SelfKafkaSource struct {
+	kf        *sharedkafka.MessageBroker
+	decryptor *sharedkafka.Encrypter
+	topic     string
 }
 
-func NewMainKafkaSource(kf *sharedkafka.MessageBroker, topic string) MainKafkaSource {
-	return MainKafkaSource{kf: kf, topic: topic}
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker) *SelfKafkaSource {
+	return &SelfKafkaSource{
+		kf:        kf,
+		decryptor: sharedkafka.NewEncrypter(),
+		topic:     "root_source",
+	}
 }
 
-func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
-	r := mks.kf.GetRestorationReader("", "root_source")
+func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
+	r := mks.kf.GetRestorationReader(mks.kf.PluginConfig.SelfTopicName)
 	defer r.Close()
 
 	// we dont have other consumers on this topic. Get MaxOffset from its single partition
-	lastOffset, err := mks.kf.GetLastOffset("root_source")
+	_, lastOffset, err := r.GetWatermarkOffsets(mks.kf.PluginConfig.SelfTopicName, 0)
 	if err != nil {
 		return err
 	}
@@ -42,7 +45,7 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 	}
 
 	for {
-		m, err := r.ReadMessage(context.TODO())
+		m, err := r.ReadMessage(-1)
 		if err != nil {
 			return err
 		}
@@ -52,16 +55,21 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 			return fmt.Errorf("key has wong format: %s", string(m.Key))
 		}
 
-		decrypted, err := rsa.DecryptPKCS1v15(rand.Reader, mks.kf.EncryptionPrivateKey(), m.Value)
-		if err != nil {
-			return err
+		var signature []byte
+		var chunked bool
+		for _, header := range m.Headers {
+			switch header.Key {
+			case "signature":
+				signature = header.Value
+
+			case "chunked":
+				chunked = true
+			}
 		}
 
-		var signature []byte
-		for _, header := range m.Headers {
-			if header.Key == "signature" {
-				signature = header.Value
-			}
+		decrypted, err := mks.decryptor.Decrypt(m.Value, mks.kf.EncryptionPrivateKey(), chunked)
+		if err != nil {
+			return err
 		}
 
 		hashed := sha256.Sum256(decrypted)
@@ -114,8 +122,12 @@ func (mks MainKafkaSource) Restore(txn *memdb.Txn) error {
 			return err
 		}
 
-		if m.Offset == lastOffset-1 {
+		if int64(m.TopicPartition.Offset) == lastOffset-1 {
 			return nil
 		}
 	}
+}
+
+func (mks *SelfKafkaSource) Run(store *io.MemoryStore) {
+	// do nothing
 }
