@@ -10,5 +10,4 @@ require (
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 	gopkg.in/square/go-jose.v2 v2.5.1
-	gotest.tools v2.2.0+incompatible
 )

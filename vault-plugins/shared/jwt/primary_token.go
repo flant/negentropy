@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -13,13 +14,34 @@ import (
 type PrimaryTokenClaims struct {
 	Issuer   string `json:"iss"`
 	Subject  string `json:"sub"`
-	Audience string `json:"aud"` // TODO: can be array
+	Audience string `json:"aud"` // TODO: can be array, but we have no case to make it array right now
 	Expiry   int64  `json:"exp"`
 	IssuedAt int64  `json:"iat"`
+	JTI      string `json:"jti"`
 }
 
-// newPrimaryToken is an example of token issuing function
-func newPrimaryToken(ctx context.Context, storage logical.Storage) (string, error) {
+type PrimaryTokenOptions struct {
+	TTL        time.Duration
+	UUID       string
+	Generation int64
+	SecretSalt string
+
+	now func() time.Time
+}
+
+func (o *PrimaryTokenOptions) SaltHash() string {
+	return shaEncode(fmt.Sprintf("%d %s", o.Generation, o.SecretSalt))
+}
+
+func (o *PrimaryTokenOptions) getCurrentTime() time.Time {
+	if o.now == nil {
+		o.now = time.Now
+	}
+	return o.now()
+}
+
+// NewPrimaryToken is tokens issuing function
+func NewPrimaryToken(ctx context.Context, storage logical.Storage, options *PrimaryTokenOptions) (string, error) {
 	data, err := getConfig(ctx, storage)
 	if err != nil {
 		return "", err
@@ -42,15 +64,16 @@ func newPrimaryToken(ctx context.Context, storage logical.Storage) (string, erro
 		return "", fmt.Errorf("possible bug, keys not found in the storage")
 	}
 
-	issuedAt := time.Now()
-	expiry := issuedAt.Add(time.Minute * 10)
+	issuedAt := options.getCurrentTime()
+	expiry := issuedAt.Add(options.TTL)
 
 	claims := PrimaryTokenClaims{
 		Issuer:   issuer,
 		Audience: audience,
-		Subject:  "entropy",
+		Subject:  options.UUID,
 		IssuedAt: issuedAt.Unix(),
 		Expiry:   expiry.Unix(),
+		JTI:      options.SaltHash(),
 	}
 
 	payload, err := json.Marshal(claims)
@@ -81,4 +104,12 @@ func signPayload(key *jose.JSONWebKey, alg jose.SignatureAlgorithm, payload []by
 		return "", fmt.Errorf("signing payload: %v", err)
 	}
 	return signature.CompactSerialize()
+}
+
+func shaEncode(input string) string {
+	// TODO: declare hasher once
+	hasher := sha256.New()
+
+	hasher.Write([]byte(input))
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
