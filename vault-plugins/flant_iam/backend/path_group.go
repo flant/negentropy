@@ -378,7 +378,7 @@ func (r *GroupRepository) Create(group *model.Group) error {
 }
 
 func (r *GroupRepository) GetById(id string) (*model.Group, error) {
-	raw, err := r.db.First(model.GroupType, model.ID, id)
+	raw, err := r.db.First(model.GroupType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}

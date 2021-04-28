@@ -280,7 +280,7 @@ func (r *TenantRepository) Create(t *model.Tenant) error {
 }
 
 func (r *TenantRepository) GetById(id string) (*model.Tenant, error) {
-	raw, err := r.db.First(model.TenantType, model.ID, id)
+	raw, err := r.db.First(model.TenantType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo
 }
 
 func (r *TenantRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.TenantType, model.ID)
+	iter, err := r.db.Get(model.TenantType, model.PK)
 	if err != nil {
 		return nil, err
 	}

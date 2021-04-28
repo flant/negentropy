@@ -20,8 +20,8 @@ func ServiceAccountSchema() *memdb.DBSchema {
 			ServiceAccountType: {
 				Name: ServiceAccountType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
@@ -41,7 +41,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 }
 
 type ServiceAccount struct {
-	UUID           string        `json:"uuid"` // ID
+	UUID           string        `json:"uuid"` // PK
 	TenantUUID     string        `json:"tenant_uuid"`
 	Version        string        `json:"resource_version"`
 	BuiltinType    string        `json:"-"`

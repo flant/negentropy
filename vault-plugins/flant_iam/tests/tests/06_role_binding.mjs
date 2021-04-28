@@ -9,7 +9,7 @@ import { API } from "./lib/api.mjs"
 
 //    /tenant/{tid}/role_binding/{rbid}
 
-describe("RoleBinding", function () {
+describe("Role Binding", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 

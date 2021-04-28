@@ -383,7 +383,7 @@ func (r *ServiceAccountRepository) Create(serviceAccount *model.ServiceAccount) 
 }
 
 func (r *ServiceAccountRepository) GetById(id string) (*model.ServiceAccount, error) {
-	raw, err := r.db.First(model.ServiceAccountType, model.ID, id)
+	raw, err := r.db.First(model.ServiceAccountType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}

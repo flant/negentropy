@@ -319,7 +319,7 @@ func (r *ProjectRepository) Create(project *model.Project) error {
 }
 
 func (r *ProjectRepository) GetById(id string) (*model.Project, error) {
-	raw, err := r.db.First(model.ProjectType, model.ID, id)
+	raw, err := r.db.First(model.ProjectType, model.PK, id)
 	if err != nil {
 		return nil, err
 	}

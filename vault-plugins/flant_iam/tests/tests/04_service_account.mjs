@@ -9,7 +9,7 @@ import { API } from "./lib/api.mjs"
 
 //    /tenant/{tid}/service_account/{said}
 
-describe("ServiceAccount", function () {
+describe("Service Account", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 

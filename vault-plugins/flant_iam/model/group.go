@@ -18,8 +18,8 @@ func GroupSchema() *memdb.DBSchema {
 			GroupType: {
 				Name: GroupType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
@@ -55,7 +55,7 @@ groups
 resource_version
 */
 type Group struct {
-	UUID            string   `json:"uuid"` // ID
+	UUID            string   `json:"uuid"` // PK
 	TenantUUID      string   `json:"tenant_uuid"`
 	Version         string   `json:"resource_version"`
 	BuiltinType     string   `json:"-"`

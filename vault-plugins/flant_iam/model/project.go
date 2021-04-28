@@ -6,18 +6,18 @@ import (
 )
 
 const (
-	UserType = "user" // also, memdb schema name
+	ProjectType = "project" // also, memdb schema name
 
 )
 
-func UserSchema() *memdb.DBSchema {
+func ProjectSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
-			UserType: {
-				Name: UserType,
+			ProjectType: {
+				Name: ProjectType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
@@ -48,27 +48,26 @@ func UserSchema() *memdb.DBSchema {
 	}
 }
 
-type User struct {
-	UUID           string `json:"uuid"` // ID
-	TenantUUID     string `json:"tenant_uuid"`
-	Version        string `json:"resource_version"`
-	Identifier     string `json:"identifier"`
-	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
+type Project struct {
+	UUID       string `json:"uuid"` // PK
+	TenantUUID string `json:"tenant_uuid"`
+	Version    string `json:"resource_version"`
+	Identifier string `json:"identifier"`
 }
 
-func (u *User) ObjType() string {
-	return UserType
+func (p *Project) ObjType() string {
+	return ProjectType
 }
 
-func (u *User) ObjId() string {
-	return u.UUID
+func (p *Project) ObjId() string {
+	return p.UUID
 }
 
-func (u *User) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(u)
+func (p *Project) Marshal(_ bool) ([]byte, error) {
+	return jsonutil.EncodeJSON(p)
 }
 
-func (u *User) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
+func (p *Project) Unmarshal(data []byte) error {
+	err := jsonutil.DecodeJSON(data, p)
 	return err
 }

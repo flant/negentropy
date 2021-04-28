@@ -82,7 +82,7 @@ func (b replicaBackend) handleReplicaList(ctx context.Context, req *logical.Requ
 	tx := b.storage.Txn(false)
 
 	var replicaNames []string
-	iter, err := tx.Get(model.ReplicaType, model.ID)
+	iter, err := tx.Get(model.ReplicaType, model.PK)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (b replicaBackend) handleReplicaRead(ctx context.Context, req *logical.Requ
 	replicaName := data.Get("replica_name").(string)
 
 	tx := b.storage.Txn(false)
-	raw, err := tx.First(model.ReplicaType, model.ID, replicaName)
+	raw, err := tx.First(model.ReplicaType, model.PK, replicaName)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 
 	// Verify existence
 
-	raw, err := tx.First(model.ReplicaType, model.ID, replicaName)
+	raw, err := tx.First(model.ReplicaType, model.PK, replicaName)
 	if err != nil {
 		return nil, err
 	}

@@ -67,7 +67,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewMainKafkaDestination(mb, "root_source"))
-	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, model.ID)
+	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, model.PK)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +96,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		projectPaths(b, storage),
 		featureFlagPaths(b, storage),
 		roleBindingPaths(b, storage),
+		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
 		mb.KafkaPaths(),

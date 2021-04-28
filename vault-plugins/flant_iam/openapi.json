@@ -762,8 +762,8 @@
                   }
                 },
                 "required": [
-                  "kafka_endpoints",
-                  "certificate"
+                  "certificate",
+                  "kafka_endpoints"
                 ]
               }
             }
@@ -900,6 +900,111 @@
       },
       "delete": {
         "operationId": "deleteFlant_iamReplicaReplica_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/role": {
+      "get": {
+        "summary": "Lists all roles IDs.",
+        "operationId": "getFlant_iamRole",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/role/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Role name, unique globally",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the role by ID.",
+        "operationId": "getFlant_iamRoleName",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the role by ID.",
+        "operationId": "postFlant_iamRoleName",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Role description"
+                  },
+                  "options_schema": {
+                    "type": "string",
+                    "description": "JSON schema of the role options"
+                  },
+                  "require_one_of_feature_flags": {
+                    "type": "array",
+                    "description": "Enumerated flags, one of which is required in the scope to use role",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "description",
+                  "require_one_of_feature_flags",
+                  "options_schema"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the role by ID.",
+        "operationId": "deleteFlant_iamRoleName",
         "tags": [
           "secrets"
         ],
@@ -1069,11 +1174,11 @@
                   }
                 },
                 "required": [
-                  "groups",
                   "service_accounts",
                   "uuid",
                   "identifier",
-                  "users"
+                  "users",
+                  "groups"
                 ]
               }
             }
@@ -1465,12 +1570,12 @@
                   }
                 },
                 "required": [
-                  "uuid",
                   "users",
                   "groups",
                   "service_accounts",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "uuid"
                 ]
               }
             }
@@ -1687,11 +1792,11 @@
                   }
                 },
                 "required": [
-                  "token_max_ttl",
-                  "uuid",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl"
+                  "token_ttl",
+                  "token_max_ttl",
+                  "uuid"
                 ]
               }
             }
@@ -1779,11 +1884,11 @@
                   }
                 },
                 "required": [
-                  "resource_version",
                   "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "resource_version"
                 ]
               }
             }
@@ -1882,8 +1987,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }

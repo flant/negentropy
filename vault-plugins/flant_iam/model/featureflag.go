@@ -15,8 +15,8 @@ func FeatureFlagSchema() *memdb.DBSchema {
 			FeatureFlagType: {
 				Name: FeatureFlagType,
 				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
+					PK: {
+						Name:   PK,
 						Unique: true,
 						Indexer: &memdb.StringFieldIndex{
 							Field: "Name",
@@ -29,7 +29,7 @@ func FeatureFlagSchema() *memdb.DBSchema {
 }
 
 type FeatureFlag struct {
-	Name string `json:"name"` // ID
+	Name string `json:"name"` // PK
 }
 
 func (t *FeatureFlag) ObjType() string {
