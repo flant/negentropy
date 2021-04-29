@@ -29,6 +29,7 @@ id=$(docker run \
   -e VAULT_LOG_LEVEL=debug \
   -e VAULT_DEV_ROOT_TOKEN_ID=root \
   -v "$(pwd)/../build:/vault/plugins" \
+  -v "$(pwd)/data:/vault/testdata" \
   vault:1.7.1 \
   server -dev -dev-plugin-dir=/vault/plugins)
 
@@ -37,8 +38,11 @@ if [[ "${ci_mode}x" != "x" ]]; then
   docker logs dev-vault 2>&1
 fi
 
-docker exec "$id" vault secrets enable -path=flant_iam vault-plugin-flant-iam
-mkdir -p data && echo -n "root" > ./data/token
+docker exec "$id" sh -c "
+vault secrets enable -path=flant_iam vault-plugin-flant-iam \
+&& vault token create -orphan -policy=root -field=token > /vault/testdata/token
+"
+
 
 if [[ "${ci_mode}x" == "x" ]]; then
   docker logs -f  dev-vault
