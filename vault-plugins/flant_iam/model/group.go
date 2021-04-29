@@ -40,22 +40,6 @@ func GroupSchema() *memdb.DBSchema {
 	}
 }
 
-/*
-identifier – уникален в рамках тенанта для каждого builtin_type_name
-Пользователи
-Группы
-Сервисные аккаунты
-
-uuid
-tenant_uuid
-identifier
-full_identifier:
-
-users
-service_accounts
-groups
-resource_version
-*/
 type Group struct {
 	UUID            string   `json:"uuid"` // PK
 	TenantUUID      string   `json:"tenant_uuid"`
