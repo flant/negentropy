@@ -167,7 +167,7 @@ func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMe
 		return nil
 	}
 
-	if len(msgs) > 1 {
+	if len(msgs) > 1 && sourceInput == nil { // only single output
 		return mb.sendMessages(msgs, sourceInput)
 	}
 
