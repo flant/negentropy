@@ -165,7 +165,8 @@ func (ms *MemoryStore) ReinitializeKafka() {
 		go s.Run(ms)
 	}
 	ms.kafkaMutex.RUnlock()
-	go ms.Restore() // TODO: maybe we dont need it here
+	// TODO: maybe we dont need it here
+	go ms.Restore() // nolint: errcheck
 }
 
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {

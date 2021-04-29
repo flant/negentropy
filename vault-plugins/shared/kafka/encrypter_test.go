@@ -34,7 +34,6 @@ func TestEncrypter(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, data, decrypted)
 	}
-
 }
 
 func TestSeparator(t *testing.T) {
