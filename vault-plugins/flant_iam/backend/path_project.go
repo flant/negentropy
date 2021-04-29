@@ -160,7 +160,7 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewProjectRepository(tx)
 
-		obj, err := repo.GetById(id)
+		obj, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}

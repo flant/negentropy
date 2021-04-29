@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	TokenType = "token" // also, memdb schema name
-
+	TokenType      = "token" // also, memdb schema name
+	OwnerForeignPK = "owner_uuid"
 )
 
 func TokenSchema() *memdb.DBSchema {
@@ -32,16 +32,10 @@ func TokenSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					"version": {
-						Name: "version",
+					OwnerForeignPK: {
+						Name: OwnerForeignPK,
 						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
-					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Identifier",
+							Field: "OwnerUUID",
 						},
 					},
 				},
@@ -67,21 +61,6 @@ func TokenSchema() *memdb.DBSchema {
 		проверяет корректность jti при аутентификации по токену (вход по устаревшему jti невозможен, но ввиду
 		распределенных свойств системы есть небольшое окно, в которое возможно использование родированного токена);
 		предоставляет метод, позволяющий провести ротацию этого токена (с инкрементацией поколения).
-
-
-
-PK: uuid
-Данные:
-	uuid
-	owner_type: User | ServiceAccount
-	owner_uuid
-	ttl
-	valid_till
-	allowed_roles
-	allowed_cidrs
-Sensitive данные:
-	salt
-
 
 description – комментарий о том, где это используется и зачем (чтобы потом можно было вспомнить).
 ...
@@ -110,6 +89,7 @@ type Token struct {
 	Description string        `json:"description"`
 	TTL         time.Duration `json:"ttl"`
 	MaxTTL      time.Duration `json:"max_ttl"`
+	ValidTill   int64         `json:"valid_till"`
 	CIDRs       []string      `json:"allowed_cidrs"`
 	Roles       []string      `json:"allowed_roles" `
 	Salt        string        `json:"salt" sensitive:""`

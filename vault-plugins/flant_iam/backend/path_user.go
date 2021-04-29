@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -133,15 +134,93 @@ func (b userBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the user by ID.",
+					Summary:  "Update the user by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the user by ID.",
+					Summary:  "Retrieve the user by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the user by ID.",
+					Summary:  "Deletes the user by ID",
+				},
+			},
+		},
+		// Token creation
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token",
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a owner",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleTokenCreate(),
+					Summary:  "Create user token.",
+				},
+			},
+		},
+		// Token read or delete
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token/" + uuid.Pattern("uuid"),
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a owner",
+					Required:    true,
+				},
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a token",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleTokenRead(),
+					Summary:  "Get token by ID",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleTokenDelete(),
+					Summary:  "Delete token by ID",
+				},
+			},
+		},
+		// Token list
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token/?$",
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a owner",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleTokenList(),
+					Summary:  "List token IDs",
 				},
 			},
 		},
@@ -161,7 +240,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewUserRepository(tx)
 
-		obj, err := repo.GetById(id)
+		obj, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}

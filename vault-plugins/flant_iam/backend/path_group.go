@@ -205,7 +205,7 @@ func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewGroupRepository(tx)
 
-		obj, err := repo.GetById(id)
+		obj, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -305,7 +305,6 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewGroupRepository(tx)
 
-		group, err := repo.GetById(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
