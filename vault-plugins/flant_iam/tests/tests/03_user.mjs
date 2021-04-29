@@ -253,4 +253,8 @@ describe("User", function () {
             })
         }
     })
+
+    describe("multipass", function() {
+
+    })
 })

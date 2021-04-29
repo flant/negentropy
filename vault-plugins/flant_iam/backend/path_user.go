@@ -9,9 +9,10 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type userBackend struct {
@@ -146,11 +147,10 @@ func (b userBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Token creation
+		// Multipass creation
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -161,17 +161,43 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of a owner",
 					Required:    true,
 				},
+
+				"ttl": {
+					Type:        framework.TypeInt,
+					Description: "TTL in seconds",
+					Required:    true,
+				},
+				"max_ttl": {
+					Type:        framework.TypeInt,
+					Description: "Max TTL in seconds",
+					Required:    true,
+				},
+				"description": {
+					Type:        framework.TypeString,
+					Description: "The purpose of issuing",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeString,
+					Description: "Allowed CIDRs to use the multipass from",
+					Required:    true,
+				},
+				"allowed_roles": {
+					Type:        framework.TypeString,
+					Description: "Allowed roles to use the multipass with",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleTokenCreate(),
-					Summary:  "Create user token.",
+					Callback: b.handleMultipassCreate(),
+					Summary:  "Create user multipass.",
 				},
 			},
 		},
-		// Token read or delete
+		// Multipass read or delete
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token/" + uuid.Pattern("uuid"),
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/" + uuid.Pattern("uuid"),
 			Fields: map[string]*framework.FieldSchema{
 
 				"tenant_uuid": {
@@ -186,24 +212,24 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a token",
+					Description: "ID of a multipass",
 					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleTokenRead(),
-					Summary:  "Get token by ID",
+					Callback: b.handleMultipassRead(),
+					Summary:  "Get multipass by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleTokenDelete(),
-					Summary:  "Delete token by ID",
+					Callback: b.handleMultipassDelete(),
+					Summary:  "Delete multipass by ID",
 				},
 			},
 		},
-		// Token list
+		// Multipass list
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/token/?$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/?",
 			Fields: map[string]*framework.FieldSchema{
 
 				"tenant_uuid": {
@@ -219,8 +245,8 @@ func (b userBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleTokenList(),
-					Summary:  "List token IDs",
+					Callback: b.handleMultipassList(),
+					Summary:  "List multipass IDs",
 				},
 			},
 		},
@@ -360,3 +386,4 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		return resp, nil
 	}
 }
+

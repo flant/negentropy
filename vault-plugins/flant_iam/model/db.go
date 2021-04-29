@@ -25,7 +25,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		GroupSchema(),
 		RoleSchema(),
 		RoleBindingSchema(),
-		TokenSchema(),
+		MultipassSchema(),
 	}
 
 	schema := &memdb.DBSchema{

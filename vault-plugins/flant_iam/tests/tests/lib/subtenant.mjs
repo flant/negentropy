@@ -42,6 +42,20 @@ export function genUserPayload(override = {}) {
 }
 
 
+export function genMultipassPayload(override = {}) {
+    return {
+        "ttl": Faker.datatype.number(),
+        "max_ttl": Faker.datatype.number(),
+        "tenant_uuid": Faker.datatype.uuid(),
+        "owner_uuid": Faker.datatype.uuid(),
+        "description": Faker.lorem.sentence(),
+        "allowed_cidrs": ["10.1.0.0/16"],
+        "allowed_roles": ["tenant_admin"],
+        ...override,
+    }
+}
+
+
 export function genServiceAccountPayload(override = {}) {
     return {
         identifier: Faker.internet.userName(),

@@ -50,12 +50,12 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 				"token_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 				"token_max_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 			},
@@ -96,12 +96,12 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 				"token_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 				"token_max_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 			},
@@ -165,12 +165,12 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 				"token_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 				"token_max_ttl": {
 					Type:        framework.TypeDurationSecond,
-					Description: "Token TTL in seconds",
+					Description: "Multipass TTL in seconds",
 					Required:    true,
 				},
 			},

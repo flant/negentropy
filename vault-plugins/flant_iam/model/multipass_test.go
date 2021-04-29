@@ -16,13 +16,13 @@ func Test_TokenDbSchema(t *testing.T) {
 }
 
 func Test_TokenMarshalling(t *testing.T) {
-	flipflopToken := func(t *testing.T, token *Token, includeSensitive bool) *Token {
+	flipflopToken := func(t *testing.T, token *Multipass, includeSensitive bool) *Multipass {
 		j, err := token.Marshal(includeSensitive)
 		if err != nil {
 			t.Fatalf("cannot marshal token without sensitive data: %v", err)
 		}
 
-		restored := &Token{}
+		restored := &Multipass{}
 		err = restored.Unmarshal(j)
 		if err != nil {
 			t.Fatalf("cannot unmarshal token back: %v", err)
@@ -31,11 +31,11 @@ func Test_TokenMarshalling(t *testing.T) {
 		return restored
 	}
 
-	initialToken := &Token{
+	initialToken := &Multipass{
 		UUID:        uuid.New(),
 		TenantUUID:  uuid.New(),
 		OwnerUUID:   uuid.New(),
-		OwnerType:   TokenOwnerServiceAccount,
+		OwnerType:   MultipassOwnerServiceAccount,
 		Description: "xxx",
 		TTL:         time.Hour,
 		MaxTTL:      24 * time.Hour,
