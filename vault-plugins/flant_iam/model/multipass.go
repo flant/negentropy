@@ -39,7 +39,8 @@ func MultipassSchema() *memdb.DBSchema {
 					OwnerForeignPK: {
 						Name: OwnerForeignPK,
 						Indexer: &memdb.StringFieldIndex{
-							Field: "OwnerUUID",
+							Field:     "OwnerUUID",
+							Lowercase: true,
 						},
 					},
 				},

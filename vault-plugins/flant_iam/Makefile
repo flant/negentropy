@@ -33,8 +33,8 @@ clean:
 	rm -f ./build/flant_iam
 
 fmt:
-	-$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
-	-@pushd tests && yarn run prettier --write ./tests/**.mjs && popd
+	-@$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
+	-@pushd tests && yarn run prettier --write ./tests/*.mjs ./tests/**/*.mjs && popd
 
 deps:
 	go mod tidy

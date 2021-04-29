@@ -10,8 +10,6 @@ export class RoleEndpointBuilder {
     collection(p = {}, q = {}) {
         return "/role" + stringifyQuery(q)
     }
-
-
 }
 
 export class RoleAPI {
@@ -50,10 +48,10 @@ export class RoleAPI {
 
 export function genRoleUpdatePayload(override = {}) {
     return {
-        "description": Faker.lorem.sentence(),
-        "type": Math.random() > 0.5 ? "tenant" : "project",
-        "options_schema": "",
-        "require_one_of_feature_flags": [],
+        description: Faker.lorem.sentence(),
+        type: Math.random() > 0.5 ? "tenant" : "project",
+        options_schema: "",
+        require_one_of_feature_flags: [],
         ...override,
     }
 }
@@ -61,10 +59,10 @@ export function genRoleUpdatePayload(override = {}) {
 export function genRoleCreatePayload(override = {}) {
     return {
         name: Faker.internet.domainWord(),
-        "description": Faker.lorem.sentence(),
-        "type": Math.random() > 0.5 ? "tenant" : "project",
-        "options_schema": "",
-        "require_one_of_feature_flags": [],
+        description: Faker.lorem.sentence(),
+        type: Math.random() > 0.5 ? "tenant" : "project",
+        options_schema: "",
+        require_one_of_feature_flags: [],
         ...override,
     }
 }

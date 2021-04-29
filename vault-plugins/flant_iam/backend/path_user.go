@@ -9,10 +9,9 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type userBackend struct {
@@ -158,10 +157,9 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"owner_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a owner",
+					Description: "ID of an owner",
 					Required:    true,
 				},
-
 				"ttl": {
 					Type:        framework.TypeInt,
 					Description: "TTL in seconds",
@@ -178,16 +176,17 @@ func (b userBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"allowed_cidrs": {
-					Type:        framework.TypeString,
+					Type:        framework.TypeCommaStringSlice,
 					Description: "Allowed CIDRs to use the multipass from",
 					Required:    true,
 				},
 				"allowed_roles": {
-					Type:        framework.TypeString,
+					Type:        framework.TypeCommaStringSlice,
 					Description: "Allowed roles to use the multipass with",
 					Required:    true,
 				},
 			},
+			ExistenceCheck: neverExisting,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleMultipassCreate(),
@@ -239,7 +238,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"owner_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a owner",
+					Description: "ID of an owner",
 					Required:    true,
 				},
 			},
@@ -251,6 +250,11 @@ func (b userBackend) paths() []*framework.Path {
 			},
 		},
 	}
+}
+
+// neverExisting  is a useful existence check handler to always trigger create operation
+func neverExisting(context.Context, *logical.Request, *framework.FieldData) (bool, error) {
+	return false, nil
 }
 
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
@@ -387,3 +391,350 @@ func (b *userBackend) handleList() framework.OperationFunc {
 	}
 }
 
+func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		var (
+			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
+			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
+			validTill = time.Now().Add(ttl).Unix()
+		)
+
+		multipass := &model.Multipass{
+			UUID:        uuid.New(),
+			TenantUUID:  data.Get("tenant_uuid").(string),
+			OwnerUUID:   data.Get("owner_uuid").(string),
+			OwnerType:   model.MultipassOwnerUser,
+			Description: data.Get("description").(string),
+			TTL:         ttl,
+			MaxTTL:      maxTTL,
+			ValidTill:   validTill,
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			Roles:       data.Get("allowed_roles").([]string),
+		}
+
+		tx := b.storage.Txn(true)
+		repo := NewMultipassRepository(tx)
+
+		err := repo.Create(multipass)
+		if err == ErrNotFound {
+			return responseNotFound(req, "something in the path")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		return responseWithDataAndCode(req, multipass, http.StatusCreated)
+	}
+}
+
+func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+		}
+
+		tx := b.storage.Txn(true)
+		repo := NewMultipassRepository(tx)
+
+		err := repo.Delete(filter)
+		if err != ErrNotFound {
+			return responseNotFound(req, "something in the path")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
+func (b *userBackend) handleMultipassRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := NewMultipassRepository(tx)
+
+		mp, err := repo.Get(filter)
+		if err != ErrNotFound {
+			return responseNotFound(req, "something in the path")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		return responseWithData(mp)
+	}
+}
+
+func (b *userBackend) handleMultipassList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := NewMultipassRepository(tx)
+
+		ids, err := repo.List(filter)
+		if err != ErrNotFound {
+			return responseNotFound(req, "something in the path")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuids": ids,
+			},
+		}
+
+		return resp, nil
+	}
+}
+
+type MultipassRepository struct {
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+}
+
+func NewMultipassRepository(tx *io.MemoryStoreTxn) *MultipassRepository {
+	return &MultipassRepository{db: tx}
+}
+
+func (r *MultipassRepository) validate(multipass *model.Multipass) error {
+	tenantRepo := NewTenantRepository(r.db)
+	_, err := tenantRepo.GetByID(multipass.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	if multipass.OwnerType == model.MultipassOwnerUser {
+		repo := NewUserRepository(r.db)
+		owner, err := repo.GetByID(multipass.OwnerUUID)
+		if err != nil {
+			return err
+		}
+		if owner.TenantUUID != multipass.TenantUUID {
+			return ErrNotFound
+		}
+	}
+
+	if multipass.OwnerType == model.MultipassOwnerServiceAccount {
+		repo := NewServiceAccountRepository(r.db)
+		owner, err := repo.GetByID(multipass.OwnerUUID)
+		if err != nil {
+			return err
+		}
+		if owner.TenantUUID != multipass.TenantUUID {
+			return ErrNotFound
+		}
+	}
+
+	return nil
+}
+
+func (r *MultipassRepository) Create(mp *model.Multipass) error {
+	err := r.validate(mp)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Insert(model.MultipassType, mp)
+}
+
+func (r *MultipassRepository) Delete(filter *model.Multipass) error {
+	err := r.validate(filter)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(model.MultipassType, filter)
+}
+
+func (r *MultipassRepository) Get(filter *model.Multipass) (*model.Multipass, error) {
+	err := r.validate(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.GetByID(filter.UUID)
+}
+
+func (r *MultipassRepository) GetByID(id string) (*model.Multipass, error) {
+	raw, err := r.db.First(model.MultipassType, model.PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	multipass := raw.(*model.Multipass)
+	return multipass, nil
+}
+
+func (r *MultipassRepository) List(filter *model.Multipass) ([]string, error) {
+	err := r.validate(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := r.db.Get(model.MultipassType, model.OwnerForeignPK, filter.OwnerUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		mp := raw.(*model.Multipass)
+		ids = append(ids, mp.UUID)
+	}
+	return ids, nil
+}
+
+type UserRepository struct {
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+}
+
+func NewUserRepository(tx *io.MemoryStoreTxn) *UserRepository {
+	return &UserRepository{db: tx}
+}
+
+func (r *UserRepository) Create(user *model.User) error {
+	tenantRepo := NewTenantRepository(r.db)
+	tenant, err := tenantRepo.GetByID(user.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	user.Version = model.NewResourceVersion()
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+
+	err = r.db.Insert(model.UserType, user)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *UserRepository) GetByID(id string) (*model.User, error) {
+	raw, err := r.db.First(model.UserType, model.PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	user := raw.(*model.User)
+	return user, nil
+}
+
+func (r *UserRepository) Update(user *model.User) error {
+	stored, err := r.GetByID(user.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != user.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != user.Version {
+		return ErrVersionMismatch
+	}
+	user.Version = model.NewResourceVersion()
+
+	// Update
+
+	tenantRepo := NewTenantRepository(r.db)
+	tenant, err := tenantRepo.GetByID(user.TenantUUID)
+	if err != nil {
+		return err
+	}
+	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
+
+	err = r.db.Insert(model.UserType, user)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *UserRepository) Delete(id string) error {
+	user, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(model.UserType, user)
+}
+
+func (r *UserRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(model.UserType, model.TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*model.User)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
+}
+
+func (r *UserRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(model.UserType, model.TenantForeignPK, tenantUUID)
+	return err
+}
+
+func (r *UserRepository) Iter(action func(*model.User) (bool, error)) error {
+	iter, err := r.db.Get(model.UserType, model.PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*model.User)
+		next, err := action(t)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}
