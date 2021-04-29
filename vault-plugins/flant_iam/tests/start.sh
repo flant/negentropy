@@ -1,36 +1,52 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
+ci_mode=""
+if [[ "$1" == "--ci-mode" ]]; then
+  ci_mode="true"
+fi
 
 set -eo pipefail
-set -x
 
-pushd ..
-env OS=linux make build
-popd
+if [[ "${ci_mode}x" == "x" ]]; then
+  set -x
 
-docker stop dev-vault 2>/dev/null || true
-docker rm dev-vault 2>/dev/null || true
+  pushd ..
+  env OS=linux make build
+  popd
+
+  docker stop dev-vault 2>/dev/null || true
+  docker rm dev-vault 2>/dev/null || true
+fi
 
 id=$(docker run \
   --cap-add=IPC_LOCK \
   -d \
   -p 8200:8200 \
-  -v "$(pwd)/../build:/vault/plugins" \
-  -v "$(pwd)/data:/vault/testdata" \
   --name=dev-vault --rm \
   -e VAULT_API_ADDR=http://127.0.0.1:8200 \
   -e VAULT_ADDR=http://127.0.0.1:8200 \
   -e VAULT_TOKEN=root \
   -e VAULT_LOG_LEVEL=debug \
-  vault \
-  server -dev -dev-plugin-dir=/vault/plugins -dev-root-token-id=root)
+  -e VAULT_DEV_ROOT_TOKEN_ID=root \
+  -v "$(pwd)/../build:/vault/plugins" \
+  -v "$(pwd)/data:/vault/testdata" \
+  vault:1.7.1 \
+  server -dev -dev-plugin-dir=/vault/plugins)
+
+echo "Sleep a second or more ..." && sleep 5 # TODO(nabokihms): use container healthchecks
+if [[ "${ci_mode}x" != "x" ]]; then
+  docker logs dev-vault 2>&1
+fi
 
 docker exec "$id" sh -c "
-sleep 1 \
-&& vault secrets enable -path=flant_iam flant_iam \
+vault secrets enable -path=flant_iam vault-plugin-flant-iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
-docker logs -f  dev-vault
 
+
+if [[ "${ci_mode}x" == "x" ]]; then
+  docker logs -f  dev-vault
+fi
 # docker exec -it dev-vault sh
 
 # make enable
