@@ -35,7 +35,7 @@ func TestSendItem(t *testing.T) {
 	plugin := kafka.PluginConfig{
 		SelfTopicName: "root_source",
 	}
-	var d1, _ = json.Marshal(config)
+	d1, _ := json.Marshal(config)
 	d2, _ := json.Marshal(plugin)
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: key, Value: d1})
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: pl, Value: d2})

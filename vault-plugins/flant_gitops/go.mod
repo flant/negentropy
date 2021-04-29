@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-hclog v0.16.0 // indirect
+	github.com/hashicorp/go-hclog v0.16.0
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
