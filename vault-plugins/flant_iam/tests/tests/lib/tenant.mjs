@@ -27,7 +27,7 @@ export class TenantAPI {
     }
 
     createPriveleged(payload, opts) {
-        return this.api.createPriveleged({ payload, opts })
+        return this.api.createPrivileged({ payload, opts })
     }
 
     read(id, opts) {

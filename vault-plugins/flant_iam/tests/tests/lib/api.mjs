@@ -66,7 +66,7 @@ export class API {
         })
     }
 
-    createPriveleged({ params = {}, query = {}, payload, opts = {} } = {}) {
+    createPrivileged({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.privileged(params, query)
         return this.client.post(endpoint, payload, {
             ...expectStatus(201),
