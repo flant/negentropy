@@ -167,11 +167,11 @@ func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMe
 		return nil
 	}
 
-	if len(msgs) > 1 && sourceInput == nil { // only single output
-		return mb.sendMessages(msgs, sourceInput)
+	if len(msgs) == 1 && sourceInput == nil { // only single message without source
+		return mb.sendSingleMessage(msgs[0])
 	}
 
-	return mb.sendSingleMessage(msgs[0])
+	return mb.sendMessages(msgs, sourceInput)
 }
 
 func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage) error {
