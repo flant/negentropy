@@ -3,7 +3,7 @@ module github.com/flant/negentropy/vault-plugins/flant_iam_auth
 go 1.16
 
 require (
-	github.com/flant/negentropy/vault-plugins/shared v0.0.0
+	github.com/flant/negentropy/vault-plugins/shared v0.0.1
 	github.com/go-test/deep v1.0.2
 	github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 	github.com/hashicorp/errwrap v1.0.0
@@ -20,4 +20,4 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1
 )
 
-replace github.com/flant/negentropy/vault-plugins/shared v0.0.0 => ../shared
+replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared
