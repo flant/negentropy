@@ -16,7 +16,7 @@ import (
 )
 
 func TestSendItem(t *testing.T) {
-	// t.Skip("manual or integration test. Requires kafka")
+	t.Skip("manual or integration test. Requires kafka")
 	storage := &logical.InmemStorage{}
 	key := "kafka.config"
 	pl := "kafka.plugin.config"

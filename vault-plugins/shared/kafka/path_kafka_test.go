@@ -90,6 +90,7 @@ func TestPublicKeyGet(t *testing.T) {
 
 func TestConfigureAccess(t *testing.T) {
 	t.Run("invalid certificate", func(t *testing.T) {
+		t.Skip("certificate is disabled for some time")
 		b, storage := generateBackend(t)
 		tb := b.(testBackend)
 		priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
