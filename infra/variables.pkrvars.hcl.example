@@ -10,5 +10,18 @@ gcp_vault_conf_conf_bucket = "[VAULT_CONF_CONF_FULL_BUCKET_NAME]"
 # Will be used as "hostname.gcp_vault_auth_bucket_trailer".
 gcp_vault_auth_bucket_trailer = "[VAULT_AUTH_BUCKET_NAME_TRAILER]"
 # Variables to determine where are builder instances will run.
+## Project will be also used for kafka CA request.
 gcp_project = "[PROJECT]"
 gcp_zone = "[ZONE]"
+# Will be used as "hostname.kafka_main_domain".
+kafka_main_domain = "[KAFKA_INSTANCES_SUBDOMAIN]"
+# Kafka server key password.
+kafka_server_key_pass = "[KAFKA_SERVER_KEY_PASSWORD]"
+# Bucket to store cert update lockfile.
+kafka_bucket = "[KAFKA_FULL_BUCKET_NAME]"
+# Name of root CA for kafka SSL.
+kafka_gcp_ca_name = "[KAFKA_GCP_CA_NAME]"
+# Root CA location (aka gcp region).
+kafka_gcp_ca_location = "[KAFKA_GCP_CA_LOCATION]"
+# How many replicas to configure in zookeeper and kafka configuration files.
+kafka_replicas = "[KAFKA_REPLICAS_NUMBER]"

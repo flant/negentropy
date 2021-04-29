@@ -10,13 +10,11 @@ EOF
 
 # Make tmpfs
 rc-service syslog stop
-echo "tmpfs /tmp tmpfs defaults,size=100M 0 0" >> /etc/fstab
+echo "tmpfs /tmp tmpfs defaults,size=200M 0 0" >> /etc/fstab
 echo "tmpfs /var/log tmpfs defaults,size=200M 0 0" >> /etc/fstab
 echo "tmpfs /var/lib tmpfs defaults,size=1000M 0 0" >> /etc/fstab
-echo "tmpfs /opt tmpfs defaults,size=100M 0 0" >> /etc/fstab
 rm -rf /var/log && mkdir /var/log && mount /var/log
 rm -rf /var/lib && mkdir /var/lib && mount /var/lib
-rm -rf /opt && mkdir /opt && mount /opt
 rc-service syslog start
 
 # Create a symlink to /tmp for /etc/resolv.conf

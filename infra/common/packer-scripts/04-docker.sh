@@ -4,7 +4,7 @@ apk update
 apk add docker
 rc-update add docker boot
 
-# Let docker generate key.json
+# Let Docker to generate key.json and create /opt/containerd.
 rc-service docker start && sleep 5 && rc-service docker stop
 
 cat <<'EOF' > /etc/docker/daemon.json

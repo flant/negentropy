@@ -38,7 +38,8 @@ depend() {
 }
 
 start_pre() {
-	checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log"
+	checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
+    && /bin/update-hostname
 }
 
 reload() {
@@ -59,6 +60,5 @@ setcap cap_ipc_lock=+ep /bin/vault
 cat <<'EOF' > /etc/conf.d/vault
 rc_ulimit="-n 65536"
 EOF
-chmod +x /etc/local.d/ulimit.start && rc-update add local default
 
 echo "export VAULT_ADDR='http://127.0.0.1:8200'" > /root/.profile
