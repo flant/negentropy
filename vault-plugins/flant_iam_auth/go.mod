@@ -3,15 +3,17 @@ module github.com/flant/negentropy/vault-plugins/flant_iam_auth
 go 1.16
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
 	github.com/go-test/deep v1.0.2
 	github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-hclog v0.14.1
+	github.com/hashicorp/go-memdb v1.3.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
 	github.com/hashicorp/vault/sdk v0.2.0
-	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/mitchellh/pointerstructure v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
@@ -21,3 +23,5 @@ require (
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared
+
+replace github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0 => ../flant_iam

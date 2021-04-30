@@ -1,16 +1,14 @@
 package io
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
-	"github.com/segmentio/kafka-go"
 
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type MemoryStorableObject interface {
@@ -21,8 +19,8 @@ type MemoryStorableObject interface {
 
 type KafkaSource interface {
 	Restore(txn *memdb.Txn) error
-	// Run(ms MemoryStore) // not implemented yet
-	// Stop()
+	Run(ms *MemoryStore)
+	// Stop() // TODO: stop on vault stop. Maybe its better to do through context
 }
 
 type KafkaDestination interface {
@@ -34,7 +32,7 @@ type KafkaDestination interface {
 type MemoryStore struct {
 	*memdb.MemDB
 
-	kafkaConnection *sharedkafka.MessageBroker
+	kafkaConnection *kafka.MessageBroker
 
 	kafkaMutex          sync.RWMutex
 	kafkaSources        []KafkaSource
@@ -60,11 +58,17 @@ func (ms *MemoryStore) Txn(write bool) *MemoryStoreTxn {
 	return &MemoryStoreTxn{mTxn, ms}
 }
 
-func (mst *MemoryStoreTxn) commitWithBlackjack() error {
+func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInputMessage) error {
 	changes := mst.Txn.Changes()
+
+	mst.memstore.logger.Debug("1", "changes", changes)
 
 	kafkaMessages := make([]kafka.Message, 0)
 	for _, change := range changes {
+		if !mst.memstore.kafkaConnection.Configured() {
+			mst.memstore.logger.Warn("not configure")
+			continue
+		}
 		mst.memstore.kafkaMutex.RLock()
 		for _, dest := range mst.memstore.kafkaDestinations {
 			var msgs []kafka.Message
@@ -85,6 +89,7 @@ func (mst *MemoryStoreTxn) commitWithBlackjack() error {
 				msgs, err = dest.ProcessObject(mst.memstore, mst.Txn, object)
 			}
 			if err != nil {
+				mst.memstore.logger.Debug("HERRERER", "ere", err)
 				mst.memstore.kafkaMutex.RUnlock()
 				return err
 			}
@@ -93,19 +98,23 @@ func (mst *MemoryStoreTxn) commitWithBlackjack() error {
 		mst.memstore.kafkaMutex.RUnlock()
 	}
 
-	// TODO: проверка атомарности
-	if mst.memstore.kafkaConnection.Configured() && len(kafkaMessages) > 0 {
-		wr := mst.memstore.kafkaConnection.GetKafkaWriter()
+	// TODO: atomic check
 
-		return wr.WriteMessages(context.Background(), kafkaMessages...)
+	if len(kafkaMessages) > 0 {
+		var sm *kafka.SourceInputMessage
+		if len(sourceMsg) > 0 {
+			sm = sourceMsg[0]
+		}
+		mst.memstore.logger.Info("Messages count", "count", len(kafkaMessages), "source", sm)
+		return mst.memstore.kafkaConnection.SendMessages(kafkaMessages, sm)
 	}
 
 	return nil
 }
 
-func (mst *MemoryStoreTxn) Commit() error {
+func (mst *MemoryStoreTxn) Commit(sourceMsg ...*kafka.SourceInputMessage) error {
 	// все посчитать!
-	err := mst.commitWithBlackjack()
+	err := mst.commitWithSourceInput(sourceMsg...)
 	if err != nil {
 		mst.memstore.logger.Error("transaction aborted", err)
 		mst.Txn.Abort()
@@ -120,7 +129,7 @@ func (mst *MemoryStoreTxn) Abort() {
 	mst.Txn.Abort()
 }
 
-func NewMemoryStore(schema *memdb.DBSchema, conn *sharedkafka.MessageBroker) (*MemoryStore, error) {
+func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryStore, error) {
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
 		return nil, err
@@ -144,6 +153,20 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 	ms.kafkaMutex.Lock()
 	ms.kafkaSources = append(ms.kafkaSources, s)
 	ms.kafkaMutex.Unlock()
+
+	if ms.kafkaConnection.Configured() {
+		go s.Run(ms)
+	}
+}
+
+func (ms *MemoryStore) ReinitializeKafka() {
+	ms.kafkaMutex.RLock()
+	for _, s := range ms.kafkaSources {
+		go s.Run(ms)
+	}
+	ms.kafkaMutex.RUnlock()
+	// TODO: maybe we dont need it here
+	go ms.Restore() // nolint: errcheck
 }
 
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
@@ -153,7 +176,7 @@ func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
 	ms.kafkaMutex.Unlock()
 }
 
-func (ms *MemoryStore) GetKafkaBroker() *sharedkafka.MessageBroker {
+func (ms *MemoryStore) GetKafkaBroker() *kafka.MessageBroker {
 	return ms.kafkaConnection
 }
 

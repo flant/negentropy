@@ -65,7 +65,7 @@ func TestPublicKeyGet(t *testing.T) {
 			dd, _ := json.Marshal(tb.broker.config)
 			err = storage.Put(cctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: dd, SealWrap: true})
 			require.NoError(t, err)
-			mb, err := NewMessageBroker(cctx, storage, "test")
+			mb, err := NewMessageBroker(cctx, storage)
 			require.NoError(t, err)
 
 			tb.broker = mb
@@ -90,6 +90,7 @@ func TestPublicKeyGet(t *testing.T) {
 
 func TestConfigureAccess(t *testing.T) {
 	t.Run("invalid certificate", func(t *testing.T) {
+		t.Skip("certificate is disabled for some time")
 		b, storage := generateBackend(t)
 		tb := b.(testBackend)
 		priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

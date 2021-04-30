@@ -15,7 +15,6 @@ require (
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/werf/logboek v0.5.4
 	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210428180238-a92bb5c827ac
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
 	golang.org/x/text v0.3.5 // indirect
 )
 

@@ -31,8 +31,7 @@ func (r Replica) ObjId() string {
 }
 
 func (r *Replica) Unmarshal(data []byte) error {
-	err := json.Unmarshal(data, r)
-	return err
+	return json.Unmarshal(data, r)
 }
 
 func ReplicaSchema() *memdb.DBSchema {

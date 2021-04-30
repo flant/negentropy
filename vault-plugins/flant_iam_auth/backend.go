@@ -13,13 +13,21 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
-	b := backend()
+	b, err := backend(c)
+	if err != nil {
+		return nil, err
+	}
 	if err := b.SetupBackend(ctx, c); err != nil {
 		return nil, err
 	}
@@ -43,7 +51,7 @@ type flantIamAuthBackend struct {
 	accessVaultController *client.VaultClientController
 }
 
-func backend() *flantIamAuthBackend {
+func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	const authSourcePrefix = "source/"
 	const authMethodPrefix = "method/"
 	b := new(flantIamAuthBackend)
@@ -56,6 +64,31 @@ func backend() *flantIamAuthBackend {
 	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
 		return b.Logger()
 	})
+
+	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
+	if err != nil {
+		return nil, err
+	}
+
+	schema, err := model.GetSchema()
+	if err != nil {
+		return nil, err
+	}
+
+	storage, err := sharedio.NewMemoryStore(schema, mb)
+	if err != nil {
+		return nil, err
+	}
+	storage.SetLogger(conf.Logger)
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb))
+	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb))
+
+	err = storage.Restore()
+	if err != nil {
+		return nil, err
+	}
+
+	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
@@ -102,11 +135,12 @@ func backend() *flantIamAuthBackend {
 				client.PathConfigure(b.accessVaultController),
 			},
 			pathOIDC(b),
+			kafkaPaths(b, storage),
 		),
 		Clean: b.cleanup,
 	}
 
-	return b
+	return b, nil
 }
 
 func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
