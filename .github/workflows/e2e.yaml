@@ -1,13 +1,15 @@
-name: Flant IAM
+name: e2e tests
 
 on:
   push:
     branches:
       - main
   pull_request:
+    types: [labeled]
 
 jobs:
-  build:
+  build-and-test:
+    if: (github.event_name == 'push' && github.event.ref == 'refs/heads/master') || (github.event_name == 'pull_request' && github.event.label.name == '/run-e2e-tests')
     name: Build and Test
     runs-on: ubuntu-latest
     env:
@@ -15,7 +17,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: vault-plugins/flant_iam/tests
+        working-directory: vault-plugins/
 
     steps:
       - name: Set up Go
@@ -33,16 +35,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Build
-        run: make build
-        working-directory: vault-plugins/flant_iam
+        run: bash dev-build.sh flant_iam
+
+      - name: Setup Vault
+        run: bash dev-start.sh flant_iam
 
       - name: Setup node 12
         uses: actions/setup-node@v2
         with:
           node-version: 12.x
 
-      - name: Setup Vault
-        run: bash start.sh --ci-mode
-
       - name: Tests
         run: yarn && yarn test
+        working-directory: vault-plugins/flant_iam/tests

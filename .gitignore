@@ -17,4 +17,7 @@
 infra/**/packer_cache
 infra/**/output
 variables.pkrvars.hcl
-/vault-plugins/build/
+
+# Plugins
+vault-plugins/build/
+vault-plugins/flant_iam/tests/data/*
