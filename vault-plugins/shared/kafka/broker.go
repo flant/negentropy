@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -140,6 +141,48 @@ type BrokerConfig struct {
 
 	EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
 	EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
+}
+
+type unmarshalablePrivateKey ecdsa.PrivateKey
+
+func (un unmarshalablePrivateKey) toECDSA() *ecdsa.PrivateKey {
+	pk := ecdsa.PrivateKey(un)
+	return &pk
+}
+
+func (un *unmarshalablePrivateKey) UnmarshalJSON(b []byte) error {
+	var a ecdsa.PrivateKey
+	_ = json.Unmarshal(b, &a) // cannot unmarshal only curve here
+
+	*un = unmarshalablePrivateKey(a)
+	un.Curve = elliptic.P256()
+
+	return nil
+}
+
+func (bc *BrokerConfig) UnmarshalJSON(data []byte) error {
+	s := struct {
+		Endpoints []string `json:"endpoints"`
+
+		ConnectionPrivateKey  unmarshalablePrivateKey `json:"connection_private_key,omitempty"`
+		ConnectionCertificate *x509.Certificate       `json:"connection_cert,omitempty"`
+
+		EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
+		EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
+	}{}
+
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+
+	bc.Endpoints = s.Endpoints
+	bc.ConnectionPrivateKey = s.ConnectionPrivateKey.toECDSA()
+	bc.ConnectionCertificate = s.ConnectionCertificate
+	bc.EncryptionPrivateKey = s.EncryptionPrivateKey
+	bc.EncryptionPublicKey = s.EncryptionPublicKey
+
+	return nil
 }
 
 // PluginConfig plugin configuration
