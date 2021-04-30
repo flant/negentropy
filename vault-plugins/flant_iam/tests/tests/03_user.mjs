@@ -69,6 +69,7 @@ describe("User", function () {
         })
         const uid = created.data.uuid
         const generated = {
+            email: "",
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
