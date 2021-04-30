@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
+	github.com/golangci/golangci-lint v1.38.0 // indirect
 	github.com/google/uuid v1.0.0
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
