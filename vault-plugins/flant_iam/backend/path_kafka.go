@@ -61,7 +61,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 
 	kb.broker.PluginConfig.SelfTopicName = topicName.(string)
-	err := kb.broker.CreateTopic(kb.broker.PluginConfig.SelfTopicName) // TODO: ctx
+	err := kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName)
 	if err != nil {
 		return nil, err
 	}

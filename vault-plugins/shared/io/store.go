@@ -165,7 +165,7 @@ func (ms *MemoryStore) ReinitializeKafka() {
 		go s.Run(ms)
 	}
 	ms.kafkaMutex.RUnlock()
-	// TODO: maybe we dont need it here
+	// TODO: maybe we dont need it here or need to stop previous
 	go ms.Restore() // nolint: errcheck
 }
 

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -99,7 +100,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 		return nil, logical.CodedError(http.StatusBadRequest, "root_public_key required")
 	}
 
-	rootPublicKey := strings.ReplaceAll(rootPublicKeyRaw.(string), "\\n", "\n")
+	rootPublicKey := strings.ReplaceAll(strings.TrimSpace(rootPublicKeyRaw.(string)), "\\n", "\n")
 
 	pubkey, err := parsePubkey(rootPublicKey)
 	if err != nil {
@@ -112,7 +113,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 		peerKeysStr := peerKeysRaw.([]string)
 
 		for _, pks := range peerKeysStr {
-			pub, err := parsePubkey(pks)
+			pub, err := parsePubkey(strings.TrimSpace(pks))
 			if err != nil {
 				return nil, err
 			}
@@ -133,7 +134,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 	kb.broker.PluginConfig.PublishQuotaUsage = data.Get("publish_quota_usage").(bool)
 
-	err = kb.broker.CreateTopic(kb.broker.PluginConfig.SelfTopicName)
+	err = kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName)
 	if err != nil {
 		return nil, err
 	}
@@ -156,6 +157,9 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 
 func parsePubkey(data string) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode([]byte(data))
+	if block == nil {
+		return nil, errors.New("key can not be parsed")
+	}
 	pubkey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
 		return nil, err

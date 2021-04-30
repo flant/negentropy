@@ -43,7 +43,7 @@ func TestSendItem(t *testing.T) {
 	mb, err := kafka.NewMessageBroker(context.TODO(), storage)
 	require.NoError(t, err)
 
-	err = mb.CreateTopic("root_source")
+	err = mb.CreateTopic(context.TODO(), "root_source")
 	require.NoError(t, err)
 
 	ss := NewSelfKafkaDestination(mb)

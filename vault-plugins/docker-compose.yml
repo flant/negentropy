@@ -26,16 +26,16 @@ services:
     depends_on:
       - zookeeper
 
-  # gui:
-  #   image: provectuslabs/kafka-ui:latest
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - KAFKA_CLUSTERS_0_NAME=local
-  #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
-  #     - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
-  #   depends_on:
-  #     - kafka
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    restart: "no"
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka"
 
   vault:
     image: vault:1.7.1
