@@ -19,14 +19,12 @@ import (
 type SelfKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
-	topic     string
 }
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
-		topic:     "root_source",
 	}
 }
 

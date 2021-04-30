@@ -11,14 +11,12 @@ import (
 type SelfKafkaDestination struct {
 	mb        *kafka.MessageBroker
 	encrypter *kafka.Encrypter
-	topic     string
 }
 
 func NewSelfKafkaDestination(mb *kafka.MessageBroker) *SelfKafkaDestination {
 	return &SelfKafkaDestination{
 		mb:        mb,
 		encrypter: kafka.NewEncrypter(),
-		topic:     mb.PluginConfig.SelfTopicName,
 	}
 }
 
@@ -30,7 +28,7 @@ func (mkd *SelfKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 	if !mkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := mkd.simpleObjectKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey(), mkd.mb.EncryptionPublicKey())
+	msg, err := mkd.simpleObjectKafker(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey(), mkd.mb.EncryptionPublicKey())
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +40,7 @@ func (mkd *SelfKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb
 	if !mkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := mkd.simpleObjectDeleteKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey())
+	msg, err := mkd.simpleObjectDeleteKafker(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err
 	}
