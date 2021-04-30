@@ -47,9 +47,7 @@ func newBackend() (*backend, error) {
 		},
 		BackendType: logical.TypeLogical,
 		Paths: framework.PathAppend(
-			[]*framework.Path{
-				pathConfigure(b),
-			},
+			configurePaths(b),
 		),
 	}
 
