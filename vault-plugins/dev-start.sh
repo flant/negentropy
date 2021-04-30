@@ -20,25 +20,6 @@ function connect_plugins() {
   docker-compose exec -T vault sh -c "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$auth_pubkey\""
 }
 
-function user_example() {
-  tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
-  docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
-}
-
-
-if [ "$1" == "connect_plugins" ]; then
-  connect_plugins
-  exit 0;
-elif [ "$1" == "user_example" ]; then
-  user_example
-  exit 0;
-fi
-
-docker-compose up -d
-sleep 3
-
-plugins=(flant_iam flant_iam_auth flant_gitops)
-
 function activate_plugin() {
   plugin="$1"
 
@@ -49,9 +30,33 @@ function activate_plugin() {
   fi
 }
 
+function user_example() {
+  tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
+  docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
+}
 
+specified_plugin=""
+if [ "$1" == "connect_plugins" ]; then
+  connect_plugins
+  exit 0;
+elif [ "$1" == "user_example" ]; then
+  user_example
+  exit 0;
+else
+  specified_plugin="$1"
+fi
+
+docker-compose up -d
+sleep 3
+
+plugins=(flant_iam flant_iam_auth flant_gitops)
 
 docker-compose exec -T vault sh -c "vault token create -orphan -policy=root -field=token > /vault/testdata/token"
+
+if [ -n "$specified_plugin" ]; then
+  	activate_plugin "$specified_plugin"
+  	exit 0;
+fi
 
 for i in "${plugins[@]}"
 do
