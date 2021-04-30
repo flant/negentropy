@@ -123,12 +123,12 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 	for {
 		msg, err := rd.ReadMessage(-1)
 		if err != nil {
-			// return err // TODO: err
+			log.Println("Error reading message", err)
+			continue // TODO: what to do?
 		}
 
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
-			// TODO: ??
 			// return fmt.Errorf("key has wong format: %s", string(msg.Key))
 			continue
 		}

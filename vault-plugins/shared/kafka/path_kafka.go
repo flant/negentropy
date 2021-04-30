@@ -22,55 +22,6 @@ const (
 	PluginConfigPath = "kafka.plugin.config"
 )
 
-func NewMessageBroker(ctx context.Context, storage logical.Storage) (*MessageBroker, error) {
-	mb := &MessageBroker{}
-
-	// load encryption private key
-	se, err := storage.Get(ctx, kafkaConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	if se != nil {
-		var config BrokerConfig
-
-		err = json.Unmarshal(se.Value, &config)
-		if err != nil {
-			return nil, err
-		}
-
-		mb.config = config
-	}
-
-	se, err = storage.Get(ctx, PluginConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	if se != nil {
-		var config PluginConfig
-
-		err = json.Unmarshal(se.Value, &config)
-		if err != nil {
-			return nil, err
-		}
-
-		mb.PluginConfig = config
-	}
-
-	mb.CheckConfig()
-
-	return mb, nil
-}
-
-func (mb *MessageBroker) CheckConfig() {
-	if len(mb.config.Endpoints) > 0 &&
-		mb.config.EncryptionPublicKey != nil &&
-		mb.config.EncryptionPrivateKey != nil &&
-		mb.PluginConfig.SelfTopicName != "" {
-
-		mb.isConfigured = true
-	}
-}
-
 func (mb *MessageBroker) handlePublicKeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if mb.config.EncryptionPublicKey == nil {
 		return nil, logical.CodedError(http.StatusNotFound, "public key does not exist. Run /kafka/configure_access first")
@@ -148,23 +99,23 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 
 func (mb *MessageBroker) handleGenerateCSR(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	force := data.Get("force").(bool)
-	// enforce rotation
-	if force {
-		priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
-		}
-		mb.config.ConnectionPrivateKey = priv
-	}
 
-	// first run
 	var warnings []string
-	if mb.config.ConnectionPrivateKey == nil {
+	if mb.config.ConnectionPrivateKey == nil || force {
 		priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 		}
 		mb.config.ConnectionPrivateKey = priv
+
+		d, err := json.Marshal(mb.config)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+		}
+		err = req.Storage.Put(ctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: d, SealWrap: true})
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		}
 	} else if !force {
 		warnings = []string{"Private key is already exist. Add ?force=true param to recreate it"}
 	}

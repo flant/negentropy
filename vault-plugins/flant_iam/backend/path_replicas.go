@@ -115,7 +115,7 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 		return nil, logical.CodedError(http.StatusBadRequest, "public_key required")
 	}
 
-	publicKeyStr = strings.ReplaceAll(publicKeyStr, "\\n", "\n")
+	publicKeyStr = strings.ReplaceAll(strings.TrimSpace(publicKeyStr), "\\n", "\n")
 
 	pb, _ := pem.Decode([]byte(publicKeyStr))
 	pk, err := x509.ParsePKCS1PublicKey(pb.Bytes)
@@ -137,7 +137,7 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	}
 
 	// create topic for replica
-	err = b.createTopicForReplica(replicaName)
+	err = b.createTopicForReplica(ctx, replicaName)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 	}
@@ -209,7 +209,7 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 	}
 
 	replica := raw.(*model.Replica)
-	err = b.deleteTopicForReplica(replica.Name)
+	err = b.deleteTopicForReplica(ctx, replica.Name)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 	}
@@ -234,10 +234,10 @@ func (b replicaBackend) removeReplicaFromReplications(replica model.Replica) {
 	b.storage.RemoveKafkaDestination(replica.Name)
 }
 
-func (b replicaBackend) createTopicForReplica(replicaName string) error {
-	return b.storage.GetKafkaBroker().CreateTopic("root_source." + replicaName)
+func (b replicaBackend) createTopicForReplica(ctx context.Context, replicaName string) error {
+	return b.storage.GetKafkaBroker().CreateTopic(ctx, "root_source."+replicaName)
 }
 
-func (b replicaBackend) deleteTopicForReplica(replicaName string) error {
-	return b.storage.GetKafkaBroker().DeleteTopic("root_source." + replicaName)
+func (b replicaBackend) deleteTopicForReplica(ctx context.Context, replicaName string) error {
+	return b.storage.GetKafkaBroker().DeleteTopic(ctx, "root_source."+replicaName)
 }
