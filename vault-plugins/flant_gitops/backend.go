@@ -10,11 +10,7 @@ import (
 
 type backend struct {
 	*framework.Backend
-
-	BackendCtx       context.Context
-	BackendCtxCancel context.CancelFunc
-
-	ConvergeTasks *tasks.VaultBackendTasks
+	TaskQueueBackend *tasks.Backend
 }
 
 var _ logical.Factory = Factory
@@ -33,21 +29,16 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 }
 
 func newBackend() (*backend, error) {
-	backendCtx, backendCtxCancel := context.WithCancel(context.Background())
-
 	b := &backend{
-		BackendCtx:       backendCtx,
-		BackendCtxCancel: backendCtxCancel,
-		ConvergeTasks:    tasks.NewVaultBackendTasks(backendCtx, nil),
+		TaskQueueBackend: tasks.NewBackend(),
 	}
 
 	b.Backend = &framework.Backend{
-		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
-			return Converge(b, ctx, req)
-		},
-		BackendType: logical.TypeLogical,
+		PeriodicFunc: b.TaskQueueBackend.PeriodicFunc(b.periodicTask),
+		BackendType:  logical.TypeLogical,
 		Paths: framework.PathAppend(
 			configurePaths(b),
+			b.TaskQueueBackend.Paths(),
 		),
 	}
 
