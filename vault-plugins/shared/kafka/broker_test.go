@@ -48,5 +48,4 @@ func TestMarshalingBrokerConfig(t *testing.T) {
 		assert.Equal(t, storedConfig.EncryptionPublicKey, newConfig.EncryptionPublicKey)
 		assert.Equal(t, storedConfig.EncryptionPrivateKey, newConfig.EncryptionPrivateKey)
 	})
-
 }
