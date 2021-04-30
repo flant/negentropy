@@ -58,7 +58,9 @@ Full example see in `examples/` dir
 
 For testing use commands
 
-`make start` - it starts vault
+`build_and_start` - it starts vault
 
 `make test` - it is runs initialisations plugins and roles 
 and call two route witch call vault api with initialized client
+
+Adding configuration example see in examples/Makefile in target `write_access_conf`

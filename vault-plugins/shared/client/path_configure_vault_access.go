@@ -17,17 +17,17 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 		Pattern: `configure_vault_access$`,
 
 		Fields: map[string]*framework.FieldSchema{
-			"vault_api_url": {
+			"vault_addr": {
 				Type:        framework.TypeString,
 				Description: `Url for connect to vault api`,
 				Required:    true,
 			},
-			"vault_api_host": {
+			"vault_tls_server_name": {
 				Type:        framework.TypeString,
 				Description: `Connection host. Uses as "Host" header in vault client`,
 				Required:    true,
 			},
-			"vault_api_ca": {
+			"vault_cacert": {
 				Type:        framework.TypeString,
 				Description: "Vault CA cert using for TLS verification. In PEM format",
 				Default:     "limbo",
@@ -84,28 +84,28 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 	config := &vaultAccessConfig{}
 	var errResp *logical.Response
 
-	config.APIURL, errResp = backendutils.NotEmptyStringParam(d, "vault_api_url")
+	config.APIURL, errResp = backendutils.NotEmptyStringParam(d, "vault_addr")
 	if errResp != nil {
 		return errResp, nil
 	}
 	_, err := url.ParseRequestURI(config.APIURL)
 	if err != nil {
-		return logical.ErrorResponse("incorrect vault_api_url"), nil
+		return logical.ErrorResponse("incorrect vault_addr"), nil
 	}
 
-	config.APIHost, errResp = backendutils.NotEmptyStringParam(d, "vault_api_host")
+	config.APIHost, errResp = backendutils.NotEmptyStringParam(d, "vault_tls_server_name")
 	if errResp != nil {
 		return errResp, nil
 	}
 
-	config.APICa, errResp = backendutils.NotEmptyStringParam(d, "vault_api_ca")
+	config.APICa, errResp = backendutils.NotEmptyStringParam(d, "vault_cacert")
 	if errResp != nil {
 		config.APICa = ""
 	}
 	if config.APICa != "" {
 		validPem, _ := pem.Decode([]byte(config.APICa))
 		if validPem == nil {
-			return logical.ErrorResponse("incorrect vault_api_ca"), nil
+			return logical.ErrorResponse("incorrect vault_cacert"), nil
 		}
 	}
 
