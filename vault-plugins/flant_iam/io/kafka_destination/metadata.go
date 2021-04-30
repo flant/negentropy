@@ -5,10 +5,9 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 const (
@@ -60,7 +59,6 @@ func (mkd *MetadataKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *m
 	}
 	return []kafka.Message{msg}, nil
 }
-
 
 // TODO: (permanent) fill all object types for metadata queue
 func (mkd *MetadataKafkaDestination) isValidObjectType(objType string) bool {
