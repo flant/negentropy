@@ -19,7 +19,7 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 
 	switch objType {
 	case iam.UserType:
-		table = iam.FeatureFlagType
+		table = iam.UserType
 		user := &iam.User{}
 		user.UUID = objID
 		inputObject = user
@@ -35,21 +35,9 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		entityHandler = func() error {
 			return handler.HandleServiceAccount(sa)
 		}
-	case iam.FeatureFlagType:
-		inputObject = &iam.FeatureFlag{}
-		table = iam.FeatureFlagType
-	case iam.GroupType:
-		inputObject = &iam.Group{}
-		table = iam.GroupType
 	case iam.ProjectType:
 		inputObject = &iam.Project{}
 		table = iam.ProjectType
-	case iam.RoleType:
-		inputObject = &iam.Role{}
-		table = iam.RoleType
-	case iam.RoleBindingType:
-		inputObject = &iam.RoleBinding{}
-		table = iam.RoleBindingType
 	case iam.TenantType:
 		inputObject = &iam.Tenant{}
 		table = iam.TenantType

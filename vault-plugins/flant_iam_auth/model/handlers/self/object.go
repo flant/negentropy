@@ -25,6 +25,7 @@ func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vau
 		saRepo:         iamrepos.NewServiceAccountRepository(txn),
 		memStore: 		memStore,
 		txn:			txn,
+		downstream:     api,
 	}
 }
 
