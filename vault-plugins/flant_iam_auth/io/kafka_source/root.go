@@ -22,14 +22,12 @@ import (
 type RootKafkaSource struct {
 	kf        *kafka.MessageBroker
 	decryptor *kafka.Encrypter
-	topic     string
 }
 
 func NewRootKafkaSource(kf *kafka.MessageBroker) *RootKafkaSource {
 	return &RootKafkaSource{
 		kf:        kf,
 		decryptor: kafka.NewEncrypter(),
-		topic:     kf.PluginConfig.RootTopicName,
 	}
 }
 

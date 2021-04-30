@@ -2,6 +2,7 @@ package kafka_destination
 
 import (
 	"crypto/rsa"
+	"fmt"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -19,7 +20,6 @@ type VaultKafkaDestination struct {
 	mb *kafka.MessageBroker
 
 	pubKey      *rsa.PublicKey
-	topic       string
 	replicaName string
 }
 
@@ -28,9 +28,12 @@ func NewVaultKafkaDestination(mb *kafka.MessageBroker, replica model.Replica) *V
 		commonDest:  newCommonDest(),
 		mb:          mb,
 		pubKey:      replica.PublicKey,
-		topic:       "root_source." + replica.Name,
 		replicaName: replica.Name,
 	}
+}
+
+func (vkd *VaultKafkaDestination) topic() string {
+	return fmt.Sprintf("%s.%s", vkd.mb.PluginConfig.SelfTopicName, vkd.replicaName)
 }
 
 func (vkd *VaultKafkaDestination) ReplicaName() string {
@@ -41,7 +44,7 @@ func (vkd *VaultKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn,
 	if !vkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := vkd.simpleObjectKafker(vkd.topic, obj, vkd.mb.EncryptionPrivateKey(), vkd.pubKey, true)
+	msg, err := vkd.simpleObjectKafker(vkd.topic(), obj, vkd.mb.EncryptionPrivateKey(), vkd.pubKey, true)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +56,7 @@ func (vkd *VaultKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memd
 	if !vkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := vkd.simpleObjectDeleteKafker(vkd.topic, obj, vkd.mb.EncryptionPrivateKey())
+	msg, err := vkd.simpleObjectDeleteKafker(vkd.topic(), obj, vkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err
 	}

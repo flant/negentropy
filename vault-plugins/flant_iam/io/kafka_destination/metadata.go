@@ -2,6 +2,7 @@ package kafka_destination
 
 import (
 	"crypto/rsa"
+	"fmt"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -19,7 +20,6 @@ type MetadataKafkaDestination struct {
 	mb *kafka.MessageBroker
 
 	pubKey      *rsa.PublicKey
-	topic       string
 	replicaName string
 }
 
@@ -28,7 +28,6 @@ func NewMetadataKafkaDestination(mb *kafka.MessageBroker, replica model.Replica)
 		commonDest:  newCommonDest(),
 		mb:          mb,
 		pubKey:      replica.PublicKey,
-		topic:       "root_source." + replica.Name,
 		replicaName: replica.Name,
 	}
 }
@@ -37,11 +36,15 @@ func (mkd *MetadataKafkaDestination) ReplicaName() string {
 	return mkd.replicaName
 }
 
+func (mkd *MetadataKafkaDestination) topic() string {
+	return fmt.Sprintf("%s.%s", mkd.mb.PluginConfig.SelfTopicName, mkd.replicaName)
+}
+
 func (mkd *MetadataKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
 	if !mkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := mkd.simpleObjectKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey(), mkd.pubKey, true)
+	msg, err := mkd.simpleObjectKafker(mkd.topic(), obj, mkd.mb.EncryptionPrivateKey(), mkd.pubKey, true)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +56,7 @@ func (mkd *MetadataKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *m
 	if !mkd.isValidObjectType(obj.ObjType()) {
 		return nil, nil
 	}
-	msg, err := mkd.simpleObjectDeleteKafker(mkd.topic, obj, mkd.mb.EncryptionPrivateKey())
+	msg, err := mkd.simpleObjectDeleteKafker(mkd.topic(), obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err
 	}

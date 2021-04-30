@@ -19,17 +19,14 @@ import (
 )
 
 type SelfKafkaSource struct {
-	kf *kafka.MessageBroker
-
+	kf        *kafka.MessageBroker
 	decryptor *kafka.Encrypter
-	topic     string
 }
 
 func NewSelfKafkaSource(kf *kafka.MessageBroker) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: kafka.NewEncrypter(),
-		topic:     kf.PluginConfig.SelfTopicName,
 	}
 }
 
@@ -122,7 +119,9 @@ func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 	for {
 		msg, err := rd.ReadMessage(-1)
 		if err != nil {
-			// return err // TODO: err
+			// TODO: shouldn't we fail?
+			log.Println("read message failed", err)
+			continue
 		}
 
 		splitted := strings.Split(string(msg.Key), "/")
