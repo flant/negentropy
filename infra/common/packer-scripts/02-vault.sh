@@ -2,14 +2,8 @@ set -exu
 
 VAULT_VERSION=1.7.0
 
-mkdir -p /tmp/build && \
-cd /tmp/build && \
-wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip && \
-wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_SHA256SUMS && \
-grep vault_${VAULT_VERSION}_linux_amd64.zip vault_${VAULT_VERSION}_SHA256SUMS | sha256sum -c && \
-unzip -d /bin vault_${VAULT_VERSION}_linux_amd64.zip && \
-cd /tmp && \
-rm -rf /tmp/build
+# We are building our own vault binary and packer should upload it before running this script.
+chmod +x /bin/vault
 
 addgroup vault && \
 adduser -S -G vault vault

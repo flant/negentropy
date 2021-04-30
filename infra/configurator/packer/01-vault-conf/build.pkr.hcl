@@ -75,9 +75,15 @@ source "googlecompute" "vault-conf" {
 build {
   sources = ["source.googlecompute.vault-conf"]
 
+  provisioner "file" {
+    source      = "../../../common/vault/vault/pkg/linux_amd64/vault"
+    destination = "/bin/vault"
+  }
+
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
+      "scripts/00-docker-tmpfs.sh",
       "../../../common/packer-scripts/02-vault.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
       "../../../common/packer-scripts/04-docker.sh",

@@ -33,6 +33,18 @@ function base_image_sources_checksum()
   echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}')
 }
 
+# Outputs checksum for `vault-plugins` directory.
+function vault_plugins_checksum()
+{
+  path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+  path=$(dirname "$path")
+  path=$(dirname "$path")
+  path=$(dirname "$path")
+  path="$path/vault-plugins"
+  dir_name=${path##*/}
+  echo "$( cd "$path"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )"
+}
+
 # Calculates cumulative checksum for current image.
 function image_sources_checksum()
 {
@@ -45,6 +57,10 @@ function image_sources_checksum()
   fi
   # Add summarised checksum of all used common-scripts.
   checksums+=("$(used_common_scripts_checksum "$SCRIPT_PATH")")
+  # If we building vault image we need to add vault-plugins checksum.
+  if [[ "$SCRIPT_PATH" == *"vault"* ]]; then
+    checksums+=("$(vault_plugins_checksum)")
+  fi
   # Sort checksums to avoid possible flapping.
   IFS=$'\n' sorted_checksums=($(sort <<<"${checksums[*]}")); unset IFS
   # Join all checksums and output single checksum of all checksums.
