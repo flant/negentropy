@@ -57,8 +57,12 @@ func kafkaPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.CreateOperation: &framework.PathOperation{
+				Summary:  "Setup kafka plugin configuration",
+				Callback: bb.handleKafkaConfiguration,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
-				Summary:  "Setup kafka configuration",
+				Summary:  "Setup kafka plugin configuration",
 				Callback: bb.handleKafkaConfiguration,
 			},
 		},
