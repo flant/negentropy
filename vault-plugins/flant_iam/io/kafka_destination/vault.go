@@ -60,10 +60,17 @@ func (vkd *VaultKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memd
 	return []kafka.Message{msg}, nil
 }
 
-// TODO: fill all object types: User,Tenant,,Project,ServiceAccount,Token,,ServiceAccountPassword,Group,RoleBinding
+// TODO: (permanent) fill all object types for vault queue
 func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
-	case model.UserType, model.TenantType:
+	// TODO Multipass (with sensitive data)
+	// TODO ServiceAccountPassword (with sensitive data)
+	case model.TenantType,
+		model.ProjectType,
+		model.UserType,
+		model.ServiceAccountType,
+		model.RoleBindingType,
+		model.GroupType:
 		return true
 
 	default:
