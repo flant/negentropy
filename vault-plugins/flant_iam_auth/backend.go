@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"

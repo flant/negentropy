@@ -394,6 +394,7 @@ func (r *UserRepository) DeleteByTenant(tenantUUID string) error {
 	_, err := r.db.DeleteAll(model.UserType, model.TenantForeignPK, tenantUUID)
 	return err
 }
+
 func (r *UserRepository) Iter(action func(*model.User) (bool, error)) error {
 	iter, err := r.db.Get(model.UserType, model.PK)
 	if err != nil {

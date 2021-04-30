@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/confluentinc/confluent-kafka-go v1.6.1 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
