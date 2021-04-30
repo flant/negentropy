@@ -63,13 +63,13 @@ func (vkd *VaultKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memd
 // TODO: (permanent) fill all object types for vault queue
 func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
+	// TODO Multipass (with sensitive data)
+	// TODO ServiceAccountPassword (with sensitive data)
 	case model.TenantType,
 		model.ProjectType,
 		model.UserType,
 		model.ServiceAccountType,
-		model.RoleType,
 		model.RoleBindingType,
-		model.FeatureFlagType,
 		model.GroupType:
 		return true
 
