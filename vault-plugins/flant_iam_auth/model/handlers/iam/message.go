@@ -46,7 +46,7 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		return nil
 	}
 
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		// todo delete object
 		return nil
 	}

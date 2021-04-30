@@ -25,9 +25,9 @@ type VaultEntityDownstreamApi struct {
 	mountAccessorGetter *MountAccessorGetter
 }
 
-func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter) *VaultEntityDownstreamApi{
+func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
-		getClient: getClient,
+		getClient:           getClient,
 		mountAccessorGetter: mountAccessorGetter,
 	}
 }

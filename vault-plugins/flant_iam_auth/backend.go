@@ -4,21 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	"sync"
+
+
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
-	"sync"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -43,8 +45,8 @@ type flantIamAuthBackend struct {
 	validators   map[string]*jwt.Validator
 	oidcRequests *cache.Cache
 
-	providerCtx              context.Context
-	providerCtxCancel        context.CancelFunc
+	providerCtx       context.Context
+	providerCtxCancel context.CancelFunc
 
 	tokenController       *njwt.TokenController
 	accessVaultController *client.VaultClientController
@@ -53,15 +55,12 @@ type flantIamAuthBackend struct {
 }
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
-
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 
 	b.tokenController = njwt.NewTokenController()
-	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
-		return b.Logger()
-	})
+	b.accessVaultController = client.NewVaultClientController(hclog.L)
 
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
@@ -73,7 +72,7 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 		return nil, err
 	}
 
-	clientGetter := func() (*api.Client, error){
+	clientGetter := func() (*api.Client, error) {
 		return b.accessVaultController.APIClient()
 	}
 

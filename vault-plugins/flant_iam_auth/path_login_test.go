@@ -17,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2"
 	sqjwt "gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type H map[string]interface{}

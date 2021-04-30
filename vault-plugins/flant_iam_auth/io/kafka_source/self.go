@@ -5,13 +5,13 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"log"
 	"strings"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	self "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
@@ -30,7 +30,7 @@ func NewSelfKafkaSource(kf *kafka.MessageBroker, api *vault.VaultEntityDownstrea
 		kf:        kf,
 		decryptor: kafka.NewEncrypter(),
 		topic:     kf.PluginConfig.SelfTopicName,
-		api:        api,
+		api:       api,
 	}
 }
 

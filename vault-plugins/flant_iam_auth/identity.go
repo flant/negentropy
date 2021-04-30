@@ -3,7 +3,6 @@ package jwtauth
 import (
 	"fmt"
 
-
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"golang.org/x/oauth2"

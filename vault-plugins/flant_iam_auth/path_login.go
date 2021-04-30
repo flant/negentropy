@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"

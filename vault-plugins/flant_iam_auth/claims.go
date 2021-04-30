@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/pointerstructure"
