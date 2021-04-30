@@ -9,6 +9,9 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
 func pathLogin(b *flantIamAuthBackend) *framework.Path {
@@ -42,25 +45,28 @@ func pathLogin(b *flantIamAuthBackend) *framework.Path {
 }
 
 func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	authMethodName := d.Get("method").(string)
+	methodName := d.Get("method").(string)
 
-	if authMethodName == "" {
+	if methodName == "" {
 		return logical.ErrorResponse("missing method"), nil
 	}
 
-	authMethod, err := b.authMethodForRequest(ctx, req, authMethodName)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
 	}
-	if authMethod == nil {
-		return logical.ErrorResponse("method %q could not be found", authMethodName), nil
+	if method == nil {
+		return logical.ErrorResponse("method %q could not be found", methodName), nil
 	}
 
 	var authenticator Authenticator
 
-	switch authMethod.MethodType {
-	case methodTypeJWT:
-		authSource, err := b.authSource(ctx, req, authMethod.Source)
+	switch method.MethodType {
+	case model.MethodTypeJWT:
+		repo := repos.NewAuthSourceRepo(tnx)
+		authSource, err := repo.Get(method.Source)
 		if err != nil {
 			return nil, err
 		}
@@ -68,14 +74,14 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 			return logical.ErrorResponse("not found auth method"), nil
 		}
 
-		jwtValidator, err := b.jwtValidator(authMethodName, authSource)
+		jwtValidator, err := b.jwtValidator(methodName, authSource)
 		if err != nil {
 			return nil, err
 		}
 
 		authenticator = &JwtAuthenticator{
-			authMethod:   authMethod,
-			methodName:   authMethodName,
+			authMethod:   method,
+			methodName:   methodName,
 			logger:       b.Logger(),
 			authSource:   authSource,
 			jwtValidator: jwtValidator,
@@ -84,12 +90,12 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse("unsupported auth method"), nil
 	}
 
-	if len(authMethod.TokenBoundCIDRs) > 0 {
+	if len(method.TokenBoundCIDRs) > 0 {
 		if req.Connection == nil {
 			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
 			return nil, logical.ErrPermissionDenied
 		}
-		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, authMethod.TokenBoundCIDRs) {
+		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, method.TokenBoundCIDRs) {
 			return nil, logical.ErrPermissionDenied
 		}
 	}
@@ -99,9 +105,9 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	authMethod.PopulateTokenAuth(auth)
+	method.PopulateTokenAuth(auth)
 
-	auth.InternalData["method"] = authMethodName
+	auth.InternalData["flantIamAuthMethod"] = methodName
 
 	return &logical.Response{
 		Auth: auth,
@@ -109,24 +115,26 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 }
 
 func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	authMethodName := req.Auth.InternalData["flantIamAuthMethod"].(string)
-	if authMethodName == "" {
+	methodName := req.Auth.InternalData["flantIamAuthMethod"].(string)
+	if methodName == "" {
 		return nil, errors.New("failed to fetch role_name during renewal")
 	}
 
 	// Ensure that the Role still exists.
-	authMethod, err := b.authMethod(ctx, req.Storage, authMethodName)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(methodName)
 	if err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", authMethodName), err)
+		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", methodName), err)
 	}
-	if authMethod == nil {
-		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", authMethodName)
+	if method == nil {
+		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", methodName)
 	}
 
 	resp := &logical.Response{Auth: req.Auth}
-	resp.Auth.TTL = authMethod.TokenTTL
-	resp.Auth.MaxTTL = authMethod.TokenMaxTTL
-	resp.Auth.Period = authMethod.TokenPeriod
+	resp.Auth.TTL = method.TokenTTL
+	resp.Auth.MaxTTL = method.TokenMaxTTL
+	resp.Auth.Period = method.TokenPeriod
 	return resp, nil
 }
 

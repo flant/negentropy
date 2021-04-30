@@ -8,11 +8,13 @@ import (
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -42,28 +44,22 @@ type flantIamAuthBackend struct {
 	validators   map[string]*jwt.Validator
 	oidcRequests *cache.Cache
 
-	providerCtx              context.Context
-	providerCtxCancel        context.CancelFunc
-	authSourceStorageFactory PrefixStorageRequestFactory
-	authMethodStorageFactory PrefixStorageRequestFactory
+	providerCtx       context.Context
+	providerCtxCancel context.CancelFunc
 
 	tokenController       *njwt.TokenController
 	accessVaultController *client.VaultClientController
+
+	storage *sharedio.MemoryStore
 }
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
-	const authSourcePrefix = "source/"
-	const authMethodPrefix = "method/"
 	b := new(flantIamAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	b.authSourceStorageFactory = NewPrefixStorageRequestFactory(authSourcePrefix)
-	b.authMethodStorageFactory = NewPrefixStorageRequestFactory(authMethodPrefix)
 
 	b.tokenController = njwt.NewTokenController()
-	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
-		return b.Logger()
-	})
+	b.accessVaultController = client.NewVaultClientController(hclog.L)
 
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
@@ -75,12 +71,19 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 		return nil, err
 	}
 
+	clientGetter := func() (*api.Client, error) {
+		return b.accessVaultController.APIClient()
+	}
+
+	mountAceessorGetter := vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth")
+	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, mountAceessorGetter)
+
 	storage, err := sharedio.NewMemoryStore(schema, mb)
 	if err != nil {
 		return nil, err
 	}
 	storage.SetLogger(conf.Logger)
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb))
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, entityApi))
 	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb))
 
 	err = storage.Restore()
@@ -89,6 +92,8 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	}
 
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
+
+	b.storage = storage
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
@@ -109,8 +114,6 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 			},
 			SealWrapStorage: []string{
 				"config",
-				authSourcePrefix,
-				authMethodPrefix,
 			},
 		},
 		Paths: framework.PathAppend(
@@ -187,7 +190,7 @@ func (b *flantIamAuthBackend) reset() {
 	b.l.Unlock()
 }
 
-func (b *flantIamAuthBackend) getProvider(config *authSource) (*oidc.Provider, error) {
+func (b *flantIamAuthBackend) getProvider(config *model.AuthSource) (*oidc.Provider, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -205,7 +208,7 @@ func (b *flantIamAuthBackend) getProvider(config *authSource) (*oidc.Provider, e
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
-func (b *flantIamAuthBackend) jwtValidator(methodName string, config *authSource) (*jwt.Validator, error) {
+func (b *flantIamAuthBackend) jwtValidator(methodName string, config *model.AuthSource) (*jwt.Validator, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -217,12 +220,12 @@ func (b *flantIamAuthBackend) jwtValidator(methodName string, config *authSource
 	var keySet jwt.KeySet
 
 	// Configure the key set for the validator
-	switch config.authType() {
-	case JWKS:
+	switch config.AuthType() {
+	case model.JWKS:
 		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
-	case StaticKeys:
+	case model.StaticKeys:
 		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
-	case OIDCDiscovery:
+	case model.OIDCDiscovery:
 		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 	default:
 		return nil, errors.New("unsupported config type")

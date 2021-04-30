@@ -31,6 +31,32 @@ function activate_plugin() {
 }
 
 function user_example() {
+#  unset VAULT_TOKEN
+#  export VAULT_ADDR="http://127.0.0.1:8200"
+#  vault token create -orphan -policy=root -field=token > /tmp/token_aaaa
+#  export VAULT_TOKEN="$(cat /tmp/token_aaaa)"
+#
+#  vault auth enable approle
+#  vault policy write good good.hcl
+#  vault write auth/approle/role/good secret_id_ttl=30m token_ttl=900s token_policies=good
+#  vault write auth/flant_iam_auth/configure_vault_access \
+#	  vault_api_url="http://127.0.0.1:8200" \
+#	  vault_api_host="vault_host" \
+#	  role_name="good" \
+#	  secret_id_ttl="120m" \
+#	  approle_mount_point="/auth/approle/" \
+#	  secret_id="$(vault write -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')" \
+#	  role_id="$(vault read -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')" \
+#	  vault_api_ca=""
+#
+#  vault write auth/flant_iam_auth/auth_source/a \
+#    jwt_validation_pubkeys="$(cat pub.keys)" \
+#    bound_issuer=http://vault.example.com/ \
+#    entity_alias_name=uuid \
+#		allow_service_accounts=false
+#
+#  vault write flant_iam/tenant/$tnu/user identifier=vasya
+  tnu=$(vault write flant_iam/tenant identifier=tudasuda | grep "^uuid" | awk '{print $2}' | cut -c -36)
   tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
   docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
 }

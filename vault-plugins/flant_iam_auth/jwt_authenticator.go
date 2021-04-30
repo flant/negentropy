@@ -8,12 +8,14 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type JwtAuthenticator struct {
 	jwtValidator *jwt.Validator
-	authMethod   *authMethodConfig
-	authSource   *authSource
+	authMethod   *model.AuthMethod
+	authSource   *model.AuthSource
 	logger       log.Logger
 	methodName   string
 }

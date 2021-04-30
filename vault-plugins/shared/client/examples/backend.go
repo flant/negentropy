@@ -27,19 +27,23 @@ type exampleBackend struct {
 
 func backend() *exampleBackend {
 	b := new(exampleBackend)
-	b.accessVaultController = client.NewVaultClientController(func() log.Logger {
-		return b.Logger()
-	})
+	b.accessVaultController = client.NewVaultClientController(log.L)
 
 	b.Backend = &framework.Backend{
 		BackendType:  logical.TypeCredential,
 		Help:         backendHelp,
 		PathsSpecial: &logical.Paths{},
+
 		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
+			// MUST be called in periodical function
+			// otherwise access token do not prolong
 			return b.accessVaultController.OnPeriodical(ctx, request)
 		},
+
 		Paths: framework.PathAppend(
 			[]*framework.Path{
+				// NEED add /configure_vault_access path handler
+				// for set configuration
 				client.PathConfigure(b.accessVaultController),
 			},
 
@@ -80,7 +84,12 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 		return err
 	}
 
+	// Init access controller
 	err = b.accessVaultController.Init(config.StorageView)
+	// init may be return ErrNotSetConf error
+	// if plugin initialized first time and has not saved config
+	// its normal behavior. Because we set configuration
+	//through "/configure_vault_access" path
 	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}

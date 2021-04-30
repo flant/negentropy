@@ -13,21 +13,25 @@ import (
 )
 
 func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(accessConf.APICa))
-
-	// Setup HTTPS client
-	tlsConfig := &tls.Config{
-		RootCAs:    caCertPool,
-		MinVersion: tls.VersionTLS12,
-	}
-	transport := &http.Transport{
-		TLSClientConfig:     tlsConfig,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
 	httpClient := api.DefaultConfig().HttpClient
-	httpClient.Transport = transport
+
+	if accessConf.APICa != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(accessConf.APICa))
+
+		// Setup HTTPS client
+		tlsConfig := &tls.Config{
+			RootCAs:    caCertPool,
+			MinVersion: tls.VersionTLS12,
+		}
+		transport := &http.Transport{
+			TLSClientConfig:     tlsConfig,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+
+		httpClient.Transport = transport
+	}
+
 	clientConf := &api.Config{
 		Address:    accessConf.APIURL,
 		HttpClient: httpClient,

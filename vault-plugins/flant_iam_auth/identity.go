@@ -6,11 +6,13 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"golang.org/x/oauth2"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 // createIdentity creates an alias and set of groups aliases based on the authMethodConfig
 // definition and received claims.
-func createIdentity(logger log.Logger, allClaims map[string]interface{}, authMethod *authMethodConfig, _ oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
+func createIdentity(logger log.Logger, allClaims map[string]interface{}, authMethod *model.AuthMethod, _ oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
 	userClaimRaw, ok := allClaims[authMethod.UserClaim]
 	if !ok {
 		return nil, nil, fmt.Errorf("claim %q not found in token", authMethod.UserClaim)

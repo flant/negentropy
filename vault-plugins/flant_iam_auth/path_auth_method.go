@@ -12,24 +12,15 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var reservedMetadata = []string{"flantIamAuthMethod"}
 
-const (
-	claimDefaultLeeway    = 150
-	boundClaimsTypeString = "string"
-	boundClaimsTypeGlob   = "glob"
-)
-
-const (
-	methodTypeJWT        = "jwt"
-	methodTypeOIDC       = "oidc"
-	methodTypeOwn        = "jwt_own"
-	methodTypeSAPassword = "service_account_password"
-)
-
-var authMethodTypes = []string{methodTypeOwn, methodTypeJWT, methodTypeOIDC, methodTypeSAPassword}
+var authMethodTypes = []string{model.MethodTypeOwn, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword}
 
 func pathAuthMethodList(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -58,26 +49,26 @@ func pathAuthMethod(b *flantIamAuthBackend) *framework.Path {
 			"method_type": {
 				Type: framework.TypeString,
 				Description: fmt.Sprintf("Type of the authMethodConfig, either '%s', '%s', '%s' or '%s'.",
-					methodTypeJWT, methodTypeOIDC, methodTypeSAPassword, methodTypeOwn),
+					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeOwn),
 				Required: true,
 			},
 			"source": {
 				Type: framework.TypeString,
 				Description: fmt.Sprintf("authentification source for method thypes '%s' and '%s'.",
-					methodTypeJWT, methodTypeOIDC),
+					model.MethodTypeJWT, model.MethodTypeOIDC),
 			},
 
 			"expiration_leeway": {
 				Type: framework.TypeSignedDurationSecond,
 				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
 Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
-				Default: claimDefaultLeeway,
+				Default: model.ClaimDefaultLeeway,
 			},
 			"not_before_leeway": {
 				Type: framework.TypeSignedDurationSecond,
 				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
 Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
-				Default: claimDefaultLeeway,
+				Default: model.ClaimDefaultLeeway,
 			},
 			"clock_skew_leeway": {
 				Type: framework.TypeSignedDurationSecond,
@@ -96,7 +87,7 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			"bound_claims_type": {
 				Type:        framework.TypeString,
 				Description: `How to interpret values in the map of claims/values (which must match for login): allowed values are 'string' or 'glob'`,
-				Default:     boundClaimsTypeString,
+				Default:     model.BoundClaimsTypeString,
 			},
 			"bound_claims": {
 				Type:        framework.TypeMap,
@@ -166,79 +157,34 @@ user was actively authenticated.`,
 	return p
 }
 
-type authMethodConfig struct {
-	tokenutil.TokenParams
-
-	MethodType string `json:"method_type"`
-
-	Source string `json:"source"`
-
-	// Duration of leeway for expiration to account for clock skew
-	ExpirationLeeway time.Duration `json:"expiration_leeway"`
-
-	// Duration of leeway for not before to account for clock skew
-	NotBeforeLeeway time.Duration `json:"not_before_leeway"`
-
-	// Duration of leeway for all claims to account for clock skew
-	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
-
-	// Role binding properties
-	BoundAudiences      []string               `json:"bound_audiences"`
-	BoundSubject        string                 `json:"bound_subject"`
-	BoundClaimsType     string                 `json:"bound_claims_type"`
-	BoundClaims         map[string]interface{} `json:"bound_claims"`
-	ClaimMappings       map[string]string      `json:"claim_mappings"`
-	UserClaim           string                 `json:"user_claim"`
-	GroupsClaim         string                 `json:"groups_claim"`
-	OIDCScopes          []string               `json:"oidc_scopes"`
-	AllowedRedirectURIs []string               `json:"allowed_redirect_uris"`
-	VerboseOIDCLogging  bool                   `json:"verbose_oidc_logging"`
-	MaxAge              time.Duration          `json:"max_age"`
-}
-
-// authMethodConfig takes a storage backend and the name and returns the authMethodConfig's storage
-// entry
-func (b *flantIamAuthBackend) authMethod(ctx context.Context, s logical.Storage, name string) (*authMethodConfig, error) {
-	raw, err := s.Get(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, nil
-	}
-
-	role := new(authMethodConfig)
-	if err := raw.DecodeJSON(role); err != nil {
-		return nil, err
-	}
-
-	if role.BoundClaimsType == "" {
-		role.BoundClaimsType = boundClaimsTypeString
-	}
-
-	return role, nil
-}
-
-func (b *flantIamAuthBackend) authMethodForRequest(ctx context.Context, r *logical.Request, name string) (*authMethodConfig, error) {
-	return b.authMethod(ctx, b.authMethodStorageFactory(r), name)
-}
-
 // pathAuthMethodExistenceCheck returns whether the authMethodConfig with the given name exists or not.
 func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-	methodName, err := b.authMethod(ctx, req.Storage, data.Get("name").(string))
+	methodName := data.Get("name").(string)
+
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(methodName)
 	if err != nil {
 		return false, err
 	}
-	return methodName != nil, nil
+	return method != nil, nil
 }
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *flantIamAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	methods, err := b.authMethodStorageFactory(req).AllKeys(ctx)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+
+	var methodsNames []string
+	err := repo.Iter(func(s *model.AuthMethod) (bool, error) {
+		methodsNames = append(methodsNames, s.Name)
+		return true, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return logical.ListResponse(methods), nil
+
+	return logical.ListResponse(methodsNames), nil
 }
 
 // pathAuthMethodRead grabs a read lock and reads the options set on the authMethodConfig from the storage
@@ -248,7 +194,9 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 		return logical.ErrorResponse("missing name"), nil
 	}
 
-	method, err := b.authMethod(ctx, req.Storage, methodName)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
 	}
@@ -272,13 +220,13 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 		"max_age":               int64(method.MaxAge.Seconds()),
 	}
 
-	if method.MethodType == methodTypeOwn {
+	if method.MethodType == model.MethodTypeOwn {
 		d["expiration_leeway"] = int64(method.ExpirationLeeway.Seconds())
 		d["not_before_leeway"] = int64(method.NotBeforeLeeway.Seconds())
 		d["clock_skew_leeway"] = int64(method.ClockSkewLeeway.Seconds())
 	}
 
-	if method.MethodType == methodTypeOwn || method.MethodType == methodTypeSAPassword {
+	if method.MethodType == model.MethodTypeOwn || method.MethodType == model.MethodTypeSAPassword {
 		method.PopulateTokenData(d)
 	}
 
@@ -294,8 +242,18 @@ func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *log
 		return logical.ErrorResponse("authMethodConfig name required"), nil
 	}
 
-	// Delete the authMethodConfig itself
-	if err := b.authMethodStorageFactory(req).Delete(ctx, methodName); err != nil {
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	repo := repos.NewAuthMethodRepo(tnx)
+
+	err := repo.Delete(methodName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tnx.Commit()
+	if err != nil {
 		return nil, err
 	}
 
@@ -310,9 +268,12 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return logical.ErrorResponse("missing auth method name"), nil
 	}
 
-	authMethodStorage := b.authMethodStorageFactory(req)
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	repo := repos.NewAuthMethodRepo(tnx)
 	// Check if the auth already exists
-	method, err := b.authMethod(ctx, authMethodStorage, methodName)
+	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +283,9 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		if req.Operation == logical.UpdateOperation {
 			return nil, errors.New("auth method entry not found during update operation")
 		}
-		method = new(authMethodConfig)
+		method = new(model.AuthMethod)
+		method.UUID = utils.UUID()
+		method.Name = methodName
 	}
 
 	methodType := data.Get("method_type").(string)
@@ -344,13 +307,13 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 
 	method.MethodType = methodType
 
-	if methodType == methodTypeJWT || methodType == methodTypeOIDC {
+	if methodType == model.MethodTypeJWT || methodType == model.MethodTypeOIDC {
 		sourceName := data.Get("source").(string)
 		if sourceName == "" {
 			return logical.ErrorResponse("missing source"), nil
 		}
 
-		source, err := b.authSource(ctx, req, sourceName)
+		source, err := repos.NewAuthSourceRepo(tnx).Get(sourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -359,12 +322,12 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			return logical.ErrorResponse(fmt.Sprintf("'%s': auth source not found", sourceName)), nil
 		}
 
-		authType := source.authType()
-		if methodType == methodTypeJWT && !(authType == StaticKeys || authType == JWKS) {
+		authType := source.AuthType()
+		if methodType == model.MethodTypeJWT && !(authType == model.StaticKeys || authType == model.JWKS) {
 			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need jwt based source", sourceName)), nil
 		}
 
-		if methodType == methodTypeOIDC && !(authType == OIDCFlow || authType == OIDCDiscovery) {
+		if methodType == model.MethodTypeOIDC && !(authType == model.OIDCFlow || authType == model.OIDCDiscovery) {
 			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need OIDC based source", sourceName)), nil
 		}
 
@@ -379,7 +342,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return logical.ErrorResponse(fmt.Sprintf("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", method.TokenPeriod.String(), b.System().MaxLeaseTTL().String())), nil
 	}
 
-	if methodType == methodTypeOwn {
+	if methodType == model.MethodTypeOwn {
 		if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
 			method.ExpirationLeeway = time.Duration(tokenExpLeewayRaw.(int)) * time.Second
 		}
@@ -411,7 +374,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 
 	boundClaimsType := data.Get("bound_claims_type").(string)
 	switch boundClaimsType {
-	case boundClaimsTypeString, boundClaimsTypeGlob:
+	case model.BoundClaimsTypeString, model.BoundClaimsTypeGlob:
 		method.BoundClaimsType = boundClaimsType
 	default:
 		return logical.ErrorResponse("invalid 'bound_claims_type': %s", boundClaimsType), nil
@@ -420,7 +383,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 	if boundClaimsRaw, ok := data.GetOk("bound_claims"); ok {
 		method.BoundClaims = boundClaimsRaw.(map[string]interface{})
 
-		if boundClaimsType == boundClaimsTypeGlob {
+		if boundClaimsType == model.BoundClaimsTypeGlob {
 			// Check that the claims are all strings
 			for _, claimValues := range method.BoundClaims {
 				claimsValuesList, ok := normalizeList(claimValues)
@@ -476,14 +439,14 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		method.AllowedRedirectURIs = allowedRedirectURIs.([]string)
 	}
 
-	if method.MethodType == methodTypeOIDC && len(method.AllowedRedirectURIs) == 0 {
+	if method.MethodType == model.MethodTypeOIDC && len(method.AllowedRedirectURIs) == 0 {
 		return logical.ErrorResponse(
 			"'allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified."), nil
 	}
 
 	// OIDC verification will enforce that the audience match the configured client_id.
 	// For other methods, require at least one bound constraint.
-	if methodType == methodTypeJWT {
+	if methodType == model.MethodTypeJWT {
 		if len(method.BoundAudiences) == 0 &&
 			len(method.TokenBoundCIDRs) == 0 &&
 			method.BoundSubject == "" &&
@@ -510,7 +473,12 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			`may be present in OIDC responses.`)
 	}
 
-	err = authMethodStorage.PutEntry(ctx, methodName, method)
+	err = repo.Put(method)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tnx.Commit()
 	if err != nil {
 		return nil, err
 	}

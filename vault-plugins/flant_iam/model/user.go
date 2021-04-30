@@ -54,6 +54,7 @@ type User struct {
 	Version        string `json:"resource_version"`
 	Identifier     string `json:"identifier"`
 	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
+	Email          string `json:"email"`
 }
 
 func (u *User) ObjType() string {

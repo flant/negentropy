@@ -17,6 +17,9 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"golang.org/x/oauth2"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
 const (
@@ -41,9 +44,9 @@ const (
 type oidcRequest struct {
 	oidc.Request
 
-	rolename string
-	code     string
-	idToken  string
+	method  string
+	code    string
+	idToken string
 
 	// clientNonce is used between Vault and the client/application (e.g. CLI) making the request,
 	// and is unrelated to the OIDC nonce above. It is optional.
@@ -135,19 +138,22 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 
 	oidcReq := requestRaw.(*oidcRequest)
 
-	authMethod, err := b.authMethodForRequest(ctx, req, oidcReq.rolename)
+	// Ensure that the Role still exists.
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
 	}
-	if authMethod == nil {
+	if method == nil {
 		return logical.ErrorResponse(errLoginFailed + " Could not load configuration."), nil
 	}
 
-	if authMethod.MethodType != methodTypeOIDC {
+	if method.MethodType != model.MethodTypeOIDC {
 		return logical.ErrorResponse(errLoginFailed + " Incorrect method."), nil
 	}
 
-	authSource, err := b.authSource(ctx, req, authMethod.Source)
+	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +161,7 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 		return logical.ErrorResponse(errLoginFailed + " auth source for method could not be found"), nil
 	}
 
-	if authSource.OIDCResponseMode != responseModeFormPost {
+	if authSource.OIDCResponseMode != model.ResponseModeFormPost {
 		return logical.RespondWithStatusCode(nil, req, http.StatusMethodNotAllowed)
 	}
 
@@ -192,20 +198,23 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse("invalid client_nonce"), nil
 	}
 
-	authMethodName := oidcReq.rolename
-	authMethod, err := b.authMethodForRequest(ctx, req, authMethodName)
+	methodName := oidcReq.method
+
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
 	}
-	if authMethod == nil {
+	if method == nil {
 		return logical.ErrorResponse(errLoginFailed + " authMethod could not be found"), nil
 	}
 
-	if authMethod.MethodType != methodTypeOIDC {
+	if method.MethodType != model.MethodTypeOIDC {
 		return logical.ErrorResponse(errLoginFailed + " authMethod type must be OIDC"), nil
 	}
 
-	authSource, err := b.authSource(ctx, req, authMethod.Source)
+	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -213,12 +222,12 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse(errLoginFailed + " auth source for method could not be found"), nil
 	}
 
-	if len(authMethod.TokenBoundCIDRs) > 0 {
+	if len(method.TokenBoundCIDRs) > 0 {
 		if req.Connection == nil {
 			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
 			return nil, logical.ErrPermissionDenied
 		}
-		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, authMethod.TokenBoundCIDRs) {
+		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, method.TokenBoundCIDRs) {
 			return nil, logical.ErrPermissionDenied
 		}
 	}
@@ -257,7 +266,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		rawToken = token.IDToken()
 	}
 
-	if authMethod.VerboseOIDCLogging {
+	if method.VerboseOIDCLogging {
 		loggedToken := "invalid token format"
 
 		parts := strings.Split(string(rawToken), ".")
@@ -282,7 +291,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		subject = subStr
 	}
 
-	if authMethod.BoundSubject != "" && authMethod.BoundSubject != subject {
+	if method.BoundSubject != "" && method.BoundSubject != subject {
 		return nil, errors.New("sub claim does not match bound subject")
 	}
 
@@ -307,7 +316,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		}
 	}
 
-	if authMethod.VerboseOIDCLogging {
+	if method.VerboseOIDCLogging {
 		if c, err := json.Marshal(allClaims); err == nil {
 			b.Logger().Debug("OIDC provider response", "claims", string(c))
 		} else {
@@ -315,40 +324,40 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		}
 	}
 
-	alias, groupAliases, err := createIdentity(b.Logger(), allClaims, authMethod, tokenSource)
+	alias, groupAliases, err := createIdentity(b.Logger(), allClaims, method, tokenSource)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	if err := validateBoundClaims(b.Logger(), authMethod.BoundClaimsType, authMethod.BoundClaims, allClaims); err != nil {
+	if err := validateBoundClaims(b.Logger(), method.BoundClaimsType, method.BoundClaims, allClaims); err != nil {
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
-	tokenMetadata := map[string]string{"flantIamAuthMethod": authMethodName}
+	tokenMetadata := map[string]string{"flantIamAuthMethod": methodName}
 	for k, v := range alias.Metadata {
 		tokenMetadata[k] = v
 	}
 
 	auth := &logical.Auth{
-		Policies:     authMethod.TokenPolicies,
+		Policies:     method.TokenPolicies,
 		DisplayName:  alias.Name,
-		Period:       authMethod.TokenPeriod,
-		NumUses:      authMethod.TokenNumUses,
+		Period:       method.TokenPeriod,
+		NumUses:      method.TokenNumUses,
 		Alias:        alias,
 		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
-			"flantIamAuthMethod": authMethodName,
+			"flantIamAuthMethod": methodName,
 		},
 		Metadata: tokenMetadata,
 		LeaseOptions: logical.LeaseOptions{
 			Renewable: true,
-			TTL:       authMethod.TokenTTL,
-			MaxTTL:    authMethod.TokenMaxTTL,
+			TTL:       method.TokenTTL,
+			MaxTTL:    method.TokenMaxTTL,
 		},
-		BoundCIDRs: authMethod.TokenBoundCIDRs,
+		BoundCIDRs: method.TokenBoundCIDRs,
 	}
 
-	authMethod.PopulateTokenAuth(auth)
+	method.PopulateTokenAuth(auth)
 
 	resp := &logical.Response{
 		Auth: auth,
@@ -377,15 +386,17 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 
 	clientNonce := d.Get("client_nonce").(string)
 
-	authMethod, err := b.authMethodForRequest(ctx, req, authMethodName)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthMethodRepo(tnx)
+	method, err := repo.Get(authMethodName)
 	if err != nil {
 		return nil, err
 	}
-	if authMethod == nil {
+	if method == nil {
 		return logical.ErrorResponse("authMethodName %q could not be found", authMethodName), nil
 	}
 
-	if authMethod.MethodType != methodTypeOIDC {
+	if method.MethodType != model.MethodTypeOIDC {
 		return logical.ErrorResponse("authMethodConfig %q could not be found", authMethodName), nil
 	}
 
@@ -396,7 +407,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		},
 	}
 
-	authSource, err := b.authSource(ctx, req, authMethod.Source)
+	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +415,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
 
-	if authSource.authType() != OIDCFlow {
+	if authSource.AuthType() != model.OIDCFlow {
 		return logical.ErrorResponse(errNotOIDCFlow), nil
 	}
 
@@ -426,7 +437,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		}
 	}
 
-	if !validRedirect(redirectURI, authMethod.AllowedRedirectURIs) {
+	if !validRedirect(redirectURI, method.AllowedRedirectURIs) {
 		logger.Warn("unauthorized redirect_uri", "redirect_uri", redirectURI)
 		return resp, nil
 	}
@@ -437,7 +448,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		return resp, nil
 	}
 
-	oidcReq, err := b.createOIDCRequest(authSource, authMethod, authMethodName, redirectURI, clientNonce)
+	oidcReq, err := b.createOIDCRequest(authSource, method, authMethodName, redirectURI, clientNonce)
 	if err != nil {
 		logger.Warn("error generating OAuth state", "error", err)
 		return resp, nil
@@ -462,18 +473,18 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 
 // createOIDCRequest makes an expiring request object, associated with a random state ID
 // that is passed throughout the OAuth process. A nonce is also included in the auth process.
-func (b *flantIamAuthBackend) createOIDCRequest(config *authSource, role *authMethodConfig, rolename, redirectURI, clientNonce string) (*oidcRequest, error) {
+func (b *flantIamAuthBackend) createOIDCRequest(config *model.AuthSource, method *model.AuthMethod, methodNAme, redirectURI, clientNonce string) (*oidcRequest, error) {
 	options := []oidc.Option{
-		oidc.WithAudiences(role.BoundAudiences...),
-		oidc.WithScopes(role.OIDCScopes...),
+		oidc.WithAudiences(method.BoundAudiences...),
+		oidc.WithScopes(method.OIDCScopes...),
 	}
 
-	if config.hasType(responseTypeIDToken) {
+	if config.HasType(model.ResponseTypeIDToken) {
 		options = append(options, oidc.WithImplicitFlow())
 	}
 
-	if role.MaxAge > 0 {
-		options = append(options, oidc.WithMaxAge(uint(role.MaxAge.Seconds())))
+	if method.MaxAge > 0 {
+		options = append(options, oidc.WithMaxAge(uint(method.MaxAge.Seconds())))
 	}
 
 	request, err := oidc.NewRequest(oidcRequestTimeout, redirectURI, options...)
@@ -483,7 +494,7 @@ func (b *flantIamAuthBackend) createOIDCRequest(config *authSource, role *authMe
 
 	oidcReq := &oidcRequest{
 		Request:     request,
-		rolename:    rolename,
+		method:      methodNAme,
 		clientNonce: clientNonce,
 	}
 	b.oidcRequests.SetDefault(request.State(), oidcReq)

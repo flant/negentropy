@@ -2,8 +2,8 @@ package jwtauth
 
 import (
 	"context"
-	"crypto"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/cap/jwt"
@@ -13,14 +13,17 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-const (
-	responseTypeCode     = "code"      // Authorization code flow
-	responseTypeIDToken  = "id_token"  // ID Token for form post
-	responseModeQuery    = "query"     // Response as a redirect with query parameters
-	responseModeFormPost = "form_post" // Response as an HTML Form
-)
+var entityAliasNames = map[string]bool{
+	model.EntityAliasNameEmail:          true,
+	model.EntityAliasNameFullIdentifier: true,
+	model.EntityAliasNameUUID:           true,
+}
 
 func pathAuthSource(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -97,6 +100,19 @@ func pathAuthSource(b *flantIamAuthBackend) *framework.Path {
 					Value: true,
 				},
 			},
+
+			"entity_alias_name": {
+				Type: framework.TypeString,
+				Description: fmt.Sprintf("entity alias name source. may be  '%s', '%s',  or '%s'.",
+					model.EntityAliasNameEmail, model.EntityAliasNameFullIdentifier, model.EntityAliasNameUUID),
+				Required: true,
+			},
+
+			"allow_service_accounts": {
+				Type:        framework.TypeBool,
+				Default:     false,
+				Description: "Allow create entity aliases for services accounts fot this source",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -135,45 +151,16 @@ func pathAuthSourceList(b *flantIamAuthBackend) *framework.Path {
 	}
 }
 
-func (b *flantIamAuthBackend) authSource(ctx context.Context, req *logical.Request, name string) (*authSource, error) {
-	return b.authSourceConfig(ctx, b.authSourceStorageFactory(req), name)
-}
-
-func (b *flantIamAuthBackend) authSourceConfig(ctx context.Context, s logical.Storage, name string) (*authSource, error) {
-	b.l.Lock()
-	defer b.l.Unlock()
-
-	entry, err := s.Get(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if entry == nil {
-		return nil, nil
-	}
-
-	config := &authSource{}
-	if err := entry.DecodeJSON(config); err != nil {
-		return nil, err
-	}
-
-	for _, v := range config.JWTValidationPubKeys {
-		key, err := certutil.ParsePublicKeyPEM([]byte(v))
-		if err != nil {
-			return nil, errwrap.Wrapf("error parsing public key: {{err}}", err)
-		}
-		config.ParsedJWTPubKeys = append(config.ParsedJWTPubKeys, key)
-	}
-
-	return config, nil
-}
-
 func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	sourceName, errorResp := nameFromRequest(d)
 	if errorResp != nil {
 		return errorResp, nil
 	}
 
-	config, err := b.authSourceConfig(ctx, b.authSourceStorageFactory(req), sourceName)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthSourceRepo(tnx)
+
+	config, err := repo.Get(sourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +182,8 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 			"jwks_ca_pem":            config.JWKSCAPEM,
 			"bound_issuer":           config.BoundIssuer,
 			"namespace_in_state":     config.NamespaceInState,
+			"entity_alias_name":      config.EntityAliasName,
+			"allow_service_accounts": config.AllowServiceAccounts,
 		},
 	}
 
@@ -202,7 +191,15 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 }
 
 func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	config := &authSource{
+	sourceName, errorResp := nameFromRequest(d)
+	if errorResp != nil {
+		return errorResp, nil
+	}
+
+	sourceForStore := &model.AuthSource{
+		UUID: utils.UUID(),
+		Name: sourceName,
+
 		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
 		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
 		OIDCClientID:         d.Get("oidc_client_id").(string),
@@ -215,44 +212,55 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 		JWTValidationPubKeys: d.Get("jwt_validation_pubkeys").([]string),
 		JWTSupportedAlgs:     d.Get("jwt_supported_algs").([]string),
 		BoundIssuer:          d.Get("bound_issuer").(string),
+		EntityAliasName:      d.Get("entity_alias_name").(string),
+		AllowServiceAccounts: d.Get("allow_service_accounts").(bool),
 	}
 
-	// Check if the config already exists, to determine if this is a create or
+	if _, ok := entityAliasNames[sourceForStore.EntityAliasName]; !ok {
+		return logical.ErrorResponse(fmt.Sprintf("incorrect entity_alias_name %v", sourceForStore.EntityAliasName)), nil
+	}
+
+	if sourceForStore.EntityAliasName == model.EntityAliasNameEmail && sourceForStore.AllowServiceAccounts {
+		return logical.ErrorResponse("conflict values for entity_alias_name and allow_service_accounts"), nil
+	}
+
+	// Check if the sourceForStore already exists, to determine if this is a create or
 	// an update, since req.Operation is always 'update' in this handler, and
 	// there's no existence check defined.
 
-	sourceName, errorResp := nameFromRequest(d)
-	if errorResp != nil {
-		return errorResp, nil
-	}
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
 
-	storage := b.authSourceStorageFactory(req)
-	existingConfig, err := b.authSourceConfig(ctx, storage, sourceName)
+	repo := repos.NewAuthSourceRepo(tnx)
+	existingSource, err := repo.Get(sourceName)
 	if err != nil {
 		return nil, err
+	}
+	if existingSource != nil {
+		sourceForStore.UUID = existingSource.UUID
 	}
 
 	nsInState, ok := d.GetOk("namespace_in_state")
 	switch {
 	case ok:
-		config.NamespaceInState = nsInState.(bool)
-	case existingConfig == nil:
+		sourceForStore.NamespaceInState = nsInState.(bool)
+	case existingSource == nil:
 		// new configs default to true
-		config.NamespaceInState = true
+		sourceForStore.NamespaceInState = true
 	default:
 		// maintain the existing value
-		config.NamespaceInState = existingConfig.NamespaceInState
+		sourceForStore.NamespaceInState = existingSource.NamespaceInState
 	}
 
 	// Run checks on values
 	methodCount := 0
-	if config.OIDCDiscoveryURL != "" {
+	if sourceForStore.OIDCDiscoveryURL != "" {
 		methodCount++
 	}
-	if len(config.JWTValidationPubKeys) != 0 {
+	if len(sourceForStore.JWTValidationPubKeys) != 0 {
 		methodCount++
 	}
-	if config.JWKSURL != "" {
+	if sourceForStore.JWKSURL != "" {
 		methodCount++
 	}
 
@@ -260,26 +268,26 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	case methodCount != 1:
 		return logical.ErrorResponse("exactly one of 'jwt_validation_pubkeys', 'jwks_url' or 'oidc_discovery_url' must be set"), nil
 
-	case config.OIDCClientID != "" && config.OIDCClientSecret == "",
-		config.OIDCClientID == "" && config.OIDCClientSecret != "":
+	case sourceForStore.OIDCClientID != "" && sourceForStore.OIDCClientSecret == "",
+		sourceForStore.OIDCClientID == "" && sourceForStore.OIDCClientSecret != "":
 		return logical.ErrorResponse("both 'oidc_client_id' and 'oidc_client_secret' must be set for OIDC"), nil
 
-	case config.OIDCDiscoveryURL != "":
+	case sourceForStore.OIDCDiscoveryURL != "":
 		var err error
-		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
-			_, err = b.createProvider(config)
+		if sourceForStore.OIDCClientID != "" && sourceForStore.OIDCClientSecret != "" {
+			_, err = b.createProvider(sourceForStore)
 		} else {
-			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, sourceForStore.OIDCDiscoveryURL, sourceForStore.OIDCDiscoveryCAPEM)
 		}
 		if err != nil {
 			return logical.ErrorResponse("error checking oidc discovery URL: %s", err.Error()), nil
 		}
 
-	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
+	case sourceForStore.OIDCClientID != "" && sourceForStore.OIDCDiscoveryURL == "":
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
-	case config.JWKSURL != "":
-		keyset, err := jwt.NewJSONWebKeySet(ctx, config.JWKSURL, config.JWKSCAPEM)
+	case sourceForStore.JWKSURL != "":
+		keyset, err := jwt.NewJSONWebKeySet(ctx, sourceForStore.JWKSURL, sourceForStore.JWKSCAPEM)
 		if err != nil {
 			return logical.ErrorResponse(errwrap.Wrapf("error checking jwks_ca_pem: {{err}}", err).Error()), nil
 		}
@@ -296,8 +304,8 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 			return logical.ErrorResponse(errwrap.Wrapf("error checking jwks URL: {{err}}", err).Error()), nil
 		}
 
-	case len(config.JWTValidationPubKeys) != 0:
-		for _, v := range config.JWTValidationPubKeys {
+	case len(sourceForStore.JWTValidationPubKeys) != 0:
+		for _, v := range sourceForStore.JWTValidationPubKeys {
 			if _, err := certutil.ParsePublicKeyPEM([]byte(v)); err != nil {
 				return logical.ErrorResponse(errwrap.Wrapf("error parsing public key: {{err}}", err).Error()), nil
 			}
@@ -307,30 +315,35 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 		return nil, errors.New("unknown condition")
 	}
 
-	// NOTE: the OIDC lib states that if nothing is passed into its config, it
+	// NOTE: the OIDC lib states that if nothing is passed into its sourceForStore, it
 	// defaults to "RS256". So in the case of a zero value here it won't
 	// default to e.g. "none".
-	if err := jwt.SupportedSigningAlgorithm(toAlg(config.JWTSupportedAlgs)...); err != nil {
+	if err := jwt.SupportedSigningAlgorithm(toAlg(sourceForStore.JWTSupportedAlgs)...); err != nil {
 		return logical.ErrorResponse("invalid jwt_supported_algs: %s", err), nil
 	}
 
 	// Validate response_types
-	if !strutil.StrListSubset([]string{responseTypeCode, responseTypeIDToken}, config.OIDCResponseTypes) {
-		return logical.ErrorResponse("invalid response_types %v. 'code' and 'id_token' are allowed", config.OIDCResponseTypes), nil
+	if !strutil.StrListSubset([]string{model.ResponseTypeCode, model.ResponseTypeIDToken}, sourceForStore.OIDCResponseTypes) {
+		return logical.ErrorResponse("invalid response_types %v. 'code' and 'id_token' are allowed", sourceForStore.OIDCResponseTypes), nil
 	}
 
 	// Validate response_mode
-	switch config.OIDCResponseMode {
-	case "", responseModeQuery:
-		if config.hasType(responseTypeIDToken) {
+	switch sourceForStore.OIDCResponseMode {
+	case "", model.ResponseModeQuery:
+		if sourceForStore.HasType(model.ResponseTypeIDToken) {
 			return logical.ErrorResponse("query response_mode may not be used with an id_token response_type"), nil
 		}
-	case responseModeFormPost:
+	case model.ResponseModeFormPost:
 	default:
-		return logical.ErrorResponse("invalid response_mode: %q", config.OIDCResponseMode), nil
+		return logical.ErrorResponse("invalid response_mode: %q", sourceForStore.OIDCResponseMode), nil
 	}
 
-	if err := storage.PutEntry(ctx, sourceName, config); err != nil {
+	if err := repo.Put(sourceForStore); err != nil {
+		return nil, err
+	}
+
+	err = tnx.Commit()
+	if err != nil {
 		return nil, err
 	}
 
@@ -340,12 +353,19 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 }
 
 func (b *flantIamAuthBackend) pathAuthSourceList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	sources, err := b.authSourceStorageFactory(req).AllKeys(ctx)
+	tnx := b.storage.Txn(false)
+	repo := repos.NewAuthSourceRepo(tnx)
+
+	var sourcesNames []string
+	err := repo.Iter(func(s *model.AuthSource) (bool, error) {
+		sourcesNames = append(sourcesNames, s.Name)
+		return true, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return logical.ListResponse(sources), nil
+	return logical.ListResponse(sourcesNames), nil
 }
 
 func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -354,7 +374,17 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 		return errorResp, nil
 	}
 
-	err := b.authSourceStorageFactory(req).Delete(ctx, sourceName)
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	repo := repos.NewAuthSourceRepo(tnx)
+
+	err := repo.Delete(sourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tnx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -362,9 +392,9 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 	return nil, nil
 }
 
-func (b *flantIamAuthBackend) createProvider(config *authSource) (*oidc.Provider, error) {
-	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
-	for i, a := range config.JWTSupportedAlgs {
+func (b *flantIamAuthBackend) createProvider(source *model.AuthSource) (*oidc.Provider, error) {
+	supportedSigAlgs := make([]oidc.Alg, len(source.JWTSupportedAlgs))
+	for i, a := range source.JWTSupportedAlgs {
 		supportedSigAlgs[i] = oidc.Alg(a)
 	}
 
@@ -372,9 +402,9 @@ func (b *flantIamAuthBackend) createProvider(config *authSource) (*oidc.Provider
 		supportedSigAlgs = []oidc.Alg{oidc.RS256}
 	}
 
-	c, err := oidc.NewConfig(config.OIDCDiscoveryURL, config.OIDCClientID,
-		oidc.ClientSecret(config.OIDCClientSecret), supportedSigAlgs, []string{},
-		oidc.WithProviderCA(config.OIDCDiscoveryCAPEM))
+	c, err := oidc.NewConfig(source.OIDCDiscoveryURL, source.OIDCClientID,
+		oidc.ClientSecret(source.OIDCClientSecret), supportedSigAlgs, []string{},
+		oidc.WithProviderCA(source.OIDCDiscoveryCAPEM))
 	if err != nil {
 		return nil, errwrap.Wrapf("error creating provider: {{err}}", err)
 	}
@@ -387,65 +417,12 @@ func (b *flantIamAuthBackend) createProvider(config *authSource) (*oidc.Provider
 	return provider, nil
 }
 
-type authSource struct {
-	OIDCDiscoveryURL     string   `json:"oidc_discovery_url"`
-	OIDCDiscoveryCAPEM   string   `json:"oidc_discovery_ca_pem"`
-	OIDCClientID         string   `json:"oidc_client_id"`
-	OIDCClientSecret     string   `json:"oidc_client_secret"`
-	OIDCResponseMode     string   `json:"oidc_response_mode"`
-	OIDCResponseTypes    []string `json:"oidc_response_types"`
-	JWKSURL              string   `json:"jwks_url"`
-	JWKSCAPEM            string   `json:"jwks_ca_pem"`
-	JWTValidationPubKeys []string `json:"jwt_validation_pubkeys"`
-	JWTSupportedAlgs     []string `json:"jwt_supported_algs"`
-	BoundIssuer          string   `json:"bound_issuer"`
-	DefaultRole          string   `json:"default_role"`
-	NamespaceInState     bool     `json:"namespace_in_state"`
-
-	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
-}
-
-const (
-	StaticKeys = iota
-	JWKS
-	OIDCDiscovery
-	OIDCFlow
-	unconfigured
-)
-
-// authType classifies the authorization type/flow based on config parameters.
-func (c authSource) authType() int {
-	switch {
-	case len(c.ParsedJWTPubKeys) > 0:
-		return StaticKeys
-	case c.JWKSURL != "":
-		return JWKS
-	case c.OIDCDiscoveryURL != "":
-		if c.OIDCClientID != "" && c.OIDCClientSecret != "" {
-			return OIDCFlow
-		}
-		return OIDCDiscovery
-	}
-
-	return unconfigured
-}
-
 func toAlg(a []string) []jwt.Alg {
 	alg := make([]jwt.Alg, len(a))
 	for i, e := range a {
 		alg[i] = jwt.Alg(e)
 	}
 	return alg
-}
-
-// hasType returns whether the list of response types includes the requested
-// type. The default type is 'code' so that special case is handled as well.
-func (c authSource) hasType(t string) bool {
-	if len(c.OIDCResponseTypes) == 0 && t == responseTypeCode {
-		return true
-	}
-
-	return strutil.StrListContains(c.OIDCResponseTypes, t)
 }
 
 const (

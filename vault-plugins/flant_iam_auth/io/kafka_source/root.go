@@ -13,8 +13,8 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/iam"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -190,27 +190,12 @@ func (rk *RootKafkaSource) verifySign(signature []byte, data []byte) error {
 
 func (rk *RootKafkaSource) processMessage(source *kafka.SourceInputMessage, store *io.MemoryStore, objType, objID string, data []byte) error {
 	tx := store.Txn(true)
+	defer tx.Abort()
 
-	switch objType {
-	case model.UserType:
-		// all logic here
-		pl := &model.User{}
-		_ = json.Unmarshal(data, pl)
-		err := tx.Insert(model.UserType, pl)
-		if err != nil {
-			return backoff.Permanent(err)
-		}
-		// TODO: this is just an example
-		// generate entity by user
-		ent := &model.Entity{ID: uuid.New()}
-		err = tx.Insert(model.EntityType, ent)
-		if err != nil {
-			return backoff.Permanent(err)
-		}
-
-	default:
-		tx.Abort()
-		return errors.New("not implemented yet")
+	err := iam.HandleNewMessageIamRootSource(tx, iam.NewObjectHandler(tx), objType, objID, data)
+	if err != nil {
+		return backoff.Permanent(err)
 	}
+
 	return tx.Commit(source)
 }

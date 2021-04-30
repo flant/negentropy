@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 func TestOIDC_AuthURL(t *testing.T) {
@@ -28,6 +30,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		"oidc_client_secret":    "def",
 		"default_role":          "test",
 		"bound_issuer":          "http://vault.example.com/",
+		"entity_alias_name":     model.EntityAliasNameEmail,
 	}
 
 	// basic configuration
@@ -48,7 +51,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		"user_claim":            "email",
 		"bound_audiences":       "vault",
 		"allowed_redirect_uris": []string{"https://example.com"},
-		"method_type":           methodTypeOIDC,
+		"method_type":           model.MethodTypeOIDC,
 		"source":                authSourceTestName,
 	}
 
@@ -139,7 +142,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Path:      "auth_method/limited_uris",
 		Storage:   storage,
 		Data: map[string]interface{}{
-			"method_type":           methodTypeOIDC,
+			"method_type":           model.MethodTypeOIDC,
 			"source":                authSourceTestName,
 			"user_claim":            "email",
 			"bound_audiences":       "vault",
@@ -279,6 +282,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				"default_role":          "test",
 				"bound_issuer":          "http://vault.example.com/",
 				"namespace_in_state":    test.namespaceInState,
+				"entity_alias_name":     model.EntityAliasNameEmail,
 			}
 
 			// basic configuration
@@ -299,7 +303,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				"user_claim":            "email",
 				"bound_audiences":       "vault",
 				"allowed_redirect_uris": test.allowedRedirectURIs,
-				"method_type":           methodTypeOIDC,
+				"method_type":           model.MethodTypeOIDC,
 				"source":                authSourceTestName,
 			}
 
@@ -373,6 +377,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 			"oidc_client_id":     "abc",
 			"oidc_client_secret": "def",
+			"entity_alias_name":  model.EntityAliasNameEmail,
 		},
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -428,7 +433,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 					"user_claim":            "email",
 					"allowed_redirect_uris": []string{"https://example.com"},
 					"max_age":               tt.maxAge,
-					"method_type":           methodTypeOIDC,
+					"method_type":           model.MethodTypeOIDC,
 					"source":                authSourceTestName,
 				},
 			}
@@ -490,6 +495,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		"jwt_supported_algs":    []string{"ES256"},
 		"oidc_response_mode":    "form_post",
 		"oidc_response_types":   "id_token",
+		"entity_alias_name":     model.EntityAliasNameEmail,
 	}
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -506,7 +512,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		"user_claim":            "email",
 		"bound_subject":         "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		"allowed_redirect_uris": []string{"https://example.com"},
-		"method_type":           methodTypeOIDC,
+		"method_type":           model.MethodTypeOIDC,
 		"source":                authSourceTestName,
 	}
 	req = &logical.Request{
@@ -523,7 +529,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 	data = map[string]interface{}{
 		"authMethodName": "test",
 		"redirect_uri":   "https://example.com",
-		"method_type":    methodTypeOIDC,
+		"method_type":    model.MethodTypeOIDC,
 		"source":         authSourceTestName,
 	}
 	req = &logical.Request{
@@ -1198,6 +1204,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 		"default_role":          "test",
 		"bound_issuer":          "http://vault.example.com/",
 		"jwt_supported_algs":    []string{"ES256"},
+		"entity_alias_name":     model.EntityAliasNameEmail,
 	}
 
 	// basic configuration
@@ -1231,7 +1238,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 			"/nested/secret_code": "bar",
 			"temperature":         "76",
 		},
-		"method_type": methodTypeOIDC,
+		"method_type": model.MethodTypeOIDC,
 		"source":      authSourceTestName,
 	}
 

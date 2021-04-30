@@ -21,6 +21,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2"
 	sqjwt "gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type H map[string]interface{}
@@ -60,12 +62,14 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 		data = map[string]interface{}{
 			"bound_issuer":       "https://team-vault.auth0.com/",
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"entity_alias_name":  model.EntityAliasNameEmail,
 		}
 	} else {
 		if !cfg.jwks {
 			data = map[string]interface{}{
 				"bound_issuer":           "https://team-vault.auth0.com/",
 				"jwt_validation_pubkeys": ecdsaPubKey,
+				"entity_alias_name":      model.EntityAliasNameEmail,
 			}
 		} else {
 			p := newOIDCProvider(t)
@@ -77,8 +81,9 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			}
 
 			data = map[string]interface{}{
-				"jwks_url":    p.server.URL + "/certs",
-				"jwks_ca_pem": cert,
+				"jwks_url":          p.server.URL + "/certs",
+				"jwks_ca_pem":       cert,
+				"entity_alias_name": model.EntityAliasNameEmail,
 			}
 		}
 	}

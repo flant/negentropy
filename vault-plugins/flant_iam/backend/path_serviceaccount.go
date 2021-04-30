@@ -477,3 +477,28 @@ func (r *ServiceAccountRepository) DeleteByTenant(tenantUUID string) error {
 	_, err := r.db.DeleteAll(model.ServiceAccountType, model.TenantForeignPK, tenantUUID)
 	return err
 }
+
+func (r *ServiceAccountRepository) Iter(action func(account *model.ServiceAccount) (bool, error)) error {
+	iter, err := r.db.Get(model.ServiceAccountType, model.PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*model.ServiceAccount)
+		next, err := action(t)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}

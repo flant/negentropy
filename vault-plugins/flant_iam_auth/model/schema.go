@@ -4,18 +4,27 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-memdb"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 const (
-	// Index "id" is required by all table.
-	// In the domain, the primary key is not always "id".
-	PK = "id"
+	ID       = "id" // required index by all tables
+	ByName   = "name"
+	ByUserID = "user_id"
 )
 
 func mergeSchema() (*memdb.DBSchema, error) {
-	schema := PendingLoginSchema()
+	schema := EntitySchema()
 	others := []*memdb.DBSchema{
-		userSchema,
+		EntityAliasSchema(),
+		AuthSourceSchema(),
+		AuthMethodSchema(),
+		iam.UserSchema(),
+		iam.TenantSchema(),
+		iam.ProjectSchema(),
+		iam.ServiceAccountSchema(),
 	}
 
 	for _, o := range others {
@@ -31,4 +40,8 @@ func mergeSchema() (*memdb.DBSchema, error) {
 
 func GetSchema() (*memdb.DBSchema, error) {
 	return mergeSchema()
+}
+
+func NewResourceVersion() string {
+	return uuid.New()
 }

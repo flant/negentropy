@@ -108,7 +108,6 @@ func (mb *MessageBroker) CheckConfig() {
 		mb.config.EncryptionPublicKey != nil &&
 		mb.config.EncryptionPrivateKey != nil &&
 		mb.PluginConfig.SelfTopicName != "" {
-
 		mb.isConfigured = true
 	}
 }
