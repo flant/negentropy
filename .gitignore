@@ -21,4 +21,4 @@ variables.pkrvars.hcl
 # Plugins
 vault-plugins/build/
 vault-plugins/flant_iam/tests/data/*
-vault-plugins/tests/data/token
+vault-plugins/tests/data/*
