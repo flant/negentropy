@@ -14,6 +14,8 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+authd/dev/secret/authd.jwt
+
 infra/**/packer_cache
 infra/**/output
 variables.pkrvars.hcl

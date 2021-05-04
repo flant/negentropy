@@ -23,6 +23,7 @@ func main() {
 				DisableColors: true,
 				FullTimestamp: true,
 			})
+			logrus.SetLevel(logrus.DebugLevel)
 			log.DebugLogger().SetFormatter(&logrus.TextFormatter{
 				DisableColors:    true,
 				FullTimestamp:    true,

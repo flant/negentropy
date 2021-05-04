@@ -44,14 +44,16 @@ func (l *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginRequest) (interface{}, int, error) {
 	var err error
 
-	log.Debugf(ctx)("Request login for '%s' '%s'", request.ServerType, request.Server)
+	log.Debugf(ctx)("Request 'login' for '%s' via '%s'", request.ServerType, request.Server)
 
 	vaultServer, err := config.DetectServerAddr(l.AuthdConfig.GetServers(), request.ServerType, request.Server)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	vaultClient := &vault.Client{Server: vaultServer}
+	log.Debugf(ctx)("Use Vault server '%s'", vaultServer)
+
+	vaultClient := vault.NewClient(vaultServer)
 
 	token, err := jwt.DefaultStorage.GetJWT()
 	if err != nil {
@@ -61,18 +63,11 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 	var response interface{}
 
 	if request.Type == api.LoginRequestDefault || request.Type == api.LoginRequestSpecific {
-		secret, err := vaultClient.LoginWithJWT(token)
-		if err != nil {
-			return nil, 0, err
-		}
-		if secret.Data == nil {
-			secret.Data = map[string]interface{}{
-				"server": vaultServer,
-			}
-		}
-		response = secret
+		log.Debugf(ctx)("LoginWithJWT")
+		response, err = vaultClient.LoginWithJWT(ctx, token)
 	}
 	if request.Type == api.LoginRequestPending {
+		log.Debugf(ctx)("CheckPendingLogin")
 		response, err = vaultClient.CheckPendingLogin(token)
 	}
 
@@ -80,63 +75,5 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 		return nil, 0, err
 	}
 
-	//var status int
-	//switch response.(type) {
-	//case *api.LoginResponseSession:
-	//	status = http.StatusOK
-	//case *api.LoginResponseMsg:
-	//	status = http.StatusForbidden
-	//case *api.LoginResponsePending:
-	//	status = http.StatusUnauthorized
-	//default:
-	//	return nil, 0, fmt.Errorf("unrecognized request")
-	//}
-
 	return response, http.StatusOK, nil
-	//	// do the job
-	//
-	//// calculate http status
-	//
-	//// return response, status, err
-	//
-	//switch request.Type {
-	//case api.LoginRequestDefault:
-	//	srv := l.AuthdConfig.GetDefaultServer()
-	//	request.Server = srv.Domain
-	//	return l.HandleOpenSession(request)
-	//	return &api.LoginResponseSession{
-	//		Server: request.Server,
-	//		Token:  "qweqwe-123qwe-123qwe1-1",
-	//	}, http.StatusOK, nil
-	//case api.LoginRequestSpecific:
-	//	err := l.CheckServerContraint(request.Server)
-	//	return &api.LoginResponseMsg{
-	//		Messages: []string{"Denied"},
-	//	}, http.StatusForbidden, nil
-	//case api.LoginRequestPending:
-	//
-	//	err := l.CheckServerContraint(request.Server)
-	//	return &api.LoginResponsePending{
-	//		Server:           request.Server,
-	//		PendingLoginUuid: "pok-123pok-123",
-	//		Mfa:              []api.Mfa{
-	//			{
-	//				Type:      "web",
-	//				Uuid:      "123-wer-123-wer-tttgrt",
-	//				Completed: false,
-	//			},
-	//		},
-	//		Approvals:        []api.Approval{
-	//			{
-	//				Type:      "web",
-	//				Uuid:      "asdfg-hgfd-qwert",
-	//				Message:   "Should be approved",
-	//				Required:  0,
-	//				Completed: 0,
-	//			},
-	//		},
-	//	}, http.StatusUnauthorized, nil
-	//}
-	//
-	//return nil, 0, fmt.Errorf("unrecognized request")
 }

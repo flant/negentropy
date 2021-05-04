@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -13,7 +14,7 @@ func Test_LoginWithJWT(t *testing.T) {
 
 	vcl := &Client{}
 
-	secret, err := vcl.LoginWithJWT(token)
+	secret, err := vcl.LoginWithJWT(context.Background(), token)
 
 	if err != nil {
 		t.Fatalf("login should be successful. error (type %T): %v", err, err)

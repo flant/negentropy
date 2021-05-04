@@ -17,7 +17,7 @@ ENTITY_TOKEN=$(vault write -format=json auth/token/create/myrole \
    entity_alias="testuser-alias" |  jq -r '.auth.client_token')
 
 # uncomment for short living token
-#vault write identity/oidc/role/myrole key=mykey client_id=authd ttl=30s
+vault write identity/oidc/role/myrole key=mykey client_id=authd ttl=60s
 
 echo Create JWT for authd. Put it in dev/secret/authd.jwt as stated in conf/main.yaml and do chmod 0600.
 

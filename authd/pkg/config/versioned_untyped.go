@@ -58,6 +58,10 @@ func (u *VersionedUntyped) Data() []byte {
 	return u.data
 }
 
+func (u *VersionedUntyped) Object() map[string]interface{} {
+	return u.obj
+}
+
 // MustGetString returns non-empty string value by key
 func getString(obj map[string]interface{}, key string) (value string, err error) {
 	val, found := obj[key]

@@ -1,7 +1,11 @@
 package jwt
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"github.com/flant/negentropy/authd/pkg/util"
+	"github.com/flant/negentropy/authd/pkg/util/exponential"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -9,7 +13,12 @@ import (
 	"time"
 )
 
-const TokenFileMode = 0600
+const (
+	TokenFileMode          = 0600
+	JWTRefreshDelayInitial = time.Second
+	JWTRefreshDelayFactor  = 2.0
+	JWTRefreshDelayMax     = 5 * time.Minute
+)
 
 type Storage struct {
 	Path  string
@@ -19,15 +28,16 @@ type Storage struct {
 
 var DefaultStorage = &Storage{}
 
-/*
-- нет файла с JWT;
-- файл с JWT есть, но у него неправильные права:
-должны быть 0600,
-owner и group – соответствовать owner и group, с которым запущен authd;
-- JWT истек
-*/
+var ExpiredErr = errors.New("JWT is expired")
+
+// Load reads JWT from file.
+//
+// Error is occured if:
+//  - path is not exists.
+//  - path has too open permission.
+//  - JWT is malformed.
+//  - JWT is expired.
 func (s *Storage) Load(path string) error {
-	// This method should be called once, but guard it anyway.
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -53,7 +63,7 @@ func (s *Storage) Load(path string) error {
 
 	err = checkTokenExpired(s.token)
 	if err != nil {
-		return err
+		return ExpiredErr
 	}
 
 	return nil
@@ -100,6 +110,17 @@ func (s *Storage) Update(newToken string) error {
 	return nil
 }
 
+func (s *Storage) CreateRefresher(fn func(context.Context) error) *util.PostponedRetryLoop {
+	s.m.RLock()
+	refreshAt := s.token.StartRefreshAt
+	s.m.RUnlock()
+	return &util.PostponedRetryLoop{
+		StartAfter: refreshAt,
+		Handler:    fn,
+		Backoff:    exponential.NewBackoff(JWTRefreshDelayInitial, JWTRefreshDelayMax, JWTRefreshDelayFactor),
+	}
+}
+
 func checkFileExists(path string) (os.FileInfo, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -132,7 +153,7 @@ func checkFilePerms(stat os.FileInfo) error {
 
 func checkTokenExpired(t *Token) error {
 	if time.Now().After(t.ExpirationDate) {
-		return fmt.Errorf("JWT is expired")
+		return ExpiredErr
 	}
 	return nil
 }

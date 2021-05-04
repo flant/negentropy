@@ -7,5 +7,7 @@ servers:
   - domain: auth.negentropy.eample.com
     default: true
   - domain: "*.auth.negentropy.example.com"
+  - #type: auth
+    domain: "http://127.0.0.1:8200"
   - type: auth
-    domain: "127.0.0.1:8200"
+    domain: "http://127.0.0.1:8083"
