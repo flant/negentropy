@@ -36,6 +36,13 @@ func ServiceAccountSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					"full_identifier": {
+						Name: "full_identifier",
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "FullIdentifier",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},

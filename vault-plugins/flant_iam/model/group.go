@@ -62,6 +62,13 @@ func GroupSchema() *memdb.DBSchema {
 							subjectFieldName: "Groups",
 						},
 					},
+					"full_identifier": {
+						Name: "full_identifier",
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "FullIdentifier",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},

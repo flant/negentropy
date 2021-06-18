@@ -79,6 +79,13 @@ func RoleBindingSchema() *memdb.DBSchema {
 						AllowMissing: true,
 						Indexer:      &roleInTenantRoleBindingIndexer{},
 					},
+					"full_identifier": {
+						Name: "full_identifier",
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "FullIdentifier",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},
