@@ -18,3 +18,20 @@ authd is a proxy to use the pool of Vault servers. It's main goal is to use JWT 
 4. Rename policy to role, do checks in LoginHandler.
 5. In-memory Vault instance for testing.
 6. ...
+
+
+## Links
+
+https://www.vaultproject.io/docs/secrets/identity
+
+
+https://www.vaultproject.io/api-docs/secret/identity/tokens
+https://www.vaultproject.io/api-docs/secret/identity/tokens#client_id
+https://www.vaultproject.io/api-docs/secret/identity/entity#read-entity-by-id
+https://www.vaultproject.io/docs/concepts/lease
+https://www.vaultproject.io/api-docs/secret/identity/entity-alias
+https://www.vaultproject.io/api/system/auth#list-auth-methods
+https://www.vaultproject.io/api-docs/auth/token#create-token
+https://www.vaultproject.io/api/auth/token
+https://www.vaultproject.io/docs/auth/token
+https://www.vaultproject.io/api-docs/auth/jwt
