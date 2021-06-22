@@ -16,7 +16,7 @@ vault write identity/oidc/config issuer=http://127.0.0.1:8200
 vault write identity/oidc/key/mykey allowed_client_ids=* algorithm=EdDSA
 
 echo Configure JWT auth at /auth/myjwt path
-vault auth enable jwt -path myjwt # /auth/myjwt/...
+vault auth enable -path=myjwt jwt 
 echo Configure auth/jwt to trust itself and use tokens from identity/oidc
 vault write auth/myjwt/config jwks_url=http://127.0.0.1:8200/v1/identity/oidc/.well-known/keys bound_issuer=http://127.0.0.1:8200/v1/identity/oidc
 
