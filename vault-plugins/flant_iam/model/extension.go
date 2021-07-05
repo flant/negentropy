@@ -5,8 +5,17 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
+type ExtensionOwnerType string
+
 const (
-	ExtensionType = "extension" // also, memdb schema name
+	ExtensionType       = "extension" // also, memdb schema name
+	ExtensionOwnerIndex = "owner"
+
+	ExtensionOwnerTypeUser                    ExtensionOwnerType = "user"
+	ExtensionOwnerTypeServiceAccount          ExtensionOwnerType = "service_account"
+	ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass"
+	ExtensionOwnerTypeRoleBinding             ExtensionOwnerType = "role_binding"
+	ExtensionOwnerTypeGroup                   ExtensionOwnerType = "group"
 )
 
 func ExtensionSchema() *memdb.DBSchema {
@@ -22,8 +31,8 @@ func ExtensionSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"owner": {
-						Name:   "owner",
+					ExtensionOwnerIndex: {
+						Name:   ExtensionOwnerIndex,
 						Unique: true,
 						Indexer: &memdb.CompoundIndex{
 							Indexes: []memdb.Indexer{
@@ -38,14 +47,23 @@ func ExtensionSchema() *memdb.DBSchema {
 	}
 }
 
-type Extension struct {
+type UUIDed struct {
 	UUID string `json:"uuid"` // PK
+}
+
+type Versioned struct {
+	Version string `json:"resource_version"`
+}
+
+type Extension struct {
+	UUIDed
+	Versioned
 
 	// Origin is the source where the extension originates from
 	Origin string `json:"origin"`
 
 	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
-	OwnerType string `json:"owner_type"`
+	OwnerType ExtensionOwnerType `json:"owner_type"`
 	// OwnerUUID is the id of an owner object
 	OwnerUUID string `json:"owner_uuid"`
 

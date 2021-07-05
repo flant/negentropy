@@ -49,12 +49,13 @@ func UserSchema() *memdb.DBSchema {
 }
 
 type User struct {
-	UUID           string `json:"uuid"` // PK
-	TenantUUID     string `json:"tenant_uuid"`
-	Version        string `json:"resource_version"`
-	Identifier     string `json:"identifier"`
-	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
-	Email          string `json:"email"`
+	UUID           string     `json:"uuid"` // PK
+	TenantUUID     string     `json:"tenant_uuid"`
+	Version        string     `json:"resource_version"`
+	Identifier     string     `json:"identifier"`
+	FullIdentifier string     `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
+	Email          string     `json:"email"`
+	Extension      *Extension `json:"extension"`
 }
 
 func (u *User) ObjType() string {
