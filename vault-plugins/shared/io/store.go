@@ -84,7 +84,7 @@ func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInput
 				object, ok := change.After.(MemoryStorableObject)
 				if !ok {
 					mst.memstore.kafkaMutex.RUnlock()
-					return fmt.Errorf("object does not implement MemoryStorableObject: %s", reflect.TypeOf(change.Before))
+					return fmt.Errorf("object does not implement MemoryStorableObject: %s", reflect.TypeOf(change.After))
 				}
 				msgs, err = dest.ProcessObject(mst.memstore, mst.Txn, object)
 			}

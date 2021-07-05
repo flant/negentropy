@@ -96,7 +96,7 @@ func (b replicaBackend) handleReplicaList(ctx context.Context, req *logical.Requ
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"replicas_names": replicaNames,
+			"replica_names": replicaNames,
 		},
 	}
 
