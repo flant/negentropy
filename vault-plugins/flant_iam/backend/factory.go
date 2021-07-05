@@ -98,6 +98,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
+		extensionPaths(b, storage),
 		kafkaPaths(b, storage),
 	)
 

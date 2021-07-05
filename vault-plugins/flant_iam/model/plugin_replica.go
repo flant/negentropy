@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	ReplicaType = "replica" // also, memdb schema name
+	ReplicaType = "plugin_replica" // also, memdb schema name
 
 )
 
