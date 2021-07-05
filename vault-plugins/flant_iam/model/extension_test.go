@@ -11,8 +11,8 @@ func Test_ExtensionMarshalling(t *testing.T) {
 	ten := &Extension{
 		UUID: uuid.New(),
 
-		ParentType: UserType,
-		ParentUUID: uuid.New(),
+		OwnerType: UserType,
+		OwnerUUID: uuid.New(),
 
 		Attributes:          map[string]interface{}{"key": "value"},
 		SensitiveAttributes: map[string]interface{}{"sensitive_key": "sensitive_value"},
