@@ -8,6 +8,14 @@ chmod +x /bin/vault
 addgroup vault && \
 adduser -S -G vault vault
 
+cat <<'EOF' > /etc/vault-config.sh
+#!/usr/bin/env bash
+export INTERNAL_ADDRESS="$(ip r get 1 | awk '{print $7}')"
+envsubst < /etc/vault.hcl > /tmp/vault.hcl
+EOF
+
+chmod +x /etc/vault-config.sh
+
 cat <<'EOF' > /etc/init.d/vault
 #!/sbin/openrc-run
 name="Vault server"
@@ -17,7 +25,7 @@ description_reload="Reload configuration"
 extra_started_commands="reload"
 
 command="/bin/vault"
-command_args="server -config /etc/vault.hcl"
+command_args="server -config /tmp/vault.hcl"
 command_user="vault:vault"
 
 supervisor=supervise-daemon
@@ -33,7 +41,8 @@ depend() {
 
 start_pre() {
 	checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
-    && /bin/update-hostname
+    && /bin/update-hostname \
+    && /etc/vault-config.sh
 }
 
 reload() {

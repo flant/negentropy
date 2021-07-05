@@ -11,8 +11,13 @@ gcp_vault_conf_conf_bucket = "[VAULT_CONF_CONF_FULL_BUCKET_NAME]"
 gcp_vault_auth_bucket_trailer = "[VAULT_AUTH_BUCKET_NAME_TRAILER]"
 # Variables to determine where are builder instances will run.
 ## Project will be also used for kafka CA request.
+## Project and region will be also used for vault conf gcpckms.
 gcp_project = "[PROJECT]"
+gcp_region = "[REGION]"
 gcp_zone = "[ZONE]"
+# GCP ckms.
+gcp_ckms_seal_key_ring = "[KEY_RING]"
+gcp_ckms_seal_crypto_key = "[CRYPTO_KEY]"
 # Will be used as "hostname.kafka_main_domain".
 kafka_main_domain = "[KAFKA_INSTANCES_SUBDOMAIN]"
 # Kafka server key password.
