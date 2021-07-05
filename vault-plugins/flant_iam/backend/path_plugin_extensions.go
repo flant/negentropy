@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -229,51 +230,43 @@ func (b extensionBackend) handleExtensionRead(ctx context.Context, req *logical.
 }
 
 func (b extensionBackend) handleExtensionDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// TODO: dodelat
+	extName := data.Get("extension_name").(string)
+	if extName == "" {
+		return nil, logical.CodedError(http.StatusBadRequest, "extension_name required")
+	}
 
-	return nil, nil
+	tx := b.storage.Txn(true)
 
-	// replicaName := data.Get("replica_name").(string)
-	//
-	// tx := b.storage.Txn(true)
-	//
-	// // Verify existence
-	//
-	// raw, err := tx.First(model.ReplicaType, model.PK, replicaName)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if raw == nil {
-	// 	rr := logical.ErrorResponse("replica not found")
-	// 	return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
-	// }
-	//
-	// // Delete
-	// err = tx.Delete(model.ReplicaType, raw)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if err := tx.Commit(); err != nil {
-	// 	return nil, fmt.Errorf("failed to commit changes: %v", err)
-	// }
-	//
-	// replica := raw.(*model.Replica)
-	// err = b.deleteTopicForReplica(ctx, replica.Name)
-	// if err != nil {
-	// 	return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
-	// }
-	//
-	// b.removeReplicaFromReplications(*replica)
-	//
-	// return &logical.Response{}, err
+	raw, err := tx.First(model.PluginExtensionType, model.PK, extName)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		rr := logical.ErrorResponse("extension not found")
+		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+	}
+
+	// Delete
+	err = tx.Delete(model.PluginExtensionType, raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit changes: %v", err)
+	}
+
+	ext := raw.(*model.PluginExtension)
+	b.removeExtensionFromSources(ext)
+
+	return &logical.Response{}, err
 }
 
 func (b extensionBackend) addExtensionToSources(ext *model.PluginExtension) {
 	b.storage.AddKafkaSource(kafka_source.NewExtensionKafkaSource(b.storage.GetKafkaBroker(), ext.Name, ext.PublicKey, ext.OwnedTypes, ext.ExtendedTypes, ext.AllowedRoles))
 }
 
-func (b extensionBackend) removeReplicaFromReplications(replica model.Replica) {
-	b.storage.RemoveKafkaDestination(replica.Name)
+func (b extensionBackend) removeExtensionFromSources(ext *model.PluginExtension) {
+	b.storage.RemoveKafkaSource(ext.Name)
 }
 
 func (b extensionBackend) createTopicForExtension(ctx context.Context, extName string) error {

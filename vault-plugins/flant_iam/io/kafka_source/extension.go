@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cenkalti/backoff"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -21,6 +22,7 @@ import (
 type ExtensionKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
+	topicName string
 
 	extensionName string
 	signKey       *rsa.PublicKey
@@ -28,6 +30,8 @@ type ExtensionKafkaSource struct {
 	ownedTypes    map[string]struct{}
 	extendedTypes map[string]struct{}
 	allowedRoles  map[string]struct{}
+
+	stopC chan struct{}
 }
 
 func NewExtensionKafkaSource(kf *sharedkafka.MessageBroker, name string, pubKey *rsa.PublicKey, ownTypes, extTypes, roles []string) *ExtensionKafkaSource {
@@ -49,6 +53,7 @@ func NewExtensionKafkaSource(kf *sharedkafka.MessageBroker, name string, pubKey 
 	return &ExtensionKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
+		topicName: "extension." + name,
 
 		extensionName: name,
 		signKey:       pubKey,
@@ -56,7 +61,13 @@ func NewExtensionKafkaSource(kf *sharedkafka.MessageBroker, name string, pubKey 
 		ownedTypes:    ownedTypes,
 		extendedTypes: extendedTypes,
 		allowedRoles:  allowedRoles,
+
+		stopC: make(chan struct{}),
 	}
+}
+
+func (mks *ExtensionKafkaSource) Name() string {
+	return mks.topicName
 }
 
 func (mks *ExtensionKafkaSource) isAllowedType(typ string) bool {
@@ -72,157 +83,144 @@ func (mks *ExtensionKafkaSource) isAllowedType(typ string) bool {
 }
 
 func (mks *ExtensionKafkaSource) Restore(txn *memdb.Txn) error {
-	r := mks.kf.GetRestorationReader(mks.kf.PluginConfig.SelfTopicName)
+	runConsumer := mks.kf.GetConsumer(mks.extensionName, mks.topicName, false)
+	defer runConsumer.Close()
+
+	r := mks.kf.GetRestorationReader(mks.topicName)
 	defer r.Close()
 
-	// we dont have other consumers on this topic. Get MaxOffset from its single partition
-	_, lastOffset, err := r.GetWatermarkOffsets(mks.kf.PluginConfig.SelfTopicName, 0)
+	return sharedkafka.RunRestorationLoop(r, runConsumer, mks.topicName, txn, mks.restoreMessageHandler)
+}
+
+func (mks *ExtensionKafkaSource) restoreMessageHandler(txn *memdb.Txn, msg *kafka.Message) error {
+	splitted := strings.Split(string(msg.Key), "/")
+	if len(splitted) != 2 {
+		return fmt.Errorf("key has wong format: %s", string(msg.Key))
+	}
+
+	if !mks.isAllowedType(splitted[0]) {
+		return nil
+	}
+
+	var signature []byte
+	var chunked bool
+	for _, header := range msg.Headers {
+		switch header.Key {
+		case "signature":
+			signature = header.Value
+
+		case "chunked":
+			chunked = true
+		}
+	}
+
+	decrypted, err := mks.decryptor.Decrypt(msg.Value, mks.kf.EncryptionPrivateKey(), chunked)
 	if err != nil {
 		return err
 	}
 
-	if lastOffset <= 0 {
-		return nil
+	hashed := sha256.Sum256(decrypted)
+	err = rsa.VerifyPKCS1v15(mks.signKey, crypto.SHA256, hashed[:], signature)
+	if err != nil {
+		return err
 	}
 
-	for {
-		m, err := r.ReadMessage(-1)
-		if err != nil {
-			return err
-		}
+	var inputObject interface{}
+	switch splitted[0] {
+	case model.GroupType:
+		inputObject = &model.Group{}
 
-		splitted := strings.Split(string(m.Key), "/")
-		if len(splitted) != 2 {
-			return fmt.Errorf("key has wong format: %s", string(m.Key))
-		}
+	case model.RoleBindingType:
+		inputObject = &model.RoleBinding{}
 
-		if !mks.isAllowedType(splitted[0]) {
-			continue
-		}
+	case model.ServiceAccountType:
+		inputObject = &model.ServiceAccount{}
 
-		var signature []byte
-		var chunked bool
-		for _, header := range m.Headers {
-			switch header.Key {
-			case "signature":
-				signature = header.Value
+	case model.UserType:
+		inputObject = &model.User{}
 
-			case "chunked":
-				chunked = true
-			}
-		}
-
-		decrypted, err := mks.decryptor.Decrypt(m.Value, mks.kf.EncryptionPrivateKey(), chunked)
-		if err != nil {
-			return err
-		}
-
-		hashed := sha256.Sum256(decrypted)
-		err = rsa.VerifyPKCS1v15(mks.signKey, crypto.SHA256, hashed[:], signature)
-		if err != nil {
-			return err
-		}
-
-		var inputObject interface{}
-		switch splitted[0] {
-		case model.GroupType:
-			inputObject = &model.Group{}
-
-		case model.RoleBindingType:
-			inputObject = &model.RoleBinding{}
-
-		case model.ServiceAccountType:
-			inputObject = &model.ServiceAccount{}
-
-		case model.UserType:
-			inputObject = &model.User{}
-
-		default:
-			return errors.New("is not implemented yet")
-		}
-
-		err = json.Unmarshal(decrypted, inputObject)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Insert(splitted[0], inputObject)
-		if err != nil {
-			return err
-		}
-
-		if int64(m.TopicPartition.Offset) == lastOffset-1 {
-			return nil
-		}
+	default:
+		return errors.New("is not implemented yet")
 	}
+
+	err = json.Unmarshal(decrypted, inputObject)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Insert(splitted[0], inputObject)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (mks *ExtensionKafkaSource) Stop() {
+	mks.stopC <- struct{}{}
 }
 
 func (mks *ExtensionKafkaSource) Run(store *io.MemoryStore) {
-	topicName := "extension." + mks.extensionName
-	rd := mks.kf.GetConsumer(mks.extensionName, topicName, false)
+	rd := mks.kf.GetConsumer(mks.extensionName, mks.topicName, false)
 
-	for {
-		msg, err := rd.ReadMessage(-1)
-		if err != nil {
-			log.Printf("read message error: %s\n", err)
-			continue
-		}
+	sharedkafka.RunMessageLoop(rd, store, mks.runMessageHandler, mks.stopC)
+}
 
-		splitted := strings.Split(string(msg.Key), "/")
-		if len(splitted) != 2 {
-			continue
-		}
-		objType, objID := splitted[0], splitted[1]
+func (mks *ExtensionKafkaSource) runMessageHandler(sourceConsumer *kafka.Consumer, store *io.MemoryStore, msg *kafka.Message) {
+	splitted := strings.Split(string(msg.Key), "/")
+	if len(splitted) != 2 {
+		return
+	}
+	objType, objID := splitted[0], splitted[1]
 
-		if !mks.isAllowedType(objType) {
-			continue
-		}
+	if !mks.isAllowedType(objType) {
+		return
+	}
 
-		var signature []byte
-		var chunked bool
-		for _, header := range msg.Headers {
-			switch header.Key {
-			case "signature":
-				signature = header.Value
+	var signature []byte
+	var chunked bool
+	for _, header := range msg.Headers {
+		switch header.Key {
+		case "signature":
+			signature = header.Value
 
-			case "chunked":
-				chunked = true
-			}
+		case "chunked":
+			chunked = true
 		}
+	}
 
-		decrypted, err := mks.decryptData(msg.Value, chunked)
-		if err != nil {
-			log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	decrypted, err := mks.decryptData(msg.Value, chunked)
+	if err != nil {
+		log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		if len(signature) == 0 {
-			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	if len(signature) == 0 {
+		log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		err = mks.verifySign(signature, decrypted)
-		if err != nil {
-			log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	err = mks.verifySign(signature, decrypted)
+	if err != nil {
+		log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		source, err := sharedkafka.NewSourceInputMessage(rd, msg.TopicPartition)
-		if err != nil {
-			log.Println("build source message failed", err)
-			continue
-		}
+	source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
+	if err != nil {
+		log.Println("build source message failed", err)
+		return
+	}
 
-		operation := func() error {
-			return mks.processMessage(source, store, objType, objID, decrypted)
-		}
-		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
-		if err != nil {
-			panic(err)
-		}
+	operation := func() error {
+		return mks.processMessage(source, store, objType, objID, decrypted)
+	}
+	err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+	if err != nil {
+		panic(err)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -28,104 +29,97 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker) *SelfKafkaSource {
 	}
 }
 
+func (mks *SelfKafkaSource) Name() string {
+	return mks.kf.PluginConfig.SelfTopicName
+}
+
 func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 	r := mks.kf.GetRestorationReader(mks.kf.PluginConfig.SelfTopicName)
 	defer r.Close()
 
-	// we dont have other consumers on this topic. Get MaxOffset from its single partition
-	_, lastOffset, err := r.GetWatermarkOffsets(mks.kf.PluginConfig.SelfTopicName, 0)
+	return sharedkafka.RunRestorationLoop(r, nil, mks.kf.PluginConfig.SelfTopicName, txn, mks.restorationHandler)
+}
+
+func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Message) error {
+	splitted := strings.Split(string(msg.Key), "/")
+	if len(splitted) != 2 {
+		return fmt.Errorf("key has wong format: %s", string(msg.Key))
+	}
+
+	var signature []byte
+	var chunked bool
+	for _, header := range msg.Headers {
+		switch header.Key {
+		case "signature":
+			signature = header.Value
+
+		case "chunked":
+			chunked = true
+		}
+	}
+
+	decrypted, err := mks.decryptor.Decrypt(msg.Value, mks.kf.EncryptionPrivateKey(), chunked)
 	if err != nil {
 		return err
 	}
 
-	if lastOffset <= 0 {
-		return nil
+	hashed := sha256.Sum256(decrypted)
+	err = rsa.VerifyPKCS1v15(mks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
+	if err != nil {
+		return err
 	}
 
-	for {
-		m, err := r.ReadMessage(-1)
-		if err != nil {
-			return err
-		}
+	// TODO: need huge switch-case here, with object Unmarshaling
+	var inputObject interface{}
+	switch splitted[0] {
+	case model.ReplicaType:
+		inputObject = &model.Replica{}
 
-		splitted := strings.Split(string(m.Key), "/")
-		if len(splitted) != 2 {
-			return fmt.Errorf("key has wong format: %s", string(m.Key))
-		}
+	case model.FeatureFlagType:
+		inputObject = &model.FeatureFlag{}
 
-		var signature []byte
-		var chunked bool
-		for _, header := range m.Headers {
-			switch header.Key {
-			case "signature":
-				signature = header.Value
+	case model.GroupType:
+		inputObject = &model.Group{}
 
-			case "chunked":
-				chunked = true
-			}
-		}
+	case model.ProjectType:
+		inputObject = &model.Project{}
 
-		decrypted, err := mks.decryptor.Decrypt(m.Value, mks.kf.EncryptionPrivateKey(), chunked)
-		if err != nil {
-			return err
-		}
+	case model.RoleType:
+		inputObject = &model.Role{}
 
-		hashed := sha256.Sum256(decrypted)
-		err = rsa.VerifyPKCS1v15(mks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
-		if err != nil {
-			return err
-		}
+	case model.RoleBindingType:
+		inputObject = &model.RoleBinding{}
 
-		// TODO: need huge switch-case here, with object Unmarshaling
-		var inputObject interface{}
-		switch splitted[0] {
-		case model.ReplicaType:
-			inputObject = &model.Replica{}
+	case model.ServiceAccountType:
+		inputObject = &model.ServiceAccount{}
 
-		case model.FeatureFlagType:
-			inputObject = &model.FeatureFlag{}
+	case model.TenantType:
+		inputObject = &model.Tenant{}
 
-		case model.GroupType:
-			inputObject = &model.Group{}
+	case model.UserType:
+		inputObject = &model.User{}
 
-		case model.ProjectType:
-			inputObject = &model.Project{}
-
-		case model.RoleType:
-			inputObject = &model.Role{}
-
-		case model.RoleBindingType:
-			inputObject = &model.RoleBinding{}
-
-		case model.ServiceAccountType:
-			inputObject = &model.ServiceAccount{}
-
-		case model.TenantType:
-			inputObject = &model.Tenant{}
-
-		case model.UserType:
-			inputObject = &model.User{}
-
-		default:
-			return errors.New("is not implemented yet")
-		}
-
-		err = json.Unmarshal(decrypted, inputObject)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Insert(splitted[0], inputObject)
-		if err != nil {
-			return err
-		}
-
-		if int64(m.TopicPartition.Offset) == lastOffset-1 {
-			return nil
-		}
+	default:
+		return errors.New("is not implemented yet")
 	}
+
+	err = json.Unmarshal(decrypted, inputObject)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Insert(splitted[0], inputObject)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (mks *SelfKafkaSource) Run(store *io.MemoryStore) {
+	// do nothing
+}
+
+func (mks *SelfKafkaSource) Stop() {
 	// do nothing
 }
