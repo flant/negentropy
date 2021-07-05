@@ -143,10 +143,6 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	// b, err := Factory(context.Background(), config)
-	// if err != nil {
-	// 	t.Fatalf("unable to create backend: %v", err)
-	// }
 
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
@@ -166,12 +162,6 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// storage.AddKafkaSource(kafka_source.NewMainKafkaSource(mb, "root_source"))
-	//
-	// err = storage.Restore()
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
