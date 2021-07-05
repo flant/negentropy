@@ -3,24 +3,22 @@ package kafka
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type MessageHandler func(sourceConsumer *kafka.Consumer, store *io.MemoryStore, msg *kafka.Message)
+type MessageHandler func(sourceConsumer *kafka.Consumer, msg *kafka.Message)
 
-func RunMessageLoop(c *kafka.Consumer, store *io.MemoryStore, msgHandler MessageHandler, stopC chan struct{}) {
+func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan struct{}) {
 	for {
 		select {
 		case <-stopC:
-			c.Unsubscribe()
+			c.Unsubscribe() // nolint:errcheck
 			c.Close()
 			return
 
 		case ev := <-c.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
-				msgHandler(c, store, e)
+				msgHandler(c, e)
 
 			default:
 				// ignore other events
