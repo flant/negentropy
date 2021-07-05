@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -89,4 +91,103 @@ type MaterializedRole struct {
 type MaterializedProjectRole struct {
 	Project string `json:"project"`
 	Name    string `json:"name"`
+}
+
+type RoleBindingRepository struct {
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
+}
+
+func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
+	return &RoleBindingRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
+	}
+}
+
+func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
+	_, err := r.tenantRepo.GetById(roleBinding.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	if roleBinding.Version != "" {
+		return ErrVersionMismatch
+	}
+	roleBinding.Version = NewResourceVersion()
+
+	err = r.db.Insert(RoleBindingType, roleBinding)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RoleBindingRepository) GetById(id string) (*RoleBinding, error) {
+	raw, err := r.db.First(RoleBindingType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	roleBinding := raw.(*RoleBinding)
+	return roleBinding, nil
+}
+
+func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
+	stored, err := r.GetById(roleBinding.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != roleBinding.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != roleBinding.Version {
+		return ErrVersionMismatch
+	}
+	roleBinding.Version = NewResourceVersion()
+
+	// Update
+
+	err = r.db.Insert(RoleBindingType, roleBinding)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RoleBindingRepository) Delete(id string) error {
+	roleBinding, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(RoleBindingType, roleBinding)
+}
+
+func (r *RoleBindingRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*RoleBinding)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
+}
+
+func (r *RoleBindingRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(RoleBindingType, TenantForeignPK, tenantUUID)
+	return err
 }

@@ -158,7 +158,7 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 
 		obj, err := repo.GetById(id)
 		if err != nil {
@@ -180,7 +180,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 
 		if err := repo.Create(project); err != nil {
 			msg := "cannot create project"
@@ -210,12 +210,12 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 			Identifier: data.Get("identifier").(string),
 		}
 
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 		err := repo.Update(project)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.ProjectType)
 		}
-		if err == ErrVersionMismatch {
+		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
 		}
 		if err != nil {
@@ -235,10 +235,10 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 
 		err := repo.Delete(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "project not found")
 		}
 		if err != nil {
@@ -257,10 +257,10 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 
 		project, err := repo.GetById(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.ProjectType)
 		}
 		if err != nil {
@@ -276,7 +276,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewProjectRepository(tx)
+		repo := model.NewProjectRepository(tx)
 
 		list, err := repo.List(tenantID)
 		if err != nil {
@@ -290,100 +290,4 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type ProjectRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
-}
-
-func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
-	return &ProjectRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
-}
-
-func (r *ProjectRepository) Create(project *model.Project) error {
-	_, err := r.tenantRepo.GetById(project.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	project.Version = model.NewResourceVersion()
-	err = r.db.Insert(model.ProjectType, project)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *ProjectRepository) GetById(id string) (*model.Project, error) {
-	raw, err := r.db.First(model.ProjectType, model.PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	project := raw.(*model.Project)
-
-	return project, nil
-}
-
-func (r *ProjectRepository) Update(project *model.Project) error {
-	stored, err := r.GetById(project.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != project.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != project.Version {
-		return ErrVersionMismatch
-	}
-	project.Version = model.NewResourceVersion()
-
-	// Update
-
-	err = r.db.Insert(model.ProjectType, project)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *ProjectRepository) Delete(id string) error {
-	project, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.ProjectType, project)
-}
-
-func (r *ProjectRepository) List(tenantID string) ([]string, error) {
-	iter, err := r.db.Get(model.ProjectType, model.TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		u := raw.(*model.Project)
-		ids = append(ids, u.UUID)
-	}
-	return ids, nil
-}
-
-func (r *ProjectRepository) DeleteByTenant(tenantUUID string) error {
-	_, err := r.db.DeleteAll(model.ProjectType, model.TenantForeignPK, tenantUUID)
-	return err
 }

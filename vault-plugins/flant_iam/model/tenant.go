@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -65,4 +67,101 @@ func (t *Tenant) Marshal(_ bool) ([]byte, error) {
 func (t *Tenant) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
+}
+type TenantRepository struct {
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+
+}
+
+func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
+	return &TenantRepository{
+		db: tx,
+	}
+}
+
+func (r *TenantRepository) Create(t *Tenant) error {
+	t.Version = NewResourceVersion()
+	return r.db.Insert(TenantType, t)
+}
+
+func (r *TenantRepository) GetById(id string) (*Tenant, error) {
+	raw, err := r.db.First(TenantType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*Tenant), nil
+}
+
+func (r *TenantRepository) Update(updated *Tenant) error {
+	stored, err := r.GetById(updated.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+
+	if stored.Version != updated.Version {
+		return ErrVersionMismatch
+	}
+	updated.Version = NewResourceVersion()
+
+	// Update
+
+	return r.db.Insert(TenantType, updated)
+}
+
+func (r *TenantRepository) Delete(id string) error {
+	err := r.deleteNestedObjects(
+		id,
+		NewUserRepository(r.db),
+		NewProjectRepository(r.db),
+		NewServiceAccountRepository(r.db),
+		NewGroupRepository(r.db),
+		NewRoleBindingRepository(r.db),
+	)
+	if err != nil {
+		return err
+	}
+
+	tenant, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(TenantType, tenant)
+}
+
+func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo) error {
+	for _, r := range repos {
+		err := r.DeleteByTenant(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *TenantRepository) List() ([]string, error) {
+	iter, err := r.db.Get(TenantType, PK)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*Tenant)
+		ids = append(ids, t.UUID)
+	}
+	return ids, nil
+}
+
+type SubTenantRepo interface {
+	DeleteByTenant(string) error
 }

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
@@ -18,46 +17,9 @@ const (
 	ExtensionOwnerTypeGroup                   ExtensionOwnerType = "group"
 )
 
-func ExtensionSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			ExtensionType: {
-				Name: ExtensionType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ExtensionOwnerIndex: {
-						Name:   ExtensionOwnerIndex,
-						Unique: true,
-						Indexer: &memdb.CompoundIndex{
-							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{Field: "OwnerType", Lowercase: true},
-								&memdb.StringFieldIndex{Field: "OwnerUUID", Lowercase: true},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-type UUIDed struct {
-	UUID string `json:"uuid"` // PK
-}
-
-type Versioned struct {
-	Version string `json:"resource_version"`
-}
-
 type Extension struct {
-	UUIDed
-	Versioned
+	UUID    string `json:"uuid"` // PK
+	Version string `json:"resource_version"`
 
 	// Origin is the source where the extension originates from
 	Origin string `json:"origin"`
