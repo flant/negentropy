@@ -87,10 +87,10 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-		err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
-		if err != nil {
-			return err
-		}
+	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
