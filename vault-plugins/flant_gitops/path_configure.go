@@ -128,7 +128,7 @@ func configurePaths(b *backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	hclog.L().Debug(fmt.Sprintf("Start configuring ..."))
+	hclog.L().Debug("Start configuring ...")
 
 	fields.Raw = req.Data
 	if err := fields.Validate(); err != nil {
