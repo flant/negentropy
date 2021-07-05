@@ -33,10 +33,3 @@ func Test_ExtensionMarshalling(t *testing.T) {
 		t.Fatalf("extension changed during marshalling/unmarshalling: was=%v, became=%v", ten, ten2)
 	}
 }
-
-func Test_ExtensionDbSchema(t *testing.T) {
-	schema := ExtensionSchema()
-	if err := schema.Validate(); err != nil {
-		t.Fatalf("extension schema is invalid: %v", err)
-	}
-}

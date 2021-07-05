@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -92,4 +94,117 @@ func CalcGroupFullIdentifier(g *Group, tenant *Tenant) string {
 		domain = g.BuiltinType + "." + domain
 	}
 	return name + "@" + domain
+}
+
+type GroupRepository struct {
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
+}
+
+func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
+	return &GroupRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
+	}
+}
+
+func (r *GroupRepository) Create(group *Group) error {
+	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	if group.Version != "" {
+		return ErrVersionMismatch
+	}
+	group.Version = NewResourceVersion()
+	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
+
+	err = r.db.Insert(GroupType, group)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *GroupRepository) GetById(id string) (*Group, error) {
+	raw, err := r.db.First(GroupType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	group := raw.(*Group)
+	return group, nil
+}
+
+func (r *GroupRepository) Update(group *Group) error {
+	stored, err := r.GetById(group.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != group.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != group.Version {
+		return ErrVersionMismatch
+	}
+	group.Version = NewResourceVersion()
+
+	// Update
+
+	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
+	if err != nil {
+		return err
+	}
+	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
+
+	err = r.db.Insert(GroupType, group)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+TODO Clean from everywhere:
+	* other groups
+	* role_bindings
+	* approvals
+	* identity_sharings
+*/
+func (r *GroupRepository) Delete(id string) error {
+	group, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(GroupType, group)
+}
+
+func (r *GroupRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*Group)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
+}
+
+func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(GroupType, TenantForeignPK, tenantUUID)
+	return err
 }

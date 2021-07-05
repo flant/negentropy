@@ -135,7 +135,7 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 
 		t, err := repo.GetById(id)
 		if err != nil {
@@ -155,7 +155,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 
 		if err := repo.Create(tenant); err != nil {
 			msg := "cannot create tenant"
@@ -184,12 +184,12 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 		}
 
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 		err := repo.Update(tenant)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.TenantType)
 		}
-		if err == ErrVersionMismatch {
+		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
 		}
 		if err != nil {
@@ -207,11 +207,11 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 
 		id := data.Get("uuid").(string)
 		err := repo.Delete(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "tenant not found")
 		}
 		if err != nil {
@@ -230,10 +230,10 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 
 		tenant, err := repo.GetById(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.TenantType)
 		}
 		if err != nil {
@@ -247,7 +247,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 func (b *tenantBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
-		repo := NewTenantRepository(tx)
+		repo := model.NewTenantRepository(tx)
 
 		list, err := repo.List()
 		if err != nil {
@@ -261,102 +261,4 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type TenantRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
-}
-
-func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
-	return &TenantRepository{
-		db: tx,
-	}
-}
-
-func (r *TenantRepository) Create(t *model.Tenant) error {
-	t.Version = model.NewResourceVersion()
-	return r.db.Insert(model.TenantType, t)
-}
-
-func (r *TenantRepository) GetById(id string) (*model.Tenant, error) {
-	raw, err := r.db.First(model.TenantType, model.PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*model.Tenant), nil
-}
-
-func (r *TenantRepository) Update(updated *model.Tenant) error {
-	stored, err := r.GetById(updated.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-
-	if stored.Version != updated.Version {
-		return ErrVersionMismatch
-	}
-	updated.Version = model.NewResourceVersion()
-
-	// Update
-
-	return r.db.Insert(model.TenantType, updated)
-}
-
-func (r *TenantRepository) Delete(id string) error {
-	err := r.deleteNestedObjects(
-		id,
-		NewUserRepository(r.db),
-		NewProjectRepository(r.db),
-		NewServiceAccountRepository(r.db),
-		NewGroupRepository(r.db),
-		NewRoleBindingRepository(r.db),
-	)
-	if err != nil {
-		return err
-	}
-
-	tenant, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.TenantType, tenant)
-}
-
-func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo) error {
-	for _, r := range repos {
-		err := r.DeleteByTenant(id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *TenantRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.TenantType, model.PK)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*model.Tenant)
-		ids = append(ids, t.UUID)
-	}
-	return ids, nil
-}
-
-type SubTenantRepo interface {
-	DeleteByTenant(string) error
 }

@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -47,4 +49,60 @@ func (t *FeatureFlag) Marshal(_ bool) ([]byte, error) {
 func (t *FeatureFlag) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
+}
+type FeatureFlagRepository struct {
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+}
+
+func NewFeatureFlagRepository(tx *io.MemoryStoreTxn) *FeatureFlagRepository {
+	return &FeatureFlagRepository{tx}
+}
+
+func (r *FeatureFlagRepository) Create(ff *FeatureFlag) error {
+	_, err := r.Get(ff.Name)
+	if err == ErrNotFound {
+		return r.db.Insert(FeatureFlagType, ff)
+	}
+	if err != nil {
+		return err
+	}
+	return ErrAlreadyExists
+}
+
+func (r *FeatureFlagRepository) Get(name string) (*FeatureFlag, error) {
+	raw, err := r.db.First(FeatureFlagType, PK, name)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*FeatureFlag), nil
+}
+
+func (r *FeatureFlagRepository) Delete(name string) error {
+	// TODO Cannot be deleted when in use by role, tenant, or project
+	featureFlag, err := r.Get(name)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(FeatureFlagType, featureFlag)
+}
+
+func (r *FeatureFlagRepository) List() ([]string, error) {
+	iter, err := r.db.Get(FeatureFlagType, PK)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		ff := raw.(*FeatureFlag)
+		ids = append(ids, ff.Name)
+	}
+	return ids, nil
 }

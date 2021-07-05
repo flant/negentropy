@@ -203,7 +203,7 @@ func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 
 		obj, err := repo.GetById(id)
 		if err != nil {
@@ -230,7 +230,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 
 		if err := repo.Create(group); err != nil {
 			msg := "cannot create service account"
@@ -263,12 +263,12 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 		err := repo.Update(group)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.GroupType)
 		}
-		if err == ErrVersionMismatch {
+		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
 		}
 		if err != nil {
@@ -288,10 +288,10 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 
 		err := repo.Delete(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "service account not found")
 		}
 		if err != nil {
@@ -310,10 +310,10 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 
 		group, err := repo.GetById(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.GroupType)
 		}
 		if err != nil {
@@ -329,7 +329,7 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewGroupRepository(tx)
+		repo := model.NewGroupRepository(tx)
 
 		list, err := repo.List(tenantID)
 		if err != nil {
@@ -343,117 +343,4 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type GroupRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
-}
-
-func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
-	return &GroupRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
-}
-
-func (r *GroupRepository) Create(group *model.Group) error {
-	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	if group.Version != "" {
-		return ErrVersionMismatch
-	}
-	group.Version = model.NewResourceVersion()
-	group.FullIdentifier = model.CalcGroupFullIdentifier(group, tenant)
-
-	err = r.db.Insert(model.GroupType, group)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *GroupRepository) GetById(id string) (*model.Group, error) {
-	raw, err := r.db.First(model.GroupType, model.PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	group := raw.(*model.Group)
-	return group, nil
-}
-
-func (r *GroupRepository) Update(group *model.Group) error {
-	stored, err := r.GetById(group.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != group.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != group.Version {
-		return ErrVersionMismatch
-	}
-	group.Version = model.NewResourceVersion()
-
-	// Update
-
-	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
-	if err != nil {
-		return err
-	}
-	group.FullIdentifier = model.CalcGroupFullIdentifier(group, tenant)
-
-	err = r.db.Insert(model.GroupType, group)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-/*
-TODO Clean from everywhere:
-	* other groups
-	* role_bindings
-	* approvals
-	* identity_sharings
-*/
-func (r *GroupRepository) Delete(id string) error {
-	group, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.GroupType, group)
-}
-
-func (r *GroupRepository) List(tenantID string) ([]string, error) {
-	iter, err := r.db.Get(model.GroupType, model.TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		u := raw.(*model.Group)
-		ids = append(ids, u.UUID)
-	}
-	return ids, nil
-}
-
-func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
-	_, err := r.db.DeleteAll(model.GroupType, model.TenantForeignPK, tenantUUID)
-	return err
 }

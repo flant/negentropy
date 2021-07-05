@@ -26,7 +26,6 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		GroupSchema(),
 		RoleBindingSchema(),
 		RoleSchema(),
-		ExtensionSchema(),
 	}
 
 	for _, o := range others {

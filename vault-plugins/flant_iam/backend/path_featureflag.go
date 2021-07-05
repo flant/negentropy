@@ -86,7 +86,7 @@ func (b *featureFlagBackend) handleExistence() framework.ExistenceFunc {
 		b.Logger().Debug("checking featureFlag existence", "path", req.Path, "name", name, "op", req.Operation)
 
 		tx := b.storage.Txn(false)
-		repo := NewFeatureFlagRepository(tx)
+		repo := model.NewFeatureFlagRepository(tx)
 
 		flag, err := repo.Get(name)
 		if err != nil {
@@ -104,7 +104,7 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewFeatureFlagRepository(tx)
+		repo := model.NewFeatureFlagRepository(tx)
 
 		if err := repo.Create(featureFlag); err != nil {
 			msg := "cannot create feature flag"
@@ -123,11 +123,11 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewFeatureFlagRepository(tx)
+		repo := model.NewFeatureFlagRepository(tx)
 
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "feature flag not found")
 		}
 		if err != nil {
@@ -145,7 +145,7 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 func (b *featureFlagBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
-		repo := NewFeatureFlagRepository(tx)
+		repo := model.NewFeatureFlagRepository(tx)
 
 		list, err := repo.List()
 		if err != nil {
@@ -159,61 +159,4 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type FeatureFlagRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-}
-
-func NewFeatureFlagRepository(tx *io.MemoryStoreTxn) *FeatureFlagRepository {
-	return &FeatureFlagRepository{tx}
-}
-
-func (r *FeatureFlagRepository) Create(ff *model.FeatureFlag) error {
-	_, err := r.Get(ff.Name)
-	if err == ErrNotFound {
-		return r.db.Insert(model.FeatureFlagType, ff)
-	}
-	if err != nil {
-		return err
-	}
-	return ErrAlreadyExists
-}
-
-func (r *FeatureFlagRepository) Get(name string) (*model.FeatureFlag, error) {
-	raw, err := r.db.First(model.FeatureFlagType, model.PK, name)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*model.FeatureFlag), nil
-}
-
-func (r *FeatureFlagRepository) Delete(name string) error {
-	// TODO Cannot be deleted when in use by role, tenant, or project
-	featureFlag, err := r.Get(name)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(model.FeatureFlagType, featureFlag)
-}
-
-func (r *FeatureFlagRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.FeatureFlagType, model.PK)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		ff := raw.(*model.FeatureFlag)
-		ids = append(ids, ff.Name)
-	}
-	return ids, nil
 }
