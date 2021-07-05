@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // TopicType represents kafka topic type
@@ -242,6 +242,7 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 		"enable.auto.commit": true,
 		"isolation.level":    "read_committed",
 	})
+
 	if err != nil {
 		panic(err)
 	}
