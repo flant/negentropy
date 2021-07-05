@@ -34,18 +34,8 @@ func newBackend() (*backend, error) {
 	}
 
 	b.Backend = &framework.Backend{
-		PeriodicFunc: func(_ context.Context, req *logical.Request) error {
-			uuid, err := b.TaskQueueManager.RunTask(context.Background(), req.Storage, b.periodicTask)
-			if err != queue_manager.QueueBusyError {
-				return err
-			}
-
-			_ = uuid
-			_ = err
-
-			return nil
-		},
-		BackendType: logical.TypeLogical,
+		PeriodicFunc: GetPeriodicTaskFunc(b),
+		BackendType:  logical.TypeLogical,
 		Paths: framework.PathAppend(
 			configurePaths(b),
 			b.TaskQueueManager.Paths(),
