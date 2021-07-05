@@ -26,3 +26,7 @@ variables.pkrvars.hcl
 vault-plugins/build/
 vault-plugins/flant_iam/tests/data/*
 vault-plugins/tests/data/*
+
+.terraform
+.terraform.lock.hcl
+env_vars
