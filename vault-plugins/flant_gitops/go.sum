@@ -4,6 +4,7 @@ github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 h1:w+iIsaOQNcT7O
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
+github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5/go.mod h1:tTuCMEN+UleMWgg9dVx4Hu52b1bJo+59jBh3ajtinzw=
 github.com/Microsoft/go-winio v0.4.16 h1:FtSW/jqD+l4ba5iPBj9CODVtgfYAD8w2wS923g/cFDk=
@@ -76,6 +77,7 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e/go.mod h1:HyVoz1Mz5Co8TFO8EupIdlcpwShBmY98dkT2xeHkvEI=
+github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 h1:BHsljHzVlRcyQhjrss6TZTdY2VfCqZPbv5k3iBFa2ZQ=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/frankban/quicktest v1.10.0/go.mod h1:ui7WezCLWMWxVWr1GETZY3smRy0G4KWq9vcPtJmFl7Y=
 github.com/frankban/quicktest v1.11.3 h1:8sXhOn0uLys67V8EsXLc6eszDs8VXWxL3iRvebPhedY=
@@ -150,6 +152,8 @@ github.com/hashicorp/go-hclog v0.12.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39
 github.com/hashicorp/go-hclog v0.14.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-hclog v0.16.0 h1:uCeOEwSWGMwhJUdpUjk+1cVKIEfGu2/1nFXukimi2MU=
 github.com/hashicorp/go-hclog v0.16.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
+github.com/hashicorp/go-hclog v0.16.1 h1:IVQwpTGNRRIHafnTs2dQLIk4ENtneRIEEJWOVDqz99o=
+github.com/hashicorp/go-hclog v0.16.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.3.0 h1:8exGP7ego3OmkfksihtSouGMZ+hQrhxx+FVELeXpVPE=
@@ -332,6 +336,8 @@ github.com/werf/logboek v0.5.4/go.mod h1:anq9+mQPKXf67BVtFnXG9wPpMi9Q0RkQ3jFSCzI
 github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2/go.mod h1:L+uU/NRFK/7h0NYAnsmvsX9EghDB5QVCcHCIrK2h5nw=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210430135402-b3b99c2c21e3 h1:BXMde95AUiYUDg1Pbzt0TEU9ZwbPWlbdjbdkdLxzb1g=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210430135402-b3b99c2c21e3/go.mod h1:t9kcnpTlnyD5jGsA+k1We0WnHSYrU39psvmnUx/Btkg=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210525110745-fcf170b7f6ab h1:zcnS69220ZmvWIkQeosKBcSbzI5Mnh0niVf17GV7ZFY=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210525110745-fcf170b7f6ab/go.mod h1:7s4+HbHBdkIq6Vz+gKKm1C9vcYfpNfj8RMG/w8skHbA=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
