@@ -22,13 +22,13 @@ func ExtensionSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"parent": {
-						Name:   "parent",
+					"owner": {
+						Name:   "owner",
 						Unique: true,
 						Indexer: &memdb.CompoundIndex{
 							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{Field: "ParentType", Lowercase: true},
-								&memdb.StringFieldIndex{Field: "ParentUUID", Lowercase: true},
+								&memdb.StringFieldIndex{Field: "OwnerType", Lowercase: true},
+								&memdb.StringFieldIndex{Field: "OwnerUUID", Lowercase: true},
 							},
 						},
 					},
@@ -44,10 +44,10 @@ type Extension struct {
 	// Origin is the source where the extension originates from
 	Origin string `json:"origin"`
 
-	// ParentType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
-	ParentType string `json:"parent_type"`
-	// ParentUUID is the id of an owner object
-	ParentUUID string `json:"parent_uuid"`
+	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
+	OwnerType string `json:"owner_type"`
+	// OwnerUUID is the id of an owner object
+	OwnerUUID string `json:"owner_uuid"`
 
 	// Attributes is the data to pass to other systems transparently
 	Attributes map[string]interface{} `json:"attributes"`
