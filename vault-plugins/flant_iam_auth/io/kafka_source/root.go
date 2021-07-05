@@ -168,6 +168,7 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 		source, err := kafka.NewSourceInputMessage(rd, msg.TopicPartition)
 		if err != nil {
 			log.Println("build source message failed", err)
+			continue
 		}
 
 		operation := func() error {
