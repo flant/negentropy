@@ -1,11 +1,21 @@
 storage "gcs" {
   bucket = "$GCP_VAULT_CONF_BUCKET"
+  ha_enabled = "true"
 }
 
 listener "tcp" {
-  address     = "0.0.0.0:8200"
-  tls_disable = 1
+  address         = "$INTERNAL_ADDRESS:8200"
+  cluster_address = "$INTERNAL_ADDRESS:8201"
+  tls_disable     = "true"
 }
 
-api_addr = "http://0.0.0.0:8200"
-ui = true
+api_addr = "http://$INTERNAL_ADDRESS:8200"
+
+seal "gcpckms" {
+  project = "$GCP_PROJECT"
+  region = "$GCP_REGION"
+  key_ring = "$GCPCKMS_SEAL_KEY_RING"
+  crypto_key = "$GCPCKMS_SEAL_CRYPTO_KEY"
+}
+
+ui = false

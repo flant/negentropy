@@ -5,7 +5,16 @@ variable "root_password" {
 variable "gcp_vault_conf_bucket" {
   type = string
 }
+variable "gcp_ckms_seal_key_ring" {
+  type =  string
+}
+variable "gcp_ckms_seal_crypto_key" {
+  type =  string
+}
 variable "gcp_project" {
+  type =  string
+}
+variable "gcp_region" {
   type =  string
 }
 variable "gcp_zone" {
@@ -75,9 +84,15 @@ source "googlecompute" "vault-conf" {
 build {
   sources = ["source.googlecompute.vault-conf"]
 
+  provisioner "file" {
+    source      = "../../../common/vault/vault/pkg/linux_amd64/vault"
+    destination = "/bin/vault"
+  }
+
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
+      "scripts/00-docker-tmpfs.sh",
       "../../../common/packer-scripts/02-vault.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
       "../../../common/packer-scripts/04-docker.sh",
@@ -94,9 +109,13 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "GCP_VAULT_CONF_BUCKET=${var.gcp_vault_conf_bucket}"
+      "GCP_VAULT_CONF_BUCKET=${var.gcp_vault_conf_bucket}",
+      "GCP_PROJECT=${var.gcp_project}",
+      "GCP_REGION=${var.gcp_region}",
+      "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
+      "GCPCKMS_SEAL_CRYPTO_KEY=${var.gcp_ckms_seal_crypto_key}"
     ]
-    inline = ["envsubst < /etc/vault.hcl.tpl > /etc/vault.hcl"]
+    inline = ["envsubst '$GCP_VAULT_CONF_BUCKET,$GCP_PROJECT,$GCP_REGION,$GCPCKMS_SEAL_KEY_RING,$GCPCKMS_SEAL_CRYPTO_KEY' < /etc/vault.hcl.tpl > /etc/vault.hcl"]
   }
 
   provisioner "shell" {

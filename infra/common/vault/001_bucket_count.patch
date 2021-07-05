@@ -1,0 +1,13 @@
+diff --git a/helper/storagepacker/storagepacker.go b/helper/storagepacker/storagepacker.go
+index c0eea6522..e58f818c9 100644
+--- a/helper/storagepacker/storagepacker.go
++++ b/helper/storagepacker/storagepacker.go
+@@ -19,7 +19,7 @@ import (
+ )
+ 
+ const (
+-	bucketCount = 256
++	bucketCount = 2048
+ 	// StoragePackerBucketsPrefix is the default storage key prefix under which
+ 	// bucket data will be stored.
+ 	StoragePackerBucketsPrefix = "packer/buckets/"

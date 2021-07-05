@@ -75,6 +75,8 @@ source "googlecompute" "vault-root-source" {
 build {
   sources = ["source.googlecompute.vault-root-source"]
 
+  # todo: add binary here
+
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [

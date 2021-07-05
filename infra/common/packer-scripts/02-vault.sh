@@ -2,17 +2,19 @@ set -exu
 
 VAULT_VERSION=1.7.0
 
-mkdir -p /tmp/build && \
-cd /tmp/build && \
-wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip && \
-wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_SHA256SUMS && \
-grep vault_${VAULT_VERSION}_linux_amd64.zip vault_${VAULT_VERSION}_SHA256SUMS | sha256sum -c && \
-unzip -d /bin vault_${VAULT_VERSION}_linux_amd64.zip && \
-cd /tmp && \
-rm -rf /tmp/build
+# We are building our own vault binary and packer should upload it before running this script.
+chmod +x /bin/vault
 
 addgroup vault && \
 adduser -S -G vault vault
+
+cat <<'EOF' > /etc/vault-config.sh
+#!/usr/bin/env bash
+export INTERNAL_ADDRESS="$(ip r get 1 | awk '{print $7}')"
+envsubst < /etc/vault.hcl > /tmp/vault.hcl
+EOF
+
+chmod +x /etc/vault-config.sh
 
 cat <<'EOF' > /etc/init.d/vault
 #!/sbin/openrc-run
@@ -23,7 +25,7 @@ description_reload="Reload configuration"
 extra_started_commands="reload"
 
 command="/bin/vault"
-command_args="server -config /etc/vault.hcl"
+command_args="server -config /tmp/vault.hcl"
 command_user="vault:vault"
 
 supervisor=supervise-daemon
@@ -39,7 +41,8 @@ depend() {
 
 start_pre() {
 	checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
-    && /bin/update-hostname
+    && /bin/update-hostname \
+    && /etc/vault-config.sh
 }
 
 reload() {

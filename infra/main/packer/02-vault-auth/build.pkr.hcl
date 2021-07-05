@@ -75,6 +75,8 @@ source "googlecompute" "vault-auth" {
 build {
   sources = ["source.googlecompute.vault-auth"]
 
+  # todo: add binary here
+
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
