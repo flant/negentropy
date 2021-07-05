@@ -44,9 +44,9 @@ type Extension struct {
 	// Origin is the source where the extension originates from
 	Origin string `json:"origin"`
 
-	// ParentType is "User", "ServiceAccount" or another type which to the extension belongs to
+	// ParentType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
 	ParentType string `json:"parent_type"`
-	// UUID is the id of an owner object
+	// ParentUUID is the id of an owner object
 	ParentUUID string `json:"parent_uuid"`
 
 	// Attributes is the data to pass to other systems transparently
