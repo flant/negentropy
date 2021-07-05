@@ -50,6 +50,7 @@ func (t *FeatureFlag) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
 }
+
 type FeatureFlagRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }

@@ -242,7 +242,6 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 		"enable.auto.commit": true,
 		"isolation.level":    "read_committed",
 	})
-
 	if err != nil {
 		panic(err)
 	}
