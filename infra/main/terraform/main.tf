@@ -92,7 +92,7 @@ resource "google_compute_instance" "main" {
 
 resource "google_compute_firewall" "main" {
   for_each = { for i in local.instances : i.name => i }
-  name     = join("-", [var.prefix, each.value.name])
+  name     = each.value.name
   network  = data.google_compute_network.main.self_link
 
   allow {
