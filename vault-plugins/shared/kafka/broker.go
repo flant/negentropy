@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // TopicType represents kafka topic type

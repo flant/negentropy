@@ -5,12 +5,12 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
 )
 
 type backend struct {
 	*framework.Backend
-	TaskQueueBackend *tasks.Backend
+	TaskQueueManager queue_manager.Interface
 }
 
 var _ logical.Factory = Factory
@@ -30,15 +30,15 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 func newBackend() (*backend, error) {
 	b := &backend{
-		TaskQueueBackend: tasks.NewBackend(),
+		TaskQueueManager: queue_manager.NewManager(),
 	}
 
 	b.Backend = &framework.Backend{
-		PeriodicFunc: b.TaskQueueBackend.PeriodicFunc(b.periodicTask),
+		PeriodicFunc: GetPeriodicTaskFunc(b),
 		BackendType:  logical.TypeLogical,
 		Paths: framework.PathAppend(
 			configurePaths(b),
-			b.TaskQueueBackend.Paths(),
+			b.TaskQueueManager.Paths(),
 		),
 	}
 

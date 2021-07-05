@@ -68,6 +68,7 @@ func (t *Tenant) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
 }
+
 type TenantRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 
