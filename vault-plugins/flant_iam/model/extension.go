@@ -64,6 +64,7 @@ func (t *Extension) ObjId() string {
 }
 
 func (t *Extension) Marshal(_ bool) ([]byte, error) {
+	// TODO exclude sensitive data
 	return jsonutil.EncodeJSON(t)
 }
 
