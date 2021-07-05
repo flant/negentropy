@@ -76,7 +76,7 @@ func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 			return err
 		}
 
-		// TODO: need huge switch-case here, with object Unmarshaling
+		// Fill here objects for unmarshalling
 		var inputObject interface{}
 		switch splitted[0] {
 		case model.ReplicaType:
@@ -105,6 +105,9 @@ func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 
 		case model.UserType:
 			inputObject = &model.User{}
+
+		case model.ExtensionType:
+			inputObject = &model.Extension{}
 
 		default:
 			return errors.New("is not implemented yet")
