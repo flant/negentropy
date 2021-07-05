@@ -29,7 +29,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		return err
 	}
 
-	hclog.L().Debug(fmt.Sprintf("Got configuration fields: %#v", fields))
+	hclog.L().Debug(fmt.Sprintf("Got configuration fields"))
 
 	getRequiredConfigurationFieldFunc := func(fieldName string) (interface{}, error) {
 		val, ok := fields.GetOk(fieldName)
@@ -226,6 +226,8 @@ func (b *backend) getConfiguration(ctx context.Context, storage logical.Storage)
 		return nil, err
 	}
 
+	hclog.L().Debug(fmt.Sprintf("Unmarshalled json: %s", entry.Value))
+
 	fields := &framework.FieldData{}
 	fields.Raw = data
 	fields.Schema = b.getConfigureFieldSchemaMap()
@@ -239,6 +241,8 @@ func (b *backend) getConfigureFieldSchemaMap() map[string]*framework.FieldSchema
 			return p.Fields
 		}
 	}
+
+	hclog.L().Debug(fmt.Sprintf("Unexpected configuration, no path has matched pathPatternConfigure=%q", pathPatternConfigure))
 
 	panic("runtime error")
 }

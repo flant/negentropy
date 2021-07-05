@@ -25,7 +25,7 @@ const (
 	storageKeyLastSuccessfulCommit      = "last_successful_commit"
 	storageKeyPrefixTrustedGPGPublicKey = "trusted_gpg_public_key-"
 
-	pathPatternConfigure = "configure/?"
+	pathPatternConfigure = "^configure/?$"
 
 	dockerImageRegexp = "^((?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:(?:\\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))+)?(?::[0-9]+)?/)?[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?(?:(?:/[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?)+)?)(?::([\\w][\\w.-]{0,127}))(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))$"
 )
@@ -128,7 +128,7 @@ func configurePaths(b *backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	hclog.L().Debug(fmt.Sprintf("Configuring"))
+	hclog.L().Debug(fmt.Sprintf("Start configuring ..."))
 
 	fields.Raw = req.Data
 	if err := fields.Validate(); err != nil {
@@ -140,7 +140,7 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 			return logical.ErrorResponse(fmt.Sprintf("required field %q must be set", fieldName)), nil
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Got field %s value: %q", fieldName, req.Get(fieldName)))
+		hclog.L().Debug(fmt.Sprintf("Configuring field %s value: %q", fieldName, req.Get(fieldName)))
 
 		switch fieldName {
 		case fieldNameDockerImage:
