@@ -97,7 +97,7 @@ type Multipass struct {
 	ValidTill   int64              `json:"valid_till"`
 	CIDRs       []string           `json:"allowed_cidrs"`
 	Roles       []string           `json:"allowed_roles" `
-	Salt        string             `json:"salt" sensitive:""`
+	Salt        string             `json:"salt,omitempty" sensitive:""`
 }
 
 func (t *Multipass) ObjType() string {
