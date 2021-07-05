@@ -9,29 +9,38 @@ import (
 	"strings"
 
 	"github.com/cenkalti/backoff"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	self "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type SelfKafkaSource struct {
-	kf        *kafka.MessageBroker
-	decryptor *kafka.Encrypter
+	kf        *sharedkafka.MessageBroker
+	decryptor *sharedkafka.Encrypter
 	topic     string
 
 	api *vault.VaultEntityDownstreamApi
+
+	stopC chan struct{}
 }
 
-func NewSelfKafkaSource(kf *kafka.MessageBroker, api *vault.VaultEntityDownstreamApi) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, api *vault.VaultEntityDownstreamApi) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
-		decryptor: kafka.NewEncrypter(),
+		decryptor: sharedkafka.NewEncrypter(),
 		topic:     kf.PluginConfig.SelfTopicName,
 		api:       api,
+
+		stopC: make(chan struct{}),
 	}
+}
+
+func (sks *SelfKafkaSource) Name() string {
+	return sks.kf.PluginConfig.SelfTopicName
 }
 
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
@@ -41,135 +50,114 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 
 	runConsumer := sks.kf.GetConsumer(replicaName, replicaName, false)
-	_, lastOffset, err := runConsumer.GetWatermarkOffsets(replicaName, 0)
-	if err != nil {
-		return err
-	}
 	_ = runConsumer.Close()
 
-	if lastOffset <= 0 {
-		return nil
+	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, sks.restoreMsHandler)
+}
+
+func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message) error {
+	splitted := strings.Split(string(msg.Key), "/")
+	if len(splitted) != 2 {
+		return fmt.Errorf("key has wong format: %s", string(msg.Key))
 	}
 
-	for {
-		m, err := r.ReadMessage(-1)
-		if err != nil {
-			return err
-		}
+	var signature []byte
+	var chunked bool
+	for _, header := range msg.Headers {
+		switch header.Key {
+		case "signature":
+			signature = header.Value
 
-		splitted := strings.Split(string(m.Key), "/")
-		if len(splitted) != 2 {
-			return fmt.Errorf("key has wong format: %s", string(m.Key))
+		case "chunked":
+			chunked = true
 		}
+	}
 
-		var signature []byte
-		var chunked bool
-		for _, header := range m.Headers {
-			switch header.Key {
-			case "signature":
-				signature = header.Value
+	decrypted, err := sks.decryptData(msg.Value, chunked)
+	if err != nil {
+		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+	}
 
-			case "chunked":
-				chunked = true
-			}
-		}
+	if len(signature) == 0 {
+		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+	}
 
-		decrypted, err := sks.decryptData(m.Value, chunked)
-		if err != nil {
-			log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", m.Key, *m.TopicPartition.Topic, m.TopicPartition.Offset)
-			continue
-		}
-
-		if len(signature) == 0 {
-			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n", m.Key, *m.TopicPartition.Topic, m.TopicPartition.Offset)
-			continue
-		}
-
-		err = sks.verifySign(signature, decrypted)
-		if err != nil {
-			log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", m.Key, *m.TopicPartition.Topic, m.TopicPartition.Offset)
-			continue
-		}
+	err = sks.verifySign(signature, decrypted)
+	if err != nil {
+		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+	}
 
 		err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
 		if err != nil {
 			return err
 		}
 
-		if int64(m.TopicPartition.Offset) == lastOffset-1 {
-			return nil
-		}
-	}
+	return nil
 }
 
 func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	rd := sks.kf.GetConsumer(replicaName, replicaName, false)
 
-	for {
-		msg, err := rd.ReadMessage(-1)
-		if err != nil {
-			// TODO: shouldn't we fail?
-			log.Println("read message failed", err)
-			continue
-		}
+	sharedkafka.RunMessageLoop(rd, store, sks.messageHandler, sks.stopC)
+}
 
-		splitted := strings.Split(string(msg.Key), "/")
-		if len(splitted) != 2 {
-			// TODO: ??
-			// return fmt.Errorf("key has wong format: %s", string(msg.Key))
-			continue
-		}
-		objType := splitted[0]
+func (sks *SelfKafkaSource) messageHandler(sourceConsumer *kafka.Consumer, store *io.MemoryStore, msg *kafka.Message) {
+	splitted := strings.Split(string(msg.Key), "/")
+	if len(splitted) != 2 {
+		// TODO: ??
+		// return fmt.Errorf("key has wong format: %s", string(msg.Key))
+		return
+	}
+	objType := splitted[0]
 
-		var signature []byte
-		var chunked bool
-		for _, header := range msg.Headers {
-			switch header.Key {
-			case "signature":
-				signature = header.Value
+	var signature []byte
+	var chunked bool
+	for _, header := range msg.Headers {
+		switch header.Key {
+		case "signature":
+			signature = header.Value
 
-			case "chunked":
-				chunked = true
-			}
+		case "chunked":
+			chunked = true
 		}
+	}
 
-		decrypted, err := sks.decryptData(msg.Value, chunked)
-		if err != nil {
-			log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	decrypted, err := sks.decryptData(msg.Value, chunked)
+	if err != nil {
+		log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		if len(signature) == 0 {
-			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	if len(signature) == 0 {
+		log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		err = sks.verifySign(signature, decrypted)
-		if err != nil {
-			log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			continue
-		}
+	err = sks.verifySign(signature, decrypted)
+	if err != nil {
+		log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		return
+	}
 
-		source, err := kafka.NewSourceInputMessage(rd, msg.TopicPartition)
-		if err != nil {
-			log.Println("build source message failed", err)
-		}
+	source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
+	if err != nil {
+		log.Println("build source message failed", err)
+	}
 
-		operation := func() error {
-			return sks.processMessage(source, store, objType, decrypted)
-		}
-		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
-		if err != nil {
-			panic(err)
-		}
+	operation := func() error {
+		return sks.processMessage(source, store, objType, decrypted)
+	}
+	err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+	if err != nil {
+		panic(err)
 	}
 }
 
-func (sks *SelfKafkaSource) processMessage(source *kafka.SourceInputMessage, store *io.MemoryStore, objType string, data []byte) error {
+func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, objType string, data []byte) error {
 	tx := store.Txn(true)
 	defer tx.Abort()
 
@@ -187,4 +175,8 @@ func (sks *SelfKafkaSource) decryptData(data []byte, chunked bool) ([]byte, erro
 func (sks *SelfKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
 	return rsa.VerifyPKCS1v15(sks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
+}
+
+func (sks *SelfKafkaSource) Stop() {
+	sks.stopC <- struct{}{}
 }

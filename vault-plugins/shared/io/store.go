@@ -18,9 +18,10 @@ type MemoryStorableObject interface {
 }
 
 type KafkaSource interface {
+	Name() string
 	Restore(txn *memdb.Txn) error
 	Run(ms *MemoryStore)
-	// Stop() // TODO: stop on vault stop. Maybe its better to do through context
+	Stop()
 }
 
 type KafkaDestination interface {
@@ -34,14 +35,34 @@ type MemoryStore struct {
 
 	kafkaConnection *kafka.MessageBroker
 
-	kafkaMutex          sync.RWMutex
-	kafkaSources        []KafkaSource
-	replicaDestinations map[string]KafkaDestination
+	kafkaMutex      sync.RWMutex
+	kafkaSources    []KafkaSource
+	kafkaMapSources map[string]KafkaSource
+
 	kafkaDestinations   []KafkaDestination
+	replicaDestinations map[string]KafkaDestination
 
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
 	logger log.Logger
+}
+
+func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryStore, error) {
+	db, err := memdb.NewMemDB(schema)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MemoryStore{
+		db,
+		conn,
+		sync.RWMutex{},
+		make([]KafkaSource, 0),
+		make(map[string]KafkaSource),
+		make([]KafkaDestination, 0),
+		make(map[string]KafkaDestination),
+		log.New(nil),
+	}, nil
 }
 
 type MemoryStoreTxn struct {
@@ -129,29 +150,13 @@ func (mst *MemoryStoreTxn) Abort() {
 	mst.Txn.Abort()
 }
 
-func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryStore, error) {
-	db, err := memdb.NewMemDB(schema)
-	if err != nil {
-		return nil, err
-	}
-
-	return &MemoryStore{
-		db,
-		conn,
-		sync.RWMutex{},
-		make([]KafkaSource, 0),
-		make(map[string]KafkaDestination),
-		make([]KafkaDestination, 0),
-		log.New(nil),
-	}, nil
-}
-
 func (ms *MemoryStore) SetLogger(l log.Logger) {
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 	ms.kafkaMutex.Lock()
 	ms.kafkaSources = append(ms.kafkaSources, s)
+	ms.kafkaMapSources[s.Name()] = s
 	ms.kafkaMutex.Unlock()
 
 	if ms.kafkaConnection.Configured() {
@@ -162,6 +167,7 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 func (ms *MemoryStore) ReinitializeKafka() {
 	ms.kafkaMutex.RLock()
 	for _, s := range ms.kafkaSources {
+		go s.Stop()
 		go s.Run(ms)
 	}
 	ms.kafkaMutex.RUnlock()
@@ -195,6 +201,28 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 	}
 
 	ms.kafkaDestinations = append(ms.kafkaDestinations[:index], ms.kafkaDestinations[index+1:]...)
+	delete(ms.replicaDestinations, replicaName)
+	ms.kafkaMutex.Unlock()
+}
+
+func (ms *MemoryStore) RemoveKafkaSource(name string) {
+	ms.kafkaMutex.Lock()
+	ks, ok := ms.kafkaMapSources[name]
+	if !ok {
+		return
+	}
+	var index int
+	for i, dest := range ms.kafkaSources {
+		if dest == ks {
+			index = i
+			break
+		}
+	}
+
+	ks.Stop()
+
+	ms.kafkaSources = append(ms.kafkaSources[:index], ms.kafkaSources[index+1:]...)
+	delete(ms.kafkaMapSources, name)
 	ms.kafkaMutex.Unlock()
 }
 
