@@ -241,9 +241,19 @@ func (mks *ExtensionKafkaSource) processMessage(source *sharedkafka.SourceInputM
 			if err != nil {
 				return backoff.Permanent(err)
 			}
-			// TODO: put to another case
-		} else if _, ok := mks.extendedTypes[objType]; ok {
-			// TODO: set only partial unmarshal part here
+		}
+	case model.ExtensionType:
+		// extension:{uuid}
+		if _, ok := mks.extendedTypes[objType]; !ok {
+			return tx.Commit(source)
+		}
+
+		ext := &model.Extension{}
+		_ = json.Unmarshal(data, ext)
+		err := applyExtension(tx, ext)
+		if err != nil {
+			tx.Abort()
+			return err
 		}
 
 	default:
@@ -260,4 +270,25 @@ func (mks *ExtensionKafkaSource) decryptData(data []byte, chunked bool) ([]byte,
 func (mks *ExtensionKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
 	return rsa.VerifyPKCS1v15(mks.signKey, crypto.SHA256, hashed[:], signature)
+}
+
+func applyExtension(db *io.MemoryStoreTxn, ext *model.Extension) error {
+	switch ext.OwnerType {
+	case model.UserType:
+		repo := model.NewUserRepository(db)
+		user, err := repo.GetById(ext.OwnerUUID)
+		if err != nil {
+			return fmt.Errorf("user not found: %v", err)
+		}
+		user.Extension = ext
+		err = repo.Update(user)
+		if err != nil {
+			return fmt.Errorf("user not updated: %v", err)
+		}
+	case model.ServiceAccountType:
+	case model.RoleBindingType:
+	case model.GroupType:
+		// TODO: case model.MultipassType:
+	}
+	return nil
 }
