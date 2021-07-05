@@ -157,7 +157,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"owner_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of an owner",
+					Description: "ID of the tenant user",
 					Required:    true,
 				},
 				"ttl": {
@@ -206,7 +206,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"owner_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a owner",
+					Description: "ID of the tenant user",
 					Required:    true,
 				},
 				"uuid": {
@@ -238,7 +238,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 				"owner_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of an owner",
+					Description: "ID of the tenant user",
 					Required:    true,
 				},
 			},
