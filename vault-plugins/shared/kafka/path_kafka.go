@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -22,7 +23,7 @@ const (
 	PluginConfigPath = "kafka.plugin.config"
 )
 
-func (mb *MessageBroker) handlePublicKeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (mb *MessageBroker) handlePublicKeyRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	if mb.config.EncryptionPublicKey == nil {
 		return nil, logical.CodedError(http.StatusNotFound, "public key does not exist. Run /kafka/configure_access first")
 	}
@@ -47,31 +48,34 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 		return nil, logical.CodedError(http.StatusBadRequest, "endpoints required")
 	}
 	// TODO: restore cert
-	// certData := data.Get("certificate").(string)
-	// certData = strings.ReplaceAll(certData, "\\n", "\n")
 
-	// validate certificate
-	// m, err := x509.MarshalECPrivateKey(mb.config.ConnectionPrivateKey)
-	// if err != nil {
-	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	// }
+	certData := data.Get("certificate").(string)
+	certData = strings.ReplaceAll(certData, "\\n", "\n")
 
-	// priv := pem.EncodeToMemory(&pem.Block{
-	// 	Type: "PRIVATE KEY", Bytes: m,
-	// })
+	if certData != "" {
+		// validate certificate
+		m, err := x509.MarshalECPrivateKey(mb.config.ConnectionPrivateKey)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+		}
 
-	// _, err = tls.X509KeyPair([]byte(certData), priv)
-	// if err != nil {
-	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	// }
-	//
-	// p, _ := pem.Decode([]byte(certData))
-	// cert, err := x509.ParseCertificate(p.Bytes)
-	// if err != nil {
-	// 	return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-	// }
+		priv := pem.EncodeToMemory(&pem.Block{
+			Type: "PRIVATE KEY", Bytes: m,
+		})
 
-	// mb.config.ConnectionCertificate = cert
+		_, err = tls.X509KeyPair([]byte(certData), priv)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+		}
+
+		p, _ := pem.Decode([]byte(certData))
+		cert, err := x509.ParseCertificate(p.Bytes)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+		}
+		mb.config.ConnectionCertificate = cert
+	}
+
 	mb.config.Endpoints = endpoints
 	// TODO: check kafka connection
 	// generate encryption keys
@@ -157,7 +161,6 @@ func (mb *MessageBroker) KafkaPaths() []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"certificate": {
 					Type:        framework.TypeString,
-					Required:    true,
 					Description: " x509 certificate to establish Kafka TLS connection",
 				},
 				"kafka_endpoints": {
@@ -179,7 +182,7 @@ func (mb *MessageBroker) KafkaPaths() []*framework.Path {
 				"force": {
 					Type:        framework.TypeBool,
 					Default:     false,
-					Description: "Ensforce private key recreation",
+					Description: "Enforce private key recreation",
 					Query:       true,
 				},
 			},

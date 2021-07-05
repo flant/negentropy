@@ -56,6 +56,7 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
 
 		splitted := strings.Split(string(m.Key), "/")
 		if len(splitted) != 2 {
+			log.Printf("wrong object Key format: %s\n", m.Key)
 			return fmt.Errorf("key has wong format: %s", string(m.Key))
 		}
 
@@ -121,8 +122,8 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 	for {
 		msg, err := rd.ReadMessage(-1)
 		if err != nil {
-			log.Println("Error reading message", err)
-			continue // TODO: what to do?
+			log.Printf("read message error: %s\n", err)
+			continue
 		}
 
 		splitted := strings.Split(string(msg.Key), "/")
