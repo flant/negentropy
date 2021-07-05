@@ -69,11 +69,14 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		return err
 	}
 
-		// Fill here objects for unmarshalling
-		var inputObject interface{}
-		switch splitted[0] {
-		case model.ReplicaType:
-			inputObject = &model.Replica{}
+	// Fill here objects for unmarshalling
+	var inputObject interface{}
+	switch splitted[0] {
+	case model.ReplicaType:
+		inputObject = &model.Replica{}
+
+	case model.PluginExtensionType:
+		inputObject = &model.PluginExtension{}
 
 	case model.FeatureFlagType:
 		inputObject = &model.FeatureFlag{}
