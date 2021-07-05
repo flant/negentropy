@@ -106,9 +106,6 @@ func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 		case model.UserType:
 			inputObject = &model.User{}
 
-		case model.ExtensionType:
-			inputObject = &model.Extension{}
-
 		default:
 			return errors.New("is not implemented yet")
 		}
