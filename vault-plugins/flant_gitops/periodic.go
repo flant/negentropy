@@ -21,7 +21,7 @@ import (
 )
 
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
-	hclog.L().Debug(fmt.Sprintf("Started periodic task"))
+	hclog.L().Debug("Started periodic task")
 
 	fields, err := b.getConfiguration(ctx, storage)
 	if err != nil {
@@ -29,7 +29,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		return err
 	}
 
-	hclog.L().Debug(fmt.Sprintf("Got configuration fields"))
+	hclog.L().Debug("Got configuration fields")
 
 	getRequiredConfigurationFieldFunc := func(fieldName string) (interface{}, error) {
 		val, ok := fields.GetOk(fieldName)
@@ -79,10 +79,10 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", string(lastSuccessfulCommit.Value)))
 
 		if string(lastSuccessfulCommit.Value) == headCommit {
-			hclog.L().Debug(fmt.Sprintf("Head commit not changed: skipping"))
+			hclog.L().Debug("Head commit not changed: skipping")
 			return nil
 		}
 	}

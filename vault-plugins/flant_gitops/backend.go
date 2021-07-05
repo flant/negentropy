@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
 )
 
