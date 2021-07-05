@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -11,13 +12,26 @@ import (
 )
 
 func main() {
-	logger := hclog.New(&hclog.LoggerOptions{})
+	logFileName := "flant_gitops.log"
+	if v := os.Getenv("FLANT_GITOPS_LOG_FILE"); v != "" {
+		logFileName = v
+	}
+
+	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("failed to open trdl.log file: %s", err))
+	}
+
+	hclog.DefaultOptions = &hclog.LoggerOptions{
+		Level:           hclog.Trace,
+		IncludeLocation: true,
+		Output:          logFile,
+	}
 
 	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
-		logger.Error(err.Error())
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		hclog.L().Error("bad arguments", "error", err)
 		os.Exit(1)
 	}
 
@@ -29,7 +43,7 @@ func main() {
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		logger.Error("plugin shutting down", "error", err)
+		hclog.L().Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}
 }

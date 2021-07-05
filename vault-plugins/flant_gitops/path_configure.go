@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -127,6 +128,8 @@ func configurePaths(b *backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	hclog.L().Debug(fmt.Sprintf("Configuring"))
+
 	fields.Raw = req.Data
 	if err := fields.Validate(); err != nil {
 		return logical.ErrorResponse(err.Error()), nil
@@ -137,15 +140,19 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 			return logical.ErrorResponse(fmt.Sprintf("required field %q must be set", fieldName)), nil
 		}
 
+		hclog.L().Debug(fmt.Sprintf("Got field %s value: %q", fieldName, req.Get(fieldName)))
+
 		switch fieldName {
 		case fieldNameDockerImage:
-			matched, err := regexp.MatchString(dockerImageRegexp, req.Get(fieldName).(string))
+			fieldValue := req.Get(fieldName).(string)
+
+			matched, err := regexp.MatchString(dockerImageRegexp, fieldValue)
 			if err != nil {
 				panic(fmt.Sprintf("runtime error: %s", err))
 			}
 
 			if !matched {
-				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO[:TAG]@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\")", fieldName)), nil
+				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO[:TAG]@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\"), got: %q", fieldName, fieldValue)), nil
 			}
 		default:
 			continue
