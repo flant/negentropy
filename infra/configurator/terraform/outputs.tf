@@ -1,3 +1,3 @@
-output "vault_conf_private_static_ip" {
-  value = local.vault_conf_private_static_ip
+output "instance_private_ip_addresses" {
+  value = { "private_static_ip_negentropy-vault-conf" : local.vault_conf_private_static_ip }
 }

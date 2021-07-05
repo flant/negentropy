@@ -109,26 +109,38 @@ kafka_gcp_ca_name = "{os.environ.get('PKR_VAR_kafka_gcp_ca_name')}"
 kafka_gcp_ca_location = "{os.environ.get('PKR_VAR_kafka_gcp_ca_location')}"
 # How many replicas to configure in zookeeper and kafka configuration files.
 kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
+###
+gcp_region = "europe-west3"
+gcp_ckms_seal_key_ring = "vault-vs-test"
+gcp_ckms_seal_crypto_key = "vault-vs-test-crypto-key"
 '''
 
 
     write_file("../../variables.pkrvars.hcl", pkrvars)
 
-    run_bash("./build.sh", "../../common/packer")
+    # # print("• [common] run packer")
+    # run_bash("./build.sh", "../../common/packer")
 
     terraform_log = ''
     if args.type == 'configurator':
-        run_bash("./build.sh", "../../configurator/packer")
-        terraform_log = run_bash("terraform init; terraform apply -auto-approve", "../../configurator/terraform")
+        # print("• [configurator] run packer")
+        # run_bash("./build.sh", "../../configurator/packer")
+        print("• [configurator] terraform apply")
+        terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../configurator/terraform")
     else:
-        run_bash("./build.sh", "../../main/packer")
-        terraform_log = run_bash("terraform init; terraform apply -auto-approve", "../../main/terraform")
+        # print("• [main] run packer")
+        # run_bash("./build.sh", "../../main/packer")
+        print("• [main] terraform apply")
+        terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../main/terraform")
+
+    write_file("/tmp/terraform_log", terraform_log)
 
     ips_map = {}
     for s in terraform_log.splitlines():
-      if "  \"private_static_ip" in s:
+      if "private_static_ip_negentropy" in s:
         tmp = s.replace(' ', '').replace('"', '').split('=')
         ips_map[tmp[0]] = tmp[1]
+    print(ips_map)
 
     for vault in vault_list_with_status:
         if not vault['initialized']:
@@ -147,12 +159,14 @@ kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
                 print('root token for vault '+vault['name']+' not found in bucket, sleep 2s')
                 time.sleep(2)
             if args.save_root_tokens:
-                encrypted_vault_root_token = download_blob_as_string(terraform_state_bucket, 'vault-'+vault['name']+'-root-token')
-                write_file('vault-'+vault['name']+'-root-token', str(pgp_decrypt(base64.b64decode(encrypted_vault_root_token)), 'utf-8'))
+                encrypted_vault_root_token = download_blob_as_string(terraform_state_bucket, encrypted_vault_root_token_name)
+                vault_root_token = str(pgp_decrypt(base64.b64decode(encrypted_vault_root_token)), 'utf-8')
+                write_file(encrypted_vault_root_token_name+'-decrypted', vault_root_token)
 
-        vault_address = 'http://%s:8200' % ips_map['private_static_ip_ngntrp-%s' % vault['name']]
-        print("VAULT_TOKEN", vault_root_token_name)
-        print("VAULT_ADDR", vault_address)
+        print("VAULT_TOKEN:", vault_root_token)
+
+        vault_address = 'http://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
+        print("VAULT_ADDR:", vault_address)
 
         if vault['name'] == 'conf':
             os.environ['VAULT_TOKEN'] = vault_root_token
@@ -161,6 +175,10 @@ kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
                      vault secrets enable pki;
                      vault secrets tune -max-lease-ttl=87600h pki;
                      """)
+
+
+
+
 
 
 def check_blob_exists(bucket_name, blob_name):
