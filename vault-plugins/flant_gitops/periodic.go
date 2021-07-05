@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	goGit "github.com/go-git/go-git/v5"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/logboek"
@@ -20,10 +21,15 @@ import (
 )
 
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
+	hclog.L().Debug(fmt.Sprintf("Started periodic task"))
+
 	fields, err := b.getConfiguration(ctx, storage)
 	if err != nil {
+		hclog.L().Debug(fmt.Sprintf("Get configuration failed: %s", err))
 		return err
 	}
+
+	hclog.L().Debug(fmt.Sprintf("Got configuration fields: %#v", fields))
 
 	getRequiredConfigurationFieldFunc := func(fieldName string) (interface{}, error) {
 		val, ok := fields.GetOk(fieldName)
@@ -48,6 +54,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
+		hclog.L().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
+
 		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), trdlGit.CloneOptions{
 			BranchName:        branchName.(string),
 			RecurseSubmodules: goGit.DefaultSubmoduleRecursionDepth,
@@ -61,6 +69,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		}
 
 		headCommit = r.Hash().String()
+		hclog.L().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
 	}
 
 	// skip commit if already processed
@@ -70,7 +79,10 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
+		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+
 		if string(lastSuccessfulCommit.Value) == headCommit {
+			hclog.L().Debug(fmt.Sprintf("Head commit not changed: skipping"))
 			return nil
 		}
 	}
@@ -102,6 +114,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedGpgPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit.(int)); err != nil {
 			return err
 		}
+
+		hclog.L().Debug(fmt.Sprintf("Verified %d commit signatures", requiredNumberOfVerifiedSignaturesOnCommit))
 	}
 
 	// run docker build with service dockerfile and context
@@ -166,6 +180,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			}
 		}()
 
+		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
+
 		response, err := cli.ImageBuild(ctxWithTimeout, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
 			Remove:      true,
@@ -181,6 +197,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		if err := docker.DisplayFromImageBuildResponse(logboek.Context(ctx).OutStream(), response); err != nil {
 			return err
 		}
+
+		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", command, dockerImage))
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{
