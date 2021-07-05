@@ -3,7 +3,7 @@ package iam
 import (
 	"fmt"
 
-	iamrepos "github.com/flant/negentropy/vault-plugins/flant_iam/backend"
+	iamrepos "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
