@@ -39,6 +39,8 @@ type MemoryStore struct {
 	replicaDestinations map[string]KafkaDestination
 	kafkaDestinations   []KafkaDestination
 
+	hookMutex sync.RWMutex
+	hooks     map[string][]HookConfig // by objectType
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
 	logger log.Logger
@@ -65,11 +67,12 @@ const (
 	HookEventDelete
 )
 
-func hook(txn *MemoryStoreTxn, event string, obj interface{})
+type HookCallbackFn func(txn *MemoryStoreTxn, event string, obj interface{})
 
 type HookConfig struct {
-	Event   []HookEvent // insert || delete
-	ObjType string      // model.Type
+	Event      []HookEvent // insert || delete
+	ObjType    string      // model.Type
+	CallbackFn HookCallbackFn
 }
 
 func (ms *MemoryStore) RegisterHook(hookConfig HookConfig) {
@@ -77,11 +80,29 @@ func (ms *MemoryStore) RegisterHook(hookConfig HookConfig) {
 		return
 	}
 
+	ms.hookMutex.Lock()
+	defer ms.hookMutex.Unlock()
+
+	existHooks, ok := ms.hooks[hookConfig.ObjType]
+	if !ok {
+		ms.hooks[hookConfig.ObjType] = []HookConfig{hookConfig}
+		return
+	}
+
+	existHooks = append(existHooks, hookConfig)
+	ms.hooks[hookConfig.ObjType] = existHooks
 }
 
-func (mst *MemoryStoreTxn) Insert(obj) error {
-	mst.Txn.Snapshot()
-	mst.Txn.Insert()
+func (mst *MemoryStoreTxn) Insert(table string, obj interface{}) error {
+	mobj, ok := obj.(MemoryStorableObject)
+	if !ok {
+		mst.memstore.logger.Warn("object does not implement MemoryStorableObject. Can not trigger hooks")
+		return mst.Txn.Insert(table, obj)
+	}
+	typ := mobj.ObjType()
+	mst.memstore
+	hooks := mst.memstore.hooks
+
 	hook(obj)
 }
 
