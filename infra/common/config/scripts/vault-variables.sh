@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 export GCP_VAULT_CONF_BUCKET="$GCP_VAULT_CONF_BUCKET"
 export GCP_PROJECT="$GCP_PROJECT"
 export GCP_REGION="$GCP_REGION"

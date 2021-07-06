@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e 
-
 export MAIN_DOMAIN="$MAIN_DOMAIN"
 export KAFKA_BUCKET="$KAFKA_BUCKET"
 export KAFKA_REPLICAS="$KAFKA_REPLICAS"
