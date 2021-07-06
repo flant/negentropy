@@ -123,6 +123,8 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 				pathAuthSource(b),
 				pathAuthSourceList(b),
 				pathLogin(b),
+				pathJwtType(b),
+				pathJwtTypeList(b),
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
