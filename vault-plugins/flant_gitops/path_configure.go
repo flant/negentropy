@@ -18,8 +18,6 @@ const (
 	fieldNameLastSuccessfulCommit                       = "last_successful_commit"
 	fieldNameDockerImage                                = "docker_image"
 	fieldNameCommand                                    = "command"
-	fieldNameTaskTimeout                                = "task_timeout"
-	fieldNameTaskHistoryLimit                           = "task_history_limit"
 
 	storageKeyConfiguration             = "configuration"
 	storageKeyLastSuccessfulCommit      = "last_successful_commit"
@@ -59,14 +57,6 @@ func configurePaths(b *backend) []*framework.Path {
 				fieldNameCommand: {
 					Type:     framework.TypeString,
 					Required: true,
-				},
-				fieldNameTaskTimeout: {
-					Type:    framework.TypeDurationSecond,
-					Default: "10m",
-				},
-				fieldNameTaskHistoryLimit: {
-					Type:    framework.TypeInt,
-					Default: 10,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
