@@ -23,9 +23,8 @@ const (
 	fieldNameGitCredentialUsername                      = "username"
 	fieldNameGitCredentialPassword                      = "password"
 
-	storageKeyConfiguration             = "configuration"
-	storageKeyLastSuccessfulCommit      = "last_successful_commit"
-	storageKeyPrefixTrustedGPGPublicKey = "trusted_gpg_public_key-"
+	storageKeyConfiguration        = "configuration"
+	storageKeyLastSuccessfulCommit = "last_successful_commit"
 
 	pathPatternConfigure = "^configure/?$"
 )
@@ -98,53 +97,6 @@ func configurePaths(b *backend) []*framework.Path {
 				},
 			},
 		},
-		{
-			Pattern: "configure/trusted_gpg_public_key",
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:     framework.TypeNameString,
-					Required: true,
-				},
-				"public_key": {
-					Type:     framework.TypeString,
-					Required: true,
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.pathTrustedGPGPublicKeyCreate,
-				},
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathTrustedGPGPublicKeyCreate,
-				},
-			},
-		},
-		{
-			Pattern: "configure/trusted_gpg_public_key/?",
-			Fields:  map[string]*framework.FieldSchema{},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
-					Callback: b.pathTrustedGPGPublicKeyList,
-				},
-			},
-		},
-		{
-			Pattern: "configure/trusted_gpg_public_key/" + framework.GenericNameRegex("name") + "$",
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:     framework.TypeNameString,
-					Required: true,
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.pathTrustedGPGPublicKeyRead,
-				},
-				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.pathTrustedGPGPublicKeyDelete,
-				},
-			},
-		},
 	}
 }
 
@@ -212,62 +164,6 @@ func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.R
 	}
 
 	if err := putGitCredential(ctx, req.Storage, fields.Raw); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-func (b *backend) pathTrustedGPGPublicKeyList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	list, err := req.Storage.List(ctx, storageKeyPrefixTrustedGPGPublicKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"names": list,
-		},
-	}, nil
-}
-
-func (b *backend) pathTrustedGPGPublicKeyRead(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	name := fields.Get("name").(string)
-
-	e, err := req.Storage.Get(ctx, storageKeyPrefixTrustedGPGPublicKey+name)
-	if err != nil {
-		return nil, err
-	}
-
-	if e == nil {
-		return logical.ErrorResponse(fmt.Sprintf("key %q not found in storage", name)), nil
-	}
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			name: string(e.Value),
-		},
-	}, nil
-}
-
-func (b *backend) pathTrustedGPGPublicKeyCreate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	name := fields.Get("name").(string)
-	key := fields.Get("public_key").(string)
-
-	err := req.Storage.Put(ctx, &logical.StorageEntry{
-		Key:   storageKeyPrefixTrustedGPGPublicKey + name,
-		Value: []byte(key),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-func (b *backend) pathTrustedGPGPublicKeyDelete(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	name := fields.Get("name").(string)
-	if err := req.Storage.Delete(ctx, storageKeyPrefixTrustedGPGPublicKey+name); err != nil {
 		return nil, err
 	}
 

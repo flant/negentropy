@@ -16,7 +16,7 @@ require (
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/werf/logboek v0.5.4
-	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210525110745-fcf170b7f6ab
+	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210706103712-d16006d09651
 	golang.org/x/text v0.3.5 // indirect
 )
 

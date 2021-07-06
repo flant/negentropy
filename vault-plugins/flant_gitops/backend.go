@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
 )
 
@@ -39,6 +40,7 @@ func newBackend() (*backend, error) {
 		Paths: framework.PathAppend(
 			configurePaths(b),
 			b.TaskQueueManager.Paths(),
+			pgp.Paths(),
 		),
 	}
 
