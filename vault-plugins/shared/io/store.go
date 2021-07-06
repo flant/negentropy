@@ -39,8 +39,8 @@ type MemoryStore struct {
 	replicaDestinations map[string]KafkaDestination
 	kafkaDestinations   []KafkaDestination
 
-	hookMutex sync.RWMutex
-	hooks     map[string][]HookConfig // by objectType
+	hookMutex sync.Mutex
+	hooks     map[string][]ObjectHook // by objectType
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
 	logger log.Logger
@@ -60,39 +60,6 @@ func (ms *MemoryStore) Txn(write bool) *MemoryStoreTxn {
 	return &MemoryStoreTxn{mTxn, ms}
 }
 
-type HookEvent int
-
-const (
-	HookEventInsert HookEvent = iota
-	HookEventDelete
-)
-
-type HookCallbackFn func(txn *MemoryStoreTxn, event string, obj interface{})
-
-type HookConfig struct {
-	Event      []HookEvent // insert || delete
-	ObjType    string      // model.Type
-	CallbackFn HookCallbackFn
-}
-
-func (ms *MemoryStore) RegisterHook(hookConfig HookConfig) {
-	if len(hookConfig.Event) == 0 {
-		return
-	}
-
-	ms.hookMutex.Lock()
-	defer ms.hookMutex.Unlock()
-
-	existHooks, ok := ms.hooks[hookConfig.ObjType]
-	if !ok {
-		ms.hooks[hookConfig.ObjType] = []HookConfig{hookConfig}
-		return
-	}
-
-	existHooks = append(existHooks, hookConfig)
-	ms.hooks[hookConfig.ObjType] = existHooks
-}
-
 func (mst *MemoryStoreTxn) Insert(table string, obj interface{}) error {
 	mobj, ok := obj.(MemoryStorableObject)
 	if !ok {
@@ -100,10 +67,52 @@ func (mst *MemoryStoreTxn) Insert(table string, obj interface{}) error {
 		return mst.Txn.Insert(table, obj)
 	}
 	typ := mobj.ObjType()
-	mst.memstore
-	hooks := mst.memstore.hooks
+	hooks, ok := mst.memstore.hooks[typ]
+	if !ok {
+		return mst.Txn.Insert(table, obj)
+	}
 
-	hook(obj)
+	for _, hook := range hooks {
+		for _, event := range hook.Events {
+			if event == HookEventInsert {
+				err := hook.CallbackFn(mst, event, obj)
+				if err != nil {
+					return fmt.Errorf("hook execution failed: %s", err)
+				}
+				break
+			}
+		}
+	}
+
+	return mst.Txn.Insert(table, obj)
+}
+
+func (mst *MemoryStoreTxn) Delete(table string, obj interface{}) error {
+	mobj, ok := obj.(MemoryStorableObject)
+	if !ok {
+		mst.memstore.logger.Warn("object does not implement MemoryStorableObject. Can not trigger hooks")
+		return mst.Txn.Delete(table, obj)
+	}
+
+	typ := mobj.ObjType()
+	hooks, ok := mst.memstore.hooks[typ]
+	if !ok {
+		return mst.Txn.Delete(table, obj)
+	}
+
+	for _, hook := range hooks {
+		for _, event := range hook.Events {
+			if event == HookEventDelete {
+				err := hook.CallbackFn(mst, event, obj)
+				if err != nil {
+					return fmt.Errorf("hook execution failed: %s", err)
+				}
+				break
+			}
+		}
+	}
+
+	return mst.Txn.Delete(table, obj)
 }
 
 func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInputMessage) error {
@@ -113,8 +122,8 @@ func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInput
 
 	kafkaMessages := make([]kafka.Message, 0)
 	for _, change := range changes {
-		if !mst.memstore.kafkaConnection.Configured() {
-			mst.memstore.logger.Warn("not configure")
+		if mst.memstore.kafkaConnection == nil || !mst.memstore.kafkaConnection.Configured() {
+			mst.memstore.logger.Warn("kafka not configured")
 			continue
 		}
 		mst.memstore.kafkaMutex.RLock()
@@ -190,6 +199,8 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryS
 		make([]KafkaSource, 0),
 		make(map[string]KafkaDestination),
 		make([]KafkaDestination, 0),
+		sync.Mutex{},
+		make(map[string][]ObjectHook),
 		log.New(nil),
 	}, nil
 }
