@@ -87,8 +87,6 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		}
 	}
 
-	RegisterRoleHook(storage)
-
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
 		userPaths(b, storage),
