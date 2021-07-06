@@ -145,7 +145,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		hclog.L().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
 	}
 
-	// skip commit if already processed
+	// define lastSuccessfulCommit
+	var lastSuccessfulCommit string
 	{
 		entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
 		if err != nil {
@@ -160,17 +161,28 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		}
 
 		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+	}
 
-		if lastSuccessfulCommit == headCommit {
-			hclog.L().Debug("Head commit not changed: skipping")
-			return nil
+	// skip commit if already processed
+	if lastSuccessfulCommit == headCommit {
+		hclog.L().Debug("Head commit not changed: skipping")
+		return nil
+	}
+
+	// check that current commit is a descendant of the last successfully processed commit
+	if lastSuccessfulCommit != "" {
+		isAncestor, err := trdlGit.IsAncestor(gitRepo, lastSuccessfulCommit, headCommit)
+		if err != nil {
+			return err
+		}
+
+		if !isAncestor {
+			return fmt.Errorf("unable to run task for git commit %q which is not desendant of the last successfully processed commit %q", headCommit, lastSuccessfulCommit)
 		}
 	}
 
 	// verify head commit pgp signatures
 	{
-		// TODO: Check that current commit is a descendant of the last successful one
-
 		requiredNumberOfVerifiedSignaturesOnCommit, err := getRequiredConfigurationFieldFunc(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit)
 		if err != nil {
 			return err

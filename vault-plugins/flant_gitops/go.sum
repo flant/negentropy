@@ -331,8 +331,8 @@ github.com/urfave/cli v0.0.0-20171014202726-7bc6a0acffa5/go.mod h1:70zkFmudgCuE/
 github.com/werf/logboek v0.5.4 h1:BZ2UJlvngf/lSkJ2NDt0DmIY7tI1GyraURC8s8Injlk=
 github.com/werf/logboek v0.5.4/go.mod h1:anq9+mQPKXf67BVtFnXG9wPpMi9Q0RkQ3jFSCzIdquI=
 github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2/go.mod h1:L+uU/NRFK/7h0NYAnsmvsX9EghDB5QVCcHCIrK2h5nw=
-github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210706103712-d16006d09651 h1:+tLVysJz49+50DmRZdvcKdOc7prardhppgP2FJwhz6k=
-github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210706103712-d16006d09651/go.mod h1:7s4+HbHBdkIq6Vz+gKKm1C9vcYfpNfj8RMG/w8skHbA=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210706111636-1ed997828679 h1:wmMxAMmTwfNUw9547CC0cw4VbFOEpbY9A+uVrgX5ed8=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210706111636-1ed997828679/go.mod h1:7s4+HbHBdkIq6Vz+gKKm1C9vcYfpNfj8RMG/w8skHbA=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
