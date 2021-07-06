@@ -90,7 +90,7 @@ start_pre() {
 }
 
 start_post() {
-  /etc/vault-init.sh
+  /etc/vault-init.sh 2>&1 >> /var/log/vault-init.log
 }
 
 reload() {
