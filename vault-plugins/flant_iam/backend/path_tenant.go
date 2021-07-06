@@ -187,7 +187,7 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewTenantRepository(tx)
 		err := repo.Update(tenant)
 		if err != nil {
-			return responseErr(req, err )
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -206,7 +206,7 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 		err := repo.Delete(id)
 		if err != nil {
-			return responseErr(req, err )
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -225,7 +225,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		tenant, err := repo.GetById(id)
 		if err != nil {
-			return responseErr(req, err )
+			return responseErr(req, err)
 		}
 
 		return responseWithDataAndCode(req, tenant, http.StatusOK)
