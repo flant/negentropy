@@ -55,7 +55,7 @@ def main():
     for vault_name in vault_list:
         vault_list_with_status.append({'name': vault_name, 'initialized': check_blob_exists(terraform_state_bucket, 'vault-'+vault_name+'-recovery-keys')})
 
-    print(vault_list_with_status)
+    print("VAULT_LIST:", vault_list_with_status)
 
     os.environ['PKR_VAR_root_password'] = "d9eWkemNTe"
 
