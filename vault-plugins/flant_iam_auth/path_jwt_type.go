@@ -134,7 +134,7 @@ func (b *flantIamAuthBackend) pathJwtTypeRead(ctx context.Context, req *logical.
 	d := map[string]interface{}{
 		"uuid": jwtType.UUID,
 		"name": jwtType.Name,
-		"ttl":  jwtType.TTL.Seconds(),
+		"ttl":  fmt.Sprintf("%ds", int64(jwtType.TTL.Seconds())),
 
 		"options_schema": jwtType.OptionsSchema,
 	}
@@ -199,13 +199,14 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 
 	ttlRaw, ok := data.GetOk("ttl")
 	if ok {
-		ttl, ok := ttlRaw.(time.Duration)
+		ttlInt, ok := ttlRaw.(int)
 		if !ok {
-			return nil, fmt.Errorf("cannot cast 'ttl' to duration")
+			return nil, fmt.Errorf("cannot cast 'ttl' to int")
 		}
 
+		ttl := time.Duration(ttlInt) * time.Second
 		if ttl < time.Second {
-			return logical.ErrorResponse("incorrect ttl minimum 1 second"), nil
+			return logical.ErrorResponse("incorrect ttl minimum 1 second, got %v", ttl), nil
 		}
 
 		jwtType.TTL = ttl

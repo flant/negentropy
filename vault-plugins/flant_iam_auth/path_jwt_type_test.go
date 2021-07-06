@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/vault/api"
 	"gotest.tools/assert"
+	"io"
 	"math/rand"
 	"net/url"
 	"os"
@@ -41,7 +42,7 @@ apiVersions:
             - "A"
             - "B"
       CIDR:
-		type: string
+        type: string
     oneOf:
     - properties:
         type:
@@ -70,7 +71,7 @@ func getJWTTypePathApi() (*api.Client, error) {
 }
 
 func testRequestJwtTypeName(t *testing.T, cl *api.Client, method, name string, params map[string]interface{}, q *url.Values) *api.Request {
-	path := fmt.Sprintf("%s/%s", HttpPathJwtType, name)
+	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", HttpPathJwtType, name)
 	r := cl.NewRequest(method, path)
 	if params != nil {
 		raw, err := json.Marshal(params)
@@ -103,10 +104,9 @@ func testCreateUpdateJWTType(t *testing.T, name string, params map[string]interf
 
 	r := testRequestJwtTypeName(t, cl, "POST", name, params, nil)
 	resp, err := cl.RawRequest(r)
-	if err != nil {
-		t.Fatalf("can not send request %v", err)
+	if resp == nil {
+		t.Errorf("error wile send request %v", err)
 	}
-
 	return resp
 }
 
@@ -114,7 +114,8 @@ func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
 	name, resp := testCreateJWTType(t, body)
 	code := resp.StatusCode
 	if code != 200 {
-		t.Errorf("incorrect response code after creating: %v", code)
+		b, _ := io.ReadAll(resp.Body)
+		t.Errorf("incorrect response code after creating: %v: %v", code, string(b))
 	}
 
 	return name
@@ -187,11 +188,13 @@ func testCleanAllJWTTypes(t *testing.T) {
 }
 
 func assertJwtType(t *testing.T, resp *api.Response, data map[string]interface{}) {
-	respData := map[string]interface{}{}
-	err := resp.DecodeJSON(respData)
+	respRaw := map[string]interface{}{}
+	err := resp.DecodeJSON(&respRaw)
 	if err != nil {
 		t.Errorf("Do not unmarshal body: %v", err)
 	}
+
+	respData := respRaw["data"].(map[string]interface{})
 
 	if uuid, ok := respData["uuid"]; !ok || uuid == "" {
 		t.Errorf("incorrect uuid")
@@ -245,7 +248,7 @@ func TestJWTType_Create(t *testing.T) {
 			{
 				title: "creates with all supported fields",
 				body: map[string]interface{}{
-					"ttl":            1,
+					"ttl":            "1s",
 					"options_schema": testJwtTypeOptionSchemaValid,
 				},
 			},
@@ -253,7 +256,7 @@ func TestJWTType_Create(t *testing.T) {
 			{
 				title: "creates without 'options_schema'",
 				body: map[string]interface{}{
-					"ttl": 1,
+					"ttl": "1s",
 				},
 			},
 		}
@@ -288,14 +291,14 @@ func TestJWTType_Create(t *testing.T) {
 			{
 				title: "with ttl less than 1 second",
 				body: map[string]interface{}{
-					"ttl": 0,
+					"ttl": "0s",
 				},
 			},
 
 			{
 				title: "if options_schema not is openapi3",
 				body: map[string]interface{}{
-					"ttl":            1,
+					"ttl":            "1s",
 					"options_schema": "invalid",
 				},
 			},
@@ -325,7 +328,7 @@ func TestJWTType_Create(t *testing.T) {
 func TestJWTType_Get(t *testing.T) {
 	t.Run("successful getting", func(t *testing.T) {
 		body := map[string]interface{}{
-			"ttl":            1,
+			"ttl":            "1s",
 			"options_schema": testJwtTypeOptionSchemaValid,
 		}
 		name := mustCreateUpdateJWTType(t, body)
@@ -361,7 +364,7 @@ func TestJWTType_List(t *testing.T) {
 	names := make([]string, 0)
 	for i := 1; i <= 2; i++ {
 		body := map[string]interface{}{
-			"ttl":            1,
+			"ttl":            "1s",
 			"options_schema": testJwtTypeOptionSchemaValid,
 		}
 		name := mustCreateUpdateJWTType(t, body)
@@ -397,7 +400,7 @@ func TestJWTType_Update(t *testing.T) {
 			{
 				title: "all in",
 				body: map[string]interface{}{
-					"ttl":            1,
+					"ttl":            "1s",
 					"options_schema": testJwtTypeOptionSchemaValid,
 				},
 			},
@@ -405,7 +408,7 @@ func TestJWTType_Update(t *testing.T) {
 			{
 				title: "only ttl",
 				body: map[string]interface{}{
-					"ttl":            1,
+					"ttl":            "1s",
 				},
 			},
 
@@ -419,7 +422,7 @@ func TestJWTType_Update(t *testing.T) {
 
 		for _, c := range cases {
 			originalBody := map[string]interface{}{
-				"ttl":            1,
+				"ttl":            "1s",
 				"options_schema": testJwtTypeOptionSchemaValid,
 			}
 
@@ -455,7 +458,7 @@ func TestJWTType_Update(t *testing.T) {
 			{
 				title: "with ttl less than 1 second",
 				body: map[string]interface{}{
-					"ttl":            0,
+					"ttl":            "0s",
 				},
 			},
 
@@ -469,7 +472,7 @@ func TestJWTType_Update(t *testing.T) {
 
 		for _, c := range cases {
 			originalBody := map[string]interface{}{
-				"ttl":            1,
+				"ttl":            "1s",
 				"options_schema": testJwtTypeOptionSchemaValid,
 			}
 
@@ -489,7 +492,7 @@ func TestJWTType_Update(t *testing.T) {
 func TestJWTType_Delete(t *testing.T) {
 	t.Run("successful deleting", func(t *testing.T) {
 		originalBody := map[string]interface{}{
-			"ttl":            1,
+			"ttl":            "1s",
 			"options_schema": testJwtTypeOptionSchemaValid,
 		}
 		name := mustCreateUpdateJWTType(t, originalBody)
