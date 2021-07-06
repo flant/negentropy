@@ -48,3 +48,30 @@ jobs:
       - name: Tests
         run: yarn && yarn test
         working-directory: vault-plugins/flant_iam/tests
+
+  remove-label:
+    name: Remove Label
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.event.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.label.name == '/run-e2e-tests')
+    steps:
+      - uses: actions/github-script@v4.0.2
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const eventLabelName = '${{github.event.label.name}}'
+            const response = await github.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            })
+            for (const label of response.data) {
+              if (label.name === eventLabelName) {
+                github.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: eventLabelName
+                })
+                break
+              }
+            }
