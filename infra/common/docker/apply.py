@@ -18,6 +18,8 @@ from google.cloud import storage
 from google.oauth2 import service_account
 from google.auth import compute_engine
 
+from migrator import upgrade_db_command
+
 google_credentials_from_env = os.environ.get("GOOGLE_CREDENTIALS")
 if google_credentials_from_env == None:
     google_credentials = compute_engine.Credentials()
@@ -177,10 +179,10 @@ tfstate_bucket = "negentropy-terraform-state"
         if vault['name'] == 'conf':
             os.environ['VAULT_TOKEN'] = vault_root_token
             os.environ['VAULT_ADDR'] = vault_address
-            run_bash("""
-                     vault secrets enable pki;
-                     vault secrets tune -max-lease-ttl=87600h pki;
-                     """)
+            # run_bash("""
+            #          vault secrets enable pki;
+            #          vault secrets tune -max-lease-ttl=87600h pki;
+            #          """)
 
 
 
