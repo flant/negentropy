@@ -217,7 +217,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
-			Remove:      true,
 			ForceRemove: true,
 			PullParent:  true,
 			Dockerfile:  serviceDockerfilePath,
