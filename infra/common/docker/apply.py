@@ -118,18 +118,21 @@ gcp_ckms_seal_crypto_key = "vault-vs-test-crypto-key"
 
     write_file("../../variables.pkrvars.hcl", pkrvars)
 
-    # # print("• [common] run packer")
-    # run_bash("./build.sh", "../../common/packer")
+    print("• [common] run packer")
+    run_bash("./build.sh", "../../common/packer")
+
+    # print("• [common] build_vault")
+    # run_bash("./build.sh", "../../common/vault/build_vault.sh")
 
     terraform_log = ''
     if args.type == 'configurator':
-        # print("• [configurator] run packer")
-        # run_bash("./build.sh", "../../configurator/packer")
+        print("• [configurator] run packer")
+        run_bash("./build.sh", "../../configurator/packer")
         print("• [configurator] terraform apply")
         terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../configurator/terraform")
     else:
-        # print("• [main] run packer")
-        # run_bash("./build.sh", "../../main/packer")
+        print("• [main] run packer")
+        run_bash("./build.sh", "../../main/packer")
         print("• [main] terraform apply")
         terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../main/terraform")
 
