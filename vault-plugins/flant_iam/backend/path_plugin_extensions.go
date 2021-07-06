@@ -181,18 +181,7 @@ func (b extensionBackend) handleExtensionCreate(ctx context.Context, req *logica
 
 	b.addExtensionToSources(ext)
 
-	pemdata := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PUBLIC KEY",
-			Bytes: x509.MarshalPKCS1PublicKey(encPubkey),
-		},
-	)
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"public_key": strings.ReplaceAll(string(pemdata), "\n", "\\n"),
-		},
-	}, nil
+	return &logical.Response{}, nil
 }
 
 func (b extensionBackend) handleExtensionRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
