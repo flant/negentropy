@@ -2,6 +2,7 @@ package flant_gitops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
@@ -60,8 +61,14 @@ func configurePaths(b *backend) []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureCreateOrUpdate,
+				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathConfigure,
+					Callback: b.pathConfigureCreateOrUpdate,
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathConfigureRead,
 				},
 			},
 		},
@@ -115,7 +122,7 @@ func configurePaths(b *backend) []*framework.Path {
 	}
 }
 
-func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	hclog.L().Debug("Start configuring ...")
 
 	fields.Raw = req.Data
@@ -152,6 +159,24 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 	}
 
 	return nil, nil
+}
+
+func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	v, err := req.Storage.Get(ctx, storageKeyConfiguration)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get storage entry %q: %s", storageKeyConfiguration, err)
+	}
+
+	if v == nil {
+		return logical.ErrorResponse("configuration not found"), nil
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(v.Value, &res); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal storage entry %q: %s", storageKeyConfiguration, err)
+	}
+
+	return &logical.Response{Data: res}, nil
 }
 
 func (b *backend) pathTrustedGPGPublicKeyList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
