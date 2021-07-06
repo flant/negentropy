@@ -241,7 +241,6 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 
 	ms.kafkaSources = append(ms.kafkaSources[:index], ms.kafkaSources[index+1:]...)
 	delete(ms.kafkaMapSources, name)
-
 }
 
 func (ms *MemoryStore) Restore() error {

@@ -89,7 +89,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 	// init may be return ErrNotSetConf error
 	// if plugin initialized first time and has not saved config
 	// its normal behavior. Because we set configuration
-	//through "/configure_vault_access" path
+	// through "/configure_vault_access" path
 	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}
@@ -104,7 +104,6 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 	}
 
 	res, err := apiClient.Logical().Read("/auth/approle/role/good/role-id")
-
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +143,6 @@ func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d
 	}
 
 	res, err := apiClient.Logical().Read("/auth/approle/role/good/role-id")
-
 	if err != nil {
 		return nil, err
 	}
