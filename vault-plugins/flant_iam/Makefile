@@ -12,43 +12,51 @@ endif
 
 .DEFAULT_GOAL := all
 
+.PHONY: all
 all: fmt build start openapi
 
+.PHONY: build
 build:
 	mkdir -p build
 	CGO_ENABLED=0 GOOS="$(OS)" GOARCH="$(GOARCH)" go build -o build/vault-plugin-flant-iam cmd/flant_iam/main.go
 
 
+.PHONY: build
 build-linux:
 	mkdir -p build
 	CGO_ENABLED=0 GOOS="linux" GOARCH="$(GOARCH)" go build -o build/vault-plugin-flant-iam cmd/flant_iam/main.go
 
+.PHONY: start
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./build
 
+.PHONY: enable
 enable:
 	vault secrets enable -path=mock-secrets flant_iam
 
+.PHONY: clean
 clean:
 	rm -f ./build/flant_iam
 
+.PHONY: fmt
 fmt:
 	-@$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
 	-@pushd tests && yarn run prettier --write ./tests/*.mjs ./tests/**/*.mjs && popd
 
+.PHONY: deps
 deps:
 	go mod tidy
 	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	pushd tests && yarn && popd
 
+.PHONY: openapi
 openapi:
 	curl -s -H "X-Vault-Token: root" "http://127.0.0.1:8200/v1/sys/internal/specs/openapi" | jq > openapi.json
 
+.PHONY: test
 test:
 	go test -race ./...
 	pushd tests && yarn && yarn test
 
+.PHONY: precommit
 precommit: fmt build test openapi
-
-
-.PHONY: build build-linux deps clean fmt start enable test
