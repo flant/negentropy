@@ -176,19 +176,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		buildTimeout, err := getRequiredConfigurationFieldFunc(fieldNameTaskTimeout)
-		if err != nil {
-			return err
-		}
-
-		d, err := time.ParseDuration(buildTimeout.(string))
-		if err != nil {
-			return err
-		}
-
-		ctxWithTimeout, ctxCancelFunc := context.WithTimeout(ctx, d)
-		defer ctxCancelFunc()
-
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
 			return fmt.Errorf("unable to create docker client: %s", err)
@@ -228,7 +215,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
 
-		response, err := cli.ImageBuild(ctxWithTimeout, contextReader, types.ImageBuildOptions{
+		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
 			Remove:      true,
 			ForceRemove: true,
