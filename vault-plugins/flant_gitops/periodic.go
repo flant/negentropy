@@ -176,12 +176,12 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		trustedGpgPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
+		trustedPGPPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
 		if err != nil {
 			return fmt.Errorf("unable to get trusted public keys: %s", err)
 		}
 
-		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedGpgPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit.(int)); err != nil {
+		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit.(int)); err != nil {
 			return err
 		}
 
