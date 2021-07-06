@@ -56,6 +56,8 @@ type RoleBinding struct {
 	Roles                    []BoundRole               `json:"-"`
 	MaterializedRoles        []MaterializedRole        `json:"-"`
 	MaterializedProjectRoles []MaterializedProjectRole `json:"-"`
+
+	Extension *Extension `json:"extension"`
 }
 
 func (u *RoleBinding) ObjType() string {

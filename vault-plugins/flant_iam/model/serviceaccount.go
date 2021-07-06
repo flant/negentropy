@@ -52,6 +52,7 @@ type ServiceAccount struct {
 	CIDRs          []string      `json:"allowed_cidrs"`
 	TokenTTL       time.Duration `json:"token_ttl"`
 	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
+	Extension      *Extension    `json:"extension"`
 }
 
 func (u *ServiceAccount) ObjType() string {

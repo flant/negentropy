@@ -57,15 +57,16 @@ groups
 resource_version
 */
 type Group struct {
-	UUID            string   `json:"uuid"` // PK
-	TenantUUID      string   `json:"tenant_uuid"`
-	Version         string   `json:"resource_version"`
-	BuiltinType     string   `json:"-"`
-	Identifier      string   `json:"identifier"`
-	FullIdentifier  string   `json:"full_identifier"`
-	Users           []string `json:"users"`
-	Groups          []string `json:"groups"`
-	ServiceAccounts []string `json:"service_accounts"`
+	UUID            string     `json:"uuid"` // PK
+	TenantUUID      string     `json:"tenant_uuid"`
+	Version         string     `json:"resource_version"`
+	BuiltinType     string     `json:"-"`
+	Identifier      string     `json:"identifier"`
+	FullIdentifier  string     `json:"full_identifier"`
+	Users           []string   `json:"users"`
+	Groups          []string   `json:"groups"`
+	ServiceAccounts []string   `json:"service_accounts"`
+	Extension       *Extension `json:"extension"`
 }
 
 func (u *Group) ObjType() string {

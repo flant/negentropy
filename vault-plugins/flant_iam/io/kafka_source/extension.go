@@ -285,10 +285,43 @@ func applyExtension(db *io.MemoryStoreTxn, ext *model.Extension) error {
 		if err != nil {
 			return fmt.Errorf("user not updated: %v", err)
 		}
+
 	case model.ServiceAccountType:
+		repo := model.NewServiceAccountRepository(db)
+		sa, err := repo.GetById(ext.OwnerUUID)
+		if err != nil {
+			return fmt.Errorf("serviceaccount not found: %v", err)
+		}
+		sa.Extension = ext
+		err = repo.Update(sa)
+		if err != nil {
+			return fmt.Errorf("serviceaccount not updated: %v", err)
+		}
+
 	case model.RoleBindingType:
+		repo := model.NewRoleBindingRepository(db)
+		rb, err := repo.GetById(ext.OwnerUUID)
+		if err != nil {
+			return fmt.Errorf("rolebinding not found: %v", err)
+		}
+		rb.Extension = ext
+		err = repo.Update(rb)
+		if err != nil {
+			return fmt.Errorf("rolebinding not updated: %v", err)
+		}
+
 	case model.GroupType:
-		// TODO: case model.MultipassType:
+		repo := model.NewGroupRepository(db)
+		group, err := repo.GetById(ext.OwnerUUID)
+		if err != nil {
+			return fmt.Errorf("group not found: %v", err)
+		}
+		group.Extension = ext
+		err = repo.Update(group)
+		if err != nil {
+			return fmt.Errorf("group not updated: %v", err)
+		}
 	}
+	// TODO: case model.MultipassType:
 	return nil
 }
