@@ -76,9 +76,15 @@ variable "ssh_wait_timeout" {
   default = "90s"
 }
 
+variable "env" {
+  type    = string
+  default = ""
+}
+
 locals {
   version_dashed = regex_replace(var.version, "[.]", "-")
-  image_name = "${var.name}-${var.image_sources_checksum}"
+  image_name = "${var.name}${var.env}-${var.image_sources_checksum}"
+  image_family = "${var.name}${var.env}"
 }
 
 source "qemu" "alpine-base" {
@@ -132,6 +138,7 @@ build {
     scripts = [
       "../../packer-scripts/00-apk.sh",
       "../../packer-scripts/01-vector.sh",
+      "../../packer-scripts/05-google-cloud-sdk.sh",
       "scripts/90-setup.sh"
     ]
   }
@@ -143,7 +150,7 @@ build {
     post-processor "googlecompute-import" {
       bucket            = "${var.gcp_image_bucket}"
       image_description = "Alpine Linux ${var.version} x86_64 Virtual"
-      image_family      = var.name
+      image_family      = local.image_family
       image_labels = {
         image_sources_checksum = "${var.image_sources_checksum}",
         version                = local.version_dashed

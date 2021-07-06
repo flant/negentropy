@@ -29,4 +29,9 @@ kafka_gcp_ca_name = "[KAFKA_GCP_CA_NAME]"
 # Root CA location (aka gcp region).
 kafka_gcp_ca_location = "[KAFKA_GCP_CA_LOCATION]"
 # How many replicas to configure in zookeeper and kafka configuration files.
-kafka_replicas = "[KAFKA_REPLICAS_NUMBER]"
+kafka_replicas = "1"
+# Terraform state and keys bucket name.
+tfstate_bucket = "terraform-state"
+# Current environment to build to (prepend with "-"). Default is empty.
+## This string will be added to images name and family right after its name.
+env = "-test"

@@ -1,8 +1,5 @@
 set -exu
 
-# Enable community repository
-sed -e 's;^#http\(.*\)/v3.13/community;http\1/v3.13/community;g' -i /etc/apk/repositories
-
 # Disable Core Dumps
 cat <<'EOF' > /etc/sysctl.d/local.conf
 kernel.core_pattern=/dev/null
@@ -40,3 +37,6 @@ exit 0
 EOF
 
 chmod +x /bin/update-hostname
+
+# Default shell bash
+sed -i 's#/bin/ash#/bin/bash#g' /etc/passwd

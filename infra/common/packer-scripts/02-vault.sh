@@ -1,7 +1,5 @@
 set -exu
 
-VAULT_VERSION=1.7.0
-
 # We are building our own vault binary and packer should upload it before running this script.
 chmod +x /bin/vault
 
@@ -10,11 +8,31 @@ adduser -S -G vault vault
 
 cat <<'EOF' > /etc/vault-config.sh
 #!/usr/bin/env bash
-export INTERNAL_ADDRESS="$(ip r get 1 | awk '{print $7}')"
+. /etc/vault-variables.sh
 envsubst < /etc/vault.hcl > /tmp/vault.hcl
 EOF
 
 chmod +x /etc/vault-config.sh
+
+cat <<'EOF' > /etc/vault-init.sh
+#!/usr/bin/env bash
+. /etc/vault-variables.sh
+
+sleep 5
+pushd /tmp
+gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
+vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
+vault_init_out="$(vault operator init -root-token-pgp-key="${VAULT_ROOT_TOKEN_PGP_KEY}" -recovery-shares="${VAULT_RECOVERY_SHARES}" -recovery-threshold="${VAULT_RECOVERY_THRESHOLD}" -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
+echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}' > "${VAULT_ROOT_TOKEN_ENCRYPTED}"
+echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "${VAULT_RECOVERY_KEYS_ENCRYPTED}"
+gsutil cp {"${VAULT_ROOT_TOKEN_ENCRYPTED}","${VAULT_RECOVERY_KEYS_ENCRYPTED}"} gs://${TFSTATE_BUCKET}/
+rm -rf "${VAULT_ROOT_TOKEN_ENCRYPTED}"
+rm -rf "${VAULT_RECOVERY_KEYS_ENCRYPTED}"
+rm -rf "${VAULT_ROOT_TOKEN_PGP_KEY}"
+popd
+EOF
+
+chmod +x /etc/vault-init.sh
 
 cat <<'EOF' > /etc/init.d/vault
 #!/sbin/openrc-run
@@ -45,6 +63,10 @@ start_pre() {
     && /etc/vault-config.sh
 }
 
+start_post() {
+  /etc/vault-init.sh
+}
+
 reload() {
 	start_pre \
 		&& ebegin "Reloading $RC_SVCNAME configuration" \
@@ -64,4 +86,4 @@ cat <<'EOF' > /etc/conf.d/vault
 rc_ulimit="-n 65536"
 EOF
 
-echo "export VAULT_ADDR='http://127.0.0.1:8200'" > /root/.profile
+echo "source /etc/vault-variables.sh" > /root/.profile
