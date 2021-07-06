@@ -31,12 +31,19 @@ cat <<'EOF' > /etc/vault-init.sh
 #!/usr/bin/env bash
 . /etc/vault-variables.sh
 
-echo "Waiting 5s to let vault start."
-sleep 5
-if $(vault status -format json | jq -e '.initialized == true' 1>/dev/null 2>/dev/null); then
-  echo "Vault already initialized."
-  exit 0
-fi
+while true; do
+    vault status &>/dev/null
+    status=$?
+    if [ $status -eq 0 ]; then
+      echo "Vault already initialized."
+      exit 0
+    elif [ $status -eq 2 ]; then
+      break
+    fi
+    echo "Waiting for vault server start, sleeping for 2 seconds..."
+    sleep 2
+done
+
 echo "Starting vault initialization."
 pushd /tmp
 gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
