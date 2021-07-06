@@ -52,7 +52,7 @@ variable "version" {
 
 variable "disk_size" {
   type    = string
-  default = "2"
+  default = "5"
 }
 
 variable "machine_type" {
@@ -102,10 +102,11 @@ source "googlecompute" "vault-conf" {
 build {
   sources = ["source.googlecompute.vault-conf"]
 
-  provisioner "file" {
-    source      = "../../../common/vault/vault/pkg/linux_amd64/vault"
-    destination = "/bin/vault"
-  }
+//  todo: use our binary
+//  provisioner "file" {
+//    source      = "../../../common/vault/vault/pkg/linux_amd64/vault"
+//    destination = "/bin/vault"
+//  }
 
   provisioner "file" {
     source      = "../../../common/vault/recovery-pgp-keys"

@@ -1,5 +1,18 @@
 set -exu
 
+# todo: rollback to our binary with plugins
+export VAULT_VERSION=1.7.3
+export VAULT_SHA256=8453132a93b755c0a89dd4b2f1a99bd4af06f8167b81917f117080839031e03f
+
+mkdir -p /opt/build && \
+cd /opt/build && \
+wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip && \
+echo "${VAULT_SHA256}  vault_${VAULT_VERSION}_linux_amd64.zip" | sha256sum -c - && \
+unzip vault_${VAULT_VERSION}_linux_amd64.zip && \
+cp vault /bin && \
+cd /opt && \
+rm -rf /opt/build
+
 # We are building our own vault binary and packer should upload it before running this script.
 chmod +x /bin/vault
 
@@ -18,7 +31,13 @@ cat <<'EOF' > /etc/vault-init.sh
 #!/usr/bin/env bash
 . /etc/vault-variables.sh
 
+echo "Waiting 5s to let vault start."
 sleep 5
+if $(vault status -format json | jq -e '.initialized == true' 1>/dev/null 2>/dev/null); then
+  echo "Vault already initialized."
+  exit 0
+fi
+echo "Starting vault initialization."
 pushd /tmp
 gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
 vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
