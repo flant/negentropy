@@ -177,6 +177,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -208,6 +209,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
+			Origin:     model.OriginIAM,
 		}
 
 		repo := model.NewUserRepository(tx)

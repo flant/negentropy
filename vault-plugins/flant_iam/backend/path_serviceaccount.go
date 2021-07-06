@@ -229,6 +229,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -263,6 +264,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)

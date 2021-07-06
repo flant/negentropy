@@ -250,6 +250,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
 			ServiceAccounts: data.Get("service_accounts").([]string),
+			Origin:          model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -285,6 +286,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
 			ServiceAccounts: data.Get("service_accounts").([]string),
+			Origin:          model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
