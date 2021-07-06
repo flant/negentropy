@@ -187,7 +187,7 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewTenantRepository(tx)
 		err := repo.Update(tenant)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.TenantType)
+			return responseNotFound(req)
 		}
 		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
@@ -212,7 +212,7 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 		err := repo.Delete(id)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, "tenant not found")
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err
@@ -234,7 +234,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		tenant, err := repo.GetById(id)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.TenantType)
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err

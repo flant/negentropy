@@ -109,6 +109,10 @@ func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
 	}
 }
 
+func (r *RoleBindingRepository) save(roleBinding *RoleBinding) error {
+	return r.db.Insert(RoleBindingType, roleBinding)
+}
+
 func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
 	_, err := r.tenantRepo.GetById(roleBinding.TenantUUID)
 	if err != nil {
@@ -120,11 +124,7 @@ func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
 	}
 	roleBinding.Version = NewResourceVersion()
 
-	err = r.db.Insert(RoleBindingType, roleBinding)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(roleBinding)
 }
 
 func (r *RoleBindingRepository) GetById(id string) (*RoleBinding, error) {
@@ -149,28 +149,36 @@ func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
 	if stored.TenantUUID != roleBinding.TenantUUID {
 		return ErrNotFound
 	}
+	if roleBinding.Origin != stored.Origin {
+		return ErrOriginMismatch
+	}
 	if stored.Version != roleBinding.Version {
 		return ErrVersionMismatch
 	}
 	roleBinding.Version = NewResourceVersion()
 
 	// Update
-
-	err = r.db.Insert(RoleBindingType, roleBinding)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.save(roleBinding)
 }
 
-func (r *RoleBindingRepository) Delete(id string) error {
+func (r *RoleBindingRepository) delete(id string) error {
 	roleBinding, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(RoleBindingType, roleBinding)
+}
+
+func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id string) error {
+	roleBinding, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+	if roleBinding.Origin != origin {
+		return ErrOriginMismatch
+	}
+	return r.delete(id)
 }
 
 func (r *RoleBindingRepository) List(tenantID string) ([]string, error) {
@@ -205,11 +213,7 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 		obj.Extensions = make(map[ObjectOrigin]*Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }
 
 func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
@@ -221,9 +225,5 @@ func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid string)
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }

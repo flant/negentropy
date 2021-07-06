@@ -173,7 +173,7 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewRoleRepository(tx)
 		err := repo.Update(role)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.RoleType)
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err
@@ -197,7 +197,7 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, "role not found")
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err
@@ -221,7 +221,7 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 
 		role, err := repo.Get(name)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.RoleType)
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err

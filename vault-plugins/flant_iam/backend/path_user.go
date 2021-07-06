@@ -214,14 +214,8 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 
 		repo := model.NewUserRepository(tx)
 		err := repo.Update(user)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.UserType)
-		}
-		if err == model.ErrVersionMismatch {
-			return responseVersionMismatch(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -239,12 +233,9 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 		defer tx.Abort()
 		repo := model.NewUserRepository(tx)
 
-		err := repo.Delete(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, "user not found")
-		}
+		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -262,11 +253,8 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 		repo := model.NewUserRepository(tx)
 
 		user, err := repo.GetById(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.UserType)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		return responseWithDataAndCode(req, user, http.StatusOK)
