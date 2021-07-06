@@ -221,6 +221,7 @@ func (mks *ExtensionKafkaSource) runMessageHandler(store *io.MemoryStore) func(s
 		}
 		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
 		if err != nil {
+			// TODO report to humans
 			panic(err)
 		}
 	}
@@ -228,38 +229,49 @@ func (mks *ExtensionKafkaSource) runMessageHandler(store *io.MemoryStore) func(s
 
 func (mks *ExtensionKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, objType, objID string, data []byte) error {
 	tx := store.Txn(true)
+	defer tx.Abort() // noop if tx is committed
+
+	// objType = user, service_account, etc., or extension
+
+	if objType == model.ExtensionType {
+		err := syncObjectExtension(tx, mks.extendedTypes, objID, data)
+		if err != nil {
+			return err
+		}
+		return tx.Commit(source)
+	}
+
+	if _, isTypeAllowed := mks.ownedTypes[objType]; !isTypeAllowed {
+		return tx.Commit(source)
+	}
 
 	switch objType {
 	case model.UserType:
-		// all logic here
-		pl := &model.User{}
-		_ = json.Unmarshal(data, pl)
-
-		if _, ok := mks.ownedTypes[objType]; ok {
-			// Process own type
-			err := tx.Insert(model.UserType, pl)
+		repo := model.NewUserRepository(tx)
+		if data == nil {
+			// tombstone, deleting
+			err := repo.Delete(objID)
 			if err != nil {
-				return backoff.Permanent(err)
+				return err
 			}
-		}
-	case model.ExtensionType:
-		// extension:{uuid}
-		if _, ok := mks.extendedTypes[objType]; !ok {
-			return tx.Commit(source)
+			break
 		}
 
-		ext := &model.Extension{}
-		_ = json.Unmarshal(data, ext)
-		err := applyExtension(tx, ext)
+		user := &model.User{}
+		err := json.Unmarshal(data, user)
 		if err != nil {
-			tx.Abort()
 			return err
 		}
 
+		err = repo.Create(user) // TODO: update?
+		if err != nil {
+			return backoff.Permanent(err)
+		}
+
 	default:
-		tx.Abort()
 		return errors.New("not implemented yet")
 	}
+
 	return tx.Commit(source)
 }
 
@@ -272,56 +284,24 @@ func (mks *ExtensionKafkaSource) verifySign(signature []byte, data []byte) error
 	return rsa.VerifyPKCS1v15(mks.signKey, crypto.SHA256, hashed[:], signature)
 }
 
-func applyExtension(db *io.MemoryStoreTxn, ext *model.Extension) error {
-	switch ext.OwnerType {
-	case model.UserType:
-		repo := model.NewUserRepository(db)
-		user, err := repo.GetById(ext.OwnerUUID)
-		if err != nil {
-			return fmt.Errorf("user not found: %v", err)
-		}
-		user.Extension = ext
-		err = repo.Update(user)
-		if err != nil {
-			return fmt.Errorf("user not updated: %v", err)
-		}
-
-	case model.ServiceAccountType:
-		repo := model.NewServiceAccountRepository(db)
-		sa, err := repo.GetById(ext.OwnerUUID)
-		if err != nil {
-			return fmt.Errorf("serviceaccount not found: %v", err)
-		}
-		sa.Extension = ext
-		err = repo.Update(sa)
-		if err != nil {
-			return fmt.Errorf("serviceaccount not updated: %v", err)
-		}
-
-	case model.RoleBindingType:
-		repo := model.NewRoleBindingRepository(db)
-		rb, err := repo.GetById(ext.OwnerUUID)
-		if err != nil {
-			return fmt.Errorf("rolebinding not found: %v", err)
-		}
-		rb.Extension = ext
-		err = repo.Update(rb)
-		if err != nil {
-			return fmt.Errorf("rolebinding not updated: %v", err)
-		}
-
-	case model.GroupType:
-		repo := model.NewGroupRepository(db)
-		group, err := repo.GetById(ext.OwnerUUID)
-		if err != nil {
-			return fmt.Errorf("group not found: %v", err)
-		}
-		group.Extension = ext
-		err = repo.Update(group)
-		if err != nil {
-			return fmt.Errorf("group not updated: %v", err)
-		}
+func syncObjectExtension(tx *io.MemoryStoreTxn, extendedTypes map[string]struct{}, objID string, data []byte) error {
+	extensionRepo := model.NewExtensionRepository(tx)
+	if data == nil {
+		// tombstone, deleting
+		return extensionRepo.Delete(objID)
 	}
-	// TODO: case model.MultipassType:
+
+	ext := &model.Extension{}
+	err := json.Unmarshal(data, ext)
+	if err != nil {
+		return err
+	}
+
+	if _, isTypeExtensionAllowed := extendedTypes[ext.OwnerType.String()]; isTypeExtensionAllowed {
+		// type extension on expected by the extension configuration
+		return extensionRepo.Create(ext)
+
+	}
+
 	return nil
 }

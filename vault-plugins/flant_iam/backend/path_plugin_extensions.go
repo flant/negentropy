@@ -48,14 +48,26 @@ func (b extensionBackend) paths() []*framework.Path {
 					Description: "replication name",
 				},
 				"owned_types": {
-					Type:          framework.TypeStringSlice,
-					Description:   "types owned by extension",
-					AllowedValues: []interface{}{"user", "group", "service_account", "role_binding", "multipass"},
+					Type:        framework.TypeStringSlice,
+					Description: "types owned by extension",
+					AllowedValues: []interface{}{
+						model.ExtensionOwnerTypeUser,
+						model.ExtensionOwnerTypeServiceAccount,
+						model.ExtensionOwnerTypeRoleBinding,
+						model.ExtensionOwnerTypeGroup,
+						// TODO: add multipass
+					},
 				},
 				"extended_types": {
-					Type:          framework.TypeStringSlice,
-					Description:   "types that could be extended by extension",
-					AllowedValues: []interface{}{"user", "group", "service_account", "role_binding", "multipass"},
+					Type:        framework.TypeStringSlice,
+					Description: "types that could be extended by extension",
+					AllowedValues: []interface{}{
+						model.ExtensionOwnerTypeUser,
+						model.ExtensionOwnerTypeServiceAccount,
+						model.ExtensionOwnerTypeRoleBinding,
+						model.ExtensionOwnerTypeGroup,
+						// TODO: add multipass
+					},
 				},
 				"allowed_roles": {
 					Type:        framework.TypeStringSlice,

@@ -1,26 +1,29 @@
 package model
 
 import (
+	"fmt"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
 type ExtensionOwnerType string
 
 const (
-	ExtensionType       = "extension" // also, memdb schema name
-	ExtensionOwnerIndex = "owner"
+	ExtensionType = "extension"
 
-	ExtensionOwnerTypeUser                    ExtensionOwnerType = "user"
-	ExtensionOwnerTypeServiceAccount          ExtensionOwnerType = "service_account"
-	ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass"
-	ExtensionOwnerTypeRoleBinding             ExtensionOwnerType = "role_binding"
-	ExtensionOwnerTypeGroup                   ExtensionOwnerType = "group"
+	ExtensionOwnerTypeUser           ExtensionOwnerType = UserType
+	ExtensionOwnerTypeServiceAccount ExtensionOwnerType = ServiceAccountType
+	ExtensionOwnerTypeRoleBinding    ExtensionOwnerType = RoleBindingType
+	ExtensionOwnerTypeGroup          ExtensionOwnerType = GroupType
+	//ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
 )
 
-type Extension struct {
-	UUID    string `json:"uuid"` // PK
-	Version string `json:"resource_version"`
+func (eot ExtensionOwnerType) String() string {
+	return string(eot)
+}
 
+type Extension struct {
 	// Origin is the source where the extension originates from
 	Origin string `json:"origin"`
 
@@ -40,7 +43,7 @@ func (t *Extension) ObjType() string {
 }
 
 func (t *Extension) ObjId() string {
-	return t.UUID
+	return t.OwnerUUID
 }
 
 func (t *Extension) Marshal(_ bool) ([]byte, error) {
@@ -51,4 +54,54 @@ func (t *Extension) Marshal(_ bool) ([]byte, error) {
 func (t *Extension) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, t)
 	return err
+}
+
+type ExtensionRepository struct {
+	db *io.MemoryStoreTxn
+}
+
+func NewExtensionRepository(db *io.MemoryStoreTxn) *ExtensionRepository {
+	return &ExtensionRepository{db: db}
+}
+
+func (r *ExtensionRepository) Create(ext *Extension) error {
+	switch ext.OwnerType {
+	case UserType:
+		return NewUserRepository(r.db).SetExtension(ext)
+
+	case ServiceAccountType:
+		return NewServiceAccountRepository(r.db).SetExtension(ext)
+
+	case RoleBindingType:
+		return NewRoleBindingRepository(r.db).SetExtension(ext)
+
+	case GroupType:
+		return NewGroupRepository(r.db).SetExtension(ext)
+	}
+	// TODO: case MultipassType for ServiceAccount :
+	return fmt.Errorf("extension is not supported for type %q", ext.OwnerType)
+}
+
+func (r *ExtensionRepository) Delete(ownerUUID string) error {
+	repos := []extensionUnsetter{
+		NewUserRepository(r.db),
+		NewServiceAccountRepository(r.db),
+		NewRoleBindingRepository(r.db),
+		NewGroupRepository(r.db),
+		// TODO: case MultipassType repo for ServiceAccount
+	}
+
+	for _, repo := range repos {
+		err := repo.UnsetExtension(ownerUUID)
+		if err == ErrNotFound {
+			continue
+		}
+		return err
+	}
+
+	return fmt.Errorf("extension not found among supported types")
+}
+
+type extensionUnsetter interface {
+	UnsetExtension(string) error
 }

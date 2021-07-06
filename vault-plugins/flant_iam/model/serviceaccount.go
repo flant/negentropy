@@ -235,3 +235,29 @@ func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bo
 
 	return nil
 }
+
+func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
+	obj, err := r.GetById(ext.OwnerUUID)
+	if err != nil {
+		return err
+	}
+	obj.Extension = ext
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceAccountRepository) UnsetExtension(uuid string) error {
+	obj, err := r.GetById(uuid)
+	if err != nil {
+		return err
+	}
+	obj.Extension = nil
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}

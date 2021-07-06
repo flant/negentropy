@@ -209,3 +209,29 @@ func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
 	_, err := r.db.DeleteAll(GroupType, TenantForeignPK, tenantUUID)
 	return err
 }
+
+func (r *GroupRepository) SetExtension(ext *Extension) error {
+	obj, err := r.GetById(ext.OwnerUUID)
+	if err != nil {
+		return err
+	}
+	obj.Extension = ext
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *GroupRepository) UnsetExtension(uuid string) error {
+	obj, err := r.GetById(uuid)
+	if err != nil {
+		return err
+	}
+	obj.Extension = nil
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}

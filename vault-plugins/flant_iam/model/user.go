@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -133,7 +135,6 @@ func (r *UserRepository) Update(user *User) error {
 	user.Version = NewResourceVersion()
 
 	// Update
-
 	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
 	if err != nil {
 		return err
@@ -202,5 +203,47 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 		}
 	}
 
+	return nil
+}
+
+func (r *UserRepository) SetExtension(ext *Extension) error {
+	obj, err := r.GetById(ext.OwnerUUID)
+	if err != nil {
+		return err
+	}
+	obj.Extension = ext
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *UserRepository) UnsetExtension(uuid string) error {
+	obj, err := r.GetById(uuid)
+	if err != nil {
+		return err
+	}
+	obj.Extension = nil
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *UserRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.Delete(objID)
+	}
+
+	user := &User{}
+	err := json.Unmarshal(data, user)
+	if err != nil {
+		return err
+	}
+	if err = r.Update(user); err == ErrNotFound {
+		return r.Create(user)
+	}
 	return nil
 }
