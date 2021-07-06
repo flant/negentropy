@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/util"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 	fieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 	fieldNameDockerImage                                = "docker_image"
 	fieldNameCommand                                    = "command"
+	fieldNameGitCredentialUsername                      = "username"
+	fieldNameGitCredentialPassword                      = "password"
 
 	storageKeyConfiguration             = "configuration"
 	storageKeyLastSuccessfulCommit      = "last_successful_commit"
@@ -69,6 +72,29 @@ func configurePaths(b *backend) []*framework.Path {
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureRead,
+				},
+			},
+		},
+		{
+			Pattern: "configure/git_credential/?",
+			Fields: map[string]*framework.FieldSchema{
+				fieldNameGitCredentialUsername: {
+					Type:        framework.TypeString,
+					Description: "Git username",
+					Required:    true,
+				},
+				fieldNameGitCredentialPassword: {
+					Type:        framework.TypeString,
+					Description: "Git password",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureGitCredential,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureGitCredential,
 				},
 			},
 		},
@@ -177,6 +203,19 @@ func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _
 	}
 
 	return &logical.Response{Data: res}, nil
+}
+
+func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	resp, err := util.ValidateRequestFields(req, fields)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+
+	if err := putGitCredential(ctx, req.Storage, fields.Raw); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (b *backend) pathTrustedGPGPublicKeyList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {

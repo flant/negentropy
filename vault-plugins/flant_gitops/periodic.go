@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	goGit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -86,6 +87,21 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		return val, nil
 	}
 
+	// define git credential
+	var gitUsername string
+	var gitPassword string
+	{
+		gitCredential, err := getGitCredential(ctx, storage)
+		if err != nil {
+			return err
+		}
+
+		if gitCredential != nil {
+			gitUsername = gitCredential.Username
+			gitPassword = gitCredential.Password
+		}
+	}
+
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
 	var headCommit string
@@ -102,10 +118,20 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 		hclog.L().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
 
-		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), trdlGit.CloneOptions{
-			BranchName:        branchName.(string),
-			RecurseSubmodules: goGit.DefaultSubmoduleRecursionDepth,
-		}); err != nil {
+		var cloneOptions trdlGit.CloneOptions
+		{
+			cloneOptions.BranchName = branchName.(string)
+			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
+
+			if gitUsername != "" && gitPassword != "" {
+				cloneOptions.Auth = &http.BasicAuth{
+					Username: gitUsername,
+					Password: gitPassword,
+				}
+			}
+		}
+
+		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), cloneOptions); err != nil {
 			return err
 		}
 
