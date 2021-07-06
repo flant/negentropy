@@ -57,7 +57,9 @@ type RoleBinding struct {
 	MaterializedRoles        []MaterializedRole        `json:"-"`
 	MaterializedProjectRoles []MaterializedProjectRole `json:"-"`
 
-	Extension *Extension `json:"extension"`
+	Origin ObjectOrigin `json:"origin"`
+
+	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
 
 func (u *RoleBinding) ObjType() string {
@@ -200,7 +202,7 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = ext
+	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
 	if err != nil {
 		return err
@@ -213,7 +215,7 @@ func (r *RoleBindingRepository) UnsetExtension(uuid string) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = nil
+	obj.Extensions = nil
 	err = r.Update(obj)
 	if err != nil {
 		return err

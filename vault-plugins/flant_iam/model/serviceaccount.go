@@ -52,7 +52,10 @@ type ServiceAccount struct {
 	CIDRs          []string      `json:"allowed_cidrs"`
 	TokenTTL       time.Duration `json:"token_ttl"`
 	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
-	Extension      *Extension    `json:"extension"`
+
+	Origin ObjectOrigin `json:"origin"`
+
+	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
 
 func (u *ServiceAccount) ObjType() string {
@@ -241,7 +244,7 @@ func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = ext
+	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
 	if err != nil {
 		return err
@@ -254,7 +257,7 @@ func (r *ServiceAccountRepository) UnsetExtension(uuid string) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = nil
+	obj.Extensions = nil
 	err = r.Update(obj)
 	if err != nil {
 		return err

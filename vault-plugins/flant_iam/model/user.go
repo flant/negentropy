@@ -53,13 +53,16 @@ func UserSchema() *memdb.DBSchema {
 }
 
 type User struct {
-	UUID           string     `json:"uuid"` // PK
-	TenantUUID     string     `json:"tenant_uuid"`
-	Version        string     `json:"resource_version"`
-	Identifier     string     `json:"identifier"`
-	FullIdentifier string     `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
-	Email          string     `json:"email"`
-	Extension      *Extension `json:"extension"`
+	UUID           string `json:"uuid"` // PK
+	TenantUUID     string `json:"tenant_uuid"`
+	Version        string `json:"resource_version"`
+	Identifier     string `json:"identifier"`
+	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
+	Email          string `json:"email"`
+
+	Origin ObjectOrigin `json:"origin"`
+
+	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
 
 func (u *User) ObjType() string {
@@ -211,7 +214,7 @@ func (r *UserRepository) SetExtension(ext *Extension) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = ext
+	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
 	if err != nil {
 		return err
@@ -224,7 +227,7 @@ func (r *UserRepository) UnsetExtension(uuid string) error {
 	if err != nil {
 		return err
 	}
-	obj.Extension = nil
+	obj.Extensions = nil
 	err = r.Update(obj)
 	if err != nil {
 		return err

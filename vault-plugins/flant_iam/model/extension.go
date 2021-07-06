@@ -25,7 +25,7 @@ func (eot ExtensionOwnerType) String() string {
 
 type Extension struct {
 	// Origin is the source where the extension originates from
-	Origin string `json:"origin"`
+	Origin ObjectOrigin `json:"origin"`
 
 	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
 	OwnerType ExtensionOwnerType `json:"owner_type"`
