@@ -15,7 +15,7 @@ const (
 	fieldNameGitBranch                                  = "git_branch_name"
 	fieldNameGitPollPeriod                              = "git_poll_period"
 	fieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
-	fieldNameLastSuccessfulCommit                       = "last_successful_commit"
+	fieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 	fieldNameDockerImage                                = "docker_image"
 	fieldNameCommand                                    = "command"
 
@@ -47,7 +47,7 @@ func configurePaths(b *backend) []*framework.Path {
 					Type:     framework.TypeInt,
 					Required: true,
 				},
-				fieldNameLastSuccessfulCommit: {
+				fieldNameInitialLastSuccessfulCommit: {
 					Type: framework.TypeString,
 				},
 				fieldNameDockerImage: {
@@ -145,16 +145,6 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 	entry, err := logical.StorageEntryJSON(storageKeyConfiguration, fields.Raw)
 	if err != nil {
 		return nil, err
-	}
-
-	lastSuccessfulCommit := fields.Get(fieldNameLastSuccessfulCommit).(string)
-	if lastSuccessfulCommit != "" {
-		if err := req.Storage.Put(ctx, &logical.StorageEntry{
-			Key:   storageKeyLastSuccessfulCommit,
-			Value: []byte(lastSuccessfulCommit),
-		}); err != nil {
-			return nil, err
-		}
 	}
 
 	if err := req.Storage.Put(ctx, entry); err != nil {

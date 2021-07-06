@@ -120,14 +120,21 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 	// skip commit if already processed
 	{
-		lastSuccessfulCommit, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
+		entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
 		if err != nil {
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", string(lastSuccessfulCommit.Value)))
+		var lastSuccessfulCommit string
+		if entry != nil && string(entry.Value) != "" {
+			lastSuccessfulCommit = string(entry.Value)
+		} else {
+			lastSuccessfulCommit = fields.Get(fieldNameInitialLastSuccessfulCommit).(string)
+		}
 
-		if string(lastSuccessfulCommit.Value) == headCommit {
+		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+
+		if lastSuccessfulCommit == headCommit {
 			hclog.L().Debug("Head commit not changed: skipping")
 			return nil
 		}
