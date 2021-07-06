@@ -85,7 +85,7 @@ func (r *TenantRepository) Create(t *Tenant) error {
 	return r.db.Insert(TenantType, t)
 }
 
-func (r *TenantRepository) GetById(id string) (*Tenant, error) {
+func (r *TenantRepository) GetByID(id string) (*Tenant, error) {
 	raw, err := r.db.First(TenantType, PK, id)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (r *TenantRepository) GetById(id string) (*Tenant, error) {
 }
 
 func (r *TenantRepository) Update(updated *Tenant) error {
-	stored, err := r.GetById(updated.UUID)
+	stored, err := r.GetByID(updated.UUID)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (r *TenantRepository) Delete(id string) error {
 		return err
 	}
 
-	tenant, err := r.GetById(id)
+	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}

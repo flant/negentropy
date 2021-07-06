@@ -259,7 +259,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewProjectRepository(tx)
 
-		project, err := repo.GetById(id)
+		project, err := repo.GetByID(id)
 		if err == model.ErrNotFound {
 			return responseNotFound(req)
 		}

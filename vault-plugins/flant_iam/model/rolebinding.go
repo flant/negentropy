@@ -114,7 +114,7 @@ func (r *RoleBindingRepository) save(roleBinding *RoleBinding) error {
 }
 
 func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
-	_, err := r.tenantRepo.GetById(roleBinding.TenantUUID)
+	_, err := r.tenantRepo.GetByID(roleBinding.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
 	return r.save(roleBinding)
 }
 
-func (r *RoleBindingRepository) GetById(id string) (*RoleBinding, error) {
+func (r *RoleBindingRepository) GetByID(id string) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (r *RoleBindingRepository) GetById(id string) (*RoleBinding, error) {
 }
 
 func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
-	stored, err := r.GetById(roleBinding.UUID)
+	stored, err := r.GetByID(roleBinding.UUID)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
 }
 
 func (r *RoleBindingRepository) delete(id string) error {
-	roleBinding, err := r.GetById(id)
+	roleBinding, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (r *RoleBindingRepository) delete(id string) error {
 }
 
 func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id string) error {
-	roleBinding, err := r.GetById(id)
+	roleBinding, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (r *RoleBindingRepository) DeleteByTenant(tenantUUID string) error {
 }
 
 func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetById(ext.OwnerUUID)
+	obj, err := r.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 }
 
 func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
-	obj, err := r.GetById(uuid)
+	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
 	}

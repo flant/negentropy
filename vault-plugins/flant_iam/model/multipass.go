@@ -1,14 +1,12 @@
 package model
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -119,127 +117,6 @@ func (t *Multipass) Marshal(includeSensitive bool) ([]byte, error) {
 
 func (t *Multipass) Unmarshal(data []byte) error {
 	return jsonutil.DecodeJSON(data, t)
-}
-
-
-func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		var (
-			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
-			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
-			validTill = time.Now().Add(ttl).Unix()
-		)
-
-		multipass := &Multipass{
-			UUID:        uuid.New(),
-			TenantUUID:  data.Get("tenant_uuid").(string),
-			OwnerUUID:   data.Get("owner_uuid").(string),
-			OwnerType:   MultipassOwnerUser,
-			Description: data.Get("description").(string),
-			TTL:         ttl,
-			MaxTTL:      maxTTL,
-			ValidTill:   validTill,
-			CIDRs:       data.Get("allowed_cidrs").([]string),
-			Roles:       data.Get("allowed_roles").([]string),
-		}
-
-		tx := b.storage.Txn(true)
-		repo := NewMultipassRepository(tx)
-
-		err := repo.Create(multipass)
-		if err == ErrNotFound {
-			return responseNotFound(req, "something in the path")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		return responseWithDataAndCode(req, multipass, http.StatusCreated)
-	}
-}
-
-func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  MultipassOwnerUser,
-		}
-
-		tx := b.storage.Txn(true)
-		repo := NewMultipassRepository(tx)
-
-		err := repo.Delete(filter)
-		if err != ErrNotFound {
-			return responseNotFound(req, "something in the path")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-		return nil, nil
-	}
-}
-
-func (b *userBackend) handleMultipassRead() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  MultipassOwnerUser,
-		}
-
-		tx := b.storage.Txn(false)
-		repo := NewMultipassRepository(tx)
-
-		mp, err := repo.Get(filter)
-		if err != ErrNotFound {
-			return responseNotFound(req, "something in the path")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		return responseWithData(mp)
-	}
-}
-
-func (b *userBackend) handleMultipassList() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &Multipass{
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  MultipassOwnerUser,
-		}
-
-		tx := b.storage.Txn(false)
-		repo := NewMultipassRepository(tx)
-
-		ids, err := repo.List(filter)
-		if err != ErrNotFound {
-			return responseNotFound(req, "something in the path")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuids": ids,
-			},
-		}
-
-		return resp, nil
-	}
 }
 
 type MultipassRepository struct {

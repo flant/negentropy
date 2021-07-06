@@ -103,7 +103,7 @@ func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
 }
 
 func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
-	tenant, err := r.tenantRepo.GetById(sa.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(sa.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
 }
 
-func (r *ServiceAccountRepository) GetById(id string) (*ServiceAccount, error) {
+func (r *ServiceAccountRepository) GetByID(id string) (*ServiceAccount, error) {
 	raw, err := r.db.First(ServiceAccountType, PK, id)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ TODO Логика создания/обновления сервис аккау�
 	* валидируем, что нам не передан resource_version
 */
 func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
-	stored, err := r.GetById(sa.UUID)
+	stored, err := r.GetByID(sa.UUID)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 
 	// Update
 
-	tenant, err := r.tenantRepo.GetById(sa.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(sa.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ TODO
 	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
 func (r *ServiceAccountRepository) delete(id string) error {
-	sa, err := r.GetById(id)
+	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (r *ServiceAccountRepository) delete(id string) error {
 }
 
 func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id string) error {
-	sa, err := r.GetById(id)
+	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bo
 }
 
 func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetById(ext.OwnerUUID)
+	obj, err := r.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
 }
 
 func (r *ServiceAccountRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
-	obj, err := r.GetById(uuid)
+	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
 	}

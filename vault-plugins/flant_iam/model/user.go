@@ -95,7 +95,7 @@ func NewUserRepository(tx *io.MemoryStoreTxn) *UserRepository {
 }
 
 func (r *UserRepository) Create(user *User) error {
-	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(user.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (r *UserRepository) Create(user *User) error {
 	return r.save(user)
 }
 
-func (r *UserRepository) GetById(id string) (*User, error) {
+func (r *UserRepository) GetByID(id string) (*User, error) {
 	raw, err := r.db.First(UserType, PK, id)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (r *UserRepository) save(user *User) error {
 }
 
 func (r *UserRepository) Update(user *User) error {
-	stored, err := r.GetById(user.UUID)
+	stored, err := r.GetByID(user.UUID)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (r *UserRepository) Update(user *User) error {
 	user.Version = NewResourceVersion()
 
 	// Update
-	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(user.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (r *UserRepository) Update(user *User) error {
 }
 
 func (r *UserRepository) delete(id string) error {
-	user, err := r.GetById(id)
+	user, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (r *UserRepository) delete(id string) error {
 }
 
 func (r *UserRepository) Delete(origin ObjectOrigin, id string) error {
-	user, err := r.GetById(id)
+	user, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 }
 
 func (r *UserRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetById(ext.OwnerUUID)
+	obj, err := r.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (r *UserRepository) SetExtension(ext *Extension) error {
 }
 
 func (r *UserRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
-	obj, err := r.GetById(uuid)
+	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
 	}

@@ -332,7 +332,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingRepository(tx)
 
-		roleBinding, err := repo.GetById(id)
+		roleBinding, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

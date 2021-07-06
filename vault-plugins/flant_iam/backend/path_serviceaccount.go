@@ -310,7 +310,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewServiceAccountRepository(tx)
 
-		serviceAccount, err := repo.GetById(id)
+		serviceAccount, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

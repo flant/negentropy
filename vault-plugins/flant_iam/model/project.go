@@ -87,7 +87,7 @@ func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
 }
 
 func (r *ProjectRepository) Create(project *Project) error {
-	_, err := r.tenantRepo.GetById(project.TenantUUID)
+	_, err := r.tenantRepo.GetByID(project.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (r *ProjectRepository) Create(project *Project) error {
 	return nil
 }
 
-func (r *ProjectRepository) GetById(id string) (*Project, error) {
+func (r *ProjectRepository) GetByID(id string) (*Project, error) {
 	raw, err := r.db.First(ProjectType, PK, id)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (r *ProjectRepository) GetById(id string) (*Project, error) {
 }
 
 func (r *ProjectRepository) Update(project *Project) error {
-	stored, err := r.GetById(project.UUID)
+	stored, err := r.GetByID(project.UUID)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (r *ProjectRepository) Update(project *Project) error {
 }
 
 func (r *ProjectRepository) Delete(id string) error {
-	project, err := r.GetById(id)
+	project, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
