@@ -58,12 +58,12 @@ func responseNotFound(req *logical.Request) (*logical.Response, error) {
 }
 
 func responseBadVersion(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("version mismatch")
+	rr := logical.ErrorResponse("bad version")
 	return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
 }
 
 func responseBadOrigin(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("readonly object")
+	rr := logical.ErrorResponse("bad origin")
 	return logical.RespondWithStatusCode(rr, req, http.StatusForbidden)
 }
 
