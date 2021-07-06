@@ -196,11 +196,13 @@ func (r *RoleBindingRepository) DeleteByTenant(tenantUUID string) error {
 	return err
 }
 
-
 func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 	obj, err := r.GetById(ext.OwnerUUID)
 	if err != nil {
 		return err
+	}
+	if obj.Extensions == nil {
+		obj.Extensions = make(map[ObjectOrigin]*Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
@@ -210,12 +212,15 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 	return nil
 }
 
-func (r *RoleBindingRepository) UnsetExtension(uuid string) error {
+func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
 	obj, err := r.GetById(uuid)
 	if err != nil {
 		return err
 	}
-	obj.Extensions = nil
+	if obj.Extensions == nil {
+		return nil
+	}
+	delete(obj.Extensions, origin)
 	err = r.Update(obj)
 	if err != nil {
 		return err

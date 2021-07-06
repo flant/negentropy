@@ -57,15 +57,15 @@ groups
 resource_version
 */
 type Group struct {
-	UUID            string       `json:"uuid"` // PK
-	TenantUUID      string       `json:"tenant_uuid"`
-	Version         string       `json:"resource_version"`
-	BuiltinType     string       `json:"-"`
-	Identifier      string       `json:"identifier"`
-	FullIdentifier  string       `json:"full_identifier"`
-	Users           []string     `json:"users"`
-	Groups          []string     `json:"groups"`
-	ServiceAccounts []string     `json:"service_accounts"`
+	UUID            string   `json:"uuid"` // PK
+	TenantUUID      string   `json:"tenant_uuid"`
+	Version         string   `json:"resource_version"`
+	BuiltinType     string   `json:"-"`
+	Identifier      string   `json:"identifier"`
+	FullIdentifier  string   `json:"full_identifier"`
+	Users           []string `json:"users"`
+	Groups          []string `json:"groups"`
+	ServiceAccounts []string `json:"service_accounts"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -218,6 +218,9 @@ func (r *GroupRepository) SetExtension(ext *Extension) error {
 	if err != nil {
 		return err
 	}
+	if obj.Extensions == nil {
+		obj.Extensions = make(map[ObjectOrigin]*Extension)
+	}
 	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
 	if err != nil {
@@ -226,12 +229,15 @@ func (r *GroupRepository) SetExtension(ext *Extension) error {
 	return nil
 }
 
-func (r *GroupRepository) UnsetExtension(uuid string) error {
+func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
 	obj, err := r.GetById(uuid)
 	if err != nil {
 		return err
 	}
-	obj.Extensions = nil
+	if obj.Extensions == nil {
+		return nil
+	}
+	delete(obj.Extensions, origin)
 	err = r.Update(obj)
 	if err != nil {
 		return err

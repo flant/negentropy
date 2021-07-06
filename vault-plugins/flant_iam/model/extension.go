@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
 type ExtensionOwnerType string
@@ -16,7 +15,7 @@ const (
 	ExtensionOwnerTypeServiceAccount ExtensionOwnerType = ServiceAccountType
 	ExtensionOwnerTypeRoleBinding    ExtensionOwnerType = RoleBindingType
 	ExtensionOwnerTypeGroup          ExtensionOwnerType = GroupType
-	//ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
+	// ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
 )
 
 func (eot ExtensionOwnerType) String() string {
@@ -36,24 +35,6 @@ type Extension struct {
 	Attributes map[string]interface{} `json:"attributes"`
 	// SensitiveAttributes is the data to pass to some other systems transparently
 	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes"`
-}
-
-func (t *Extension) ObjType() string {
-	return ExtensionType
-}
-
-func (t *Extension) ObjId() string {
-	return t.OwnerUUID
-}
-
-func (t *Extension) Marshal(_ bool) ([]byte, error) {
-	// TODO exclude sensitive data
-	return jsonutil.EncodeJSON(t)
-}
-
-func (t *Extension) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, t)
-	return err
 }
 
 type ExtensionRepository struct {
@@ -82,7 +63,7 @@ func (r *ExtensionRepository) Create(ext *Extension) error {
 	return fmt.Errorf("extension is not supported for type %q", ext.OwnerType)
 }
 
-func (r *ExtensionRepository) Delete(ownerUUID string) error {
+func (r *ExtensionRepository) Delete(origin ObjectOrigin, ownerUUID string) error {
 	repos := []extensionUnsetter{
 		NewUserRepository(r.db),
 		NewServiceAccountRepository(r.db),
@@ -92,7 +73,7 @@ func (r *ExtensionRepository) Delete(ownerUUID string) error {
 	}
 
 	for _, repo := range repos {
-		err := repo.UnsetExtension(ownerUUID)
+		err := repo.UnsetExtension(origin, ownerUUID)
 		if err == ErrNotFound {
 			continue
 		}
@@ -103,5 +84,5 @@ func (r *ExtensionRepository) Delete(ownerUUID string) error {
 }
 
 type extensionUnsetter interface {
-	UnsetExtension(string) error
+	UnsetExtension(ObjectOrigin, string) error
 }

@@ -214,6 +214,9 @@ func (r *UserRepository) SetExtension(ext *Extension) error {
 	if err != nil {
 		return err
 	}
+	if obj.Extensions == nil {
+		obj.Extensions = make(map[ObjectOrigin]*Extension)
+	}
 	obj.Extensions[ext.Origin] = ext
 	err = r.Update(obj)
 	if err != nil {
@@ -222,12 +225,15 @@ func (r *UserRepository) SetExtension(ext *Extension) error {
 	return nil
 }
 
-func (r *UserRepository) UnsetExtension(uuid string) error {
+func (r *UserRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
 	obj, err := r.GetById(uuid)
 	if err != nil {
 		return err
 	}
-	obj.Extensions = nil
+	if obj.Extensions == nil {
+		return nil
+	}
+	delete(obj.Extensions, origin)
 	err = r.Update(obj)
 	if err != nil {
 		return err
