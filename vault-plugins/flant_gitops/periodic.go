@@ -20,6 +20,7 @@ import (
 	"github.com/werf/logboek"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
 	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
 )
 
@@ -175,19 +176,9 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		trustedGpgPublicKeyNameList, err := storage.List(ctx, storageKeyPrefixTrustedGPGPublicKey)
+		trustedGpgPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
 		if err != nil {
-			return err
-		}
-
-		var trustedGpgPublicKeys []string
-		for _, name := range trustedGpgPublicKeyNameList {
-			key, err := storage.Get(ctx, storageKeyPrefixTrustedGPGPublicKey+name)
-			if err != nil {
-				return err
-			}
-
-			trustedGpgPublicKeys = append(trustedGpgPublicKeys, string(key.Value))
+			return fmt.Errorf("unable to get trusted public keys: %s", err)
 		}
 
 		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedGpgPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit.(int)); err != nil {
