@@ -60,7 +60,7 @@ type User struct {
 	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
 	Email          string `json:"email"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin ObjectOrigin
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
@@ -102,12 +102,10 @@ func (r *UserRepository) Create(user *User) error {
 
 	user.Version = NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-
-	err = r.db.Insert(UserType, user)
-	if err != nil {
-		return err
+	if user.Origin == "" {
+		return ErrBadOrigin
 	}
-	return nil
+	return r.save(user)
 }
 
 func (r *UserRepository) GetById(id string) (*User, error) {
@@ -122,6 +120,10 @@ func (r *UserRepository) GetById(id string) (*User, error) {
 	return user, nil
 }
 
+func (r *UserRepository) save(user *User) error {
+	return r.db.Insert(UserType, user)
+}
+
 func (r *UserRepository) Update(user *User) error {
 	stored, err := r.GetById(user.UUID)
 	if err != nil {
@@ -133,7 +135,10 @@ func (r *UserRepository) Update(user *User) error {
 		return ErrNotFound
 	}
 	if stored.Version != user.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
+	}
+	if stored.Origin != user.Origin {
+		return ErrBadOrigin
 	}
 	user.Version = NewResourceVersion()
 
@@ -144,21 +149,27 @@ func (r *UserRepository) Update(user *User) error {
 	}
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 
-	err = r.db.Insert(UserType, user)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.save(user)
 }
 
-func (r *UserRepository) Delete(id string) error {
+func (r *UserRepository) delete(id string) error {
 	user, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(UserType, user)
+}
+
+func (r *UserRepository) Delete(origin ObjectOrigin, id string) error {
+	user, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+	if user.Origin != origin {
+		return ErrBadOrigin
+	}
+	return r.delete(id)
 }
 
 func (r *UserRepository) List(tenantID string) ([]string, error) {
@@ -218,11 +229,7 @@ func (r *UserRepository) SetExtension(ext *Extension) error {
 		obj.Extensions = make(map[ObjectOrigin]*Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }
 
 func (r *UserRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
@@ -234,16 +241,12 @@ func (r *UserRepository) UnsetExtension(origin ObjectOrigin, uuid string) error 
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }
 
 func (r *UserRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.Delete(objID)
+		return r.delete(objID)
 	}
 
 	user := &User{}

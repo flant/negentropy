@@ -105,7 +105,7 @@ func (r *TenantRepository) Update(updated *Tenant) error {
 	// Validate
 
 	if stored.Version != updated.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	updated.Version = NewResourceVersion()
 

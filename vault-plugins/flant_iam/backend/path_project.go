@@ -213,10 +213,10 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewProjectRepository(tx)
 		err := repo.Update(project)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.ProjectType)
+			return responseNotFound(req)
 		}
-		if err == model.ErrVersionMismatch {
-			return responseVersionMismatch(req)
+		if err == model.ErrBadVersion {
+			return responseBadVersion(req)
 		}
 		if err != nil {
 			return nil, err
@@ -239,7 +239,7 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(id)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, "project not found")
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err
@@ -261,7 +261,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		project, err := repo.GetById(id)
 		if err == model.ErrNotFound {
-			return responseNotFound(req, model.ProjectType)
+			return responseNotFound(req)
 		}
 		if err != nil {
 			return nil, err

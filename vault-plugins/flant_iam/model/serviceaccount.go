@@ -53,7 +53,7 @@ type ServiceAccount struct {
 	TokenTTL       time.Duration `json:"token_ttl"`
 	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin ObjectOrigin
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
@@ -98,23 +98,25 @@ func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepositor
 	}
 }
 
-func (r *ServiceAccountRepository) Create(serviceAccount *ServiceAccount) error {
-	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
+	return r.db.Insert(ServiceAccountType, sa)
+}
+
+func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
+	tenant, err := r.tenantRepo.GetById(sa.TenantUUID)
 	if err != nil {
 		return err
 	}
-
-	if serviceAccount.Version != "" {
-		return ErrVersionMismatch
+	if sa.Version != "" {
+		return ErrBadVersion
 	}
-	serviceAccount.Version = NewResourceVersion()
-	serviceAccount.FullIdentifier = CalcServiceAccountFullIdentifier(serviceAccount, tenant)
-
-	err = r.db.Insert(ServiceAccountType, serviceAccount)
-	if err != nil {
-		return err
+	if sa.Origin == "" {
+		return ErrBadOrigin
 	}
-	return nil
+	sa.Version = NewResourceVersion()
+	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
+
+	return r.save(sa)
 }
 
 func (r *ServiceAccountRepository) GetById(id string) (*ServiceAccount, error) {
@@ -146,35 +148,33 @@ TODO Логика создания/обновления сервис аккау�
 	* если объекта нет, то:
 	* валидируем, что нам не передан resource_version
 */
-func (r *ServiceAccountRepository) Update(serviceAccount *ServiceAccount) error {
-	stored, err := r.GetById(serviceAccount.UUID)
+func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
+	stored, err := r.GetById(sa.UUID)
 	if err != nil {
 		return err
 	}
 
 	// Validate
-	if stored.TenantUUID != serviceAccount.TenantUUID {
+	if stored.TenantUUID != sa.TenantUUID {
 		return ErrNotFound
 	}
-	if stored.Version != serviceAccount.Version {
-		return ErrVersionMismatch
+	if stored.Origin != sa.Origin {
+		return ErrBadOrigin
 	}
-	serviceAccount.Version = NewResourceVersion()
+	if stored.Version != sa.Version {
+		return ErrBadVersion
+	}
+	sa.Version = NewResourceVersion()
 
 	// Update
 
-	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+	tenant, err := r.tenantRepo.GetById(sa.TenantUUID)
 	if err != nil {
 		return err
 	}
-	serviceAccount.FullIdentifier = CalcServiceAccountFullIdentifier(serviceAccount, tenant)
+	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
 
-	err = r.db.Insert(ServiceAccountType, serviceAccount)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.save(sa)
 }
 
 /*
@@ -182,13 +182,23 @@ TODO
 	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
 	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
-func (r *ServiceAccountRepository) Delete(id string) error {
-	serviceAccount, err := r.GetById(id)
+func (r *ServiceAccountRepository) delete(id string) error {
+	sa, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
+	return r.db.Delete(ServiceAccountType, sa)
+}
 
-	return r.db.Delete(ServiceAccountType, serviceAccount)
+func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id string) error {
+	sa, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+	if sa.Origin != origin {
+		return ErrBadOrigin
+	}
+	return r.delete(id)
 }
 
 func (r *ServiceAccountRepository) List(tenantID string) ([]string, error) {
@@ -248,11 +258,7 @@ func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
 		obj.Extensions = make(map[ObjectOrigin]*Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }
 
 func (r *ServiceAccountRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
@@ -264,9 +270,5 @@ func (r *ServiceAccountRepository) UnsetExtension(origin ObjectOrigin, uuid stri
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }

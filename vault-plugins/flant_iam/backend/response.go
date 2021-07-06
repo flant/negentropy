@@ -39,14 +39,32 @@ func responseWithDataAndCode(req *logical.Request, m model.Marshaller, status in
 	return logical.RespondWithStatusCode(resp, req, status)
 }
 
-func responseNotFound(req *logical.Request, who string) (*logical.Response, error) {
-	rr := logical.ErrorResponse(who + " not found")
+func responseErr(req *logical.Request, err error) (*logical.Response, error) {
+	switch err {
+	case model.ErrNotFound:
+		return responseNotFound(req)
+	case model.ErrBadVersion:
+		return responseBadVersion(req)
+	case model.ErrBadOrigin:
+		return responseBadOrigin(req)
+	default:
+		return nil, err
+	}
+}
+
+func responseNotFound(req *logical.Request) (*logical.Response, error) {
+	rr := logical.ErrorResponse("not found")
 	return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
 }
 
-func responseVersionMismatch(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("version mismatch")
+func responseBadVersion(req *logical.Request) (*logical.Response, error) {
+	rr := logical.ErrorResponse("bad version")
 	return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+}
+
+func responseBadOrigin(req *logical.Request) (*logical.Response, error) {
+	rr := logical.ErrorResponse("bad origin")
+	return logical.RespondWithStatusCode(rr, req, http.StatusForbidden)
 }
 
 // commit wraps the committing and error logging

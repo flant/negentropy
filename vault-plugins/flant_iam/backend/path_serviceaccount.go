@@ -229,6 +229,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -263,6 +264,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -270,14 +272,8 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 
 		repo := model.NewServiceAccountRepository(tx)
 		err := repo.Update(serviceAccount)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.ServiceAccountType)
-		}
-		if err == model.ErrVersionMismatch {
-			return responseVersionMismatch(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -295,12 +291,9 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 		defer tx.Abort()
 		repo := model.NewServiceAccountRepository(tx)
 
-		err := repo.Delete(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, "service account not found")
-		}
+		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -318,11 +311,8 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 		repo := model.NewServiceAccountRepository(tx)
 
 		serviceAccount, err := repo.GetById(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.ServiceAccountType)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		return responseWithDataAndCode(req, serviceAccount, http.StatusOK)

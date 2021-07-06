@@ -67,7 +67,7 @@ type Group struct {
 	Groups          []string `json:"groups"`
 	ServiceAccounts []string `json:"service_accounts"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin ObjectOrigin
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
@@ -112,6 +112,10 @@ func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
 	}
 }
 
+func (r *GroupRepository) save(group *Group) error {
+	return r.db.Insert(GroupType, group)
+}
+
 func (r *GroupRepository) Create(group *Group) error {
 	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
 	if err != nil {
@@ -119,16 +123,15 @@ func (r *GroupRepository) Create(group *Group) error {
 	}
 
 	if group.Version != "" {
-		return ErrVersionMismatch
+		return ErrBadVersion
+	}
+	if group.Origin == "" {
+		return ErrBadOrigin
 	}
 	group.Version = NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	err = r.db.Insert(GroupType, group)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(group)
 }
 
 func (r *GroupRepository) GetById(id string) (*Group, error) {
@@ -153,8 +156,11 @@ func (r *GroupRepository) Update(group *Group) error {
 	if stored.TenantUUID != group.TenantUUID {
 		return ErrNotFound
 	}
+	if stored.Origin != group.Origin {
+		return ErrBadOrigin
+	}
 	if stored.Version != group.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	group.Version = NewResourceVersion()
 
@@ -166,12 +172,7 @@ func (r *GroupRepository) Update(group *Group) error {
 	}
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	err = r.db.Insert(GroupType, group)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.save(group)
 }
 
 /*
@@ -181,12 +182,14 @@ TODO Clean from everywhere:
 	* approvals
 	* identity_sharings
 */
-func (r *GroupRepository) Delete(id string) error {
+func (r *GroupRepository) Delete(origin ObjectOrigin, id string) error {
 	group, err := r.GetById(id)
 	if err != nil {
 		return err
 	}
-
+	if group.Origin != origin {
+		return ErrBadOrigin
+	}
 	return r.db.Delete(GroupType, group)
 }
 
@@ -222,11 +225,7 @@ func (r *GroupRepository) SetExtension(ext *Extension) error {
 		obj.Extensions = make(map[ObjectOrigin]*Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }
 
 func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
@@ -238,9 +237,5 @@ func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid string) error
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	err = r.Update(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.save(obj)
 }

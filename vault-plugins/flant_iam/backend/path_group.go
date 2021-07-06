@@ -226,6 +226,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
 			ServiceAccounts: data.Get("service_accounts").([]string),
+			Origin:          model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -258,6 +259,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
 			ServiceAccounts: data.Get("service_accounts").([]string),
+			Origin:          model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -265,14 +267,8 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 		repo := model.NewGroupRepository(tx)
 		err := repo.Update(group)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.GroupType)
-		}
-		if err == model.ErrVersionMismatch {
-			return responseVersionMismatch(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -290,12 +286,9 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 		defer tx.Abort()
 		repo := model.NewGroupRepository(tx)
 
-		err := repo.Delete(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, "service account not found")
-		}
+		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -313,11 +306,8 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		repo := model.NewGroupRepository(tx)
 
 		group, err := repo.GetById(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req, model.GroupType)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		return responseWithDataAndCode(req, group, http.StatusOK)
