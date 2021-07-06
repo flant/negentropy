@@ -190,6 +190,109 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Multipass creation
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass",
+			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+				"ttl": {
+					Type:        framework.TypeInt,
+					Description: "TTL in seconds",
+					Required:    true,
+				},
+				"max_ttl": {
+					Type:        framework.TypeInt,
+					Description: "Max TTL in seconds",
+					Required:    true,
+				},
+				"description": {
+					Type:        framework.TypeString,
+					Description: "The purpose of issuing",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed CIDRs to use the multipass from",
+					Required:    true,
+				},
+				"allowed_roles": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed roles to use the multipass with",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: neverExisting,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleMultipassCreate(),
+					Summary:  "Create service account multipass.",
+				},
+			},
+		},
+		// Multipass read or delete
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass/" + uuid.Pattern("uuid"),
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a multipass",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleMultipassRead(),
+					Summary:  "Get multipass by ID",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleMultipassDelete(),
+					Summary:  "Delete multipass by ID",
+				},
+			},
+		},
+		// Multipass list
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass/?",
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleMultipassList(),
+					Summary:  "List multipass IDs",
+				},
+			},
+		},
 	}
 }
 
@@ -336,6 +439,115 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 				"uuids": list,
 			},
 		}
+		return resp, nil
+	}
+}
+
+func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		var (
+			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
+			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
+			validTill = time.Now().Add(ttl).Unix()
+		)
+
+		multipass := &model.Multipass{
+			UUID:        uuid.New(),
+			TenantUUID:  data.Get("tenant_uuid").(string),
+			OwnerUUID:   data.Get("owner_uuid").(string),
+			OwnerType:   model.MultipassOwnerServiceAccount,
+			Description: data.Get("description").(string),
+			TTL:         ttl,
+			MaxTTL:      maxTTL,
+			ValidTill:   validTill,
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			Roles:       data.Get("allowed_roles").([]string),
+			Origin:      model.OriginIAM,
+		}
+
+		tx := b.storage.Txn(true)
+		repo := model.NewMultipassRepository(tx)
+
+		err := repo.Create(multipass)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		return responseWithDataAndCode(req, multipass, http.StatusCreated)
+	}
+}
+
+func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerServiceAccount,
+			Origin:     model.OriginIAM,
+		}
+
+		tx := b.storage.Txn(true)
+		repo := model.NewMultipassRepository(tx)
+
+		err := repo.Delete(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
+func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerServiceAccount,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewMultipassRepository(tx)
+
+		mp, err := repo.Get(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+		return responseWithData(mp)
+	}
+}
+
+func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerServiceAccount,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewMultipassRepository(tx)
+
+		ids, err := repo.List(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuids": ids,
+			},
+		}
+
 		return resp, nil
 	}
 }
