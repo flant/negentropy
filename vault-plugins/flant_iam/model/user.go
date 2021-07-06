@@ -102,12 +102,10 @@ func (r *UserRepository) Create(user *User) error {
 
 	user.Version = NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-
-	err = r.db.Insert(UserType, user)
-	if err != nil {
-		return err
+	if user.Origin == "" {
+		return ErrBadOrigin
 	}
-	return nil
+	return r.save(user)
 }
 
 func (r *UserRepository) GetById(id string) (*User, error) {
@@ -137,10 +135,10 @@ func (r *UserRepository) Update(user *User) error {
 		return ErrNotFound
 	}
 	if stored.Version != user.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	if stored.Origin != user.Origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	user.Version = NewResourceVersion()
 
@@ -169,7 +167,7 @@ func (r *UserRepository) Delete(origin ObjectOrigin, id string) error {
 		return err
 	}
 	if user.Origin != origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	return r.delete(id)
 }

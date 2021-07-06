@@ -43,10 +43,10 @@ func responseErr(req *logical.Request, err error) (*logical.Response, error) {
 	switch err {
 	case model.ErrNotFound:
 		return responseNotFound(req)
-	case model.ErrVersionMismatch:
-		return responseVersionMismatch(req)
-	case model.ErrOriginMismatch:
-		return responseOriginMismatch(req)
+	case model.ErrBadVersion:
+		return responseBadVersion(req)
+	case model.ErrBadOrigin:
+		return responseBadOrigin(req)
 	default:
 		return nil, err
 	}
@@ -57,12 +57,12 @@ func responseNotFound(req *logical.Request) (*logical.Response, error) {
 	return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
 }
 
-func responseVersionMismatch(req *logical.Request) (*logical.Response, error) {
+func responseBadVersion(req *logical.Request) (*logical.Response, error) {
 	rr := logical.ErrorResponse("version mismatch")
 	return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
 }
 
-func responseOriginMismatch(req *logical.Request) (*logical.Response, error) {
+func responseBadOrigin(req *logical.Request) (*logical.Response, error) {
 	rr := logical.ErrorResponse("readonly object")
 	return logical.RespondWithStatusCode(rr, req, http.StatusForbidden)
 }

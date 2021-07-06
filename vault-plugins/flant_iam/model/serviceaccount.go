@@ -107,9 +107,11 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	if err != nil {
 		return err
 	}
-
 	if sa.Version != "" {
-		return ErrVersionMismatch
+		return ErrBadVersion
+	}
+	if sa.Origin == "" {
+		return ErrBadOrigin
 	}
 	sa.Version = NewResourceVersion()
 	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
@@ -157,10 +159,10 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 		return ErrNotFound
 	}
 	if stored.Origin != sa.Origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	if stored.Version != sa.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	sa.Version = NewResourceVersion()
 
@@ -194,7 +196,7 @@ func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id string) error 
 		return err
 	}
 	if sa.Origin != origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	return r.delete(id)
 }

@@ -124,7 +124,7 @@ func (r *ProjectRepository) Update(project *Project) error {
 		return ErrNotFound
 	}
 	if stored.Version != project.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	project.Version = NewResourceVersion()
 

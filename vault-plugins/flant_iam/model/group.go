@@ -123,7 +123,10 @@ func (r *GroupRepository) Create(group *Group) error {
 	}
 
 	if group.Version != "" {
-		return ErrVersionMismatch
+		return ErrBadVersion
+	}
+	if group.Origin == "" {
+		return ErrBadOrigin
 	}
 	group.Version = NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
@@ -154,10 +157,10 @@ func (r *GroupRepository) Update(group *Group) error {
 		return ErrNotFound
 	}
 	if stored.Origin != group.Origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	if stored.Version != group.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	group.Version = NewResourceVersion()
 
@@ -185,7 +188,7 @@ func (r *GroupRepository) Delete(origin ObjectOrigin, id string) error {
 		return err
 	}
 	if group.Origin != origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	return r.db.Delete(GroupType, group)
 }

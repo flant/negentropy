@@ -215,8 +215,8 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 		if err == model.ErrNotFound {
 			return responseNotFound(req)
 		}
-		if err == model.ErrVersionMismatch {
-			return responseVersionMismatch(req)
+		if err == model.ErrBadVersion {
+			return responseBadVersion(req)
 		}
 		if err != nil {
 			return nil, err

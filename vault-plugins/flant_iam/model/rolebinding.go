@@ -120,7 +120,10 @@ func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
 	}
 
 	if roleBinding.Version != "" {
-		return ErrVersionMismatch
+		return ErrBadVersion
+	}
+	if roleBinding.Origin == "" {
+		return ErrBadOrigin
 	}
 	roleBinding.Version = NewResourceVersion()
 
@@ -150,10 +153,10 @@ func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
 		return ErrNotFound
 	}
 	if roleBinding.Origin != stored.Origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	if stored.Version != roleBinding.Version {
-		return ErrVersionMismatch
+		return ErrBadVersion
 	}
 	roleBinding.Version = NewResourceVersion()
 
@@ -176,7 +179,7 @@ func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id string) error {
 		return err
 	}
 	if roleBinding.Origin != origin {
-		return ErrOriginMismatch
+		return ErrBadOrigin
 	}
 	return r.delete(id)
 }
