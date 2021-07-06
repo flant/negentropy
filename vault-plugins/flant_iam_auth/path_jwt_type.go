@@ -25,7 +25,7 @@ func pathJwtTypeList(b *flantIamAuthBackend) *framework.Path {
 		Pattern: fmt.Sprintf("%s/?", HttpPathJwtType),
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
-				Callback:    b.pathRoleList,
+				Callback:    b.pathJwtTypesList,
 				Summary:     "Lists all jwt types registered with the backend",
 				Description: "The list will contain the names of the jwt token types.",
 			},
@@ -156,7 +156,16 @@ func (b *flantIamAuthBackend) pathJwtTypeDelete(ctx context.Context, req *logica
 
 	repo := repos.NewJWTIssueTypeRepo(tnx)
 
-	err := repo.Delete(name)
+	val, err := repo.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	err = repo.Delete(name)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +207,11 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 	}
 
 	ttlRaw, ok := data.GetOk("ttl")
+
+	if req.Operation == logical.CreateOperation && !ok {
+		return logical.ErrorResponse("'ttl' is required"), nil
+	}
+
 	if ok {
 		ttlInt, ok := ttlRaw.(int)
 		if !ok {

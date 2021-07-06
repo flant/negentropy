@@ -54,6 +54,23 @@ apiVersions:
       required: ["CIDR"]
 `
 
+func convertResponseToListKeys(t *testing.T, resp *api.Response) []string{
+	rawResp := map[string]interface{}{}
+	err := resp.DecodeJSON(&rawResp)
+	if err != nil {
+		t.Fatalf("can not decode response %v", err)
+	}
+
+	keysIntr := rawResp["data"].(map[string]interface{})["keys"].([]interface{})
+
+	keys := make([]string, 0)
+	for _, s := range keysIntr {
+		keys = append(keys, s.(string))
+	}
+
+	return keys
+}
+
 func getJWTTypePathApi() (*api.Client, error) {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
@@ -129,7 +146,7 @@ func testGetJWTType(t *testing.T, name string) *api.Response {
 
 	r := testRequestJwtTypeName(t, cl, "GET", name, nil, nil)
 	resp, err := cl.RawRequest(r)
-	if err != nil {
+	if resp == nil {
 		t.Fatalf("can not send request %v", err)
 	}
 
@@ -142,28 +159,28 @@ func testGetListJWTTypes(t *testing.T) *api.Response {
 		t.Fatalf("can not get client %s", err)
 	}
 
-	r := testRequestJwtTypeName(t, cl, "GET", "", nil, &url.Values{
+	r := cl.NewRequest("GET", fmt.Sprintf("/v1/auth/flant_iam_auth/%s/", HttpPathJwtType))
+	r.Params = url.Values{
 		"list": []string{"true"},
-	})
-
+	}
 	resp, err := cl.RawRequest(r)
-	if err != nil {
+	if resp == nil {
 		t.Fatalf("can not send request %v", err)
 	}
 
 	return resp
 }
 
-func testDeleteJWTTypes(t *testing.T, name string) *api.Response {
+func testDeleteJWTType(t *testing.T, name string) *api.Response {
 	cl, err := getJWTTypePathApi()
 	if err != nil {
 		t.Fatalf("can not get client %s", err)
 	}
 
-	r := testRequestJwtTypeName(t, cl, "GET", name, nil, nil)
+	r := testRequestJwtTypeName(t, cl, "DELETE", name, nil, nil)
 
 	resp, err := cl.RawRequest(r)
-	if err != nil {
+	if resp == nil {
 		t.Fatalf("can not send request %v", err)
 	}
 
@@ -172,18 +189,18 @@ func testDeleteJWTTypes(t *testing.T, name string) *api.Response {
 
 func testCleanAllJWTTypes(t *testing.T) {
 	resp := testGetListJWTTypes(t)
+	if resp.StatusCode == 404 {
+		return
+	}
+
 	if resp.StatusCode != 200 {
 		t.Fatalf("cannot getting all jwt types")
 	}
 
-	names := make([]string, 0)
-	err := resp.DecodeJSON(names)
-	if err != nil {
-		t.Fatalf("can not decode response %v", err)
-	}
+	keys := convertResponseToListKeys(t, resp)
 
-	for _, n := range names {
-		testDeleteJWTTypes(t, n)
+	for _, n := range keys {
+		testDeleteJWTType(t, n)
 	}
 }
 
@@ -234,9 +251,9 @@ func TestJWTTypePath(t *testing.T) {
 
 	TestJWTType_Create(t)
 	TestJWTType_Get(t)
-	TestJWTType_List(t)
-	TestJWTType_Update(t)
 	TestJWTType_Delete(t)
+	TestJWTType_Update(t)
+	TestJWTType_List(t)
 }
 
 func TestJWTType_Create(t *testing.T) {
@@ -380,14 +397,10 @@ func TestJWTType_List(t *testing.T) {
 			t.Errorf("cannot getting all jwt types: response code: %v", resp.StatusCode)
 		}
 
-		respNames := make([]string, 0)
-		err := resp.DecodeJSON(respNames)
-		if err != nil {
-			t.Errorf("can not decode response %v", err)
-		}
-		sort.Strings(respNames)
+		keys := convertResponseToListKeys(t, resp)
+		sort.Strings(keys)
 
-		assert.DeepEqual(t, names, respNames)
+		assert.DeepEqual(t, names, keys)
 	})
 }
 
@@ -497,10 +510,10 @@ func TestJWTType_Delete(t *testing.T) {
 		}
 		name := mustCreateUpdateJWTType(t, originalBody)
 
-		t.Run("returns 200 if delete exists jwt type", func(t *testing.T) {
-			resp := testDeleteJWTTypes(t, name)
+		t.Run("returns 204 if delete exists jwt type", func(t *testing.T) {
+			resp := testDeleteJWTType(t, name)
 			code := resp.StatusCode
-			if code != 200 {
+			if code != 204 {
 				t.Errorf("Incorrect response code, got %v", code)
 			}
 		})
@@ -514,10 +527,10 @@ func TestJWTType_Delete(t *testing.T) {
 		})
 	})
 
-	t.Run("returns 404 if try to delete none exists jwt type", func(t *testing.T) {
-		resp := testDeleteJWTTypes(t, "not_exists")
+	t.Run("returns 204 if try to delete none exists jwt type", func(t *testing.T) {
+		resp := testDeleteJWTType(t, "not_exists")
 		code := resp.StatusCode
-		if code != 404 {
+		if code != 204 {
 			t.Errorf("Incorrect response code, got %v", code)
 		}
 	})
