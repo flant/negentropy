@@ -410,6 +410,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			ValidTill:   validTill,
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			Roles:       data.Get("allowed_roles").([]string),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -435,6 +436,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 			TenantUUID: data.Get("tenant_uuid").(string),
 			OwnerUUID:  data.Get("owner_uuid").(string),
 			OwnerType:  model.MultipassOwnerUser,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)

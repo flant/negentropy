@@ -132,31 +132,31 @@ func NewMultipassRepository(tx *io.MemoryStoreTxn) *MultipassRepository {
 	return &MultipassRepository{db: tx}
 }
 
-func (r *MultipassRepository) validate(multipass *Multipass) error {
+func (r *MultipassRepository) validate(mp *Multipass) error {
 	tenantRepo := NewTenantRepository(r.db)
-	_, err := tenantRepo.GetByID(multipass.TenantUUID)
+	_, err := tenantRepo.GetByID(mp.TenantUUID)
 	if err != nil {
 		return err
 	}
 
-	if multipass.OwnerType == MultipassOwnerUser {
+	if mp.OwnerType == MultipassOwnerUser {
 		repo := NewUserRepository(r.db)
-		owner, err := repo.GetByID(multipass.OwnerUUID)
+		owner, err := repo.GetByID(mp.OwnerUUID)
 		if err != nil {
 			return err
 		}
-		if owner.TenantUUID != multipass.TenantUUID {
+		if owner.TenantUUID != mp.TenantUUID {
 			return ErrNotFound
 		}
 	}
 
-	if multipass.OwnerType == MultipassOwnerServiceAccount {
+	if mp.OwnerType == MultipassOwnerServiceAccount {
 		repo := NewServiceAccountRepository(r.db)
-		owner, err := repo.GetByID(multipass.OwnerUUID)
+		owner, err := repo.GetByID(mp.OwnerUUID)
 		if err != nil {
 			return err
 		}
-		if owner.TenantUUID != multipass.TenantUUID {
+		if owner.TenantUUID != mp.TenantUUID {
 			return ErrNotFound
 		}
 	}
@@ -168,22 +168,30 @@ func (r *MultipassRepository) save(mp *Multipass) error {
 	return r.db.Insert(MultipassType, mp)
 }
 
+func (r *MultipassRepository) delete(filter *Multipass) error {
+	return r.db.Delete(MultipassType, filter)
+}
+
 func (r *MultipassRepository) Create(mp *Multipass) error {
+	if mp.Origin == "" {
+		return ErrBadOrigin
+	}
 	err := r.validate(mp)
 	if err != nil {
 		return err
 	}
-
 	return r.save(mp)
 }
 
 func (r *MultipassRepository) Delete(filter *Multipass) error {
+	if filter.Origin == "" {
+		return ErrBadOrigin
+	}
 	err := r.validate(filter)
 	if err != nil {
 		return err
 	}
-
-	return r.db.Delete(MultipassType, filter)
+	return r.delete(filter)
 }
 
 func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
@@ -191,7 +199,6 @@ func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return r.GetByID(filter.UUID)
 }
 
