@@ -113,6 +113,8 @@ kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
 gcp_region = "europe-west3"
 gcp_ckms_seal_key_ring = "vault-vs-test"
 gcp_ckms_seal_crypto_key = "vault-vs-test-crypto-key"
+
+tfstate_bucket = "negentropy-terraform-state"
 '''
 
 
