@@ -75,9 +75,6 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	case model.ReplicaType:
 		inputObject = &model.Replica{}
 
-	case model.PluginExtensionType:
-		inputObject = &model.PluginExtension{}
-
 	case model.FeatureFlagType:
 		inputObject = &model.FeatureFlag{}
 
