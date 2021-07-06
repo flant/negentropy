@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	MultipassType  = "token" // also, memdb schema name
+	MultipassType  = "multipass" // also, memdb schema name
 	OwnerForeignPK = "owner_uuid"
 )
 
