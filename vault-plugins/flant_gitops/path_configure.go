@@ -3,11 +3,11 @@ package flant_gitops
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
 )
 
 const (
@@ -26,8 +26,6 @@ const (
 	storageKeyPrefixTrustedGPGPublicKey = "trusted_gpg_public_key-"
 
 	pathPatternConfigure = "^configure/?$"
-
-	dockerImageRegexp = "^((?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:(?:\\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))+)?(?::[0-9]+)?/)?[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?(?:(?:/[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?)+)?)(?::([\\w][\\w.-]{0,127}))(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))$"
 )
 
 func configurePaths(b *backend) []*framework.Path {
@@ -146,13 +144,8 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 		case fieldNameDockerImage:
 			fieldValue := req.Get(fieldName).(string)
 
-			matched, err := regexp.MatchString(dockerImageRegexp, fieldValue)
-			if err != nil {
-				panic(fmt.Sprintf("runtime error: %s", err))
-			}
-
-			if !matched {
-				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO[:TAG]@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\"), got: %q", fieldName, fieldValue)), nil
+			if err := docker.ValidateImageNameWithDigest(fieldValue); err != nil {
+				return logical.ErrorResponse(fmt.Sprintf(`%q field validation failed: %s'`, fieldNameDockerImage, err)), nil
 			}
 		default:
 			continue
