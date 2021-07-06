@@ -115,7 +115,7 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "scripts/00-google-cloud-sdk.sh",
+      "scripts/00-google-cloud-beta.sh",
       "scripts/01-zookeeper.sh",
       "scripts/02-kafka.sh",
       "scripts/03-update-certificates-cronjob.sh",

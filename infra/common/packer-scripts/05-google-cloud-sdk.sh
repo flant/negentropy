@@ -12,5 +12,3 @@ rm -rf /tmp/build
 
 ln -s /usr/local/google-cloud-sdk/bin/gcloud /bin/gcloud
 ln -s /usr/local/google-cloud-sdk/bin/gsutil /bin/gsutil
-
-gcloud components install beta --quiet
