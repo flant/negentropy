@@ -37,10 +37,10 @@ def main():
     parser.add_argument('--save-root-tokens-on-initialization', dest='save_root_tokens', action='store_true')
     args = parser.parse_args()
 
-    if args.type == 'configurator':
-        pgp_gen_key_and_upload_public_part('alice')
-        pgp_gen_key_and_upload_public_part('bob')
-        pgp_gen_key_and_upload_public_part('carol')
+    # if args.type == 'configurator':
+    #     pgp_gen_key_and_upload_public_part('alice')
+    #     pgp_gen_key_and_upload_public_part('bob')
+    #     pgp_gen_key_and_upload_public_part('carol')
 
     vault_list = []
     if args.type == 'configurator':
