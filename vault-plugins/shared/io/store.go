@@ -154,6 +154,8 @@ func (ms *MemoryStore) SetLogger(l log.Logger) {
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
+	ms.RemoveKafkaSource(s.Name())
+
 	ms.kafkaMutex.Lock()
 	ms.kafkaSources = append(ms.kafkaSources, s)
 	ms.kafkaMapSources[s.Name()] = s
@@ -176,7 +178,20 @@ func (ms *MemoryStore) ReinitializeKafka() {
 }
 
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
+	ms.RemoveKafkaDestination(s.ReplicaName())
+
 	ms.kafkaMutex.Lock()
+	if kd, ok := ms.replicaDestinations[s.ReplicaName()]; ok {
+		var index int
+		for i, dest := range ms.kafkaDestinations {
+			if dest == kd {
+				index = i
+				break
+			}
+		}
+
+		ms.kafkaDestinations = append(ms.kafkaDestinations[:index], ms.kafkaDestinations[index+1:]...)
+	}
 	ms.replicaDestinations[s.ReplicaName()] = s
 	ms.kafkaDestinations = append(ms.kafkaDestinations, s)
 	ms.kafkaMutex.Unlock()
@@ -188,6 +203,8 @@ func (ms *MemoryStore) GetKafkaBroker() *kafka.MessageBroker {
 
 func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
+
 	ks, ok := ms.replicaDestinations[replicaName]
 	if !ok {
 		return
@@ -202,11 +219,12 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 
 	ms.kafkaDestinations = append(ms.kafkaDestinations[:index], ms.kafkaDestinations[index+1:]...)
 	delete(ms.replicaDestinations, replicaName)
-	ms.kafkaMutex.Unlock()
 }
 
 func (ms *MemoryStore) RemoveKafkaSource(name string) {
 	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
+
 	ks, ok := ms.kafkaMapSources[name]
 	if !ok {
 		return
@@ -223,7 +241,7 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 
 	ms.kafkaSources = append(ms.kafkaSources[:index], ms.kafkaSources[index+1:]...)
 	delete(ms.kafkaMapSources, name)
-	ms.kafkaMutex.Unlock()
+
 }
 
 func (ms *MemoryStore) Restore() error {
