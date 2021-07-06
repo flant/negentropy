@@ -149,7 +149,8 @@ tfstate_bucket = "negentropy-terraform-state"
 
     for vault in vault_list_with_status:
         if not vault['initialized']:
-            pgp_gen_key_and_upload_public_part('temporary-vault-'+vault['name'])
+            # pgp_gen_key_and_upload_public_part('temporary-vault-'+vault['name'])
+            pgp_gen_key_and_upload_public_part('negentropy-vault-'+vault['name']+'-temporary')
 
     for vault in vault_list_with_status:
         vault_root_token = ''
@@ -159,7 +160,7 @@ tfstate_bucket = "negentropy-terraform-state"
                 vault_root_token = vault_conf_token
 
         if not vault['initialized']:
-            encrypted_vault_root_token_name = 'vault-'+vault['name']+'-root-token'
+            encrypted_vault_root_token_name = 'negentropy-vault-'+vault['name']+'-root-token'
             while not check_blob_exists(terraform_state_bucket, encrypted_vault_root_token_name):
                 print('root token for vault '+vault['name']+' not found in bucket, sleep 2s')
                 time.sleep(2)
