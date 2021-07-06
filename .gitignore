@@ -24,5 +24,6 @@ variables.pkrvars.hcl
 
 # Plugins
 vault-plugins/build/
+vault-plugins/shared/kafka/example_plugin/build
 vault-plugins/flant_iam/tests/data/*
 vault-plugins/tests/data/*

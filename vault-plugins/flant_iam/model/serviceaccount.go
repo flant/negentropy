@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -50,6 +52,10 @@ type ServiceAccount struct {
 	CIDRs          []string      `json:"allowed_cidrs"`
 	TokenTTL       time.Duration `json:"token_ttl"`
 	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
+
+	Origin ObjectOrigin `json:"origin"`
+
+	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
 
 func (u *ServiceAccount) ObjType() string {
@@ -78,4 +84,189 @@ func CalcServiceAccountFullIdentifier(sa *ServiceAccount, tenant *Tenant) string
 		domain = sa.BuiltinType + "." + domain
 	}
 	return name + "@" + domain
+}
+
+type ServiceAccountRepository struct {
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
+}
+
+func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
+	return &ServiceAccountRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
+	}
+}
+
+func (r *ServiceAccountRepository) Create(serviceAccount *ServiceAccount) error {
+	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	if serviceAccount.Version != "" {
+		return ErrVersionMismatch
+	}
+	serviceAccount.Version = NewResourceVersion()
+	serviceAccount.FullIdentifier = CalcServiceAccountFullIdentifier(serviceAccount, tenant)
+
+	err = r.db.Insert(ServiceAccountType, serviceAccount)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceAccountRepository) GetById(id string) (*ServiceAccount, error) {
+	raw, err := r.db.First(ServiceAccountType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	serviceAccount := raw.(*ServiceAccount)
+	return serviceAccount, nil
+}
+
+/*
+TODO
+	* Из-за того, что в очереди формата TokenGenerationNumber стоит ttl 30 дней – token_ttl не может быть больше 30 дней.
+		См. подробнее следующий пункт и описание формата очереди.
+
+TODO Логика создания/обновления сервис аккаунта:
+	* type object_with_resource_version
+	* type tenanted_object
+	* validate_tenant(запрос, объект из стора)
+	* validate_resource_version(запрос, entry)
+	* пробуем загрузить объект, если объект есть, то:
+	* валидируем resource_version
+	* валидируем тенанта
+	* валидируем builtin_type_name
+	* если объекта нет, то:
+	* валидируем, что нам не передан resource_version
+*/
+func (r *ServiceAccountRepository) Update(serviceAccount *ServiceAccount) error {
+	stored, err := r.GetById(serviceAccount.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != serviceAccount.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != serviceAccount.Version {
+		return ErrVersionMismatch
+	}
+	serviceAccount.Version = NewResourceVersion()
+
+	// Update
+
+	tenant, err := r.tenantRepo.GetById(serviceAccount.TenantUUID)
+	if err != nil {
+		return err
+	}
+	serviceAccount.FullIdentifier = CalcServiceAccountFullIdentifier(serviceAccount, tenant)
+
+	err = r.db.Insert(ServiceAccountType, serviceAccount)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+TODO
+	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
+	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
+*/
+func (r *ServiceAccountRepository) Delete(id string) error {
+	serviceAccount, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(ServiceAccountType, serviceAccount)
+}
+
+func (r *ServiceAccountRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*ServiceAccount)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
+}
+
+func (r *ServiceAccountRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(ServiceAccountType, TenantForeignPK, tenantUUID)
+	return err
+}
+
+func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bool, error)) error {
+	iter, err := r.db.Get(ServiceAccountType, PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*ServiceAccount)
+		next, err := action(t)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (r *ServiceAccountRepository) SetExtension(ext *Extension) error {
+	obj, err := r.GetById(ext.OwnerUUID)
+	if err != nil {
+		return err
+	}
+	if obj.Extensions == nil {
+		obj.Extensions = make(map[ObjectOrigin]*Extension)
+	}
+	obj.Extensions[ext.Origin] = ext
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceAccountRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
+	obj, err := r.GetById(uuid)
+	if err != nil {
+		return err
+	}
+	if obj.Extensions == nil {
+		return nil
+	}
+	delete(obj.Extensions, origin)
+	err = r.Update(obj)
+	if err != nil {
+		return err
+	}
+	return nil
 }

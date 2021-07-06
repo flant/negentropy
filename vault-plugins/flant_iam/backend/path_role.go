@@ -141,7 +141,7 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewRoleRepository(tx)
+		repo := model.NewRoleRepository(tx)
 
 		if err := repo.Create(role); err != nil {
 			msg := "cannot create role"
@@ -170,9 +170,9 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
 		}
 
-		repo := NewRoleRepository(tx)
+		repo := model.NewRoleRepository(tx)
 		err := repo.Update(role)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.RoleType)
 		}
 		if err != nil {
@@ -192,11 +192,11 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewRoleRepository(tx)
+		repo := model.NewRoleRepository(tx)
 
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "role not found")
 		}
 		if err != nil {
@@ -217,10 +217,10 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 		name := data.Get("name").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewRoleRepository(tx)
+		repo := model.NewRoleRepository(tx)
 
 		role, err := repo.Get(name)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.RoleType)
 		}
 		if err != nil {
@@ -236,7 +236,7 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 		b.Logger().Debug("listing roles", "path", req.Path)
 
 		tx := b.storage.Txn(false)
-		repo := NewRoleRepository(tx)
+		repo := model.NewRoleRepository(tx)
 
 		list, err := repo.List()
 		if err != nil {
@@ -250,77 +250,4 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type RoleRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
-}
-
-func NewRoleRepository(tx *io.MemoryStoreTxn) *RoleRepository {
-	return &RoleRepository{
-		db: tx,
-	}
-}
-
-func (r *RoleRepository) Create(t *model.Role) error {
-	return r.db.Insert(model.RoleType, t)
-}
-
-func (r *RoleRepository) Get(name string) (*model.Role, error) {
-	raw, err := r.db.First(model.RoleType, model.PK, name)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*model.Role), nil
-}
-
-func (r *RoleRepository) Update(updated *model.Role) error {
-	stored, err := r.Get(updated.Name)
-	if err != nil {
-		return err
-	}
-
-	updated.Type = stored.Type // type cannot be changed
-
-	// TODO validate feature flags: role must not become unaccessable in the scope where it is used
-	// TODO forbid backwards-incompatible changes of the options schema
-
-	return r.db.Insert(model.RoleType, updated)
-}
-
-func (r *RoleRepository) Delete(name string) error {
-	role, err := r.Get(name)
-	if err != nil {
-		return err
-	}
-
-	// TODO before the deletion, check it is not used in
-	//      * role_biondings,
-	//      * approvals,
-	//      * tokens,
-	//      * service account passwords
-
-	return r.db.Delete(model.RoleType, role)
-}
-
-func (r *RoleRepository) List() ([]string, error) {
-	iter, err := r.db.Get(model.RoleType, model.PK)
-	if err != nil {
-		return nil, err
-	}
-
-	names := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*model.Role)
-		names = append(names, t.Name)
-	}
-	return names, nil
 }

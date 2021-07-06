@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -69,5 +71,101 @@ func (p *Project) Marshal(_ bool) ([]byte, error) {
 
 func (p *Project) Unmarshal(data []byte) error {
 	err := jsonutil.DecodeJSON(data, p)
+	return err
+}
+
+type ProjectRepository struct {
+	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantRepo *TenantRepository
+}
+
+func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
+	return &ProjectRepository{
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
+	}
+}
+
+func (r *ProjectRepository) Create(project *Project) error {
+	_, err := r.tenantRepo.GetById(project.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	project.Version = NewResourceVersion()
+	err = r.db.Insert(ProjectType, project)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ProjectRepository) GetById(id string) (*Project, error) {
+	raw, err := r.db.First(ProjectType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	project := raw.(*Project)
+
+	return project, nil
+}
+
+func (r *ProjectRepository) Update(project *Project) error {
+	stored, err := r.GetById(project.UUID)
+	if err != nil {
+		return err
+	}
+
+	// Validate
+	if stored.TenantUUID != project.TenantUUID {
+		return ErrNotFound
+	}
+	if stored.Version != project.Version {
+		return ErrVersionMismatch
+	}
+	project.Version = NewResourceVersion()
+
+	// Update
+
+	err = r.db.Insert(ProjectType, project)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ProjectRepository) Delete(id string) error {
+	project, err := r.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(ProjectType, project)
+}
+
+func (r *ProjectRepository) List(tenantID string) ([]string, error) {
+	iter, err := r.db.Get(ProjectType, TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*Project)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
+}
+
+func (r *ProjectRepository) DeleteByTenant(tenantUUID string) error {
+	_, err := r.db.DeleteAll(ProjectType, TenantForeignPK, tenantUUID)
 	return err
 }

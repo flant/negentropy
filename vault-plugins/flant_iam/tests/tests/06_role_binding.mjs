@@ -83,7 +83,7 @@ describe("Role Binding", function () {
 
         const subResp = { ...payload, ...generated }
         delete subResp.ttl
-        console.log(read.data)
+
         expect(read.data).to.deep.contain(
             subResp,
             "must contain generated fields",

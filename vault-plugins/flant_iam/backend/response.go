@@ -12,12 +12,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-var (
-	ErrNotFound        = fmt.Errorf("not found")
-	ErrVersionMismatch = fmt.Errorf("version mismatch")
-	ErrAlreadyExists   = fmt.Errorf("already exists")
-)
-
 func responseWithData(m model.Marshaller) (*logical.Response, error) {
 	json, err := m.Marshal(false)
 	if err != nil {

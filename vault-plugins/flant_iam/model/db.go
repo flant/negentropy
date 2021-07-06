@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// Index "id" is required by all table.
+	// PK is the alias for "id. Index "id" is required by all tables.
 	// In the domain, the primary key is not always "id".
 	PK = "id"
 )

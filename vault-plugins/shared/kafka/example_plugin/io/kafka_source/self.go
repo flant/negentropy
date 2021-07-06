@@ -12,7 +12,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/explugin/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -72,30 +72,6 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	// Fill here objects for unmarshalling
 	var inputObject interface{}
 	switch splitted[0] {
-	case model.ReplicaType:
-		inputObject = &model.Replica{}
-
-	case model.FeatureFlagType:
-		inputObject = &model.FeatureFlag{}
-
-	case model.GroupType:
-		inputObject = &model.Group{}
-
-	case model.ProjectType:
-		inputObject = &model.Project{}
-
-	case model.RoleType:
-		inputObject = &model.Role{}
-
-	case model.RoleBindingType:
-		inputObject = &model.RoleBinding{}
-
-	case model.ServiceAccountType:
-		inputObject = &model.ServiceAccount{}
-
-	case model.TenantType:
-		inputObject = &model.Tenant{}
-
 	case model.UserType:
 		inputObject = &model.User{}
 

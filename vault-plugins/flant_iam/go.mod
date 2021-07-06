@@ -3,6 +3,8 @@ module github.com/flant/negentropy/vault-plugins/flant_iam
 go 1.15
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/confluentinc/confluent-kafka-go v1.6.1
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
 	github.com/google/uuid v1.2.0

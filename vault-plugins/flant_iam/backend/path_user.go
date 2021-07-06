@@ -159,7 +159,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 
 		obj, err := repo.GetById(id)
 		if err != nil {
@@ -181,7 +181,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 
 		if err := repo.Create(user); err != nil {
 			msg := "cannot create user"
@@ -210,12 +210,12 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			Identifier: data.Get("identifier").(string),
 		}
 
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 		err := repo.Update(user)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.UserType)
 		}
-		if err == ErrVersionMismatch {
+		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
 		}
 		if err != nil {
@@ -235,10 +235,10 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 
 		err := repo.Delete(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "user not found")
 		}
 		if err != nil {
@@ -257,10 +257,10 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 
 		user, err := repo.GetById(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.UserType)
 		}
 		if err != nil {
@@ -276,7 +276,7 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewUserRepository(tx)
+		repo := model.NewUserRepository(tx)
 
 		list, err := repo.List(tenantID)
 		if err != nil {
@@ -290,132 +290,4 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type UserRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
-}
-
-func NewUserRepository(tx *io.MemoryStoreTxn) *UserRepository {
-	return &UserRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
-}
-
-func (r *UserRepository) Create(user *model.User) error {
-	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	user.Version = model.NewResourceVersion()
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-
-	err = r.db.Insert(model.UserType, user)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *UserRepository) GetById(id string) (*model.User, error) {
-	raw, err := r.db.First(model.UserType, model.PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	user := raw.(*model.User)
-	return user, nil
-}
-
-func (r *UserRepository) Update(user *model.User) error {
-	stored, err := r.GetById(user.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != user.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != user.Version {
-		return ErrVersionMismatch
-	}
-	user.Version = model.NewResourceVersion()
-
-	// Update
-
-	tenant, err := r.tenantRepo.GetById(user.TenantUUID)
-	if err != nil {
-		return err
-	}
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-
-	err = r.db.Insert(model.UserType, user)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *UserRepository) Delete(id string) error {
-	user, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.UserType, user)
-}
-
-func (r *UserRepository) List(tenantID string) ([]string, error) {
-	iter, err := r.db.Get(model.UserType, model.TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		u := raw.(*model.User)
-		ids = append(ids, u.UUID)
-	}
-	return ids, nil
-}
-
-func (r *UserRepository) DeleteByTenant(tenantUUID string) error {
-	_, err := r.db.DeleteAll(model.UserType, model.TenantForeignPK, tenantUUID)
-	return err
-}
-
-func (r *UserRepository) Iter(action func(*model.User) (bool, error)) error {
-	iter, err := r.db.Get(model.UserType, model.PK)
-	if err != nil {
-		return err
-	}
-
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*model.User)
-		next, err := action(t)
-		if err != nil {
-			return err
-		}
-
-		if !next {
-			break
-		}
-	}
-
-	return nil
 }

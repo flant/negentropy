@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // TopicType represents kafka topic type
@@ -213,11 +213,11 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) GetConsumer(replicaName, topicName string, autocommit bool) *kafka.Consumer {
+func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocommit bool) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":  brokers,
-		"group.id":           replicaName,
+		"group.id":           consumerGroupID,
 		"auto.offset.reset":  "earliest",
 		"enable.auto.commit": autocommit,
 		"isolation.level":    "read_committed",

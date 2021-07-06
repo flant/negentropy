@@ -224,7 +224,7 @@ func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 
 		obj, err := repo.GetById(id)
 		if err != nil {
@@ -254,7 +254,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 
 		if err := repo.Create(roleBinding); err != nil {
 			msg := "cannot create role binding"
@@ -290,12 +290,12 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 		err := repo.Update(roleBinding)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.RoleBindingType)
 		}
-		if err == ErrVersionMismatch {
+		if err == model.ErrVersionMismatch {
 			return responseVersionMismatch(req)
 		}
 		if err != nil {
@@ -315,10 +315,10 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 
 		err := repo.Delete(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, "role binding not found")
 		}
 		if err != nil {
@@ -337,10 +337,10 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 
 		roleBinding, err := repo.GetById(id)
-		if err == ErrNotFound {
+		if err == model.ErrNotFound {
 			return responseNotFound(req, model.RoleBindingType)
 		}
 		if err != nil {
@@ -356,7 +356,7 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewRoleBindingRepository(tx)
+		repo := model.NewRoleBindingRepository(tx)
 
 		list, err := repo.List(tenantID)
 		if err != nil {
@@ -370,103 +370,4 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		}
 		return resp, nil
 	}
-}
-
-type RoleBindingRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
-}
-
-func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
-	return &RoleBindingRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
-}
-
-func (r *RoleBindingRepository) Create(roleBinding *model.RoleBinding) error {
-	_, err := r.tenantRepo.GetById(roleBinding.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	if roleBinding.Version != "" {
-		return ErrVersionMismatch
-	}
-	roleBinding.Version = model.NewResourceVersion()
-
-	err = r.db.Insert(model.RoleBindingType, roleBinding)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *RoleBindingRepository) GetById(id string) (*model.RoleBinding, error) {
-	raw, err := r.db.First(model.RoleBindingType, model.PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	roleBinding := raw.(*model.RoleBinding)
-	return roleBinding, nil
-}
-
-func (r *RoleBindingRepository) Update(roleBinding *model.RoleBinding) error {
-	stored, err := r.GetById(roleBinding.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != roleBinding.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != roleBinding.Version {
-		return ErrVersionMismatch
-	}
-	roleBinding.Version = model.NewResourceVersion()
-
-	// Update
-
-	err = r.db.Insert(model.RoleBindingType, roleBinding)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *RoleBindingRepository) Delete(id string) error {
-	roleBinding, err := r.GetById(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(model.RoleBindingType, roleBinding)
-}
-
-func (r *RoleBindingRepository) List(tenantID string) ([]string, error) {
-	iter, err := r.db.Get(model.RoleBindingType, model.TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		u := raw.(*model.RoleBinding)
-		ids = append(ids, u.UUID)
-	}
-	return ids, nil
-}
-
-func (r *RoleBindingRepository) DeleteByTenant(tenantUUID string) error {
-	_, err := r.db.DeleteAll(model.RoleBindingType, model.TenantForeignPK, tenantUUID)
-	return err
 }
