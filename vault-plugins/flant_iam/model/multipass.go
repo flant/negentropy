@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
@@ -96,6 +97,10 @@ type Multipass struct {
 	CIDRs       []string           `json:"allowed_cidrs"`
 	Roles       []string           `json:"allowed_roles" `
 	Salt        string             `json:"salt,omitempty" sensitive:""`
+
+	Origin ObjectOrigin
+
+	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
 
 func (t *Multipass) ObjType() string {
@@ -159,13 +164,17 @@ func (r *MultipassRepository) validate(multipass *Multipass) error {
 	return nil
 }
 
+func (r *MultipassRepository) save(mp *Multipass) error {
+	return r.db.Insert(MultipassType, mp)
+}
+
 func (r *MultipassRepository) Create(mp *Multipass) error {
 	err := r.validate(mp)
 	if err != nil {
 		return err
 	}
 
-	return r.db.Insert(MultipassType, mp)
+	return r.save(mp)
 }
 
 func (r *MultipassRepository) Delete(filter *Multipass) error {
@@ -219,4 +228,31 @@ func (r *MultipassRepository) List(filter *Multipass) ([]string, error) {
 		ids = append(ids, mp.UUID)
 	}
 	return ids, nil
+}
+
+func (r *MultipassRepository) SetExtension(ext *Extension) error {
+	if ext.OwnerType != ServiceAccountType {
+		return fmt.Errorf("multipass extension is suppoted only for serviceaacounts, got type %q", ext.OwnerType)
+	}
+	obj, err := r.GetByID(ext.OwnerUUID)
+	if err != nil {
+		return err
+	}
+	if obj.Extensions == nil {
+		obj.Extensions = make(map[ObjectOrigin]*Extension)
+	}
+	obj.Extensions[ext.Origin] = ext
+	return r.save(obj)
+}
+
+func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
+	obj, err := r.GetByID(uuid)
+	if err != nil {
+		return err
+	}
+	if obj.Extensions == nil {
+		return nil
+	}
+	delete(obj.Extensions, origin)
+	return r.save(obj)
 }

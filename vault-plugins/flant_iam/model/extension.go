@@ -58,8 +58,10 @@ func (r *ExtensionRepository) Create(ext *Extension) error {
 
 	case GroupType:
 		return NewGroupRepository(r.db).SetExtension(ext)
+
+	case MultipassType:
+		return NewMultipassRepository(r.db).SetExtension(ext)
 	}
-	// TODO: case MultipassType for ServiceAccount :
 	return fmt.Errorf("extension is not supported for type %q", ext.OwnerType)
 }
 
