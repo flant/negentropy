@@ -2,12 +2,14 @@ package flant_gitops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/util"
 )
 
 const (
@@ -15,19 +17,17 @@ const (
 	fieldNameGitBranch                                  = "git_branch_name"
 	fieldNameGitPollPeriod                              = "git_poll_period"
 	fieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
-	fieldNameLastSuccessfulCommit                       = "last_successful_commit"
+	fieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 	fieldNameDockerImage                                = "docker_image"
 	fieldNameCommand                                    = "command"
-	fieldNameTaskTimeout                                = "task_timeout"
-	fieldNameTaskHistoryLimit                           = "task_history_limit"
+	fieldNameGitCredentialUsername                      = "username"
+	fieldNameGitCredentialPassword                      = "password"
 
 	storageKeyConfiguration             = "configuration"
 	storageKeyLastSuccessfulCommit      = "last_successful_commit"
 	storageKeyPrefixTrustedGPGPublicKey = "trusted_gpg_public_key-"
 
 	pathPatternConfigure = "^configure/?$"
-
-	dockerImageRegexp = "^((?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:(?:\\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))+)?(?::[0-9]+)?/)?[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?(?:(?:/[a-z0-9]+(?:(?:(?:[._]|__|[-]*)[a-z0-9]+)+)?)+)?)(?::([\\w][\\w.-]{0,127}))(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))$"
 )
 
 func configurePaths(b *backend) []*framework.Path {
@@ -51,7 +51,7 @@ func configurePaths(b *backend) []*framework.Path {
 					Type:     framework.TypeInt,
 					Required: true,
 				},
-				fieldNameLastSuccessfulCommit: {
+				fieldNameInitialLastSuccessfulCommit: {
 					Type: framework.TypeString,
 				},
 				fieldNameDockerImage: {
@@ -62,18 +62,39 @@ func configurePaths(b *backend) []*framework.Path {
 					Type:     framework.TypeString,
 					Required: true,
 				},
-				fieldNameTaskTimeout: {
-					Type:    framework.TypeDurationSecond,
-					Default: "10m",
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureCreateOrUpdate,
 				},
-				fieldNameTaskHistoryLimit: {
-					Type:    framework.TypeInt,
-					Default: 10,
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureCreateOrUpdate,
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathConfigureRead,
+				},
+			},
+		},
+		{
+			Pattern: "configure/git_credential/?",
+			Fields: map[string]*framework.FieldSchema{
+				fieldNameGitCredentialUsername: {
+					Type:        framework.TypeString,
+					Description: "Git username",
+					Required:    true,
+				},
+				fieldNameGitCredentialPassword: {
+					Type:        framework.TypeString,
+					Description: "Git password",
+					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureGitCredential,
+				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathConfigure,
+					Callback: b.pathConfigureGitCredential,
 				},
 			},
 		},
@@ -127,7 +148,7 @@ func configurePaths(b *backend) []*framework.Path {
 	}
 }
 
-func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	hclog.L().Debug("Start configuring ...")
 
 	fields.Raw = req.Data
@@ -146,13 +167,8 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 		case fieldNameDockerImage:
 			fieldValue := req.Get(fieldName).(string)
 
-			matched, err := regexp.MatchString(dockerImageRegexp, fieldValue)
-			if err != nil {
-				panic(fmt.Sprintf("runtime error: %s", err))
-			}
-
-			if !matched {
-				return logical.ErrorResponse(fmt.Sprintf("field %q must be set in the extended form \"REPO[:TAG]@SHA256\" (e.g. \"ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8\"), got: %q", fieldName, fieldValue)), nil
+			if err := docker.ValidateImageNameWithDigest(fieldValue); err != nil {
+				return logical.ErrorResponse(fmt.Sprintf(`%q field validation failed: %s'`, fieldNameDockerImage, err)), nil
 			}
 		default:
 			continue
@@ -164,17 +180,38 @@ func (b *backend) pathConfigure(ctx context.Context, req *logical.Request, field
 		return nil, err
 	}
 
-	lastSuccessfulCommit := fields.Get(fieldNameLastSuccessfulCommit).(string)
-	if lastSuccessfulCommit != "" {
-		if err := req.Storage.Put(ctx, &logical.StorageEntry{
-			Key:   storageKeyLastSuccessfulCommit,
-			Value: []byte(lastSuccessfulCommit),
-		}); err != nil {
-			return nil, err
-		}
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
 	}
 
-	if err := req.Storage.Put(ctx, entry); err != nil {
+	return nil, nil
+}
+
+func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	v, err := req.Storage.Get(ctx, storageKeyConfiguration)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get storage entry %q: %s", storageKeyConfiguration, err)
+	}
+
+	if v == nil {
+		return logical.ErrorResponse("configuration not found"), nil
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(v.Value, &res); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal storage entry %q: %s", storageKeyConfiguration, err)
+	}
+
+	return &logical.Response{Data: res}, nil
+}
+
+func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	resp, err := util.ValidateRequestFields(req, fields)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+
+	if err := putGitCredential(ctx, req.Storage, fields.Raw); err != nil {
 		return nil, err
 	}
 

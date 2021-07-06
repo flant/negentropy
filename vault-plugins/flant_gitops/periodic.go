@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	goGit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -86,6 +87,21 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		return val, nil
 	}
 
+	// define git credential
+	var gitUsername string
+	var gitPassword string
+	{
+		gitCredential, err := getGitCredential(ctx, storage)
+		if err != nil {
+			return err
+		}
+
+		if gitCredential != nil {
+			gitUsername = gitCredential.Username
+			gitPassword = gitCredential.Password
+		}
+	}
+
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
 	var headCommit string
@@ -102,10 +118,20 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 		hclog.L().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
 
-		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), trdlGit.CloneOptions{
-			BranchName:        branchName.(string),
-			RecurseSubmodules: goGit.DefaultSubmoduleRecursionDepth,
-		}); err != nil {
+		var cloneOptions trdlGit.CloneOptions
+		{
+			cloneOptions.BranchName = branchName.(string)
+			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
+
+			if gitUsername != "" && gitPassword != "" {
+				cloneOptions.Auth = &http.BasicAuth{
+					Username: gitUsername,
+					Password: gitPassword,
+				}
+			}
+		}
+
+		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), cloneOptions); err != nil {
 			return err
 		}
 
@@ -120,14 +146,21 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 	// skip commit if already processed
 	{
-		lastSuccessfulCommit, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
+		entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
 		if err != nil {
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", string(lastSuccessfulCommit.Value)))
+		var lastSuccessfulCommit string
+		if entry != nil && string(entry.Value) != "" {
+			lastSuccessfulCommit = string(entry.Value)
+		} else {
+			lastSuccessfulCommit = fields.Get(fieldNameInitialLastSuccessfulCommit).(string)
+		}
 
-		if string(lastSuccessfulCommit.Value) == headCommit {
+		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+
+		if lastSuccessfulCommit == headCommit {
 			hclog.L().Debug("Head commit not changed: skipping")
 			return nil
 		}
@@ -176,19 +209,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		buildTimeout, err := getRequiredConfigurationFieldFunc(fieldNameTaskTimeout)
-		if err != nil {
-			return err
-		}
-
-		d, err := time.ParseDuration(buildTimeout.(string))
-		if err != nil {
-			return err
-		}
-
-		ctxWithTimeout, ctxCancelFunc := context.WithTimeout(ctx, d)
-		defer ctxCancelFunc()
-
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
 			return fmt.Errorf("unable to create docker client: %s", err)
@@ -228,9 +248,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
 
-		response, err := cli.ImageBuild(ctxWithTimeout, contextReader, types.ImageBuildOptions{
+		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
-			Remove:      true,
 			ForceRemove: true,
 			PullParent:  true,
 			Dockerfile:  serviceDockerfilePath,
