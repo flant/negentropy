@@ -111,11 +111,11 @@ func (t *Multipass) ObjId() string {
 	return t.UUID
 }
 
-func (t *Multipass) Marshal(includeSensitive bool) ([]byte, error) {
+func (t Multipass) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := t
 	if !includeSensitive {
-		t := OmitSensitive(*t).(Multipass)
-		obj = &t
+		t := OmitSensitive(t).(Multipass)
+		obj = t
 	}
 	return jsonutil.EncodeJSON(obj)
 }

@@ -70,11 +70,11 @@ func (u *RoleBinding) ObjId() string {
 	return u.UUID
 }
 
-func (u *RoleBinding) Marshal(includeSensitive bool) ([]byte, error) {
+func (u RoleBinding) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := u
 	if !includeSensitive {
-		u := OmitSensitive(*u).(RoleBinding)
-		obj = &u
+		u := OmitSensitive(u).(RoleBinding)
+		obj = u
 	}
 	return jsonutil.EncodeJSON(obj)
 }
