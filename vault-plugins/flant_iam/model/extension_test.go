@@ -29,5 +29,4 @@ func TestMarshalling(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "sensitive_attributes")
 	})
-
 }
