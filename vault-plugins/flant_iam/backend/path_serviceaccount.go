@@ -192,7 +192,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		},
 		// Multipass creation
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/multipass",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -240,7 +240,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		},
 		// Multipass read or delete
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass/" + uuid.Pattern("uuid"),
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/multipass/" + uuid.Pattern("uuid"),
 			Fields: map[string]*framework.FieldSchema{
 
 				"tenant_uuid": {
@@ -272,7 +272,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		},
 		// Multipass list
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("owner_uuid") + "/multipass/?",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/multipass/?",
 			Fields: map[string]*framework.FieldSchema{
 
 				"tenant_uuid": {

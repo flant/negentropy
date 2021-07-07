@@ -686,10 +686,10 @@
         }
       }
     },
-    "/flant_iam/featureflag": {
+    "/flant_iam/feature_flag": {
       "get": {
         "summary": "Lists all feature flags.",
-        "operationId": "getFlant_iamFeatureflag",
+        "operationId": "getFlant_iamFeature_flag",
         "tags": [
           "secrets"
         ],
@@ -710,7 +710,7 @@
         }
       }
     },
-    "/flant_iam/featureflag/{name}": {
+    "/flant_iam/feature_flag/{name}": {
       "parameters": [
         {
           "name": "name",
@@ -725,7 +725,7 @@
       ],
       "delete": {
         "summary": "Deletes the featureFlag by ID.",
-        "operationId": "deleteFlant_iamFeatureflagName",
+        "operationId": "deleteFlant_iamFeature_flagName",
         "tags": [
           "secrets"
         ],
@@ -1011,7 +1011,7 @@
                     "type": "string",
                     "description": "JSON schema of the role options"
                   },
-                  "require_one_of_featureflags": {
+                  "require_one_of_feature_flags": {
                     "type": "array",
                     "description": "Enumerated flags, one of which is required in the scope to use role",
                     "items": {
@@ -1021,7 +1021,7 @@
                 },
                 "required": [
                   "description",
-                  "require_one_of_featureflags",
+                  "require_one_of_feature_flags",
                   "options_schema"
                 ]
               }
@@ -1185,7 +1185,7 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
-                  "serviceaccounts": {
+                  "service_accounts": {
                     "type": "array",
                     "description": "Service account UUIDs",
                     "items": {
@@ -1206,11 +1206,11 @@
                   }
                 },
                 "required": [
-                  "groups",
-                  "serviceaccounts",
-                  "uuid",
                   "identifier",
-                  "users"
+                  "users",
+                  "groups",
+                  "service_accounts",
+                  "uuid"
                 ]
               }
             }
@@ -1286,7 +1286,7 @@
                     "type": "string",
                     "description": "Resource version"
                   },
-                  "serviceaccounts": {
+                  "service_accounts": {
                     "type": "array",
                     "description": "Service account UUIDs",
                     "items": {
@@ -1302,11 +1302,11 @@
                   }
                 },
                 "required": [
-                  "users",
                   "groups",
-                  "serviceaccounts",
+                  "service_accounts",
                   "resource_version",
-                  "identifier"
+                  "identifier",
+                  "users"
                 ]
               }
             }
@@ -1405,8 +1405,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1503,7 +1503,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/rolebinding": {
+    "/flant_iam/tenant/{tenant_uuid}/role_binding": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1518,7 +1518,7 @@
       ],
       "get": {
         "summary": "Lists all roleBindings IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidRolebinding",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_binding",
         "tags": [
           "secrets"
         ],
@@ -1539,7 +1539,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/rolebinding/privileged": {
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1555,7 +1555,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create roleBinding with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidRolebindingPrivileged",
+        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingPrivileged",
         "tags": [
           "secrets"
         ],
@@ -1576,7 +1576,7 @@
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
                   },
-                  "serviceaccounts": {
+                  "service_accounts": {
                     "type": "array",
                     "description": "Service account UUIDs",
                     "items": {
@@ -1605,7 +1605,7 @@
                   "uuid",
                   "users",
                   "groups",
-                  "serviceaccounts",
+                  "service_accounts",
                   "ttl",
                   "require_mfa"
                 ]
@@ -1620,7 +1620,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/rolebinding/{uuid}": {
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1645,7 +1645,7 @@
       ],
       "get": {
         "summary": "Retrieve the role binding by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidRolebindingUuid",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -1657,7 +1657,7 @@
       },
       "post": {
         "summary": "Update the role binding by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidRolebindingUuid",
+        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -1682,7 +1682,7 @@
                     "type": "string",
                     "description": "Resource version"
                   },
-                  "serviceaccounts": {
+                  "service_accounts": {
                     "type": "array",
                     "description": "Service account UUIDs",
                     "items": {
@@ -1703,12 +1703,12 @@
                   }
                 },
                 "required": [
+                  "users",
                   "groups",
-                  "serviceaccounts",
+                  "service_accounts",
                   "ttl",
                   "require_mfa",
-                  "resource_version",
-                  "users"
+                  "resource_version"
                 ]
               }
             }
@@ -1722,7 +1722,7 @@
       },
       "delete": {
         "summary": "Deletes the role binding by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidRolebindingUuid",
+        "operationId": "deleteFlant_iamTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -1733,7 +1733,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/serviceaccount": {
+    "/flant_iam/tenant/{tenant_uuid}/service_account": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1747,8 +1747,8 @@
         }
       ],
       "get": {
-        "summary": "Lists all service accounts IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidServiceaccount",
+        "summary": "Lists all serviceAccounts IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidService_account",
         "tags": [
           "secrets"
         ],
@@ -1769,7 +1769,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/privileged": {
+    "/flant_iam/tenant/{tenant_uuid}/service_account/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1785,7 +1785,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create serviceAccount with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidServiceaccountPrivileged",
+        "operationId": "postFlant_iamTenantTenant_uuidService_accountPrivileged",
         "tags": [
           "secrets"
         ],
@@ -1824,11 +1824,11 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1841,7 +1841,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/{owner_uuid}/multipass": {
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -1866,7 +1866,7 @@
       ],
       "get": {
         "summary": "List multipass IDs",
-        "operationId": "getFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipass",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipass",
         "tags": [
           "secrets"
         ],
@@ -1887,7 +1887,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/{owner_uuid}/multipass/{uuid}": {
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass/{uuid}": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -1922,7 +1922,7 @@
       ],
       "get": {
         "summary": "Get multipass by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipassUuid",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -1934,7 +1934,7 @@
       },
       "delete": {
         "summary": "Delete multipass by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipassUuid",
+        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -1945,7 +1945,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/{uuid}": {
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -1970,7 +1970,7 @@
       ],
       "get": {
         "summary": "Retrieve the service account by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidServiceaccountUuid",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -1982,7 +1982,7 @@
       },
       "post": {
         "summary": "Update the service account by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidServiceaccountUuid",
+        "operationId": "postFlant_iamTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -2020,11 +2020,11 @@
                   }
                 },
                 "required": [
+                  "token_ttl",
+                  "token_max_ttl",
                   "resource_version",
                   "identifier",
-                  "allowed_cidrs",
-                  "token_ttl",
-                  "token_max_ttl"
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -2038,7 +2038,7 @@
       },
       "delete": {
         "summary": "Deletes the service account by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidServiceaccountUuid",
+        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -2123,8 +2123,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -2299,8 +2299,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }

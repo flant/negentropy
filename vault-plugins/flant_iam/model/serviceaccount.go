@@ -76,7 +76,7 @@ func (u *ServiceAccount) Unmarshal(data []byte) error {
 }
 
 // generic: <identifier>@serviceaccount.<tenant_identifier>
-// builtin: <identifier>@<builtin_serviceaccount_type>.serviceaccount.<tenant_identifier>
+// builtin: <identifier>@<builtin_service_account_type>.serviceaccount.<tenant_identifier>
 func CalcServiceAccountFullIdentifier(sa *ServiceAccount, tenant *Tenant) string {
 	name := sa.Identifier
 	domain := "serviceaccount." + tenant.Identifier

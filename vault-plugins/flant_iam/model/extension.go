@@ -15,7 +15,7 @@ const (
 	ExtensionOwnerTypeServiceAccount ExtensionOwnerType = ServiceAccountType
 	ExtensionOwnerTypeRoleBinding    ExtensionOwnerType = RoleBindingType
 	ExtensionOwnerTypeGroup          ExtensionOwnerType = GroupType
-	// ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
+	ExtensionOwnerTypeMultipass      ExtensionOwnerType = MultipassType
 )
 
 func (eot ExtensionOwnerType) String() string {
@@ -34,7 +34,7 @@ type Extension struct {
 	// Attributes is the data to pass to other systems transparently
 	Attributes map[string]interface{} `json:"attributes"`
 	// SensitiveAttributes is the data to pass to some other systems transparently
-	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes"`
+	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes" sensitive:""`
 }
 
 type ExtensionRepository struct {
