@@ -39,6 +39,7 @@ func main() {
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
 	err = plugin.Serve(&plugin.ServeOpts{
+		Logger:             hclog.Default(),
 		BackendFactoryFunc: flant_gitops.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})

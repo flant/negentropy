@@ -12,6 +12,8 @@ import (
 type backend struct {
 	*framework.Backend
 	TaskQueueManager queue_manager.Interface
+
+	LastPeriodicTaskUUID string
 }
 
 var _ logical.Factory = Factory

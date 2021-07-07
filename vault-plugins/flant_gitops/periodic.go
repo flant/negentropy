@@ -22,7 +22,11 @@ import (
 	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
+
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 )
+
+var systemClock util.Clock = util.NewSystemClock()
 
 const (
 	lastPeriodicRunTimestampKey = "last_periodic_run_timestamp"
@@ -40,17 +44,17 @@ func GetPeriodicTaskFunc(b *backend) func(context.Context, *logical.Request) err
 		if entry != nil {
 			lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
 			// TODO: use fieldNameGitPollPeriod
-			if err == nil && time.Since(time.Unix(lastRunTimestamp, 0)) < 1*time.Minute {
+			if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < 5*time.Minute {
 				return nil
 			}
 		}
 
-		now := time.Now()
+		now := systemClock.Now()
 		uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, b.periodicTask)
 
 		if err == queue_manager.QueueBusyError {
 			// TODO: use fieldNameGitPollPeriod
-			hclog.L().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", 1*time.Minute))
+			b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", 5*time.Minute))
 			return nil
 		}
 
@@ -62,22 +66,23 @@ func GetPeriodicTaskFunc(b *backend) func(context.Context, *logical.Request) err
 			return fmt.Errorf("error putting last flant gitops run timestamp record by key %q: %s", lastPeriodicRunTimestampKey, err)
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
+		b.LastPeriodicTaskUUID = uuid
+		b.Logger().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
 
 		return nil
 	}
 }
 
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
-	hclog.L().Debug("Started periodic task")
+	b.Logger().Debug("Started periodic task")
 
 	fields, err := b.getConfiguration(ctx, storage)
 	if err != nil {
-		hclog.L().Debug(fmt.Sprintf("Get configuration failed: %s", err))
+		b.Logger().Debug(fmt.Sprintf("Get configuration failed: %s", err))
 		return err
 	}
 
-	hclog.L().Debug(fmt.Sprintf("Got configuration fields: %#v", fields))
+	b.Logger().Debug(fmt.Sprintf("Got configuration fields: %#v", fields))
 
 	getRequiredConfigurationFieldFunc := func(fieldName string) (interface{}, error) {
 		val, ok := fields.GetOk(fieldName)
@@ -117,7 +122,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
+		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
 
 		var cloneOptions trdlGit.CloneOptions
 		{
@@ -142,7 +147,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		}
 
 		headCommit = r.Hash().String()
-		hclog.L().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
+		b.Logger().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
 	}
 
 	// define lastSuccessfulCommit
@@ -197,7 +202,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Verified %d commit signatures", requiredNumberOfVerifiedSignaturesOnCommit))
+		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", requiredNumberOfVerifiedSignaturesOnCommit))
 	}
 
 	// run docker build with service dockerfile and context
@@ -249,7 +254,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			}
 		}()
 
-		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
+		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
 
 		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
@@ -266,7 +271,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", command, dockerImage))
+		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", command, dockerImage))
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{
@@ -294,7 +299,7 @@ func (b *backend) getConfiguration(ctx context.Context, storage logical.Storage)
 		return nil, err
 	}
 
-	hclog.L().Debug(fmt.Sprintf("Unmarshalled json: %s", entry.Value))
+	b.Logger().Debug(fmt.Sprintf("Unmarshalled json: %s", entry.Value))
 
 	fields := &framework.FieldData{}
 	fields.Raw = data
@@ -310,7 +315,7 @@ func (b *backend) getConfigureFieldSchemaMap() map[string]*framework.FieldSchema
 		}
 	}
 
-	hclog.L().Debug(fmt.Sprintf("Unexpected configuration, no path has matched pathPatternConfigure=%q", pathPatternConfigure))
+	b.Logger().Debug(fmt.Sprintf("Unexpected configuration, no path has matched pathPatternConfigure=%q", pathPatternConfigure))
 
 	panic("runtime error")
 }
