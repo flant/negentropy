@@ -75,7 +75,7 @@ fi
 #     -v /tmp/vault-build:/go/pkg/mod \
 #     -e CGO_ENABLED=1 \
 #     tetafro/golang-gcc:1.16-alpine \
-#     sh -c "echo -e '#!/bin/sh\ncd \$1 && go build -a -tags musl -o /src/build/\$1 cmd/\$1/main.go' > /gobuild.sh && chmod +x /gobuild.sh && sleep infinity"
+#     sh -c "echo -e '#!/bin/sh\ncd \$1 && go build -tags musl -o /src/build/\$1 cmd/\$1/main.go' > /gobuild.sh && chmod +x /gobuild.sh && sleep infinity"
 
 # docker exec gobuild /gobuild.sh flant_iam
 # docker exec dev-vault vault plugin reload -plugin flant_iam
