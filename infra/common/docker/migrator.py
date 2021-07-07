@@ -58,7 +58,7 @@ class Migration(object):
             msg = "Invalid migration %s: %s" % (path, traceback.format_exc())
             raise InvalidMigrationError(msg)
         # assert the migration has the needed methods
-        missing = [m for m in ['upgrade'] 
+        missing = [m for m in ['upgrade']
                       if not has_method(self.module, m)]
         if missing:
             msg = 'Migration %s is missing required methods: %s.' % (
@@ -127,7 +127,7 @@ class Vault(object):
         self.conn.secrets.kv.create_or_update_secret(path=VERSION_KEY,secret=dict(version='0'))
 
     def __repr__(self):
-        return 'Vault()' 
+        return 'Vault()'
 
 def _assert_migration_exists(migrations, version):
     if version not in (m.get_version() for m in migrations):
@@ -141,7 +141,7 @@ def load_migrations(directory):
     wildcard = os.path.join(directory, '*' ,'migrate.py')
     migration_files = glob.glob(wildcard)
     return [Migration(f) for f in migration_files]
-   
+
 def upgrade(migration_dir, version=None):
     """ Upgrade the given vault with the migrations contained in the
         migrations directory. If a version is not specified, upgrade
@@ -191,7 +191,7 @@ MIGRATION_TEMPLATE = """\
 This module contains a vault migration.
 Write your migration using hvac python module. See https://hvac.readthedocs.io/en/stable/overview.html for details.
 
-Migration Name: %(name)s 
+Migration Name: %(name)s
 Migration Version: %(version)s
 \"\"\"
 
@@ -209,7 +209,7 @@ class Console(object):
     @staticmethod
     def error(message):
         sys.stderr.write('%s\n' % message)
-    
+
     @staticmethod
     def info(message):
         sys.stdout.write('%s\n' % message)
@@ -222,7 +222,7 @@ def create_migration_command(args):
 
 def print_status_command(args):
     vault_version = get_vault_version()
-    msg = 'the vault is not under version control' 
+    msg = 'the vault is not under version control'
     if vault_version:
         msg = 'Vault version            [%s]' % (vault_version)
     Console.info(msg)
@@ -257,20 +257,20 @@ def upgrade_db_command(args):
     Console.info(msg)
 
     if latest_migration_version == current_vault_version:
-      Console.info('Vault is already up-to-date! Nothing to do.') 
-      return 
+      Console.info('Vault is already up-to-date! Nothing to do.')
+      return
 
     msg = 'upgrading vault to most recent version...'
     if version:
         msg = 'upgrading vault to version [%s]' % (version)
     Console.info(msg)
-    
+
     upgrade(migration_dir, version)
     new_version = get_vault_version()
-    
+
     if version:
         assert new_version == version
-    
+
     msg = "upgraded successfully to version [%s]" % (new_version)
     Console.info(msg)
 
