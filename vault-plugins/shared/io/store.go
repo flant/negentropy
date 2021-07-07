@@ -248,11 +248,12 @@ func (ms *MemoryStore) GetKafkaBroker() *kafka.MessageBroker {
 }
 
 func (ms *MemoryStore) RemoveKafkaSource(name string) {
-	ms.kafkaMutex.Lock()
-	defer ms.kafkaMutex.Unlock()
 	if name == "" {
 		return
 	}
+
+	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
 
 	ks, ok := ms.kafkaMapSources[name]
 	if !ok {
@@ -273,11 +274,12 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 }
 
 func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
-	ms.kafkaMutex.Lock()
-	defer ms.kafkaMutex.Unlock()
 	if replicaName == "" {
 		return
 	}
+
+	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
 
 	ks, ok := ms.replicaDestinations[replicaName]
 	if !ok {
