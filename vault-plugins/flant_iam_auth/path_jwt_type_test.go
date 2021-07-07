@@ -2,18 +2,16 @@ package jwtauth
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/vault/api"
-	"gotest.tools/assert"
 	"io"
-	"math/rand"
 	"net/url"
 	"os"
 	"sort"
 	"testing"
-	"time"
+
+	"github.com/hashicorp/vault/api"
+	"gotest.tools/assert"
 )
 
 const testJwtTypeOptionSchemaValid = `type: object
@@ -222,24 +220,6 @@ func assertJwtType(t *testing.T, resp *api.Response, data map[string]interface{}
 
 		assert.DeepEqual(t, rv, v)
 	}
-}
-
-func skipNoneDev(t *testing.T) {
-	if os.Getenv("VAULT_ADDR") == "" {
-		t.Skip("vault does not start")
-	}
-}
-
-func randomStr() string {
-	rand.Seed(time.Now().UnixNano())
-
-	entityName := make([]byte, 20)
-	_, err := rand.Read(entityName)
-	if err != nil {
-		panic("not generate entity name")
-	}
-
-	return hex.EncodeToString(entityName)
 }
 
 func TestJWTTypePath(t *testing.T) {

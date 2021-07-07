@@ -5,39 +5,14 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-test/deep"
-	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
-
-func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
-	defaultLeaseTTLVal := time.Hour * 12
-	maxLeaseTTLVal := time.Hour * 24
-
-	config := &logical.BackendConfig{
-		Logger: logging.NewVaultLogger(log.Trace),
-
-		System: &logical.StaticSystemView{
-			DefaultLeaseTTLVal: defaultLeaseTTLVal,
-			MaxLeaseTTLVal:     maxLeaseTTLVal,
-		},
-		StorageView: &logical.InmemStorage{},
-	}
-	b, err := Factory(context.Background(), config)
-	fb := b.(*flantIamAuthBackend)
-	if err != nil {
-		t.Fatalf("unable to create backend: %v", err)
-	}
-
-	return fb, config.StorageView
-}
 
 func TestAuthMethod_Create(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
