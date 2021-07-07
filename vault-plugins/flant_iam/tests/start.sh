@@ -10,9 +10,16 @@ set -eo pipefail
 if [[ "${ci_mode}x" == "x" ]]; then
   set -x
 
-  pushd ..
-  env OS=linux make build
-  popd
+  # pushd ..
+  # env OS=linux make build
+
+  # rm -rf ../build/*
+  # pushd ../..
+  bash ../../dev-build.sh flant_iam
+  mkdir -p ../build
+  cp ../../build/flant_iam ../build/flant_iam
+
+  # popd
 
   docker stop dev-vault 2>/dev/null || true
   docker rm dev-vault 2>/dev/null || true
@@ -39,7 +46,7 @@ if [[ "${ci_mode}x" != "x" ]]; then
 fi
 
 docker exec "$id" sh -c "
-vault secrets enable -path=flant_iam vault-plugin-flant-iam \
+vault secrets enable -path=flant_iam flant_iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
