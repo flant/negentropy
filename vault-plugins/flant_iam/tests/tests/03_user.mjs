@@ -8,6 +8,7 @@ import {
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
 import { API } from "./lib/api.mjs"
+import * as Faker from "faker"
 
 //    /tenant/{tid}/user/{uid}
 
@@ -74,11 +75,13 @@ describe("User", function () {
         })
         const uid = created.data.uuid
         const generated = {
-            // email: "",
+            email: "",
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
             full_identifier: payload.identifier + "@" + tenant.identifier,
+            origin: "iam",
+            extensions: null,
         }
 
         // read
@@ -289,7 +292,7 @@ describe("User", function () {
 
             expect(mp)
                 .to.be.an("object")
-                .and.have.all.keys(
+                .and.include.keys(
                     "allowed_cidrs",
                     "allowed_roles",
                     "description",
@@ -297,18 +300,20 @@ describe("User", function () {
                     "owner_type",
                     "owner_uuid",
                     "tenant_uuid",
-                    "salt",
+                    "origin",
+                    "extensions",
                     "ttl",
                     "uuid",
                     "valid_till",
                 )
+                .and.not.include.keys("salt")
 
             expect(mp.uuid, "uuid").to.be.a("string")
             expect(mp.owner_type, "owner_type").to.be.a("string")
             expect(mp.owner_uuid, "owner_uuid").to.be.a("string")
             expect(mp.tenant_uuid, "tenant_uuid").to.be.a("string")
 
-            expect(mp.salt, "salt").to.be.a("string").and.to.be.empty // FIXME omit from the response
+            expect(mp.salt, "salt").to.be.undefined
 
             expect(mp.description, "description").to.be.a("string")
 
@@ -353,9 +358,8 @@ describe("User", function () {
             }
 
             const { data } = await rootMPClient.list({ params })
-            console.log(data)
 
-            expect(data.data.ids).to.have.all.members(...ids)
+            expect(data.data.uuids).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {

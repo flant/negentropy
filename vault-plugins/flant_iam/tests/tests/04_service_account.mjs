@@ -77,6 +77,8 @@ describe("Service Account", function () {
             resource_version: created.data.resource_version,
             full_identifier:
                 payload.identifier + "@serviceaccount." + tenant.identifier,
+            origin: "iam",
+            extensions: null,
         }
 
         // read

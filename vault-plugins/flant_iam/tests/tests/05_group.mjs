@@ -76,6 +76,8 @@ describe("Group", function () {
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
             full_identifier: payload.identifier + "@group." + tenant.identifier,
+            origin: "iam",
+            extensions: null,
         }
 
         // read
