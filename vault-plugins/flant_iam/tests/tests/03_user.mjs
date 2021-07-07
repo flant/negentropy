@@ -1,14 +1,13 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
+import { API } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
     EndpointBuilder,
     genMultipassPayload,
     genUserPayload,
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
-import * as Faker from "faker"
+import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
 //    /tenant/{tid}/user/{uid}
 

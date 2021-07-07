@@ -19,6 +19,7 @@
         "uuid": "^8.3.2"
     },
     "scripts": {
-        "test": "mocha tests"
+        "test": "mocha tests",
+        "fmt": "prettier --write ./tests/*.mjs ./tests/**/*.mjs"
     }
 }
