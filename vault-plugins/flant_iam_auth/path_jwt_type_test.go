@@ -12,7 +12,7 @@ import (
 
 const testJwtTypeOptionSchemaValid = `type: object
 additionalProperties: false
-required: [apiVersion, kind, type]
+required: [apiVersion, kind]
 properties:
   apiVersion:
     type: string
@@ -32,15 +32,6 @@ properties:
         - "B"
   CIDR:
     type: string
-oneOf:
-- properties:
-    type:
-       enum: ["A"]
-- properties:
-    type:
-       enum: ["B"]
-  CIDR: "no"
-  required: ["CIDR"]
 `
 
 func jwtTypePathRequester(t *testing.T) apiRequester {
