@@ -24,5 +24,5 @@ GO_VERSION="1.16"
 export GOPATH="/opt/golang"
 export GOROOT="$GOPATH/local/go${GO_VERSION}"
 mkdir -p $GOROOT
-curl -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tar --strip-components=1 -xvzC $GOROOT
+curl -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tar --strip-components=1 -xzC $GOROOT
 export PATH="$PATH:$GOROOT/bin:$GOPATH/bin"
