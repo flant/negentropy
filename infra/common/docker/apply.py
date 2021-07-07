@@ -180,6 +180,16 @@ tfstate_bucket = "negentropy-terraform-state"
             os.environ['VAULT_TOKEN'] = vault_root_token
             os.environ['VAULT_ADDR'] = vault_address
 
+            # enable a version 1 kv store for migrator
+            client = hvac.Client()
+            list_mounted_secrets_engines = client.sys.list_mounted_secrets_engines().keys()
+            if not 'secret/' in list_mounted_secrets_engines:
+                client.sys.enable_secrets_engine(
+                    backend_type='kv',
+                    path='secret',
+                    options={'version': 1},
+                )
+
             # client = hvac.Client()
             # client.sys.enable_secrets_engine(
             #     backend_type='database',
