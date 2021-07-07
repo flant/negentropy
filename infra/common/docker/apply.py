@@ -13,6 +13,7 @@ import os
 import argparse
 import time
 import base64
+import hvac
 
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -55,7 +56,7 @@ def main():
 
     vault_list_with_status = []
     for vault_name in vault_list:
-        vault_list_with_status.append({'name': vault_name, 'initialized': check_blob_exists(terraform_state_bucket, 'vault-'+vault_name+'-recovery-keys')})
+        vault_list_with_status.append({'name': vault_name, 'initialized': check_blob_exists(terraform_state_bucket, 'negentropy-vault-'+vault_name+'-recovery-keys')})
 
     print("VAULT_LIST:", vault_list_with_status)
 
@@ -151,7 +152,6 @@ tfstate_bucket = "negentropy-terraform-state"
 
     for vault in vault_list_with_status:
         if not vault['initialized']:
-            # pgp_gen_key_and_upload_public_part('temporary-vault-'+vault['name'])
             pgp_gen_key_and_upload_public_part('negentropy-vault-'+vault['name']+'-temporary')
 
     for vault in vault_list_with_status:
@@ -171,14 +171,22 @@ tfstate_bucket = "negentropy-terraform-state"
                 vault_root_token = str(pgp_decrypt(base64.b64decode(encrypted_vault_root_token)), 'utf-8')
                 write_file(encrypted_vault_root_token_name+'-decrypted', vault_root_token)
 
-        print("VAULT_TOKEN:", vault_root_token)
+        print("export VAULT_TOKEN=%s" % vault_root_token)
 
         vault_address = 'http://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
-        print("VAULT_ADDR:", vault_address)
+        print("export VAULT_ADDR=%s" % vault_address)
 
         if vault['name'] == 'conf':
             os.environ['VAULT_TOKEN'] = vault_root_token
             os.environ['VAULT_ADDR'] = vault_address
+
+            # client = hvac.Client()
+            # client.sys.enable_secrets_engine(
+            #     backend_type='database',
+            #     path='migrator',
+            # )
+
+            upgrade_db_command(type('obj', (object,), {'migration_dir' : '../../configurator/vault_migrations/%s' % vault['name'], 'version' : '20210706132531'}))
             # run_bash("""
             #          vault secrets enable pki;
             #          vault secrets tune -max-lease-ttl=87600h pki;
