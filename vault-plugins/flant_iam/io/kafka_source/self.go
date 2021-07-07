@@ -103,6 +103,9 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	case model.MultipassType:
 		inputObject = &model.Multipass{}
 
+	case model.ServiceAccountPasswordType:
+		inputObject = &model.ServiceAccountPassword{}
+
 	default:
 		return errors.New("is not implemented yet")
 	}

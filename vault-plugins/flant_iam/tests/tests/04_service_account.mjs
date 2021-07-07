@@ -4,6 +4,7 @@ import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
     EndpointBuilder,
     genMultipassPayload,
+    genPasswordPayload,
     genServiceAccountPayload,
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
@@ -389,6 +390,144 @@ describe("Service Account", function () {
             }
 
             const { data } = await rootMPClient.update({
+                params,
+                payload: genMultipassPayload(),
+                opts: expectStatus(405),
+            })
+        })
+    })
+
+    describe("password", function () {
+        const endpointBuilder = new EndpointBuilder([
+            "tenant",
+            "service_account",
+            "password",
+        ])
+        const rootPasswordClient = new API(rootClient, endpointBuilder)
+
+        async function createPassword(t, sa, override = {}) {
+            const payload = genPasswordPayload(override)
+            const params = { tenant: t, service_account: sa }
+            const { data } = await rootPasswordClient.create({
+                params,
+                payload,
+            })
+            return data.data
+        }
+
+        it("can be created", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+
+            await createPassword(t.uuid, sa.uuid)
+        })
+
+        it("contains expected data when created", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+
+            const { password } = await createPassword(t.uuid, sa.uuid)
+
+            expect(password)
+                .to.be.an("object")
+                .and.include.keys(
+                    "uuid",
+                    "owner_uuid",
+                    "tenant_uuid",
+                    "description",
+                    "allowed_cidrs",
+                    "allowed_roles",
+                    "ttl",
+                    "valid_till",
+                    "secret",
+                )
+
+            expect(password.uuid, "uuid").to.be.a("string")
+            expect(password.owner_uuid, "owner_uuid").to.be.a("string")
+            expect(password.tenant_uuid, "tenant_uuid").to.be.a("string")
+
+            expect(password.secret, "secret length")
+                .to.be.a("string")
+                .with.length.greaterThanOrEqual(20)
+
+            expect(password.description, "description").to.be.a("string")
+
+            expect(password.allowed_cidrs, "allowed_cidrs").to.be.an("array")
+            expect(password.allowed_roles, "allowed_roles").to.be.an("array")
+
+            expect(password.ttl, "ttl").to.be.a("number")
+            expect(password.valid_till, "valid_till")
+                .to.be.a("number")
+                .greaterThan(Date.now() / 1e3)
+        })
+
+        it("can be read", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                service_account: sa.uuid,
+                password: password.uuid,
+            }
+            const { data } = await rootPasswordClient.read({ params })
+            const read = data.data
+
+            // sensitive data is returned only on creation, so we delete it before deep comparison
+            delete password.secret
+            expect(read).to.deep.eq(password)
+        })
+
+        it("can be listed", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+
+            const createId = () =>
+                createPassword(t.uuid, sa.uuid).then(
+                    ({ password }) => password.uuid,
+                )
+
+            const ids = await Promise.all([createId(), createId(), createId()])
+
+            const params = {
+                tenant: t.uuid,
+                service_account: sa.uuid,
+            }
+
+            const { data } = await rootPasswordClient.list({ params })
+
+            expect(data.data.uuids).to.have.all.members(ids)
+        })
+
+        it("can be deleted", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                service_account: sa.uuid,
+                password: password.uuid,
+            }
+
+            await rootPasswordClient.delete({ params })
+
+            await rootPasswordClient.read({ params, opts: expectStatus(404) })
+        })
+
+        it("cannot be updated", async () => {
+            const t = await createTenant()
+            const sa = await createServiceAccount(t.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                service_account: sa.uuid,
+                password: password.uuid,
+            }
+
+            const { data } = await rootPasswordClient.update({
                 params,
                 payload: genMultipassPayload(),
                 opts: expectStatus(405),

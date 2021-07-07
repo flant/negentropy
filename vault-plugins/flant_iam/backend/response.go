@@ -13,8 +13,12 @@ import (
 )
 
 func responseWithData(m model.Marshaller) (*logical.Response, error) {
-	// TODO use req as in responseWithDataAndCode
-	json, err := m.Marshal(false) // no sensitive stuff outside
+	// normally, almost no sensitive is sent via HTTP
+	return responseWithSensitiveData(m, false)
+}
+
+func responseWithSensitiveData(m model.Marshaller, includeSensitive bool) (*logical.Response, error) {
+	json, err := m.Marshal(includeSensitive)
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +34,14 @@ func responseWithData(m model.Marshaller) (*logical.Response, error) {
 	}
 
 	return resp, err
+}
+
+func responseWithSensitiveDataAndCode(req *logical.Request, m model.Marshaller, status int) (*logical.Response, error) {
+	resp, err := responseWithSensitiveData(m, true)
+	if err != nil {
+		return nil, err
+	}
+	return logical.RespondWithStatusCode(resp, req, status)
 }
 
 func responseWithDataAndCode(req *logical.Request, m model.Marshaller, status int) (*logical.Response, error) {
