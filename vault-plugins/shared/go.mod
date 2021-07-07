@@ -1,6 +1,6 @@
 module github.com/flant/negentropy/vault-plugins/shared
 
-go 1.15
+go 1.16
 
 require (
 	github.com/confluentinc/confluent-kafka-go v1.6.1

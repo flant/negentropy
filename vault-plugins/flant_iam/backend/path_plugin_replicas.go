@@ -33,7 +33,7 @@ func replicasPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path
 func (b replicaBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "replica/?$",
+			Pattern: "replica/?",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleReplicaList,

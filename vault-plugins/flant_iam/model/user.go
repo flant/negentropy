@@ -73,8 +73,13 @@ func (u *User) ObjId() string {
 	return u.UUID
 }
 
-func (u *User) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(u)
+func (u User) Marshal(includeSensitive bool) ([]byte, error) {
+	obj := u
+	if !includeSensitive {
+		u := OmitSensitive(u).(User)
+		obj = u
+	}
+	return jsonutil.EncodeJSON(obj)
 }
 
 func (u *User) Unmarshal(data []byte) error {

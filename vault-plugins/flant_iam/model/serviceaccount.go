@@ -66,8 +66,13 @@ func (u *ServiceAccount) ObjId() string {
 	return u.UUID
 }
 
-func (u *ServiceAccount) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(u)
+func (u ServiceAccount) Marshal(includeSensitive bool) ([]byte, error) {
+	obj := u
+	if !includeSensitive {
+		u := OmitSensitive(u).(ServiceAccount)
+		obj = u
+	}
+	return jsonutil.EncodeJSON(obj)
 }
 
 func (u *ServiceAccount) Unmarshal(data []byte) error {
