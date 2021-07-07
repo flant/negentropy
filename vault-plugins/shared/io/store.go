@@ -18,9 +18,10 @@ type MemoryStorableObject interface {
 }
 
 type KafkaSource interface {
+	Name() string
 	Restore(txn *memdb.Txn) error
 	Run(ms *MemoryStore)
-	// Stop() // TODO: stop on vault stop. Maybe its better to do through context
+	Stop()
 }
 
 type KafkaDestination interface {
@@ -36,8 +37,9 @@ type MemoryStore struct {
 
 	kafkaMutex          sync.RWMutex
 	kafkaSources        []KafkaSource
-	replicaDestinations map[string]KafkaDestination
+	kafkaMapSources     map[string]KafkaSource
 	kafkaDestinations   []KafkaDestination
+	replicaDestinations map[string]KafkaDestination
 
 	hookMutex sync.Mutex
 	hooks     map[string][]ObjectHook // by objectType
@@ -141,12 +143,11 @@ func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInput
 				object, ok := change.After.(MemoryStorableObject)
 				if !ok {
 					mst.memstore.kafkaMutex.RUnlock()
-					return fmt.Errorf("object does not implement MemoryStorableObject: %s", reflect.TypeOf(change.Before))
+					return fmt.Errorf("object does not implement MemoryStorableObject: %s", reflect.TypeOf(change.After))
 				}
 				msgs, err = dest.ProcessObject(mst.memstore, mst.Txn, object)
 			}
 			if err != nil {
-				mst.memstore.logger.Debug("HERRERER", "ere", err)
 				mst.memstore.kafkaMutex.RUnlock()
 				return err
 			}
@@ -197,8 +198,9 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryS
 		conn,
 		sync.RWMutex{},
 		make([]KafkaSource, 0),
-		make(map[string]KafkaDestination),
+		make(map[string]KafkaSource),
 		make([]KafkaDestination, 0),
+		make(map[string]KafkaDestination),
 		sync.Mutex{},
 		make(map[string][]ObjectHook),
 		log.New(nil),
@@ -209,8 +211,11 @@ func (ms *MemoryStore) SetLogger(l log.Logger) {
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
+	ms.RemoveKafkaSource(s.Name())
+
 	ms.kafkaMutex.Lock()
 	ms.kafkaSources = append(ms.kafkaSources, s)
+	ms.kafkaMapSources[s.Name()] = s
 	ms.kafkaMutex.Unlock()
 
 	if ms.kafkaConnection.Configured() {
@@ -229,6 +234,8 @@ func (ms *MemoryStore) ReinitializeKafka() {
 }
 
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
+	ms.RemoveKafkaDestination(s.ReplicaName())
+
 	ms.kafkaMutex.Lock()
 	ms.replicaDestinations[s.ReplicaName()] = s
 	ms.kafkaDestinations = append(ms.kafkaDestinations, s)
@@ -239,8 +246,32 @@ func (ms *MemoryStore) GetKafkaBroker() *kafka.MessageBroker {
 	return ms.kafkaConnection
 }
 
+func (ms *MemoryStore) RemoveKafkaSource(name string) {
+	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
+
+	ks, ok := ms.kafkaMapSources[name]
+	if !ok {
+		return
+	}
+	var index int
+	for i, dest := range ms.kafkaSources {
+		if dest == ks {
+			index = i
+			break
+		}
+	}
+
+	ks.Stop()
+
+	ms.kafkaSources = append(ms.kafkaSources[:index], ms.kafkaSources[index+1:]...)
+	delete(ms.kafkaMapSources, name)
+}
+
 func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
+
 	ks, ok := ms.replicaDestinations[replicaName]
 	if !ok {
 		return
@@ -254,7 +285,6 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 	}
 
 	ms.kafkaDestinations = append(ms.kafkaDestinations[:index], ms.kafkaDestinations[index+1:]...)
-	ms.kafkaMutex.Unlock()
 }
 
 func (ms *MemoryStore) Restore() error {
