@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/openapi"
+	openapi2 "github.com/flant/negentropy/vault-plugins/shared/openapi"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -225,14 +225,14 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 	}
 
 	specRaw, ok := data.GetOk("options_schema")
-	var validator openapi.Validator
+	var validator openapi2.Validator
 	if ok {
 		spec, ok := specRaw.(string)
 		if !ok {
 			return nil, fmt.Errorf("cannot cast 'options_schema' to string")
 		}
 
-		validator, err = openapi.SchemaValidator(spec)
+		validator, err = openapi2.SchemaValidator(spec)
 		if err != nil {
 			return logical.ErrorResponse(fmt.Sprintf("incorrect 'options_schema': %v", err)), nil
 		}

@@ -3,12 +3,13 @@ package jwtauth
 import (
 	"context"
 	"fmt"
-	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 const HttpPathIssue = "issue"

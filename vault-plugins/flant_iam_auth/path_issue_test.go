@@ -56,7 +56,7 @@ func TestIssuePath_JWT(t *testing.T) {
 		"apiVersion": "negentropy.io/v1",
 		"kind": "kind",
 		"type": map[string]interface{}{
-			"provider": "a",
+			"provider": "A",
 		},
 		"CIDR": "aaaaaa",
 	}
