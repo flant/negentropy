@@ -298,19 +298,6 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		// Password creation
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/password",
-			/*
-				UUID       string `json:"uuid"` // PK
-				TenantUUID string `json:"tenant_uuid"`
-				OwnerUUID  string `json:"owner_uuid"`
-
-				Description string `json:"description"`
-
-				CIDRs []string `json:"allowed_cidrs"`
-				Roles []string `json:"allowed_roles" `
-
-				TTL       time.Duration `json:"ttl"`
-
-			*/
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -386,7 +373,6 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/password/?",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",

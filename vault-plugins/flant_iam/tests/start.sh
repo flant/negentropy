@@ -50,18 +50,14 @@ vault secrets enable -path=flant_iam flant_iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
-
 if [[ "${ci_mode}x" == "x" ]]; then
-  docker logs -f  dev-vault
+  docker logs -f dev-vault
 fi
 # docker exec -it dev-vault sh
 
 # make enable
 # vault path-help flant_iam
 # vault read flant_iam/tenant/bcfa63ba-41fd-d33b-c13e-ef03daed0aa2
-
-
-
 
 # BIG HELPERS
 
