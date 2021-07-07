@@ -55,7 +55,7 @@ type ServiceAccount struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extension"`
+	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
 }
 
 func (u *ServiceAccount) ObjType() string {
