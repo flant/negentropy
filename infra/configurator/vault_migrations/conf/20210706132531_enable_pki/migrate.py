@@ -16,9 +16,10 @@ def upgrade(connection):
     connection.sys.enable_secrets_engine(
         backend_type='pki',
         path='pki',
+        max_lease_ttl='87600h',
     )
-    connection.sys.tune_mount_configuration(
-            path='pki',
-            max_lease_ttl='87600h',
-    )
+    # connection.sys.tune_mount_configuration(
+    #         path='pki',
+    #         max_lease_ttl='87600h',
+    # )
     pass
