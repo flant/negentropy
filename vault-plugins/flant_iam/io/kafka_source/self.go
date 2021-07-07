@@ -100,6 +100,9 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		// return model.NewUserRepository(txn).Sync(splitted[1], decrypted)
 		inputObject = &model.User{}
 
+	case model.MultipassType:
+		inputObject = &model.Multipass{}
+
 	default:
 		return errors.New("is not implemented yet")
 	}
