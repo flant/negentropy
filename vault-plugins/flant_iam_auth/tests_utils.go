@@ -1,9 +1,14 @@
 package jwtauth
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"github.com/hashicorp/vault/api"
 	"math/rand"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -51,4 +56,124 @@ func randomStr() string {
 	}
 
 	return hex.EncodeToString(entityName)
+}
+
+func convertResponseToListKeys(t *testing.T, resp *api.Response) []string {
+	rawResp := map[string]interface{}{}
+	err := resp.DecodeJSON(&rawResp)
+	if err != nil {
+		t.Fatalf("can not decode response %v", err)
+	}
+
+	keysIntr := rawResp["data"].(map[string]interface{})["keys"].([]interface{})
+
+	keys := make([]string, 0)
+	for _, s := range keysIntr {
+		keys = append(keys, s.(string))
+	}
+
+	return keys
+}
+
+type apiRequester interface {
+	Request(method, name string, params map[string]interface{}, q *url.Values) *api.Response
+	Create(name string, params map[string]interface{}) *api.Response
+	Update(name string, params map[string]interface{}) *api.Response
+	Delete(name string) *api.Response
+	ListKeys() ([]string, *api.Response)
+}
+
+type vaultApiRequester struct {
+	t      *testing.T
+	cl     *api.Client
+	prefix string
+}
+
+func newVaultRequester(t *testing.T, prefix string) *vaultApiRequester {
+	client, err := api.NewClient(api.DefaultConfig())
+	if err != nil {
+		t.Fatalf("can not get client: %v", err)
+	}
+
+	token := os.Getenv("VAULT_TOKEN")
+	if token == "" {
+		token = "root"
+	}
+
+	client.SetToken(token)
+
+	return &vaultApiRequester{
+		prefix: prefix,
+		t:      t,
+		cl:     client,
+	}
+}
+
+func (r *vaultApiRequester) Create(name string, params map[string]interface{}) *api.Response {
+	return r.Request("POST", name, params, nil)
+}
+
+func (r *vaultApiRequester) Update(name string, params map[string]interface{}) *api.Response {
+	return r.Request("POST", name, params, nil)
+}
+
+func (r *vaultApiRequester) Delete(name string) *api.Response {
+	return r.Request("DELETE", name, nil, nil)
+}
+
+func (r *vaultApiRequester) ListKeys() ([]string, *api.Response) {
+	req := r.newRequest("GET", "", nil, &url.Values{
+		"list": []string{"true"},
+	})
+
+	resp, err := r.cl.RawRequest(req)
+	if resp == nil {
+		r.t.Fatalf("error wile send request %v", err)
+	}
+
+	if resp.StatusCode == 404 {
+		return make([]string, 0), resp
+	}
+
+	keys := convertResponseToListKeys(r.t, resp)
+
+	return keys, resp
+}
+
+func (r *vaultApiRequester) Request(method, name string, params map[string]interface{}, q *url.Values) *api.Response {
+	req := r.newRequest(method, name, params, q)
+	resp, err := r.cl.RawRequest(req)
+	if resp == nil {
+		r.t.Fatalf("error wile send request %v", err)
+	}
+
+	return resp
+}
+
+func (r *vaultApiRequester) newRequest(method, name string, params map[string]interface{}, q *url.Values) *api.Request {
+	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", r.prefix, name)
+	request := r.cl.NewRequest(method, path)
+	if params != nil {
+		raw, err := json.Marshal(params)
+		if err != nil {
+			r.t.Fatalf("cannot marshal request params to json: %v", err)
+			return nil
+		}
+
+		reader := bytes.NewReader(raw)
+		request.Body = reader
+	}
+
+	if q != nil {
+		request.Params = *q
+	}
+
+	return request
+}
+
+func assertResponseCode(t *testing.T, r *api.Response, code int) {
+	rCode := r.StatusCode
+	if code != rCode {
+		t.Errorf("Incorrect response code, got %v; need %v", rCode, code)
+	}
 }

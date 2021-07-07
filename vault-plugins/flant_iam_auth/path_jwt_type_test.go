@@ -1,12 +1,8 @@
 package jwtauth
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
-	"os"
 	"sort"
 	"testing"
 
@@ -47,78 +43,14 @@ oneOf:
   required: ["CIDR"]
 `
 
-func convertResponseToListKeys(t *testing.T, resp *api.Response) []string{
-	rawResp := map[string]interface{}{}
-	err := resp.DecodeJSON(&rawResp)
-	if err != nil {
-		t.Fatalf("can not decode response %v", err)
-	}
-
-	keysIntr := rawResp["data"].(map[string]interface{})["keys"].([]interface{})
-
-	keys := make([]string, 0)
-	for _, s := range keysIntr {
-		keys = append(keys, s.(string))
-	}
-
-	return keys
-}
-
-func getJWTTypePathApi() (*api.Client, error) {
-	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		return nil, err
-	}
-
-	token := os.Getenv("VAULT_TOKEN")
-	if token == "" {
-		token = "root"
-	}
-
-	client.SetToken(token)
-
-	return client, nil
-}
-
-func requestJwtTypeName(t *testing.T, cl *api.Client, method, name string, params map[string]interface{}, q *url.Values) *api.Request {
-	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", HttpPathJwtType, name)
-	r := cl.NewRequest(method, path)
-	if params != nil {
-		raw, err := json.Marshal(params)
-		if err != nil {
-			t.Fatalf("cannot marshal request params to json: %v", err)
-			return nil
-		}
-
-		reader := bytes.NewReader(raw)
-		if q != nil {
-			r.Params = *q
-		}
-
-		r.Body = reader
-	}
-	return r
+func jwtTypePathRequester(t *testing.T) apiRequester {
+	return newVaultRequester(t, HttpPathJwtType)
 }
 
 func createJWTType(t *testing.T, params map[string]interface{}) (string, *api.Response) {
 	name := randomStr()
-	resp := createUpdateJWTType(t, name, params)
+	resp := jwtTypePathRequester(t).Create(name, params)
 	return name, resp
-}
-
-func createUpdateJWTType(t *testing.T, name string, params map[string]interface{}) *api.Response {
-	cl, err := getJWTTypePathApi()
-
-	if err != nil {
-		t.Fatalf("can not get client %s", err)
-	}
-
-	r := requestJwtTypeName(t, cl, "POST", name, params, nil)
-	resp, err := cl.RawRequest(r)
-	if resp == nil {
-		t.Fatalf("error wile send request %v", err)
-	}
-	return resp
 }
 
 func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
@@ -133,68 +65,14 @@ func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
 }
 
 func getJWTType(t *testing.T, name string) *api.Response {
-	cl, err := getJWTTypePathApi()
-	if err != nil {
-		t.Fatalf("can not get client %s", err)
-	}
-
-	r := requestJwtTypeName(t, cl, "GET", name, nil, nil)
-	resp, err := cl.RawRequest(r)
-	if resp == nil {
-		t.Fatalf("can not send request %v", err)
-	}
-
-	return resp
-}
-
-func getListJWTTypes(t *testing.T) *api.Response {
-	cl, err := getJWTTypePathApi()
-	if err != nil {
-		t.Fatalf("can not get client %s", err)
-	}
-
-	r := cl.NewRequest("GET", fmt.Sprintf("/v1/auth/flant_iam_auth/%s/", HttpPathJwtType))
-	r.Params = url.Values{
-		"list": []string{"true"},
-	}
-	resp, err := cl.RawRequest(r)
-	if resp == nil {
-		t.Fatalf("can not send request %v", err)
-	}
-
-	return resp
-}
-
-func deleteJWTType(t *testing.T, name string) *api.Response {
-	cl, err := getJWTTypePathApi()
-	if err != nil {
-		t.Fatalf("can not get client %s", err)
-	}
-
-	r := requestJwtTypeName(t, cl, "DELETE", name, nil, nil)
-
-	resp, err := cl.RawRequest(r)
-	if resp == nil {
-		t.Fatalf("can not send request %v", err)
-	}
-
-	return resp
+	return jwtTypePathRequester(t).Request("GET", name, nil, nil)
 }
 
 func cleanAllJWTTypes(t *testing.T) {
-	resp := getListJWTTypes(t)
-	if resp.StatusCode == 404 {
-		return
-	}
-
-	if resp.StatusCode != 200 {
-		t.Fatalf("cannot getting all jwt types")
-	}
-
-	keys := convertResponseToListKeys(t, resp)
+	keys, _ := jwtTypePathRequester(t).ListKeys()
 
 	for _, n := range keys {
-		deleteJWTType(t, n)
+		jwtTypePathRequester(t).Request("DELETE", n, nil, nil)
 	}
 }
 
@@ -259,10 +137,7 @@ func TestJWTType_Create(t *testing.T) {
 				name := mustCreateUpdateJWTType(t, c.body)
 
 				resp := getJWTType(t, name)
-				code := resp.StatusCode
-				if code != 200 {
-					t.Errorf("jwt type %v does not exists, return code: %v", name, code)
-				}
+				assertResponseCode(t, resp, 200)
 
 				assertJwtType(t, resp, c.body)
 			})
@@ -300,19 +175,13 @@ func TestJWTType_Create(t *testing.T) {
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("returns 400 %s", c.title), func(t *testing.T) {
 				_, resp := createJWTType(t, c.body)
-				code := resp.StatusCode
-				if code != 400 {
-					t.Errorf("incorrect response code %v", code)
-				}
+				assertResponseCode(t, resp, 400)
 			})
 
 			t.Run(fmt.Sprintf("does not creating %s", c.title), func(t *testing.T) {
 				name, _ := createJWTType(t, c.body)
 				resp := getJWTType(t, name)
-				code := resp.StatusCode
-				if code != 404 {
-					t.Errorf("jwt type %s must be not found wit code 404 got %v", name, code)
-				}
+				assertResponseCode(t, resp, 404)
 			})
 		}
 	})
@@ -328,10 +197,7 @@ func TestJWTType_Get(t *testing.T) {
 
 		t.Run("returns 200 if exists", func(t *testing.T) {
 			resp := getJWTType(t, name)
-			code := resp.StatusCode
-			if code != 200 {
-				t.Errorf("jwt type %v does not exists, return code: %v", name, code)
-			}
+			assertResponseCode(t, resp, 200)
 		})
 
 		t.Run("gets all supported fields", func(t *testing.T) {
@@ -343,10 +209,7 @@ func TestJWTType_Get(t *testing.T) {
 	t.Run("returns 404 if does not exists", func(t *testing.T) {
 		const name = "not_exists"
 		resp := getJWTType(t, name)
-		code := resp.StatusCode
-		if code != 404 {
-			t.Errorf("jwt type '%s' must be not exists and returns 404, return code: %v", name, code)
-		}
+		assertResponseCode(t, resp, 404)
 	})
 
 }
@@ -367,15 +230,11 @@ func TestJWTType_List(t *testing.T) {
 	sort.Strings(names)
 
 	t.Run("returns list of names of exists jwt types", func(t *testing.T) {
-		resp := getListJWTTypes(t)
+		keys, resp := jwtTypePathRequester(t).ListKeys()
 
-		if resp.StatusCode != 200 {
-			t.Errorf("cannot getting all jwt types: response code: %v", resp.StatusCode)
-		}
+		assertResponseCode(t, resp, 200)
 
-		keys := convertResponseToListKeys(t, resp)
 		sort.Strings(keys)
-
 		assert.DeepEqual(t, names, keys)
 	})
 }
@@ -397,7 +256,7 @@ func TestJWTType_Update(t *testing.T) {
 			{
 				title: "only ttl",
 				body: map[string]interface{}{
-					"ttl":            "1s",
+					"ttl": "1s",
 				},
 			},
 
@@ -417,17 +276,11 @@ func TestJWTType_Update(t *testing.T) {
 
 			name := mustCreateUpdateJWTType(t, originalBody)
 			t.Run(fmt.Sprintf("updates %s", c.title), func(t *testing.T) {
-				resp := createUpdateJWTType(t, name, c.body)
-				code := resp.StatusCode
-				if code != 200 {
-					t.Errorf("Incorrect response code, got %v", code)
-				}
+				resp := jwtTypePathRequester(t).Update(name, c.body)
+				assertResponseCode(t, resp, 200)
 
 				resp = getJWTType(t, name)
-				code = resp.StatusCode
-				if code != 200 {
-					t.Errorf("Incorrect response code, got %v", code)
-				}
+				assertResponseCode(t, resp, 200)
 
 				assertJwtType(t, resp, c.body)
 			})
@@ -436,9 +289,10 @@ func TestJWTType_Update(t *testing.T) {
 	})
 
 	t.Run("updating failed", func(t *testing.T) {
-		t.Run("returns 404 if not exists", func(t *testing.T) {
-
-		})
+		originalBody := map[string]interface{}{
+			"ttl":            "1s",
+			"options_schema": testJwtTypeOptionSchemaValid,
+		}
 
 		cases := []struct {
 			title string
@@ -447,7 +301,7 @@ func TestJWTType_Update(t *testing.T) {
 			{
 				title: "with ttl less than 1 second",
 				body: map[string]interface{}{
-					"ttl":            "0s",
+					"ttl": "0s",
 				},
 			},
 
@@ -460,19 +314,11 @@ func TestJWTType_Update(t *testing.T) {
 		}
 
 		for _, c := range cases {
-			originalBody := map[string]interface{}{
-				"ttl":            "1s",
-				"options_schema": testJwtTypeOptionSchemaValid,
-			}
-
 			name := mustCreateUpdateJWTType(t, originalBody)
 
 			t.Run(fmt.Sprintf("does not update %s", c.title), func(t *testing.T) {
-				resp := createUpdateJWTType(t, name, c.body)
-				code := resp.StatusCode
-				if code != 400 {
-					t.Errorf("Incorrect response code, got %v", code)
-				}
+				resp := jwtTypePathRequester(t).Update(name, c.body)
+				assertResponseCode(t, resp, 400)
 			})
 		}
 	})
@@ -487,27 +333,18 @@ func TestJWTType_Delete(t *testing.T) {
 		name := mustCreateUpdateJWTType(t, originalBody)
 
 		t.Run("returns 204 if delete exists jwt type", func(t *testing.T) {
-			resp := deleteJWTType(t, name)
-			code := resp.StatusCode
-			if code != 204 {
-				t.Errorf("Incorrect response code, got %v", code)
-			}
+			resp := jwtTypePathRequester(t).Delete(name)
+			assertResponseCode(t, resp, 204)
 		})
 
 		t.Run("does not found jwt type after delete", func(t *testing.T) {
 			resp := getJWTType(t, name)
-			code := resp.StatusCode
-			if code != 404 {
-				t.Errorf("Incorrect response code, got %v", code)
-			}
+			assertResponseCode(t, resp, 404)
 		})
 	})
 
 	t.Run("returns 204 if try to delete none exists jwt type", func(t *testing.T) {
-		resp := deleteJWTType(t, "not_exists")
-		code := resp.StatusCode
-		if code != 204 {
-			t.Errorf("Incorrect response code, got %v", code)
-		}
+		resp := jwtTypePathRequester(t).Delete("not_exists")
+		assertResponseCode(t, resp, 204)
 	})
 }
