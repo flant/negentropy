@@ -57,6 +57,7 @@ type flantIamAuthBackend struct {
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
+	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 

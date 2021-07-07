@@ -16,42 +16,37 @@ import (
 	"time"
 )
 
-const testJwtTypeOptionSchemaValid = `
-kind: JwtTypeOptions
-apiVersions:
-- apiVersion: negentropy.io/v1
-  openAPISpec:
+const testJwtTypeOptionSchemaValid = `type: object
+additionalProperties: false
+required: [apiVersion, kind, type]
+properties:
+  apiVersion:
+    type: string
+    enum: [negentropy.io/v1, negentropy.io/v1alpha1]
+  kind:
+    type: string
+    enum: [ClusterConfiguration]
+  type:
     type: object
+    required: [provider]
     additionalProperties: false
-    required: [apiVersion, kind, type]
     properties:
-      apiVersion:
+      provider:
         type: string
-        enum: [negentropy.io/v1, negentropy.io/v1alpha1]
-      kind:
-        type: string
-        enum: [ClusterConfiguration]
-      type:
-        type: object
-        required: [provider]
-        additionalProperties: false
-        properties:
-          provider:
-            type: string
-            enum:
-            - "A"
-            - "B"
-      CIDR:
-        type: string
-    oneOf:
-    - properties:
-        type:
-           enum: ["A"]
-    - properties:
-        type:
-           enum: ["B"]
-      CIDR: "no"
-      required: ["CIDR"]
+        enum:
+        - "A"
+        - "B"
+  CIDR:
+    type: string
+oneOf:
+- properties:
+    type:
+       enum: ["A"]
+- properties:
+    type:
+       enum: ["B"]
+  CIDR: "no"
+  required: ["CIDR"]
 `
 
 func convertResponseToListKeys(t *testing.T, resp *api.Response) []string{
@@ -87,7 +82,7 @@ func getJWTTypePathApi() (*api.Client, error) {
 	return client, nil
 }
 
-func testRequestJwtTypeName(t *testing.T, cl *api.Client, method, name string, params map[string]interface{}, q *url.Values) *api.Request {
+func requestJwtTypeName(t *testing.T, cl *api.Client, method, name string, params map[string]interface{}, q *url.Values) *api.Request {
 	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", HttpPathJwtType, name)
 	r := cl.NewRequest(method, path)
 	if params != nil {
@@ -107,28 +102,29 @@ func testRequestJwtTypeName(t *testing.T, cl *api.Client, method, name string, p
 	return r
 }
 
-func testCreateJWTType(t *testing.T, params map[string]interface{}) (string, *api.Response) {
+func createJWTType(t *testing.T, params map[string]interface{}) (string, *api.Response) {
 	name := randomStr()
-	resp := testCreateUpdateJWTType(t, name, params)
+	resp := createUpdateJWTType(t, name, params)
 	return name, resp
 }
 
-func testCreateUpdateJWTType(t *testing.T, name string, params map[string]interface{}) *api.Response {
+func createUpdateJWTType(t *testing.T, name string, params map[string]interface{}) *api.Response {
 	cl, err := getJWTTypePathApi()
+
 	if err != nil {
 		t.Fatalf("can not get client %s", err)
 	}
 
-	r := testRequestJwtTypeName(t, cl, "POST", name, params, nil)
+	r := requestJwtTypeName(t, cl, "POST", name, params, nil)
 	resp, err := cl.RawRequest(r)
 	if resp == nil {
-		t.Errorf("error wile send request %v", err)
+		t.Fatalf("error wile send request %v", err)
 	}
 	return resp
 }
 
 func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
-	name, resp := testCreateJWTType(t, body)
+	name, resp := createJWTType(t, body)
 	code := resp.StatusCode
 	if code != 200 {
 		b, _ := io.ReadAll(resp.Body)
@@ -138,13 +134,13 @@ func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
 	return name
 }
 
-func testGetJWTType(t *testing.T, name string) *api.Response {
+func getJWTType(t *testing.T, name string) *api.Response {
 	cl, err := getJWTTypePathApi()
 	if err != nil {
 		t.Fatalf("can not get client %s", err)
 	}
 
-	r := testRequestJwtTypeName(t, cl, "GET", name, nil, nil)
+	r := requestJwtTypeName(t, cl, "GET", name, nil, nil)
 	resp, err := cl.RawRequest(r)
 	if resp == nil {
 		t.Fatalf("can not send request %v", err)
@@ -153,7 +149,7 @@ func testGetJWTType(t *testing.T, name string) *api.Response {
 	return resp
 }
 
-func testGetListJWTTypes(t *testing.T) *api.Response {
+func getListJWTTypes(t *testing.T) *api.Response {
 	cl, err := getJWTTypePathApi()
 	if err != nil {
 		t.Fatalf("can not get client %s", err)
@@ -171,13 +167,13 @@ func testGetListJWTTypes(t *testing.T) *api.Response {
 	return resp
 }
 
-func testDeleteJWTType(t *testing.T, name string) *api.Response {
+func deleteJWTType(t *testing.T, name string) *api.Response {
 	cl, err := getJWTTypePathApi()
 	if err != nil {
 		t.Fatalf("can not get client %s", err)
 	}
 
-	r := testRequestJwtTypeName(t, cl, "DELETE", name, nil, nil)
+	r := requestJwtTypeName(t, cl, "DELETE", name, nil, nil)
 
 	resp, err := cl.RawRequest(r)
 	if resp == nil {
@@ -187,8 +183,8 @@ func testDeleteJWTType(t *testing.T, name string) *api.Response {
 	return resp
 }
 
-func testCleanAllJWTTypes(t *testing.T) {
-	resp := testGetListJWTTypes(t)
+func cleanAllJWTTypes(t *testing.T) {
+	resp := getListJWTTypes(t)
 	if resp.StatusCode == 404 {
 		return
 	}
@@ -200,7 +196,7 @@ func testCleanAllJWTTypes(t *testing.T) {
 	keys := convertResponseToListKeys(t, resp)
 
 	for _, n := range keys {
-		testDeleteJWTType(t, n)
+		deleteJWTType(t, n)
 	}
 }
 
@@ -282,7 +278,7 @@ func TestJWTType_Create(t *testing.T) {
 			t.Run(c.title, func(t *testing.T) {
 				name := mustCreateUpdateJWTType(t, c.body)
 
-				resp := testGetJWTType(t, name)
+				resp := getJWTType(t, name)
 				code := resp.StatusCode
 				if code != 200 {
 					t.Errorf("jwt type %v does not exists, return code: %v", name, code)
@@ -323,7 +319,7 @@ func TestJWTType_Create(t *testing.T) {
 
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("returns 400 %s", c.title), func(t *testing.T) {
-				_, resp := testCreateJWTType(t, c.body)
+				_, resp := createJWTType(t, c.body)
 				code := resp.StatusCode
 				if code != 400 {
 					t.Errorf("incorrect response code %v", code)
@@ -331,8 +327,8 @@ func TestJWTType_Create(t *testing.T) {
 			})
 
 			t.Run(fmt.Sprintf("does not creating %s", c.title), func(t *testing.T) {
-				name, _ := testCreateJWTType(t, c.body)
-				resp := testGetJWTType(t, name)
+				name, _ := createJWTType(t, c.body)
+				resp := getJWTType(t, name)
 				code := resp.StatusCode
 				if code != 404 {
 					t.Errorf("jwt type %s must be not found wit code 404 got %v", name, code)
@@ -351,7 +347,7 @@ func TestJWTType_Get(t *testing.T) {
 		name := mustCreateUpdateJWTType(t, body)
 
 		t.Run("returns 200 if exists", func(t *testing.T) {
-			resp := testGetJWTType(t, name)
+			resp := getJWTType(t, name)
 			code := resp.StatusCode
 			if code != 200 {
 				t.Errorf("jwt type %v does not exists, return code: %v", name, code)
@@ -359,14 +355,14 @@ func TestJWTType_Get(t *testing.T) {
 		})
 
 		t.Run("gets all supported fields", func(t *testing.T) {
-			resp := testGetJWTType(t, name)
+			resp := getJWTType(t, name)
 			assertJwtType(t, resp, body)
 		})
 	})
 
 	t.Run("returns 404 if does not exists", func(t *testing.T) {
 		const name = "not_exists"
-		resp := testGetJWTType(t, name)
+		resp := getJWTType(t, name)
 		code := resp.StatusCode
 		if code != 404 {
 			t.Errorf("jwt type '%s' must be not exists and returns 404, return code: %v", name, code)
@@ -376,7 +372,7 @@ func TestJWTType_Get(t *testing.T) {
 }
 
 func TestJWTType_List(t *testing.T) {
-	testCleanAllJWTTypes(t)
+	cleanAllJWTTypes(t)
 
 	names := make([]string, 0)
 	for i := 1; i <= 2; i++ {
@@ -391,7 +387,7 @@ func TestJWTType_List(t *testing.T) {
 	sort.Strings(names)
 
 	t.Run("returns list of names of exists jwt types", func(t *testing.T) {
-		resp := testGetListJWTTypes(t)
+		resp := getListJWTTypes(t)
 
 		if resp.StatusCode != 200 {
 			t.Errorf("cannot getting all jwt types: response code: %v", resp.StatusCode)
@@ -441,13 +437,13 @@ func TestJWTType_Update(t *testing.T) {
 
 			name := mustCreateUpdateJWTType(t, originalBody)
 			t.Run(fmt.Sprintf("updates %s", c.title), func(t *testing.T) {
-				resp := testCreateUpdateJWTType(t, name, c.body)
+				resp := createUpdateJWTType(t, name, c.body)
 				code := resp.StatusCode
 				if code != 200 {
 					t.Errorf("Incorrect response code, got %v", code)
 				}
 
-				resp = testGetJWTType(t, name)
+				resp = getJWTType(t, name)
 				code = resp.StatusCode
 				if code != 200 {
 					t.Errorf("Incorrect response code, got %v", code)
@@ -492,7 +488,7 @@ func TestJWTType_Update(t *testing.T) {
 			name := mustCreateUpdateJWTType(t, originalBody)
 
 			t.Run(fmt.Sprintf("does not update %s", c.title), func(t *testing.T) {
-				resp := testCreateUpdateJWTType(t, name, c.body)
+				resp := createUpdateJWTType(t, name, c.body)
 				code := resp.StatusCode
 				if code != 400 {
 					t.Errorf("Incorrect response code, got %v", code)
@@ -511,7 +507,7 @@ func TestJWTType_Delete(t *testing.T) {
 		name := mustCreateUpdateJWTType(t, originalBody)
 
 		t.Run("returns 204 if delete exists jwt type", func(t *testing.T) {
-			resp := testDeleteJWTType(t, name)
+			resp := deleteJWTType(t, name)
 			code := resp.StatusCode
 			if code != 204 {
 				t.Errorf("Incorrect response code, got %v", code)
@@ -519,7 +515,7 @@ func TestJWTType_Delete(t *testing.T) {
 		})
 
 		t.Run("does not found jwt type after delete", func(t *testing.T) {
-			resp := testGetJWTType(t, name)
+			resp := getJWTType(t, name)
 			code := resp.StatusCode
 			if code != 404 {
 				t.Errorf("Incorrect response code, got %v", code)
@@ -528,7 +524,7 @@ func TestJWTType_Delete(t *testing.T) {
 	})
 
 	t.Run("returns 204 if try to delete none exists jwt type", func(t *testing.T) {
-		resp := testDeleteJWTType(t, "not_exists")
+		resp := deleteJWTType(t, "not_exists")
 		code := resp.StatusCode
 		if code != 204 {
 			t.Errorf("Incorrect response code, got %v", code)

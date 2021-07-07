@@ -37,7 +37,7 @@ func (v *validatorOpenApi2) Validate(data interface{}) (interface{}, error) {
 func SchemaValidator(content string) (Validator, error) {
 	byteContent := []byte(content)
 	schema := new(spec.Schema)
-	if err := yaml.UnmarshalStrict(byteContent, schema); err != nil {
+	if err := yaml.Unmarshal(byteContent, schema); err != nil {
 		return nil, fmt.Errorf("json unmarshal: %v", err)
 	}
 
