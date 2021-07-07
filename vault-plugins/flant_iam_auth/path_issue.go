@@ -5,7 +5,6 @@ import (
 	"fmt"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
-
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -17,7 +16,7 @@ const HttpPathIssue = "issue"
 // pathRole returns the path configurations for the CRUD operations on roles
 func pathIssueJwtType(b *flantIamAuthBackend) *framework.Path {
 	p := &framework.Path{
-		Pattern: fmt.Sprintf("%s/jwt", HttpPathIssue) + framework.GenericNameRegex("name"),
+		Pattern: fmt.Sprintf("%s/jwt/", HttpPathIssue) + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeLowerCaseString,
@@ -81,10 +80,14 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 	}
 
 	if jwtType == nil {
-		return nil, nil
+		return logical.RespondWithStatusCode(
+			logical.ErrorResponse("not found jwt type %s", name),
+			req,
+			404,
+		)
 	}
 
-	validator, err := b.jwtTypeOpenApi(jwtType)
+	validator, err := b.jwtTypeValidator(jwtType)
 	if err != nil {
 		return nil, err
 	}

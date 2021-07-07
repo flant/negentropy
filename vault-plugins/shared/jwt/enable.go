@@ -130,8 +130,13 @@ func (b *TokenController) IsEnabled(ctx context.Context, req *logical.Request) (
 	if err != nil {
 		return false, err
 	}
+
+	if isEnabledRaw == nil {
+		return false, nil
+	}
+
 	var isEnabled bool
-	err = isEnabledRaw.DecodeJSON(isEnabled)
+	err = isEnabledRaw.DecodeJSON(&isEnabled)
 	if err != nil {
 		return false, err
 	}

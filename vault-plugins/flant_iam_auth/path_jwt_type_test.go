@@ -19,7 +19,7 @@ properties:
     enum: [negentropy.io/v1, negentropy.io/v1alpha1]
   kind:
     type: string
-    enum: [ClusterConfiguration]
+    minLength: 2
   type:
     type: object
     required: [provider]
@@ -56,25 +56,19 @@ func mustCreateUpdateJWTType(t *testing.T, body map[string]interface{}) string {
 }
 
 func getJWTType(t *testing.T, name string) *api.Response {
-	return jwtTypePathRequester(t).Request("GET", name, nil, nil)
+	return jwtTypePathRequester(t).Get(name)
 }
 
 func cleanAllJWTTypes(t *testing.T) {
 	keys, _ := jwtTypePathRequester(t).ListKeys()
 
 	for _, n := range keys {
-		jwtTypePathRequester(t).Request("DELETE", n, nil, nil)
+		jwtTypePathRequester(t).Delete(n)
 	}
 }
 
 func assertJwtType(t *testing.T, resp *api.Response, data map[string]interface{}) {
-	respRaw := map[string]interface{}{}
-	err := resp.DecodeJSON(&respRaw)
-	if err != nil {
-		t.Errorf("Do not unmarshal body: %v", err)
-	}
-
-	respData := respRaw["data"].(map[string]interface{})
+	respData := extractResponseData(t, resp)
 
 	if uuid, ok := respData["uuid"]; !ok || uuid == "" {
 		t.Errorf("incorrect uuid")

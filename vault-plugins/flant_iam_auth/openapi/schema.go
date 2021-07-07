@@ -31,7 +31,7 @@ func (v *validatorOpenApi2) Validate(data interface{}) (interface{}, error) {
 	var allErrs *multierror.Error
 	allErrs = multierror.Append(allErrs, result.Errors...)
 
-	return false, allErrs.ErrorOrNil()
+	return nil, allErrs.ErrorOrNil()
 }
 
 func SchemaValidator(content string) (Validator, error) {

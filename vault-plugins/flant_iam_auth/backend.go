@@ -213,7 +213,7 @@ func (b *flantIamAuthBackend) getProvider(config *model.AuthSource) (*oidc.Provi
 	return provider, nil
 }
 
-func (b *flantIamAuthBackend) jwtTypeOpenApi(jwtType *model.JWTIssueType) (openapi.Validator, error) {
+func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (openapi.Validator, error) {
 	specStr := jwtType.OptionsSchema
 	if specStr == "" {
 		return nil, nil

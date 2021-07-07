@@ -75,21 +75,44 @@ func convertResponseToListKeys(t *testing.T, resp *api.Response) []string {
 	return keys
 }
 
+func extractResponseData(t *testing.T, resp *api.Response) map[string]interface{}{
+	respRaw := map[string]interface{}{}
+	err := resp.DecodeJSON(&respRaw)
+	if err != nil {
+		t.Errorf("Do not unmarshal body: %v", err)
+	}
+
+	return respRaw["data"].(map[string]interface{})
+}
+
+func extractResponseDataT(t *testing.T, resp *api.Response, out interface{}){
+	d := extractResponseData(t, resp)
+	s, err := json.Marshal(d)
+	if err != nil {
+		t.Errorf("can not convert to json for cast: %v", err)
+	}
+
+	err = json.Unmarshal(s, out)
+	if err != nil {
+		t.Errorf("can not convert cast: %v", err)
+	}
+}
+
 type apiRequester interface {
-	Request(method, name string, params map[string]interface{}, q *url.Values) *api.Response
+	Get(name string) *api.Response
 	Create(name string, params map[string]interface{}) *api.Response
 	Update(name string, params map[string]interface{}) *api.Response
 	Delete(name string) *api.Response
 	ListKeys() ([]string, *api.Response)
 }
 
-type vaultApiRequester struct {
+type rawVaultApiRequester struct {
 	t      *testing.T
 	cl     *api.Client
 	prefix string
 }
 
-func newVaultRequester(t *testing.T, prefix string) *vaultApiRequester {
+func newVaultRequester(t *testing.T, prefix string) *rawVaultApiRequester {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		t.Fatalf("can not get client: %v", err)
@@ -102,26 +125,30 @@ func newVaultRequester(t *testing.T, prefix string) *vaultApiRequester {
 
 	client.SetToken(token)
 
-	return &vaultApiRequester{
+	return &rawVaultApiRequester{
 		prefix: prefix,
 		t:      t,
 		cl:     client,
 	}
 }
 
-func (r *vaultApiRequester) Create(name string, params map[string]interface{}) *api.Response {
+func (r *rawVaultApiRequester) Create(name string, params map[string]interface{}) *api.Response {
 	return r.Request("POST", name, params, nil)
 }
 
-func (r *vaultApiRequester) Update(name string, params map[string]interface{}) *api.Response {
+func (r *rawVaultApiRequester) Get(name string) *api.Response {
+	return r.Request("GET", name, nil, nil)
+}
+
+func (r *rawVaultApiRequester) Update(name string, params map[string]interface{}) *api.Response {
 	return r.Request("POST", name, params, nil)
 }
 
-func (r *vaultApiRequester) Delete(name string) *api.Response {
+func (r *rawVaultApiRequester) Delete(name string) *api.Response {
 	return r.Request("DELETE", name, nil, nil)
 }
 
-func (r *vaultApiRequester) ListKeys() ([]string, *api.Response) {
+func (r *rawVaultApiRequester) ListKeys() ([]string, *api.Response) {
 	req := r.newRequest("GET", "", nil, &url.Values{
 		"list": []string{"true"},
 	})
@@ -140,7 +167,7 @@ func (r *vaultApiRequester) ListKeys() ([]string, *api.Response) {
 	return keys, resp
 }
 
-func (r *vaultApiRequester) Request(method, name string, params map[string]interface{}, q *url.Values) *api.Response {
+func (r *rawVaultApiRequester) Request(method, name string, params map[string]interface{}, q *url.Values) *api.Response {
 	req := r.newRequest(method, name, params, q)
 	resp, err := r.cl.RawRequest(req)
 	if resp == nil {
@@ -150,7 +177,7 @@ func (r *vaultApiRequester) Request(method, name string, params map[string]inter
 	return resp
 }
 
-func (r *vaultApiRequester) newRequest(method, name string, params map[string]interface{}, q *url.Values) *api.Request {
+func (r *rawVaultApiRequester) newRequest(method, name string, params map[string]interface{}, q *url.Values) *api.Request {
 	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", r.prefix, name)
 	request := r.cl.NewRequest(method, path)
 	if params != nil {
