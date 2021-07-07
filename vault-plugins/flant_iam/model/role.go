@@ -50,7 +50,13 @@ type Role struct {
 	Description   string `json:"description"`
 	OptionsSchema string `json:"options_schema"`
 
-	RequireOneOfFeatureFlags []string `json:"require_one_of_feature_flags"`
+	RequireOneOfFeatureFlags []FeatureFlagName `json:"require_one_of_feature_flags"`
+	IncludedRoles            []IncludedRole    `json:"included_roles"`
+}
+
+type IncludedRole struct {
+	Name            RoleName `json:"name"`
+	OptionsTemplate string   `json:"options_template"`
 }
 
 func (t *Role) ObjType() string {
