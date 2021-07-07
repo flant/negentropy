@@ -29,7 +29,7 @@ func serviceAccountPaths(b logical.Backend, storage *io.MemoryStore) []*framewor
 
 func (b serviceAccountBackend) paths() []*framework.Path {
 	return []*framework.Path{
-		// Creation
+		// Service account creation
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account",
 			Fields: map[string]*framework.FieldSchema{
@@ -70,7 +70,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Creation with known uuid in advance
+		// Service account creation with known uuid in advance
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/privileged",
 			Fields: map[string]*framework.FieldSchema{
@@ -116,7 +116,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// Service account listing
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -133,7 +133,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Read, update, delete by uuid
+		// Service account by uuid: read, update, delete
 		{
 
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("uuid") + "$",
@@ -190,6 +190,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
+
 		// Multipass creation
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/multipass",
@@ -290,6 +291,117 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleMultipassList(),
 					Summary:  "List multipass IDs",
+				},
+			},
+		},
+
+		// Password creation
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/password",
+			/*
+				UUID       string `json:"uuid"` // PK
+				TenantUUID string `json:"tenant_uuid"`
+				OwnerUUID  string `json:"owner_uuid"`
+
+				Description string `json:"description"`
+
+				CIDRs []string `json:"allowed_cidrs"`
+				Roles []string `json:"allowed_roles" `
+
+				TTL       time.Duration `json:"ttl"`
+
+			*/
+			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+				"description": {
+					Type:        framework.TypeString,
+					Description: "A comment or humans",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed CIDRs to use the password from",
+					Required:    true,
+				},
+				"allowed_roles": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed roles to use the password with",
+					Required:    true,
+				},
+				"ttl": {
+					Type:        framework.TypeInt,
+					Description: "TTL in seconds",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: neverExisting,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handlePasswordCreate(),
+					Summary:  "Create service account password",
+				},
+			},
+		},
+		// Password read or delete
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/password/" + uuid.Pattern("uuid"),
+			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a password",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handlePasswordRead(),
+					Summary:  "Get password by ID",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handlePasswordDelete(),
+					Summary:  "Delete password by ID",
+				},
+			},
+		},
+		// Password list
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/password/?",
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant service account",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePasswordList(),
+					Summary:  "List password IDs",
 				},
 			},
 		},
@@ -443,6 +555,8 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	}
 }
 
+// Multipass
+
 func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var (
@@ -540,6 +654,114 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 		repo := model.NewMultipassRepository(tx)
+
+		ids, err := repo.List(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuids": ids,
+			},
+		}
+
+		return resp, nil
+	}
+}
+
+// Password
+
+func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		var (
+			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
+			validTill = time.Now().Add(ttl).Unix()
+		)
+
+		pass := &model.ServiceAccountPassword{
+			UUID:        uuid.New(),
+			TenantUUID:  data.Get("tenant_uuid").(string),
+			OwnerUUID:   data.Get("owner_uuid").(string),
+			Description: data.Get("description").(string),
+			TTL:         ttl,
+			ValidTill:   validTill,
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			Roles:       data.Get("allowed_roles").([]string),
+		}
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		repo := model.NewServiceAccountPasswordRepository(tx)
+
+		err := repo.Create(pass)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		// TODO return the secret
+		return responseWithDataAndCode(req, pass, http.StatusCreated)
+	}
+}
+
+func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.ServiceAccountPassword{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+		}
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		repo := model.NewServiceAccountPasswordRepository(tx)
+
+		err := repo.Delete(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
+func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.ServiceAccountPassword{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewServiceAccountPasswordRepository(tx)
+
+		pass, err := repo.Get(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+		return responseWithData(pass)
+	}
+}
+
+func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.ServiceAccountPassword{
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewServiceAccountPasswordRepository(tx)
 
 		ids, err := repo.List(filter)
 		if err != nil {

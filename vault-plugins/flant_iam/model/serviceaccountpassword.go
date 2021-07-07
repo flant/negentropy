@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -44,11 +46,13 @@ type ServiceAccountPassword struct {
 
 	Description string `json:"description"`
 
-	ValidTill int64    `json:"valid_till"`
-	CIDRs     []string `json:"allowed_cidrs"`
-	Roles     []string `json:"allowed_roles" `
+	CIDRs []string `json:"allowed_cidrs"`
+	Roles []string `json:"allowed_roles" `
 
-	Secret string `json:"secret,omitempty" sensitive:""`
+	TTL       time.Duration `json:"ttl"`
+	ValidTill int64         `json:"valid_till"` // calculates from TTL on creation
+
+	Secret string `json:"secret,omitempty" sensitive:""` // generates on creation
 }
 
 func (t *ServiceAccountPassword) ObjType() string {
@@ -76,7 +80,8 @@ func (t *ServiceAccountPassword) Unmarshal(data []byte) error {
 Параметры:
 	- uuid – идентификатор пароля
 	- description – комментарий о том, где это используется и зачем (чтобы потом можно было вспомнить).
-	- allowed_roles, allowed_cidrs – аналогично multipass’ам.
+	- allowed_roles – аналогично multipass’ам.
+	- allowed_cidrs – аналогично multipass’ам.
 	- password_ttl – аналогично multipass_ttl (именно multipass_ttl, а не multipass_jwt_ttl).
 Особенности
 	- При создании нового пароля метод возвращает, в качестве результата, сгенерированный пароль в открытом виде (пароль длинный и страшный)

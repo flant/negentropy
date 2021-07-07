@@ -14,7 +14,7 @@ import (
 
 func responseWithData(m model.Marshaller) (*logical.Response, error) {
 	// TODO use req as in responseWithDataAndCode
-	json, err := m.Marshal(false) // no sensitive stuff outside
+	json, err := m.Marshal(false) // no sensitive via HTTP
 	if err != nil {
 		return nil, err
 	}
