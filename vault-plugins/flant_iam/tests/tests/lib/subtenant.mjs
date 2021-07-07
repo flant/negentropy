@@ -10,7 +10,10 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     }
 
     one(p = {}, q = {}) {
-        return join(super.one(p), this.entryName, p[this.entryName]) + stringifyQuery(q)
+        return (
+            join(super.one(p), this.entryName, p[this.entryName]) +
+            stringifyQuery(q)
+        )
     }
 
     collection(p = {}, q = {}) {
@@ -18,10 +21,66 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     }
 
     privileged(p = {}, q = {}) {
-        return join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
+        return (
+            join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
+        )
     }
 }
 
+export class EndpointBuilder {
+    constructor(fields = []) {
+        this.fields = fields
+    }
+
+    one(p = {}, q = {}) {
+        const parts = this.concat(this.fields, p, true)
+        return "/" + parts.join("/") + stringifyQuery(q)
+    }
+
+    collection(p = {}, q = {}) {
+        const parts = this.concat(this.fields, p, false)
+        return "/" + parts.join("/") + stringifyQuery(q)
+    }
+
+    privileged(p = {}, q = {}) {
+        const lastField = this.fields[this.fields.length - 1]
+        p[lastField] = "privileged"
+        const parts = this.concat(this.fields, p, true)
+        return "/" + parts.join("/") + stringifyQuery(q)
+    }
+
+    concat(fields, values, demandTail = false) {
+        const parts = []
+
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i]
+            parts.push(field)
+
+            const value = values[field]
+
+            const isLast = i === fields.length - 1
+            const notLast = !isLast
+
+            if (demandTail || notLast) {
+                if (!value) {
+                    const valstr = JSON.stringify(values)
+                    const msg = `expected to have value for field "${field}", got ${valstr}`
+                    throw new Error(msg)
+                }
+            }
+
+            if (isLast) {
+                if (demandTail) {
+                    parts.push(value)
+                }
+                break
+            }
+
+            parts.push(value)
+        }
+        return parts
+    }
+}
 
 export function genUserPayload(override = {}) {
     return {
@@ -41,6 +100,18 @@ export function genUserPayload(override = {}) {
     }
 }
 
+export function genMultipassPayload(override = {}) {
+    return {
+        ttl: Faker.datatype.number(),
+        max_ttl: Faker.datatype.number(),
+        tenant_uuid: Faker.datatype.uuid(),
+        owner_uuid: Faker.datatype.uuid(),
+        description: Faker.lorem.sentence(),
+        allowed_cidrs: ["10.1.0.0/16"],
+        allowed_roles: ["tenant_admin"],
+        ...override,
+    }
+}
 
 export function genServiceAccountPayload(override = {}) {
     return {
@@ -79,7 +150,6 @@ export function genRoleBindingPayload(override = {}) {
         ...override,
     }
 }
-
 
 export function genRolePayload(override = {}) {
     return {

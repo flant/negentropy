@@ -41,7 +41,7 @@ services:
     image: vault:1.7.1
     volumes:
       - "./build:/vault/plugins"
-      - "./tests/data:/vault/testdata"
+      - "./flant_iam/tests/data:/vault/testdata"
     ports:
       - 8200:8200
     environment:

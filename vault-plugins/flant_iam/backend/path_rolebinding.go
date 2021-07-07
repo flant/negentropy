@@ -226,7 +226,7 @@ func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingRepository(tx)
 
-		obj, err := repo.GetById(id)
+		obj, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -332,7 +332,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingRepository(tx)
 
-		roleBinding, err := repo.GetById(id)
+		roleBinding, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

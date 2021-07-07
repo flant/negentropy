@@ -13,7 +13,8 @@ import (
 )
 
 func responseWithData(m model.Marshaller) (*logical.Response, error) {
-	json, err := m.Marshal(false)
+	// TODO use req as in responseWithDataAndCode
+	json, err := m.Marshal(false) // no sensitive stuff outside
 	if err != nil {
 		return nil, err
 	}

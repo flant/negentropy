@@ -11,7 +11,6 @@ export class TenantEndpointBuilder {
         return "/tenant" + stringifyQuery(q)
     }
 
-
     privileged(p = {}, q = {}) {
         return join("/tenant", "privileged") + stringifyQuery(q)
     }
@@ -27,7 +26,7 @@ export class TenantAPI {
     }
 
     createPriveleged(payload, opts) {
-        return this.api.createPriveleged({ payload, opts })
+        return this.api.createPrivileged({ payload, opts })
     }
 
     read(id, opts) {

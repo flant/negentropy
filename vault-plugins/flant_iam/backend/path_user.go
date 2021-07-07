@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -133,19 +134,127 @@ func (b userBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the user by ID.",
+					Summary:  "Update the user by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the user by ID.",
+					Summary:  "Retrieve the user by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the user by ID.",
+					Summary:  "Deletes the user by ID",
+				},
+			},
+		},
+		// Multipass creation
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass",
+			Fields: map[string]*framework.FieldSchema{
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant user",
+					Required:    true,
+				},
+				"ttl": {
+					Type:        framework.TypeInt,
+					Description: "TTL in seconds",
+					Required:    true,
+				},
+				"max_ttl": {
+					Type:        framework.TypeInt,
+					Description: "Max TTL in seconds",
+					Required:    true,
+				},
+				"description": {
+					Type:        framework.TypeString,
+					Description: "The purpose of issuing",
+					Required:    true,
+				},
+				"allowed_cidrs": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed CIDRs to use the multipass from",
+					Required:    true,
+				},
+				"allowed_roles": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Allowed roles to use the multipass with",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: neverExisting,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleMultipassCreate(),
+					Summary:  "Create user multipass.",
+				},
+			},
+		},
+		// Multipass read or delete
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/" + uuid.Pattern("uuid"),
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant user",
+					Required:    true,
+				},
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a multipass",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleMultipassRead(),
+					Summary:  "Get multipass by ID",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleMultipassDelete(),
+					Summary:  "Delete multipass by ID",
+				},
+			},
+		},
+		// Multipass list
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/?",
+			Fields: map[string]*framework.FieldSchema{
+
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"owner_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of the tenant user",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleMultipassList(),
+					Summary:  "List multipass IDs",
 				},
 			},
 		},
 	}
+}
+
+// neverExisting  is a useful existence check handler to always trigger create operation
+func neverExisting(context.Context, *logical.Request, *framework.FieldData) (bool, error) {
+	return false, nil
 }
 
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
@@ -161,7 +270,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewUserRepository(tx)
 
-		obj, err := repo.GetById(id)
+		obj, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -252,7 +361,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewUserRepository(tx)
 
-		user, err := repo.GetById(id)
+		user, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -278,6 +387,117 @@ func (b *userBackend) handleList() framework.OperationFunc {
 				"uuids": list,
 			},
 		}
+		return resp, nil
+	}
+}
+
+func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		var (
+			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
+			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
+			validTill = time.Now().Add(ttl).Unix()
+		)
+
+		multipass := &model.Multipass{
+			UUID:        uuid.New(),
+			TenantUUID:  data.Get("tenant_uuid").(string),
+			OwnerUUID:   data.Get("owner_uuid").(string),
+			OwnerType:   model.MultipassOwnerUser,
+			Description: data.Get("description").(string),
+			TTL:         ttl,
+			MaxTTL:      maxTTL,
+			ValidTill:   validTill,
+			CIDRs:       data.Get("allowed_cidrs").([]string),
+			Roles:       data.Get("allowed_roles").([]string),
+			Origin:      model.OriginIAM,
+		}
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+		repo := model.NewMultipassRepository(tx)
+
+		err := repo.Create(multipass)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		return responseWithDataAndCode(req, multipass, http.StatusCreated)
+	}
+}
+
+func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+			Origin:     model.OriginIAM,
+		}
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+		repo := model.NewMultipassRepository(tx)
+
+		err := repo.Delete(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
+func (b *userBackend) handleMultipassRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			UUID:       data.Get("uuid").(string),
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewMultipassRepository(tx)
+
+		mp, err := repo.Get(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+		return responseWithData(mp)
+	}
+}
+
+func (b *userBackend) handleMultipassList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		filter := &model.Multipass{
+			TenantUUID: data.Get("tenant_uuid").(string),
+			OwnerUUID:  data.Get("owner_uuid").(string),
+			OwnerType:  model.MultipassOwnerUser,
+		}
+
+		tx := b.storage.Txn(false)
+		repo := model.NewMultipassRepository(tx)
+
+		ids, err := repo.List(filter)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"uuids": ids,
+			},
+		}
+
 		return resp, nil
 	}
 }

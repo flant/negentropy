@@ -10,7 +10,6 @@ export class FeatureFlagEndpointBuilder {
     collection(p = {}, q = {}) {
         return "/feature_flag" + stringifyQuery(q)
     }
-
 }
 
 export class FeatureFlagAPI {

@@ -137,7 +137,7 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewTenantRepository(tx)
 
-		t, err := repo.GetById(id)
+		t, err := repo.GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -223,7 +223,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewTenantRepository(tx)
 
-		tenant, err := repo.GetById(id)
+		tenant, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

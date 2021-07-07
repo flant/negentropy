@@ -40,22 +40,6 @@ func GroupSchema() *memdb.DBSchema {
 	}
 }
 
-/*
-identifier – уникален в рамках тенанта для каждого builtin_type_name
-Пользователи
-Группы
-Сервисные аккаунты
-
-uuid
-tenant_uuid
-identifier
-full_identifier:
-
-users
-service_accounts
-groups
-resource_version
-*/
 type Group struct {
 	UUID            string   `json:"uuid"` // PK
 	TenantUUID      string   `json:"tenant_uuid"`
@@ -67,9 +51,9 @@ type Group struct {
 	Groups          []string `json:"groups"`
 	ServiceAccounts []string `json:"service_accounts"`
 
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extension"`
+	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
 }
 
 func (u *Group) ObjType() string {
@@ -117,7 +101,7 @@ func (r *GroupRepository) save(group *Group) error {
 }
 
 func (r *GroupRepository) Create(group *Group) error {
-	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(group.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -134,7 +118,7 @@ func (r *GroupRepository) Create(group *Group) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) GetById(id string) (*Group, error) {
+func (r *GroupRepository) GetByID(id string) (*Group, error) {
 	raw, err := r.db.First(GroupType, PK, id)
 	if err != nil {
 		return nil, err
@@ -147,7 +131,7 @@ func (r *GroupRepository) GetById(id string) (*Group, error) {
 }
 
 func (r *GroupRepository) Update(group *Group) error {
-	stored, err := r.GetById(group.UUID)
+	stored, err := r.GetByID(group.UUID)
 	if err != nil {
 		return err
 	}
@@ -166,7 +150,7 @@ func (r *GroupRepository) Update(group *Group) error {
 
 	// Update
 
-	tenant, err := r.tenantRepo.GetById(group.TenantUUID)
+	tenant, err := r.tenantRepo.GetByID(group.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -183,7 +167,7 @@ TODO Clean from everywhere:
 	* identity_sharings
 */
 func (r *GroupRepository) Delete(origin ObjectOrigin, id string) error {
-	group, err := r.GetById(id)
+	group, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -217,7 +201,7 @@ func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
 }
 
 func (r *GroupRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetById(ext.OwnerUUID)
+	obj, err := r.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -229,7 +213,7 @@ func (r *GroupRepository) SetExtension(ext *Extension) error {
 }
 
 func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
-	obj, err := r.GetById(uuid)
+	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
 	}

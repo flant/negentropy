@@ -1,6 +1,6 @@
+import { expect } from "chai"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { FeatureFlagAPI, genFeatureFlag } from "./lib/feature_flag.mjs"
-import { expect } from "chai"
 
 describe("Feature flag", function () {
     const rootClient = getClient(rootToken)

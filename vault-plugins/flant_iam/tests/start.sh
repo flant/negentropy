@@ -10,9 +10,16 @@ set -eo pipefail
 if [[ "${ci_mode}x" == "x" ]]; then
   set -x
 
-  pushd ..
-  env OS=linux make build
-  popd
+  # pushd ..
+  # env OS=linux make build
+
+  # rm -rf ../build/*
+  # pushd ../..
+  bash ../../dev-build.sh flant_iam
+  mkdir -p ../build
+  cp ../../build/flant_iam ../build/flant_iam
+
+  # popd
 
   docker stop dev-vault 2>/dev/null || true
   docker rm dev-vault 2>/dev/null || true
@@ -39,7 +46,7 @@ if [[ "${ci_mode}x" != "x" ]]; then
 fi
 
 docker exec "$id" sh -c "
-vault secrets enable -path=flant_iam vault-plugin-flant-iam \
+vault secrets enable -path=flant_iam flant_iam \
 && vault token create -orphan -policy=root -field=token > /vault/testdata/token
 "
 
@@ -52,3 +59,24 @@ fi
 # make enable
 # vault path-help flant_iam
 # vault read flant_iam/tenant/bcfa63ba-41fd-d33b-c13e-ef03daed0aa2
+
+
+
+
+# BIG HELPERS
+
+# docker run --rm -d --name gobuild \
+#     -w /go/src/app \
+#     -v "$PWD/build:/src/build" \
+#     -v "$PWD/flant_iam:/go/src/app/flant_iam" \
+#     -v "$PWD/flant_iam_auth:/go/src/app/flant_iam_auth" \
+#     -v "$PWD/flant_gitopts:/go/src/app/flant_gitopts" \
+#     -v "$PWD/shared:/go/src/app/shared" \
+#     -v /tmp/vault-build:/go/pkg/mod \
+#     -e CGO_ENABLED=1 \
+#     tetafro/golang-gcc:1.16-alpine \
+#     sh -c "echo -e '#!/bin/sh\ncd \$1 && go build -tags musl -o /src/build/\$1 cmd/\$1/main.go' > /gobuild.sh && chmod +x /gobuild.sh && sleep infinity"
+
+# docker exec gobuild /gobuild.sh flant_iam
+# docker exec dev-vault vault plugin reload -mounts=flant_iam/
+# docker exec dev-vault vault plugin reload -plugin flant_iam

@@ -14,7 +14,6 @@ class CRUD {
         return this.client.post(endpoint, payload, opts)
     }
 
-
     put(endpoint, payload, opts) {
         return this.client.put(endpoint, payload, opts)
     }
@@ -48,9 +47,7 @@ export class ExampleEndpointBuilder {
     privileged(p = {}, q = {}) {
         return join(this.prefix, "privileged") + stringifyQuery(q)
     }
-
 }
-
 
 export class API {
     constructor(client, endpointBuilder) {
@@ -66,7 +63,7 @@ export class API {
         })
     }
 
-    createPriveleged({ params = {}, query = {}, payload, opts = {} } = {}) {
+    createPrivileged({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.privileged(params, query)
         return this.client.post(endpoint, payload, {
             ...expectStatus(201),

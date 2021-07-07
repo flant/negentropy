@@ -15,7 +15,7 @@ const (
 	ExtensionOwnerTypeServiceAccount ExtensionOwnerType = ServiceAccountType
 	ExtensionOwnerTypeRoleBinding    ExtensionOwnerType = RoleBindingType
 	ExtensionOwnerTypeGroup          ExtensionOwnerType = GroupType
-	// ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
+	ExtensionOwnerTypeMultipass      ExtensionOwnerType = MultipassType
 )
 
 func (eot ExtensionOwnerType) String() string {
@@ -24,17 +24,17 @@ func (eot ExtensionOwnerType) String() string {
 
 type Extension struct {
 	// Origin is the source where the extension originates from
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:""`
 
 	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
-	OwnerType ExtensionOwnerType `json:"owner_type"`
+	OwnerType ExtensionOwnerType `json:""`
 	// OwnerUUID is the id of an owner object
-	OwnerUUID string `json:"owner_uuid"`
+	OwnerUUID string `json:""`
 
 	// Attributes is the data to pass to other systems transparently
 	Attributes map[string]interface{} `json:"attributes"`
 	// SensitiveAttributes is the data to pass to some other systems transparently
-	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes"`
+	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes" sensitive:""`
 }
 
 type ExtensionRepository struct {
@@ -58,8 +58,10 @@ func (r *ExtensionRepository) Create(ext *Extension) error {
 
 	case GroupType:
 		return NewGroupRepository(r.db).SetExtension(ext)
+
+	case MultipassType:
+		return NewMultipassRepository(r.db).SetExtension(ext)
 	}
-	// TODO: case MultipassType for ServiceAccount :
 	return fmt.Errorf("extension is not supported for type %q", ext.OwnerType)
 }
 

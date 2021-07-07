@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func Test_MergedSchema(t *testing.T) {
+func Test_MergeSchema(t *testing.T) {
 	schema, err := mergeSchema()
 	if err != nil {
 		t.Fatalf("cannot merge schema: %v", err)

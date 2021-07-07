@@ -3,7 +3,7 @@
   "info": {
     "title": "HashiCorp Vault API",
     "description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "license": {
       "name": "Mozilla Public License 2.0",
       "url": "https://www.mozilla.org/en-US/MPL/2.0"
@@ -736,6 +736,39 @@
         }
       }
     },
+    "/flant_iam/kafka/configure": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Setup kafka plugin configuration",
+        "operationId": "postFlant_iamKafkaConfigure",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "self_topic_name": {
+                    "type": "string",
+                    "description": "Kafka topic name for this plugin entities"
+                  }
+                },
+                "required": [
+                  "self_topic_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
@@ -762,7 +795,6 @@
                   }
                 },
                 "required": [
-                  "certificate",
                   "kafka_endpoints"
                 ]
               }
@@ -780,7 +812,7 @@
       "parameters": [
         {
           "name": "force",
-          "description": "Ensforce private key recreation",
+          "description": "Enforce private key recreation",
           "in": "query",
           "schema": {
             "type": "boolean",
@@ -1174,11 +1206,11 @@
                   }
                 },
                 "required": [
-                  "service_accounts",
-                  "uuid",
                   "identifier",
                   "users",
-                  "groups"
+                  "groups",
+                  "service_accounts",
+                  "uuid"
                 ]
               }
             }
@@ -1270,11 +1302,11 @@
                   }
                 },
                 "required": [
+                  "groups",
+                  "service_accounts",
                   "resource_version",
                   "identifier",
-                  "users",
-                  "groups",
-                  "service_accounts"
+                  "users"
                 ]
               }
             }
@@ -1570,12 +1602,12 @@
                   }
                 },
                 "required": [
+                  "uuid",
                   "users",
                   "groups",
                   "service_accounts",
                   "ttl",
-                  "require_mfa",
-                  "uuid"
+                  "require_mfa"
                 ]
               }
             }
@@ -1777,12 +1809,12 @@
                   },
                   "token_max_ttl": {
                     "type": "integer",
-                    "description": "Token TTL in seconds",
+                    "description": "Multipass TTL in seconds",
                     "format": "seconds"
                   },
                   "token_ttl": {
                     "type": "integer",
-                    "description": "Token TTL in seconds",
+                    "description": "Multipass TTL in seconds",
                     "format": "seconds"
                   },
                   "uuid": {
@@ -1792,11 +1824,11 @@
                   }
                 },
                 "required": [
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1805,6 +1837,110 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List multipass IDs",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipass",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass/{uuid}": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a multipass",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Get multipass by ID",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete multipass by ID",
+        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
           }
         }
       }
@@ -1874,21 +2010,21 @@
                   },
                   "token_max_ttl": {
                     "type": "integer",
-                    "description": "Token TTL in seconds",
+                    "description": "Multipass TTL in seconds",
                     "format": "seconds"
                   },
                   "token_ttl": {
                     "type": "integer",
-                    "description": "Token TTL in seconds",
+                    "description": "Multipass TTL in seconds",
                     "format": "seconds"
                   }
                 },
                 "required": [
-                  "identifier",
-                  "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "resource_version"
+                  "resource_version",
+                  "identifier",
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -2001,6 +2137,110 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/user/{owner_uuid}/multipass": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List multipass IDs",
+        "operationId": "getFlant_iamTenantTenant_uuidUserOwner_uuidMultipass",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/user/{owner_uuid}/multipass/{uuid}": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a multipass",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Get multipass by ID",
+        "operationId": "getFlant_iamTenantTenant_uuidUserOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete multipass by ID",
+        "operationId": "deleteFlant_iamTenantTenant_uuidUserOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/user/{uuid}": {
       "parameters": [
         {
@@ -2025,7 +2265,7 @@
         }
       ],
       "get": {
-        "summary": "Retrieve the user by ID.",
+        "summary": "Retrieve the user by ID",
         "operationId": "getFlant_iamTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
@@ -2037,7 +2277,7 @@
         }
       },
       "post": {
-        "summary": "Update the user by ID.",
+        "summary": "Update the user by ID",
         "operationId": "postFlant_iamTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
@@ -2059,8 +2299,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -2073,7 +2313,7 @@
         }
       },
       "delete": {
-        "summary": "Deletes the user by ID.",
+        "summary": "Deletes the user by ID",
         "operationId": "deleteFlant_iamTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
@@ -6583,6 +6823,36 @@
         }
       }
     },
+    "/sys/pprof/allocs": {
+      "get": {
+        "summary": "Returns a sampling of all past memory allocations.",
+        "description": "Returns a sampling of all past memory allocations.",
+        "operationId": "getSysPprofAllocs",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/pprof/block": {
+      "get": {
+        "summary": "Returns stack traces that led to blocking on synchronization primitives",
+        "description": "Returns stack traces that led to blocking on synchronization primitives",
+        "operationId": "getSysPprofBlock",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/sys/pprof/cmdline": {
       "get": {
         "summary": "Returns the running program's command line.",
@@ -6628,6 +6898,21 @@
         }
       }
     },
+    "/sys/pprof/mutex": {
+      "get": {
+        "summary": "Returns stack traces of holders of contended mutexes",
+        "description": "Returns stack traces of holders of contended mutexes",
+        "operationId": "getSysPprofMutex",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/sys/pprof/profile": {
       "get": {
         "summary": "Returns a pprof-formatted cpu profile payload.",
@@ -6648,6 +6933,21 @@
         "summary": "Returns the program counters listed in the request.",
         "description": "Returns the program counters listed in the request.",
         "operationId": "getSysPprofSymbol",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/pprof/threadcreate": {
+      "get": {
+        "summary": "Returns stack traces that led to the creation of new OS threads",
+        "description": "Returns stack traces that led to the creation of new OS threads",
+        "operationId": "getSysPprofThreadcreate",
         "tags": [
           "system"
         ],

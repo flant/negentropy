@@ -1,8 +1,13 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
-import { genUserPayload, SubTenantEntrypointBuilder } from "./lib/subtenant.mjs"
 import { API } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import {
+    EndpointBuilder,
+    genMultipassPayload,
+    genUserPayload,
+    SubTenantEntrypointBuilder,
+} from "./lib/subtenant.mjs"
+import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
 //    /tenant/{tid}/user/{uid}
 
@@ -69,11 +74,13 @@ describe("User", function () {
         })
         const uid = created.data.uuid
         const generated = {
-            // email: "",
+            email: "",
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
             full_identifier: payload.identifier + "@" + tenant.identifier,
+            origin: "iam",
+            extensions: null,
         }
 
         // read
@@ -252,5 +259,140 @@ describe("User", function () {
                 })
             })
         }
+    })
+
+    describe("multipass", function () {
+        const endpointBuilder = new EndpointBuilder([
+            "tenant",
+            "user",
+            "multipass",
+        ])
+        const rootMPClient = new API(rootClient, endpointBuilder)
+
+        async function createMultipass(t, u, override = {}) {
+            const payload = genMultipassPayload(override)
+            const params = { tenant: t, user: u }
+            const { data } = await rootMPClient.create({ params, payload })
+            return data.data
+        }
+
+        it("can be created", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+
+            await createMultipass(t.uuid, u.uuid)
+        })
+
+        it("contains expected data when created", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+
+            const mp = await createMultipass(t.uuid, u.uuid)
+
+            expect(mp)
+                .to.be.an("object")
+                .and.include.keys(
+                    "allowed_cidrs",
+                    "allowed_roles",
+                    "description",
+                    "max_ttl",
+                    "owner_type",
+                    "owner_uuid",
+                    "tenant_uuid",
+                    "origin",
+                    "extensions",
+                    "ttl",
+                    "uuid",
+                    "valid_till",
+                )
+                .and.not.include.keys("salt")
+
+            expect(mp.uuid, "uuid").to.be.a("string")
+            expect(mp.owner_type, "owner_type").to.be.a("string")
+            expect(mp.owner_uuid, "owner_uuid").to.be.a("string")
+            expect(mp.tenant_uuid, "tenant_uuid").to.be.a("string")
+
+            expect(mp.salt, "salt").to.be.undefined
+
+            expect(mp.description, "description").to.be.a("string")
+
+            expect(mp.allowed_cidrs, "allowed_cidrs").to.be.an("array")
+            expect(mp.allowed_roles, "allowed_roles").to.be.an("array")
+
+            expect(mp.ttl, "ttl").to.be.a("number")
+            expect(mp.max_ttl, "max_ttl").to.be.a("number")
+            expect(mp.valid_till, "valid_till")
+                .to.be.a("number")
+                .greaterThan(Date.now() / 1e3)
+        })
+
+        it("can be read", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+            const created = await createMultipass(t.uuid, u.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                user: u.uuid,
+                multipass: created.uuid,
+            }
+            const { data } = await rootMPClient.read({ params })
+            const read = data.data
+
+            expect(read).to.deep.eq(created)
+        })
+
+        it("can be listed", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+
+            const createId = () =>
+                createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
+
+            const ids = await Promise.all([createId(), createId(), createId()])
+
+            const params = {
+                tenant: t.uuid,
+                user: u.uuid,
+            }
+
+            const { data } = await rootMPClient.list({ params })
+
+            expect(data.data.uuids).to.have.all.members(ids)
+        })
+
+        it("can be deleted", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+            const created = await createMultipass(t.uuid, u.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                user: u.uuid,
+                multipass: created.uuid,
+            }
+
+            await rootMPClient.delete({ params })
+
+            await rootMPClient.read({ params, opts: expectStatus(404) })
+        })
+
+        it("cannot be updated", async () => {
+            const t = await createTenant()
+            const u = await createUser(t.uuid)
+            const createdMP = await createMultipass(t.uuid, u.uuid)
+
+            const params = {
+                tenant: t.uuid,
+                user: u.uuid,
+                multipass: createdMP.uuid,
+            }
+
+            const { data } = await rootMPClient.update({
+                params,
+                payload: genMultipassPayload(),
+                opts: expectStatus(405),
+            })
+        })
     })
 })

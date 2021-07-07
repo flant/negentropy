@@ -97,6 +97,7 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		inputObject = &model.Tenant{}
 
 	case model.UserType:
+		// return model.NewUserRepository(txn).Sync(splitted[1], decrypted)
 		inputObject = &model.User{}
 
 	default:
