@@ -113,7 +113,6 @@ export function genMultipassPayload(override = {}) {
     }
 }
 
-
 export function genPasswordPayload(override = {}) {
     return {
         ttl: Faker.datatype.number(),

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/sethvargo/go-password/password"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
@@ -676,12 +677,18 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 			Roles:       data.Get("allowed_roles").([]string),
 		}
 
+		var err error
+		pass.Secret, err = generatePassword()
+		if err != nil {
+			return responseErr(req, err)
+		}
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		repo := model.NewServiceAccountPasswordRepository(tx)
 
-		err := repo.Create(pass)
+		err = repo.Create(pass)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -690,8 +697,14 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		// TODO return the secret
-		return responseWithDataAndCode(req, pass, http.StatusCreated)
+		// Includes sensitive data here
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"password": pass,
+			},
+		}
+
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -762,4 +775,10 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 
 		return resp, nil
 	}
+}
+
+func generatePassword() (string, error) {
+	// Generate a password that is 64 characters long with 10 digits, 10 symbols,
+	// allowing upper and lower case letters, disallowing repeat characters.
+	return password.Generate(64, 10, 10, false, false)
 }

@@ -3,7 +3,8 @@ import { API } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
     EndpointBuilder,
-    genMultipassPayload,genPasswordPayload,
+    genMultipassPayload,
+    genPasswordPayload,
     genServiceAccountPayload,
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
@@ -407,7 +408,10 @@ describe("Service Account", function () {
         async function createPassword(t, sa, override = {}) {
             const payload = genPasswordPayload(override)
             const params = { tenant: t, service_account: sa }
-            const { data } = await rootPasswordClient.create({ params, payload })
+            const { data } = await rootPasswordClient.create({
+                params,
+                payload,
+            })
             return data.data
         }
 
@@ -422,9 +426,9 @@ describe("Service Account", function () {
             const t = await createTenant()
             const sa = await createServiceAccount(t.uuid)
 
-            const mp = await createPassword(t.uuid, sa.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
 
-            expect(mp)
+            expect(password)
                 .to.be.an("object")
                 .and.include.keys(
                     "uuid",
@@ -438,19 +442,21 @@ describe("Service Account", function () {
                     "secret",
                 )
 
-            expect(mp.uuid, "uuid").to.be.a("string")
-            expect(mp.owner_uuid, "owner_uuid").to.be.a("string")
-            expect(mp.tenant_uuid, "tenant_uuid").to.be.a("string")
+            expect(password.uuid, "uuid").to.be.a("string")
+            expect(password.owner_uuid, "owner_uuid").to.be.a("string")
+            expect(password.tenant_uuid, "tenant_uuid").to.be.a("string")
 
-            expect(mp.secret, "secret").to.be.a("string").and.not.be.empty()
+            expect(password.secret, "secret length")
+                .to.be.a("string")
+                .with.length.greaterThanOrEqual(20)
 
-            expect(mp.description, "description").to.be.a("string")
+            expect(password.description, "description").to.be.a("string")
 
-            expect(mp.allowed_cidrs, "allowed_cidrs").to.be.an("array")
-            expect(mp.allowed_roles, "allowed_roles").to.be.an("array")
+            expect(password.allowed_cidrs, "allowed_cidrs").to.be.an("array")
+            expect(password.allowed_roles, "allowed_roles").to.be.an("array")
 
-            expect(mp.ttl, "ttl").to.be.a("number")
-            expect(mp.valid_till, "valid_till")
+            expect(password.ttl, "ttl").to.be.a("number")
+            expect(password.valid_till, "valid_till")
                 .to.be.a("number")
                 .greaterThan(Date.now() / 1e3)
         })
@@ -458,17 +464,19 @@ describe("Service Account", function () {
         it("can be read", async () => {
             const t = await createTenant()
             const sa = await createServiceAccount(t.uuid)
-            const created = await createPassword(t.uuid, sa.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
 
             const params = {
                 tenant: t.uuid,
                 service_account: sa.uuid,
-                password: created.uuid,
+                password: password.uuid,
             }
             const { data } = await rootPasswordClient.read({ params })
             const read = data.data
 
-            expect(read).to.deep.eq(created)
+            // sensitive data is returned only on creation, so we delete it before deep comparison
+            delete password.secret
+            expect(read).to.deep.eq(password)
         })
 
         it("can be listed", async () => {
@@ -476,7 +484,9 @@ describe("Service Account", function () {
             const sa = await createServiceAccount(t.uuid)
 
             const createId = () =>
-                createPassword(t.uuid, sa.uuid).then((mp) => mp.uuid)
+                createPassword(t.uuid, sa.uuid).then(
+                    ({ password }) => password.uuid,
+                )
 
             const ids = await Promise.all([createId(), createId(), createId()])
 
@@ -493,12 +503,12 @@ describe("Service Account", function () {
         it("can be deleted", async () => {
             const t = await createTenant()
             const sa = await createServiceAccount(t.uuid)
-            const created = await createPassword(t.uuid, sa.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
 
             const params = {
                 tenant: t.uuid,
                 service_account: sa.uuid,
-                password: created.uuid,
+                password: password.uuid,
             }
 
             await rootPasswordClient.delete({ params })
@@ -509,12 +519,12 @@ describe("Service Account", function () {
         it("cannot be updated", async () => {
             const t = await createTenant()
             const sa = await createServiceAccount(t.uuid)
-            const createdMP = await createPassword(t.uuid, sa.uuid)
+            const { password } = await createPassword(t.uuid, sa.uuid)
 
             const params = {
                 tenant: t.uuid,
                 service_account: sa.uuid,
-                password: createdMP.uuid,
+                password: password.uuid,
             }
 
             const { data } = await rootPasswordClient.update({

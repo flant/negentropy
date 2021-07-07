@@ -156,8 +156,8 @@ func (r *ServiceAccountPasswordRepository) GetByID(id string) (*ServiceAccountPa
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	password := raw.(*ServiceAccountPassword)
-	return password, nil
+	pass := raw.(*ServiceAccountPassword)
+	return pass, nil
 }
 
 func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]string, error) {
