@@ -2,10 +2,8 @@ package flant_gitops
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
@@ -23,16 +21,13 @@ const (
 	fieldNameGitCredentialUsername                      = "username"
 	fieldNameGitCredentialPassword                      = "password"
 
-	storageKeyConfiguration        = "configuration"
 	storageKeyLastSuccessfulCommit = "last_successful_commit"
-
-	pathPatternConfigure = "^configure/?$"
 )
 
 func configurePaths(b *backend) []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: pathPatternConfigure,
+			Pattern: "^configure/?$",
 			Fields: map[string]*framework.FieldSchema{
 				fieldNameGitRepoUrl: {
 					Type:     framework.TypeString,
@@ -75,7 +70,7 @@ func configurePaths(b *backend) []*framework.Path {
 			},
 		},
 		{
-			Pattern: "configure/git_credential/?",
+			Pattern: "^configure/git_credential/?$",
 			Fields: map[string]*framework.FieldSchema{
 				fieldNameGitCredentialUsername: {
 					Type:        framework.TypeString,
@@ -101,38 +96,18 @@ func configurePaths(b *backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	hclog.L().Debug("Start configuring ...")
+	b.Logger().Debug("Start configuring ...")
 
-	fields.Raw = req.Data
-	if err := fields.Validate(); err != nil {
-		return logical.ErrorResponse(err.Error()), nil
+	resp, err := util.ValidateRequestFields(req, fields)
+	if resp != nil || err != nil {
+		return resp, err
 	}
 
-	for fieldName, schema := range fields.Schema {
-		if schema.Required && req.Get(fieldName) == nil {
-			return logical.ErrorResponse(fmt.Sprintf("required field %q must be set", fieldName)), nil
-		}
-
-		hclog.L().Debug(fmt.Sprintf("Configuring field %s value: %q", fieldName, req.Get(fieldName)))
-
-		switch fieldName {
-		case fieldNameDockerImage:
-			fieldValue := req.Get(fieldName).(string)
-
-			if err := docker.ValidateImageNameWithDigest(fieldValue); err != nil {
-				return logical.ErrorResponse(fmt.Sprintf(`%q field validation failed: %s'`, fieldNameDockerImage, err)), nil
-			}
-		default:
-			continue
-		}
+	if err := docker.ValidateImageNameWithDigest(req.Get(fieldNameDockerImage).(string)); err != nil {
+		return logical.ErrorResponse(fmt.Sprintf(`%q field is invalid: %s'`, fieldNameDockerImage, err)), nil
 	}
 
-	entry, err := logical.StorageEntryJSON(storageKeyConfiguration, fields.Raw)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := req.Storage.Put(ctx, entry); err != nil {
+	if err := putConfiguration(ctx, req.Storage, fields.Raw); err != nil {
 		return nil, err
 	}
 
@@ -140,21 +115,24 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 }
 
 func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	v, err := req.Storage.Get(ctx, storageKeyConfiguration)
+	config, err := getConfiguration(ctx, req.Storage)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get storage entry %q: %s", storageKeyConfiguration, err)
+		return nil, err
+	} else if config == nil {
+		return logical.ErrorResponse("configuration not set"), nil
 	}
 
-	if v == nil {
-		return logical.ErrorResponse("configuration not found"), nil
-	}
-
-	var res map[string]interface{}
-	if err := json.Unmarshal(v.Value, &res); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal storage entry %q: %s", storageKeyConfiguration, err)
-	}
-
-	return &logical.Response{Data: res}, nil
+	return &logical.Response{
+		Data: map[string]interface{}{
+			fieldNameGitRepoUrl:    config.GitRepoUrl,
+			fieldNameGitBranch:     config.GitBranchName,
+			fieldNameGitPollPeriod: config.GitPollPeriod,
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: config.RequiredNumberOfVerifiedSignaturesOnCommit,
+			fieldNameInitialLastSuccessfulCommit:                config.InitialLastSuccessfulCommit,
+			fieldNameDockerImage:                                config.DockerImage,
+			fieldNameCommand:                                    config.Command,
+		},
+	}, nil
 }
 
 func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {

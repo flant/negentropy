@@ -3,7 +3,6 @@ package flant_gitops
 import (
 	"archive/tar"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -14,8 +13,6 @@ import (
 	"github.com/docker/docker/client"
 	goGit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/logboek"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
@@ -76,68 +73,41 @@ func GetPeriodicTaskFunc(b *backend) func(context.Context, *logical.Request) err
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
 	b.Logger().Debug("Started periodic task")
 
-	fields, err := b.getConfiguration(ctx, storage)
+	config, err := getConfiguration(ctx, storage)
 	if err != nil {
-		b.Logger().Debug(fmt.Sprintf("Get configuration failed: %s", err))
 		return err
+	} else if config == nil {
+		b.Logger().Info("Configuration not set")
+		return nil
 	}
 
-	b.Logger().Debug(fmt.Sprintf("Got configuration fields: %#v", fields))
+	b.Logger().Debug(fmt.Sprintf("Got configuration: %+v", config))
 
-	getRequiredConfigurationFieldFunc := func(fieldName string) (interface{}, error) {
-		val, ok := fields.GetOk(fieldName)
-		if !ok {
-			return nil, fmt.Errorf("invalid configuration in storage: the field %q must be set", fieldName)
-		}
-
-		return val, nil
-	}
-
-	// define git credential
-	var gitUsername string
-	var gitPassword string
-	{
-		gitCredential, err := getGitCredential(ctx, storage)
-		if err != nil {
-			return err
-		}
-
-		if gitCredential != nil {
-			gitUsername = gitCredential.Username
-			gitPassword = gitCredential.Password
-		}
+	gitCredentials, err := getGitCredential(ctx, storage)
+	if err != nil {
+		return err
 	}
 
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
 	var headCommit string
 	{
-		repoUrl, err := getRequiredConfigurationFieldFunc(fieldNameGitRepoUrl)
-		if err != nil {
-			return err
-		}
-
-		branchName, err := getRequiredConfigurationFieldFunc(fieldNameGitBranch)
-		if err != nil {
-			return err
-		}
-
-		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %s", repoUrl, branchName))
+		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %s", config.GitRepoUrl, config.GitBranchName))
 
 		var cloneOptions trdlGit.CloneOptions
 		{
-			cloneOptions.BranchName = branchName.(string)
+			cloneOptions.BranchName = config.GitBranchName
 			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
 
-			if gitUsername != "" && gitPassword != "" {
+			if gitCredentials != nil && gitCredentials.Username != "" && gitCredentials.Password != "" {
 				cloneOptions.Auth = &http.BasicAuth{
-					Username: gitUsername,
-					Password: gitPassword,
+					Username: gitCredentials.Username,
+					Password: gitCredentials.Password,
 				}
 			}
 		}
 
-		if gitRepo, err = trdlGit.CloneInMemory(repoUrl.(string), cloneOptions); err != nil {
+		if gitRepo, err = trdlGit.CloneInMemory(config.GitRepoUrl, cloneOptions); err != nil {
 			return err
 		}
 
@@ -162,15 +132,15 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		if entry != nil && string(entry.Value) != "" {
 			lastSuccessfulCommit = string(entry.Value)
 		} else {
-			lastSuccessfulCommit = fields.Get(fieldNameInitialLastSuccessfulCommit).(string)
+			lastSuccessfulCommit = config.InitialLastSuccessfulCommit
 		}
 
-		hclog.L().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
+		b.Logger().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
 	}
 
 	// skip commit if already processed
 	if lastSuccessfulCommit == headCommit {
-		hclog.L().Debug("Head commit not changed: skipping")
+		b.Logger().Debug("Head commit not changed: skipping")
 		return nil
 	}
 
@@ -188,35 +158,25 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 
 	// verify head commit pgp signatures
 	{
-		requiredNumberOfVerifiedSignaturesOnCommit, err := getRequiredConfigurationFieldFunc(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit)
-		if err != nil {
-			return err
-		}
-
 		trustedPGPPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
 		if err != nil {
 			return fmt.Errorf("unable to get trusted public keys: %s", err)
 		}
 
-		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit.(int)); err != nil {
+		requiredNumberOfVerifiedSignaturesOnCommit, err := strconv.Atoi(config.RequiredNumberOfVerifiedSignaturesOnCommit)
+		if err != nil {
+			return fmt.Errorf("unable to convert %q to int from value: %s", fieldNameRequiredNumberOfVerifiedSignaturesOnCommit, err)
+		}
+
+		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit); err != nil {
 			return err
 		}
 
-		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", requiredNumberOfVerifiedSignaturesOnCommit))
+		b.Logger().Debug(fmt.Sprintf("Verified %s commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
 	}
 
 	// run docker build with service dockerfile and context
 	{
-		dockerImage, err := getRequiredConfigurationFieldFunc(fieldNameDockerImage)
-		if err != nil {
-			return err
-		}
-
-		command, err := getRequiredConfigurationFieldFunc(fieldNameCommand)
-		if err != nil {
-			return err
-		}
-
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
 			return fmt.Errorf("unable to create docker client: %s", err)
@@ -233,7 +193,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
 				}
 
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, dockerImage.(string), []string{command.(string)}, false); err != nil {
+				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, false); err != nil {
 					return fmt.Errorf("unable to add service dockerfile to tar: %s", err)
 				}
 
@@ -254,7 +214,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			}
 		}()
 
-		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q", command, dockerImage))
+		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q", config.Command, config.DockerImage))
 
 		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			NoCache:     true,
@@ -271,7 +231,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", command, dockerImage))
+		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", config.Command, config.DockerImage))
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{
@@ -282,40 +242,4 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 	}
 
 	return nil
-}
-
-func (b *backend) getConfiguration(ctx context.Context, storage logical.Storage) (*framework.FieldData, error) {
-	entry, err := storage.Get(ctx, storageKeyConfiguration)
-	if err != nil {
-		return nil, err
-	}
-
-	if entry == nil {
-		return nil, fmt.Errorf("no configuration found in storage")
-	}
-
-	data := make(map[string]interface{})
-	if err := json.Unmarshal(entry.Value, &data); err != nil {
-		return nil, err
-	}
-
-	b.Logger().Debug(fmt.Sprintf("Unmarshalled json: %s", entry.Value))
-
-	fields := &framework.FieldData{}
-	fields.Raw = data
-	fields.Schema = b.getConfigureFieldSchemaMap()
-
-	return fields, nil
-}
-
-func (b *backend) getConfigureFieldSchemaMap() map[string]*framework.FieldSchema {
-	for _, p := range b.Paths {
-		if p.Pattern == pathPatternConfigure {
-			return p.Fields
-		}
-	}
-
-	b.Logger().Debug(fmt.Sprintf("Unexpected configuration, no path has matched pathPatternConfigure=%q", pathPatternConfigure))
-
-	panic("runtime error")
 }
