@@ -1,10 +1,16 @@
 package model
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type Marshaller interface {
 	Marshal(bool) ([]byte, error)
 	Unmarshal([]byte) error
+}
+
+type SensitiveMarshaller interface {
+	Marshal(bool) ([]byte, error)
 }
 
 // OmitSensitive makes shallow copy and omits fields with "sensitive" tag regardless its value.
@@ -19,12 +25,29 @@ func OmitSensitive(obj interface{}) interface{} {
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		_, isSensitive := field.Tag.Lookup(key)
-		if isSensitive {
-			continue
-		}
+		kind := field.Type.Kind()
+		switch kind {
+		case reflect.Map:
+			// relfecting map for embedded extensions
+			m := src.Field(i)
+			iter := m.MapRange()
+			for iter.Next() {
+				if _, ok := iter.Value().Interface().(SensitiveMarshaller); ok {
+					newValue := OmitSensitive(iter.Value().Elem().Interface())
+					p := reflect.New(reflect.TypeOf(newValue))
+					p.Elem().Set(reflect.ValueOf(newValue))
+					m.SetMapIndex(iter.Key(), p)
+				}
+			}
+			fallthrough
 
-		dst.Field(i).Set(src.Field(i))
+		default:
+			_, isSensitive := field.Tag.Lookup(key)
+			if isSensitive {
+				continue
+			}
+			dst.Field(i).Set(src.Field(i))
+		}
 	}
 
 	return dst.Interface()

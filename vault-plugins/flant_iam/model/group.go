@@ -64,8 +64,13 @@ func (u *Group) ObjId() string {
 	return u.UUID
 }
 
-func (u *Group) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(u)
+func (u *Group) Marshal(includeSensitive bool) ([]byte, error) {
+	obj := u
+	if !includeSensitive {
+		u := OmitSensitive(*u).(Group)
+		obj = &u
+	}
+	return jsonutil.EncodeJSON(obj)
 }
 
 func (u *Group) Unmarshal(data []byte) error {

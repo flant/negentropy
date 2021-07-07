@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 
+	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -34,7 +36,21 @@ type Extension struct {
 	// Attributes is the data to pass to other systems transparently
 	Attributes map[string]interface{} `json:"attributes"`
 	// SensitiveAttributes is the data to pass to some other systems transparently
-	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes" sensitive:""`
+	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes,omitempty" sensitive:""`
+}
+
+func (e *Extension) Marshal(includeSensitive bool) ([]byte, error) {
+	obj := e
+	if !includeSensitive {
+		e := OmitSensitive(*e).(Extension)
+		obj = &e
+	}
+	return jsonutil.EncodeJSON(obj)
+}
+
+func (e *Extension) Unmarshal(data []byte) error {
+	err := jsonutil.DecodeJSON(data, e)
+	return err
 }
 
 type ExtensionRepository struct {
