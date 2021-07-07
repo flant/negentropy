@@ -736,6 +736,39 @@
         }
       }
     },
+    "/flant_iam/kafka/configure": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Setup kafka plugin configuration",
+        "operationId": "postFlant_iamKafkaConfigure",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "self_topic_name": {
+                    "type": "string",
+                    "description": "Kafka topic name for this plugin entities"
+                  }
+                },
+                "required": [
+                  "self_topic_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
@@ -762,7 +795,6 @@
                   }
                 },
                 "required": [
-                  "certificate",
                   "kafka_endpoints"
                 ]
               }
@@ -780,7 +812,7 @@
       "parameters": [
         {
           "name": "force",
-          "description": "Ensforce private key recreation",
+          "description": "Enforce private key recreation",
           "in": "query",
           "schema": {
             "type": "boolean",
@@ -988,9 +1020,9 @@
                   }
                 },
                 "required": [
+                  "description",
                   "require_one_of_feature_flags",
-                  "options_schema",
-                  "description"
+                  "options_schema"
                 ]
               }
             }
@@ -1270,11 +1302,11 @@
                   }
                 },
                 "required": [
-                  "groups",
                   "service_accounts",
                   "resource_version",
                   "identifier",
-                  "users"
+                  "users",
+                  "groups"
                 ]
               }
             }
@@ -1445,8 +1477,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -1570,12 +1602,12 @@
                   }
                 },
                 "required": [
-                  "users",
                   "groups",
                   "service_accounts",
                   "ttl",
                   "require_mfa",
-                  "uuid"
+                  "uuid",
+                  "users"
                 ]
               }
             }
@@ -1671,12 +1703,12 @@
                   }
                 },
                 "required": [
-                  "users",
-                  "groups",
-                  "service_accounts",
                   "ttl",
                   "require_mfa",
-                  "resource_version"
+                  "resource_version",
+                  "users",
+                  "groups",
+                  "service_accounts"
                 ]
               }
             }
@@ -1792,11 +1824,11 @@
                   }
                 },
                 "required": [
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1913,6 +1945,110 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/{owner_uuid}/multipass": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List multipass IDs",
+        "operationId": "getFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipass",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/serviceaccount/{owner_uuid}/multipass/{uuid}": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a multipass",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Get multipass by ID",
+        "operationId": "getFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete multipass by ID",
+        "operationId": "deleteFlant_iamTenantTenant_uuidServiceaccountOwner_uuidMultipassUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/user": {
       "parameters": [
         {
@@ -2005,7 +2141,7 @@
       "parameters": [
         {
           "name": "owner_uuid",
-          "description": "ID of a owner",
+          "description": "ID of the tenant user",
           "in": "path",
           "schema": {
             "type": "string",
@@ -2051,7 +2187,7 @@
       "parameters": [
         {
           "name": "owner_uuid",
-          "description": "ID of a owner",
+          "description": "ID of the tenant user",
           "in": "path",
           "schema": {
             "type": "string",
