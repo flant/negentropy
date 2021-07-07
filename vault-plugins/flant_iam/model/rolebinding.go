@@ -52,6 +52,8 @@ type RoleBinding struct {
 	Users           []UserUUID           `json:"users"`
 	Groups          []GroupUUID          `json:"groups"`
 	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
+	AnyProject      bool                 `json:"any_project"`
+	Projects        []ProjectUUID        `json:"projects"`
 
 	Roles                    []BoundRole               `json:"-"`
 	MaterializedRoles        []MaterializedRole        `json:"-"`
@@ -85,11 +87,9 @@ func (u *RoleBinding) Unmarshal(data []byte) error {
 }
 
 type BoundRole struct {
-	Name       RoleName               `json:"name"`
-	Version    string                 `json:"resource_version"`
-	AnyProject bool                   `json:"any_project"`
-	Projects   []ProjectUUID          `json:"projects"`
-	Options    map[string]interface{} `json:"options"`
+	Name    RoleName               `json:"name"`
+	Version string                 `json:"resource_version"`
+	Options map[string]interface{} `json:"options"`
 }
 
 type MaterializedRole struct {
