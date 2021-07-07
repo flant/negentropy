@@ -125,6 +125,20 @@ func (b *TokenController) handleJWTDisableCreate(ctx context.Context, req *logic
 	return switchJWT(ctx, req, false)
 }
 
+func (b *TokenController) IsEnabled(ctx context.Context, req *logical.Request) (bool, error) {
+	isEnabledRaw, err := req.Storage.Get(ctx, "jwt/enable")
+	if err != nil {
+		return false, err
+	}
+	var isEnabled bool
+	err = isEnabledRaw.DecodeJSON(isEnabled)
+	if err != nil {
+		return false, err
+	}
+
+	return isEnabled, nil
+}
+
 const (
 	pathJWTEnableSynopsis = `
 Enable JWT issuing.

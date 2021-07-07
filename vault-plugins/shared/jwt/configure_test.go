@@ -117,12 +117,15 @@ func TestJWTConfigure(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, PrimaryTokenClaims{
-			Issuer:   "https://test",
+			TokenClaims: TokenClaims{
+				IssuedAt: 1619592212,
+				Expiry:   1619592812,
+				Issuer:   "https://test",
+			},
 			Audience: "test",
 			Subject:  "test",
 			JTI:      "8dea54dbe241bb7c6e9da12c6df39fbab2b76b6ad04c70f889d14f516df49a26", // "0 test"
-			IssuedAt: 1619592212,
-			Expiry:   1619592812,
+
 		}, issuedToken)
 	}
 }
