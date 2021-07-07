@@ -35,5 +35,6 @@ clean:
 
 fmt:
 	go fmt $$(go list ./...)
+	gci -local github.com/flant/negentropy
 
 .PHONY: build clean fmt start enable
