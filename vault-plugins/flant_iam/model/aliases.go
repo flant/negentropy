@@ -8,7 +8,7 @@ type (
 	SAUUID          = string
 	RoleName        = string
 	FeatureFlagName = string
-	MultiPassUUID   = string
+	MultipassUUID   = string
 	OwnerUUID       = string
 	RoleBindingUUID = string
 	ReplicaName     = string

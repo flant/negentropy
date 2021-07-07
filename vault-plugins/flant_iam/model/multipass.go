@@ -86,7 +86,7 @@ const (
 )
 
 type Multipass struct {
-	UUID        MultiPassUUID      `json:"uuid"` // PK
+	UUID        MultipassUUID      `json:"uuid"` // PK
 	TenantUUID  TenantUUID         `json:"tenant_uuid"`
 	OwnerUUID   OwnerUUID          `json:"owner_uuid"`
 	OwnerType   MultipassOwnerType `json:"owner_type"`
@@ -107,7 +107,7 @@ func (t *Multipass) ObjType() string {
 	return MultipassType
 }
 
-func (t *Multipass) ObjId() MultiPassUUID {
+func (t *Multipass) ObjId() MultipassUUID {
 	return t.UUID
 }
 
@@ -202,7 +202,7 @@ func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
 	return r.GetByID(filter.UUID)
 }
 
-func (r *MultipassRepository) GetByID(id MultiPassUUID) (*Multipass, error) {
+func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 	raw, err := r.db.First(MultipassType, PK, id)
 	if err != nil {
 		return nil, err
@@ -214,7 +214,7 @@ func (r *MultipassRepository) GetByID(id MultiPassUUID) (*Multipass, error) {
 	return multipass, nil
 }
 
-func (r *MultipassRepository) List(filter *Multipass) ([]MultiPassUUID, error) {
+func (r *MultipassRepository) List(filter *Multipass) ([]MultipassUUID, error) {
 	err := r.validate(filter)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (r *MultipassRepository) List(filter *Multipass) ([]MultiPassUUID, error) {
 		return nil, err
 	}
 
-	ids := []MultiPassUUID{}
+	ids := []MultipassUUID{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -252,7 +252,7 @@ func (r *MultipassRepository) SetExtension(ext *Extension) error {
 	return r.save(obj)
 }
 
-func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid MultiPassUUID) error {
+func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid MultipassUUID) error {
 	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
