@@ -106,9 +106,11 @@ type user struct {
 func (u user) ObjType() string {
 	return "user"
 }
+
 func (u user) ObjId() string {
 	return u.UUID
 }
+
 func (u user) Marshal(_ bool) ([]byte, error) {
 	return json.Marshal(u)
 }
@@ -122,9 +124,11 @@ type group struct {
 func (g group) ObjType() string {
 	return "group"
 }
+
 func (g group) ObjId() string {
 	return g.UUID
 }
+
 func (g group) Marshal(_ bool) ([]byte, error) {
 	return json.Marshal(g)
 }
