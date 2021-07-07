@@ -14,6 +14,9 @@ endif
 
 all: fmt build start
 
+lint:
+	GOOS=$(OS) GOARCH="$(GOARCH)" golangci-lint run
+
 build:
 	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vault-plugin-flant-gitops cmd/flant_gitops/main.go
 
