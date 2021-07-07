@@ -8,30 +8,30 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-func Test_TokenDbSchema(t *testing.T) {
-	schema := UserSchema()
+func Test_MultipassDbSchema(t *testing.T) {
+	schema := MultipassSchema()
 	if err := schema.Validate(); err != nil {
-		t.Fatalf("token schema is invalid: %v", err)
+		t.Fatalf("multipass schema is invalid: %v", err)
 	}
 }
 
-func Test_TokenMarshalling(t *testing.T) {
-	flipflopToken := func(t *testing.T, token *Multipass, includeSensitive bool) *Multipass {
+func Test_MultipassMarshalling(t *testing.T) {
+	flipflopMultipass := func(t *testing.T, token *Multipass, includeSensitive bool) *Multipass {
 		j, err := token.Marshal(includeSensitive)
 		if err != nil {
-			t.Fatalf("cannot marshal token without sensitive data: %v", err)
+			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
 
 		restored := &Multipass{}
 		err = restored.Unmarshal(j)
 		if err != nil {
-			t.Fatalf("cannot unmarshal token back: %v", err)
+			t.Fatalf("cannot unmarshal multipass back: %v", err)
 		}
 
 		return restored
 	}
 
-	initialToken := &Multipass{
+	initialMultipass := &Multipass{
 		UUID:        uuid.New(),
 		TenantUUID:  uuid.New(),
 		OwnerUUID:   uuid.New(),
@@ -45,19 +45,19 @@ func Test_TokenMarshalling(t *testing.T) {
 	}
 
 	{
-		restored := flipflopToken(t, initialToken, true)
+		restored := flipflopMultipass(t, initialMultipass, true)
 
-		if !reflect.DeepEqual(initialToken, restored) {
-			t.Fatalf("expected to have the same token with sensitive data: was=%v, became=%v", initialToken, restored)
+		if !reflect.DeepEqual(initialMultipass, restored) {
+			t.Fatalf("expected to have the same multipass with sensitive data: was=%v, became=%v", initialMultipass, restored)
 		}
 	}
 
 	{
-		restored := flipflopToken(t, initialToken, false)
+		restored := flipflopMultipass(t, initialMultipass, false)
 
-		initialToken.Salt = "" // clean what is expected to be sensitive
-		if !reflect.DeepEqual(initialToken, restored) {
-			t.Fatalf("expected omitted sensitive data: was=%v, became=%v", initialToken, restored)
+		initialMultipass.Salt = "" // clean what is expected to be sensitive
+		if !reflect.DeepEqual(initialMultipass, restored) {
+			t.Fatalf("expected omitted sensitive data: was=%v, became=%v", initialMultipass, restored)
 		}
 	}
 }
