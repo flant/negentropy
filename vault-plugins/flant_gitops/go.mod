@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
+	github.com/flant/negentropy/vault-plugins/shared v0.0.0-20210707145412-de52026e9346 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/go-git/go-git/v5 v5.3.0
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

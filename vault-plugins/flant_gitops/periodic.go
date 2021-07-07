@@ -30,45 +30,43 @@ const (
 	lastPeriodicRunTimestampKey = "last_periodic_run_timestamp"
 )
 
-func GetPeriodicTaskFunc(b *backend) func(context.Context, *logical.Request) error {
-	return func(_ context.Context, req *logical.Request) error {
-		ctx := context.Background()
+func (b *backend) PeriodicTask(req *logical.Request) error {
+	ctx := context.Background()
 
-		entry, err := req.Storage.Get(ctx, lastPeriodicRunTimestampKey)
-		if err != nil {
-			return fmt.Errorf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
-		}
+	entry, err := req.Storage.Get(ctx, lastPeriodicRunTimestampKey)
+	if err != nil {
+		return fmt.Errorf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
+	}
 
-		if entry != nil {
-			lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
-			// TODO: use fieldNameGitPollPeriod
-			if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < 5*time.Minute {
-				return nil
-			}
-		}
-
-		now := systemClock.Now()
-		uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, b.periodicTask)
-
-		if err == queue_manager.QueueBusyError {
-			// TODO: use fieldNameGitPollPeriod
-			b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", 5*time.Minute))
+	if entry != nil {
+		lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
+		// TODO: use fieldNameGitPollPeriod
+		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < 5*time.Minute {
 			return nil
 		}
+	}
 
-		if err != nil {
-			return fmt.Errorf("error adding queue manager task: %s", err)
-		}
+	now := systemClock.Now()
+	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, b.periodicTask)
 
-		if err := req.Storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
-			return fmt.Errorf("error putting last flant gitops run timestamp record by key %q: %s", lastPeriodicRunTimestampKey, err)
-		}
-
-		b.LastPeriodicTaskUUID = uuid
-		b.Logger().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
-
+	if err == queue_manager.QueueBusyError {
+		// TODO: use fieldNameGitPollPeriod
+		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", 5*time.Minute))
 		return nil
 	}
+
+	if err != nil {
+		return fmt.Errorf("error adding queue manager task: %s", err)
+	}
+
+	if err := req.Storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
+		return fmt.Errorf("error putting last flant gitops run timestamp record by key %q: %s", lastPeriodicRunTimestampKey, err)
+	}
+
+	b.LastPeriodicTaskUUID = uuid
+	b.Logger().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
+
+	return nil
 }
 
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
