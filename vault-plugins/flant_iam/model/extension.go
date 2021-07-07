@@ -15,7 +15,7 @@ const (
 	ExtensionOwnerTypeServiceAccount ExtensionOwnerType = ServiceAccountType
 	ExtensionOwnerTypeRoleBinding    ExtensionOwnerType = RoleBindingType
 	ExtensionOwnerTypeGroup          ExtensionOwnerType = GroupType
-	// ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "serviceaccount_multipass" or just multipass
+	// ExtensionOwnerTypeServiceAccountMultipass ExtensionOwnerType = "service_account_multipass" or just multipass
 )
 
 func (eot ExtensionOwnerType) String() string {

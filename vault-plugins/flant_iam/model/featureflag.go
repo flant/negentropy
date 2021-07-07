@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	FeatureFlagType = "featureflag" // also, memdb schema name
+	FeatureFlagType = "feature_flag" // also, memdb schema name
 )
 
 func FeatureFlagSchema() *memdb.DBSchema {

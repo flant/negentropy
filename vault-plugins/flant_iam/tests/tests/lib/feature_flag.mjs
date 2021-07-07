@@ -4,11 +4,11 @@ import { join } from "path"
 
 export class FeatureFlagEndpointBuilder {
     one(p = {}, q = {}) {
-        return join("/featureflag", p.name) + stringifyQuery(q)
+        return join("/feature_flag", p.name) + stringifyQuery(q)
     }
 
     collection(p = {}, q = {}) {
-        return "/featureflag" + stringifyQuery(q)
+        return "/feature_flag" + stringifyQuery(q)
     }
 }
 

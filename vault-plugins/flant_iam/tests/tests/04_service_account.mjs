@@ -9,13 +9,13 @@ import {
 } from "./lib/subtenant.mjs"
 import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
-//    /tenant/{tid}/serviceaccount/{said}
+//    /tenant/{tid}/service_account/{said}
 
 describe("Service Account", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
-    const entrypointBuilder = new SubTenantEntrypointBuilder("serviceaccount")
+    const entrypointBuilder = new SubTenantEntrypointBuilder("service_account")
     const rootServiceAccountClient = new API(rootClient, entrypointBuilder)
 
     function genPayload(override) {
@@ -85,7 +85,7 @@ describe("Service Account", function () {
 
         // read
         const { data: read } = await rootServiceAccountClient.read({
-            params: { tenant: tid, serviceaccount: said },
+            params: { tenant: tid, service_account: said },
         })
 
         expect(read.data).to.deep.eq(
@@ -111,7 +111,7 @@ describe("Service Account", function () {
         const payload = genPayload({
             resource_version: created.resource_version,
         })
-        const params = { tenant: tid, serviceaccount: created.uuid }
+        const params = { tenant: tid, service_account: created.uuid }
         const { data: updated } = await rootServiceAccountClient.update({
             params,
             payload,
@@ -132,7 +132,7 @@ describe("Service Account", function () {
         const said = serviceAccount.uuid
 
         // delete
-        const params = { tenant: tid, serviceaccount: said }
+        const params = { tenant: tid, service_account: said }
         await rootServiceAccountClient.delete({ params })
 
         // read
@@ -160,14 +160,14 @@ describe("Service Account", function () {
 
         await rootTenantAPI.delete({ params: { tenant: tid } })
 
-        const params = { tenant: tid, serviceaccount: serviceAccount.uuid }
+        const params = { tenant: tid, service_account: serviceAccount.uuid }
         const opts = expectStatus(404)
         await rootServiceAccountClient.read({ params, opts })
     })
 
     describe("when does not exist", () => {
         const opts = expectStatus(404)
-        const params = { serviceaccount: "no-such" }
+        const params = { service_account: "no-such" }
 
         before("create tenant", async () => {
             params.tenant = await createTenantId()
@@ -229,7 +229,7 @@ describe("Service Account", function () {
                 const said = data.data.uuid
 
                 await unauth.read({
-                    params: { ...params, serviceaccount: said },
+                    params: { ...params, service_account: said },
                     opts,
                 })
             })
@@ -241,7 +241,7 @@ describe("Service Account", function () {
                 })
                 const said = data.data.uuid
                 await unauth.update({
-                    params: { ...params, serviceaccount: said },
+                    params: { ...params, service_account: said },
                     payload,
                     opts,
                 })
@@ -254,7 +254,7 @@ describe("Service Account", function () {
                 })
                 const said = data.data.uuid
                 await unauth.delete({
-                    params: { ...params, serviceaccount: said },
+                    params: { ...params, service_account: said },
                     opts,
                 })
             })
@@ -264,30 +264,30 @@ describe("Service Account", function () {
     describe("multipass", function () {
         const endpointBuilder = new EndpointBuilder([
             "tenant",
-            "serviceaccount",
+            "user",
             "multipass",
         ])
         const rootMPClient = new API(rootClient, endpointBuilder)
 
         async function createMultipass(t, u, override = {}) {
             const payload = genMultipassPayload(override)
-            const params = { tenant: t, serviceaccount: u }
+            const params = { tenant: t, user: u }
             const { data } = await rootMPClient.create({ params, payload })
             return data.data
         }
 
         it("can be created", async () => {
             const t = await createTenant()
-            const sa = await createServiceAccount(t.uuid)
+            const u = await createServiceAccount(t.uuid)
 
-            await createMultipass(t.uuid, sa.uuid)
+            await createMultipass(t.uuid, u.uuid)
         })
 
         it("contains expected data when created", async () => {
             const t = await createTenant()
-            const sa = await createServiceAccount(t.uuid)
+            const u = await createServiceAccount(t.uuid)
 
-            const mp = await createMultipass(t.uuid, sa.uuid)
+            const mp = await createMultipass(t.uuid, u.uuid)
 
             expect(mp)
                 .to.be.an("object")
@@ -333,7 +333,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                serviceaccount: u.uuid,
+                user: u.uuid,
                 multipass: created.uuid,
             }
             const { data } = await rootMPClient.read({ params })
@@ -353,7 +353,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                serviceaccount: u.uuid,
+                user: u.uuid,
             }
 
             const { data } = await rootMPClient.list({ params })
@@ -368,7 +368,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                serviceaccount: u.uuid,
+                user: u.uuid,
                 multipass: created.uuid,
             }
 
@@ -384,7 +384,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                serviceaccount: u.uuid,
+                user: u.uuid,
                 multipass: createdMP.uuid,
             }
 

@@ -7,13 +7,13 @@ import {
 } from "./lib/subtenant.mjs"
 import { API } from "./lib/api.mjs"
 
-//    /tenant/{tid}/rolebinding/{rbid}
+//    /tenant/{tid}/role_binding/{rbid}
 
 describe("Role Binding", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
-    const entrypointBuilder = new SubTenantEntrypointBuilder("rolebinding")
+    const entrypointBuilder = new SubTenantEntrypointBuilder("role_binding")
     const rootRoleBindingClient = new API(rootClient, entrypointBuilder)
 
     function genPayload(override) {
@@ -78,7 +78,7 @@ describe("Role Binding", function () {
         }
 
         // read
-        const params = { tenant: tid, rolebinding: rbid }
+        const params = { tenant: tid, role_binding: rbid }
         const { data: read } = await rootRoleBindingClient.read({ params })
 
         const subResp = { ...payload, ...generated }
@@ -110,7 +110,7 @@ describe("Role Binding", function () {
         const payload = genPayload({
             resource_version: created.resource_version,
         })
-        const params = { tenant: tid, rolebinding: created.uuid }
+        const params = { tenant: tid, role_binding: created.uuid }
         const { data: updated } = await rootRoleBindingClient.update({
             params,
             payload,
@@ -131,7 +131,7 @@ describe("Role Binding", function () {
         const rbid = roleBinding.uuid
 
         // delete
-        const params = { tenant: tid, rolebinding: rbid }
+        const params = { tenant: tid, role_binding: rbid }
         await rootRoleBindingClient.delete({ params })
 
         // read
@@ -159,14 +159,14 @@ describe("Role Binding", function () {
 
         await rootTenantAPI.delete({ params: { tenant: tid } })
 
-        const params = { tenant: tid, rolebinding: roleBinding.uuid }
+        const params = { tenant: tid, role_binding: roleBinding.uuid }
         const opts = expectStatus(404)
         await rootRoleBindingClient.read({ params, opts })
     })
 
     describe("when does not exist", () => {
         const opts = expectStatus(404)
-        const params = { rolebinding: "no-such" }
+        const params = { role_binding: "no-such" }
 
         before("create tenant", async () => {
             params.tenant = await createTenantId()
@@ -228,7 +228,7 @@ describe("Role Binding", function () {
                 const rbid = data.data.uuid
 
                 await unauth.read({
-                    params: { ...params, rolebinding: rbid },
+                    params: { ...params, role_binding: rbid },
                     opts,
                 })
             })
@@ -240,7 +240,7 @@ describe("Role Binding", function () {
                 })
                 const rbid = data.data.uuid
                 await unauth.update({
-                    params: { ...params, rolebinding: rbid },
+                    params: { ...params, role_binding: rbid },
                     payload,
                     opts,
                 })
@@ -253,7 +253,7 @@ describe("Role Binding", function () {
                 })
                 const rbid = data.data.uuid
                 await unauth.delete({
-                    params: { ...params, rolebinding: rbid },
+                    params: { ...params, role_binding: rbid },
                     opts,
                 })
             })

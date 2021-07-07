@@ -28,7 +28,7 @@ func (b featureFlagBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "featureflag",
+			Pattern: "feature_flag",
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeNameString,
@@ -49,7 +49,7 @@ func (b featureFlagBackend) paths() []*framework.Path {
 		},
 		// List
 		{
-			Pattern: "featureflag/?",
+			Pattern: "feature_flag/?",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList(),
@@ -60,7 +60,7 @@ func (b featureFlagBackend) paths() []*framework.Path {
 		// Read, update, delete by name
 		{
 
-			Pattern: "featureflag/" + framework.GenericNameRegex("name") + "$",
+			Pattern: "feature_flag/" + framework.GenericNameRegex("name") + "$",
 			Fields: map[string]*framework.FieldSchema{
 
 				"name": {

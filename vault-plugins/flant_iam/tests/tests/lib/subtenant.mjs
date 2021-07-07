@@ -6,7 +6,7 @@ import { join } from "path"
 export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     constructor(name) {
         super()
-        this.entryName = name // e.g. "user" or "serviceaccount"
+        this.entryName = name // e.g. "user" or "service_account"
     }
 
     one(p = {}, q = {}) {
@@ -135,7 +135,7 @@ export function genGroupPayload(override = {}) {
         identifier: Faker.lorem.word(),
         users: [],
         groups: [],
-        serviceaccounts: [],
+        service_accounts: [],
         ...override,
     }
 }
@@ -144,7 +144,7 @@ export function genRoleBindingPayload(override = {}) {
     return {
         users: [],
         groups: [],
-        serviceaccounts: [],
+        service_accounts: [],
         ttl: Faker.datatype.number(),
         require_mfa: Math.random() > 0.5,
         ...override,

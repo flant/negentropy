@@ -31,7 +31,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -72,7 +72,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/privileged",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
@@ -118,7 +118,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		},
 		// Listing
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/?",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/?",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -129,14 +129,14 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all service accounts IDs.",
+					Summary:  "Lists all serviceAccounts IDs.",
 				},
 			},
 		},
 		// Read, update, delete by uuid
 		{
 
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/serviceaccount/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,

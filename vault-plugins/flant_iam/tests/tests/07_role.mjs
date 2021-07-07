@@ -78,7 +78,7 @@ describe("Role", function () {
             "description",
             "type",
             "options_schema",
-            "require_one_of_featureflags",
+            "require_one_of_feature_flags",
         )
     })
 

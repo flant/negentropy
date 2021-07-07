@@ -49,7 +49,7 @@ type Group struct {
 	FullIdentifier  string   `json:"full_identifier"`
 	Users           []string `json:"users"`
 	Groups          []string `json:"groups"`
-	ServiceAccounts []string `json:"serviceaccounts"`
+	ServiceAccounts []string `json:"service_accounts"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -162,7 +162,7 @@ func (r *GroupRepository) Update(group *Group) error {
 /*
 TODO Clean from everywhere:
 	* other groups
-	* rolebindings
+	* role_bindings
 	* approvals
 	* identity_sharings
 */

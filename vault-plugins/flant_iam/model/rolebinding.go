@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	RoleBindingType = "rolebinding" // also, memdb schema name
+	RoleBindingType = "role_binding" // also, memdb schema name
 
 )
 
@@ -51,7 +51,7 @@ type RoleBinding struct {
 
 	Users           []string `json:"users"`
 	Groups          []string `json:"groups"`
-	ServiceAccounts []string `json:"serviceaccounts"`
+	ServiceAccounts []string `json:"service_accounts"`
 
 	Roles                    []BoundRole               `json:"-"`
 	MaterializedRoles        []MaterializedRole        `json:"-"`

@@ -51,7 +51,7 @@ export function genRoleUpdatePayload(override = {}) {
         description: Faker.lorem.sentence(),
         type: Math.random() > 0.5 ? "tenant" : "project",
         options_schema: "",
-        require_one_of_featureflags: [],
+        require_one_of_feature_flags: [],
         ...override,
     }
 }
@@ -62,7 +62,7 @@ export function genRoleCreatePayload(override = {}) {
         description: Faker.lorem.sentence(),
         type: Math.random() > 0.5 ? "tenant" : "project",
         options_schema: "",
-        require_one_of_featureflags: [],
+        require_one_of_feature_flags: [],
         ...override,
     }
 }

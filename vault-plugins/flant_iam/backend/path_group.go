@@ -52,7 +52,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -98,7 +98,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -167,7 +167,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -225,7 +225,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			Identifier:      data.Get("identifier").(string),
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("serviceaccounts").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 			Origin:          model.OriginIAM,
 		}
 
@@ -258,7 +258,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			BuiltinType:     "",
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("serviceaccounts").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 			Origin:          model.OriginIAM,
 		}
 

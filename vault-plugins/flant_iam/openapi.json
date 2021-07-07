@@ -1206,11 +1206,11 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "users",
                   "groups",
                   "serviceaccounts",
-                  "uuid"
+                  "uuid",
+                  "identifier",
+                  "users"
                 ]
               }
             }
@@ -1302,11 +1302,11 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier",
                   "users",
                   "groups",
-                  "serviceaccounts"
+                  "serviceaccounts",
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1405,8 +1405,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -1602,12 +1602,12 @@
                   }
                 },
                 "required": [
+                  "uuid",
                   "users",
                   "groups",
                   "serviceaccounts",
                   "ttl",
-                  "require_mfa",
-                  "uuid"
+                  "require_mfa"
                 ]
               }
             }
@@ -1703,12 +1703,12 @@
                   }
                 },
                 "required": [
+                  "groups",
                   "serviceaccounts",
                   "ttl",
                   "require_mfa",
                   "resource_version",
-                  "users",
-                  "groups"
+                  "users"
                 ]
               }
             }
@@ -1824,11 +1824,11 @@
                   }
                 },
                 "required": [
-                  "token_max_ttl",
                   "uuid",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl"
+                  "token_ttl",
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2020,11 +2020,11 @@
                   }
                 },
                 "required": [
+                  "resource_version",
+                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl",
-                  "resource_version",
-                  "identifier"
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2123,8 +2123,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ServiceAccountType = "serviceaccount" // also, memdb schema name
+	ServiceAccountType = "service_account" // also, memdb schema name
 
 )
 
@@ -180,7 +180,7 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 /*
 TODO
 	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
-	* При удалении необходимо удалить из всех связей (из групп, из rolebinding’ов, из approval’ов и пр.)
+	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
 func (r *ServiceAccountRepository) delete(id string) error {
 	sa, err := r.GetByID(id)

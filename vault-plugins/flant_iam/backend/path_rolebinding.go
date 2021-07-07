@@ -31,7 +31,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/rolebinding",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -53,7 +53,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -82,7 +82,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/rolebinding/privileged",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
@@ -104,7 +104,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -133,7 +133,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		},
 		// Listing
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/rolebinding/?",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/?",
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -151,7 +151,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		// Read, update, delete by uuid
 		{
 
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/rolebinding/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
@@ -178,7 +178,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Group UUIDs",
 					Required:    true,
 				},
-				"serviceaccounts": {
+				"service_accounts": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Service account UUIDs",
 					Required:    true,
@@ -249,7 +249,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			RequireMFA:      data.Get("require_mfa").(bool),
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("serviceaccounts").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 			Origin:          model.OriginIAM,
 		}
 
@@ -285,7 +285,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			RequireMFA:      data.Get("require_mfa").(bool),
 			Users:           data.Get("users").([]string),
 			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("serviceaccounts").([]string),
+			ServiceAccounts: data.Get("service_accounts").([]string),
 			Origin:          model.OriginIAM,
 		}
 
