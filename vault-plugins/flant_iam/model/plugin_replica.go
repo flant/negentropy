@@ -13,7 +13,7 @@ const (
 )
 
 type Replica struct {
-	Name      string         `json:"name"`
+	Name      ReplicaName    `json:"name"`
 	TopicType string         `json:"type"`
 	PublicKey *rsa.PublicKey `json:"replica_key"`
 }
@@ -26,7 +26,7 @@ func (r Replica) ObjType() string {
 	return ReplicaType
 }
 
-func (r Replica) ObjId() string {
+func (r Replica) ObjId() ReplicaName {
 	return r.Name
 }
 
