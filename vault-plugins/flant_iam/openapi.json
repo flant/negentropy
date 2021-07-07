@@ -1206,11 +1206,11 @@
                   }
                 },
                 "required": [
+                  "identifier",
+                  "users",
                   "groups",
                   "service_accounts",
-                  "uuid",
-                  "identifier",
-                  "users"
+                  "uuid"
                 ]
               }
             }
@@ -1477,8 +1477,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1602,12 +1602,12 @@
                   }
                 },
                 "required": [
+                  "uuid",
+                  "users",
                   "groups",
                   "service_accounts",
                   "ttl",
-                  "require_mfa",
-                  "uuid",
-                  "users"
+                  "require_mfa"
                 ]
               }
             }
@@ -1703,12 +1703,12 @@
                   }
                 },
                 "required": [
-                  "ttl",
-                  "require_mfa",
                   "resource_version",
                   "users",
                   "groups",
-                  "service_accounts"
+                  "service_accounts",
+                  "ttl",
+                  "require_mfa"
                 ]
               }
             }
@@ -1824,11 +1824,11 @@
                   }
                 },
                 "required": [
-                  "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -2373,8 +2373,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
