@@ -4,17 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/openapi"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
-    openapi "github.com/getkin/kin-openapi/openapi3"
 )
 
 const HttpPathJwtType = "jwt_type"
@@ -80,7 +79,6 @@ func pathJwtType(b *flantIamAuthBackend) *framework.Path {
 		HelpDescription: "Jwt token types using for issue jwt tokens on /issue/* methods",
 	}
 
-	tokenutil.AddTokenFields(p.Fields)
 	return p
 }
 
@@ -90,11 +88,11 @@ func (b *flantIamAuthBackend) pathJwtTypeExistenceCheck(ctx context.Context, req
 
 	tnx := b.storage.Txn(false)
 	repo := repos.NewJWTIssueTypeRepo(tnx)
-	method, err := repo.Get(typeName)
+	jwtType, err := repo.Get(typeName)
 	if err != nil {
 		return false, err
 	}
-	return method != nil, nil
+	return jwtType != nil, nil
 }
 
 func (b *flantIamAuthBackend) pathJwtTypesList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -227,15 +225,14 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 	}
 
 	specRaw, ok := data.GetOk("options_schema")
+	var validator openapi.Validator
 	if ok {
 		spec, ok := specRaw.(string)
 		if !ok {
 			return nil, fmt.Errorf("cannot cast 'options_schema' to string")
 		}
 
-		loader := openapi.Loader{}
-
-		_, err := loader.LoadFromData([]byte(spec))
+		validator, err = openapi.SchemaValidator(spec)
 		if err != nil {
 			return logical.ErrorResponse(fmt.Sprintf("incorrect 'options_schema': %v", err)), nil
 		}
@@ -254,6 +251,8 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 	if err != nil {
 		return nil, err
 	}
+
+	b.setJWTTypeValidator(jwtType, validator)
 
 	return resp, nil
 }
