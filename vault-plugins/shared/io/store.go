@@ -208,6 +208,7 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryS
 }
 
 func (ms *MemoryStore) SetLogger(l log.Logger) {
+	ms.logger = l
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
@@ -249,6 +250,9 @@ func (ms *MemoryStore) GetKafkaBroker() *kafka.MessageBroker {
 func (ms *MemoryStore) RemoveKafkaSource(name string) {
 	ms.kafkaMutex.Lock()
 	defer ms.kafkaMutex.Unlock()
+	if name == "" {
+		return
+	}
 
 	ks, ok := ms.kafkaMapSources[name]
 	if !ok {
@@ -271,6 +275,9 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 	ms.kafkaMutex.Lock()
 	defer ms.kafkaMutex.Unlock()
+	if replicaName == "" {
+		return
+	}
 
 	ks, ok := ms.replicaDestinations[replicaName]
 	if !ok {

@@ -22,7 +22,7 @@ function build_plugin() {
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
     tetafro/golang-gcc:1.16-alpine \
-    go build -a -tags musl -o /src/build/$PLUGIN_NAME cmd/$PLUGIN_NAME/main.go
+    go build -tags musl -o /src/build/$PLUGIN_NAME cmd/$PLUGIN_NAME/main.go
 }
 
 mkdir -p $SCRIPTDIR/build

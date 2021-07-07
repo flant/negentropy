@@ -21,7 +21,6 @@ import (
 type SelfKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
-	topic     string
 
 	api *vault.VaultEntityDownstreamApi
 
@@ -32,7 +31,6 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, api *vault.VaultEntityDow
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
-		topic:     kf.PluginConfig.SelfTopicName,
 		api:       api,
 
 		stopC: make(chan struct{}),
