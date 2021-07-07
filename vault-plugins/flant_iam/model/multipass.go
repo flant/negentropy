@@ -68,7 +68,7 @@ func MultipassSchema() *memdb.DBSchema {
 
 description – комментарий о том, где это используется и зачем (чтобы потом можно было вспомнить).
 ...
-allowed_roles – список ролей, которые может использовать этот токен (итоговый список вычисляется на основании пересечения role_binding’ов и этого массива, можно использовать *, например: “iam.*”)
+allowed_roles – список ролей, которые может использовать этот токен (итоговый список вычисляется на основании пересечения rolebinding’ов и этого массива, можно использовать *, например: “iam.*”)
 …
 allowed_cidrs
 token_ttl – период жизни JWT токена (по-умолчанию 2 недели, токен должен быть ротирован не реже, чем раз в TTL);
@@ -81,7 +81,7 @@ token_max_ttl – максимальная продолжительность ж
 type MultipassOwnerType string
 
 const (
-	MultipassOwnerServiceAccount MultipassOwnerType = "service_account"
+	MultipassOwnerServiceAccount MultipassOwnerType = "serviceaccount"
 	MultipassOwnerUser           MultipassOwnerType = "user"
 )
 

@@ -1,6 +1,6 @@
 import { expect } from "chai"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { FeatureFlagAPI, genFeatureFlag } from "./lib/feature_flag.mjs"
+import { FeatureFlagAPI, genFeatureFlag } from "./lib/featureflag.mjs"
 
 describe("Feature flag", function () {
     const rootClient = getClient(rootToken)
@@ -70,7 +70,7 @@ describe("Feature flag", function () {
     it("can be created", async () => {
         const payload = genFeatureFlag()
 
-        const { data: body } = await root.create(payload)
+        const { data: body } = await root.create(payload, expectStatus(201))
 
         expect(body).to.exist.and.to.include.key("data")
         expect(body.data).to.include.keys("name")

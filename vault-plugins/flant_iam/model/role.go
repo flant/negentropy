@@ -50,7 +50,7 @@ type Role struct {
 	Description   string `json:"description"`
 	OptionsSchema string `json:"options_schema"`
 
-	RequireOneOfFeatureFlags []string `json:"require_one_of_feature_flags"`
+	RequireOneOfFeatureFlags []string `json:"require_one_of_featureflags"`
 }
 
 func (t *Role) ObjType() string {

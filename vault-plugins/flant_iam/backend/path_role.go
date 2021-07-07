@@ -54,7 +54,7 @@ func (b roleBackend) paths() []*framework.Path {
 					Description: "JSON schema of the role options",
 					Required:    true,
 				},
-				"require_one_of_feature_flags": {
+				"require_one_of_featureflags": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Enumerated flags, one of which is required in the scope to use role",
 					Required:    true,
@@ -97,7 +97,7 @@ func (b roleBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				// changing type is forbidden
-				"require_one_of_feature_flags": {
+				"require_one_of_featureflags": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Enumerated flags, one of which is required in the scope to use role",
 					Required:    true,
@@ -136,7 +136,7 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 			Type:                     model.GroupScope(roleType),
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
-			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
+			RequireOneOfFeatureFlags: data.Get("require_one_of_featureflags").([]string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -167,7 +167,7 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 			Name:                     data.Get("name").(string),
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
-			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
+			RequireOneOfFeatureFlags: data.Get("require_one_of_featureflags").([]string),
 		}
 
 		repo := model.NewRoleRepository(tx)
