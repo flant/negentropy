@@ -68,7 +68,6 @@ func (mkd *MetadataKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
 	// TODO IdentitySharing
 	// TODO RoleBindingApproval
-	// TODO ServiceAccountPassword
 	case model.TenantType,
 		model.ProjectType,
 		model.UserType,
@@ -77,7 +76,8 @@ func (mkd *MetadataKafkaDestination) isValidObjectType(objType string) bool {
 		model.RoleType,
 		model.RoleBindingType,
 		model.GroupType,
-		model.MultipassType:
+		model.MultipassType,
+		model.ServiceAccountPasswordType:
 		return true
 
 	default:
