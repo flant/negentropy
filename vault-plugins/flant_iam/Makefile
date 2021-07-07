@@ -53,6 +53,10 @@ deps:
 openapi:
 	curl -s -H "X-Vault-Token: root" "http://127.0.0.1:8200/v1/sys/internal/specs/openapi" | jq > openapi.json
 
+# Somewhere there should be done
+# docker exec -i $(docker ps | grep vault_1 | cut -f1 -d" ") sh -c 'vault token create -orphan -policy=root -field=token > /vault/testdata/token'
+# docker exec -i $(docker ps | grep vault_1 | cut -f1 -d" ") sh -c 'vault plugin register secret flant_iam -sha256=$(sha256sum /vault/plugins/flant_iam | cut -d' ' -f1) '
+# docker exec -i $(docker ps | grep vault_1 | cut -f1 -d" ") sh -c 'vault secrets enable -path=flant_iam flant_iam'
 .PHONY: test
 test:
 	go test -race ./...
