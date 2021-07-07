@@ -1,0 +1,10 @@
+apiVersion: authd.negentropy.example.com/v1
+kind: AuthdSocketConfig
+path: /var/run/sock2.sock
+user: root
+group: root
+mode: 0600
+allowedPolicies:
+  - policy: ssh.list
+  - policy: mysql.list
+  - policy: server.ssh.*

@@ -1,0 +1,67 @@
+@startuml
+participant client #red
+participant authd #green
+participant vault_cdn
+participant vault_auth
+
+
+group Open session using default server
+
+client -> authd : LoginRequestDefaultServer\n{policies}
+authd -> vault_cdn : open session
+authd <- vault_cdn : 302 Redirect to vault_auth
+authd -> vault_auth : opensession
+authd <- vault_auth : token
+client <- authd : LoginResponseSession\n{vault_auth, token}
+end
+
+group Open session using specific server
+
+client -> authd : LoginRequestSpecificServer\n{vault_auth, policies}
+authd -> vault_auth : opensession
+authd <- vault_auth : token
+client <- authd : LoginResponseSession\n{vault_auth, token}
+
+end
+
+
+group Open session using default server: not granted
+
+client -> authd : LoginRequestDefaultServer\n{policies}
+authd -> vault_cdn : open session
+authd <- vault_cdn : 302 Redirect to vault_auth
+authd -> vault_auth : opensession
+authd <- vault_auth : forbidden
+client <- authd : LoginResponseMsg\n{messages: "forbidden"}
+end
+
+
+group Open session using default server: approval
+
+  group start
+client -> authd : LoginRequestDefaultServer\n{policies}
+authd -> vault_cdn : open session
+authd <- vault_cdn : 302 Redirect to vault_auth
+authd -> vault_auth : opensession
+authd <- vault_auth : forbidden
+client <- authd : LoginResponsePending\n{vault_auth, pendingLoginUuid, mfa, appovals}
+  end
+
+  group check approval: still pending
+client -> authd : LoginRequestPending\n{server, pendingLoginUuid}
+authd -> vault_auth : open session via pendingLoginUuid
+authd <- vault_auth : pending login state
+client <- authd : LoginResponsePending\n{vault_auth, pendingLoginUuid, mfa, appovals}
+  end
+
+
+  group check approval: granted
+client -> authd : LoginRequestPending\n{server, pendingLoginUuid}
+authd -> vault_auth : open session via pendingLoginUuid
+authd <- vault_auth : token
+client <- authd : LoginResponseSession\n{vault_auth, token}
+  end
+
+
+end
+@enduml
