@@ -92,6 +92,61 @@ func configurePaths(b *backend) []*framework.Path {
 				},
 			},
 		},
+		{
+			Pattern: "^configure/vault_request/?$",
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestList,
+				},
+			},
+		},
+		{
+			Pattern: "^configure/vault_request/" + framework.GenericNameRegex("name") + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeNameString,
+					Description: "TODO",
+					Required:    true,
+				},
+				"path": {
+					Type:        framework.TypeString,
+					Description: "TODO",
+					Required:    true,
+				},
+				"method": {
+					Type:        framework.TypeString,
+					Description: "TODO",
+					Required:    true,
+				},
+				"options": {
+					Type:        framework.TypeString,
+					Description: "TODO",
+				},
+				"wrap_ttl": {
+					Type:        framework.TypeString,
+					Description: "TODO",
+					Default:     "1m",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestCreate,
+					Summary:  "TODO",
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestRead,
+					Summary:  "TODO",
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestUpdate,
+					Summary:  "TODO",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestDelete,
+					Summary:  "TODO",
+				},
+			},
+		},
 	}
 }
 
@@ -145,5 +200,39 @@ func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.R
 		return nil, err
 	}
 
+	return nil, nil
+}
+
+func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	apiClient, err := b.AccessVaultController.APIClient()
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	// FIXME: just for test, remove this
+	b.Logger().Debug("Vault client token: %s", apiClient.Token())
+
+	// TODO
+
+	return nil, nil
+}
+
+func (b *backend) pathConfigureVaultRequestCreate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	// TODO
+	return nil, nil
+}
+
+func (b *backend) pathConfigureVaultRequestRead(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	// TODO
+	return nil, nil
+}
+
+func (b *backend) pathConfigureVaultRequestUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	// TODO
+	return nil, nil
+}
+
+func (b *backend) pathConfigureVaultRequestDelete(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	// TODO
 	return nil, nil
 }
