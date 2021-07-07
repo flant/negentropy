@@ -264,14 +264,14 @@ describe("Service Account", function () {
     describe("multipass", function () {
         const endpointBuilder = new EndpointBuilder([
             "tenant",
-            "user",
+            "service_account",
             "multipass",
         ])
         const rootMPClient = new API(rootClient, endpointBuilder)
 
         async function createMultipass(t, u, override = {}) {
             const payload = genMultipassPayload(override)
-            const params = { tenant: t, user: u }
+            const params = { tenant: t, service_account: u }
             const { data } = await rootMPClient.create({ params, payload })
             return data.data
         }
@@ -333,7 +333,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                user: u.uuid,
+                service_account: u.uuid,
                 multipass: created.uuid,
             }
             const { data } = await rootMPClient.read({ params })
@@ -353,7 +353,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                user: u.uuid,
+                service_account: u.uuid,
             }
 
             const { data } = await rootMPClient.list({ params })
@@ -368,7 +368,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                user: u.uuid,
+                service_account: u.uuid,
                 multipass: created.uuid,
             }
 
@@ -384,7 +384,7 @@ describe("Service Account", function () {
 
             const params = {
                 tenant: t.uuid,
-                user: u.uuid,
+                service_account: u.uuid,
                 multipass: createdMP.uuid,
             }
 

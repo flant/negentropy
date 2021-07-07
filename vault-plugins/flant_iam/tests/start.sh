@@ -78,4 +78,5 @@ fi
 #     sh -c "echo -e '#!/bin/sh\ncd \$1 && go build -tags musl -o /src/build/\$1 cmd/\$1/main.go' > /gobuild.sh && chmod +x /gobuild.sh && sleep infinity"
 
 # docker exec gobuild /gobuild.sh flant_iam
+# docker exec dev-vault vault plugin reload -mounts=flant_iam/
 # docker exec dev-vault vault plugin reload -plugin flant_iam

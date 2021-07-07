@@ -466,6 +466,8 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 		}
 
 		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
 		repo := model.NewMultipassRepository(tx)
 
 		err := repo.Create(multipass)
@@ -492,6 +494,8 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 		}
 
 		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
 		repo := model.NewMultipassRepository(tx)
 
 		err := repo.Delete(filter)

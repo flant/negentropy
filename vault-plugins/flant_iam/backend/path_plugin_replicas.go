@@ -130,9 +130,9 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	}
 
 	tx := b.storage.Txn(true)
+	defer tx.Abort()
 	err = tx.Insert(model.ReplicaType, r)
 	if err != nil {
-		tx.Abort()
 		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -187,6 +187,7 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 	replicaName := data.Get("replica_name").(string)
 
 	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
 	// Verify existence
 
