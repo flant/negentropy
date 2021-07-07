@@ -2,6 +2,7 @@ package flant_gitops
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -128,7 +129,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return err
 		}
 
-		var lastSuccessfulCommit string
 		if entry != nil && string(entry.Value) != "" {
 			lastSuccessfulCommit = string(entry.Value)
 		} else {
@@ -152,7 +152,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 		}
 
 		if !isAncestor {
-			return fmt.Errorf("unable to run task for git commit %q which is not desendant of the last successfully processed commit %q", headCommit, lastSuccessfulCommit)
+			return fmt.Errorf("unable to run task for git commit %q which is not descendant of the last successfully processed commit %q", headCommit, lastSuccessfulCommit)
 		}
 	}
 
@@ -227,9 +227,16 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return fmt.Errorf("unable to run docker image build: %s", err)
 		}
 
-		if err := docker.DisplayFromImageBuildResponse(logboek.Context(ctx).OutStream(), response); err != nil {
-			return err
+		var outputBuf bytes.Buffer
+		out := io.MultiWriter(&outputBuf, logboek.Context(ctx).OutStream())
+
+		if err := docker.DisplayFromImageBuildResponse(out, response); err != nil {
+			return fmt.Errorf("error writing docker command output: %s", err)
 		}
+
+		b.Logger().Debug("Command output BEGIN\n")
+		b.Logger().Debug(outputBuf.String())
+		b.Logger().Debug("Command output END\n")
 
 		b.Logger().Debug(fmt.Sprintf("Running command %q in the base image %q DONE", config.Command, config.DockerImage))
 	}

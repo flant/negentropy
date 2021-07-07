@@ -2,7 +2,11 @@ package flant_gitops
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,6 +52,19 @@ func getRequiredLastPeriodicRunTime(t *testing.T, ctx context.Context, storage l
 	return timestamp
 }
 
+func getLastSuccessfulCommit(t *testing.T, ctx context.Context, storage logical.Storage) string {
+	entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
+	if err != nil {
+		t.Fatalf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
+	}
+
+	if entry == nil {
+		return ""
+	}
+
+	return string(entry.Value)
+}
+
 func TestPeriodic_PollOperation(t *testing.T) {
 	systemClockMock := util.NewFixedClock(time.Now())
 	systemClock = systemClockMock
@@ -91,7 +108,7 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 
-		if periodicTaskUUIDs[0] == "" {
+		if periodicTaskUUIDs[len(periodicTaskUUIDs)-1] == "" {
 			t.Fatalf("unexpected empty task uuid after first periodic run")
 		}
 
@@ -117,12 +134,8 @@ func TestPeriodic_PollOperation(t *testing.T) {
 			t.Fatalf("periodic run timestamp should not change on second run before poll period: %d != %d", lastPeriodicRunTimestamp, lastPeriodicRunTimestampBeforeInvokation)
 		}
 
-		if periodicTaskUUIDs[1] != periodicTaskUUIDs[0] {
+		if periodicTaskUUIDs[1] != periodicTaskUUIDs[len(periodicTaskUUIDs)-1] {
 			t.Fatalf("new periodic task should not be added after second periodic func invocation before git poll period")
-		}
-
-		if match, _ := testLogger.Grep("Added new periodic task with uuid"); match {
-			t.Fatalf("new periodic task should not be added after second periodic func invocation")
 		}
 	}
 
@@ -141,6 +154,159 @@ func TestPeriodic_PollOperation(t *testing.T) {
 
 		if periodicTaskUUIDs[2] == periodicTaskUUIDs[1] {
 			t.Fatalf("new periodic task should be added after third periodic func invocation after git poll period")
+		}
+	}
+}
+
+func TestPeriodic_DockerCommand(t *testing.T) {
+	var periodicTaskUUIDs []string
+
+	systemClockMock := util.NewFixedClock(time.Now())
+	systemClock = systemClockMock
+
+	ctx := context.Background()
+
+	b, storage, testLogger := getTestBackend(t, ctx)
+
+	testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
+	defer os.RemoveAll(testGitRepoDir)
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "configure",
+		Data: map[string]interface{}{
+			fieldNameGitRepoUrl:    testGitRepoDir,
+			fieldNameGitBranch:     "main",
+			fieldNameGitPollPeriod: 5, // FIXME
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
+			fieldNameInitialLastSuccessfulCommit:                "",
+			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
+			fieldNameCommand:                                    "cat data",
+		},
+		Storage:    storage,
+		Connection: &logical.Connection{},
+	}
+
+	resp, err := b.HandleRequest(ctx, req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%v resp:%#v\n", err, resp)
+	}
+
+	util.ExecGitCommand(t, testGitRepoDir, "checkout", "-b", "main")
+	util.WriteFileIntoDir(t, filepath.Join(testGitRepoDir, "data"), []byte("OUTPUT1\n"))
+	util.ExecGitCommand(t, testGitRepoDir, "add", ".")
+	util.ExecGitCommand(t, testGitRepoDir, "commit", "-m", "one")
+	currentCommit := strings.TrimSpace(util.ExecGitCommand(t, testGitRepoDir, "rev-parse", "HEAD"))
+	rememberFirstCommit := currentCommit
+
+	fmt.Printf("Current commit in test repo %s: %s\n", testGitRepoDir, currentCommit)
+
+	{
+		invokePeriodicRun(t, ctx, b, testLogger, storage)
+		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+
+		if match, _ := testLogger.Grep("OUTPUT1"); !match {
+			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
+		}
+
+		lastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+		if lastSuccessfulCommit != currentCommit {
+			t.Fatalf("expected last successful commit to equal %s, got %s", currentCommit, lastSuccessfulCommit)
+		}
+	}
+
+	{
+		testLogger.Reset()
+
+		// 5 minutes passed
+		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
+
+		invokePeriodicRun(t, ctx, b, testLogger, storage)
+		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+
+		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
+			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
+		}
+
+		lastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+		if lastSuccessfulCommit != currentCommit {
+			t.Fatalf("expected last successful commit to equal %s, got %s", currentCommit, lastSuccessfulCommit)
+		}
+	}
+
+	util.WriteFileIntoDir(t, filepath.Join(testGitRepoDir, "data"), []byte("OUTPUT2\n"))
+	util.ExecGitCommand(t, testGitRepoDir, "add", ".")
+	util.ExecGitCommand(t, testGitRepoDir, "commit", "-m", "two")
+	currentCommit = strings.TrimSpace(util.ExecGitCommand(t, testGitRepoDir, "rev-parse", "HEAD"))
+
+	{
+		testLogger.Reset()
+
+		// 5 minutes passed
+		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
+
+		invokePeriodicRun(t, ctx, b, testLogger, storage)
+		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+
+		if match, _ := testLogger.Grep("OUTPUT2"); !match {
+			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
+		}
+
+		lastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+		if lastSuccessfulCommit != currentCommit {
+			t.Fatalf("expected last successful commit to equal %s, got %s", currentCommit, lastSuccessfulCommit)
+		}
+	}
+
+	{
+		testLogger.Reset()
+
+		// 5 minutes passed
+		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
+
+		invokePeriodicRun(t, ctx, b, testLogger, storage)
+		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+
+		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
+			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
+		}
+
+		lastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+		if lastSuccessfulCommit != currentCommit {
+			t.Fatalf("expected last successful commit to equal %s, got %s", currentCommit, lastSuccessfulCommit)
+		}
+	}
+
+	util.ExecGitCommand(t, testGitRepoDir, "checkout", "-b", "saved_branch")
+	util.ExecGitCommand(t, testGitRepoDir, "checkout", "main")
+	util.ExecGitCommand(t, testGitRepoDir, "reset", "--hard", rememberFirstCommit)
+	prevLastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+	currentCommit = strings.TrimSpace(util.ExecGitCommand(t, testGitRepoDir, "rev-parse", "HEAD"))
+
+	fmt.Printf("-- prevLastSuccessfulCommit=%s currentCommit=%s\n", prevLastSuccessfulCommit, currentCommit)
+
+	{
+		testLogger.Reset()
+
+		// 5 minutes passed
+		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
+
+		invokePeriodicRun(t, ctx, b, testLogger, storage)
+		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		reason := WaitForTaskFailure(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+
+		expectedReason := fmt.Sprintf("unable to run task for git commit %q which is not descendant of the last successfully processed commit %q", currentCommit, prevLastSuccessfulCommit)
+		if !strings.Contains(reason, expectedReason) {
+			t.Fatalf("got unexpected failure reason:\n%q\nexpected:\n%q\n", reason, expectedReason)
+		}
+
+		lastSuccessfulCommit := getLastSuccessfulCommit(t, ctx, storage)
+		if lastSuccessfulCommit != prevLastSuccessfulCommit {
+			t.Fatalf("expected last successful commit to equal %s, got %s, current repo commit is %s", prevLastSuccessfulCommit, lastSuccessfulCommit, currentCommit)
 		}
 	}
 }
