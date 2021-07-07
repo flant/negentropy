@@ -57,7 +57,7 @@ type RoleBinding struct {
 	MaterializedRoles        []MaterializedRole        `json:"-"`
 	MaterializedProjectRoles []MaterializedProjectRole `json:"-"`
 
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }

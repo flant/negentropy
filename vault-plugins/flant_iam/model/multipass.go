@@ -98,7 +98,7 @@ type Multipass struct {
 	Roles       []string           `json:"allowed_roles" `
 	Salt        string             `json:"salt,omitempty" sensitive:""`
 
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }

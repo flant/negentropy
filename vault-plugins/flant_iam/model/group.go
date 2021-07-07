@@ -51,7 +51,7 @@ type Group struct {
 	Groups          []string `json:"groups"`
 	ServiceAccounts []string `json:"service_accounts"`
 
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }

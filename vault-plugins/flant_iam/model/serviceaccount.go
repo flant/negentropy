@@ -53,7 +53,7 @@ type ServiceAccount struct {
 	TokenTTL       time.Duration `json:"token_ttl"`
 	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
 
-	Origin ObjectOrigin
+	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"extension"`
 }
