@@ -255,6 +255,18 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 			},
 			errPrefix: "error parsing public key",
 		},
+
+		{
+			title: "invalid jwt supported algs",
+			body: map[string]interface{}{
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+				"jwt_supported_algs": []string{"invalid"},
+			},
+			errPrefix: "unsupported signing algorithm",
+		},
 	}
 
 	assertAuthSourceErrorCases(t, errorCases)
