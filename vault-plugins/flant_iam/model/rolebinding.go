@@ -52,8 +52,8 @@ type RoleBinding struct {
 	Groups          []GroupUUID          `json:"groups"`
 	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
-  AnyProject      bool                 `json:"any_project"`
-	Projects        []ProjectUUID        `json:"projects"`
+	AnyProject bool          `json:"any_project"`
+	Projects   []ProjectUUID `json:"projects"`
 
 	Roles []BoundRole `json:"-"`
 
