@@ -122,6 +122,9 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+
+		// Feature flag for tenant
+		b.featureFlagPath(),
 	}
 }
 

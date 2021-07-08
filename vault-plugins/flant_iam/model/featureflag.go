@@ -125,3 +125,134 @@ func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
 
 	return r.save(ff)
 }
+
+type TenantFeatureFlag struct {
+	FeatureFlag           `json:",inline"`
+	EnabledForNewProjects bool `json:"enabled_for_new"`
+}
+
+type TenantFeatureFlagRepository struct {
+	tx *io.MemoryStoreTxn
+}
+
+func NewTenantFeatureFlagRepository(tx *io.MemoryStoreTxn) *TenantFeatureFlagRepository {
+	return &TenantFeatureFlagRepository{tx}
+}
+
+func (t *TenantFeatureFlagRepository) SetFlagToTenant(tenantID string, featureFlag TenantFeatureFlag) (*Tenant, error) {
+	ffRepo := NewFeatureFlagRepository(t.tx)
+	tenantRepo := NewTenantRepository(t.tx)
+
+	_, err := ffRepo.Get(featureFlag.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant, err := tenantRepo.GetByID(tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tff := range tenant.FeatureFlags {
+		if tff.Name == featureFlag.Name {
+			// update
+			tff.EnabledForNewProjects = featureFlag.EnabledForNewProjects
+			return tenant, tenantRepo.Update(tenant)
+		}
+	}
+
+	tenant.FeatureFlags = append(tenant.FeatureFlags, featureFlag)
+
+	return tenant, tenantRepo.Update(tenant)
+}
+
+func (t *TenantFeatureFlagRepository) RemoveFlagFromTenant(tenantID string, featureFlagName string) (*Tenant, error) {
+	ffRepo := NewFeatureFlagRepository(t.tx)
+	tenantRepo := NewTenantRepository(t.tx)
+
+	ff, err := ffRepo.Get(featureFlagName)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant, err := tenantRepo.GetByID(tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO remove feature_flag from all nested projects
+	// TODO: deny deleting if role become inaccessible
+
+	for i, tff := range tenant.FeatureFlags {
+		if tff.Name == ff.Name {
+			tenant.FeatureFlags = append(tenant.FeatureFlags[:i], tenant.FeatureFlags[i+1:]...)
+			// update
+			return tenant, tenantRepo.Update(tenant)
+		}
+	}
+
+	return tenant, nil
+}
+
+type ProjectFeatureFlagRepository struct {
+	tx *io.MemoryStoreTxn
+
+	ffRepo      *FeatureFlagRepository
+	projectRepo *ProjectRepository
+}
+
+// Feature flag for projects
+func NewProjectFeatureFlagRepository(tx *io.MemoryStoreTxn) *ProjectFeatureFlagRepository {
+	return &ProjectFeatureFlagRepository{tx, NewFeatureFlagRepository(tx), NewProjectRepository(tx)}
+}
+
+func (t *ProjectFeatureFlagRepository) SetFlagToProject(tenantID, projectID string, featureFlag FeatureFlag) (*Project, error) {
+	_, err := t.ffRepo.Get(featureFlag.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	project, err := t.projectRepo.GetByID(projectID)
+	if err != nil {
+		return nil, err
+	}
+	if project.TenantUUID != tenantID {
+		return nil, ErrNotFound
+	}
+
+	for _, pff := range project.FeatureFlags {
+		if pff.Name == featureFlag.Name {
+			return project, nil
+		}
+	}
+
+	project.FeatureFlags = append(project.FeatureFlags, featureFlag)
+
+	return project, t.projectRepo.Update(project)
+}
+
+func (t *ProjectFeatureFlagRepository) RemoveFlagFromProject(tenantID, projectID string, featureFlagName string) (*Project, error) {
+	ff, err := t.ffRepo.Get(featureFlagName)
+	if err != nil {
+		return nil, err
+	}
+
+	project, err := t.projectRepo.GetByID(projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	if project.TenantUUID != tenantID {
+		return nil, ErrNotFound
+	}
+
+	for i, pff := range project.FeatureFlags {
+		if pff.Name == ff.Name {
+			project.FeatureFlags = append(project.FeatureFlags[:i], project.FeatureFlags[i+1:]...)
+			// update
+			return project, t.projectRepo.Update(project)
+		}
+	}
+
+	return project, nil
+}
