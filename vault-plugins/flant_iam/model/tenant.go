@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -80,6 +82,10 @@ func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
 	}
 }
 
+func (r *TenantRepository) save(t *Tenant) error {
+	return r.db.Insert(TenantType, t)
+}
+
 func (r *TenantRepository) Create(t *Tenant) error {
 	t.Version = NewResourceVersion()
 	return r.db.Insert(TenantType, t)
@@ -127,6 +133,10 @@ func (r *TenantRepository) Delete(id TenantUUID) error {
 		return err
 	}
 
+	return r.delete(id)
+}
+
+func (r *TenantRepository) delete(id string) error {
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -161,6 +171,20 @@ func (r *TenantRepository) List() ([]TenantUUID, error) {
 		ids = append(ids, t.UUID)
 	}
 	return ids, nil
+}
+
+func (r *TenantRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	tenant := &Tenant{}
+	err := json.Unmarshal(data, tenant)
+	if err != nil {
+		return err
+	}
+
+	return r.save(tenant)
 }
 
 type SubTenantRepo interface {

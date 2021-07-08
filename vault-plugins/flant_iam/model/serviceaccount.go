@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
@@ -66,11 +67,11 @@ func (u *ServiceAccount) ObjId() string {
 	return u.UUID
 }
 
-func (u ServiceAccount) Marshal(includeSensitive bool) ([]byte, error) {
+func (u *ServiceAccount) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := u
 	if !includeSensitive {
 		u := OmitSensitive(u).(ServiceAccount)
-		obj = u
+		obj = &u
 	}
 	return jsonutil.EncodeJSON(obj)
 }
@@ -276,4 +277,18 @@ func (r *ServiceAccountRepository) UnsetExtension(origin ObjectOrigin, uuid stri
 	}
 	delete(obj.Extensions, origin)
 	return r.save(obj)
+}
+
+func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	sa := &ServiceAccount{}
+	err := json.Unmarshal(data, sa)
+	if err != nil {
+		return err
+	}
+
+	return r.save(sa)
 }

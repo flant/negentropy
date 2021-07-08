@@ -20,7 +20,13 @@ func OmitSensitive(obj interface{}) interface{} {
 	const key = "sensitive"
 
 	t := reflect.TypeOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 	src := reflect.ValueOf(obj)
+	if src.Kind() == reflect.Ptr {
+		src = src.Elem()
+	}
 	dst := reflect.New(t).Elem()
 
 	for i := 0; i < t.NumField(); i++ {

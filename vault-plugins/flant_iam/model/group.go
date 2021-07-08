@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -64,11 +66,11 @@ func (u *Group) ObjId() string {
 	return u.UUID
 }
 
-func (u Group) Marshal(includeSensitive bool) ([]byte, error) {
+func (u *Group) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := u
 	if !includeSensitive {
 		u := OmitSensitive(u).(Group)
-		obj = u
+		obj = &u
 	}
 	return jsonutil.EncodeJSON(obj)
 }
@@ -182,6 +184,15 @@ func (r *GroupRepository) Delete(origin ObjectOrigin, id GroupUUID) error {
 	return r.db.Delete(GroupType, group)
 }
 
+func (r *GroupRepository) delete(id string) error {
+	group, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(GroupType, group)
+}
+
 func (r *GroupRepository) List(tenantID TenantUUID) ([]GroupUUID, error) {
 	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantID)
 	if err != nil {
@@ -227,4 +238,18 @@ func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid GroupUUID) er
 	}
 	delete(obj.Extensions, origin)
 	return r.save(obj)
+}
+
+func (r *GroupRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	gr := &Group{}
+	err := json.Unmarshal(data, gr)
+	if err != nil {
+		return err
+	}
+
+	return r.save(gr)
 }

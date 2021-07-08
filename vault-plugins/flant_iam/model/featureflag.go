@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -90,6 +92,19 @@ func (r *FeatureFlagRepository) Delete(name FeatureFlagName) error {
 	return r.db.Delete(FeatureFlagType, featureFlag)
 }
 
+func (r *FeatureFlagRepository) save(ff *FeatureFlag) error {
+	return r.db.Insert(FeatureFlagType, ff)
+}
+
+func (r *FeatureFlagRepository) delete(name string) error {
+	featureFlag, err := r.Get(name)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(FeatureFlagType, featureFlag)
+}
+
+
 func (r *FeatureFlagRepository) List() ([]FeatureFlagName, error) {
 	iter, err := r.db.Get(FeatureFlagType, PK)
 	if err != nil {
@@ -106,4 +121,18 @@ func (r *FeatureFlagRepository) List() ([]FeatureFlagName, error) {
 		ids = append(ids, ff.Name)
 	}
 	return ids, nil
+}
+
+func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	ff := &FeatureFlag{}
+	err := json.Unmarshal(data, ff)
+	if err != nil {
+		return err
+	}
+
+	return r.save(ff)
 }

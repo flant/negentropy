@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -138,6 +140,19 @@ func (r *ProjectRepository) Update(project *Project) error {
 	return nil
 }
 
+func (r *ProjectRepository) save(project *Project) error {
+	return r.db.Insert(ProjectType, project)
+}
+
+func (r *ProjectRepository) delete(id string) error {
+	project, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Delete(ProjectType, project)
+}
+
 func (r *ProjectRepository) Delete(id ProjectUUID) error {
 	project, err := r.GetByID(id)
 	if err != nil {
@@ -168,4 +183,18 @@ func (r *ProjectRepository) List(tenantID TenantUUID) ([]ProjectUUID, error) {
 func (r *ProjectRepository) DeleteByTenant(tenantUUID TenantUUID) error {
 	_, err := r.db.DeleteAll(ProjectType, TenantForeignPK, tenantUUID)
 	return err
+}
+
+func (r *ProjectRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	pr := &Project{}
+	err := json.Unmarshal(data, pr)
+	if err != nil {
+		return err
+	}
+
+	return r.save(pr)
 }
