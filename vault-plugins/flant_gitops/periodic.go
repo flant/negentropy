@@ -55,14 +55,10 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return fmt.Errorf("error getting git credentials config: %s", err)
 	}
 
-	var vaultRequestsConfig vaultRequests // TODO: read list from the storage
-	// vaultRequestsConfig = append(vaultRequestsConfig, &vaultRequest{
-	// 	Name:    "my-vault-request",
-	// 	Path:    "/helo",
-	// 	Method:  "GET",
-	// 	Options: `{"param": 13231}`,
-	// 	WrapTTL: "30s",
-	// })
+	vaultRequestsConfig, err := listVaultRequests(ctx, req.Storage)
+	if err != nil {
+		return fmt.Errorf("error getting all Vault requests configuration: %s", err)
+	}
 
 	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
 	if err != nil {
