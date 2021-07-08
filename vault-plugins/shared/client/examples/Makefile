@@ -14,7 +14,7 @@ endif
 
 build_and_start: builddir build start
 
-test: enable_approle create_policy create_role enable_plugin write_access_conf getting_role reinit_client
+test: enable_approle create_policy create_role enable_plugin get_config_no_tls write_access_conf getting_role reinit_client get_config
 
 builddir:
 	mkdir -p bin/
@@ -48,6 +48,12 @@ write_access_conf:
 		vault_cacert="$$(cat conf/ca-cert.pem)"
 getting_role:
 	VAULT_ADDR='https://localhost:8500' vault read -ca-cert=conf/ca-cert.pem auth/aa/read_role
+
+get_config:
+	VAULT_ADDR='https://localhost:8500' vault read -ca-cert=conf/ca-cert.pem auth/aa/get_conf
+
+get_config_no_tls:
+	VAULT_ADDR='https://localhost:8500' vault read -tls-skip-verify auth/aa/get_conf
 
 reinit_client:
 	VAULT_ADDR='https://localhost:8500' vault write -force -ca-cert=conf/ca-cert.pem auth/aa/read_role

@@ -35,6 +35,25 @@ func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientContr
 	return c
 }
 
+// GetApiConfig get vault api access config (APIURL, APIHost, APICa)
+// if configuration not found returns nil pointer
+func (c *VaultClientController) GetApiConfig(ctx context.Context, s logical.Storage) (*VaultApiConf, error) {
+	conf, err := c.storageFactory(s).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf == nil {
+		return nil, nil
+	}
+
+	return &VaultApiConf{
+		APIURL:  conf.APIURL,
+		APIHost: conf.APIHost,
+		APICa:   conf.APICa,
+	}, nil
+}
+
 // Init initialize api client
 // if store don't contains configuration it may return ErrNotSetConf error
 // it is normal case
