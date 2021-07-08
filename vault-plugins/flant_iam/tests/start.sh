@@ -76,3 +76,4 @@ fi
 # docker exec gobuild /gobuild.sh flant_iam
 # docker exec dev-vault vault plugin reload -mounts=flant_iam/
 # docker exec dev-vault vault plugin reload -plugin flant_iam
+# vault plugin deregister flant_iam && vault plugin register  -sha256=$(sha256sum /vault/plugins/flant_iam | cut -d' ' -f1) flant_iam && vault plugin reload -mounts=flant_iam/
