@@ -38,18 +38,6 @@ func toSubjectNotations(ms ...Model) []SubjectNotation {
 }
 
 func Test_RoleBindingOnCreationSubjectsCalculation(t *testing.T) {
-	testRoleBindingSubjectsCalculation(t, func(tx *io.MemoryStoreTxn, rb *RoleBinding) error {
-		return NewRoleBindingRepository(tx).Create(rb)
-	})
-}
-
-func Test_RoleBindingOnUpdateSubjectsCalculation(t *testing.T) {
-	testRoleBindingSubjectsCalculation(t, func(tx *io.MemoryStoreTxn, rb *RoleBinding) error {
-		return NewRoleBindingRepository(tx).Update(rb)
-	})
-}
-
-func testRoleBindingSubjectsCalculation(t *testing.T, action func(*io.MemoryStoreTxn, *RoleBinding) error) {
 	store, _ := initTestDB()
 	tx := store.Txn(true)
 
@@ -131,6 +119,20 @@ func testRoleBindingSubjectsCalculation(t *testing.T, action func(*io.MemoryStor
 				assert.Equal(t, rb.Users, []UserUUID{u1.UUID, u2.UUID})
 			},
 		},
+
+		{
+			name:     "ignores duplicates",
+			subjects: []Model{sa1, g2, u1, sa2, u2, sa1, g1, u1, g2},
+			assertions: func(t *testing.T, rb *RoleBinding) {
+				assert.Len(t, rb.ServiceAccounts, 2, "should contain 2 serviceaccount")
+				assert.Len(t, rb.Users, 2, "should contain 2 user")
+				assert.Len(t, rb.Groups, 2, "should contain 2 group")
+
+				assert.Equal(t, rb.ServiceAccounts, []ServiceAccountUUID{sa1.UUID, sa2.UUID})
+				assert.Equal(t, rb.Groups, []GroupUUID{g2.UUID, g1.UUID})
+				assert.Equal(t, rb.Users, []UserUUID{u1.UUID, u2.UUID})
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -142,8 +144,8 @@ func testRoleBindingSubjectsCalculation(t *testing.T, action func(*io.MemoryStor
 				Subjects:   toSubjectNotations(tt.subjects...),
 
 				ServiceAccounts: []ServiceAccountUUID{"nonsense"},
-				Users:           []ServiceAccountUUID{"nonsense"},
-				Groups:          []ServiceAccountUUID{"nonsense"},
+				Users:           []UserUUID{"nonsense"},
+				Groups:          []GroupUUID{"nonsense"},
 			}
 			if err := NewRoleBindingRepository(tx).Create(rb); err != nil {
 				t.Fatalf("cannot create: %v", err)

@@ -32,6 +32,8 @@ func (snl *SubjectsFetcher) Fetch() (*Subjects, error) {
 		Groups:          make([]GroupUUID, 0),
 	}
 
+	seen := map[string]struct{}{}
+
 	for _, subj := range snl.entries {
 		switch subj.Type {
 		case ServiceAccountType:
@@ -39,18 +41,32 @@ func (snl *SubjectsFetcher) Fetch() (*Subjects, error) {
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := seen[subj.ID]; ok {
+				continue
+			}
+			seen[subj.ID] = struct{}{}
 			result.ServiceAccounts = append(result.ServiceAccounts, sa.UUID)
+
 		case UserType:
 			u, err := NewUserRepository(snl.db).GetByID(subj.ID)
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := seen[subj.ID]; ok {
+				continue
+			}
+			seen[subj.ID] = struct{}{}
 			result.Users = append(result.Users, u.UUID)
+
 		case GroupType:
 			g, err := NewGroupRepository(snl.db).GetByID(subj.ID)
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := seen[subj.ID]; ok {
+				continue
+			}
+			seen[subj.ID] = struct{}{}
 			result.Groups = append(result.Groups, g.UUID)
 		}
 	}
