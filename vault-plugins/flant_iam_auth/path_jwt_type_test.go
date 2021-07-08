@@ -196,7 +196,6 @@ func TestJWTType_Get(t *testing.T) {
 		resp := getJWTType(t, name)
 		assertResponseCode(t, resp, 404)
 	})
-
 }
 
 func TestJWTType_List(t *testing.T) {
@@ -270,7 +269,6 @@ func TestJWTType_Update(t *testing.T) {
 				assertJwtType(t, resp, c.body)
 			})
 		}
-
 	})
 
 	t.Run("updating failed", func(t *testing.T) {

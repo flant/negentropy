@@ -2,13 +2,13 @@ package jwt
 
 import (
 	"context"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 func verifyAndGetTokensTest(t *testing.T, keys []jose.JSONWebKey, token string) map[string]interface{} {
@@ -103,7 +103,6 @@ func Test_NewToken(t *testing.T) {
 			data := verifyAndGetTokensTest(t, keys, token)
 
 			assertRequiredTokenFields(t, data, conf, tokenOpt)
-
 		})
 	})
 }

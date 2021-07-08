@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	openapi2 "github.com/flant/negentropy/vault-plugins/shared/openapi"
 	"sync"
 
 	"github.com/hashicorp/cap/jwt"
@@ -23,6 +22,7 @@ import (
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	openapi "github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
 // Factory is used by framework
@@ -40,11 +40,11 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 type flantIamAuthBackend struct {
 	*framework.Backend
 
-	l            sync.RWMutex
-	provider     *oidc.Provider
-	validators   map[string]*jwt.Validator
-	oidcRequests *cache.Cache
-	jwtTypesValidators  map[string]openapi2.Validator
+	l                  sync.RWMutex
+	provider           *oidc.Provider
+	validators         map[string]*jwt.Validator
+	oidcRequests       *cache.Cache
+	jwtTypesValidators map[string]openapi.Validator
 
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
@@ -57,7 +57,7 @@ type flantIamAuthBackend struct {
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
-	b.jwtTypesValidators = map[string]openapi2.Validator{}
+	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 
@@ -213,13 +213,13 @@ func (b *flantIamAuthBackend) getProvider(config *model.AuthSource) (*oidc.Provi
 	return provider, nil
 }
 
-func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (openapi2.Validator, error) {
+func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (openapi.Validator, error) {
 	specStr := jwtType.OptionsSchema
 	if specStr == "" {
 		return nil, nil
 	}
 
-	validator := func() openapi2.Validator {
+	validator := func() openapi.Validator {
 		b.l.RLock()
 		defer b.l.RUnlock()
 
@@ -235,7 +235,7 @@ func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (ope
 	}
 
 	var err error
-	validator, err = openapi2.SchemaValidator(jwtType.OptionsSchema)
+	validator, err = openapi.SchemaValidator(jwtType.OptionsSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (ope
 	return validator, nil
 }
 
-func (b *flantIamAuthBackend) setJWTTypeValidator(jwtType *model.JWTIssueType, validator openapi2.Validator) {
+func (b *flantIamAuthBackend) setJWTTypeValidator(jwtType *model.JWTIssueType, validator openapi.Validator) {
 	b.l.Lock()
 	defer b.l.Unlock()
 

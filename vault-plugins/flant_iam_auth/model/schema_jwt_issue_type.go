@@ -37,11 +37,11 @@ func JWTIssueTypeSchema() *memdb.DBSchema {
 }
 
 type JWTIssueType struct {
-	UUID       string `json:"uuid"` // ID
-	Name       string `json:"name"`
+	UUID string `json:"uuid"` // ID
+	Name string `json:"name"`
 
-	TTL time.Duration `json:"ttl"`
-	OptionsSchema string `json:"options_schema"`
+	TTL           time.Duration `json:"ttl"`
+	OptionsSchema string        `json:"options_schema"`
 	// TODO rego policy
 }
 

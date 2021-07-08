@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/vault/api"
 	"math/rand"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -75,7 +75,7 @@ func convertResponseToListKeys(t *testing.T, resp *api.Response) []string {
 	return keys
 }
 
-func extractResponseData(t *testing.T, resp *api.Response) map[string]interface{}{
+func extractResponseData(t *testing.T, resp *api.Response) map[string]interface{} {
 	respRaw := map[string]interface{}{}
 	err := resp.DecodeJSON(&respRaw)
 	if err != nil {
@@ -85,7 +85,7 @@ func extractResponseData(t *testing.T, resp *api.Response) map[string]interface{
 	return respRaw["data"].(map[string]interface{})
 }
 
-func extractResponseDataT(t *testing.T, resp *api.Response, out interface{}){
+func extractResponseDataT(t *testing.T, resp *api.Response, out interface{}) {
 	d := extractResponseData(t, resp)
 	s, err := json.Marshal(d)
 	if err != nil {

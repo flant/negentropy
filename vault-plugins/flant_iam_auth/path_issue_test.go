@@ -2,11 +2,12 @@ package jwtauth
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
-	"testing"
 )
 
 func jwtIssueRequester(t *testing.T) apiRequester {
@@ -17,17 +18,17 @@ func jwtRequester(t *testing.T) apiRequester {
 	return newVaultRequester(t, "jwt")
 }
 
-func enableJwt(t *testing.T){
+func enableJwt(t *testing.T) {
 	resp := jwtRequester(t).Update("enable", nil)
 	assertResponseCode(t, resp, 200)
 }
 
-func disableJwt(t *testing.T){
+func disableJwt(t *testing.T) {
 	resp := jwtRequester(t).Update("disable", nil)
 	assertResponseCode(t, resp, 200)
 }
 
-func getJWKS(t *testing.T) *jose.JSONWebKeySet{
+func getJWKS(t *testing.T) *jose.JSONWebKeySet {
 	resp := newVaultRequester(t, "jwks").Get("")
 	assertResponseCode(t, resp, 200)
 	keys := jose.JSONWebKeySet{}
@@ -54,7 +55,7 @@ func TestIssuePath_JWT(t *testing.T) {
 
 	validOpts := map[string]interface{}{
 		"apiVersion": "negentropy.io/v1",
-		"kind": "kind",
+		"kind":       "kind",
 		"type": map[string]interface{}{
 			"provider": "A",
 		},
@@ -117,16 +118,16 @@ func TestIssuePath_JWT(t *testing.T) {
 			assertResponseCode(t, resp, 404)
 		})
 
-		incorrectOptsCases := []struct{
+		incorrectOptsCases := []struct {
 			title string
-			opts map[string]interface{}
+			opts  map[string]interface{}
 		}{
 			{
 				title: "opts with not known field",
 				opts: map[string]interface{}{
 					"incorrect_field": 1,
-					"apiVersion": "v1",
-					"kind": "kind",
+					"apiVersion":      "v1",
+					"kind":            "kind",
 					"type": map[string]interface{}{
 						"provider": "a",
 					},
@@ -149,7 +150,7 @@ func TestIssuePath_JWT(t *testing.T) {
 				title: "opts with incorrect field constraint",
 				opts: map[string]interface{}{
 					"apiVersion": "v1",
-					"kind": "k",
+					"kind":       "k",
 					"type": map[string]interface{}{
 						"provider": "a",
 					},
@@ -163,11 +164,10 @@ func TestIssuePath_JWT(t *testing.T) {
 				enableJwt(t)
 				name := mustCreateUpdateJWTType(t, jwtTypeBody)
 				resp := issueJwt(t, name, map[string]interface{}{
-					"options" : c.opts,
+					"options": c.opts,
 				})
 				assertResponseCode(t, resp, 400)
 			})
 		}
-
 	})
 }
