@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
+source ../build/build.sh
 
-for d in */ ; do
-  if [ "$d" == "01-alpine-base/" ]; then
-    continue
-  fi
-  echo "Building image from directory $d"
-  output=$(cd "$d"; ./build.sh)
-  if [ $? -eq 0 ]; then
-    echo "Succeed"
-  else
-    echo "Error occurred:"
-    echo "$output"
-  fi
-done
+# We should skip '01-alpine-base' due to it will be built by '01-alpine-base-builder'.
+# But if you pass '01-alpine-base' as a target it will be built, because `build_images` function respects target.
+SKIP_DIRECTORY="01-alpine-base"
+# And we don't want to build vault for base images.
+SKIP_VAULT_BUILD="true"
+
+build_images "$@"

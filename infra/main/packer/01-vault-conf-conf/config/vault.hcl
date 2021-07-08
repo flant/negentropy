@@ -1,5 +1,5 @@
 storage "gcs" {
-  bucket = "$GCP_VAULT_CONF_BUCKET"
+  bucket = "$GCP_VAULT_CONF_CONF_BUCKET"
 }
 
 listener "tcp" {

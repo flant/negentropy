@@ -2,7 +2,7 @@
 
 BINARY="./vault/bin/vault"
 if [ -f "$BINARY" ]; then
-    echo "Skipping build. Vault binary already exists at $BINARY"
+    >&2 echo "Skipping vault binary build. It already exists at $BINARY"
     exit 0
 fi
 
@@ -23,6 +23,9 @@ patch -p1 < ../001_bucket_count.patch
 export XC_OS="linux"
 export XC_ARCH="amd64"
 export XC_OSARCH="linux/amd64"
-make bootstrap
+make bootstrap && \
 make dev
+code=$?
 popd
+
+exit $code

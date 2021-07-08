@@ -28,8 +28,6 @@ adduser -S -G kafka kafka
 mkdir /data
 chown kafka:kafka /data
 
-mkdir -p /etc/kafka
-
 # TODO: use supervisor=supervise-daemon to restart service on fail
 #respawn_max=0
 #respawn_delay=10
@@ -79,3 +77,5 @@ rc-update add kafka
 cat <<'EOF' > /etc/conf.d/kafka
 rc_ulimit="-n 65536"
 EOF
+
+echo "source /etc/kafka/scripts/variables.sh" > /root/.profile

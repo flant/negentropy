@@ -1,8 +1,4 @@
 # Testing commands.
-Firstly source environment variables:
-```bash
-source /etc/kafka/scripts/variables.sh
-```
 
 ## Create a topic.
 ```bash
@@ -25,4 +21,3 @@ This will open terminal and print all messages from the beginning of the topic. 
 ```bash
 /opt/kafka/bin/kafka-console-consumer.sh --topic test-1 --consumer.config /tmp/kafka/client-ssl.properties --from-beginning --bootstrap-server $FQDN:9092
 ```
-> ℹ️ For some reason exiting from the above two commands will log out you from the console.
