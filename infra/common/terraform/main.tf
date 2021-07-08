@@ -51,8 +51,7 @@ resource "google_project_iam_member" "packer-storage-admin" {
   member  = "serviceAccount:${google_service_account.packer.email}"
 }
 
-# TODO: fix typo someday
-resource "google_project_iam_member" "packer-srorage-object-admin" {
+resource "google_project_iam_member" "packer-storage-object-admin" {
   project = local.google_project_id
   role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.packer.email}"
