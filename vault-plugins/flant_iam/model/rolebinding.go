@@ -41,10 +41,9 @@ func RoleBindingSchema() *memdb.DBSchema {
 }
 
 type RoleBinding struct {
-	UUID        RoleBindingUUID `json:"uuid"` // PK
-	TenantUUID  TenantUUID      `json:"tenant_uuid"`
-	Version     string          `json:"resource_version"`
-	BuiltinType string          `json:"-"`
+	UUID       RoleBindingUUID `json:"uuid"` // PK
+	TenantUUID TenantUUID      `json:"tenant_uuid"`
+	Version    string          `json:"resource_version"`
 
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
@@ -53,9 +52,10 @@ type RoleBinding struct {
 	Groups          []GroupUUID          `json:"groups"`
 	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
-	Roles                    []BoundRole               `json:"-"`
-	MaterializedRoles        []MaterializedRole        `json:"-"`
-	MaterializedProjectRoles []MaterializedProjectRole `json:"-"`
+	AnyProject bool          `json:"any_project"`
+	Projects   []ProjectUUID `json:"projects"`
+
+	Roles []BoundRole `json:"-"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -85,21 +85,9 @@ func (u *RoleBinding) Unmarshal(data []byte) error {
 }
 
 type BoundRole struct {
-	Name       RoleName               `json:"name"`
-	Version    string                 `json:"resource_version"`
-	AnyProject bool                   `json:"any_project"`
-	Projects   []ProjectUUID          `json:"projects"`
-	Options    map[string]interface{} `json:"options"`
-}
-
-type MaterializedRole struct {
 	Name    RoleName               `json:"name"`
+	Version string                 `json:"resource_version"`
 	Options map[string]interface{} `json:"options"`
-}
-
-type MaterializedProjectRole struct {
-	Project ProjectUUID `json:"project"`
-	Name    RoleName    `json:"name"`
 }
 
 type RoleBindingRepository struct {
