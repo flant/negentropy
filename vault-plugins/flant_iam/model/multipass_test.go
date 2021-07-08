@@ -18,7 +18,12 @@ func Test_MultipassDbSchema(t *testing.T) {
 
 func Test_MultipassMarshalling(t *testing.T) {
 	flipflopMultipass := func(t *testing.T, token *Multipass, includeSensitive bool) *Multipass {
-		j, err := json.Marshal(token)
+		var res interface{}
+		res = token
+		if !includeSensitive {
+			res = OmitSensitive(token)
+		}
+		j, err := json.Marshal(res)
 		if err != nil {
 			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
