@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -117,17 +119,24 @@ func (r *RoleRepository) Update(updated *Role) error {
 }
 
 func (r *RoleRepository) Delete(name RoleName) error {
-	role, err := r.Get(name)
-	if err != nil {
-		return err
-	}
-
 	// TODO before the deletion, check it is not used in
 	//      * role_biondings,
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
 
+	return r.delete(name)
+}
+
+func (r *RoleRepository) save(role *Role) error {
+	return r.db.Insert(RoleType, role)
+}
+
+func (r *RoleRepository) delete(name string) error {
+	role, err := r.Get(name)
+	if err != nil {
+		return err
+	}
 	return r.db.Delete(RoleType, role)
 }
 
@@ -147,4 +156,18 @@ func (r *RoleRepository) List() ([]RoleName, error) {
 		names = append(names, t.Name)
 	}
 	return names, nil
+}
+
+func (r *RoleRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	role := &Role{}
+	err := json.Unmarshal(data, role)
+	if err != nil {
+		return err
+	}
+
+	return r.save(role)
 }

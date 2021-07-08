@@ -39,11 +39,11 @@ type Extension struct {
 	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes,omitempty" sensitive:""`
 }
 
-func (e Extension) Marshal(includeSensitive bool) ([]byte, error) {
+func (e *Extension) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := e
 	if !includeSensitive {
 		e := OmitSensitive(e).(Extension)
-		obj = e
+		obj = &e
 	}
 	return jsonutil.EncodeJSON(obj)
 }

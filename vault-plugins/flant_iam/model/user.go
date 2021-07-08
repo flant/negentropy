@@ -73,11 +73,11 @@ func (u *User) ObjId() string {
 	return u.UUID
 }
 
-func (u User) Marshal(includeSensitive bool) ([]byte, error) {
+func (u *User) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := u
 	if !includeSensitive {
 		u := OmitSensitive(u).(User)
-		obj = u
+		obj = &u
 	}
 	return jsonutil.EncodeJSON(obj)
 }
@@ -259,8 +259,6 @@ func (r *UserRepository) Sync(objID string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err = r.Update(user); err == ErrNotFound {
-		return r.Create(user)
-	}
-	return nil
+
+	return r.save(user)
 }

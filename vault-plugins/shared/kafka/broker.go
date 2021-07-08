@@ -407,7 +407,10 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string) error {
 		Topic:             topic,
 		NumPartitions:     1,
 		ReplicationFactor: repFactor,
-		Config:            map[string]string{"min.insync.replicas": strconv.FormatInt(int64(inSyncReplicas), 10)},
+		Config: map[string]string{
+			"min.insync.replicas": strconv.FormatInt(int64(inSyncReplicas), 10),
+			"cleanup.policy":      "compact",
+		},
 	}
 	res, err := ac.CreateTopics(ctx, []kafka.TopicSpecification{tc})
 	if err != nil {

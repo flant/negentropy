@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
@@ -70,11 +72,11 @@ func (u *RoleBinding) ObjId() string {
 	return u.UUID
 }
 
-func (u RoleBinding) Marshal(includeSensitive bool) ([]byte, error) {
+func (u *RoleBinding) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := u
 	if !includeSensitive {
 		u := OmitSensitive(u).(RoleBinding)
-		obj = u
+		obj = &u
 	}
 	return jsonutil.EncodeJSON(obj)
 }
@@ -222,4 +224,18 @@ func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid RoleBin
 	}
 	delete(obj.Extensions, origin)
 	return r.save(obj)
+}
+
+func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	rb := &RoleBinding{}
+	err := json.Unmarshal(data, rb)
+	if err != nil {
+		return err
+	}
+
+	return r.save(rb)
 }

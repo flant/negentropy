@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -111,11 +112,11 @@ func (t *Multipass) ObjId() string {
 	return t.UUID
 }
 
-func (t Multipass) Marshal(includeSensitive bool) ([]byte, error) {
+func (t *Multipass) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := t
 	if !includeSensitive {
 		t := OmitSensitive(t).(Multipass)
-		obj = t
+		obj = &t
 	}
 	return jsonutil.EncodeJSON(obj)
 }
@@ -168,8 +169,12 @@ func (r *MultipassRepository) save(mp *Multipass) error {
 	return r.db.Insert(MultipassType, mp)
 }
 
-func (r *MultipassRepository) delete(filter *Multipass) error {
-	return r.db.Delete(MultipassType, filter)
+func (r *MultipassRepository) delete(id string) error {
+	mp, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(MultipassType, mp)
 }
 
 func (r *MultipassRepository) Create(mp *Multipass) error {
@@ -191,7 +196,7 @@ func (r *MultipassRepository) Delete(filter *Multipass) error {
 	if err != nil {
 		return err
 	}
-	return r.delete(filter)
+	return r.delete(filter.UUID)
 }
 
 func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
@@ -262,4 +267,18 @@ func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid Multipass
 	}
 	delete(obj.Extensions, origin)
 	return r.save(obj)
+}
+
+func (r *MultipassRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	mp := &Multipass{}
+	err := json.Unmarshal(data, mp)
+	if err != nil {
+		return err
+	}
+
+	return r.save(mp)
 }

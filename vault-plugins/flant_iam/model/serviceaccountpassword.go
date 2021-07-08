@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
@@ -66,7 +67,7 @@ func (t *ServiceAccountPassword) ObjId() string {
 func (t *ServiceAccountPassword) Marshal(includeSensitive bool) ([]byte, error) {
 	obj := t
 	if !includeSensitive {
-		t := OmitSensitive(*t).(ServiceAccountPassword)
+		t := OmitSensitive(t).(ServiceAccountPassword)
 		obj = &t
 	}
 	return jsonutil.EncodeJSON(obj)
@@ -120,8 +121,12 @@ func (r *ServiceAccountPasswordRepository) save(p *ServiceAccountPassword) error
 	return r.db.Insert(ServiceAccountPasswordType, p)
 }
 
-func (r *ServiceAccountPasswordRepository) delete(filter *ServiceAccountPassword) error {
-	return r.db.Delete(ServiceAccountPasswordType, filter)
+func (r *ServiceAccountPasswordRepository) delete(objID string) error {
+	sap, err := r.GetByID(objID)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(ServiceAccountPasswordType, sap)
 }
 
 func (r *ServiceAccountPasswordRepository) Create(p *ServiceAccountPassword) error {
@@ -137,7 +142,7 @@ func (r *ServiceAccountPasswordRepository) Delete(filter *ServiceAccountPassword
 	if err != nil {
 		return err
 	}
-	return r.delete(filter)
+	return r.delete(filter.UUID)
 }
 
 func (r *ServiceAccountPasswordRepository) Get(filter *ServiceAccountPassword) (*ServiceAccountPassword, error) {
@@ -181,4 +186,18 @@ func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) 
 		ids = append(ids, p.UUID)
 	}
 	return ids, nil
+}
+
+func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.delete(objID)
+	}
+
+	sap := &ServiceAccountPassword{}
+	err := json.Unmarshal(data, sap)
+	if err != nil {
+		return err
+	}
+
+	return r.save(sap)
 }
