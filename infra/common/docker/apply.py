@@ -27,7 +27,8 @@ if google_credentials_from_env == None:
 else:
     google_credentials = service_account.Credentials.from_service_account_info(json.loads(os.environ.get("GOOGLE_CREDENTIALS")))
 
-terraform_state_bucket = 'negentropy-terraform-state'
+google_project_id = google_credentials.project_id
+terraform_state_bucket = '%s-terraform-state' % google_project_id
 gnupghome = '/tmp/gnupg'
 
 if not os.path.exists(gnupghome):
@@ -62,20 +63,20 @@ def main():
 
     os.environ['PKR_VAR_root_password'] = "d9eWkemNTe"
 
-    os.environ['PKR_VAR_gcp_builder_service_account'] = "negentropy-packer@flant-sandbox.iam.gserviceaccount.com"
-    os.environ['PKR_VAR_gcp_image_bucket'] = "negentropy-packer"
+    os.environ['PKR_VAR_gcp_builder_service_account'] = "negentropy-packer@%s.iam.gserviceaccount.com" % google_project_id
+    os.environ['PKR_VAR_gcp_image_bucket'] = "%s-packer" % google_project_id
 
-    os.environ['PKR_VAR_gcp_vault_root_source_bucket'] = "vault-root-source-1"
-    os.environ['PKR_VAR_gcp_vault_conf_bucket'] = "vault-conf"
-    os.environ['PKR_VAR_gcp_vault_conf_conf_bucket'] = "vault-conf-conf"
-    os.environ['PKR_VAR_gcp_vault_auth_bucket_trailer'] = "vault-auth"
+    os.environ['PKR_VAR_gcp_vault_root_source_bucket'] = "%s-vault-root-source-1" % google_project_id
+    os.environ['PKR_VAR_gcp_vault_conf_bucket'] = "%s-vault-conf" % google_project_id
+    os.environ['PKR_VAR_gcp_vault_conf_conf_bucket'] = "%s-vault-conf-conf" % google_project_id
+    os.environ['PKR_VAR_gcp_vault_auth_bucket_trailer'] = "%s-vault-auth" % google_project_id
 
-    os.environ['PKR_VAR_gcp_project'] = google_credentials.project_id
+    os.environ['PKR_VAR_gcp_project'] = google_project_id
     os.environ['PKR_VAR_gcp_zone'] = "europe-west3-a"
 
-    os.environ['PKR_VAR_kafka_main_domain'] = "c.flant-sandbox.internal"
+    os.environ['PKR_VAR_kafka_main_domain'] = "c.%s.internal" % google_project_id
     os.environ['PKR_VAR_kafka_server_key_pass'] = "Flant123"
-    os.environ['PKR_VAR_kafka_bucket'] = "negentropy-kafka"
+    os.environ['PKR_VAR_kafka_bucket'] = "%s-kafka" % google_project_id
     os.environ['PKR_VAR_kafka_gcp_ca_name'] = "kafka-root-ca"
     os.environ['PKR_VAR_kafka_gcp_ca_location'] = "europe-west1"
     os.environ['PKR_VAR_kafka_replicas'] = "3"
@@ -114,10 +115,10 @@ kafka_gcp_ca_location = "{os.environ.get('PKR_VAR_kafka_gcp_ca_location')}"
 kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
 ###
 gcp_region = "europe-west3"
-gcp_ckms_seal_key_ring = "vault-vs-test"
-gcp_ckms_seal_crypto_key = "vault-vs-test-crypto-key"
+gcp_ckms_seal_key_ring = "vault-test"
+gcp_ckms_seal_crypto_key = "vault-test-crypto-key"
 
-tfstate_bucket = "negentropy-terraform-state"
+tfstate_bucket = "{terraform_state_bucket}"
 '''
 
 
@@ -134,12 +135,12 @@ tfstate_bucket = "negentropy-terraform-state"
         print("• [configurator] run packer")
         run_bash("./build.sh", "../../configurator/packer")
         print("• [configurator] terraform apply")
-        terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../configurator/terraform")
+        terraform_log = run_bash("terraform init -backend-config bucket=%s-terraform-state; terraform apply -no-color -auto-approve" % google_project_id, "../../configurator/terraform")
     else:
         print("• [main] run packer")
         run_bash("./build.sh", "../../main/packer")
         print("• [main] terraform apply")
-        terraform_log = run_bash("terraform init; terraform apply -no-color -auto-approve", "../../main/terraform")
+        terraform_log = run_bash("terraform init -backend-config bucket=%s-terraform-state; terraform apply -no-color -auto-approve" % google_project_id, "../../main/terraform")
 
     write_file("/tmp/terraform_log", terraform_log)
 
@@ -180,6 +181,9 @@ tfstate_bucket = "negentropy-terraform-state"
             os.environ['VAULT_TOKEN'] = vault_root_token
             os.environ['VAULT_ADDR'] = vault_address
 
+            while check_vault_is_ready() != True:
+                time.sleep(5)
+
             # enable a version 1 kv store for migrator
             client = hvac.Client()
             list_mounted_secrets_engines = client.sys.list_mounted_secrets_engines().keys()
@@ -204,7 +208,15 @@ tfstate_bucket = "negentropy-terraform-state"
 
 
 
-
+def check_vault_is_ready():
+    client = hvac.Client(timeout=5)
+    try:
+        health_status = client.sys.read_health_status()
+        if health_status.status_code == 200:
+            return(True)
+    except:
+        return(False)
+    return(False)
 
 
 def check_blob_exists(bucket_name, blob_name):

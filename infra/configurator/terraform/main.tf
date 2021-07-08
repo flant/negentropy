@@ -1,8 +1,6 @@
-data "google_project" "project" {}
-
 data "google_kms_key_ring" "key_ring" {
   project  = data.google_project.project.project_id
-  name     = local.google_kms_key_ring_name
+  name     = var.google_kms_key_ring_name
   location = local.region
 }
 
