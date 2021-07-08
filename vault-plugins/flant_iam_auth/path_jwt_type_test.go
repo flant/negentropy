@@ -88,14 +88,14 @@ func assertJwtType(t *testing.T, resp *api.Response, data map[string]interface{}
 func TestJWTTypePath(t *testing.T) {
 	skipNoneDev(t)
 
-	jWTTypeCreate(t)
-	jWTTypeGet(t)
-	jWTTypeDelete(t)
-	jWTTypeUpdate(t)
-	jWTTypeList(t)
+	jwtTypeCreate(t)
+	jwtTypeGet(t)
+	jwtTypeDelete(t)
+	jwtTypeUpdate(t)
+	jwtTypeList(t)
 }
 
-func jWTTypeCreate(t *testing.T) {
+func jwtTypeCreate(t *testing.T) {
 	t.Run("creating successful", func(t *testing.T) {
 		cases := []struct {
 			title string
@@ -172,7 +172,7 @@ func jWTTypeCreate(t *testing.T) {
 	})
 }
 
-func jWTTypeGet(t *testing.T) {
+func jwtTypeGet(t *testing.T) {
 	t.Run("successful getting", func(t *testing.T) {
 		body := map[string]interface{}{
 			"ttl":            "1s",
@@ -198,7 +198,7 @@ func jWTTypeGet(t *testing.T) {
 	})
 }
 
-func jWTTypeList(t *testing.T) {
+func jwtTypeList(t *testing.T) {
 	cleanAllJWTTypes(t)
 
 	names := make([]string, 0)
@@ -223,7 +223,7 @@ func jWTTypeList(t *testing.T) {
 	})
 }
 
-func jWTTypeUpdate(t *testing.T) {
+func jwtTypeUpdate(t *testing.T) {
 	t.Run("successful updating", func(t *testing.T) {
 		cases := []struct {
 			title string
@@ -307,7 +307,7 @@ func jWTTypeUpdate(t *testing.T) {
 	})
 }
 
-func jWTTypeDelete(t *testing.T) {
+func jwtTypeDelete(t *testing.T) {
 	t.Run("successful deleting", func(t *testing.T) {
 		originalBody := map[string]interface{}{
 			"ttl":            "1s",
