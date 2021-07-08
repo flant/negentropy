@@ -10,6 +10,11 @@ resource "google_compute_subnetwork" "main" {
   ip_cidr_range = local.region_ip_cidr_ranges_map[each.value]
 }
 
+resource "google_compute_address" "main" {
+  for_each = { for i in local.instances : i.name => i if i.order_public_static_ip }
+  name     = each.value.name
+  region   = each.value.region
+}
 
 resource "google_compute_router" "main" {
   for_each = toset(local.regions)
@@ -70,6 +75,12 @@ resource "google_compute_instance" "main" {
   network_interface {
     subnetwork = google_compute_subnetwork.main[each.value.region].self_link
     network_ip = each.value.private_static_ip
+    dynamic "access_config" {
+      for_each = each.value.order_public_static_ip ? [google_compute_address.main[each.value.name]] : []
+      content {
+        nat_ip = access_config.value["address"]
+      }
+    }
   }
 
   desired_status            = "RUNNING"
