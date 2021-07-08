@@ -31,7 +31,7 @@ type Extension struct {
 	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
 	OwnerType ExtensionOwnerType `json:""`
 	// OwnerUUID is the id of an owner object
-	OwnerUUID string `json:""`
+	OwnerUUID OwnerUUID `json:""`
 
 	// Attributes is the data to pass to other systems transparently
 	Attributes map[string]interface{} `json:"attributes"`
@@ -81,7 +81,7 @@ func (r *ExtensionRepository) Create(ext *Extension) error {
 	return fmt.Errorf("extension is not supported for type %q", ext.OwnerType)
 }
 
-func (r *ExtensionRepository) Delete(origin ObjectOrigin, ownerUUID string) error {
+func (r *ExtensionRepository) Delete(origin ObjectOrigin, ownerUUID OwnerUUID) error {
 	repos := []extensionUnsetter{
 		NewUserRepository(r.db),
 		NewServiceAccountRepository(r.db),
@@ -102,5 +102,5 @@ func (r *ExtensionRepository) Delete(origin ObjectOrigin, ownerUUID string) erro
 }
 
 type extensionUnsetter interface {
-	UnsetExtension(ObjectOrigin, string) error
+	UnsetExtension(ObjectOrigin, OwnerUUID) error
 }

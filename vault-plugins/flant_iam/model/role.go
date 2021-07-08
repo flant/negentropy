@@ -44,7 +44,7 @@ const (
 )
 
 type Role struct {
-	Name string     `json:"name"`
+	Name RoleName   `json:"name"`
 	Type GroupScope `json:"type"`
 
 	Description   string `json:"description"`
@@ -85,7 +85,7 @@ func (r *RoleRepository) Create(t *Role) error {
 	return r.db.Insert(RoleType, t)
 }
 
-func (r *RoleRepository) Get(name string) (*Role, error) {
+func (r *RoleRepository) Get(name RoleName) (*Role, error) {
 	raw, err := r.db.First(RoleType, PK, name)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (r *RoleRepository) Update(updated *Role) error {
 	return r.db.Insert(RoleType, updated)
 }
 
-func (r *RoleRepository) Delete(name string) error {
+func (r *RoleRepository) Delete(name RoleName) error {
 	role, err := r.Get(name)
 	if err != nil {
 		return err
@@ -125,13 +125,13 @@ func (r *RoleRepository) Delete(name string) error {
 	return r.db.Delete(RoleType, role)
 }
 
-func (r *RoleRepository) List() ([]string, error) {
+func (r *RoleRepository) List() ([]RoleName, error) {
 	iter, err := r.db.Get(RoleType, PK)
 	if err != nil {
 		return nil, err
 	}
 
-	names := []string{}
+	names := []RoleName{}
 	for {
 		raw := iter.Next()
 		if raw == nil {

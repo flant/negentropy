@@ -41,15 +41,15 @@ func GroupSchema() *memdb.DBSchema {
 }
 
 type Group struct {
-	UUID            string   `json:"uuid"` // PK
-	TenantUUID      string   `json:"tenant_uuid"`
-	Version         string   `json:"resource_version"`
-	BuiltinType     string   `json:"-"`
-	Identifier      string   `json:"identifier"`
-	FullIdentifier  string   `json:"full_identifier"`
-	Users           []string `json:"users"`
-	Groups          []string `json:"groups"`
-	ServiceAccounts []string `json:"service_accounts"`
+	UUID            GroupUUID            `json:"uuid"` // PK
+	TenantUUID      TenantUUID           `json:"tenant_uuid"`
+	Version         string               `json:"resource_version"`
+	BuiltinType     string               `json:"-"`
+	Identifier      string               `json:"identifier"`
+	FullIdentifier  string               `json:"full_identifier"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -123,7 +123,7 @@ func (r *GroupRepository) Create(group *Group) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) GetByID(id string) (*Group, error) {
+func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
 	raw, err := r.db.First(GroupType, PK, id)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ TODO Clean from everywhere:
 	* approvals
 	* identity_sharings
 */
-func (r *GroupRepository) Delete(origin ObjectOrigin, id string) error {
+func (r *GroupRepository) Delete(origin ObjectOrigin, id GroupUUID) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -182,13 +182,13 @@ func (r *GroupRepository) Delete(origin ObjectOrigin, id string) error {
 	return r.db.Delete(GroupType, group)
 }
 
-func (r *GroupRepository) List(tenantID string) ([]string, error) {
+func (r *GroupRepository) List(tenantID TenantUUID) ([]GroupUUID, error) {
 	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := []GroupUUID{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -200,7 +200,7 @@ func (r *GroupRepository) List(tenantID string) ([]string, error) {
 	return ids, nil
 }
 
-func (r *GroupRepository) DeleteByTenant(tenantUUID string) error {
+func (r *GroupRepository) DeleteByTenant(tenantUUID TenantUUID) error {
 	_, err := r.db.DeleteAll(GroupType, TenantForeignPK, tenantUUID)
 	return err
 }
@@ -217,7 +217,7 @@ func (r *GroupRepository) SetExtension(ext *Extension) error {
 	return r.save(obj)
 }
 
-func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
+func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid GroupUUID) error {
 	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err

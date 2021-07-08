@@ -40,14 +40,14 @@ func ServiceAccountPasswordSchema() *memdb.DBSchema {
 }
 
 type ServiceAccountPassword struct {
-	UUID       string `json:"uuid"` // PK
-	TenantUUID string `json:"tenant_uuid"`
-	OwnerUUID  string `json:"owner_uuid"`
+	UUID       ServiceAccountPasswordUUID `json:"uuid"` // PK
+	TenantUUID TenantUUID                 `json:"tenant_uuid"`
+	OwnerUUID  OwnerUUID                  `json:"owner_uuid"`
 
 	Description string `json:"description"`
 
-	CIDRs []string `json:"allowed_cidrs"`
-	Roles []string `json:"allowed_roles" `
+	CIDRs []string   `json:"allowed_cidrs"`
+	Roles []RoleName `json:"allowed_roles" `
 
 	TTL       time.Duration `json:"ttl"`
 	ValidTill int64         `json:"valid_till"` // calculates from TTL on creation
@@ -160,7 +160,7 @@ func (r *ServiceAccountPasswordRepository) GetByID(id string) (*ServiceAccountPa
 	return pass, nil
 }
 
-func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]string, error) {
+func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]ServiceAccountPasswordUUID, error) {
 	err := r.validate(filter)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) 
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := []ServiceAccountPasswordUUID{}
 	for {
 		raw := iter.Next()
 		if raw == nil {

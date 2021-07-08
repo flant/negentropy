@@ -41,17 +41,17 @@ func RoleBindingSchema() *memdb.DBSchema {
 }
 
 type RoleBinding struct {
-	UUID        string `json:"uuid"` // PK
-	TenantUUID  string `json:"tenant_uuid"`
-	Version     string `json:"resource_version"`
-	BuiltinType string `json:"-"`
+	UUID        RoleBindingUUID `json:"uuid"` // PK
+	TenantUUID  TenantUUID      `json:"tenant_uuid"`
+	Version     string          `json:"resource_version"`
+	BuiltinType string          `json:"-"`
 
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
 
-	Users           []string `json:"users"`
-	Groups          []string `json:"groups"`
-	ServiceAccounts []string `json:"service_accounts"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
 	Roles                    []BoundRole               `json:"-"`
 	MaterializedRoles        []MaterializedRole        `json:"-"`
@@ -85,21 +85,21 @@ func (u *RoleBinding) Unmarshal(data []byte) error {
 }
 
 type BoundRole struct {
-	Name       string                 `json:"name"`
+	Name       RoleName               `json:"name"`
 	Version    string                 `json:"resource_version"`
 	AnyProject bool                   `json:"any_project"`
-	Projects   []string               `json:"projects"`
+	Projects   []ProjectUUID          `json:"projects"`
 	Options    map[string]interface{} `json:"options"`
 }
 
 type MaterializedRole struct {
-	Name    string                 `json:"name"`
+	Name    RoleName               `json:"name"`
 	Options map[string]interface{} `json:"options"`
 }
 
 type MaterializedProjectRole struct {
-	Project string `json:"project"`
-	Name    string `json:"name"`
+	Project ProjectUUID `json:"project"`
+	Name    RoleName    `json:"name"`
 }
 
 type RoleBindingRepository struct {
@@ -135,7 +135,7 @@ func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
 	return r.save(roleBinding)
 }
 
-func (r *RoleBindingRepository) GetByID(id string) (*RoleBinding, error) {
+func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
 	if err != nil {
 		return nil, err
@@ -169,7 +169,7 @@ func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
 	return r.save(roleBinding)
 }
 
-func (r *RoleBindingRepository) delete(id string) error {
+func (r *RoleBindingRepository) delete(id RoleBindingUUID) error {
 	roleBinding, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func (r *RoleBindingRepository) delete(id string) error {
 	return r.db.Delete(RoleBindingType, roleBinding)
 }
 
-func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id string) error {
+func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id RoleBindingUUID) error {
 	roleBinding, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -189,13 +189,13 @@ func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id string) error {
 	return r.delete(id)
 }
 
-func (r *RoleBindingRepository) List(tenantID string) ([]string, error) {
+func (r *RoleBindingRepository) List(tenantID TenantUUID) ([]RoleBindingUUID, error) {
 	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := []RoleBindingUUID{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -207,7 +207,7 @@ func (r *RoleBindingRepository) List(tenantID string) ([]string, error) {
 	return ids, nil
 }
 
-func (r *RoleBindingRepository) DeleteByTenant(tenantUUID string) error {
+func (r *RoleBindingRepository) DeleteByTenant(tenantUUID TenantUUID) error {
 	_, err := r.db.DeleteAll(RoleBindingType, TenantForeignPK, tenantUUID)
 	return err
 }
@@ -224,7 +224,7 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 	return r.save(obj)
 }
 
-func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
+func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid RoleBindingUUID) error {
 	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err

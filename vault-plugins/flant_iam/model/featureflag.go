@@ -31,7 +31,7 @@ func FeatureFlagSchema() *memdb.DBSchema {
 }
 
 type FeatureFlag struct {
-	Name string `json:"name"` // PK
+	Name FeatureFlagName `json:"name"` // PK
 }
 
 func (t *FeatureFlag) ObjType() string {
@@ -70,7 +70,7 @@ func (r *FeatureFlagRepository) Create(ff *FeatureFlag) error {
 	return ErrAlreadyExists
 }
 
-func (r *FeatureFlagRepository) Get(name string) (*FeatureFlag, error) {
+func (r *FeatureFlagRepository) Get(name FeatureFlagName) (*FeatureFlag, error) {
 	raw, err := r.db.First(FeatureFlagType, PK, name)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (r *FeatureFlagRepository) Get(name string) (*FeatureFlag, error) {
 	return raw.(*FeatureFlag), nil
 }
 
-func (r *FeatureFlagRepository) Delete(name string) error {
+func (r *FeatureFlagRepository) Delete(name FeatureFlagName) error {
 	// TODO Cannot be deleted when in use by role, tenant, or project
 	featureFlag, err := r.Get(name)
 	if err != nil {
@@ -90,13 +90,13 @@ func (r *FeatureFlagRepository) Delete(name string) error {
 	return r.db.Delete(FeatureFlagType, featureFlag)
 }
 
-func (r *FeatureFlagRepository) List() ([]string, error) {
+func (r *FeatureFlagRepository) List() ([]FeatureFlagName, error) {
 	iter, err := r.db.Get(FeatureFlagType, PK)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := []FeatureFlagName{}
 	for {
 		raw := iter.Next()
 		if raw == nil {

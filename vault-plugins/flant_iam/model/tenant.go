@@ -46,9 +46,9 @@ func TenantSchema() *memdb.DBSchema {
 }
 
 type Tenant struct {
-	UUID       string `json:"uuid"` // PK
-	Version    string `json:"resource_version"`
-	Identifier string `json:"identifier"`
+	UUID       TenantUUID `json:"uuid"` // PK
+	Version    string     `json:"resource_version"`
+	Identifier string     `json:"identifier"`
 	// TODO enabled_by_default_for_new_projects
 }
 
@@ -85,7 +85,7 @@ func (r *TenantRepository) Create(t *Tenant) error {
 	return r.db.Insert(TenantType, t)
 }
 
-func (r *TenantRepository) GetByID(id string) (*Tenant, error) {
+func (r *TenantRepository) GetByID(id TenantUUID) (*Tenant, error) {
 	raw, err := r.db.First(TenantType, PK, id)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (r *TenantRepository) Update(updated *Tenant) error {
 	return r.db.Insert(TenantType, updated)
 }
 
-func (r *TenantRepository) Delete(id string) error {
+func (r *TenantRepository) Delete(id TenantUUID) error {
 	err := r.deleteNestedObjects(
 		id,
 		NewUserRepository(r.db),
@@ -145,7 +145,7 @@ func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo
 	return nil
 }
 
-func (r *TenantRepository) List() ([]string, error) {
+func (r *TenantRepository) List() ([]TenantUUID, error) {
 	iter, err := r.db.Get(TenantType, PK)
 	if err != nil {
 		return nil, err

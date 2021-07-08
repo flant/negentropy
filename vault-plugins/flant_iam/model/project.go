@@ -51,10 +51,10 @@ func ProjectSchema() *memdb.DBSchema {
 }
 
 type Project struct {
-	UUID       string `json:"uuid"` // PK
-	TenantUUID string `json:"tenant_uuid"`
-	Version    string `json:"resource_version"`
-	Identifier string `json:"identifier"`
+	UUID       ProjectUUID `json:"uuid"` // PK
+	TenantUUID TenantUUID  `json:"tenant_uuid"`
+	Version    string      `json:"resource_version"`
+	Identifier string      `json:"identifier"`
 }
 
 func (p *Project) ObjType() string {
@@ -100,7 +100,7 @@ func (r *ProjectRepository) Create(project *Project) error {
 	return nil
 }
 
-func (r *ProjectRepository) GetByID(id string) (*Project, error) {
+func (r *ProjectRepository) GetByID(id ProjectUUID) (*Project, error) {
 	raw, err := r.db.First(ProjectType, PK, id)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (r *ProjectRepository) Update(project *Project) error {
 	return nil
 }
 
-func (r *ProjectRepository) Delete(id string) error {
+func (r *ProjectRepository) Delete(id ProjectUUID) error {
 	project, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (r *ProjectRepository) Delete(id string) error {
 	return r.db.Delete(ProjectType, project)
 }
 
-func (r *ProjectRepository) List(tenantID string) ([]string, error) {
+func (r *ProjectRepository) List(tenantID TenantUUID) ([]ProjectUUID, error) {
 	iter, err := r.db.Get(ProjectType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (r *ProjectRepository) List(tenantID string) ([]string, error) {
 	return ids, nil
 }
 
-func (r *ProjectRepository) DeleteByTenant(tenantUUID string) error {
+func (r *ProjectRepository) DeleteByTenant(tenantUUID TenantUUID) error {
 	_, err := r.db.DeleteAll(ProjectType, TenantForeignPK, tenantUUID)
 	return err
 }

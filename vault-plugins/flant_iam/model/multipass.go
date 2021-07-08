@@ -86,16 +86,16 @@ const (
 )
 
 type Multipass struct {
-	UUID        string             `json:"uuid"` // PK
-	TenantUUID  string             `json:"tenant_uuid"`
-	OwnerUUID   string             `json:"owner_uuid"`
+	UUID        MultipassUUID      `json:"uuid"` // PK
+	TenantUUID  TenantUUID         `json:"tenant_uuid"`
+	OwnerUUID   OwnerUUID          `json:"owner_uuid"`
 	OwnerType   MultipassOwnerType `json:"owner_type"`
 	Description string             `json:"description"`
 	TTL         time.Duration      `json:"ttl"`
 	MaxTTL      time.Duration      `json:"max_ttl"`
 	ValidTill   int64              `json:"valid_till"`
 	CIDRs       []string           `json:"allowed_cidrs"`
-	Roles       []string           `json:"allowed_roles" `
+	Roles       []RoleName         `json:"allowed_roles" `
 	Salt        string             `json:"salt,omitempty" sensitive:""`
 
 	Origin ObjectOrigin `json:"origin"`
@@ -202,7 +202,7 @@ func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
 	return r.GetByID(filter.UUID)
 }
 
-func (r *MultipassRepository) GetByID(id string) (*Multipass, error) {
+func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 	raw, err := r.db.First(MultipassType, PK, id)
 	if err != nil {
 		return nil, err
@@ -214,7 +214,7 @@ func (r *MultipassRepository) GetByID(id string) (*Multipass, error) {
 	return multipass, nil
 }
 
-func (r *MultipassRepository) List(filter *Multipass) ([]string, error) {
+func (r *MultipassRepository) List(filter *Multipass) ([]MultipassUUID, error) {
 	err := r.validate(filter)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (r *MultipassRepository) List(filter *Multipass) ([]string, error) {
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := []MultipassUUID{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -252,7 +252,7 @@ func (r *MultipassRepository) SetExtension(ext *Extension) error {
 	return r.save(obj)
 }
 
-func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid string) error {
+func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid MultipassUUID) error {
 	obj, err := r.GetByID(uuid)
 	if err != nil {
 		return err
