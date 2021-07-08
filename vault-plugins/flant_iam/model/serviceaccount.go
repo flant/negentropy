@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -65,20 +64,6 @@ func (u *ServiceAccount) ObjType() string {
 
 func (u *ServiceAccount) ObjId() string {
 	return u.UUID
-}
-
-func (u *ServiceAccount) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := u
-	if !includeSensitive {
-		u := OmitSensitive(u).(ServiceAccount)
-		obj = &u
-	}
-	return jsonutil.EncodeJSON(obj)
-}
-
-func (u *ServiceAccount) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
-	return err
 }
 
 // generic: <identifier>@serviceaccount.<tenant_identifier>

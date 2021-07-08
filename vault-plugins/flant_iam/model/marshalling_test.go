@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,7 +78,7 @@ func TestSlice(t *testing.T) {
 
 		slice1 := arrayOfData{Items: []test1Container{dc1}}
 
-		data, err := slice1.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(slice1))
 		require.NoError(t, err)
 		var res map[string][]map[string]string
 		_ = json.Unmarshal(data, &res)
@@ -97,7 +96,7 @@ func TestSlice(t *testing.T) {
 
 		slice1 := arrayOfPointer{Items: []*test1Container{dc1}}
 
-		data, err := slice1.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(slice1))
 		require.NoError(t, err)
 		var res map[string][]map[string]string
 		_ = json.Unmarshal(data, &res)
@@ -115,7 +114,7 @@ func TestSlice(t *testing.T) {
 
 		slice1 := arrayOfData{T2Items: []test2Container{dc1}}
 
-		data, err := slice1.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(slice1))
 		require.NoError(t, err)
 		var res map[string][]map[string]string
 		_ = json.Unmarshal(data, &res)
@@ -133,7 +132,7 @@ func TestSlice(t *testing.T) {
 
 		slice1 := arrayOfPointer{T2Items: []*test2Container{dc1}}
 
-		data, err := slice1.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(slice1))
 		require.NoError(t, err)
 		var res map[string][]map[string]string
 		_ = json.Unmarshal(data, &res)
@@ -149,13 +148,12 @@ type test1Container struct {
 	Sensitive string `json:"sens" sensitive:""`
 }
 
-func (dc test1Container) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := dc
-	if !includeSensitive {
-		dc := OmitSensitive(dc).(test1Container)
-		obj = dc
-	}
-	return jsonutil.EncodeJSON(obj)
+func (dc test1Container) ObjType() string {
+	return "test1Container"
+}
+
+func (dc test1Container) ObjId() string {
+	return dc.Public
 }
 
 type test2Container struct {
@@ -163,13 +161,12 @@ type test2Container struct {
 	Sensitive string `json:"sens" sensitive:""`
 }
 
-func (dc *test2Container) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := dc
-	if !includeSensitive {
-		dc := OmitSensitive(dc).(test2Container)
-		obj = &dc
-	}
-	return jsonutil.EncodeJSON(obj)
+func (dc test2Container) ObjType() string {
+	return "test2Container"
+}
+
+func (dc test2Container) ObjId() string {
+	return dc.Public
 }
 
 type arrayOfData struct {
@@ -177,13 +174,12 @@ type arrayOfData struct {
 	T2Items []test2Container `json:"t2items"`
 }
 
-func (a arrayOfData) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := a
-	if !includeSensitive {
-		a := OmitSensitive(a).(arrayOfData)
-		obj = a
-	}
-	return jsonutil.EncodeJSON(obj)
+func (dc arrayOfData) ObjType() string {
+	return "arrayOfData"
+}
+
+func (dc arrayOfData) ObjId() string {
+	return "1"
 }
 
 type arrayOfPointer struct {
@@ -191,11 +187,10 @@ type arrayOfPointer struct {
 	T2Items []*test2Container `json:"t2items"`
 }
 
-func (a arrayOfPointer) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := a
-	if !includeSensitive {
-		a := OmitSensitive(a).(arrayOfPointer)
-		obj = a
-	}
-	return jsonutil.EncodeJSON(obj)
+func (dc arrayOfPointer) ObjType() string {
+	return "arrayOfPointer"
+}
+
+func (dc arrayOfPointer) ObjId() string {
+	return "2"
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,13 +20,13 @@ func TestMarshalling(t *testing.T) {
 	}
 
 	t.Run("with sensitive", func(t *testing.T) {
-		data, err := ex.Marshal(true)
+		data, err := json.Marshal(ex)
 		require.NoError(t, err)
 		assert.Contains(t, string(data), "sensitive_attributes")
 	})
 
 	t.Run("exclude sensitive", func(t *testing.T) {
-		data, err := ex.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(ex))
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "sensitive_attributes")
 	})

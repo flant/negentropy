@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -17,13 +18,13 @@ func Test_MultipassDbSchema(t *testing.T) {
 
 func Test_MultipassMarshalling(t *testing.T) {
 	flipflopMultipass := func(t *testing.T, token *Multipass, includeSensitive bool) *Multipass {
-		j, err := token.Marshal(includeSensitive)
+		j, err := json.Marshal(token)
 		if err != nil {
 			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
 
 		restored := &Multipass{}
-		err = restored.Unmarshal(j)
+		err = json.Unmarshal(j, restored)
 		if err != nil {
 			t.Fatalf("cannot unmarshal multipass back: %v", err)
 		}

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -24,7 +25,7 @@ func (mkd *SelfKafkaDestination) encryptData(data []byte, pub *rsa.PublicKey) ([
 
 func (mkd *SelfKafkaDestination) simpleObjectKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
-	data, err := obj.Marshal(true)
+	data, err := json.Marshal(obj)
 	if err != nil {
 		return kafka.Message{}, err
 	}

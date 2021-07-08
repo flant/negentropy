@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -110,19 +109,6 @@ func (t *Multipass) ObjType() string {
 
 func (t *Multipass) ObjId() string {
 	return t.UUID
-}
-
-func (t *Multipass) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := t
-	if !includeSensitive {
-		t := OmitSensitive(t).(Multipass)
-		obj = &t
-	}
-	return jsonutil.EncodeJSON(obj)
-}
-
-func (t *Multipass) Unmarshal(data []byte) error {
-	return jsonutil.DecodeJSON(data, t)
 }
 
 type MultipassRepository struct {

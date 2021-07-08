@@ -14,7 +14,6 @@ import (
 type MemoryStorableObject interface {
 	ObjType() string
 	ObjId() string
-	Marshal(includeSensitive bool) ([]byte, error)
 }
 
 type KafkaSource interface {
