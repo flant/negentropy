@@ -10,6 +10,8 @@ if [ "$1" != "force" ]; then
   fi
 fi
 
+../../../common/vault/build_vault.sh
+
 packer build \
   -var-file=../../../variables.pkrvars.hcl \
   -var 'image_sources_checksum='"$(image_sources_checksum)"'' \

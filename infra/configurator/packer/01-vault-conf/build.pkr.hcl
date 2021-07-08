@@ -102,11 +102,10 @@ source "googlecompute" "vault-conf" {
 build {
   sources = ["source.googlecompute.vault-conf"]
 
-//  todo: use our binary
-//  provisioner "file" {
-//    source      = "../../../common/vault/vault/pkg/linux_amd64/vault"
-//    destination = "/bin/vault"
-//  }
+  provisioner "file" {
+    source      = "../../../common/vault/vault/bin/vault"
+    destination = "/bin/vault"
+  }
 
   provisioner "file" {
     source      = "../../../common/vault/recovery-pgp-keys"

@@ -1,18 +1,5 @@
 set -exu
 
-# todo: rollback to our binary with plugins
-export VAULT_VERSION=1.7.3
-export VAULT_SHA256=8453132a93b755c0a89dd4b2f1a99bd4af06f8167b81917f117080839031e03f
-
-mkdir -p /opt/build && \
-cd /opt/build && \
-wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip && \
-echo "${VAULT_SHA256}  vault_${VAULT_VERSION}_linux_amd64.zip" | sha256sum -c - && \
-unzip vault_${VAULT_VERSION}_linux_amd64.zip && \
-cp vault /bin && \
-cd /opt && \
-rm -rf /opt/build
-
 # We are building our own vault binary and packer should upload it before running this script.
 chmod +x /bin/vault
 
@@ -46,7 +33,10 @@ done
 
 echo "Starting vault initialization."
 pushd /tmp
-gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
+until [ -f "${VAULT_ROOT_TOKEN_PGP_KEY}" ]; do
+  gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
+  sleep 2
+done
 vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
 vault_init_out="$(vault operator init -root-token-pgp-key="${VAULT_ROOT_TOKEN_PGP_KEY}" -recovery-shares="${VAULT_RECOVERY_SHARES}" -recovery-threshold="${VAULT_RECOVERY_THRESHOLD}" -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
 echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}' > "${VAULT_ROOT_TOKEN_ENCRYPTED}"
