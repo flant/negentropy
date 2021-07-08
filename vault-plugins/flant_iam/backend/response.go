@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -12,19 +13,23 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func responseWithData(m model.Marshaller) (*logical.Response, error) {
+func responseWithData(m interface{}) (*logical.Response, error) {
 	// normally, almost no sensitive is sent via HTTP
 	return responseWithSensitiveData(m, false)
 }
 
-func responseWithSensitiveData(m model.Marshaller, includeSensitive bool) (*logical.Response, error) {
-	json, err := m.Marshal(includeSensitive)
+func responseWithSensitiveData(m interface{}, includeSensitive bool) (*logical.Response, error) {
+	if !includeSensitive {
+		m = model.OmitSensitive(m)
+	}
+
+	raw, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
 	var data map[string]interface{}
-	err = jsonutil.DecodeJSON(json, &data)
+	err = jsonutil.DecodeJSON(raw, &data)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +41,7 @@ func responseWithSensitiveData(m model.Marshaller, includeSensitive bool) (*logi
 	return resp, err
 }
 
-func responseWithSensitiveDataAndCode(req *logical.Request, m model.Marshaller, status int) (*logical.Response, error) {
+func responseWithSensitiveDataAndCode(req *logical.Request, m interface{}, status int) (*logical.Response, error) {
 	resp, err := responseWithSensitiveData(m, true)
 	if err != nil {
 		return nil, err
@@ -44,7 +49,7 @@ func responseWithSensitiveDataAndCode(req *logical.Request, m model.Marshaller, 
 	return logical.RespondWithStatusCode(resp, req, status)
 }
 
-func responseWithDataAndCode(req *logical.Request, m model.Marshaller, status int) (*logical.Response, error) {
+func responseWithDataAndCode(req *logical.Request, m interface{}, status int) (*logical.Response, error) {
 	resp, err := responseWithData(m)
 	if err != nil {
 		return nil, err

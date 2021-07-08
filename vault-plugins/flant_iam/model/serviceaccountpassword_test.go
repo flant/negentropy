@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -9,13 +10,19 @@ import (
 
 func Test_ServiceAccountPasswordMarshalling(t *testing.T) {
 	flipflopSAP := func(t *testing.T, token *ServiceAccountPassword, includeSensitive bool) *ServiceAccountPassword {
-		j, err := token.Marshal(includeSensitive)
+		var res interface{}
+
+		res = token
+		if !includeSensitive {
+			res = OmitSensitive(token)
+		}
+		j, err := json.Marshal(res)
 		if err != nil {
 			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
 
 		restored := &ServiceAccountPassword{}
-		err = restored.Unmarshal(j)
+		err = json.Unmarshal(j, restored)
 		if err != nil {
 			t.Fatalf("cannot unmarshal multipass back: %v", err)
 		}

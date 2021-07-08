@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -51,7 +50,13 @@ type Tenant struct {
 	UUID       TenantUUID `json:"uuid"` // PK
 	Version    string     `json:"resource_version"`
 	Identifier string     `json:"identifier"`
-	// TODO enabled_by_default_for_new_projects
+
+	FeatureFlags []TenantFeatureFlag `json:"feature_flags"`
+}
+
+type TenantFeatureFlag struct {
+	FeatureFlag           `json:",inline"`
+	EnabledForNewProjects bool `json:"enabled_for_new"`
 }
 
 func (t *Tenant) ObjType() string {
@@ -60,15 +65,6 @@ func (t *Tenant) ObjType() string {
 
 func (t *Tenant) ObjId() string {
 	return t.UUID
-}
-
-func (t *Tenant) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(t)
-}
-
-func (t *Tenant) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, t)
-	return err
 }
 
 type TenantRepository struct {

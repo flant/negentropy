@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
 const (
@@ -46,13 +45,4 @@ func (p *Entity) ObjType() string {
 
 func (p *Entity) ObjId() string {
 	return p.UUID
-}
-
-func (p *Entity) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(p)
-}
-
-func (p *Entity) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, p)
-	return err
 }

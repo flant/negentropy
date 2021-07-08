@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -70,20 +69,6 @@ func (u *RoleBinding) ObjType() string {
 
 func (u *RoleBinding) ObjId() string {
 	return u.UUID
-}
-
-func (u *RoleBinding) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := u
-	if !includeSensitive {
-		u := OmitSensitive(u).(RoleBinding)
-		obj = &u
-	}
-	return jsonutil.EncodeJSON(obj)
-}
-
-func (u *RoleBinding) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
-	return err
 }
 
 type BoundRole struct {

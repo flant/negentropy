@@ -4,15 +4,6 @@ import (
 	"reflect"
 )
 
-type Marshaller interface {
-	Marshal(bool) ([]byte, error)
-	Unmarshal([]byte) error
-}
-
-type SensitiveMarshaller interface {
-	Marshal(bool) ([]byte, error)
-}
-
 // OmitSensitive makes shallow copy and omits fields with "sensitive" tag regardless its value.
 // To make deeper filtration of sensitive fields, implement Marshall(includeSensitive bool) method
 // on nested structs or support recursive walk in this function.
@@ -60,7 +51,7 @@ func OmitSensitive(obj interface{}) interface{} {
 func omitMap(f reflect.Value) {
 	iter := f.MapRange()
 	for iter.Next() {
-		if _, ok := iter.Value().Interface().(SensitiveMarshaller); ok {
+		if _, ok := iter.Value().Interface().(sensitiveObjectHolder); ok {
 			newValue := OmitSensitive(iter.Value().Elem().Interface())
 			p := reflect.New(reflect.TypeOf(newValue))
 			p.Elem().Set(reflect.ValueOf(newValue))
@@ -73,8 +64,8 @@ func omitSlice(f reflect.Value) {
 	for si := 0; si < f.Len(); si++ {
 		value := f.Index(si)
 
-		_, isValueM := value.Interface().(SensitiveMarshaller)
-		_, isPointerM := value.Addr().Interface().(SensitiveMarshaller)
+		_, isValueM := value.Interface().(sensitiveObjectHolder)
+		_, isPointerM := value.Addr().Interface().(sensitiveObjectHolder)
 
 		if isValueM || isPointerM {
 			if value.Kind() == reflect.Ptr {
@@ -92,4 +83,9 @@ func omitSlice(f reflect.Value) {
 			value.Set(p)
 		}
 	}
+}
+
+type sensitiveObjectHolder interface {
+	ObjType() string
+	ObjId() string
 }

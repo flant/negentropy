@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -67,15 +66,6 @@ func (t *Role) ObjType() string {
 
 func (t *Role) ObjId() string {
 	return t.Name
-}
-
-func (t *Role) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(t)
-}
-
-func (t *Role) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, t)
-	return err
 }
 
 type RoleRepository struct {

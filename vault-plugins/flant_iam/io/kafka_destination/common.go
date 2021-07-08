@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -32,7 +34,9 @@ func (cd *commonDest) encryptData(data []byte, pub *rsa.PublicKey) ([]byte, bool
 
 func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey, includeSensitive bool) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
-	data, err := obj.Marshal(includeSensitive)
+
+	public := model.OmitSensitive(obj)
+	data, err := json.Marshal(public)
 	if err != nil {
 		return kafka.Message{}, err
 	}

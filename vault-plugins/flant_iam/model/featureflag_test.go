@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -10,13 +11,13 @@ func Test_FeatureFlagMarshalling(t *testing.T) {
 		Name: "somefun",
 	}
 
-	json, err := ten.Marshal(false)
+	raw, err := json.Marshal(ten)
 	if err != nil {
 		t.Fatalf("cannot marshal tenant with sensitive data: %v", err)
 	}
 
 	ten2 := &FeatureFlag{}
-	err = ten2.Unmarshal(json)
+	err = json.Unmarshal(raw, ten2)
 	if err != nil {
 		t.Fatalf("cannot unmarshal tenant back: %v", err)
 	}

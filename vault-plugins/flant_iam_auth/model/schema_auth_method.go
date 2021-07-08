@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 )
 
@@ -87,13 +86,4 @@ func (p *AuthMethod) ObjType() string {
 
 func (p *AuthMethod) ObjId() string {
 	return p.UUID
-}
-
-func (p *AuthMethod) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(p)
-}
-
-func (p *AuthMethod) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, p)
-	return err
 }

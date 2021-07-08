@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,13 +38,13 @@ func TestUserWithExtensions(t *testing.T) {
 	}
 
 	t.Run("include sensitive data", func(t *testing.T) {
-		data, err := u.Marshal(true)
+		data, err := json.Marshal(u)
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"sensitive_attributes":{"b":2}`)
 	})
 
 	t.Run("exclude sensitive data", func(t *testing.T) {
-		data, err := u.Marshal(false)
+		data, err := json.Marshal(OmitSensitive(u))
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), `sensitive_attributes`)
 	})

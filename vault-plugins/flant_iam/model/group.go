@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -64,20 +63,6 @@ func (u *Group) ObjType() string {
 
 func (u *Group) ObjId() string {
 	return u.UUID
-}
-
-func (u *Group) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := u
-	if !includeSensitive {
-		u := OmitSensitive(u).(Group)
-		obj = &u
-	}
-	return jsonutil.EncodeJSON(obj)
-}
-
-func (u *Group) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
-	return err
 }
 
 // generic: <identifier>@group.<tenant_identifier>

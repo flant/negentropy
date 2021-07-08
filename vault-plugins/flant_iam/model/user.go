@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -71,20 +70,6 @@ func (u *User) ObjType() string {
 
 func (u *User) ObjId() string {
 	return u.UUID
-}
-
-func (u *User) Marshal(includeSensitive bool) ([]byte, error) {
-	obj := u
-	if !includeSensitive {
-		u := OmitSensitive(u).(User)
-		obj = &u
-	}
-	return jsonutil.EncodeJSON(obj)
-}
-
-func (u *User) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
-	return err
 }
 
 type UserRepository struct {

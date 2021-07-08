@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -65,15 +64,6 @@ func (p *Project) ObjType() string {
 
 func (p *Project) ObjId() string {
 	return p.UUID
-}
-
-func (p *Project) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(p)
-}
-
-func (p *Project) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, p)
-	return err
 }
 
 type ProjectRepository struct {
