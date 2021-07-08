@@ -49,9 +49,10 @@ type RoleBinding struct {
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
 
-	Users           []UserUUID           `json:"users"`
-	Groups          []GroupUUID          `json:"groups"`
-	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
+	Users           []UserUUID           `json:"-"`
+	Groups          []GroupUUID          `json:"-"`
+	ServiceAccounts []ServiceAccountUUID `json:"-"`
+	Subjects        []SubjectNotation    `json:"subjects"`
 
 	AnyProject bool          `json:"any_project"`
 	Projects   []ProjectUUID `json:"projects"`
@@ -89,25 +90,59 @@ func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
 	}
 }
 
-func (r *RoleBindingRepository) save(roleBinding *RoleBinding) error {
-	return r.db.Insert(RoleBindingType, roleBinding)
+func (r *RoleBindingRepository) save(rb *RoleBinding) error {
+	return r.db.Insert(RoleBindingType, rb)
 }
 
-func (r *RoleBindingRepository) Create(roleBinding *RoleBinding) error {
-	_, err := r.tenantRepo.GetByID(roleBinding.TenantUUID)
+func (r *RoleBindingRepository) fillSubjects(rb *RoleBinding) error {
+	subj, err := NewSubjectsFetcher(r.db, rb.Subjects).Fetch()
 	if err != nil {
 		return err
 	}
+	rb.Groups = subj.Groups
+	rb.ServiceAccounts = subj.ServiceAccounts
+	rb.Users = subj.Users
+	return nil
+}
 
-	if roleBinding.Version != "" {
-		return ErrBadVersion
-	}
-	if roleBinding.Origin == "" {
+func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
+	// Validate
+	if rb.Origin == "" {
 		return ErrBadOrigin
 	}
-	roleBinding.Version = NewResourceVersion()
+	if rb.Version != "" {
+		return ErrBadVersion
+	}
+	rb.Version = NewResourceVersion()
 
-	return r.save(roleBinding)
+	// Refill data
+	if err := r.fillSubjects(rb); err != nil {
+		return err
+	}
+
+	return r.save(rb)
+}
+
+func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
+	// Validate
+	if rb.Origin == "" {
+		return ErrBadOrigin
+	}
+
+	// Validate tenant relation
+	if stored, err := r.GetByID(rb.UUID); err != nil {
+		return err
+	} else if stored.TenantUUID != rb.TenantUUID {
+		return ErrNotFound
+	}
+
+	// Refill data
+	if err := r.fillSubjects(rb); err != nil {
+		return err
+	}
+
+	// Store
+	return r.save(rb)
 }
 
 func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
@@ -122,35 +157,12 @@ func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error
 	return roleBinding, nil
 }
 
-func (r *RoleBindingRepository) Update(roleBinding *RoleBinding) error {
-	stored, err := r.GetByID(roleBinding.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != roleBinding.TenantUUID {
-		return ErrNotFound
-	}
-	if roleBinding.Origin != stored.Origin {
-		return ErrBadOrigin
-	}
-	if stored.Version != roleBinding.Version {
-		return ErrBadVersion
-	}
-	roleBinding.Version = NewResourceVersion()
-
-	// Update
-	return r.save(roleBinding)
-}
-
 func (r *RoleBindingRepository) delete(id RoleBindingUUID) error {
-	roleBinding, err := r.GetByID(id)
+	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-
-	return r.db.Delete(RoleBindingType, roleBinding)
+	return r.db.Delete(RoleBindingType, rb)
 }
 
 func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id RoleBindingUUID) error {
@@ -164,8 +176,8 @@ func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id RoleBindingUUID) 
 	return r.delete(id)
 }
 
-func (r *RoleBindingRepository) List(tenantID TenantUUID) ([]RoleBindingUUID, error) {
-	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantID)
+func (r *RoleBindingRepository) List(tid TenantUUID) ([]RoleBindingUUID, error) {
+	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tid)
 	if err != nil {
 		return nil, err
 	}
@@ -182,8 +194,8 @@ func (r *RoleBindingRepository) List(tenantID TenantUUID) ([]RoleBindingUUID, er
 	return ids, nil
 }
 
-func (r *RoleBindingRepository) DeleteByTenant(tenantUUID TenantUUID) error {
-	_, err := r.db.DeleteAll(RoleBindingType, TenantForeignPK, tenantUUID)
+func (r *RoleBindingRepository) DeleteByTenant(tid TenantUUID) error {
+	_, err := r.db.DeleteAll(RoleBindingType, TenantForeignPK, tid)
 	return err
 }
 
@@ -199,8 +211,8 @@ func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
 	return r.save(obj)
 }
 
-func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, uuid RoleBindingUUID) error {
-	obj, err := r.GetByID(uuid)
+func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, rbid RoleBindingUUID) error {
+	obj, err := r.GetByID(rbid)
 	if err != nil {
 		return err
 	}

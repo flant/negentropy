@@ -126,7 +126,10 @@ describe("Role", function () {
         const { data: read } = await root.read(name)
         const role = read.data
 
-        expect(role).to.deep.eq({ ...payload, name, included_roles : null }, "payload must be saved")
+        expect(role).to.deep.eq(
+            { ...payload, name, included_roles: null },
+            "payload must be saved",
+        )
     })
 
     it("can be deleted", async () => {

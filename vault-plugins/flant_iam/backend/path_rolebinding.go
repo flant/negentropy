@@ -243,14 +243,12 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
 		roleBinding := &model.RoleBinding{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			ValidTill:       expiration,
-			RequireMFA:      data.Get("require_mfa").(bool),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			ValidTill:  expiration,
+			RequireMFA: data.Get("require_mfa").(bool),
+			Subjects:   data.Get("subjects").([]model.SubjectNotation),
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -278,15 +276,13 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
 		roleBinding := &model.RoleBinding{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			Version:         data.Get("resource_version").(string),
-			ValidTill:       expiration,
-			RequireMFA:      data.Get("require_mfa").(bool),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Version:    data.Get("resource_version").(string),
+			ValidTill:  expiration,
+			RequireMFA: data.Get("require_mfa").(bool),
+			Subjects:   data.Get("subjects").([]model.SubjectNotation),
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
