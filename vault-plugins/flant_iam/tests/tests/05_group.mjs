@@ -1,11 +1,13 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
+import { API } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
     genGroupPayload,
+    genUserPayload,
+    genServiceAccountPayload,
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
+import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
 //    /tenant/{tid}/group/{gid}
 
@@ -15,6 +17,57 @@ describe("Group", function () {
 
     const entrypointBuilder = new SubTenantEntrypointBuilder("group")
     const rootGroupClient = new API(rootClient, entrypointBuilder)
+
+    // Clients to provide dependencies
+    const userEntrypointBuilder = new SubTenantEntrypointBuilder("user")
+    const saEntrypointBuilder = new SubTenantEntrypointBuilder(
+        "service_account",
+    )
+    const rootUserClient = new API(rootClient, userEntrypointBuilder)
+    const rootServiceAccountClient = new API(rootClient, saEntrypointBuilder)
+
+    function genPayload(override) {
+        return genRoleBindingPayload(override)
+    }
+
+    async function createTenant() {
+        const payload = genTenantPayload()
+        const { data } = await rootTenantAPI.create({ payload })
+        return data.data
+    }
+
+    async function createTenantId() {
+        const tenant = await createTenant()
+        return tenant.uuid
+    }
+
+    async function createServiceAccount(tid) {
+        const payload = genServiceAccountPayload()
+        const { data: body } = await rootServiceAccountClient.create({
+            params: { tenant: tid },
+            payload,
+        })
+        return body.data
+    }
+
+    async function createUser(tid) {
+        const payload = genUserPayload()
+        const { data: body } = await rootUserClient.create({
+            params: { tenant: tid },
+            payload,
+        })
+        return body.data
+    }
+
+    async function createSubjects(tid) {
+        const user = await createUser(tid)
+        const sa = await createServiceAccount(tid)
+        return [subject("user", user.uuid), subject("service_account", sa.uuid)]
+    }
+
+    function subject(type, id) {
+        return { type, id }
+    }
 
     function genPayload(override) {
         return genGroupPayload(override)
@@ -32,7 +85,8 @@ describe("Group", function () {
     }
 
     async function createGroup(tid) {
-        const payload = genPayload()
+        const subjects = await createSubjects(tid)
+        const payload = genPayload({ subjects })
         const { data: body } = await rootGroupClient.create({
             params: { tenant: tid },
             payload,
@@ -42,10 +96,11 @@ describe("Group", function () {
 
     it("can be created", async () => {
         const tid = await createTenantId()
+        const subjects = await createSubjects(tid)
 
         const { data: body } = await rootGroupClient.create({
             params: { tenant: tid },
-            payload: genPayload(),
+            payload: genPayload({ subjects }),
         })
 
         expect(body).to.exist.and.to.include.key("data")
@@ -59,13 +114,17 @@ describe("Group", function () {
         expect(body.data.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)
+
+        expect(body.data.subjects).to.deep.eq(subjects)
     })
 
     it("can be read", async () => {
         const tenant = await createTenant()
         const tid = tenant.uuid
+        const subjects = await createSubjects(tid)
+
         // create
-        const payload = genPayload()
+        const payload = genPayload({ subjects })
         const { data: created } = await rootGroupClient.create({
             params: { tenant: tid },
             payload,
@@ -96,6 +155,8 @@ describe("Group", function () {
         expect(read.data.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)
+
+        expect(read.data.subjects).to.deep.eq(subjects)
     })
 
     it("can be updated", async () => {
@@ -105,8 +166,10 @@ describe("Group", function () {
         const created = await createGroup(tid)
 
         // update
+        const subjects = await createSubjects(tid)
         const payload = genPayload({
             resource_version: created.resource_version,
+            subjects,
         })
         const params = { tenant: tid, group: created.uuid }
         const { data: updated } = await rootGroupClient.update({
@@ -116,7 +179,6 @@ describe("Group", function () {
 
         // read
         const { data: read } = await rootGroupClient.read({ params })
-        const sub = read.data
 
         expect(read.data).to.deep.eq(updated.data)
     })
@@ -207,7 +269,8 @@ describe("Group", function () {
             })
 
             beforeEach("create group payload", async () => {
-                payload = genPayload()
+                const subjects = await createSubjects(params.tenant)
+                payload = genPayload({ subjects })
             })
 
             it(`cannot create, gets ${expectedStatus}`, async () => {

@@ -38,11 +38,12 @@ func parseSubjects(data *framework.FieldData) ([]model.SubjectNotation, error) {
 	}
 
 	for _, raw := range rawSubjects {
-		s, ok := raw.(model.SubjectNotation)
+		s, ok := raw.(map[string]interface{})
 		if !ok {
 			return nil, fmt.Errorf("cannot parse subject %v", raw)
 		}
-		subjects = append(subjects, s)
+		subj := model.SubjectNotation{Type: s["type"].(string), ID: s["id"].(string)}
+		subjects = append(subjects, subj)
 	}
 
 	return subjects, nil

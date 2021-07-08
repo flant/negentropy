@@ -145,18 +145,14 @@ export function genProjectPayload(override = {}) {
 export function genGroupPayload(override = {}) {
     return {
         identifier: Faker.lorem.word(),
-        users: [],
-        groups: [],
-        service_accounts: [],
+        subjects: [],
         ...override,
     }
 }
 
 export function genRoleBindingPayload(override = {}) {
     return {
-        users: [],
-        groups: [],
-        service_accounts: [],
+        subjects: [],
         ttl: Faker.datatype.number(),
         require_mfa: Math.random() > 0.5,
         ...override,
