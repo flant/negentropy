@@ -104,7 +104,6 @@ func (r *FeatureFlagRepository) delete(name string) error {
 	return r.db.Delete(FeatureFlagType, featureFlag)
 }
 
-
 func (r *FeatureFlagRepository) List() ([]FeatureFlagName, error) {
 	iter, err := r.db.Get(FeatureFlagType, PK)
 	if err != nil {
