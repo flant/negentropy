@@ -76,7 +76,7 @@ func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
 	title     string
 	body      map[string]interface{}
 	errPrefix string
-}){
+}) {
 	b, storage := getBackend(t)
 	for _, c := range errorCases {
 		t.Run(fmt.Sprintf("does not update or create because %v", c.title), func(t *testing.T) {
@@ -101,7 +101,7 @@ func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
 	}
 }
 
-func assertAuthSource(t *testing.T, b *flantIamAuthBackend, name string, expected *model.AuthSource){
+func assertAuthSource(t *testing.T, b *flantIamAuthBackend, name string, expected *model.AuthSource) {
 	conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +263,7 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 				"bound_issuer":           "http://vault.example.com/",
 				"entity_alias_name":      model.EntityAliasNameEmail,
 				"allow_service_accounts": false,
-				"jwt_supported_algs": []string{"invalid"},
+				"jwt_supported_algs":     []string{"invalid"},
 			},
 			errPrefix: "unsupported signing algorithm",
 		},
@@ -346,11 +346,11 @@ func TestAuthSource_JWKS_Update(t *testing.T) {
 	expected := &model.AuthSource{
 		Name: authSourceTestName,
 
-		JWKSURL: s.server.URL + "/certs",
-		JWKSCAPEM: cert,
-		EntityAliasName: model.EntityAliasNameEmail,
+		JWKSURL:              s.server.URL + "/certs",
+		JWKSCAPEM:            cert,
+		EntityAliasName:      model.EntityAliasNameEmail,
 		AllowServiceAccounts: false,
-		NamespaceInState: false,
+		NamespaceInState:     false,
 
 		OIDCResponseTypes:    []string{},
 		JWTSupportedAlgs:     []string{},
@@ -397,7 +397,6 @@ func TestAuthSource_JWKS_Update_Invalid(t *testing.T) {
 
 			errPrefix: "failed to decode keys",
 		},
-
 	}
 
 	assertAuthSourceErrorCases(t, errorCases)
