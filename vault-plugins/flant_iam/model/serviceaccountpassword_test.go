@@ -10,7 +10,13 @@ import (
 
 func Test_ServiceAccountPasswordMarshalling(t *testing.T) {
 	flipflopSAP := func(t *testing.T, token *ServiceAccountPassword, includeSensitive bool) *ServiceAccountPassword {
-		j, err := json.Marshal(token)
+		var res interface{}
+
+		res = token
+		if !includeSensitive {
+			res = OmitSensitive(token)
+		}
+		j, err := json.Marshal(res)
 		if err != nil {
 			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
