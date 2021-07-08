@@ -212,12 +212,20 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		roleBinding := &model.RoleBinding{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
-			Subjects:   data.Get("subjects").([]model.SubjectNotation),
+			Subjects:   subjects,
 			Origin:     model.OriginIAM,
 		}
 
@@ -245,13 +253,21 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		roleBinding := &model.RoleBinding{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
-			Subjects:   data.Get("subjects").([]model.SubjectNotation),
+			Subjects:   subjects,
 			Origin:     model.OriginIAM,
 		}
 
@@ -259,7 +275,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		repo := model.NewRoleBindingRepository(tx)
-		err := repo.Update(roleBinding)
+		err = repo.Update(roleBinding)
 		if err != nil {
 			return responseErr(req, err)
 		}

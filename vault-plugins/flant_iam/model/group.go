@@ -45,7 +45,6 @@ type Group struct {
 	UUID           GroupUUID  `json:"uuid"` // PK
 	TenantUUID     TenantUUID `json:"tenant_uuid"`
 	Version        string     `json:"resource_version"`
-	BuiltinType    string     `json:"-"`
 	Identifier     string     `json:"identifier"`
 	FullIdentifier string     `json:"full_identifier"`
 
@@ -72,9 +71,6 @@ func (u *Group) ObjId() string {
 func CalcGroupFullIdentifier(g *Group, tenant *Tenant) string {
 	name := g.Identifier
 	domain := "group." + tenant.Identifier
-	if g.BuiltinType != "" {
-		domain = g.BuiltinType + "." + domain
-	}
 	return name + "@" + domain
 }
 

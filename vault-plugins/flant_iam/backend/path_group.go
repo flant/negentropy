@@ -193,13 +193,20 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		group := &model.Group{
-			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			BuiltinType: "",
-			Identifier:  data.Get("identifier").(string),
-			Subjects:    data.Get("subjects").([]model.SubjectNotation),
-			Origin:      model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Identifier: data.Get("identifier").(string),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -223,21 +230,28 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		group := &model.Group{
-			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			Version:     data.Get("resource_version").(string),
-			Identifier:  data.Get("identifier").(string),
-			BuiltinType: "",
-			Subjects:    data.Get("subjects").([]model.SubjectNotation),
-			Origin:      model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Version:    data.Get("resource_version").(string),
+			Identifier: data.Get("identifier").(string),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		repo := model.NewGroupRepository(tx)
-		err := repo.Update(group)
+		err = repo.Update(group)
 		if err != nil {
 			return responseErr(req, err)
 		}
