@@ -186,7 +186,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
 				}
 
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, false); err != nil {
+				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, docker.DockerfileOpts{}); err != nil {
 					return fmt.Errorf("unable to add service dockerfile to tar: %s", err)
 				}
 
