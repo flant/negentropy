@@ -94,7 +94,7 @@ func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
 			if resp == nil || !resp.IsError() {
 				t.Fatal("expected error")
 			}
-			if c.errPrefix != "" && !strings.HasPrefix(resp.Error().Error(), c.errPrefix) {
+			if c.errPrefix != "" && !strings.Contains(resp.Error().Error(), c.errPrefix) {
 				t.Fatalf("got unexpected error: %v, need %v", resp.Error(), c.errPrefix)
 			}
 		})
@@ -300,124 +300,97 @@ func TestAuthSource_JWTUpdate(t *testing.T) {
 	})
 }
 
-// func TestAuthSource_JWKS_Update(t *testing.T) {
-//	b, storage := getBackend(t)
-//
-//	s := newOIDCProvider(t)
-//	defer s.server.Close()
-//
-//	cert, err := s.getTLSCert()
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	data := map[string]interface{}{
-//		"jwks_url":               s.server.URL + "/certs",
-//		"jwks_ca_pem":            cert,
-//		"oidc_discovery_url":     "",
-//		"oidc_discovery_ca_pem":  "",
-//		"oidc_client_id":         "",
-//		"oidc_response_mode":     "form_post",
-//		"oidc_response_types":    []string{},
-//		"default_role":           "",
-//		"jwt_validation_pubkeys": []string{},
-//		"jwt_supported_algs":     []string{},
-//		"bound_issuer":           "",
-//		"provider_config":        map[string]interface{}{},
-//		"namespace_in_state":     false,
-//	}
-//
-//	req := &logical.Request{
-//		Operation: logical.UpdateOperation,
-//		Path:      authSourceTestPath,
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err := b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	req = &logical.Request{
-//		Operation: logical.ReadOperation,
-//		Path:      authSourceTestPath,
-//		Storage:   storage,
-//		Data:      nil,
-//	}
-//
-//	resp, err = b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	if diff := deep.Equal(resp.Data, data); diff != nil {
-//		t.Fatalf("Expected did not equal actual: %v", diff)
-//	}
-//}
+func TestAuthSource_JWKS_Update(t *testing.T) {
+	b, storage := getBackend(t)
 
-// func TestAuthSource_JWKS_Update_Invalid(t *testing.T) {
-//	b, storage := getBackend(t)
-//
-//	s := newOIDCProvider(t)
-//	defer s.server.Close()
-//
-//	cert, err := s.getTLSCert()
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	data := map[string]interface{}{
-//		"jwks_url":               s.server.URL + "/certs_missing",
-//		"jwks_ca_pem":            cert,
-//		"oidc_discovery_url":     "",
-//		"oidc_discovery_ca_pem":  "",
-//		"oidc_client_id":         "",
-//		"default_role":           "",
-//		"jwt_validation_pubkeys": []string{},
-//		"jwt_supported_algs":     []string{},
-//		"bound_issuer":           "",
-//	}
-//
-//	req := &logical.Request{
-//		Operation: logical.UpdateOperation,
-//		Path:      authSourceTestPath,
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err := b.HandleRequest(context.Background(), req)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	if resp == nil || !resp.IsError() {
-//		t.Fatal("expected error")
-//	}
-//	if !strings.Contains(resp.Error().Error(), "get keys failed") {
-//		t.Fatalf("got unexpected error: %v", resp.Error())
-//	}
-//
-//	data["jwks_url"] = s.server.URL + "/certs_invalid"
-//
-//	req = &logical.Request{
-//		Operation: logical.UpdateOperation,
-//		Path:      authSourceTestPath,
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err = b.HandleRequest(context.Background(), req)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	if resp == nil || !resp.IsError() {
-//		t.Fatal("expected error")
-//	}
-//	if !strings.Contains(resp.Error().Error(), "failed to decode keys") {
-//		t.Fatalf("got unexpected error: %v", resp.Error())
-//	}
-//}
-//
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := map[string]interface{}{
+		"jwks_url":               s.server.URL + "/certs",
+		"jwks_ca_pem":            cert,
+		"entity_alias_name":      model.EntityAliasNameEmail,
+		"allow_service_accounts": false,
+		"namespace_in_state":     false,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      authSourceTestPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	expected := &model.AuthSource{
+		Name: authSourceTestName,
+
+		JWKSURL: s.server.URL + "/certs",
+		JWKSCAPEM: cert,
+		EntityAliasName: model.EntityAliasNameEmail,
+		AllowServiceAccounts: false,
+		NamespaceInState: false,
+
+		OIDCResponseTypes:    []string{},
+		JWTSupportedAlgs:     []string{},
+		JWTValidationPubKeys: []string{},
+	}
+
+	assertAuthSource(t, b, authSourceTestName, expected)
+}
+
+func TestAuthSource_JWKS_Update_Invalid(t *testing.T) {
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	errorCases := []struct {
+		title     string
+		body      map[string]interface{}
+		errPrefix string
+	}{
+		{
+			title: "certs missing",
+			body: map[string]interface{}{
+				"jwks_url":               s.server.URL + "/certs_missing",
+				"jwks_ca_pem":            cert,
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+
+			errPrefix: "fetching keys oidc: get keys failed",
+		},
+
+		{
+			title: "certs invalid",
+			body: map[string]interface{}{
+				"jwks_url":               s.server.URL + "/certs_invalid",
+				"jwks_ca_pem":            cert,
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+
+			errPrefix: "failed to decode keys",
+		},
+
+	}
+
+	assertAuthSourceErrorCases(t, errorCases)
+}
+
 func TestAuthSource_ResponseMode(t *testing.T) {
 	b, storage := getBackend(t)
 
