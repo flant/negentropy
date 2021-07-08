@@ -43,10 +43,10 @@ func issueJwt(t *testing.T, name string, params map[string]interface{}) *api.Res
 func TestIssuePath(t *testing.T) {
 	skipNoneDev(t)
 
-	TestIssuePath_JWT(t)
+	issuePathJWT(t)
 }
 
-func TestIssuePath_JWT(t *testing.T) {
+func issuePathJWT(t *testing.T) {
 	jwtTypeBody := map[string]interface{}{
 		"ttl":            "200s",
 		"options_schema": testJwtTypeOptionSchemaValid,
