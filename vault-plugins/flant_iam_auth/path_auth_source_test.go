@@ -4,17 +4,14 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
 const authSourceTestName = "a"
@@ -75,28 +72,48 @@ func creteTestOIDCBasedSource(t *testing.T, b logical.Backend, storage logical.S
 	return resp, data
 }
 
-func TestAuthSource_WriteInStorage(t *testing.T) {
-	t.Skip()
+func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
+	title     string
+	body      map[string]interface{}
+	errPrefix string
+}){
 	b, storage := getBackend(t)
+	for _, c := range errorCases {
+		t.Run(fmt.Sprintf("does not update or create because %v", c.title), func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      authSourceTestPath,
+				Storage:   storage,
+				Data:      c.body,
+			}
 
-	_, data := creteTestJWTBasedSource(t, b, storage, authSourceTestName)
-
-	dataFromStore, err := storage.Get(context.TODO(), fmt.Sprintf("%s/%s", "source", authSourceTestName))
-	if err != nil {
-		t.Fatalf("storage returns error %v", err)
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
+			}
+			if c.errPrefix != "" && !strings.HasPrefix(resp.Error().Error(), c.errPrefix) {
+				t.Fatalf("got unexpected error: %v, need %v", resp.Error(), c.errPrefix)
+			}
+		})
 	}
-	if dataFromStore == nil {
-		t.Fatal("storage returns nil data")
-	} else {
-		out := &model.AuthSource{}
-		err = dataFromStore.DecodeJSON(out)
-		if err != nil {
-			t.Fatal("does not decode entry")
-		}
-		deepEq := reflect.DeepEqual(out.JWTValidationPubKeys, data["jwt_validation_pubkeys"])
-		if !deepEq || out.BoundIssuer != data["bound_issuer"] {
-			t.Fatal("does not decode entry")
-		}
+}
+
+func assertAuthSource(t *testing.T, b *flantIamAuthBackend, name string, expected *model.AuthSource){
+	conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if conf.UUID == "" {
+		t.Fatal("uuid must be not empty")
+	}
+
+	conf.UUID = ""
+	if diff := deep.Equal(expected, conf); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -149,99 +166,138 @@ func TestAuthSource_Read(t *testing.T) {
 	}
 }
 
+func TestAuthSource_LogicalErrorUpdate(t *testing.T) {
+	errorCases := []struct {
+		title     string
+		body      map[string]interface{}
+		errPrefix string
+	}{
+		{
+			title: "incorrect entity alias name",
+			body: map[string]interface{}{
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      "Incorrect",
+				"allow_service_accounts": false,
+			},
+
+			errPrefix: "incorrect entity_alias_name",
+		},
+
+		{
+			title: "entity alias name with allow service accounts",
+			body: map[string]interface{}{
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": true,
+			},
+
+			errPrefix: "conflict values for entity_alias_name and allow_service_accounts",
+		},
+
+		{
+			title: "oidc and jwks url and jwks ain one time",
+			body: map[string]interface{}{
+				"oidc_discovery_url":     "http://fake.example.com",
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"jwks_url":               "http://fake.anotherexample.com",
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+			errPrefix: "exactly one of",
+		},
+
+		{
+			title: "oidc and jwks ain one time",
+			body: map[string]interface{}{
+				"oidc_discovery_url":     "http://fake.example.com",
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+			errPrefix: "exactly one of",
+		},
+
+		{
+			title: "jwks url and jwks ain one time",
+			body: map[string]interface{}{
+				"jwt_validation_pubkeys": []string{testJWTPubKey},
+				"jwks_url":               "http://fake.anotherexample.com",
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+			errPrefix: "exactly one of",
+		},
+	}
+
+	assertAuthSourceErrorCases(t, errorCases)
+}
+
 func TestAuthSource_JWTUpdate(t *testing.T) {
 	b, storage := getBackend(t)
 
-	// Create a config with too many token verification schemes
-	data := map[string]interface{}{
-		"oidc_discovery_url":     "http://fake.example.com",
-		"jwt_validation_pubkeys": []string{testJWTPubKey},
-		"jwks_url":               "http://fake.anotherexample.com",
-		"bound_issuer":           "http://vault.example.com/",
-		"entity_alias_name":      model.EntityAliasNameEmail,
-		"allow_service_accounts": false,
+	errorCases := []struct {
+		title     string
+		body      map[string]interface{}
+		errPrefix string
+	}{
+		{
+			title: "invalid pub keys",
+			body: map[string]interface{}{
+				"jwt_validation_pubkeys": []string{"invalid"},
+				"bound_issuer":           "http://vault.example.com/",
+				"entity_alias_name":      model.EntityAliasNameEmail,
+				"allow_service_accounts": false,
+			},
+			errPrefix: "error parsing public key",
+		},
 	}
 
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      authSourceTestPath,
-		Storage:   storage,
-		Data:      data,
-	}
+	assertAuthSourceErrorCases(t, errorCases)
 
-	resp, err := b.HandleRequest(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp == nil || !resp.IsError() {
-		t.Fatal("expected error")
-	}
-	if !strings.HasPrefix(resp.Error().Error(), "exactly one of") {
-		t.Fatalf("got unexpected error: %v", resp.Error())
-	}
+	t.Run("creates auth source with jwt pub keys", func(t *testing.T) {
+		data := map[string]interface{}{
+			"jwt_validation_pubkeys": []string{testJWTPubKey},
+			"bound_issuer":           "http://vault.example.com/",
+			"entity_alias_name":      model.EntityAliasNameEmail,
+			"allow_service_accounts": false,
+		}
 
-	// remove oidc_discovery_url, but this still leaves too many
-	delete(data, "oidc_discovery_url")
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      authSourceTestPath,
+			Storage:   storage,
+			Data:      data,
+		}
 
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      authSourceTestPath,
-		Storage:   storage,
-		Data:      data,
-	}
-	resp, err = b.HandleRequest(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
 
-	if resp == nil || !resp.IsError() {
-		t.Fatal("expected error")
-	}
-	if !strings.HasPrefix(resp.Error().Error(), "exactly one of") {
-		t.Fatalf("got unexpected error: %v", resp.Error())
-	}
+		pubkey, err := certutil.ParsePublicKeyPEM([]byte(testJWTPubKey))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// remove jwks_url so the config is now valid
-	delete(data, "jwks_url")
+		expected := &model.AuthSource{
+			Name: authSourceTestName,
 
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      authSourceTestPath,
-		Storage:   storage,
-		Data:      data,
-	}
+			ParsedJWTPubKeys:     []crypto.PublicKey{pubkey},
+			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTSupportedAlgs:     []string{},
+			OIDCResponseTypes:    []string{},
+			BoundIssuer:          "http://vault.example.com/",
+			NamespaceInState:     true,
+			EntityAliasName:      model.EntityAliasNameEmail,
+		}
 
-	resp, err = b.HandleRequest(context.Background(), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-
-	pubkey, err := certutil.ParsePublicKeyPEM([]byte(testJWTPubKey))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := &model.AuthSource{
-		Name: authSourceTestName,
-
-		ParsedJWTPubKeys:     []crypto.PublicKey{pubkey},
-		JWTValidationPubKeys: []string{testJWTPubKey},
-		JWTSupportedAlgs:     []string{},
-		OIDCResponseTypes:    []string{},
-		BoundIssuer:          "http://vault.example.com/",
-		NamespaceInState:     true,
-		EntityAliasName:      model.EntityAliasNameEmail,
-	}
-
-	conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conf.UUID = ""
-	if !reflect.DeepEqual(expected, conf) {
-		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
-	}
+		assertAuthSource(t, b, authSourceTestName, expected)
+	})
 }
 
 // func TestAuthSource_JWKS_Update(t *testing.T) {
@@ -452,15 +508,7 @@ func TestAuthSource_OIDC_Write(t *testing.T) {
 		EntityAliasName:      model.EntityAliasNameEmail,
 	}
 
-	conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conf.UUID = ""
-	if diff := deep.Equal(expected, conf); diff != nil {
-		t.Fatal(diff)
-	}
+	assertAuthSource(t, b, authSourceTestName, expected)
 
 	// Verify OIDC config sanity:
 	//   - if providing client id/secret, discovery URL needs to be set
@@ -585,10 +633,7 @@ func TestAuthSource_OIDC_Create_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
-			assert.NoError(t, err)
-			conf.UUID = ""
-			assert.Equal(t, &test.expected, conf)
+			assertAuthSource(t, b, authSourceTestName, &test.expected)
 		})
 	}
 }
@@ -712,10 +757,7 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
-			assert.NoError(t, err)
-			conf.UUID = ""
-			assert.Equal(t, &test.expected, conf)
+			assertAuthSource(t, b, authSourceTestName, &test.expected)
 		})
 	}
 }
