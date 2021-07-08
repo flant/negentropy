@@ -10,10 +10,11 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	dockerClient "github.com/docker/docker/client"
 	goGit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -24,6 +25,7 @@ import (
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 var systemClock util.Clock = util.NewSystemClock()
@@ -39,9 +41,11 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	if err != nil {
 		return fmt.Errorf("error getting configuration: %s", err)
 	} else if config == nil {
-		b.Logger().Info("Configuration not set")
+		b.Logger().Info("Configuration not set: skip operation")
 		return nil
-	} else {
+	}
+
+	{
 		cfgData, err := json.MarshalIndent(config, "", "  ")
 		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", err, string(cfgData)))
 	}
@@ -51,12 +55,16 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return fmt.Errorf("error getting git credentials config: %s", err)
 	}
 
-	var vaultRequestsConfig vaultRequests
-	var accessConfig interface{}
+	var vaultRequestsConfig vaultRequests // TODO: read list from storage
 
-	if len(vaultRequestsConfig) > 0 && accessConfig == nil {
+	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
+	if err != nil {
+		return fmt.Errorf("error getting vault api config: %s", err)
+	}
+
+	if len(vaultRequestsConfig) > 0 && apiConfig == nil {
 		reqCfgData, _ := json.MarshalIndent(vaultRequestsConfig, "", "  ")
-		b.Logger().Info("Access configuration is not set, while there is requests configuration:\n%s\n", reqCfgData)
+		b.Logger().Info("Access configuration is not set, and there is configured vault requests: skip operation:\n%s\n", reqCfgData)
 		return nil
 	}
 
@@ -74,7 +82,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	now := systemClock.Now()
 	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
-		return b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, accessConfig)
+		return b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, apiConfig)
 	})
 
 	if err == queue_manager.QueueBusyError {
@@ -96,8 +104,19 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	return nil
 }
 
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *gitCredential, vaultRequestsConfig vaultRequests, accessConfig interface{}) error {
+func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *gitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
 	b.Logger().Debug("Started periodic task")
+
+	vaultRequestEnvs := map[string]string{}
+	for _, requestConfig := range vaultRequestsConfig {
+		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
+		if err != nil {
+			return fmt.Errorf("unable to perform vault request named %q: %s", requestConfig.Name, err)
+		}
+
+		envName := fmt.Sprintf("VAULT_REQUEST_TOKEN_%s", strings.ReplaceAll(strings.ToUpper(requestConfig.Name), "-", "_"))
+		vaultRequestEnvs[envName] = token
+	}
 
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
@@ -183,7 +202,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 	// run docker build with service dockerfile and context
 	{
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			return fmt.Errorf("unable to create docker client: %s", err)
 		}
@@ -200,25 +219,28 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
 				}
 
-				vaultAddr := ""   // APIURL
-				vaultCACert := "" // APICa
-				vaultCACertPath := path.Join(serviceDirInContext, "ca.crt")
-				vaultTLSServerName := "" // APIHost
-
-				opts := docker.DockerfileOpts{
-					EnvVars: map[string]string{
-						"VAULT_ADDR":            vaultAddr,
-						"VAULT_CA_CERT":         vaultCACertPath,
-						"VAULT_TLS_SERVER_NAME": vaultTLSServerName,
-					},
+				dockerfileOpts := docker.DockerfileOpts{EnvVars: map[string]string{}}
+				for k, v := range vaultRequestEnvs {
+					dockerfileOpts.EnvVars[k] = v
 				}
 
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, opts); err != nil {
+				if apiConfig != nil {
+					vaultAddr := apiConfig.APIURL
+					vaultCACert := apiConfig.APICa
+					vaultCACertPath := path.Join(serviceDirInContext, "ca.crt")
+					vaultTLSServerName := apiConfig.APIHost
+
+					if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert)}); err != nil {
+						return fmt.Errorf("error writing file %s to tar: %s", vaultCACertPath, err)
+					}
+
+					dockerfileOpts.EnvVars["VAULT_ADDR"] = vaultAddr
+					dockerfileOpts.EnvVars["VAULT_CA_CERT"] = vaultCACertPath
+					dockerfileOpts.EnvVars["VAULT_TLS_SERVER_NAME"] = vaultTLSServerName
+				}
+
+				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, dockerfileOpts); err != nil {
 					return fmt.Errorf("unable to add service dockerfile to tar: %s", err)
-				}
-
-				if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert)}); err != nil {
-					return fmt.Errorf("error writing file %s to tar: %s", vaultCACertPath, err)
 				}
 
 				if err := tw.Close(); err != nil {

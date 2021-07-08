@@ -2,37 +2,42 @@ package flant_gitops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func (b *backend) getVaultRequestWrapToken(ctx context.Context, conf *request) (string, *logical.Response, error) {
+func (b *backend) performWrappedVaultRequest(ctx context.Context, conf *vaultRequest) (string, error) {
 	apiClient, err := b.AccessVaultController.APIClient()
 	if err != nil {
-		return "", logical.ErrorResponse("Unable to get Vault API Client for Vault %q request to %q: %s", conf.Method, conf.Path, err), nil
+		return "", fmt.Errorf("unable to get Vault API Client for Vault %q request to %q: %s", conf.Method, conf.Path, err)
 	}
 
 	request := apiClient.NewRequest(conf.Method, conf.Path)
 	request.WrapTTL = strconv.FormatFloat(conf.GetWrapTTL().Seconds(), 'f', 0, 64)
 	if conf.Options != "" {
-		if err := request.SetJSONBody(conf.Options); err != nil {
-			return "", nil, fmt.Errorf("Unable to convert options for Vault %q request to %q into JSON: %s", conf.Method, conf.Path, err)
+		var data interface{}
+		if err := json.Unmarshal([]byte(conf.Options), data); err != nil {
+			panic(fmt.Sprintf("invalid configuration detected: unparsable options json string: %s\n%s\n", err, conf.Options))
+		}
+
+		if err := request.SetJSONBody(data); err != nil {
+			return "", fmt.Errorf("error setting options json string into vault request: %s", err)
 		}
 	}
 
 	resp, err := apiClient.RawRequestWithContext(ctx, request)
 	if err != nil {
-		return "", logical.ErrorResponse("Unable to perform Vault %q request to %q: %s", conf.Method, conf.Path, err), nil
+		return "", fmt.Errorf("unable to perform vault request: %s", err)
 	}
 
 	defer resp.Body.Close()
 	secret, err := api.ParseSecret(resp.Body)
 	if err != nil {
-		return "", nil, fmt.Errorf("Unable to parse response to Vault %q request to %q: %s", conf.Method, conf.Path, err)
+		return "", fmt.Errorf("unable to parse secret from response: %s", err)
 	}
 
-	return secret.WrapInfo.Token, nil, nil
+	return secret.WrapInfo.Token, nil
 }
