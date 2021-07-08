@@ -8,6 +8,7 @@ import (
 const (
 	storageKeyConfiguration              = "configuration"
 	storageKeyConfigurationGitCredential = "configuration_git_credential"
+	storageKeyConfigurationRequests      = "configuration_requests"
 )
 
 type gitCredential struct {
@@ -29,6 +30,24 @@ func (c *configuration) GetGitPollPeroid() time.Duration {
 	d, err := time.ParseDuration(c.GitPollPeriod)
 	if err != nil {
 		panic(fmt.Sprintf("invalid git poll period duration: %s", err))
+	}
+	return d
+}
+
+type requests []request
+
+type request struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Method  string `json:"method"`
+	Options string `json:"options"`  // json
+	WrapTTL string `json:"wrap_ttl"` // golang duration
+}
+
+func (r *request) GetWrapTTL() time.Duration {
+	d, err := time.ParseDuration(r.WrapTTL)
+	if err != nil {
+		panic(fmt.Sprintf("invalid wrap ttl duration: %s", err))
 	}
 	return d
 }
