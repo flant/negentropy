@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func Test_RoleBindingDbSchema(t *testing.T) {
