@@ -1,5 +1,11 @@
 #!/bin/bash
 
+BINARY="./vault/bin/vault"
+if [ -f "$BINARY" ]; then
+    echo "Skipping build. Vault binary already exists at $BINARY"
+    exit 0
+fi
+
 export PATH=$PATH:/usr/local/go/bin:/root/go/bin
 git clone https://github.com/hashicorp/vault.git
 pushd vault
@@ -14,6 +20,9 @@ patch -p1 < ../001_bucket_count.patch
 ##go mod download
 ##go get github.com/mitchellh/gox
 ##CGO_ENABLED=1 XC_OS="linux" XC_ARCH="amd64" XC_OSARCH="linux/amd64" make dev
+export XC_OS="linux"
+export XC_ARCH="amd64"
+export XC_OSARCH="linux/amd64"
 make bootstrap
 make dev
 popd
