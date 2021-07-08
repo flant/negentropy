@@ -21,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gopkg.in/square/go-jose.v2 v2.5.1
+	gotest.tools v2.2.0+incompatible
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared

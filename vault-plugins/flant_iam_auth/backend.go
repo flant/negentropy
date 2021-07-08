@@ -22,6 +22,7 @@ import (
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	openapi "github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
 // Factory is used by framework
@@ -39,10 +40,11 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 type flantIamAuthBackend struct {
 	*framework.Backend
 
-	l            sync.RWMutex
-	provider     *oidc.Provider
-	validators   map[string]*jwt.Validator
-	oidcRequests *cache.Cache
+	l                  sync.RWMutex
+	provider           *oidc.Provider
+	validators         map[string]*jwt.Validator
+	oidcRequests       *cache.Cache
+	jwtTypesValidators map[string]openapi.Validator
 
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
@@ -55,6 +57,7 @@ type flantIamAuthBackend struct {
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
+	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 
@@ -123,6 +126,9 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 				pathAuthSource(b),
 				pathAuthSourceList(b),
 				pathLogin(b),
+				pathJwtType(b),
+				pathJwtTypeList(b),
+				pathIssueJwtType(b),
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
@@ -205,6 +211,45 @@ func (b *flantIamAuthBackend) getProvider(config *model.AuthSource) (*oidc.Provi
 
 	b.provider = provider
 	return provider, nil
+}
+
+func (b *flantIamAuthBackend) jwtTypeValidator(jwtType *model.JWTIssueType) (openapi.Validator, error) {
+	specStr := jwtType.OptionsSchema
+	if specStr == "" {
+		return nil, nil
+	}
+
+	validator := func() openapi.Validator {
+		b.l.RLock()
+		defer b.l.RUnlock()
+
+		if spec, ok := b.jwtTypesValidators[jwtType.Name]; ok {
+			return spec
+		}
+
+		return nil
+	}()
+
+	if validator != nil {
+		return validator, nil
+	}
+
+	var err error
+	validator, err = openapi.SchemaValidator(jwtType.OptionsSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	b.setJWTTypeValidator(jwtType, validator)
+
+	return validator, nil
+}
+
+func (b *flantIamAuthBackend) setJWTTypeValidator(jwtType *model.JWTIssueType, validator openapi.Validator) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	b.jwtTypesValidators[jwtType.Name] = validator
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
