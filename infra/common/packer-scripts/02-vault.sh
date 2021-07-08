@@ -34,6 +34,7 @@ done
 echo "Starting vault initialization."
 pushd /tmp
 until [ -f "${VAULT_ROOT_TOKEN_PGP_KEY}" ]; do
+  echo "Retrieving vault-root-token pgp key"
   gsutil cp gs://${TFSTATE_BUCKET}/${VAULT_ROOT_TOKEN_PGP_KEY} .
   sleep 2
 done
@@ -80,7 +81,7 @@ start_pre() {
 }
 
 start_post() {
-  /etc/vault-init.sh 2>&1 >> /var/log/vault-init.log
+  /etc/vault-init.sh &> /var/log/vault-init.log
 }
 
 reload() {

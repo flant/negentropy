@@ -4,9 +4,9 @@ for d in */ ; do
   echo "Building image from directory $d"
   output=$(cd "$d"; ./build.sh)
   if [ $? -eq 0 ]; then
-    echo "Succeed"
+    echo "Succeed: "
   else
-    echo "Error occurred:"
-    echo "$output"
+    echo "Error occurred: "
   fi
+  echo "$output"
 done
