@@ -56,7 +56,7 @@ func (t *Tenant) ObjType() string {
 	return TenantType
 }
 
-func (t *Tenant) ObjId() TenantUUID {
+func (t *Tenant) ObjId() string {
 	return t.UUID
 }
 

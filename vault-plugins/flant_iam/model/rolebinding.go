@@ -49,9 +49,9 @@ type RoleBinding struct {
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
 
-	Users           []UserUUID  `json:"users"`
-	Groups          []GroupUUID `json:"groups"`
-	ServiceAccounts []SAUUID    `json:"service_accounts"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
 	Roles                    []BoundRole               `json:"-"`
 	MaterializedRoles        []MaterializedRole        `json:"-"`
@@ -66,7 +66,7 @@ func (u *RoleBinding) ObjType() string {
 	return RoleBindingType
 }
 
-func (u *RoleBinding) ObjId() RoleBindingUUID {
+func (u *RoleBinding) ObjId() string {
 	return u.UUID
 }
 

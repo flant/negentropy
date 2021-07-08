@@ -57,7 +57,7 @@ func (t *Role) ObjType() string {
 	return RoleType
 }
 
-func (t *Role) ObjId() RoleName {
+func (t *Role) ObjId() string {
 	return t.Name
 }
 

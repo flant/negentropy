@@ -61,7 +61,7 @@ func (p *Project) ObjType() string {
 	return ProjectType
 }
 
-func (p *Project) ObjId() ProjectUUID {
+func (p *Project) ObjId() string {
 	return p.UUID
 }
 

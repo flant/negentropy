@@ -41,15 +41,15 @@ func GroupSchema() *memdb.DBSchema {
 }
 
 type Group struct {
-	UUID            GroupUUID   `json:"uuid"` // PK
-	TenantUUID      TenantUUID  `json:"tenant_uuid"`
-	Version         string      `json:"resource_version"`
-	BuiltinType     string      `json:"-"`
-	Identifier      string      `json:"identifier"`
-	FullIdentifier  string      `json:"full_identifier"`
-	Users           []UserUUID  `json:"users"`
-	Groups          []GroupUUID `json:"groups"`
-	ServiceAccounts []SAUUID    `json:"service_accounts"`
+	UUID            GroupUUID            `json:"uuid"` // PK
+	TenantUUID      TenantUUID           `json:"tenant_uuid"`
+	Version         string               `json:"resource_version"`
+	BuiltinType     string               `json:"-"`
+	Identifier      string               `json:"identifier"`
+	FullIdentifier  string               `json:"full_identifier"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -60,7 +60,7 @@ func (u *Group) ObjType() string {
 	return GroupType
 }
 
-func (u *Group) ObjId() GroupUUID {
+func (u *Group) ObjId() string {
 	return u.UUID
 }
 

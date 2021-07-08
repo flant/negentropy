@@ -107,7 +107,7 @@ func (t *Multipass) ObjType() string {
 	return MultipassType
 }
 
-func (t *Multipass) ObjId() MultipassUUID {
+func (t *Multipass) ObjId() string {
 	return t.UUID
 }
 

@@ -26,7 +26,7 @@ func (r Replica) ObjType() string {
 	return ReplicaType
 }
 
-func (r Replica) ObjId() ReplicaName {
+func (r Replica) ObjId() string {
 	return r.Name
 }
 

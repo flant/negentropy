@@ -43,15 +43,15 @@ func ServiceAccountSchema() *memdb.DBSchema {
 }
 
 type ServiceAccount struct {
-	UUID           SAUUID        `json:"uuid"` // PK
-	TenantUUID     TenantUUID    `json:"tenant_uuid"`
-	Version        string        `json:"resource_version"`
-	BuiltinType    string        `json:"-"`
-	Identifier     string        `json:"identifier"`
-	FullIdentifier string        `json:"full_identifier"`
-	CIDRs          []string      `json:"allowed_cidrs"`
-	TokenTTL       time.Duration `json:"token_ttl"`
-	TokenMaxTTL    time.Duration `json:"token_max_ttl"`
+	UUID           ServiceAccountUUID `json:"uuid"` // PK
+	TenantUUID     TenantUUID         `json:"tenant_uuid"`
+	Version        string             `json:"resource_version"`
+	BuiltinType    string             `json:"-"`
+	Identifier     string             `json:"identifier"`
+	FullIdentifier string             `json:"full_identifier"`
+	CIDRs          []string           `json:"allowed_cidrs"`
+	TokenTTL       time.Duration      `json:"token_ttl"`
+	TokenMaxTTL    time.Duration      `json:"token_max_ttl"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -62,7 +62,7 @@ func (u *ServiceAccount) ObjType() string {
 	return ServiceAccountType
 }
 
-func (u *ServiceAccount) ObjId() SAUUID {
+func (u *ServiceAccount) ObjId() string {
 	return u.UUID
 }
 
@@ -124,7 +124,7 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
 }
 
-func (r *ServiceAccountRepository) GetByID(id SAUUID) (*ServiceAccount, error) {
+func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
 	raw, err := r.db.First(ServiceAccountType, PK, id)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ TODO
 	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
 	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
-func (r *ServiceAccountRepository) delete(id SAUUID) error {
+func (r *ServiceAccountRepository) delete(id ServiceAccountUUID) error {
 	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -195,7 +195,7 @@ func (r *ServiceAccountRepository) delete(id SAUUID) error {
 	return r.db.Delete(ServiceAccountType, sa)
 }
 
-func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id SAUUID) error {
+func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id ServiceAccountUUID) error {
 	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -206,7 +206,7 @@ func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id SAUUID) error 
 	return r.delete(id)
 }
 
-func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]SAUUID, error) {
+func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]ServiceAccountUUID, error) {
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err

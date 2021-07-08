@@ -38,7 +38,7 @@ func (t *FeatureFlag) ObjType() string {
 	return FeatureFlagType
 }
 
-func (t *FeatureFlag) ObjId() FeatureFlagName {
+func (t *FeatureFlag) ObjId() string {
 	return t.Name
 }
 

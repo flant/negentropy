@@ -69,7 +69,7 @@ func (u *User) ObjType() string {
 	return UserType
 }
 
-func (u *User) ObjId() UserUUID {
+func (u *User) ObjId() string {
 	return u.UUID
 }
 
