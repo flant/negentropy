@@ -49,6 +49,7 @@ func backend() *exampleBackend {
 
 			[]*framework.Path{
 				getPath(b),
+				getConfPath(b),
 			},
 		),
 	}
@@ -70,6 +71,23 @@ func getPath(b *exampleBackend) *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathReInit,
 				Summary:  "test getting role through api after reinit client",
+			},
+		},
+
+		HelpSynopsis:    "Syn",
+		HelpDescription: "Desc",
+	}
+}
+
+func getConfPath(b *exampleBackend) *framework.Path {
+	return &framework.Path{
+		Pattern: `get_conf$`,
+		Fields:  map[string]*framework.FieldSchema{},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathReadVaultApiConf,
+				Summary:  "test getting vault api configuration",
 			},
 		},
 
@@ -115,6 +133,23 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 			"client": map[string]interface{}{
 				"address": apiClient.Address(),
 				"headers": apiClient.Headers(),
+			},
+		},
+	}, nil
+}
+
+func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	apiConf, err := b.accessVaultController.GetApiConfig(ctx, req.Storage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"info": "Getting vault api config",
+			"res": map[string]interface{}{
+				"hasConfig": apiConf != nil,
+				"content":   apiConf,
 			},
 		},
 	}, nil

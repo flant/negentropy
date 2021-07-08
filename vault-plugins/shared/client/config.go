@@ -7,10 +7,14 @@ import (
 
 const storagePath = "configure_vault_access"
 
+type VaultApiConf struct {
+	APIURL  string `json:"vault_api_url"`
+	APIHost string `json:"vault_api_host"`
+	APICa   string `json:"vault_api_ca"`
+}
+
 type vaultAccessConfig struct {
-	APIURL            string        `json:"vault_api_url"`
-	APIHost           string        `json:"vault_api_host"`
-	APICa             string        `json:"vault_api_ca"`
+	VaultApiConf
 	RoleName          string        `json:"role_name"`
 	SecretID          string        `json:"secret_id"`
 	RoleID            string        `json:"role_id"`
