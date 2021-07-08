@@ -37,6 +37,14 @@ type Extension struct {
 	SensitiveAttributes map[string]interface{} `json:"sensitive_attributes,omitempty" sensitive:""`
 }
 
+func (e Extension) ObjType() string {
+	return ExtensionType
+}
+
+func (e Extension) ObjId() string {
+	return fmt.Sprintf("%s.%s.%s", e.Origin, e.OwnerType, e.OwnerUUID)
+}
+
 type ExtensionRepository struct {
 	db *io.MemoryStoreTxn
 }
