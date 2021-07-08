@@ -154,12 +154,7 @@ func (r *ProjectRepository) delete(id string) error {
 }
 
 func (r *ProjectRepository) Delete(id ProjectUUID) error {
-	project, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(ProjectType, project)
+	return r.delete(id)
 }
 
 func (r *ProjectRepository) List(tenantID TenantUUID) ([]ProjectUUID, error) {
