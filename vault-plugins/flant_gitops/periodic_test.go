@@ -18,9 +18,6 @@ import (
 func invokePeriodicRun(t *testing.T, ctx context.Context, b *backend, testLogger *util.TestLogger, storage logical.Storage) {
 	testLogger.Reset()
 
-	runCtx, runCtxCancelFunc := context.WithCancel(ctx)
-	defer runCtxCancelFunc()
-
 	req := &logical.Request{
 		Operation:  logical.ReadOperation,
 		Path:       "",
@@ -29,7 +26,7 @@ func invokePeriodicRun(t *testing.T, ctx context.Context, b *backend, testLogger
 		Connection: &logical.Connection{},
 	}
 
-	if err := b.PeriodicFunc(runCtx, req); err != nil {
+	if err := b.PeriodicTask(req); err != nil {
 		t.Fatalf("error running backend periodic task: %s", err)
 	}
 }
@@ -77,10 +74,10 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "configure",
 		Data: map[string]interface{}{
-			fieldNameGitRepoUrl:    "/tmp/myrepo",
+			fieldNameGitRepoUrl:    "no-such-repo",
 			fieldNameGitBranch:     "main",
-			fieldNameGitPollPeriod: 5, // FIXME
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
+			fieldNameGitPollPeriod: "5m",
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
 			fieldNameInitialLastSuccessfulCommit:                "",
 			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
 			fieldNameCommand:                                    "echo DONE",
@@ -107,6 +104,7 @@ func TestPeriodic_PollOperation(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if periodicTaskUUIDs[len(periodicTaskUUIDs)-1] == "" {
 			t.Fatalf("unexpected empty task uuid after first periodic run")
@@ -127,6 +125,7 @@ func TestPeriodic_PollOperation(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		lastPeriodicRunTimestamp := getRequiredLastPeriodicRunTime(t, ctx, storage)
 
@@ -145,6 +144,7 @@ func TestPeriodic_PollOperation(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		lastPeriodicRunTimestamp := getRequiredLastPeriodicRunTime(t, ctx, storage)
 
@@ -177,8 +177,8 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		Data: map[string]interface{}{
 			fieldNameGitRepoUrl:    testGitRepoDir,
 			fieldNameGitBranch:     "main",
-			fieldNameGitPollPeriod: 5, // FIXME
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
+			fieldNameGitPollPeriod: "5m",
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
 			fieldNameInitialLastSuccessfulCommit:                "",
 			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
 			fieldNameCommand:                                    "cat data",
@@ -204,7 +204,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 	{
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("OUTPUT1"); !match {
 			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
@@ -224,7 +224,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
 			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
@@ -249,7 +249,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("OUTPUT2"); !match {
 			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
@@ -269,7 +269,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
 			t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))

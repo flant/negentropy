@@ -33,6 +33,14 @@ const (
 func (b *backend) PeriodicTask(req *logical.Request) error {
 	ctx := context.Background()
 
+	config, err := getConfiguration(ctx, req.Storage)
+	if err != nil {
+		return err
+	} else if config == nil {
+		b.Logger().Info("Configuration not set")
+		return nil
+	}
+
 	entry, err := req.Storage.Get(ctx, lastPeriodicRunTimestampKey)
 	if err != nil {
 		return fmt.Errorf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
@@ -40,18 +48,18 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	if entry != nil {
 		lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
-		// TODO: use fieldNameGitPollPeriod
-		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < 5*time.Minute {
+		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < config.GetGitPollPeroid() {
 			return nil
 		}
 	}
 
 	now := systemClock.Now()
-	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, b.periodicTask)
+	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
+		return b.periodicTask(ctx, storage, config)
+	})
 
 	if err == queue_manager.QueueBusyError {
-		// TODO: use fieldNameGitPollPeriod
-		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", 5*time.Minute))
+		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GetGitPollPeroid()))
 		return nil
 	}
 
@@ -69,16 +77,8 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	return nil
 }
 
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) error {
+func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration) error {
 	b.Logger().Debug("Started periodic task")
-
-	config, err := getConfiguration(ctx, storage)
-	if err != nil {
-		return err
-	} else if config == nil {
-		b.Logger().Info("Configuration not set")
-		return nil
-	}
 
 	b.Logger().Debug(fmt.Sprintf("Got configuration: %+v", config))
 
@@ -91,11 +91,11 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 	var gitRepo *goGit.Repository
 	var headCommit string
 	{
-		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %s", config.GitRepoUrl, config.GitBranchName))
+		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %s", config.GitRepoUrl, config.GitBranch))
 
 		var cloneOptions trdlGit.CloneOptions
 		{
-			cloneOptions.BranchName = config.GitBranchName
+			cloneOptions.BranchName = config.GitBranch
 			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
 
 			if gitCredentials != nil && gitCredentials.Username != "" && gitCredentials.Password != "" {
@@ -161,16 +161,11 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage) err
 			return fmt.Errorf("unable to get trusted public keys: %s", err)
 		}
 
-		requiredNumberOfVerifiedSignaturesOnCommit, err := strconv.Atoi(config.RequiredNumberOfVerifiedSignaturesOnCommit)
-		if err != nil {
-			return fmt.Errorf("unable to convert %q to int from value: %s", fieldNameRequiredNumberOfVerifiedSignaturesOnCommit, err)
-		}
-
-		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit); err != nil {
+		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, config.RequiredNumberOfVerifiedSignaturesOnCommit); err != nil {
 			return err
 		}
 
-		b.Logger().Debug(fmt.Sprintf("Verified %s commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
+		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
 	}
 
 	// run docker build with service dockerfile and context

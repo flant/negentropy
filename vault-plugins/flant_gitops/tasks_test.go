@@ -70,12 +70,29 @@ func WaitForTaskCompletion(t *testing.T, ctx context.Context, b *backend, storag
 		switch status {
 		case "QUEUED", "RUNNING":
 
-		case "COMPLETED":
+		case "COMPLETED", "FAILED":
 			return
 
-		case "FAILED", "CANCELED":
+		default:
 			taskLog := GetTaskLog(t, ctx, b, storage, uuid)
-			t.Fatalf("got uncompleted task %s status %s reason %s:\n%s\n", uuid, status, reason, taskLog)
+			t.Fatalf("got unexpected task %s status %s reason %s:\n%s\n", uuid, status, reason, taskLog)
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func WaitForTaskSuccess(t *testing.T, ctx context.Context, b *backend, storage logical.Storage, uuid string) {
+	for {
+		status, reason := GetTaskStatus(t, ctx, b, storage, uuid)
+
+		fmt.Printf("Poll task %s: status=%s reason=%q\n", uuid, status, reason)
+
+		switch status {
+		case "QUEUED", "RUNNING":
+
+		case "COMPLETED":
+			return
 
 		default:
 			taskLog := GetTaskLog(t, ctx, b, storage, uuid)
@@ -94,10 +111,6 @@ func WaitForTaskFailure(t *testing.T, ctx context.Context, b *backend, storage l
 
 		switch status {
 		case "QUEUED", "RUNNING":
-
-		case "COMPLETED", "CANCELED":
-			taskLog := GetTaskLog(t, ctx, b, storage, uuid)
-			t.Fatalf("got unexpected task %s status %s reason %s:\n%s\n", uuid, status, reason, taskLog)
 
 		case "FAILED":
 			return reason

@@ -2,8 +2,12 @@ package flant_gitops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
@@ -162,7 +166,63 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 		return logical.ErrorResponse(fmt.Sprintf(`%q field is invalid: %s'`, fieldNameDockerImage, err)), nil
 	}
 
-	if err := putConfiguration(ctx, req.Storage, fields.Raw); err != nil {
+	gitRepoUrl := req.Get(fieldNameGitRepoUrl).(string)
+	if _, err := transport.NewEndpoint(gitRepoUrl); err != nil {
+		return logical.ErrorResponse(fmt.Sprintf("invalid %s given: %s", fieldNameGitRepoUrl, err)), nil
+	}
+
+	gitBranch := req.Get(fieldNameGitBranch).(string)
+
+	var gitPollPeriod string
+	gitPollPeriodI := req.Get(fieldNameGitPollPeriod)
+	if gitPollPeriodI == nil {
+		gitPollPeriod = fields.Schema[fieldNameGitPollPeriod].Default.(string)
+	} else {
+		gitPollPeriod = gitPollPeriodI.(string)
+
+		if _, err := time.ParseDuration(gitPollPeriod); err != nil {
+			return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected golang time duration: %s", fieldNameGitPollPeriod, err)), nil
+		}
+	}
+
+	var initialLastSuccessfulCommit string
+	if v := req.Get(fieldNameInitialLastSuccessfulCommit); v != nil {
+		initialLastSuccessfulCommit = v.(string)
+	}
+
+	var requiredNumberOfVerifiedSignaturesOnCommit int
+	{
+		valueStr := req.Get(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(string)
+		valueUint, err := strconv.ParseUint(valueStr, 10, 64)
+		if err != nil {
+			return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected number: %s", fieldNameGitPollPeriod, err)), nil
+		}
+		requiredNumberOfVerifiedSignaturesOnCommit = int(valueUint)
+	}
+
+	dockerImage := req.Get(fieldNameDockerImage).(string)
+	if err := docker.ValidateImageNameWithDigest(dockerImage); err != nil {
+		return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected docker image name with digest: %s", fieldNameDockerImage, err)), nil
+	}
+
+	command := req.Get(fieldNameCommand).(string)
+
+	cfg := &configuration{
+		GitRepoUrl:    gitRepoUrl,
+		GitBranch:     gitBranch,
+		GitPollPeriod: gitPollPeriod,
+		RequiredNumberOfVerifiedSignaturesOnCommit: requiredNumberOfVerifiedSignaturesOnCommit,
+		InitialLastSuccessfulCommit:                initialLastSuccessfulCommit,
+		DockerImage:                                dockerImage,
+		Command:                                    command,
+	}
+
+	{
+		cfgData, cfgErr := json.MarshalIndent(cfg, "", "  ")
+		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", cfgErr, string(cfgData)))
+	}
+
+	if err := putConfiguration(ctx, req.Storage, cfg); err != nil {
 		return nil, err
 	}
 
@@ -180,7 +240,7 @@ func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _
 	return &logical.Response{
 		Data: map[string]interface{}{
 			fieldNameGitRepoUrl:    config.GitRepoUrl,
-			fieldNameGitBranch:     config.GitBranchName,
+			fieldNameGitBranch:     config.GitBranch,
 			fieldNameGitPollPeriod: config.GitPollPeriod,
 			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: config.RequiredNumberOfVerifiedSignaturesOnCommit,
 			fieldNameInitialLastSuccessfulCommit:                config.InitialLastSuccessfulCommit,
