@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
@@ -63,19 +62,6 @@ func (s *AuthSource) ObjType() string {
 
 func (s *AuthSource) ObjId() string {
 	return s.UUID
-}
-
-func (s *AuthSource) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(s)
-}
-
-func (s *AuthSource) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, s)
-	if err != nil {
-		return err
-	}
-
-	return err
 }
 
 func (s *AuthSource) PopulatePubKeys() error {
