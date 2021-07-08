@@ -34,9 +34,9 @@ func (c *configuration) GetGitPollPeroid() time.Duration {
 	return d
 }
 
-type requests []request
+type vaultRequests []*vaultRequest
 
-type request struct {
+type vaultRequest struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Method  string `json:"method"`
@@ -44,7 +44,7 @@ type request struct {
 	WrapTTL string `json:"wrap_ttl"` // golang duration
 }
 
-func (r *request) GetWrapTTL() time.Duration {
+func (r *vaultRequest) GetWrapTTL() time.Duration {
 	d, err := time.ParseDuration(r.WrapTTL)
 	if err != nil {
 		panic(fmt.Sprintf("invalid wrap ttl duration: %s", err))
