@@ -42,19 +42,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 			},
@@ -88,14 +78,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"service_accounts": {
@@ -157,19 +142,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 			},
@@ -219,14 +194,12 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		id := getCreationID(expectID, data)
 
 		group := &model.Group{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			BuiltinType:     "",
-			Identifier:      data.Get("identifier").(string),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:        id,
+			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			BuiltinType: "",
+			Identifier:  data.Get("identifier").(string),
+			Subjects:    data.Get("subjects").([]model.SubjectNotation),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -251,15 +224,13 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		group := &model.Group{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			Version:         data.Get("resource_version").(string),
-			Identifier:      data.Get("identifier").(string),
-			BuiltinType:     "",
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:        id,
+			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			Version:     data.Get("resource_version").(string),
+			Identifier:  data.Get("identifier").(string),
+			BuiltinType: "",
+			Subjects:    data.Get("subjects").([]model.SubjectNotation),
+			Origin:      model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)

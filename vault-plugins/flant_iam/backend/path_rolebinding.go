@@ -43,19 +43,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
@@ -94,19 +84,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
@@ -168,19 +148,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
