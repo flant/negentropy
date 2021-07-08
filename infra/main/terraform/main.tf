@@ -1,5 +1,3 @@
-data "google_project" "project" {}
-
 data "google_compute_network" "main" {
   name = local.google_compute_network_name
 }

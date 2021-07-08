@@ -13,7 +13,7 @@ curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 
 apt update -y
 
-apt install -y terraform vault jq python3-pip
+apt install -y terraform jq python3-pip
 python3 -m pip install -r /app/infra/common/docker/requirements.txt
 
 # packer dependencies

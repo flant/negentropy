@@ -1,3 +1,5 @@
+data "google_project" "project" {}
+
 variable "prefix" {
   type    = string
   default = "negentropy"
@@ -5,6 +7,8 @@ variable "prefix" {
 
 locals {
   google_compute_network_name = "negentropy"
+
+  google_project_id = data.google_project.project.project_id
 
   regions = sort(distinct([for v in local.instances : v.region]))
 
@@ -34,7 +38,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "vault-conf-conf"
+        "bucket" : "${local.google_project_id}-vault-conf-conf"
         "private_static_ip" : "10.20.3.2"
         "image_family" : "vault-conf-conf"
     }),
@@ -47,7 +51,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "vault-root-source-1"
+        "bucket" : "${local.google_project_id}-vault-root-source-1"
         "private_static_ip" : "10.20.1.11"
         "image_family" : "vault-root-source"
     }),
@@ -60,7 +64,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "vault-root-source-2"
+        "bucket" : "${local.google_project_id}-vault-root-source-2"
         "private_static_ip" : "10.20.2.11"
         "image_family" : "vault-root-source"
     }),
@@ -73,7 +77,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "vault-root-source-3"
+        "bucket" : "${local.google_project_id}-vault-root-source-3"
         "private_static_ip" : "10.20.3.11"
         "image_family" : "vault-root-source"
     }),
@@ -86,7 +90,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "negentropy-kafka"
+        "bucket" : "${local.google_project_id}-negentropy-kafka"
         "private_static_ip" : "10.20.1.31"
         "image_family" : "kafka"
         "additional_disk_name" : join("-", [var.prefix, "kafka-data", "1"])
@@ -101,7 +105,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "negentropy-kafka"
+        "bucket" : "${local.google_project_id}-negentropy-kafka"
         "private_static_ip" : "10.20.2.31"
         "image_family" : "kafka"
         "additional_disk_name" : join("-", [var.prefix, "kafka-data", "2"])
@@ -116,7 +120,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "negentropy-kafka"
+        "bucket" : "${local.google_project_id}-negentropy-kafka"
         "private_static_ip" : "10.20.3.31"
         "image_family" : "kafka"
         "additional_disk_name" : join("-", [var.prefix, "kafka-data", "3"])
