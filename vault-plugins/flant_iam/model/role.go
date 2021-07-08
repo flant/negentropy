@@ -159,6 +159,24 @@ func (r *RoleRepository) List() ([]*Role, error) {
 	return list, nil
 }
 
+func (r *RoleRepository) ListRoles() ([]*Role, error) {
+	iter, err := r.db.Get(RoleType, PK)
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]*Role, 0)
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*Role)
+		roles = append(roles, t)
+	}
+	return roles, nil
+}
+
 func (r *RoleRepository) Sync(objID string, data []byte) error {
 	if data == nil {
 		return r.delete(objID)

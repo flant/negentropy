@@ -16,7 +16,6 @@ func (b *tenantBackend) featureFlagPath() *framework.Path {
 	return &framework.Path{
 		Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/feature_flag/" + framework.GenericNameRegex("feature_flag_name"),
 		Fields: map[string]*framework.FieldSchema{
-
 			"tenant_uuid": {
 				Type:        framework.TypeNameString,
 				Description: "ID of a tenant",
@@ -36,15 +35,15 @@ func (b *tenantBackend) featureFlagPath() *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.CreateOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagBinding(),
-				Summary:  "Create user.",
+				Summary:  "Add Feature flag to the tenant.",
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagBinding(),
-				Summary:  "Create user.",
+				Summary:  "Add Feature flag to the tenant.",
 			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagDelete(),
-				Summary:  "Create user.",
+				Summary:  "Remove Feature flag from the tenant.",
 			},
 		},
 	}

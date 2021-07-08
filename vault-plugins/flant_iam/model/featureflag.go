@@ -133,22 +133,72 @@ type TenantFeatureFlag struct {
 
 type TenantFeatureFlagRepository struct {
 	tx *io.MemoryStoreTxn
+
+	ffRepo     *FeatureFlagRepository
+	tenantRepo *TenantRepository
+	roleRepo   *RoleRepository
 }
 
 func NewTenantFeatureFlagRepository(tx *io.MemoryStoreTxn) *TenantFeatureFlagRepository {
-	return &TenantFeatureFlagRepository{tx}
+	return &TenantFeatureFlagRepository{
+		tx,
+		NewFeatureFlagRepository(tx),
+		NewTenantRepository(tx),
+		NewRoleRepository(tx),
+	}
 }
 
-func (t *TenantFeatureFlagRepository) SetFlagToTenant(tenantID string, featureFlag TenantFeatureFlag) (*Tenant, error) {
-	ffRepo := NewFeatureFlagRepository(t.tx)
-	tenantRepo := NewTenantRepository(t.tx)
-
-	_, err := ffRepo.Get(featureFlag.Name)
+func (t *TenantFeatureFlagRepository) GetFeatureFlags(tenantID string) ([]TenantFeatureFlag, error) {
+	tenant, err := t.tenantRepo.GetByID(tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	tenant, err := tenantRepo.GetByID(tenantID)
+	return tenant.FeatureFlags, nil
+}
+
+func (t *TenantFeatureFlagRepository) AvailableRoles(tenantID string) ([]*Role, error) {
+	tenant, err := t.tenantRepo.GetByID(tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tenant.FeatureFlags) == 0 {
+		return nil, err
+	}
+
+	featureFlagsMap := make(map[FeatureFlagName]struct{}, len(tenant.FeatureFlags))
+	for _, ff := range tenant.FeatureFlags {
+		featureFlagsMap[ff.Name] = struct{}{}
+	}
+
+	roles, err := t.roleRepo.ListRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	available := make([]*Role, 0)
+
+outer:
+	for _, role := range roles {
+		for _, rf := range role.RequireOneOfFeatureFlags {
+			if _, ok := featureFlagsMap[rf]; ok {
+				available = append(available, role)
+				break outer
+			}
+		}
+	}
+
+	return available, nil
+}
+
+func (t *TenantFeatureFlagRepository) SetFlagToTenant(tenantID string, featureFlag TenantFeatureFlag) (*Tenant, error) {
+	_, err := t.ffRepo.Get(featureFlag.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant, err := t.tenantRepo.GetByID(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,25 +207,22 @@ func (t *TenantFeatureFlagRepository) SetFlagToTenant(tenantID string, featureFl
 		if tff.Name == featureFlag.Name {
 			// update
 			tff.EnabledForNewProjects = featureFlag.EnabledForNewProjects
-			return tenant, tenantRepo.Update(tenant)
+			return tenant, t.tenantRepo.Update(tenant)
 		}
 	}
 
 	tenant.FeatureFlags = append(tenant.FeatureFlags, featureFlag)
 
-	return tenant, tenantRepo.Update(tenant)
+	return tenant, t.tenantRepo.Update(tenant)
 }
 
 func (t *TenantFeatureFlagRepository) RemoveFlagFromTenant(tenantID string, featureFlagName string) (*Tenant, error) {
-	ffRepo := NewFeatureFlagRepository(t.tx)
-	tenantRepo := NewTenantRepository(t.tx)
-
-	ff, err := ffRepo.Get(featureFlagName)
+	ff, err := t.ffRepo.Get(featureFlagName)
 	if err != nil {
 		return nil, err
 	}
 
-	tenant, err := tenantRepo.GetByID(tenantID)
+	tenant, err := t.tenantRepo.GetByID(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +234,7 @@ func (t *TenantFeatureFlagRepository) RemoveFlagFromTenant(tenantID string, feat
 		if tff.Name == ff.Name {
 			tenant.FeatureFlags = append(tenant.FeatureFlags[:i], tenant.FeatureFlags[i+1:]...)
 			// update
-			return tenant, tenantRepo.Update(tenant)
+			return tenant, t.tenantRepo.Update(tenant)
 		}
 	}
 

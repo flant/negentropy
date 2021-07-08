@@ -87,7 +87,6 @@ func (b tenantBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by uuid
 		{
-
 			Pattern: "tenant/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
@@ -122,9 +121,77 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// available roles based on FF
+		{
+			Pattern: "tenant/" + uuid.Pattern("uuid") + "/available_roles",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"resource_version": {
+					Type:        framework.TypeString,
+					Description: "Resource version",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleListAvailableRoles(),
+					Summary:  "Retrieve the tenant roles.",
+				},
+			},
+		},
 
 		// Feature flag for tenant
 		b.featureFlagPath(),
+	}
+}
+
+func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		id := data.Get("uuid").(string)
+
+		tx := b.storage.Txn(false)
+		defer tx.Abort()
+		repo := model.NewTenantFeatureFlagRepository(tx)
+
+		available, err := repo.AvailableRoles(id)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		type cutRole struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+
+		result := make([]cutRole, 0, len(available))
+
+		for _, role := range available {
+			result = append(result, cutRole{
+				Name:        role.Name,
+				Description: role.Description,
+			})
+		}
+
+		resp := &logical.Response{
+			Data: map[string]interface{}{
+				"available_roles": result,
+			},
+		}
+		return resp, nil
 	}
 }
 

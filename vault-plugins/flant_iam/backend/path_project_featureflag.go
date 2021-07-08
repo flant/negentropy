@@ -34,15 +34,15 @@ func (b *projectBackend) featureFlagPath() *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.CreateOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagBinding(),
-				Summary:  "Add FeatureFlag to project.",
+				Summary:  "Add FeatureFlag to the project.",
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagBinding(),
-				Summary:  "Add FeatureFlag to project.",
+				Summary:  "Add FeatureFlag to the project.",
 			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.handleFeatureFlagDelete(),
-				Summary:  "Remove FeatureFlag from project.",
+				Summary:  "Remove FeatureFlag from the project.",
 			},
 		},
 	}
