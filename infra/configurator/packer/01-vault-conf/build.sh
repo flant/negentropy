@@ -10,7 +10,9 @@ if [ "$1" != "force" ]; then
   fi
 fi
 
-../../../common/vault/build_vault.sh
+pushd ../../../common/vault
+./build_vault.sh
+popd
 
 packer build \
   -var-file=../../../variables.pkrvars.hcl \
