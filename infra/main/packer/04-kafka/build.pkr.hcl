@@ -69,7 +69,7 @@ variable "version" {
 
 variable "disk_size" {
   type    = string
-  default = "2"
+  default = "5"
 }
 
 variable "machine_type" {
@@ -82,13 +82,20 @@ variable "ssh_wait_timeout" {
   default = "90s"
 }
 
+variable "env" {
+  type    = string
+  default = ""
+}
+
 locals {
   version_dashed = regex_replace(var.version, "[.]", "-")
-  image_name = "${var.name}-${var.image_sources_checksum}"
+  image_family = "${var.name}${var.env}"
+  image_name = "${local.image_family}-${var.image_sources_checksum}"
+  source_image_family = "${var.source_image_family}${var.env}"
 }
 
 source "googlecompute" "kafka" {
-  source_image_family = var.source_image_family
+  source_image_family = local.source_image_family
 
   machine_type        = var.machine_type
 
@@ -97,7 +104,7 @@ source "googlecompute" "kafka" {
 
   disk_size         = var.disk_size
   image_description = "Kafka ${var.version} based on Alpine Linux x86_64 Virtual"
-  image_family      = var.name
+  image_family      = local.image_family
   image_labels = {
     image_sources_checksum = var.image_sources_checksum,
     version = local.version_dashed
@@ -113,17 +120,7 @@ build {
   sources = ["source.googlecompute.kafka"]
 
   provisioner "shell" {
-    execute_command = "/bin/sh -x '{{ .Path }}'"
-    scripts         = [
-      "scripts/00-google-cloud-beta.sh",
-      "scripts/01-zookeeper.sh",
-      "scripts/02-kafka.sh",
-      "scripts/03-update-certificates-cronjob.sh",
-      "../../../common/packer-scripts/03-vector-enable.sh",
-      "../../../common/packer-scripts/80-read-only.sh",
-      "../../../common/packer-scripts/90-cleanup.sh",
-      "../../../common/packer-scripts/91-minimize.sh"
-    ]
+    inline = ["mkdir -p /etc/kafka"]
   }
 
   provisioner "file" {
@@ -149,6 +146,21 @@ build {
   }
 
   provisioner "shell" {
+    execute_command = "/bin/sh -x '{{ .Path }}'"
+    scripts         = [
+      "scripts/01-google-cloud-beta.sh",
+      "scripts/02-kafka.sh",
+      "scripts/03-zookeeper.sh",
+      "scripts/04-update-certificates-cronjob.sh",
+      "../../../common/packer-scripts/03-vector-enable.sh",
+      "../../../common/packer-scripts/80-read-only.sh",
+      "../../../common/packer-scripts/90-cleanup.sh",
+      "../../../common/packer-scripts/91-minimize.sh",
+      "../../../common/packer-scripts/99-sshd.sh"
+    ]
+  }
+
+  provisioner "shell" {
     environment_vars = [
       "KAFKA_HEAP_OPTS=${var.kafka_heap_opts}",
       "ZOOKEEPER_HEAP_OPTS=${var.zookeeper_heap_opts}"
@@ -156,13 +168,6 @@ build {
     inline = [
       "tmp=$(mktemp); envsubst '$KAFKA_HEAP_OPTS' < /etc/init.d/kafka > $tmp && cat $tmp > /etc/init.d/kafka",
       "tmp=$(mktemp); envsubst '$ZOOKEEPER_HEAP_OPTS' < /etc/init.d/zookeeper > $tmp && cat $tmp > /etc/init.d/zookeeper"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "/bin/sh -x '{{ .Path }}'"
-    scripts         = [
-      "../../../common/packer-scripts/99-sshd.sh"
     ]
   }
 }

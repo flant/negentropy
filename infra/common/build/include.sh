@@ -65,13 +65,13 @@ function image_sources_checksum()
   IFS=$'\n' sorted_checksums=($(sort <<<"${checksums[*]}")); unset IFS
   # Join all checksums and output single checksum of all checksums.
   joined_checksums="$(printf "%s" "${sorted_checksums[@]}")"
-  echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}')
+  echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}' | head -c8)
 }
 
 # Outputs resulting image name for current image.
 function image_name()
 {
-    echo "$(packer inspect -var 'image_sources_checksum='"$(image_sources_checksum)"'' "$SCRIPT_PATH"/build.pkr.hcl | grep local.image_name | awk -F' ' '{ print $2 }' | tr -d '"')"
+    echo "$(packer inspect -var-file="$SCRIPT_PATH"/../../../variables.pkrvars.hcl -var 'image_sources_checksum='"$(image_sources_checksum)"'' "$SCRIPT_PATH"/build.pkr.hcl | grep local.image_name | awk -F' ' '{ print $2 }' | tr -d '"')"
 }
 
 # Checks if resulting image already exists in the cloud.

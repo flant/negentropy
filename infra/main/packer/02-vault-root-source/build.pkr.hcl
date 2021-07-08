@@ -2,7 +2,7 @@ variable "root_password" {
   type =  string
   sensitive = true
 }
-variable "gcp_vault_conf_bucket" {
+variable "gcp_vault_root_source_bucket" {
   type = string
 }
 variable "gcp_ckms_seal_key_ring" {
@@ -42,7 +42,7 @@ variable "source_image_family" {
 
 variable "name" {
   type    = string
-  default = "vault-conf"
+  default = "vault-root-source"
 }
 
 variable "version" {
@@ -77,7 +77,7 @@ locals {
   source_image_family = "${var.source_image_family}${var.env}"
 }
 
-source "googlecompute" "vault-conf" {
+source "googlecompute" "vault-root-source" {
   source_image_family = local.source_image_family
 
   machine_type        = var.machine_type
@@ -86,7 +86,7 @@ source "googlecompute" "vault-conf" {
   ssh_password        = var.root_password
 
   disk_size         = var.disk_size
-  image_description = "Vault Conf ${var.version} based on Alpine Linux x86_64 Virtual"
+  image_description = "Vault Root Source ${var.version} based on Alpine Linux x86_64 Virtual"
   image_family      = local.image_family
   image_labels = {
     image_sources_checksum = var.image_sources_checksum,
@@ -100,7 +100,7 @@ source "googlecompute" "vault-conf" {
 }
 
 build {
-  sources = ["source.googlecompute.vault-conf"]
+  sources = ["source.googlecompute.vault-root-source"]
 
   provisioner "file" {
     source      = "../../../common/vault/vault/bin/vault"
@@ -124,7 +124,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "GCP_VAULT_CONF_BUCKET=${var.gcp_vault_conf_bucket}",
+      "GCP_VAULT_ROOT_SOURCE_BUCKET=${var.gcp_vault_root_source_bucket}",
       "GCP_PROJECT=${var.gcp_project}",
       "GCP_REGION=${var.gcp_region}",
       "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
@@ -143,8 +143,6 @@ build {
     scripts         = [
       "../../../common/packer-scripts/02-vault.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
-      "../../../common/packer-scripts/04-docker.sh",
-      "../../../common/packer-scripts/06-large-var-lib.sh",
       "../../../common/packer-scripts/80-read-only.sh",
       "../../../common/packer-scripts/90-cleanup.sh",
       "../../../common/packer-scripts/91-minimize.sh",

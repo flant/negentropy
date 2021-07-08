@@ -1,13 +1,13 @@
 storage "gcs" {
-  bucket = "$GCP_VAULT_CONF_BUCKET"
+  bucket = "$HOSTNAME$GCP_VAULT_AUTH_BUCKET_TRAILER"
 }
 
 listener "tcp" {
-  address         = "$INTERNAL_ADDRESS:8200"
+  address         = "127.0.0.1:8200"
   tls_disable     = "true"
 }
 
-api_addr = "http://$INTERNAL_ADDRESS:8200"
+api_addr = "http://127.0.0.1:8200"
 
 seal "gcpckms" {
   project = "$GCP_PROJECT"
