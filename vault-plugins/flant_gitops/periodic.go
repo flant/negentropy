@@ -4,8 +4,10 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"strconv"
 	"time"
@@ -35,9 +37,26 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	config, err := getConfiguration(ctx, req.Storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting configuration: %s", err)
 	} else if config == nil {
 		b.Logger().Info("Configuration not set")
+		return nil
+	} else {
+		cfgData, err := json.MarshalIndent(config, "", "  ")
+		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", err, string(cfgData)))
+	}
+
+	gitCredentials, err := getGitCredential(ctx, req.Storage)
+	if err != nil {
+		return fmt.Errorf("error getting git credentials config: %s", err)
+	}
+
+	var vaultRequestsConfig vaultRequests
+	var accessConfig interface{}
+
+	if len(vaultRequestsConfig) > 0 && accessConfig == nil {
+		reqCfgData, _ := json.MarshalIndent(vaultRequestsConfig, "", "  ")
+		b.Logger().Info("Access configuration is not set, while there is requests configuration:\n%s\n", reqCfgData)
 		return nil
 	}
 
@@ -55,7 +74,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	now := systemClock.Now()
 	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
-		return b.periodicTask(ctx, storage, config)
+		return b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, accessConfig)
 	})
 
 	if err == queue_manager.QueueBusyError {
@@ -77,15 +96,8 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	return nil
 }
 
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration) error {
+func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *gitCredential, vaultRequestsConfig vaultRequests, accessConfig interface{}) error {
 	b.Logger().Debug("Started periodic task")
-
-	b.Logger().Debug(fmt.Sprintf("Got configuration: %+v", config))
-
-	gitCredentials, err := getGitCredential(ctx, storage)
-	if err != nil {
-		return err
-	}
 
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
@@ -106,6 +118,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 			}
 		}
 
+		var err error
 		if gitRepo, err = trdlGit.CloneInMemory(config.GitRepoUrl, cloneOptions); err != nil {
 			return err
 		}
@@ -182,12 +195,30 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		go func() {
 			if err := func() error {
 				tw := tar.NewWriter(contextWriter)
+
 				if err := trdlGit.AddWorktreeFilesToTar(tw, gitRepo); err != nil {
 					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
 				}
 
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, docker.DockerfileOpts{}); err != nil {
+				vaultAddr := ""   // APIURL
+				vaultCACert := "" // APICa
+				vaultCACertPath := path.Join(serviceDirInContext, "ca.crt")
+				vaultTLSServerName := "" // APIHost
+
+				opts := docker.DockerfileOpts{
+					EnvVars: map[string]string{
+						"VAULT_ADDR":            vaultAddr,
+						"VAULT_CA_CERT":         vaultCACertPath,
+						"VAULT_TLS_SERVER_NAME": vaultTLSServerName,
+					},
+				}
+
+				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, opts); err != nil {
 					return fmt.Errorf("unable to add service dockerfile to tar: %s", err)
+				}
+
+				if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert)}); err != nil {
+					return fmt.Errorf("error writing file %s to tar: %s", vaultCACertPath, err)
 				}
 
 				if err := tw.Close(); err != nil {
@@ -239,6 +270,30 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		Value: []byte(headCommit),
 	}); err != nil {
 		return fmt.Errorf("unable to store last_successful_commit: %s", err)
+	}
+
+	return nil
+}
+
+func WriteFilesToTar(tw *tar.Writer, filesData map[string][]byte) error {
+	for path, data := range filesData {
+		header := &tar.Header{
+			Format:     tar.FormatGNU,
+			Name:       path,
+			Size:       int64(len(data)),
+			Mode:       int64(os.ModePerm),
+			ModTime:    time.Now(),
+			AccessTime: time.Now(),
+			ChangeTime: time.Now(),
+		}
+
+		if err := tw.WriteHeader(header); err != nil {
+			return fmt.Errorf("unable to write tar entry %q header: %s", path, err)
+		}
+
+		if _, err := tw.Write(data); err != nil {
+			return fmt.Errorf("unable to write tar entry %q data: %s", path, err)
+		}
 	}
 
 	return nil
