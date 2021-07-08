@@ -127,9 +127,6 @@ tfstate_bucket = "{terraform_state_bucket}"
     print("• [common] run packer")
     run_bash("./build.sh", "../../common/packer")
 
-    # print("• [common] build_vault")
-    # run_bash("./build.sh", "../../common/vault/build_vault.sh")
-
     terraform_log = ''
     if args.type == 'configurator':
         print("• [configurator] run packer")
