@@ -172,21 +172,20 @@ func (t *TenantFeatureFlagRepository) AvailableRoles(tenantID string) ([]*Role, 
 		featureFlagsMap[ff.Name] = struct{}{}
 	}
 
-	roles, err := t.roleRepo.ListRoles()
-	if err != nil {
-		return nil, err
-	}
-
 	available := make([]*Role, 0)
 
-outer:
-	for _, role := range roles {
+	err = t.roleRepo.Iter(func(role *Role) (bool, error) {
 		for _, rf := range role.RequireOneOfFeatureFlags {
 			if _, ok := featureFlagsMap[rf]; ok {
 				available = append(available, role)
-				break outer
+				break
 			}
 		}
+
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return available, nil

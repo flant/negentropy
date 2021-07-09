@@ -159,22 +159,29 @@ func (r *RoleRepository) List() ([]*Role, error) {
 	return list, nil
 }
 
-func (r *RoleRepository) ListRoles() ([]*Role, error) {
+func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
 	iter, err := r.db.Get(RoleType, PK)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	roles := make([]*Role, 0)
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		t := raw.(*Role)
-		roles = append(roles, t)
+		next, err := action(t)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
 	}
-	return roles, nil
+
+	return nil
 }
 
 func (r *RoleRepository) Sync(objID string, data []byte) error {
