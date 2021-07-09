@@ -1337,31 +1337,22 @@ func TestAuthMethod_Read(t *testing.T) {
 func TestAuthMethod_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
-	sourceName := "a"
-	creteTestJWTBasedSource(t, b, storage, sourceName)
+	jwtSourceName := "a"
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
 
-	data := map[string]interface{}{
-		"method_type":       model.MethodTypeJWT,
-		"bound_subject":     "testsub",
-		"bound_audiences":   "vault",
-		"user_claim":        "user",
-		"groups_claim":      "groups",
-		"bound_cidrs":       "127.0.0.1/8",
-		"policies":          "test",
-		"period":            "3s",
-		"ttl":               "1s",
-		"num_uses":          12,
-		"max_ttl":           "5s",
-		"expiration_leeway": "300s",
-		"not_before_leeway": "300s",
-		"source":            sourceName,
-	}
+	body := withBoundClaims(
+		withLeaways(
+			withVaultTokenParts(
+				withUserClaims(map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"source":      jwtSourceName,
+				}))))
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      fmt.Sprintf("auth_method/test"),
 		Storage:   storage,
-		Data:      data,
+		Data:      body,
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -1371,7 +1362,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 
 	req = &logical.Request{
 		Operation: logical.DeleteOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      "auth_method/test",
 		Storage:   storage,
 	}
 
@@ -1386,7 +1377,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      "auth_method/test",
 		Storage:   storage,
 	}
 
