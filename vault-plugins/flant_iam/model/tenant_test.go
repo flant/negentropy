@@ -6,7 +6,36 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
+
+const (
+	tenantUUID1 = "00000001-0000-0000-0000-000000000000"
+	tenantUUID2 = "00000002-0000-0000-0000-000000000000"
+)
+
+var (
+	tenant1 = Tenant{
+		UUID:         tenantUUID1,
+		Identifier:   "tenant1",
+		Version:      "v1",
+		FeatureFlags: nil,
+	}
+
+	tenant2 = Tenant{
+		UUID:         tenantUUID2,
+		Identifier:   "tenant2",
+		FeatureFlags: nil,
+	}
+)
+
+func createTenants(t *testing.T, repo *TenantRepository, tenants ...Tenant) {
+	for _, tenant := range tenants {
+		tmp := tenant
+		err := repo.Create(&tmp)
+		dieOnErr(t, err)
+	}
+}
 
 func Test_TenantMarshalling(t *testing.T) {
 	ten := &Tenant{
@@ -35,4 +64,18 @@ func Test_TenantDbSchema(t *testing.T) {
 	if err := schema.Validate(); err != nil {
 		t.Fatalf("tenant schema is invalid: %v", err)
 	}
+}
+
+func Test_TenantList(t *testing.T) {
+	schema := TenantSchema()
+	store, err := io.NewMemoryStore(schema, nil)
+	dieOnErr(t, err)
+	tx := store.Txn(true)
+	defer tx.Abort()
+	repo := NewTenantRepository(tx)
+	createTenants(t, repo, []Tenant{tenant1, tenant2}...)
+
+	ids, err := repo.List()
+	dieOnErr(t, err)
+	checkDeepEqual(t, []string{tenantUUID1, tenantUUID2}, ids)
 }
