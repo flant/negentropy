@@ -105,7 +105,9 @@ func (r *GroupRepository) Create(group *Group) error {
 	group.Version = NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	r.fillSubjects(group)
+	if err := r.fillSubjects(group); err != nil {
+		return err
+	}
 
 	return r.save(group)
 }
@@ -148,7 +150,9 @@ func (r *GroupRepository) Update(group *Group) error {
 	}
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	r.fillSubjects(group)
+	if err := r.fillSubjects(group); err != nil {
+		return err
+	}
 
 	return r.save(group)
 }
