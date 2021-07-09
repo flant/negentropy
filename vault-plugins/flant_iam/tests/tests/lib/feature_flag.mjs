@@ -17,18 +17,24 @@ export class FeatureFlagAPI {
         this.api = new API(client, new FeatureFlagEndpointBuilder())
     }
 
-    create(payload, opts) {
-        return this.api.create({ payload, opts })
+    async create(payload, opts) {
+        const { data: body } = await this.api.create({ payload, opts })
+        if (body.data) return body.data.feature_flag
+        return body
     }
 
-    delete(name, opts) {
+    async delete(name, opts) {
         const params = { name }
-        return this.api.delete({ params, opts })
+        const { data: body } = await this.api.delete({ params, opts })
+        if (body.data) return body.data.feature_flag
+        return body
     }
 
-    list(opts) {
+    async list(opts) {
         const query = { list: true }
-        return this.api.list({ query, opts })
+        const { data: body } = await this.api.list({ query, opts })
+        if (body.data) return body.data.names
+        return body
     }
 }
 

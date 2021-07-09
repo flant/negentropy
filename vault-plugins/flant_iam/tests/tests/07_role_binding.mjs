@@ -49,8 +49,8 @@ describe("Role Binding", function () {
     }
 
     async function createTenantId() {
-        const tenant = await createTenant()
-        return tenant.uuid
+        const data = await createTenant()
+        return data.tenant.uuid
     }
 
     async function createRoleBinding(tid, overrides) {

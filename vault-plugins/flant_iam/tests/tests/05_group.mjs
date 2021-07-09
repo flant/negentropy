@@ -32,8 +32,9 @@ describe("Group", function () {
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        const { data: body } = await rootTenantAPI.create({ payload })
+        console.log("tenant response body", body)
+        return body.data.tenant
     }
 
     async function createTenantId() {
@@ -47,7 +48,7 @@ describe("Group", function () {
             params: { tenant: tid },
             payload,
         })
-        return body.data
+        return body.data.service_account
     }
 
     async function createUser(tid) {
@@ -56,7 +57,7 @@ describe("Group", function () {
             params: { tenant: tid },
             payload,
         })
-        return body.data
+        return body.data.user
     }
 
     async function createSubjects(tid) {

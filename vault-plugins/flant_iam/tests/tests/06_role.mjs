@@ -63,14 +63,14 @@ describe("Role", function () {
 
         const { data: body } = await root.create(payload)
 
-        return body
+        return body.data
     }
 
     it("can be created", async () => {
-        const body = await createRole()
+        const data = await createRole()
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
+        expect(data).to.exist.and.to.include.key("data")
+        expect(data.role).to.include.keys(
             "name",
             "description",
             "scope",
@@ -197,22 +197,22 @@ describe("Role", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const body = await createRole()
-                await unauth.read(body.data.name, opts)
+                const data = await createRole()
+                await unauth.read(data.role.name, opts)
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const body = await createRole()
+                const data = await createRole()
                 await unauth.update(
-                    body.data.name,
-                    genRoleUpdatePayload({ type: body.data.type }),
+                    data.role.name,
+                    genRoleUpdatePayload({ type: data.role.type }),
                     opts,
                 )
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const body = await createRole()
-                await unauth.delete(body.data.name, opts)
+                const data = await createRole()
+                await unauth.delete(data.role.name, opts)
             })
         }
     })

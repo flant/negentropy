@@ -6,20 +6,11 @@ describe("Feature flag", function () {
     const rootClient = getClient(rootToken)
     const root = new FeatureFlagAPI(rootClient)
 
-    // afterEach("cleanup", async function () {
-    //     const clean = s => root.delete(`featureFlag/${s}`, expectStatus(204))
-    //     const promises = worder.list().map(clean)
-    //     await Promise.all(promises)
-    //     worder.clean()
-    // })
-
     describe("payload", () => {
         describe("name", () => {
             after("clean", async () => {
-                const { data } = await root.list()
-                const deletions = data.data.names.map((name) =>
-                    root.delete(name),
-                )
+                const names = await root.list()
+                const deletions = names.map((name) => root.delete(name))
                 await Promise.all(deletions)
             })
 
@@ -70,43 +61,38 @@ describe("Feature flag", function () {
     it("can be created", async () => {
         const payload = genFeatureFlag()
 
-        const { data: body } = await root.create(payload)
+        const ff = await root.create(payload)
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys("name")
-        expect(body.data.name).to.eq(payload.name)
+        expect(ff.name).to.eq(payload.name)
     })
 
     it("can be listed", async () => {
         const payload = genFeatureFlag()
         await root.create(payload)
 
-        const { data } = await root.list()
+        const names = await root.list()
 
-        expect(data.data).to.be.an("object")
+        expect(names).to.be.an("array")
     })
 
     it("has identifying fields in list", async () => {
         const payload = genFeatureFlag()
-        const { data: creationBody } = await root.create(payload)
-        const name = creationBody.data.name
+        const ff = await root.create(payload)
 
-        const { data: listBody } = await root.list()
+        const list = await root.list()
 
-        expect(listBody.data).to.be.an("object").and.have.key("names")
-        expect(listBody.data.names).to.include(name)
+        expect(list).to.include(ff.name)
     })
 
     it("can be deleted", async () => {
         const createPld = genFeatureFlag()
 
-        const { data: created } = await root.create(createPld)
-        const name = created.data.name
+        const ff = await root.create(createPld)
 
-        await root.delete(created.data.name)
+        await root.delete(ff.name)
 
-        const { data: listBody } = await root.list()
-        expect(listBody.data.names).to.not.include(name)
+        const list = await root.list()
+        expect(list).to.not.include(ff.name)
     })
 
     describe("when does not exist", () => {
@@ -139,8 +125,8 @@ describe("Feature flag", function () {
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await root.create(genFeatureFlag())
-                await unauth.delete(data.data.name, opts)
+                const ff = await root.create(genFeatureFlag())
+                await unauth.delete(ff.name, opts)
             })
         }
     })
