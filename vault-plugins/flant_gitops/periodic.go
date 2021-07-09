@@ -55,7 +55,14 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return fmt.Errorf("error getting git credentials config: %s", err)
 	}
 
-	var vaultRequestsConfig vaultRequests // TODO: read list from storage
+	var vaultRequestsConfig vaultRequests // TODO: read list from the storage
+	// vaultRequestsConfig = append(vaultRequestsConfig, &vaultRequest{
+	// 	Name:    "my-vault-request",
+	// 	Path:    "/helo",
+	// 	Method:  "GET",
+	// 	Options: `{"param": 13231}`,
+	// 	WrapTTL: "30s",
+	// })
 
 	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
 	if err != nil {
@@ -76,6 +83,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	if entry != nil {
 		lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
 		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < config.GetGitPollPeroid() {
+			b.Logger().Debug("Git poll period not passed: skip operation")
 			return nil
 		}
 	}
@@ -109,6 +117,11 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 	vaultRequestEnvs := map[string]string{}
 	for _, requestConfig := range vaultRequestsConfig {
+		{
+			reqData, _ := json.MarshalIndent(requestConfig, "", "  ")
+			b.Logger().Debug(fmt.Sprintf("Perform request:\n%s\n", string(reqData)))
+		}
+
 		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
 		if err != nil {
 			return fmt.Errorf("unable to perform vault request named %q: %s", requestConfig.Name, err)
