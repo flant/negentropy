@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	storageKeyVaultRequestPrefix = "vault_request"
+	storageKeyVaultRequestPrefix = "vault_request/"
 )
 
 type vaultRequests []*vaultRequest
@@ -34,7 +34,7 @@ func (b *backend) performWrappedVaultRequest(ctx context.Context, conf *vaultReq
 	request.WrapTTL = conf.WrapTTL
 	if conf.Options != "" {
 		var data interface{}
-		if err := json.Unmarshal([]byte(conf.Options), data); err != nil {
+		if err := json.Unmarshal([]byte(conf.Options), &data); err != nil {
 			panic(fmt.Sprintf("invalid configuration detected: unparsable options json string: %s\n%s\n", err, conf.Options))
 		}
 
@@ -79,12 +79,12 @@ func getVaultRequest(ctx context.Context, storage logical.Storage, vaultRequestN
 		return nil, nil
 	}
 
-	var request vaultRequest
-	if err := storageEntry.DecodeJSON(request); err != nil {
+	var request *vaultRequest
+	if err := storageEntry.DecodeJSON(&request); err != nil {
 		return nil, err
 	}
 
-	return &request, nil
+	return request, nil
 }
 
 func listVaultRequests(ctx context.Context, storage logical.Storage) (vaultRequests, error) {

@@ -86,7 +86,13 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	now := systemClock.Now()
 	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
-		return b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, apiConfig)
+		err := b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, apiConfig)
+		if err != nil {
+			b.Logger().Error(fmt.Sprintf("Background task have failed: %s", err))
+		} else {
+			b.Logger().Info("Background task succeeded")
+		}
+		return err
 	})
 
 	if err == queue_manager.QueueBusyError {
@@ -115,7 +121,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 	for _, requestConfig := range vaultRequestsConfig {
 		{
 			reqData, _ := json.MarshalIndent(requestConfig, "", "  ")
-			b.Logger().Debug(fmt.Sprintf("Perform request:\n%s\n", string(reqData)))
+			b.Logger().Debug(fmt.Sprintf("Perform vault request:\n%s\n", string(reqData)))
 		}
 
 		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
@@ -125,6 +131,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 		envName := fmt.Sprintf("VAULT_REQUEST_TOKEN_%s", strings.ReplaceAll(strings.ToUpper(requestConfig.Name), "-", "_"))
 		vaultRequestEnvs[envName] = token
+
+		b.Logger().Info(fmt.Sprintf("Performed vault request %s, got token %q", requestConfig.Name, token))
 	}
 
 	// clone git repository and get head commit
