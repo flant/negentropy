@@ -12,5 +12,6 @@ type (
 	MultipassUUID              = string
 	OwnerUUID                  = string
 	RoleBindingUUID            = string
+	RoleBindingApprovalUUID    = string
 	ReplicaName                = string
 )
