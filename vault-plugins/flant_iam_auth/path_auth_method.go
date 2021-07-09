@@ -206,7 +206,7 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 
 	// Create a map of data to be returned
 	d := map[string]interface{}{
-		"role_type":             method.MethodType,
+		"method_type":           method.MethodType,
 		"bound_audiences":       method.BoundAudiences,
 		"bound_subject":         method.BoundSubject,
 		"bound_claims_type":     method.BoundClaimsType,
@@ -218,17 +218,12 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 		"oidc_scopes":           method.OIDCScopes,
 		"verbose_oidc_logging":  method.VerboseOIDCLogging,
 		"max_age":               int64(method.MaxAge.Seconds()),
+		"expiration_leeway":     int64(method.ExpirationLeeway.Seconds()),
+		"not_before_leeway":     int64(method.NotBeforeLeeway.Seconds()),
+		"clock_skew_leeway":     int64(method.ClockSkewLeeway.Seconds()),
 	}
 
-	if method.MethodType == model.MethodTypeMultipass {
-		d["expiration_leeway"] = int64(method.ExpirationLeeway.Seconds())
-		d["not_before_leeway"] = int64(method.NotBeforeLeeway.Seconds())
-		d["clock_skew_leeway"] = int64(method.ClockSkewLeeway.Seconds())
-	}
-
-	if method.MethodType == model.MethodTypeMultipass || method.MethodType == model.MethodTypeSAPassword {
-		method.PopulateTokenData(d)
-	}
+	method.PopulateTokenData(d)
 
 	return &logical.Response{
 		Data: d,

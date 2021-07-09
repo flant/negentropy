@@ -1192,13 +1192,13 @@ func TestAuthMethod_IncorrectUpdate(t *testing.T) {
 	enableJwtBackend(t, b, storage)
 	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
 
-	cases := []struct{
-		title string
+	cases := []struct {
+		title      string
 		updateBody map[string]interface{}
 		methodName string
-	} {
+	}{
 		{
-			title: "does not change method type when update",
+			title:      "does not change method type when update",
 			methodName: "a",
 			updateBody: map[string]interface{}{
 				"method_type": model.MethodTypeOIDC,
@@ -1207,7 +1207,7 @@ func TestAuthMethod_IncorrectUpdate(t *testing.T) {
 		},
 
 		{
-			title: "does not change source when update",
+			title:      "does not change source when update",
 			methodName: "a",
 			updateBody: map[string]interface{}{
 				"method_type": model.MethodTypeJWT,
@@ -1254,144 +1254,85 @@ func TestAuthMethod_IncorrectUpdate(t *testing.T) {
 		})
 	}
 
-
 }
 
-// func TestAuthMethod_Read(t *testing.T) {
-//	b, storage := getBackend(t)
-//
-//	data := map[string]interface{}{
-//		"method_type":             "jwt",
-//		"bound_subject":         "testsub",
-//		"bound_audiences":       "vault",
-//		"allowed_redirect_uris": []string{"http://127.0.0.1"},
-//		"oidc_scopes":           []string{"email", "profile"},
-//		"user_claim":            "user",
-//		"groups_claim":          "groups",
-//		"bound_cidrs":           "127.0.0.1/8",
-//		"policies":              "test",
-//		"period":                "3s",
-//		"ttl":                   "1s",
-//		"num_uses":              12,
-//		"max_ttl":               "5s",
-//		"expiration_leeway":     "500s",
-//		"not_before_leeway":     "500s",
-//		"clock_skew_leeway":     "100s",
-//	}
-//
-//	expected := map[string]interface{}{
-//		"method_type":               "jwt",
-//		"bound_claims_type":       "string",
-//		"bound_claims":            map[string]interface{}(nil),
-//		"claim_mappings":          map[string]string(nil),
-//		"bound_subject":           "testsub",
-//		"bound_audiences":         []string{"vault"},
-//		"allowed_redirect_uris":   []string{"http://127.0.0.1"},
-//		"oidc_scopes":             []string{"email", "profile"},
-//		"user_claim":              "user",
-//		"groups_claim":            "groups",
-//		"token_policies":          []string{"test"},
-//		"policies":                []string{"test"},
-//		"token_period":            int64(3),
-//		"period":                  int64(3),
-//		"token_ttl":               int64(1),
-//		"ttl":                     int64(1),
-//		"token_num_uses":          12,
-//		"num_uses":                12,
-//		"token_max_ttl":           int64(5),
-//		"max_ttl":                 int64(5),
-//		"expiration_leeway":       int64(500),
-//		"not_before_leeway":       int64(500),
-//		"clock_skew_leeway":       int64(100),
-//		"verbose_oidc_logging":    false,
-//		"token_type":              logical.TokenTypeDefault.String(),
-//		"token_no_default_policy": false,
-//		"token_explicit_max_ttl":  int64(0),
-//		"max_age":                 int64(0),
-//	}
-//
-//	req := &logical.Request{
-//		Operation: logical.CreateOperation,
-//		Path:      "auth_method/plugin-test",
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err := b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	readTest := func() {
-//		req = &logical.Request{
-//			Operation: logical.ReadOperation,
-//			Path:      "auth_method/plugin-test",
-//			Storage:   storage,
-//		}
-//
-//		resp, err = b.HandleRequest(context.Background(), req)
-//		if err != nil || (resp != nil && resp.IsError()) {
-//			t.Fatalf("err:%s resp:%#v\n", err, resp)
-//		}
-//
-//		if resp.Data["bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
-//			t.Fatal("unexpected bound cidrs")
-//		}
-//		delete(resp.Data, "bound_cidrs")
-//		if resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
-//			t.Fatal("unexpected token bound cidrs")
-//		}
-//		delete(resp.Data, "token_bound_cidrs")
-//		if diff := deep.Equal(expected, resp.Data); diff != nil {
-//			t.Fatal(diff)
-//		}
-//	}
-//
-//	// Run read test for normal case
-//	readTest()
-//
-//	// Remove the 'method_type' parameter in stored authMethodConfig to simulate a legacy authMethodConfig
-//	rolePath := rolePrefix + "plugin-test"
-//	raw, err := storage.Get(context.Background(), rolePath)
-//
-//	var role map[string]interface{}
-//	if err := raw.DecodeJSON(&role); err != nil {
-//		t.Fatal(err)
-//	}
-//	delete(role, "method_type")
-//	entry, err := logical.StorageEntryJSON(rolePath, role)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if err = req.Storage.Put(context.Background(), entry); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	// Run read test for "upgrade" case. The legacy authMethodConfig is not changed in storage, but
-//	// reads will populate the `method_type` with "jwt".
-//	readTest()
-//
-//	// Remove the 'bound_claims_type' parameter in stored authMethodConfig to simulate a legacy authMethodConfig
-//	raw, err = storage.Get(context.Background(), rolePath)
-//
-//	if err := raw.DecodeJSON(&role); err != nil {
-//		t.Fatal(err)
-//	}
-//	delete(role, "bound_claims_type")
-//	entry, err = logical.StorageEntryJSON(rolePath, role)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if err = req.Storage.Put(context.Background(), entry); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	// Run read test for "upgrade" case. The legacy authMethodConfig is not changed in storage, but
-//	// reads will populate the `bound_claims_type` with "string".
-//	readTest()
-//}
+func TestAuthMethod_Read(t *testing.T) {
+	b, storage := getBackend(t)
+
+	jwtSourceName := "a"
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+
+	body := withBoundClaims(
+		withLeaways(
+			withVaultTokenParts(
+				withUserClaims(map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"source":      jwtSourceName,
+				}))))
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      fmt.Sprintf("auth_method/test"),
+		Storage:   storage,
+		Data:      body,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	cidrsObj, err := parseutil.ParseAddrs([]string{"127.0.0.1/8"})
+	if err != nil {
+		panic(err)
+	}
+
+	expected := map[string]interface{}{
+		"method_type":       model.MethodTypeJWT,
+		"bound_claims_type": "glob",
+		"bound_claims": map[string]interface{}{
+			"foo": []interface{}{"baz"},
+		},
+		"claim_mappings": map[string]string{
+			"foo": "a",
+		},
+		"bound_subject":           "testsub",
+		"bound_audiences":         []string{"vault"},
+		"allowed_redirect_uris":   []string(nil),
+		"oidc_scopes":             []string(nil),
+		"user_claim":              "user",
+		"groups_claim":            "groups",
+		"token_policies":          []string{"good"},
+		"token_period":            int64(10),
+		"token_ttl":               int64(5),
+		"token_num_uses":          5,
+		"token_max_ttl":           int64(100),
+		"expiration_leeway":       int64(5),
+		"not_before_leeway":       int64(5),
+		"clock_skew_leeway":       int64(5),
+		"verbose_oidc_logging":    false,
+		"token_type":              logical.TokenTypeDefault.String(),
+		"token_no_default_policy": true,
+		"token_explicit_max_ttl":  int64(100),
+		"max_age":                 int64(0),
+		"token_bound_cidrs":       cidrsObj,
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "auth_method/test",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if diff := deep.Equal(expected, resp.Data); diff != nil {
+		t.Fatal(diff)
+	}
+}
 
 func TestAuthMethod_Delete(t *testing.T) {
 	b, storage := getBackend(t)
