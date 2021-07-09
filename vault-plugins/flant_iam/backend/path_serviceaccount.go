@@ -633,7 +633,7 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -756,7 +756,7 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"password": model.OmitSensitive(pass)}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
