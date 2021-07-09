@@ -127,11 +127,8 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {

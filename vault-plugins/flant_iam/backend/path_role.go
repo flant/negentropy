@@ -172,11 +172,8 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 
 		repo := model.NewRoleRepository(tx)
 		err := repo.Update(role)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -196,11 +193,8 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -220,11 +214,8 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 		repo := model.NewRoleRepository(tx)
 
 		role, err := repo.Get(name)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		return responseWithDataAndCode(req, role, http.StatusOK)

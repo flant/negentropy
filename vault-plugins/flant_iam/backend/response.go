@@ -41,14 +41,6 @@ func responseWithSensitiveData(m interface{}, includeSensitive bool) (*logical.R
 	return resp, err
 }
 
-func responseWithSensitiveDataAndCode(req *logical.Request, m interface{}, status int) (*logical.Response, error) {
-	resp, err := responseWithSensitiveData(m, true)
-	if err != nil {
-		return nil, err
-	}
-	return logical.RespondWithStatusCode(resp, req, status)
-}
-
 func responseWithDataAndCode(req *logical.Request, m interface{}, status int) (*logical.Response, error) {
 	resp, err := responseWithData(m)
 	if err != nil {
@@ -60,11 +52,11 @@ func responseWithDataAndCode(req *logical.Request, m interface{}, status int) (*
 func responseErr(req *logical.Request, err error) (*logical.Response, error) {
 	switch err {
 	case model.ErrNotFound:
-		return responseNotFound(req)
+		return responseErrMessage(req, err.Error(), http.StatusNotFound)
 	case model.ErrBadVersion:
-		return responseBadVersion(req)
+		return responseErrMessage(req, err.Error(), http.StatusConflict)
 	case model.ErrBadOrigin:
-		return responseBadOrigin(req)
+		return responseErrMessage(req, err.Error(), http.StatusForbidden)
 	default:
 		return nil, err
 	}
@@ -73,18 +65,6 @@ func responseErr(req *logical.Request, err error) (*logical.Response, error) {
 func responseErrMessage(req *logical.Request, message string, status int) (*logical.Response, error) {
 	rr := logical.ErrorResponse(message)
 	return logical.RespondWithStatusCode(rr, req, status)
-}
-
-func responseNotFound(req *logical.Request) (*logical.Response, error) {
-	return responseErrMessage(req, "not found", http.StatusNotFound)
-}
-
-func responseBadVersion(req *logical.Request) (*logical.Response, error) {
-	return responseErrMessage(req, "bad version", http.StatusConflict)
-}
-
-func responseBadOrigin(req *logical.Request) (*logical.Response, error) {
-	return responseErrMessage(req, "bad origin", http.StatusForbidden)
 }
 
 // commit wraps the committing and error logging
