@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 )
@@ -34,6 +35,7 @@ var (
 	_ TestAPI = (*BuilderBasedAPI)(nil)
 
 	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
+	_ URLBuilder = (*featureflag.EndpointBuilder)(nil)
 )
 
 type BuilderBasedAPI struct {
@@ -74,39 +76,39 @@ func (b *BuilderBasedAPI) request(method, url string, params tools.Params, paylo
 
 func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	b.request("POST", b.url.Collection(params, query), params, payload)
+	b.request(http.MethodPost, b.url.Collection(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	b.request("POST", b.url.Privileged(params, query), params, payload)
+	b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Read(params tools.Params, query url.Values) {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request("GET", b.url.One(params, query), params, nil)
+	b.request(http.MethodGet, b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) Update(params tools.Params, query url.Values, payload interface{}) {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request("POST", b.url.One(params, query), params, payload)
+	b.request(http.MethodPost, b.url.One(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(204))
-	b.request("DELETE", b.url.One(params, query), params, nil)
+	b.request(http.MethodDelete, b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) {
-	if query == nil {
-		query = make(url.Values)
-	}
-
 	query.Set("list", "true")
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request("GET", b.url.Collection(params, query), params, nil)
+	b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &tenant.EndpointBuilder{}}
+}
+
+func NewFeatureFlagAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &featureflag.EndpointBuilder{}}
 }

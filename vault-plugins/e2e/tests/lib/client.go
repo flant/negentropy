@@ -51,13 +51,18 @@ func GetVaultClient(token string) *http.Client {
 		Timeout: 10 * time.Second,
 	}
 
+	headers := map[string]string{
+		"Content-Type": "application/json",
+		"Accept":       "application/json",
+	}
+
+	if len(token) > 0 {
+		headers["X-Vault-Token"] = token
+	}
+
 	tr := &customHeadersTransport{
-		url: *pluginURL,
-		headers: map[string]string{
-			"Content-Type":  "application/json",
-			"Accept":        "application/json",
-			"X-Vault-Token": token,
-		},
+		url:     *pluginURL,
+		headers: headers,
 		wrap: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true, // We do not want to test tls, only logic

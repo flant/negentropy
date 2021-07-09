@@ -1,6 +1,8 @@
 package tenant
 
 import (
+	"net/url"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -19,9 +21,7 @@ var _ = Describe("Tenant", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				var payload struct {
-					Identifier interface{} `json:"identifier,omitempty"`
-				}
+				var payload tenant.Payload
 				payload.Identifier = identifier
 
 				params := tools.Params{"expectStatus": tools.ExpectStatus(statusCodeCondition)}
@@ -52,7 +52,7 @@ var _ = Describe("Tenant", func() {
 
 			},
 		}
-		tenantsAPI.Create(params, nil, payload)
+		tenantsAPI.Create(params, url.Values{}, payload)
 	})
 
 	It("can be read", func() {
@@ -130,7 +130,7 @@ var _ = Describe("Tenant", func() {
 
 	It("can be listed", func() {
 		createPayload := tenant.GetPayload()
-		tenantsAPI.Create(tools.Params{}, nil, createPayload)
-		tenantsAPI.List(tools.Params{}, nil)
+		tenantsAPI.Create(tools.Params{}, url.Values{}, createPayload)
+		tenantsAPI.List(tools.Params{}, url.Values{})
 	})
 })
