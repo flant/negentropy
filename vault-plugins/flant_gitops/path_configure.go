@@ -114,7 +114,7 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 
 	gitRepoUrl := req.Get(fieldNameGitRepoUrl).(string)
 	if _, err := transport.NewEndpoint(gitRepoUrl); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid %s given: %s", fieldNameGitRepoUrl, err)), nil
+		return logical.ErrorResponse(fmt.Sprintf("invalid option %q given: %s", fieldNameGitRepoUrl, err)), nil
 	}
 
 	gitBranch := req.Get(fieldNameGitBranch).(string)
@@ -127,7 +127,7 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 		gitPollPeriod = gitPollPeriodI.(string)
 
 		if _, err := time.ParseDuration(gitPollPeriod); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected golang time duration: %s", fieldNameGitPollPeriod, err)), nil
+			return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected golang time duration: %s", fieldNameGitPollPeriod, err)), nil
 		}
 	}
 
@@ -141,14 +141,14 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 		valueStr := req.Get(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(string)
 		valueUint, err := strconv.ParseUint(valueStr, 10, 64)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected number: %s", fieldNameGitPollPeriod, err)), nil
+			return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected number: %s", fieldNameGitPollPeriod, err)), nil
 		}
 		requiredNumberOfVerifiedSignaturesOnCommit = int(valueUint)
 	}
 
 	dockerImage := req.Get(fieldNameDockerImage).(string)
 	if err := docker.ValidateImageNameWithDigest(dockerImage); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected docker image name with digest: %s", fieldNameDockerImage, err)), nil
+		return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected docker image name with digest: %s", fieldNameDockerImage, err)), nil
 	}
 
 	command := req.Get(fieldNameCommand).(string)

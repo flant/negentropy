@@ -105,7 +105,7 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 	switch method {
 	case "GET", "POST", "LIST", "PUT", "DELETE":
 	default:
-		return logical.ErrorResponse("invalid %s given: expected GET, POST, LIST, PUT or DELETE", fieldNameVaultRequestMethod), nil
+		return logical.ErrorResponse("invalid option %q given: expected GET, POST, LIST, PUT or DELETE", fieldNameVaultRequestMethod), nil
 	}
 
 	var options string
@@ -113,8 +113,8 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 		options = v.(string)
 
 		var data interface{}
-		if err := json.Unmarshal([]byte(options), data); err != nil {
-			return logical.ErrorResponse("invalid %s given: expected json: %s", fieldNameVaultRequestOptions, err), nil
+		if err := json.Unmarshal([]byte(options), &data); err != nil {
+			return logical.ErrorResponse("invalid option %q given: expected json: %s", fieldNameVaultRequestOptions, err), nil
 		}
 	}
 
@@ -122,7 +122,7 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 	if wrapTTLRaw := req.Get(fieldNameVaultRequestWrapTTL); wrapTTLRaw != nil {
 		duration, err := time.ParseDuration(wrapTTLRaw.(string))
 		if err != nil {
-			return logical.ErrorResponse("invalid %s given, expected golang time duration: %s", fieldNameVaultRequestWrapTTL, err), nil
+			return logical.ErrorResponse("invalid option %q given, expected golang time duration: %s", fieldNameVaultRequestWrapTTL, err), nil
 		}
 
 		wrapTTLSecFloat := duration.Seconds()
@@ -184,7 +184,7 @@ func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logica
 	b.Logger().Debug("Start listing vault request configuration ...")
 
 	var keys []string
-	var keysInfo map[string]interface{}
+	keysInfo := map[string]interface{}{}
 
 	allVaultRequests, err := listVaultRequests(ctx, req.Storage)
 	if err != nil {
