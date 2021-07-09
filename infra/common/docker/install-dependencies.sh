@@ -1,24 +1,25 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-export DEBIAN_FRONTEND=noninteractive
+apk update
+apk add bash curl ca-certificates gnupg jq py3-pip make gcc g++ git gcompat musl-dev libffi-dev python3-dev patch
 
-apt update -y
-apt install -y curl lsb-release software-properties-common apt-transport-https ca-certificates gnupg
+# Terraform.
+export TERRAFORM_VERSION=1.0.2
+curl -L https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip | unzip -p - > /bin/terraform
+chmod +x /bin/terraform
 
-curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
-apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+# Packer.
+export PACKER_VERSION=1.7.3
+curl -L https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip | unzip -p - > /bin/packer
+chmod +x /bin/packer
 
-echo "deb https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+# Google Cloud SDK.
+curl -L https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz | tar -xzC /usr/local && \
+/usr/local/google-cloud-sdk/install.sh --quiet && \
+ln -s /usr/local/google-cloud-sdk/bin/gcloud /bin/gcloud && \
+ln -s /usr/local/google-cloud-sdk/bin/gsutil /bin/gsutil
 
-apt update -y
-
-apt install -y terraform jq python3-pip
 python3 -m pip install -r requirements.txt
-
-# packer dependencies
-apt install -y google-cloud-sdk packer git
-
 
 GO_VERSION="1.16"
 export GOPATH="/opt/golang"
