@@ -24,6 +24,28 @@ type errCase struct {
 	hasBackendErr bool
 }
 
+func assertAuthMethod(t *testing.T, b *flantIamAuthBackend, methodName string, expected model.AuthMethod) {
+	actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get(methodName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if actual.UUID == "" {
+		t.Fatal("not set uuid")
+	}
+
+	uuid := actual.UUID
+	defer func() {
+		actual.UUID = uuid
+	}()
+
+	actual.UUID = ""
+
+	if diff := deep.Equal(expected, *actual); diff != nil {
+		t.Fatalf("Unexpected authMethod data: diff %#v\n", diff)
+	}
+}
+
 func assertErrorCasesAuthMethod(t *testing.T, b logical.Backend, storage logical.Storage, cases []errCase) {
 	for _, c := range cases {
 
@@ -95,23 +117,25 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "not pass method type",
 				body: map[string]interface{}{
-					"bound_subject":   "testsub",
-					"bound_audiences": "vault",
-					"user_claim":      "user",
-					"groups_claim":    "groups",
-					"bound_cidrs":     "127.0.0.1/8",
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
 				},
 			},
 
 			{
 				title: "incorrect method type",
 				body: map[string]interface{}{
-					"method_type":     "incorrect",
-					"bound_subject":   "testsub",
-					"bound_audiences": "vault",
-					"user_claim":      "user",
-					"groups_claim":    "groups",
-					"bound_cidrs":     "127.0.0.1/8",
+					"method_type":       "incorrect",
+					"bound_claims_type": "string",
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
 				},
 			},
 		}
@@ -145,22 +169,23 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "jwt type need source",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeJWT,
-					"bound_subject":   "testsub",
-					"bound_audiences": "vault",
-					"user_claim":      "user",
-					"groups_claim":    "groups",
-					"bound_cidrs":     "127.0.0.1/8",
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_claims_type": "string",
+					"bound_audiences":   "vault",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
 				},
 			},
 
 			{
 				title: "oidc type need source",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeOIDC,
-					"bound_audiences": "vault",
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
 					"bound_claims": map[string]interface{}{
-						"foo": 10,
 						"bar": "baz",
 					},
 					"oidc_scopes":           []string{"email", "profile"},
@@ -207,34 +232,37 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "not found source",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeJWT,
-					"bound_subject":   "testsub",
-					"bound_audiences": "vault",
-					"user_claim":      "user",
-					"groups_claim":    "groups",
-					"bound_cidrs":     "127.0.0.1/8",
-					"source":          "not exists",
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+					"source":            "not exists",
 				},
 			},
 
 			{
 				title: "jwt type with oidc source",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeJWT,
-					"bound_subject":   "testsub",
-					"bound_audiences": "vault",
-					"user_claim":      "user",
-					"groups_claim":    "groups",
-					"bound_cidrs":     "127.0.0.1/8",
-					"source":          oidcSourceName,
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+					"source":            oidcSourceName,
 				},
 			},
 
 			{
 				title: "oidc type with jwt source",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeOIDC,
-					"bound_audiences": "vault",
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
 					"bound_claims": map[string]interface{}{
 						"foo": 10,
 						"bar": "baz",
@@ -389,7 +417,7 @@ func TestAuthMethod_CreateError(t *testing.T) {
 		assertErrorCasesAuthMethod(t, b, storage, cases)
 	})
 
-	t.Run("user claims", func(t *testing.T) {
+	t.Run("oidc params", func(t *testing.T) {
 		b, storage := getBackend(t)
 
 		oidcSourceName := "b"
@@ -400,15 +428,15 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "allowed_redirect_uris is not passed",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeOIDC,
-					"bound_audiences": "vault",
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
 					"bound_claims": map[string]interface{}{
-						"foo": 10,
 						"bar": "baz",
 					},
-					"oidc_scopes":           []string{"email", "profile"},
+					"oidc_scopes": []string{"email", "profile"},
 					"claim_mappings": map[string]string{
-						"foo":        "a",
+						"foo": "a",
 					},
 					"user_claim":   "user",
 					"groups_claim": "groups",
@@ -421,10 +449,10 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "max_age is negative",
 				body: map[string]interface{}{
-					"method_type":     model.MethodTypeOIDC,
-					"bound_audiences": "vault",
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
 					"bound_claims": map[string]interface{}{
-						"foo": 10,
 						"bar": "baz",
 					},
 					"oidc_scopes":           []string{"email", "profile"},
@@ -436,12 +464,11 @@ func TestAuthMethod_CreateError(t *testing.T) {
 					"user_claim":   "user",
 					"groups_claim": "groups",
 					"source":       oidcSourceName,
-					"max_age": "-1s",
+					"max_age":      "-1s",
 				},
 
 				hasBackendErr: true,
 			},
-
 		}
 
 		assertErrorCasesAuthMethod(t, b, storage, cases)
@@ -460,7 +487,8 @@ func TestAuthMethod_CreateError(t *testing.T) {
 			{
 				title: "metadata key in claims mapping for jwt",
 				body: map[string]interface{}{
-					"method_type": model.MethodTypeJWT,
+					"method_type":       model.MethodTypeJWT,
+					"bound_claims_type": "string",
 					"bound_claims": map[string]interface{}{
 						"foo": 10,
 						"bar": "baz",
@@ -960,9 +988,13 @@ func TestAuthMethod_Create(t *testing.T) {
 	}
 
 	methods := []struct {
-		body       map[string]interface{}
 		methodName string
-		expected   model.AuthMethod
+
+		body     map[string]interface{}
+		expected model.AuthMethod
+
+		updateBody     map[string]interface{}
+		updateExpected model.AuthMethod
 	}{
 		{
 			methodName: model.MethodTypeJWT,
@@ -982,6 +1014,31 @@ func TestAuthMethod_Create(t *testing.T) {
 							Source:     jwtSourceName,
 							Name:       model.MethodTypeJWT,
 						})))),
+
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeJWT,
+				"source":      jwtSourceName,
+
+				"bound_audiences":   "new",
+				"user_claim":        "new",
+				"expiration_leeway": "6s",
+				"token_period":      "10s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.BoundAudiences = []string{"new"}
+				m.UserClaim = "new"
+				m.ExpirationLeeway = 6 * time.Second
+				m.TokenPeriod = 10 * time.Second
+				return m
+			}(expectedWithLeaways(
+				expectedWithUser(
+					expectedWithBoundClaims(
+						expectedWithTokenParams(model.AuthMethod{
+							MethodType: model.MethodTypeJWT,
+							Source:     jwtSourceName,
+							Name:       model.MethodTypeJWT,
+						}))))),
 		},
 
 		{
@@ -994,6 +1051,22 @@ func TestAuthMethod_Create(t *testing.T) {
 				MethodType: model.MethodTypeMultipass,
 				Name:       model.MethodTypeMultipass,
 			}),
+
+			updateBody: map[string]interface{}{
+				"method_type":       model.MethodTypeMultipass,
+				"token_period":      "10s",
+				"expiration_leeway": "6s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.TokenPeriod = 10 * time.Second
+				m.ExpirationLeeway = 6 * time.Second
+
+				return m
+			}(expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeMultipass,
+				Name:       model.MethodTypeMultipass,
+			})),
 		},
 
 		{
@@ -1005,6 +1078,20 @@ func TestAuthMethod_Create(t *testing.T) {
 				MethodType: model.MethodTypeSAPassword,
 				Name:       model.MethodTypeSAPassword,
 			}),
+
+			updateBody: map[string]interface{}{
+				"method_type":  model.MethodTypeSAPassword,
+				"token_period": "10s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.TokenPeriod = 10 * time.Second
+
+				return m
+			}(expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeSAPassword,
+				Name:       model.MethodTypeSAPassword,
+			})),
 		},
 
 		{
@@ -1029,11 +1116,43 @@ func TestAuthMethod_Create(t *testing.T) {
 						OIDCScopes:          []string{"email", "profile"},
 						MaxAge:              5 * time.Second,
 					}))),
+
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeOIDC,
+				"source":      oidcSourceName,
+
+				"bound_audiences":   "new",
+				"user_claim":        "new",
+				"expiration_leeway": "6s",
+				"token_period":      "10s",
+
+				"oidc_scopes":           []string{"email"},
+				"allowed_redirect_uris": []string{"http://localhost:8250"},
+				"max_age":               "3s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.BoundAudiences = []string{"new"}
+				m.UserClaim = "new"
+				m.TokenPeriod = 10 * time.Second
+
+				m.MaxAge = 3 * time.Second
+				m.OIDCScopes = []string{"email"}
+				m.AllowedRedirectURIs = []string{"http://localhost:8250"}
+
+				return m
+			}(expectedWithUser(
+				expectedWithBoundClaims(
+					expectedWithTokenParams(model.AuthMethod{
+						MethodType: model.MethodTypeOIDC,
+						Source:     oidcSourceName,
+						Name:       model.MethodTypeOIDC,
+					})))),
 		},
 	}
 
 	for _, m := range methods {
-		t.Run(fmt.Sprintf("happy path for %s", m.methodName), func(t *testing.T) {
+		t.Run(fmt.Sprintf("create happy path for %s", m.methodName), func(t *testing.T) {
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
 				Path:      fmt.Sprintf("auth_method/%s", m.methodName),
@@ -1046,20 +1165,23 @@ func TestAuthMethod_Create(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get(m.methodName)
-			if err != nil {
-				t.Fatal(err)
-			}
+			assertAuthMethod(t, b, m.methodName, m.expected)
 
-			if actual.UUID == "" {
-				t.Fatal("not set uuid")
-			}
+			t.Run(fmt.Sprintf("update happy path for %s", m.methodName), func(t *testing.T) {
+				req := &logical.Request{
+					Operation: logical.UpdateOperation,
+					Path:      fmt.Sprintf("auth_method/%s", m.methodName),
+					Storage:   storage,
+					Data:      m.updateBody,
+				}
 
-			actual.UUID = ""
+				resp, err := b.HandleRequest(context.Background(), req)
+				if err != nil || (resp != nil && resp.IsError()) {
+					t.Fatalf("err:%s resp:%#v\n", err, resp)
+				}
 
-			if diff := deep.Equal(m.expected, *actual); diff != nil {
-				t.Fatalf("Unexpected authMethod data: diff %#v\n", diff)
-			}
+				assertAuthMethod(t, b, m.methodName, m.updateExpected)
+			})
 		})
 	}
 }

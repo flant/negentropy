@@ -88,7 +88,6 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			"bound_claims_type": {
 				Type:        framework.TypeString,
 				Description: `How to interpret values in the map of claims/values (which must match for login): allowed values are 'string' or 'glob'`,
-				Default:     model.BoundClaimsTypeString,
 			},
 			"bound_claims": {
 				Type:        framework.TypeMap,
@@ -274,11 +273,6 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return errResponse, err
 	}
 
-	sourceName, errResponse, err := verifySourceAndRelToType(methodType, data)
-	if errResponse != nil || err != nil {
-		return errResponse, err
-	}
-
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 	repo := repos.NewAuthMethodRepo(tnx)
@@ -295,9 +289,17 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		method = new(model.AuthMethod)
 		method.UUID = utils.UUID()
 		method.Name = methodName
+		method.MethodType = methodType
 	}
 
-	method.MethodType = methodType
+	if methodType != method.MethodType {
+		return logical.ErrorResponse("can not change method type"), nil
+	}
+
+	sourceName, errResponse, err := verifySourceAndRelToType(methodType, data)
+	if errResponse != nil || err != nil {
+		return errResponse, err
+	}
 
 	// fix vault bug
 	if tokenNumUses, ok := data.GetOk("token_num_uses"); ok {
@@ -320,6 +322,10 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 
 	// verify source for source based (not own)
 	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC) {
+		if method.Source != "" && method.Source != sourceName {
+			return logical.ErrorResponse("can not change source"), nil
+		}
+
 		source, err := repos.NewAuthSourceRepo(tnx).Get(sourceName)
 		if err != nil {
 			return nil, err
@@ -410,6 +416,10 @@ func fillBoundClaimsParamsToAuthMethod(method *model.AuthMethod, data *framework
 
 	boundClaimsType := data.Get("bound_claims_type").(string)
 	switch boundClaimsType {
+	case "":
+		if method.BoundClaimsType == "" {
+			method.BoundClaimsType = model.BoundClaimsTypeString
+		}
 	case model.BoundClaimsTypeString, model.BoundClaimsTypeGlob:
 		method.BoundClaimsType = boundClaimsType
 	default:
