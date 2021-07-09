@@ -1,2 +1,0 @@
-# negentropy
-S - security

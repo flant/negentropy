@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: AuthdConfig
-jwtPath: /var/run/authd.sock
-servers:
-  - type: RootSource
-    domain: root-source.negentropy.example.com
-  - type: Auth
-    domain: auth.negentropy.eample.com
-    allowedRedirect: "*.auth.negentropy.example.com"

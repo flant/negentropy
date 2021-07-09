@@ -1,6 +1,0 @@
-.idea
-.vscode
-node_modules
-tests/data/*
-build/*
-

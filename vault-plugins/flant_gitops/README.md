@@ -1,1 +1,0 @@
-# flant_gitops
