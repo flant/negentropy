@@ -83,11 +83,6 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Subjects list",
 					Required:    true,
 				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
-					Required:    true,
-				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
