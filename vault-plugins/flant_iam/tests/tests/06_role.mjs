@@ -1,25 +1,42 @@
 import { expect } from "chai"
-import Faker from "faker"
+import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genRoleCreatePayload, genRoleUpdatePayload, RoleAPI } from "./lib/role.mjs"
+import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
+import { genRoleCreatePayload } from "./lib/role.mjs"
+import Faker from "faker"
 
 describe("Role", function () {
     const rootClient = getClient(rootToken)
-    const root = new RoleAPI(rootClient)
+    function getAPIClient(client) {
+        return new API(
+            client,
+            new EndpointBuilder(["role"]),
+            new SingleFieldReponseMapper("data.role", "data.names"),
+        )
+    }
+    const root = getAPIClient(rootClient)
 
     describe("payload", () => {
-        describe("identifier", () => {
+        describe("name", () => {
+            after("clean", async () => {
+                const names = await root.list()
+                const deletions = names.map((role) => root.delete({ params: { role } }))
+                await Promise.all(deletions)
+            })
+
             const invalidCases = [
                 {
                     title: "number allowed", // the matter of fact ¯\_(ツ)_/¯
-                    payload: genRoleCreatePayload({ name: 100 }),
-                    validateStatus: (x) => x == 201,
+                    payload: genRoleCreatePayload({
+                        name: Math.round(Math.random() * 1e9),
+                    }),
+                    validateStatus: (x) => x === 201,
                 },
                 {
                     title: "absent name forbidden",
                     payload: (() => {
-                        const p = genRoleUpdatePayload()
-                        delete p.identifier
+                        const p = genRoleCreatePayload({})
+                        delete p.name
                         return p
                     })(),
                     validateStatus: (x) => x === 400,
@@ -43,12 +60,60 @@ describe("Role", function () {
 
             invalidCases.forEach((x) =>
                 it(x.title, async () => {
-                    await root.create(x.payload, {
-                        validateStatus: x.validateStatus,
+                    await root.create({
+                        payload: x.payload,
+                        opts: {
+                            validateStatus: x.validateStatus,
+                        },
                     })
                 }),
             )
         })
+    })
+
+    it("can be created", async () => {
+        const payload = genRoleCreatePayload()
+
+        const role = await root.create({ payload })
+
+        expect(role).to.include.keys(
+            "name",
+            "description",
+            "scope",
+            "options_schema",
+            "require_one_of_feature_flags",
+        )
+        expect(role.name).to.eq(payload.name)
+    })
+
+    it("can be listed", async () => {
+        const payload = genRoleCreatePayload()
+        await root.create({ payload })
+
+        const names = await root.list()
+
+        expect(names).to.be.an("array")
+    })
+
+    it("has identifying fields in list", async () => {
+        const payload = genRoleCreatePayload()
+        const role = await root.create({ payload })
+
+        const list = await root.list()
+
+        expect(list).to.include(role.name)
+    })
+
+    it("can be deleted", async () => {
+        const payload = genRoleCreatePayload()
+
+        const role = await root.create({ payload })
+
+        const params = { role: role.name }
+        await root.delete({ params })
+
+        const list = await root.list()
+        expect(list).to.not.include(role.name)
     })
 
     async function createRole(override = {}) {
@@ -57,108 +122,46 @@ describe("Role", function () {
             ...override,
         })
 
-        const { data: body } = await root.create(payload)
-
-        return body.data
+        return await root.create({ payload })
     }
 
-    it("can be created", async () => {
-        const data = await createRole()
-
-        expect(data).to.exist.and.to.include.key("data")
-        expect(data.role).to.include.keys(
-            "name",
-            "description",
-            "scope",
-            "options_schema",
-            "require_one_of_feature_flags",
-        )
-    })
-
-    it("can be read", async () => {
-        const created = await createRole()
-
-        const { data: read } = await root.read(created.data.name)
-
-        expect(read.data).to.deep.eq(created.data)
-    })
-
     it("can be read by name", async () => {
-        const createBodies = await Promise.all([createRole(), createRole(), createRole()])
+        const createdList = await Promise.all([createRole(), createRole(), createRole()])
 
-        const names = createBodies.map((b) => b.data.name)
+        const readList = await Promise.all(
+            createdList.map((r) => root.read({ params: { role: r.name } })),
+        )
 
-        const readBodies = await Promise.all(names.map((name) => root.read(name)))
-
-        for (let i = 0; i < readBodies.length; i++) {
-            const created = createBodies[i]
-            const read = readBodies[i].data
-            expect(read.data).to.deep.eq(created.data)
+        for (let i = 0; i < readList.length; i++) {
+            const created = createdList[i]
+            const read = readList[i]
+            expect(read).to.deep.eq(created)
         }
-        // expect(resp2.data).to.contain({ ...payload2, name: id2 })
-        // expect(resp3.data).to.contain({ ...payload3, name: id3 })
     })
 
     it("can be updated", async () => {
         const payload = genRoleCreatePayload()
         const created = await createRole(payload)
 
-        const name = created.data.name
+        const name = created.name
+        const params = { role: name }
         payload.description = Faker.lorem.sentence()
         delete payload.name
 
         // update
-        const { data: updated } = await root.update(name, payload)
+        const updated = await root.update({ params, payload })
 
         // read
-        const { data: read } = await root.read(name)
-        const role = read.data
+        const read = await root.read({ params })
 
-        expect(role).to.deep.eq({ ...payload, name, included_roles: null }, "payload must be saved")
-    })
-
-    it("can be deleted", async () => {
-        const created = await createRole()
-        const name = created.data.name
-
-        await root.delete(name)
-
-        await root.read(name, expectStatus(404))
-    })
-
-    it("can be listed", async () => {
-        const created = await createRole()
-        const name = created.data.name
-
-        const { data } = await root.list()
-
-        expect(data.data).to.be.an("object").and.to.have.key("names")
-        expect(data.data.names).to.include(name)
-    })
-
-    it("has identifying fields in list", async () => {
-        const created = await createRole()
-        const name = created.data.name
-
-        const { data: listBody } = await root.list()
-
-        expect(listBody.data).to.be.an("object").and.have.key("names")
-        expect(listBody.data.names).to.include(name)
+        expect(read).to.deep.eq({ ...payload, name, included_roles: null }, "payload must be saved")
     })
 
     describe("when does not exist", () => {
         const opts = expectStatus(404)
 
-        it("cannot read, gets 404", async () => {
-            await root.read("no-such", opts)
-        })
-
-        it("cannot update, gets 404", async () => {
-            await root.update("no-such", genRoleUpdatePayload(), opts)
-        })
-
         it("cannot delete, gets 404", async () => {
-            await root.delete("no-such", opts)
+            await root.delete({ params: { role: "no-such" }, opts })
         })
     })
 
@@ -172,34 +175,23 @@ describe("Role", function () {
         })
 
         function runWithClient(client, expectedStatus) {
-            const unauth = new RoleAPI(client)
+            const unauth = getAPIClient(client)
             const opts = expectStatus(expectedStatus)
 
             it(`cannot create, gets ${expectedStatus}`, async () => {
-                await unauth.create(genRoleCreatePayload(), opts)
+                const payload = genRoleCreatePayload()
+                await unauth.create({ payload, opts })
             })
 
             it(`cannot list, gets ${expectedStatus}`, async () => {
-                await unauth.list(opts)
-            })
-
-            it(`cannot read, gets ${expectedStatus}`, async () => {
-                const data = await createRole()
-                await unauth.read(data.role.name, opts)
-            })
-
-            it(`cannot update, gets ${expectedStatus}`, async () => {
-                const data = await createRole()
-                await unauth.update(
-                    data.role.name,
-                    genRoleUpdatePayload({ type: data.role.type }),
-                    opts,
-                )
+                await unauth.list({ opts })
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const data = await createRole()
-                await unauth.delete(data.role.name, opts)
+                const payload = genRoleCreatePayload()
+                const role = await root.create({ payload })
+                const params = { role: role.name }
+                await unauth.delete({ params, opts })
             })
         }
     })
