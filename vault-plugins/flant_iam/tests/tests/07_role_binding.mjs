@@ -15,7 +15,7 @@ import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
 //    /tenant/{tid}/role_binding/{rbid}
 
-describe.only("Role Binding", function () {
+describe("Role Binding", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
