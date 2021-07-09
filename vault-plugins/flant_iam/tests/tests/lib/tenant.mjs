@@ -21,32 +21,47 @@ export class TenantAPI {
         this.api = new API(client, new TenantEndpointBuilder())
     }
 
-    create(payload, opts) {
-        return this.api.create({ payload, opts })
+    async create(payload, opts) {
+        const { data: body } = await this.api.create({ payload, opts })
+        if (body.data) return body.data.tenant
+        return body
     }
 
-    createPriveleged(payload, opts) {
-        return this.api.createPrivileged({ payload, opts })
+    async createPriveleged(payload, opts) {
+        const { data: body } = await this.api.createPrivileged({
+            payload,
+            opts,
+        })
+        if (body.data) return body.data.tenant
+        return body
     }
 
-    read(id, opts) {
+    async read(id, opts) {
         const params = { tenant: id }
-        return this.api.read({ params, opts })
+        const { data: body } = await this.api.read({ params, opts })
+        if (body.data) return body.data.tenant
+        return body
     }
 
-    update(id, payload, opts) {
+    async update(id, payload, opts) {
         const params = { tenant: id }
-        return this.api.update({ params, payload, opts })
+        const { data: body } = await this.api.update({ params, payload, opts })
+        if (body.data) return body.data.tenant
+        return body
     }
 
-    delete(id, opts) {
+    async delete(id, opts) {
         const params = { tenant: id }
-        return this.api.delete({ params, opts })
+        const { data: body } = await this.api.delete({ params, opts })
+        if (body.data) return body.data.tenant
+        return body
     }
 
-    list(opts) {
+    async list(opts) {
         const query = { list: true }
-        return this.api.list({ query, opts })
+        const { data: body } = await this.api.list({ query, opts })
+        if (body.data) return body.data.uuids
+        return body
     }
 }
 

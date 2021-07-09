@@ -61,16 +61,11 @@ describe("Tenant", function () {
     it("can be created", async () => {
         const payload = genTenantPayload()
 
-        const { data: body } = await root.create(payload)
+        const tenant = await root.create(payload)
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "identifier",
-            "resource_version",
-        )
-        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(body.data.resource_version)
+        expect(tenant).to.include.keys("uuid", "identifier", "resource_version")
+        expect(tenant.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(tenant.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)
     })
@@ -78,15 +73,15 @@ describe("Tenant", function () {
     it("can be read", async () => {
         const payload = genTenantPayload()
 
-        const { data: created } = await root.create(payload)
-        const { data: read } = await root.read(created.data.uuid)
+        const tenCreated = await root.create(payload)
+        const tenRead = await root.read(tenCreated.uuid)
 
-        expect(read.data).to.deep.eq(created.data)
-        expect(created.data).to.deep.contain({
+        expect(tenRead).to.deep.eq(tenCreated)
+        expect(tenCreated).to.deep.contain({
             ...payload,
-            uuid: created.data.uuid,
+            uuid: tenCreated.uuid,
         })
-        expect(created.data.resource_version)
+        expect(tenCreated.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)
     })
@@ -96,20 +91,21 @@ describe("Tenant", function () {
         const payload2 = genTenantPayload()
         const payload3 = genTenantPayload()
 
-        const { data: body1 } = await root.create(payload1)
-        const id1 = body1.data.uuid
-        const { data: body2 } = await root.create(payload2)
-        const id2 = body2.data.uuid
-        const { data: body3 } = await root.create(payload3)
-        const id3 = body3.data.uuid
+        const tenCreated1 = await root.create(payload1)
+        const tenCreated2 = await root.create(payload2)
+        const tenCreated3 = await root.create(payload3)
 
-        const { data: resp1 } = await root.read(id1)
-        const { data: resp2 } = await root.read(id2)
-        const { data: resp3 } = await root.read(id3)
+        const id1 = tenCreated1.uuid
+        const id2 = tenCreated2.uuid
+        const id3 = tenCreated3.uuid
 
-        expect(resp1.data).to.contain({ ...payload1, uuid: id1 })
-        expect(resp2.data).to.contain({ ...payload2, uuid: id2 })
-        expect(resp3.data).to.contain({ ...payload3, uuid: id3 })
+        const tenRead1 = await root.read(id1)
+        const tenRead2 = await root.read(id2)
+        const tenRead3 = await root.read(id3)
+
+        expect(tenRead1).to.contain({ ...payload1, uuid: id1 })
+        expect(tenRead2).to.contain({ ...payload2, uuid: id2 })
+        expect(tenRead3).to.contain({ ...payload3, uuid: id3 })
     })
 
     it("can be updated", async () => {
@@ -117,19 +113,18 @@ describe("Tenant", function () {
         const updatePld = genTenantPayload()
 
         // create
-        const { data: body1 } = await root.create(createPld)
-        const uuid = body1.data.uuid
-        const resource_version = body1.data.resource_version
+        const tenCreated1 = await root.create(createPld)
+        const uuid = tenCreated1.uuid
+        const resource_version = tenCreated1.resource_version
 
         // update
-        const { data: body2 } = await root.update(uuid, {
+        await root.update(uuid, {
             ...updatePld,
             resource_version,
         })
 
         // read
-        const { data: body3 } = await root.read(uuid)
-        const tenant = body3.data
+        const tenant = await root.read(uuid)
 
         expect(tenant).to.contain(
             { ...updatePld, uuid },
@@ -144,8 +139,8 @@ describe("Tenant", function () {
     it("can be deleted", async () => {
         const createPld = genTenantPayload()
 
-        const { data: body1 } = await root.create(createPld)
-        const id = body1.data.uuid
+        const tenCreated1 = await root.create(createPld)
+        const id = tenCreated1.uuid
 
         await root.delete(id)
 
@@ -154,22 +149,21 @@ describe("Tenant", function () {
 
     it("can be listed", async () => {
         const payload = genTenantPayload()
-        await root.create(payload)
+        const t = await root.create(payload)
 
-        const { data } = await root.list()
+        const list = await root.list()
 
-        expect(data.data).to.be.an("object")
+        expect(list).to.be.an("array").and.to.contain(t.uuid)
     })
 
     it("has identifying fields in list", async () => {
         const payload = genTenantPayload()
-        const { data: creationBody } = await root.create(payload)
-        const id = creationBody.data.uuid
+        const t = await root.create(payload)
+        const id = t.uuid
 
-        const { data: listBody } = await root.list()
+        const list = await root.list()
 
-        expect(listBody.data).to.be.an("object").and.have.key("uuids")
-        expect(listBody.data.uuids).to.include(id)
+        expect(list).to.include(id)
     })
 
     describe("when does not exist", () => {
@@ -209,18 +203,18 @@ describe("Tenant", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const { data } = await root.create(genTenantPayload())
-                await unauth.read(data.data.uuid, opts)
+                const t = await root.create(genTenantPayload())
+                await unauth.read(t.uuid, opts)
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const { data } = await root.create(genTenantPayload())
-                await unauth.update(data.data.uuid, genTenantPayload(), opts)
+                const t = await root.create(genTenantPayload())
+                await unauth.update(t.uuid, genTenantPayload(), opts)
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await root.create(genTenantPayload())
-                await unauth.delete(data.data.uuid, opts)
+                const t = await root.create(genTenantPayload())
+                await unauth.delete(t.uuid, opts)
             })
         }
     })
@@ -229,10 +223,9 @@ describe("Tenant", function () {
         it(`creates`, async () => {
             const payload = genTenantPayload({ uuid: uuidv4() })
 
-            const { data: body } = await root.createPriveleged(payload)
+            const t = await root.createPriveleged(payload)
 
-            const id = body.data.uuid
-            expect(id).to.deep.eq(payload.uuid)
+            expect(t.uuid).to.deep.eq(payload.uuid)
         })
     })
 })
