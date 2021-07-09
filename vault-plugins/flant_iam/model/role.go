@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -9,7 +10,9 @@ import (
 )
 
 const (
-	RoleType = "role" // also, memdb schema name
+	RoleType           = "role" // also, memdb schema name
+	RoleScopeIndex     = "RoleScopeIndex"
+	IncludedRolesIndex = "IncludedRolesIndex"
 )
 
 func RoleSchema() *memdb.DBSchema {
@@ -25,11 +28,17 @@ func RoleSchema() *memdb.DBSchema {
 							Field: "Name",
 						},
 					},
-					"type": {
-						Name: "type",
+					RoleScopeIndex: {
+						Name: RoleScopeIndex,
 						Indexer: &memdb.StringFieldIndex{
 							Field: "Type",
 						},
+					},
+					IncludedRolesIndex: {
+						Name:         IncludedRolesIndex,
+						AllowMissing: true,
+						Unique:       false,
+						Indexer:      includedRolesIndexer{},
 					},
 				},
 			},
@@ -160,4 +169,73 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(role)
+}
+
+type includedRolesIndexer struct{}
+
+func (_ includedRolesIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, ErrNeedSingleArgument
+	}
+	arg, ok := args[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
+	}
+	// Add the null character as a terminator
+	arg += "\x00"
+	return []byte(arg), nil
+}
+
+func (_ includedRolesIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
+	role, ok := raw.(*Role)
+	if !ok {
+		return false, nil, fmt.Errorf("format error: need Role type, actual passed %#v", raw)
+	}
+	result := [][]byte{}
+	for i := range role.IncludedRoles {
+		result = append(result, []byte(role.IncludedRoles[i].Name+"\x00"))
+	}
+	if len(result) == 0 {
+		return false, nil, nil
+	}
+	return true, result, nil
+}
+
+func (r *RoleRepository) findDirectIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {
+	iter, err := r.db.Get(RoleType, IncludedRolesIndex, role)
+	if err != nil {
+		return nil, err
+	}
+	ids := map[RoleName]struct{}{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		role := raw.(*Role)
+		ids[role.Name] = struct{}{}
+	}
+	return ids, nil
+}
+
+func (r *RoleRepository) FindAllIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {
+	result := map[RoleName]struct{}{} // empty map
+	currentSet := map[RoleName]struct{}{role: {}}
+	for len(currentSet) != 0 {
+		nextSet := map[RoleName]struct{}{}
+		for currentRole := range currentSet {
+			candidates, err := r.findDirectIncludingRoles(currentRole)
+			if err != nil {
+				return nil, err
+			}
+			for candidate := range candidates {
+				if _, found := result[candidate]; !found && candidate != role {
+					result[candidate] = struct{}{}
+					nextSet[candidate] = struct{}{}
+				}
+			}
+		}
+		currentSet = nextSet
+	}
+	return result, nil
 }
