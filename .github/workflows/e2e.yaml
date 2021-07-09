@@ -8,12 +8,13 @@ on:
     types: [labeled]
 
 jobs:
-  build-and-test:
+  e2e:
     if: (github.event_name == 'push' && github.event.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.label.name == '/run-e2e-tests')
-    name: Build and Test
+    name: Run e2e tests
     runs-on: ubuntu-latest
     env:
       GOFLAGS: -mod=readonly
+      GOPATH: ${{ github.workspace }}
     defaults:
       run:
         shell: bash
@@ -40,14 +41,12 @@ jobs:
       - name: Setup Vault
         run: bash dev-start.sh flant_iam
 
-      - name: Setup node 12
-        uses: actions/setup-node@v2
-        with:
-          node-version: 12.x
-
       - name: Tests
-        run: yarn && yarn test
-        working-directory: vault-plugins/flant_iam/tests
+        run: |
+          export TEST_VAULT_SECOND_TOKEN=$(cat ./data/token)
+          go mod download
+          go run github.com/onsi/ginkgo/ginkgo run ./...
+        working-directory: vault-plugins/e2e
 
   remove-label:
     name: Remove Label
