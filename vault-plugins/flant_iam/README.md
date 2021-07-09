@@ -1,24 +1,34 @@
 # flant_iam
 
-The IAM module that manages tenants, projects, users, and roles.
+The IAM module.
 
 ## Development
 
-### Start vault
+Go to the path above, so you are in `vault-plugins` dir.
 
-To build the plugin, start vault in docker and register the 
-plugin: `./start.sh`. This script also populates test data.
+Exec
 
-### Run tests
-
-After `start.sh` is run, do
-
-```shell
-make deps 
-make test
+```sh
+flant_iam/tests/start.sh
 ```
 
-## Format
+To rebuild a module, run
 
-It would be wonderful if you run `make fmt` before pushing. 
-It reduces diff clutter and saves your time.
+```sh
+docker exec gobuild /gobuild.sh flant_iam
+```
+
+
+To mount updated module, run
+
+```sh
+docker exec dev-vault /remount.sh flant_iam
+```
+
+
+Run tests
+```sh
+cd flant_iam
+make deps
+make test
+```
