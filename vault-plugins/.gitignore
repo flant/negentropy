@@ -1,6 +1,5 @@
 .idea
 .vscode
 node_modules
-tests/data/*
-build/*
-
+data
+build
