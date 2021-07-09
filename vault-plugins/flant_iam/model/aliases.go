@@ -13,5 +13,6 @@ type (
 	OwnerUUID                  = string
 	RoleBindingUUID            = string
 	RoleBindingApprovalUUID    = string
+	IdentitySharingUUID        = string
 	ReplicaName                = string
 )

@@ -76,6 +76,7 @@ func (mkd *MetadataKafkaDestination) isValidObjectType(objType string) bool {
 		model.RoleType,
 		model.RoleBindingType,
 		model.RoleBindingApprovalType,
+		model.IdentitySharingType,
 		model.GroupType,
 		model.MultipassType,
 		model.ServiceAccountPasswordType:
