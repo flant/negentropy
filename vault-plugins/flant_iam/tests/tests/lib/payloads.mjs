@@ -1,24 +1,32 @@
-import { stringifyQuery } from "./endpoint_builder.mjs"
 import Faker from "faker"
-import { TenantEndpointBuilder } from "./tenant.mjs"
-import { join } from "path"
 
-export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
-    constructor(name) {
-        super()
-        this.entryName = name // e.g. "user" or "service_account"
+export function genFeatureFlag(override = {}) {
+    return {
+        name: Faker.internet.domainWord(),
+        ...override,
     }
+}
 
-    one(p = {}, q = {}) {
-        return join(super.one(p), this.entryName, p[this.entryName]) + stringifyQuery(q)
+export function genTenantPayload(override = {}) {
+    return {
+        identifier: Faker.internet.domainWord(),
+        ...override,
     }
+}
+export function genRoleUpdatePayload(override = {}) {
+    const pld = genRoleCreatePayload(override)
+    delete pld.name
+    return pld
+}
 
-    collection(p = {}, q = {}) {
-        return join(super.one(p), this.entryName) + stringifyQuery(q)
-    }
-
-    privileged(p = {}, q = {}) {
-        return join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
+export function genRoleCreatePayload(override = {}) {
+    return {
+        name: Faker.internet.domainWord(),
+        description: Faker.lorem.sentence(),
+        scope: Math.random() > 0.5 ? "tenant" : "project",
+        options_schema: "",
+        require_one_of_feature_flags: [],
+        ...override,
     }
 }
 
@@ -44,8 +52,6 @@ export function genMultipassPayload(override = {}) {
     return {
         ttl: Faker.datatype.number(),
         max_ttl: Faker.datatype.number(),
-        // tenant_uuid: Faker.datatype.uuid(),
-        // owner_uuid: Faker.datatype.uuid(),
         description: Faker.lorem.sentence(),
         allowed_cidrs: ["10.1.0.0/16"],
         allowed_roles: ["tenant_admin"],
@@ -56,8 +62,6 @@ export function genMultipassPayload(override = {}) {
 export function genPasswordPayload(override = {}) {
     return {
         ttl: Faker.datatype.number(),
-        // tenant_uuid: Faker.datatype.uuid(),
-        // owner_uuid: Faker.datatype.uuid(),
         description: Faker.lorem.sentence(),
         allowed_cidrs: ["10.1.0.0/16"],
         allowed_roles: ["tenant_admin"],
@@ -102,9 +106,7 @@ export function genRoleBindingPayload(override = {}) {
 export function genRolePayload(override = {}) {
     return {
         identifier: Faker.lorem.word(),
-        // users,
-        // groups,
-        // serviceAccounts
+        subjects: [],
         ...override,
     }
 }

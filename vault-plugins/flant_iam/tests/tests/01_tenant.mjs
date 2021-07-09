@@ -1,9 +1,8 @@
 import { expect } from "chai"
 import { v4 as uuidv4 } from "uuid"
-import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
-import { genTenantPayload } from "./lib/tenant.mjs"
+import { genTenantPayload } from "./lib/payloads.mjs"
 
 describe("Tenant", function () {
     const rootClient = getClient(rootToken)

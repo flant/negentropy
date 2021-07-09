@@ -1,9 +1,8 @@
 import { expect } from "chai"
-import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
-import { genRoleCreatePayload } from "./lib/role.mjs"
 import Faker from "faker"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import { genRoleCreatePayload } from "./lib/payloads.mjs"
 
 describe("Role", function () {
     const rootClient = getClient(rootToken)

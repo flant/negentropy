@@ -1,14 +1,13 @@
 import { expect } from "chai"
-import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
 import {
     genGroupPayload,
     genRoleBindingPayload,
     genServiceAccountPayload,
+    genTenantPayload,
     genUserPayload,
-} from "./lib/subtenant.mjs"
-import { genTenantPayload } from "./lib/tenant.mjs"
+} from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/role_binding/{rbid}
 

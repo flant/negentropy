@@ -1,9 +1,7 @@
 import { expect } from "chai"
-import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
-import { genMultipassPayload, genUserPayload } from "./lib/subtenant.mjs"
-import { genTenantPayload } from "./lib/tenant.mjs"
+import { genMultipassPayload, genTenantPayload, genUserPayload } from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/user/{uid}
 

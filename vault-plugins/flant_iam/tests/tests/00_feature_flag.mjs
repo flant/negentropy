@@ -1,8 +1,7 @@
 import { expect } from "chai"
-import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
-import { genFeatureFlag } from "./lib/feature_flag.mjs"
+import { genFeatureFlag } from "./lib/payloads.mjs"
 
 describe("Feature flag", function () {
     const rootClient = getClient(rootToken)
