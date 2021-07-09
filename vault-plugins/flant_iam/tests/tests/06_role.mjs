@@ -1,31 +1,28 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genRoleUpdatePayload, RoleAPI } from "./lib/role.mjs"
 import { expect } from "chai"
 import Faker from "faker"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import {
+    genRoleCreatePayload,
+    genRoleUpdatePayload,
+    RoleAPI,
+} from "./lib/role.mjs"
 
 describe("Role", function () {
     const rootClient = getClient(rootToken)
     const root = new RoleAPI(rootClient)
-
-    // afterEach("cleanup", async function () {
-    //     const clean = s => root.delete(`role/${s}`, expectStatus(204))
-    //     const promises = worder.list().map(clean)
-    //     await Promise.all(promises)
-    //     worder.clean()
-    // })
 
     describe("payload", () => {
         describe("identifier", () => {
             const invalidCases = [
                 {
                     title: "number allowed", // the matter of fact ¯\_(ツ)_/¯
-                    payload: genRoleUpdatePayload({ name: 100 }),
+                    payload: genRoleCreatePayload({ name: 100 }),
                     validateStatus: (x) => x == 201,
                 },
                 {
-                    title: "absent identifier forbidden",
+                    title: "absent name forbidden",
                     payload: (() => {
-                        const p = genRoleUpdatePayload({})
+                        const p = genRoleUpdatePayload()
                         delete p.identifier
                         return p
                     })(),
@@ -33,17 +30,17 @@ describe("Role", function () {
                 },
                 {
                     title: "empty string forbidden",
-                    payload: genRoleUpdatePayload({ identifier: "" }),
+                    payload: genRoleCreatePayload({ name: "" }),
                     validateStatus: (x) => x >= 400, // 500 is allowed
                 },
                 {
                     title: "array forbidden",
-                    payload: genRoleUpdatePayload({ identifier: ["a"] }),
+                    payload: genRoleCreatePayload({ name: ["a"] }),
                     validateStatus: (x) => x >= 400, // 500 is allowed
                 },
                 {
                     title: "object forbidden",
-                    payload: genRoleUpdatePayload({ identifier: { a: 1 } }),
+                    payload: genRoleCreatePayload({ name: { a: 1 } }),
                     validateStatus: (x) => x >= 400, // 500 is allowed
                 },
             ]
@@ -59,7 +56,7 @@ describe("Role", function () {
     })
 
     async function createRole(override = {}) {
-        const payload = genRoleUpdatePayload({
+        const payload = genRoleCreatePayload({
             name: Faker.internet.domainWord(),
             ...override,
         })
@@ -76,7 +73,7 @@ describe("Role", function () {
         expect(body.data).to.include.keys(
             "name",
             "description",
-            "type",
+            "scope",
             "options_schema",
             "require_one_of_feature_flags",
         )
@@ -113,11 +110,12 @@ describe("Role", function () {
     })
 
     it("can be updated", async () => {
-        const payload = genRoleUpdatePayload()
+        const payload = genRoleCreatePayload()
         const created = await createRole(payload)
 
         const name = created.data.name
         payload.description = Faker.lorem.sentence()
+        delete payload.name
 
         // update
         const { data: updated } = await root.update(name, payload)
@@ -147,7 +145,8 @@ describe("Role", function () {
 
         const { data } = await root.list()
 
-        expect(data.data).to.be.an("object")
+        expect(data.data).to.be.an("object").and.to.have.key("names")
+        expect(data.data.names).to.include(name)
     })
 
     it("has identifying fields in list", async () => {
@@ -190,7 +189,7 @@ describe("Role", function () {
             const opts = expectStatus(expectedStatus)
 
             it(`cannot create, gets ${expectedStatus}`, async () => {
-                await unauth.create(genRoleUpdatePayload(), opts)
+                await unauth.create(genRoleCreatePayload(), opts)
             })
 
             it(`cannot list, gets ${expectedStatus}`, async () => {

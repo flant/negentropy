@@ -47,20 +47,16 @@ export class RoleAPI {
 }
 
 export function genRoleUpdatePayload(override = {}) {
-    return {
-        description: Faker.lorem.sentence(),
-        type: Math.random() > 0.5 ? "tenant" : "project",
-        options_schema: "",
-        require_one_of_feature_flags: [],
-        ...override,
-    }
+    const pld = genRoleCreatePayload(override)
+    delete pld.name
+    return pld
 }
 
 export function genRoleCreatePayload(override = {}) {
     return {
         name: Faker.internet.domainWord(),
         description: Faker.lorem.sentence(),
-        type: Math.random() > 0.5 ? "tenant" : "project",
+        scope: Math.random() > 0.5 ? "tenant" : "project",
         options_schema: "",
         require_one_of_feature_flags: [],
         ...override,

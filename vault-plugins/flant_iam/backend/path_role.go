@@ -40,9 +40,9 @@ func (b roleBackend) paths() []*framework.Path {
 					Description: "Role description",
 					Required:    true,
 				},
-				"type": {
+				"scope": {
 					Type:        framework.TypeString,
-					Description: "Type denoting the scope of the group",
+					Description: "The scope of the role",
 					Required:    true,
 					AllowedValues: []interface{}{
 						model.GroupScopeProject,
@@ -63,11 +63,11 @@ func (b roleBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(),
-					Summary:  "Create role.",
+					Summary:  "Create role",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(),
-					Summary:  "Create role.",
+					Summary:  "Create role",
 				},
 			},
 		},
@@ -77,7 +77,7 @@ func (b roleBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all roles IDs.",
+					Summary:  "Lists all roles IDs",
 				},
 			},
 		},
@@ -111,15 +111,15 @@ func (b roleBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the role by ID.",
+					Summary:  "Update the role by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the role by ID.",
+					Summary:  "Retrieve the role by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the role by ID.",
+					Summary:  "Deletes the role by ID",
 				},
 			},
 		},
@@ -130,10 +130,10 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("creating role", "path", req.Path)
 
-		roleType := data.Get("type").(string)
+		roleType := data.Get("scope").(string)
 		role := &model.Role{
 			Name:                     data.Get("name").(string),
-			Type:                     model.GroupScope(roleType),
+			Scope:                    model.RoleScope(roleType),
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
