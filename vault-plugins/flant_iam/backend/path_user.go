@@ -477,7 +477,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
