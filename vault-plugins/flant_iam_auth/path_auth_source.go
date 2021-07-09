@@ -381,6 +381,13 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 
 	err := repo.Delete(sourceName)
 	if err != nil {
+		switch {
+		case errors.Is(err, repos.ErrSourceUsingInMethods):
+			return logical.ErrorResponse("%v", err), nil
+		case errors.Is(err, repos.ErrSourceNotFound):
+			return logical.ErrorResponse("source not found"), nil
+		}
+
 		return nil, err
 	}
 

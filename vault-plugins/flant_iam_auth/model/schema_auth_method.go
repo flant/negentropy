@@ -88,7 +88,7 @@ func (p *AuthMethod) ObjId() string {
 	return p.UUID
 }
 
-func IsAuthMethod(expected string, methodsSet ...string) bool{
+func IsAuthMethod(expected string, methodsSet ...string) bool {
 	for _, m := range methodsSet {
 		if expected == m {
 			return true

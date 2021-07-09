@@ -36,6 +36,18 @@ func (r *AuthMethodRepo) Get(name string) (*model.AuthMethod, error) {
 	return method, nil
 }
 
+func (r *AuthMethodRepo) BySource(name string) ([]*model.AuthMethod, error) {
+	res := make([]*model.AuthMethod, 0)
+	// because source name may be empty we don't use index
+	err := r.Iter(func(method *model.AuthMethod) (bool, error) {
+		if method.Source == name {
+			res = append(res, method)
+		}
+		return true, nil
+	})
+	return res, err
+}
+
 func (r *AuthMethodRepo) Put(source *model.AuthMethod) error {
 	return r.db.Insert(r.tableName, source)
 }

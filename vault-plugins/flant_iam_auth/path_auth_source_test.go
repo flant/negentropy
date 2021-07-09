@@ -746,6 +746,73 @@ func TestAuthSource_OIDC_Update_Namespace(t *testing.T) {
 	}
 }
 
+func TestAuthSource_Delete(t *testing.T) {
+	t.Run("successful remove source", func(t *testing.T) {
+		b, storage := getBackend(t)
+		creteTestJWTBasedSource(t, b, storage, authSourceTestName)
+
+		req := &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      authSourceTestPath,
+			Storage:   storage,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if conf != nil {
+			t.Fatal("source must be deleted")
+		}
+	})
+
+	t.Run("delete not exists source must return error", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		req := &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      authSourceTestPath,
+			Storage:   storage,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		if !resp.IsError() {
+			t.Fatal("must return error")
+		}
+	})
+
+	t.Run("does not delete source if it uses in one more method", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		creteTestJWTBasedSource(t, b, storage, authSourceTestName)
+		createJwtAuthMethod(t, b, storage, "jwt_method", authSourceTestName)
+
+		req := &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      authSourceTestPath,
+			Storage:   storage,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		if !resp.IsError() {
+			t.Fatal("must return error")
+		}
+	})
+}
+
 const (
 	testJWTPubKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9

@@ -46,6 +46,26 @@ func assertAuthMethod(t *testing.T, b *flantIamAuthBackend, methodName string, e
 	}
 }
 
+func createJwtAuthMethod(t *testing.T, b *flantIamAuthBackend, storage logical.Storage, methodName, jwtSourceName string) {
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      fmt.Sprintf("auth_method/%s", methodName),
+		Storage:   storage,
+		Data: withBoundClaims(
+			withLeaways(
+				withVaultTokenParts(
+					withUserClaims(map[string]interface{}{
+						"method_type": model.MethodTypeJWT,
+						"source":      jwtSourceName,
+					})))),
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+}
+
 func assertErrorCasesAuthMethod(t *testing.T, b logical.Backend, storage logical.Storage, cases []errCase) {
 	for _, c := range cases {
 
