@@ -33,10 +33,6 @@ func (r *AuthMethodRepo) Get(name string) (*model.AuthMethod, error) {
 		return nil, fmt.Errorf("cannot cast to AuthMethod")
 	}
 
-	if method.BoundClaimsType == "" {
-		method.BoundClaimsType = model.BoundClaimsTypeString
-	}
-
 	return method, nil
 }
 

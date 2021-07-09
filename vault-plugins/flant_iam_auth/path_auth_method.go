@@ -15,12 +15,13 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var reservedMetadata = []string{"flantIamAuthMethod"}
 
-var authMethodTypes = []string{model.MethodTypeOwn, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword}
+var authMethodTypes = []string{model.MethodTypeMultipass, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword}
 
 func pathAuthMethodList(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -49,7 +50,7 @@ func pathAuthMethod(b *flantIamAuthBackend) *framework.Path {
 			"method_type": {
 				Type: framework.TypeString,
 				Description: fmt.Sprintf("Type of the authMethodConfig, either '%s', '%s', '%s' or '%s'.",
-					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeOwn),
+					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeMultipass),
 				Required: true,
 			},
 			"source": {
@@ -220,13 +221,13 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 		"max_age":               int64(method.MaxAge.Seconds()),
 	}
 
-	if method.MethodType == model.MethodTypeOwn {
+	if method.MethodType == model.MethodTypeMultipass {
 		d["expiration_leeway"] = int64(method.ExpirationLeeway.Seconds())
 		d["not_before_leeway"] = int64(method.NotBeforeLeeway.Seconds())
 		d["clock_skew_leeway"] = int64(method.ClockSkewLeeway.Seconds())
 	}
 
-	if method.MethodType == model.MethodTypeOwn || method.MethodType == model.MethodTypeSAPassword {
+	if method.MethodType == model.MethodTypeMultipass || method.MethodType == model.MethodTypeSAPassword {
 		method.PopulateTokenData(d)
 	}
 
@@ -263,22 +264,30 @@ func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *log
 // pathAuthMethodCreateUpdate registers a new authMethodConfig with the backend or updates the options
 // of an existing authMethodConfig
 func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	methodName := data.Get("name").(string)
-	if methodName == "" {
-		return logical.ErrorResponse("missing auth method name"), nil
+	methodName, errResponse := backentutils.NotEmptyStringParam(data, "name")
+	if errResponse != nil {
+		return errResponse, nil
+	}
+
+	methodType, errResponse, err := verifyAuthMethodType(b, data, ctx, req)
+	if errResponse != nil || err != nil {
+		return errResponse, err
+	}
+
+	sourceName, errResponse, err := verifySourceAndRelToType(methodType, data)
+	if errResponse != nil || err != nil {
+		return errResponse, err
 	}
 
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
-
 	repo := repos.NewAuthMethodRepo(tnx)
-	// Check if the auth already exists
+
+	// get or create method obj
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
 	}
-
-	// Create a new entry object if this is a CreateOperation
 	if method == nil {
 		if req.Operation == logical.UpdateOperation {
 			return nil, errors.New("auth method entry not found during update operation")
@@ -288,178 +297,66 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		method.Name = methodName
 	}
 
-	methodType := data.Get("method_type").(string)
-	if methodType == "" {
-		return logical.ErrorResponse("missing method_type"), nil
-	}
-
-	isCorrectMethod := false
-	for _, m := range authMethodTypes {
-		if methodType == m {
-			isCorrectMethod = true
-			break
-		}
-	}
-
-	if !isCorrectMethod {
-		return logical.ErrorResponse("invalid 'method_type': %s", methodType), nil
-	}
-
 	method.MethodType = methodType
 
-	if methodType == model.MethodTypeJWT || methodType == model.MethodTypeOIDC {
-		sourceName := data.Get("source").(string)
-		if sourceName == "" {
-			return logical.ErrorResponse("missing source"), nil
-		}
-
-		source, err := repos.NewAuthSourceRepo(tnx).Get(sourceName)
-		if err != nil {
-			return nil, err
-		}
-
-		if source == nil {
-			return logical.ErrorResponse(fmt.Sprintf("'%s': auth source not found", sourceName)), nil
-		}
-
-		authType := source.AuthType()
-		if methodType == model.MethodTypeJWT && !(authType == model.StaticKeys || authType == model.JWKS) {
-			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need jwt based source", sourceName)), nil
-		}
-
-		if methodType == model.MethodTypeOIDC && !(authType == model.OIDCFlow || authType == model.OIDCDiscovery) {
-			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need OIDC based source", sourceName)), nil
-		}
-
-		method.Source = sourceName
+	// fix vault bug
+	if tokenNumUses, ok := data.GetOk("token_num_uses"); ok {
+		method.TokenNumUses = tokenNumUses.(int)
 	}
 
+	// verify vault token params
 	if err := method.ParseTokenFields(req, data); err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		return logical.ErrorResponse(err.Error()), nil
 	}
-
 	if method.TokenPeriod > b.System().MaxLeaseTTL() {
 		return logical.ErrorResponse(fmt.Sprintf("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", method.TokenPeriod.String(), b.System().MaxLeaseTTL().String())), nil
 	}
-
-	if methodType == model.MethodTypeOwn {
-		if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
-			method.ExpirationLeeway = time.Duration(tokenExpLeewayRaw.(int)) * time.Second
-		}
-
-		if tokenNotBeforeLeewayRaw, ok := data.GetOk("not_before_leeway"); ok {
-			method.NotBeforeLeeway = time.Duration(tokenNotBeforeLeewayRaw.(int)) * time.Second
-		}
-
-		if tokenClockSkewLeeway, ok := data.GetOk("clock_skew_leeway"); ok {
-			method.ClockSkewLeeway = time.Duration(tokenClockSkewLeeway.(int)) * time.Second
-		}
-	}
-
-	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
-		method.BoundAudiences = boundAudiences.([]string)
-	}
-
-	if boundSubject, ok := data.GetOk("bound_subject"); ok {
-		method.BoundSubject = boundSubject.(string)
-	}
-
-	if verboseOIDCLoggingRaw, ok := data.GetOk("verbose_oidc_logging"); ok {
-		method.VerboseOIDCLogging = verboseOIDCLoggingRaw.(bool)
-	}
-
-	if maxAgeRaw, ok := data.GetOk("max_age"); ok {
-		method.MaxAge = time.Duration(maxAgeRaw.(int)) * time.Second
-	}
-
-	boundClaimsType := data.Get("bound_claims_type").(string)
-	switch boundClaimsType {
-	case model.BoundClaimsTypeString, model.BoundClaimsTypeGlob:
-		method.BoundClaimsType = boundClaimsType
-	default:
-		return logical.ErrorResponse("invalid 'bound_claims_type': %s", boundClaimsType), nil
-	}
-
-	if boundClaimsRaw, ok := data.GetOk("bound_claims"); ok {
-		method.BoundClaims = boundClaimsRaw.(map[string]interface{})
-
-		if boundClaimsType == model.BoundClaimsTypeGlob {
-			// Check that the claims are all strings
-			for _, claimValues := range method.BoundClaims {
-				claimsValuesList, ok := normalizeList(claimValues)
-
-				if !ok {
-					return logical.ErrorResponse("claim is not a string or list: %v", claimValues), nil
-				}
-
-				for _, claimValue := range claimsValuesList {
-					if _, ok := claimValue.(string); !ok {
-						return logical.ErrorResponse("claim is not a string: %v", claimValue), nil
-					}
-				}
-			}
-		}
-	}
-
-	if claimMappingsRaw, ok := data.GetOk("claim_mappings"); ok {
-		claimMappings := claimMappingsRaw.(map[string]string)
-
-		// sanity check mappings for duplicates and collision with reserved names
-		targets := make(map[string]bool)
-		for _, metadataKey := range claimMappings {
-			if strutil.StrListContains(reservedMetadata, metadataKey) {
-				return logical.ErrorResponse("metadata key %q is reserved and may not be a mapping destination", metadataKey), nil
-			}
-
-			if targets[metadataKey] {
-				return logical.ErrorResponse("multiple keys are mapped to metadata key %q", metadataKey), nil
-			}
-			targets[metadataKey] = true
-		}
-
-		method.ClaimMappings = claimMappings
-	}
-
-	if userClaim, ok := data.GetOk("user_claim"); ok {
-		method.UserClaim = userClaim.(string)
-	}
-	if method.UserClaim == "" {
-		return logical.ErrorResponse("a user claim must be defined on the authMethodConfig"), nil
-	}
-
-	if groupsClaim, ok := data.GetOk("groups_claim"); ok {
-		method.GroupsClaim = groupsClaim.(string)
-	}
-
-	if oidcScopes, ok := data.GetOk("oidc_scopes"); ok {
-		method.OIDCScopes = oidcScopes.([]string)
-	}
-
-	if allowedRedirectURIs, ok := data.GetOk("allowed_redirect_uris"); ok {
-		method.AllowedRedirectURIs = allowedRedirectURIs.([]string)
-	}
-
-	if method.MethodType == model.MethodTypeOIDC && len(method.AllowedRedirectURIs) == 0 {
-		return logical.ErrorResponse(
-			"'allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified."), nil
-	}
-
-	// OIDC verification will enforce that the audience match the configured client_id.
-	// For other methods, require at least one bound constraint.
-	if methodType == model.MethodTypeJWT {
-		if len(method.BoundAudiences) == 0 &&
-			len(method.TokenBoundCIDRs) == 0 &&
-			method.BoundSubject == "" &&
-			len(method.BoundClaims) == 0 {
-			return logical.ErrorResponse("must have at least one bound constraint when creating/updating a authMethod"), nil
-		}
-	}
-
 	// Check that the TTL value provided is less than the MaxTTL.
 	// Sanitizing the TTL and MaxTTL is not required now and can be performed
 	// at credential issue time.
 	if method.TokenMaxTTL > 0 && method.TokenTTL > method.TokenMaxTTL {
 		return logical.ErrorResponse("ttl should not be greater than max ttl"), nil
+	}
+
+	// verify source for source based (not own)
+	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC) {
+		source, err := repos.NewAuthSourceRepo(tnx).Get(sourceName)
+		if err != nil {
+			return nil, err
+		}
+		if source == nil {
+			return logical.ErrorResponse(fmt.Sprintf("'%s': auth source not found", sourceName)), nil
+		}
+
+		authType := source.AuthType()
+		if methodType == model.MethodTypeJWT && !(authType == model.AuthSourceStaticKeys || authType == model.AuthSourceJWKS) {
+			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need jwt based source", sourceName)), nil
+		}
+		if methodType == model.MethodTypeOIDC && !(authType == model.AuthSourceOIDCFlow || authType == model.AuthSourceOIDCDiscovery) {
+			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need OIDC based source", sourceName)), nil
+		}
+
+		method.Source = sourceName
+
+		errResponse, err = fillBoundClaimsParamsToAuthMethod(method, data)
+		if errResponse != nil || err != nil {
+			return errResponse, err
+		}
+
+		errResponse, err = fillUserClaimsParamsToAuthMethod(method, data)
+		if errResponse != nil || err != nil {
+			return errResponse, err
+		}
+	}
+
+	errResponse, err = fillJwtLeewayParamsToAuthMethod(method, data)
+	if errResponse != nil || err != nil {
+		return errResponse, err
+	}
+
+	errResponse, err = fillOIDCParamsToAuthMethod(method, data)
+	if errResponse != nil || err != nil {
+		return errResponse, err
 	}
 
 	resp := &logical.Response{}
@@ -499,4 +396,206 @@ var roleHelp = map[string][2]string{
 		The bindings, token polices and token settings can all be configured
 		using this endpoint`,
 	},
+}
+
+func fillBoundClaimsParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldData) (*logical.Response, error) {
+	// for sourced base method we may get boundaries
+	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
+		method.BoundAudiences = boundAudiences.([]string)
+	}
+
+	if boundSubject, ok := data.GetOk("bound_subject"); ok {
+		method.BoundSubject = boundSubject.(string)
+	}
+
+	boundClaimsType := data.Get("bound_claims_type").(string)
+	switch boundClaimsType {
+	case model.BoundClaimsTypeString, model.BoundClaimsTypeGlob:
+		method.BoundClaimsType = boundClaimsType
+	default:
+		return logical.ErrorResponse("invalid 'bound_claims_type': %s", boundClaimsType), nil
+	}
+
+	if boundClaimsRaw, ok := data.GetOk("bound_claims"); ok {
+		method.BoundClaims = boundClaimsRaw.(map[string]interface{})
+
+		if boundClaimsType == model.BoundClaimsTypeGlob {
+			// Check that the claims are all strings
+			for _, claimValues := range method.BoundClaims {
+				claimsValuesList, ok := normalizeList(claimValues)
+
+				if !ok {
+					return logical.ErrorResponse("claim is not a string or list: %v", claimValues), nil
+				}
+
+				for _, claimValue := range claimsValuesList {
+					if _, ok := claimValue.(string); !ok {
+						return logical.ErrorResponse("claim is not a string: %v", claimValue), nil
+					}
+				}
+			}
+		}
+	}
+
+	// OIDC verification will enforce that the audience match the configured client_id.
+	// For other methods, require at least one bound constraint.
+	if method.MethodType == model.MethodTypeJWT {
+		if len(method.BoundAudiences) == 0 &&
+			len(method.TokenBoundCIDRs) == 0 &&
+			method.BoundSubject == "" &&
+			len(method.BoundClaims) == 0 {
+			return logical.ErrorResponse("must have at least one bound constraint when creating/updating a authMethod"), nil
+		}
+	}
+
+	return nil, nil
+}
+
+func fillUserClaimsParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldData) (*logical.Response, error) {
+	// and extracting user claims param
+	if claimMappingsRaw, ok := data.GetOk("claim_mappings"); ok {
+		claimMappings := claimMappingsRaw.(map[string]string)
+
+		// sanity check mappings for duplicates and collision with reserved names
+		targets := make(map[string]bool)
+		for _, metadataKey := range claimMappings {
+			if strutil.StrListContains(reservedMetadata, metadataKey) {
+				return logical.ErrorResponse("metadata key %q is reserved and may not be a mapping destination", metadataKey), nil
+			}
+
+			if targets[metadataKey] {
+				return logical.ErrorResponse("multiple keys are mapped to metadata key %q", metadataKey), nil
+			}
+			targets[metadataKey] = true
+		}
+
+		method.ClaimMappings = claimMappings
+	}
+
+	if userClaim, ok := data.GetOk("user_claim"); ok {
+		method.UserClaim = userClaim.(string)
+	}
+	if method.UserClaim == "" {
+		return logical.ErrorResponse("a user claim must be defined on the authMethod"), nil
+	}
+
+	if groupsClaim, ok := data.GetOk("groups_claim"); ok {
+		method.GroupsClaim = groupsClaim.(string)
+	}
+
+	return nil, nil
+}
+
+func fillJwtLeewayParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldData) (*logical.Response, error) {
+	// verify jwt based methods params
+	if !model.IsAuthMethod(method.MethodType, model.MethodTypeMultipass, model.MethodTypeJWT) {
+		return nil, nil
+	}
+
+	if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
+		method.ExpirationLeeway = time.Duration(tokenExpLeewayRaw.(int)) * time.Second
+	}
+
+	if tokenNotBeforeLeewayRaw, ok := data.GetOk("not_before_leeway"); ok {
+		method.NotBeforeLeeway = time.Duration(tokenNotBeforeLeewayRaw.(int)) * time.Second
+	}
+
+	if tokenClockSkewLeeway, ok := data.GetOk("clock_skew_leeway"); ok {
+		method.ClockSkewLeeway = time.Duration(tokenClockSkewLeeway.(int)) * time.Second
+	}
+
+	return nil, nil
+}
+
+func fillOIDCParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldData) (*logical.Response, error) {
+	if method.MethodType != model.MethodTypeOIDC {
+		return nil, nil
+	}
+
+	if oidcScopes, ok := data.GetOk("oidc_scopes"); ok {
+		method.OIDCScopes = oidcScopes.([]string)
+	}
+
+	if allowedRedirectURIs, ok := data.GetOk("allowed_redirect_uris"); ok {
+		method.AllowedRedirectURIs = allowedRedirectURIs.([]string)
+	}
+
+	if len(method.AllowedRedirectURIs) == 0 {
+		return logical.ErrorResponse(
+			"'allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified."), nil
+	}
+
+	if verboseOIDCLoggingRaw, ok := data.GetOk("verbose_oidc_logging"); ok {
+		method.VerboseOIDCLogging = verboseOIDCLoggingRaw.(bool)
+	}
+
+	if maxAgeRaw, ok := data.GetOk("max_age"); ok {
+		maxageInt := maxAgeRaw.(int)
+		if maxageInt < 0 {
+			return logical.ErrorResponse("max age must be positive"), nil
+		}
+		method.MaxAge = time.Duration(maxageInt) * time.Second
+	}
+
+	return nil, nil
+}
+
+func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, ctx context.Context, req *logical.Request) (string, *logical.Response, error) {
+	// verify method type
+	methodTypeRaw, ok := data.GetOk("method_type")
+	if !ok {
+		return "", logical.ErrorResponse("missing method_type"), nil
+	}
+
+	methodType, ok := methodTypeRaw.(string)
+	if !ok {
+		return "", logical.ErrorResponse("incorrect method_type"), nil
+	}
+
+	if methodType == "" {
+		return "", logical.ErrorResponse("missing method_type"), nil
+	}
+
+	isCorrectMethod := false
+	for _, m := range authMethodTypes {
+		if methodType == m {
+			isCorrectMethod = true
+			break
+		}
+	}
+
+	if !isCorrectMethod {
+		return "", logical.ErrorResponse("invalid 'method_type': %s", methodType), nil
+	}
+
+	if methodType == model.MethodTypeMultipass {
+		jwtEnabled, err := b.tokenController.IsEnabled(ctx, req)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if !jwtEnabled {
+			return "", logical.ErrorResponse("jwt is disabled. can not use multipass method"), nil
+		}
+	}
+
+	return methodType, nil, nil
+}
+
+func verifySourceAndRelToType(methodType string, data *framework.FieldData) (string, *logical.Response, error) {
+	sourceName := ""
+	sourceNameRaw, ok := data.GetOk("source")
+	if ok {
+		sourceName = sourceNameRaw.(string)
+	}
+
+	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC) && sourceName == "" {
+		return "", logical.ErrorResponse("missing source"), nil
+	}
+
+	if model.IsAuthMethod(methodType, model.MethodTypeMultipass, model.MethodTypeSAPassword) && sourceName != "" {
+		return "", logical.ErrorResponse("should not pass source with multipass and SA password method"), nil
+	}
+
+	return sourceName, nil, nil
 }
