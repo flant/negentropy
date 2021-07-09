@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strconv"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -17,11 +19,11 @@ const (
 type vaultRequests []*vaultRequest
 
 type vaultRequest struct {
-	Name    string `json:"name"`
-	Path    string `json:"path"`
-	Method  string `json:"method"`
-	Options string `json:"options"`  // TODO: json type
-	WrapTTL string `json:"wrap_ttl"` // TODO: golang duration type
+	Name    string        `json:"name"`
+	Path    string        `json:"path"`
+	Method  string        `json:"method"`
+	Options string        `json:"options"` // TODO: json type
+	WrapTTL time.Duration `json:"wrap_ttl"`
 }
 
 func (b *backend) performWrappedVaultRequest(ctx context.Context, conf *vaultRequest) (string, error) {
@@ -31,7 +33,7 @@ func (b *backend) performWrappedVaultRequest(ctx context.Context, conf *vaultReq
 	}
 
 	request := apiClient.NewRequest(conf.Method, conf.Path)
-	request.WrapTTL = conf.WrapTTL
+	request.WrapTTL = strconv.FormatFloat(conf.WrapTTL.Seconds(), 'f', 0, 64)
 	if conf.Options != "" {
 		var data interface{}
 		if err := json.Unmarshal([]byte(conf.Options), &data); err != nil {

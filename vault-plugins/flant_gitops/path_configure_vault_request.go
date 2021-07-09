@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -118,19 +117,16 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 		}
 	}
 
-	var wrapTTL string
+	var wrapTTL time.Duration
 	if wrapTTLRaw := req.Get(fieldNameVaultRequestWrapTTL); wrapTTLRaw != nil {
-		duration, err := time.ParseDuration(wrapTTLRaw.(string))
+		wrapTTL, err := time.ParseDuration(wrapTTLRaw.(string))
 		if err != nil {
 			return logical.ErrorResponse("invalid option %q given, expected golang time duration: %s", fieldNameVaultRequestWrapTTL, err), nil
 		}
 
-		wrapTTLSecFloat := duration.Seconds()
-		if wrapTTLSecFloat < wrapTTLMinSec {
-			return logical.ErrorResponse("Can't set %q for Vault request as %.0f, minimum value of %qs required", fieldNameVaultRequestWrapTTL, wrapTTLSecFloat, wrapTTLMinSec), nil
+		if wrapTTL.Seconds() < wrapTTLMinSec {
+			return logical.ErrorResponse("Can't set %q for Vault request as %.0f, minimum value of %qs required", fieldNameVaultRequestWrapTTL, wrapTTL.Seconds(), wrapTTLMinSec), nil
 		}
-
-		wrapTTL = strconv.FormatFloat(wrapTTLSecFloat, 'f', 0, 64)
 	}
 
 	vaultRequest := vaultRequest{
@@ -172,12 +168,15 @@ func (b *backend) pathConfigureVaultRequestRead(ctx context.Context, req *logica
 		return logical.ErrorResponse("Vault request %q not found", vaultRequestName), nil
 	}
 
-	respData, err := jsonStructToMap(vaultRequest)
-	if err != nil {
-		return logical.ErrorResponse("Unable to convert Read Vault request %q result to response data: %s", vaultRequestName, err), nil
-	}
-
-	return &logical.Response{Data: respData}, nil
+	return &logical.Response{
+		Data: map[string]interface{}{
+			fieldNameVaultRequestName:    vaultRequest.Name,
+			fieldNameVaultRequestPath:    vaultRequest.Path,
+			fieldNameVaultRequestMethod:  vaultRequest.Method,
+			fieldNameVaultRequestOptions: vaultRequest.Options,
+			fieldNameVaultRequestWrapTTL: vaultRequest.WrapTTL.String(),
+		},
+	}, nil
 }
 
 func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
@@ -195,12 +194,14 @@ func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logica
 	}
 
 	for _, vaultRequest := range allVaultRequests {
-		info, err := jsonStructToMap(vaultRequest)
-		if err != nil {
-			return logical.ErrorResponse("Unable to convert Vault request %q configuration to response data for List operation: %s", vaultRequest.Name, err), nil
-		}
 		keys = append(keys, vaultRequest.Name)
-		keysInfo[vaultRequest.Name] = info
+		keysInfo[vaultRequest.Name] = map[string]interface{}{
+			fieldNameVaultRequestName:    vaultRequest.Name,
+			fieldNameVaultRequestPath:    vaultRequest.Path,
+			fieldNameVaultRequestMethod:  vaultRequest.Method,
+			fieldNameVaultRequestOptions: vaultRequest.Options,
+			fieldNameVaultRequestWrapTTL: vaultRequest.WrapTTL.String(),
+		}
 	}
 
 	return logical.ListResponseWithInfo(keys, keysInfo), nil
