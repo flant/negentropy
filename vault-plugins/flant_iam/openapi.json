@@ -1173,30 +1173,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "groups": {
-                    "type": "array",
-                    "description": "Group UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
-                  "service_accounts": {
+                  "subjects": {
                     "type": "array",
-                    "description": "Service account UUIDs",
+                    "description": "Subjects list",
                     "items": {
-                      "type": "string"
-                    }
-                  },
-                  "users": {
-                    "type": "array",
-                    "description": "User UUIDs",
-                    "items": {
-                      "type": "string"
+                      "type": "object"
                     }
                   },
                   "uuid": {
@@ -1207,9 +1193,7 @@
                 },
                 "required": [
                   "identifier",
-                  "users",
-                  "groups",
-                  "service_accounts",
+                  "subjects",
                   "uuid"
                 ]
               }
@@ -1270,13 +1254,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "groups": {
-                    "type": "array",
-                    "description": "Group UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
@@ -1286,27 +1263,18 @@
                     "type": "string",
                     "description": "Resource version"
                   },
-                  "service_accounts": {
+                  "subjects": {
                     "type": "array",
-                    "description": "Service account UUIDs",
+                    "description": "Subjects list",
                     "items": {
-                      "type": "string"
-                    }
-                  },
-                  "users": {
-                    "type": "array",
-                    "description": "User UUIDs",
-                    "items": {
-                      "type": "string"
+                      "type": "object"
                     }
                   }
                 },
                 "required": [
-                  "groups",
-                  "service_accounts",
+                  "subjects",
                   "resource_version",
-                  "identifier",
-                  "users"
+                  "identifier"
                 ]
               }
             }
@@ -1565,35 +1533,21 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "groups": {
-                    "type": "array",
-                    "description": "Group UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "require_mfa": {
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
                   },
-                  "service_accounts": {
+                  "subjects": {
                     "type": "array",
-                    "description": "Service account UUIDs",
+                    "description": "Subjects list",
                     "items": {
-                      "type": "string"
+                      "type": "object"
                     }
                   },
                   "ttl": {
                     "type": "integer",
                     "description": "TTL in seconds",
                     "format": "seconds"
-                  },
-                  "users": {
-                    "type": "array",
-                    "description": "User UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
                   },
                   "uuid": {
                     "type": "string",
@@ -1603,9 +1557,7 @@
                 },
                 "required": [
                   "uuid",
-                  "users",
-                  "groups",
-                  "service_accounts",
+                  "subjects",
                   "ttl",
                   "require_mfa"
                 ]
@@ -1667,13 +1619,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "groups": {
-                    "type": "array",
-                    "description": "Group UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "require_mfa": {
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
@@ -1682,33 +1627,24 @@
                     "type": "string",
                     "description": "Resource version"
                   },
-                  "service_accounts": {
+                  "subjects": {
                     "type": "array",
-                    "description": "Service account UUIDs",
+                    "description": "Subjects list",
                     "items": {
-                      "type": "string"
+                      "type": "object"
                     }
                   },
                   "ttl": {
                     "type": "integer",
                     "description": "TTL in seconds",
                     "format": "seconds"
-                  },
-                  "users": {
-                    "type": "array",
-                    "description": "User UUIDs",
-                    "items": {
-                      "type": "string"
-                    }
                   }
                 },
                 "required": [
-                  "users",
-                  "groups",
-                  "service_accounts",
+                  "resource_version",
+                  "subjects",
                   "ttl",
-                  "require_mfa",
-                  "resource_version"
+                  "require_mfa"
                 ]
               }
             }
@@ -1824,11 +1760,11 @@
                   }
                 },
                 "required": [
-                  "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -1945,6 +1881,110 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/password": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List password IDs",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidPassword",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/password/{uuid}": {
+      "parameters": [
+        {
+          "name": "owner_uuid",
+          "description": "ID of the tenant service account",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a password",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Get password by ID",
+        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete password by ID",
+        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/service_account/{uuid}": {
       "parameters": [
         {
@@ -2020,11 +2060,11 @@
                   }
                 },
                 "required": [
-                  "token_ttl",
                   "token_max_ttl",
                   "resource_version",
                   "identifier",
-                  "allowed_cidrs"
+                  "allowed_cidrs",
+                  "token_ttl"
                 ]
               }
             }
@@ -2123,8 +2163,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
