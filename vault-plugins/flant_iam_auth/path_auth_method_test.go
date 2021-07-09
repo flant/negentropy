@@ -102,6 +102,105 @@ func disableJwtBackend(t *testing.T, b logical.Backend, storage logical.Storage)
 		t.Fatalf("error enable jwt %v %v", resp, err)
 	}
 }
+func withVaultTokenParts(body map[string]interface{}) map[string]interface{} {
+	tokenPart := map[string]interface{}{
+		"token_bound_cidrs":       []string{"127.0.0.1/8"},
+		"token_explicit_max_ttl":  "100s",
+		"token_max_ttl":           "100s",
+		"token_no_default_policy": true,
+		"token_period":            "10s",
+		"token_policies":          []string{"good"},
+		"token_type":              "default",
+		"token_ttl":               "5s",
+		"token_num_uses":          5,
+	}
+
+	for k, v := range tokenPart {
+		body[k] = v
+	}
+
+	return body
+}
+
+func expectedWithTokenParams(m model.AuthMethod) model.AuthMethod {
+	cidrsObj, err := parseutil.ParseAddrs([]string{"127.0.0.1/8"})
+	if err != nil {
+		panic(err)
+	}
+
+	m.TokenParams = tokenutil.TokenParams{
+		TokenType:            logical.TokenTypeDefault,
+		TokenTTL:             5 * time.Second,
+		TokenMaxTTL:          100 * time.Second,
+		TokenNumUses:         5,
+		TokenPeriod:          10 * time.Second,
+		TokenExplicitMaxTTL:  100 * time.Second,
+		TokenPolicies:        []string{"good"},
+		TokenNoDefaultPolicy: true,
+		TokenBoundCIDRs:      cidrsObj,
+	}
+
+	return m
+}
+
+func withLeaways(body map[string]interface{}) map[string]interface{} {
+	body["expiration_leeway"] = "5s"
+	body["not_before_leeway"] = "5s"
+	body["clock_skew_leeway"] = "5s"
+
+	return body
+}
+
+func expectedWithLeaways(m model.AuthMethod) model.AuthMethod {
+	m.ExpirationLeeway = 5 * time.Second
+	m.NotBeforeLeeway = 5 * time.Second
+	m.ClockSkewLeeway = 5 * time.Second
+
+	return m
+}
+
+func withBoundClaims(body map[string]interface{}) map[string]interface{} {
+	body["bound_subject"] = "testsub"
+	body["bound_audiences"] = "vault"
+	body["bound_claims_type"] = "glob"
+	body["bound_claims"] = map[string]interface{}{
+		"foo": []interface{}{"baz"},
+	}
+	body["bound_cidrs"] = "127.0.0.1/8"
+
+	return body
+}
+
+func expectedWithBoundClaims(m model.AuthMethod) model.AuthMethod {
+	m.BoundSubject = "testsub"
+	m.BoundAudiences = []string{"vault"}
+	m.BoundClaimsType = "glob"
+	m.BoundClaims = map[string]interface{}{
+		"foo": []interface{}{"baz"},
+	}
+
+	return m
+}
+
+func withUserClaims(body map[string]interface{}) map[string]interface{} {
+	body["user_claim"] = "user"
+	body["groups_claim"] = "groups"
+	body["claim_mappings"] = map[string]string{
+		"foo": "a",
+	}
+
+	return body
+}
+
+func expectedWithUser(m model.AuthMethod) model.AuthMethod {
+	m.UserClaim = "user"
+	m.GroupsClaim = "groups"
+	m.ClaimMappings = map[string]string{
+		"foo": "a",
+	}
+
+	return m
+}
 
 func TestAuthMethod_CreateError(t *testing.T) {
 	t.Run("incorrect method type", func(t *testing.T) {
@@ -877,7 +976,7 @@ func TestAuthMethod_CreateError(t *testing.T) {
 	})
 }
 
-func TestAuthMethod_Create(t *testing.T) {
+func TestAuthMethod_CreateUpdate(t *testing.T) {
 	b, storage := getBackend(t)
 
 	jwtSourceName := "a"
@@ -886,106 +985,6 @@ func TestAuthMethod_Create(t *testing.T) {
 	enableJwtBackend(t, b, storage)
 	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
 	creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
-
-	withVaultTokenParts := func(body map[string]interface{}) map[string]interface{} {
-		tokenPart := map[string]interface{}{
-			"token_bound_cidrs":       []string{"127.0.0.1/8"},
-			"token_explicit_max_ttl":  "100s",
-			"token_max_ttl":           "100s",
-			"token_no_default_policy": true,
-			"token_period":            "10s",
-			"token_policies":          []string{"good"},
-			"token_type":              "default",
-			"token_ttl":               "5s",
-			"token_num_uses":          5,
-		}
-
-		for k, v := range tokenPart {
-			body[k] = v
-		}
-
-		return body
-	}
-
-	expectedWithTokenParams := func(m model.AuthMethod) model.AuthMethod {
-		cidrsObj, err := parseutil.ParseAddrs([]string{"127.0.0.1/8"})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		m.TokenParams = tokenutil.TokenParams{
-			TokenType:            logical.TokenTypeDefault,
-			TokenTTL:             5 * time.Second,
-			TokenMaxTTL:          100 * time.Second,
-			TokenNumUses:         5,
-			TokenPeriod:          10 * time.Second,
-			TokenExplicitMaxTTL:  100 * time.Second,
-			TokenPolicies:        []string{"good"},
-			TokenNoDefaultPolicy: true,
-			TokenBoundCIDRs:      cidrsObj,
-		}
-
-		return m
-	}
-
-	withLeaways := func(body map[string]interface{}) map[string]interface{} {
-		body["expiration_leeway"] = "5s"
-		body["not_before_leeway"] = "5s"
-		body["clock_skew_leeway"] = "5s"
-
-		return body
-	}
-
-	expectedWithLeaways := func(m model.AuthMethod) model.AuthMethod {
-		m.ExpirationLeeway = 5 * time.Second
-		m.NotBeforeLeeway = 5 * time.Second
-		m.ClockSkewLeeway = 5 * time.Second
-
-		return m
-	}
-
-	withBoundClaims := func(body map[string]interface{}) map[string]interface{} {
-		body["bound_subject"] = "testsub"
-		body["bound_audiences"] = "vault"
-		body["bound_claims_type"] = "glob"
-		body["bound_claims"] = map[string]interface{}{
-			"foo": []interface{}{"baz"},
-		}
-		body["bound_cidrs"] = "127.0.0.1/8"
-
-		return body
-	}
-
-	expectedWithBoundClaims := func(m model.AuthMethod) model.AuthMethod {
-		m.BoundSubject = "testsub"
-		m.BoundAudiences = []string{"vault"}
-		m.BoundClaimsType = "glob"
-		m.BoundClaims = map[string]interface{}{
-			"foo": []interface{}{"baz"},
-		}
-
-		return m
-	}
-
-	withUserClaims := func(body map[string]interface{}) map[string]interface{} {
-		body["user_claim"] = "user"
-		body["groups_claim"] = "groups"
-		body["claim_mappings"] = map[string]string{
-			"foo": "a",
-		}
-
-		return body
-	}
-
-	expectedWithUser := func(m model.AuthMethod) model.AuthMethod {
-		m.UserClaim = "user"
-		m.GroupsClaim = "groups"
-		m.ClaimMappings = map[string]string{
-			"foo": "a",
-		}
-
-		return m
-	}
 
 	methods := []struct {
 		methodName string
@@ -1184,6 +1183,78 @@ func TestAuthMethod_Create(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestAuthMethod_IncorrectUpdate(t *testing.T) {
+	b, storage := getBackend(t)
+
+	jwtSourceName := "a"
+	enableJwtBackend(t, b, storage)
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+
+	cases := []struct{
+		title string
+		updateBody map[string]interface{}
+		methodName string
+	} {
+		{
+			title: "does not change method type when update",
+			methodName: "a",
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeOIDC,
+				"source":      jwtSourceName,
+			},
+		},
+
+		{
+			title: "does not change source when update",
+			methodName: "a",
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeJWT,
+				"source":      "b",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.title, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      fmt.Sprintf("auth_method/%s", c.methodName),
+				Storage:   storage,
+				Data: withBoundClaims(
+					withLeaways(
+						withVaultTokenParts(
+							withUserClaims(map[string]interface{}{
+								"method_type": model.MethodTypeJWT,
+								"source":      jwtSourceName,
+							})))),
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      fmt.Sprintf("auth_method/%s", c.methodName),
+				Storage:   storage,
+				Data:      c.updateBody,
+			}
+
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatalf("err:%s or response is nil", err)
+			}
+
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
+			}
+		})
+	}
+
+
 }
 
 // func TestAuthMethod_Read(t *testing.T) {
