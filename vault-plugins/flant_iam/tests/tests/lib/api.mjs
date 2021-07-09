@@ -23,7 +23,6 @@ class CRUD {
     }
 }
 
-
 export class API {
     constructor(client, endpointBuilder) {
         this.client = new CRUD(client)

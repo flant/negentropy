@@ -6,7 +6,7 @@ import {
     genMultipassPayload,
     genPasswordPayload,
     genServiceAccountPayload,
-    SubTenantEntrypointBuilder
+    SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
 import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 

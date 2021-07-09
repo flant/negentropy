@@ -115,7 +115,8 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, featureFlag, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"feature_flag": featureFlag}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 

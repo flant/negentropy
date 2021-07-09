@@ -1,4 +1,4 @@
-import { API,  } from "./api.mjs"
+import { API } from "./api.mjs"
 import Faker from "faker"
 import { join } from "path"
 import { stringifyQuery } from "./endpoint_builder.mjs"

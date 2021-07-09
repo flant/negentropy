@@ -242,7 +242,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -283,7 +284,8 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -319,7 +321,8 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

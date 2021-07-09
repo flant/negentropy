@@ -167,7 +167,8 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -193,7 +194,8 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -228,7 +230,8 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

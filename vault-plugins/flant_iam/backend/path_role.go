@@ -152,7 +152,8 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, role, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"role": role}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -179,7 +180,8 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, role, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role": role}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -218,7 +220,8 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, role, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role": role}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
