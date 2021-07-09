@@ -10,10 +10,7 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     }
 
     one(p = {}, q = {}) {
-        return (
-            join(super.one(p), this.entryName, p[this.entryName]) +
-            stringifyQuery(q)
-        )
+        return join(super.one(p), this.entryName, p[this.entryName]) + stringifyQuery(q)
     }
 
     collection(p = {}, q = {}) {
@@ -21,9 +18,7 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
     }
 
     privileged(p = {}, q = {}) {
-        return (
-            join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
-        )
+        return join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
     }
 }
 

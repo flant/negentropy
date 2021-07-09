@@ -1,17 +1,18 @@
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
-import {
-    genProjectPayload,
-    SubTenantEntrypointBuilder,
-} from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
+import { genProjectPayload, SubTenantEntrypointBuilder } from "./lib/subtenant.mjs"
+import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
 
 //    /tenant/{tid}/project/{pid}
 
 describe("Project", function () {
     const rootClient = getClient(rootToken)
-    const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
+    const rootTenantAPI = new API(
+        rootClient,
+        new TenantEndpointBuilder(),
+        new SingleFieldReponseMapper(".data.project", ".data.uuids"),
+    )
 
     const entrypointBuilder = new SubTenantEntrypointBuilder("project")
     const rootProjectClient = new API(rootClient, entrypointBuilder)
@@ -22,8 +23,7 @@ describe("Project", function () {
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        return await rootTenantAPI.create({ payload })
     }
 
     async function createTenantId() {
@@ -49,16 +49,10 @@ describe("Project", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
+        expect(body.data).to.include.keys("uuid", "tenant_uuid", "resource_version")
         expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
         expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(body.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -82,17 +76,12 @@ describe("Project", function () {
             params: { tenant: tid, project: pid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
+        expect(read.data).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
         expect(read.data).to.deep.eq(
             created.data,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {

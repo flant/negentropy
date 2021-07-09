@@ -20,9 +20,7 @@ describe("Group", function () {
 
     // Clients to provide dependencies
     const userEntrypointBuilder = new SubTenantEntrypointBuilder("user")
-    const saEntrypointBuilder = new SubTenantEntrypointBuilder(
-        "service_account",
-    )
+    const saEntrypointBuilder = new SubTenantEntrypointBuilder("service_account")
     const rootUserClient = new API(rootClient, userEntrypointBuilder)
     const rootServiceAccountClient = new API(rootClient, saEntrypointBuilder)
 
@@ -105,16 +103,10 @@ describe("Group", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
+        expect(body.data).to.include.keys("uuid", "tenant_uuid", "resource_version")
         expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
         expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(body.data.resource_version).to.be.a("string").of.length.greaterThan(5)
 
         expect(body.data.subjects).to.deep.eq(subjects)
     })
@@ -145,17 +137,12 @@ describe("Group", function () {
             params: { tenant: tid, group: gid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
+        expect(read.data).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
         expect(read.data).to.deep.eq(
             created.data,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.data.resource_version).to.be.a("string").of.length.greaterThan(5)
 
         expect(read.data.subjects).to.deep.eq(subjects)
     })

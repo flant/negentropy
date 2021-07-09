@@ -65,9 +65,7 @@ describe("Tenant", function () {
 
         expect(tenant).to.include.keys("uuid", "identifier", "resource_version")
         expect(tenant.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(tenant.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(tenant.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -81,9 +79,7 @@ describe("Tenant", function () {
             ...payload,
             uuid: tenCreated.uuid,
         })
-        expect(tenCreated.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(tenCreated.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read by id", async () => {
@@ -126,10 +122,7 @@ describe("Tenant", function () {
         // read
         const tenant = await root.read(uuid)
 
-        expect(tenant).to.contain(
-            { ...updatePld, uuid },
-            "payload must be saved",
-        )
+        expect(tenant).to.contain({ ...updatePld, uuid }, "payload must be saved")
         expect(tenant.resource_version)
             .to.be.a("string")
             .of.length.greaterThan(5)

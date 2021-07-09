@@ -1,11 +1,7 @@
 import { expect } from "chai"
 import Faker from "faker"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import {
-    genRoleCreatePayload,
-    genRoleUpdatePayload,
-    RoleAPI,
-} from "./lib/role.mjs"
+import { genRoleCreatePayload, genRoleUpdatePayload, RoleAPI } from "./lib/role.mjs"
 
 describe("Role", function () {
     const rootClient = getClient(rootToken)
@@ -88,17 +84,11 @@ describe("Role", function () {
     })
 
     it("can be read by name", async () => {
-        const createBodies = await Promise.all([
-            createRole(),
-            createRole(),
-            createRole(),
-        ])
+        const createBodies = await Promise.all([createRole(), createRole(), createRole()])
 
         const names = createBodies.map((b) => b.data.name)
 
-        const readBodies = await Promise.all(
-            names.map((name) => root.read(name)),
-        )
+        const readBodies = await Promise.all(names.map((name) => root.read(name)))
 
         for (let i = 0; i < readBodies.length; i++) {
             const created = createBodies[i]
@@ -124,10 +114,7 @@ describe("Role", function () {
         const { data: read } = await root.read(name)
         const role = read.data
 
-        expect(role).to.deep.eq(
-            { ...payload, name, included_roles: null },
-            "payload must be saved",
-        )
+        expect(role).to.deep.eq({ ...payload, name, included_roles: null }, "payload must be saved")
     })
 
     it("can be deleted", async () => {

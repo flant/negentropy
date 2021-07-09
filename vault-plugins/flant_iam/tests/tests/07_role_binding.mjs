@@ -20,20 +20,13 @@ describe("Role Binding", function () {
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
     // Rolebinding API access
-    const roleBindingEntrypointBuilder = new SubTenantEntrypointBuilder(
-        "role_binding",
-    )
-    const rootRoleBindingClient = new API(
-        rootClient,
-        roleBindingEntrypointBuilder,
-    )
+    const roleBindingEntrypointBuilder = new SubTenantEntrypointBuilder("role_binding")
+    const rootRoleBindingClient = new API(rootClient, roleBindingEntrypointBuilder)
 
     // Clients to provide dependencies
     const userEntrypointBuilder = new SubTenantEntrypointBuilder("user")
     const groupEntrypointBuilder = new SubTenantEntrypointBuilder("group")
-    const saEntrypointBuilder = new SubTenantEntrypointBuilder(
-        "service_account",
-    )
+    const saEntrypointBuilder = new SubTenantEntrypointBuilder("service_account")
     const rootUserClient = new API(rootClient, userEntrypointBuilder)
     const rootGroupClient = new API(rootClient, groupEntrypointBuilder)
     const rootServiceAccountClient = new API(rootClient, saEntrypointBuilder)
@@ -97,9 +90,7 @@ describe("Role Binding", function () {
         return await Promise.all([
             createUser(tid).then((x) => subject("user", x.uuid)),
             createGroup(tid).then((x) => subject("group", x.uuid)),
-            createServiceAccount(tid).then((x) =>
-                subject("service_account", x.uuid),
-            ),
+            createServiceAccount(tid).then((x) => subject("service_account", x.uuid)),
         ])
     }
 
@@ -117,17 +108,10 @@ describe("Role Binding", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-            "subjects",
-        )
+        expect(body.data).to.include.keys("uuid", "tenant_uuid", "resource_version", "subjects")
         expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
         expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(body.data.resource_version).to.be.a("string").of.length.greaterThan(5)
 
         expect(body.data.subjects).to.deep.eq(subjects)
     })
@@ -157,13 +141,8 @@ describe("Role Binding", function () {
         const subResp = { ...payload, ...generated }
         delete subResp.ttl
 
-        expect(read.data).to.deep.contain(
-            subResp,
-            "must contain generated fields",
-        )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.data).to.deep.contain(subResp, "must contain generated fields")
+        expect(read.data.resource_version).to.be.a("string").of.length.greaterThan(5)
 
         expect(read.data.valid_till).to.lt(Date.now() + payload.ttl)
 

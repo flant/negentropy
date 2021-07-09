@@ -54,9 +54,7 @@ function axiosErrFormatter(err) {
         const sentBody = err.response.config.data
             ? JSON.stringify(JSON.parse(err.response.config.data), null, 2)
             : ""
-        const body = err.response.data
-            ? JSON.stringify(err.response.data, null, 2)
-            : ""
+        const body = err.response.data ? JSON.stringify(err.response.data, null, 2) : ""
 
         const prefixize = (pad, text) =>
             text

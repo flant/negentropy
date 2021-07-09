@@ -52,16 +52,10 @@ describe("Service Account", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
+        expect(body.data).to.include.keys("uuid", "tenant_uuid", "resource_version")
         expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
         expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(body.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -78,8 +72,7 @@ describe("Service Account", function () {
             uuid: created.data.uuid,
             tenant_uuid: created.data.tenant_uuid,
             resource_version: created.data.resource_version,
-            full_identifier:
-                payload.identifier + "@serviceaccount." + tenant.identifier,
+            full_identifier: payload.identifier + "@serviceaccount." + tenant.identifier,
             origin: "iam",
             extensions: null,
         }
@@ -89,17 +82,12 @@ describe("Service Account", function () {
             params: { tenant: tid, service_account: said },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
+        expect(read.data).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
         expect(read.data).to.deep.eq(
             created.data,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {
@@ -263,11 +251,7 @@ describe("Service Account", function () {
     })
 
     describe("multipass", function () {
-        const endpointBuilder = new EndpointBuilder([
-            "tenant",
-            "service_account",
-            "multipass",
-        ])
+        const endpointBuilder = new EndpointBuilder(["tenant", "service_account", "multipass"])
         const rootMPClient = new API(rootClient, endpointBuilder)
 
         async function createMultipass(t, u, override = {}) {
@@ -347,8 +331,7 @@ describe("Service Account", function () {
             const t = await createTenant()
             const u = await createServiceAccount(t.uuid)
 
-            const createId = () =>
-                createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
+            const createId = () => createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
 
             const ids = await Promise.all([createId(), createId(), createId()])
 
@@ -398,11 +381,7 @@ describe("Service Account", function () {
     })
 
     describe("password", function () {
-        const endpointBuilder = new EndpointBuilder([
-            "tenant",
-            "service_account",
-            "password",
-        ])
+        const endpointBuilder = new EndpointBuilder(["tenant", "service_account", "password"])
         const rootPasswordClient = new API(rootClient, endpointBuilder)
 
         async function createPassword(t, sa, override = {}) {
@@ -484,9 +463,7 @@ describe("Service Account", function () {
             const sa = await createServiceAccount(t.uuid)
 
             const createId = () =>
-                createPassword(t.uuid, sa.uuid).then(
-                    ({ password }) => password.uuid,
-                )
+                createPassword(t.uuid, sa.uuid).then(({ password }) => password.uuid)
 
             const ids = await Promise.all([createId(), createId(), createId()])
 

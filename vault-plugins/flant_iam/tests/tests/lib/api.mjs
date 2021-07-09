@@ -1,6 +1,5 @@
+import _ from "lodash"
 import { expectStatus } from "./client.mjs"
-import { join } from "path"
-
 class CRUD {
     constructor(client) {
         this.client = client
@@ -24,56 +23,87 @@ class CRUD {
 }
 
 export class API {
-    constructor(client, endpointBuilder) {
+    constructor(client, endpointBuilder, responseMapper) {
         this.client = new CRUD(client)
         this.endpointBuilder = endpointBuilder
+        this.responseMapper = responseMapper || new NoopResponseMapper()
     }
 
-    create({ params = {}, query = {}, payload, opts = {} } = {}) {
+    async create({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.collection(params, query)
-        return this.client.post(endpoint, payload, {
+        const { data: body } = await this.client.post(endpoint, payload, {
             ...expectStatus(201),
             ...opts,
         })
+        return this.responseMapper.mapOne(body)
     }
 
-    createPrivileged({ params = {}, query = {}, payload, opts = {} } = {}) {
+    async createPrivileged({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.privileged(params, query)
-        return this.client.post(endpoint, payload, {
+        const { data: body } = await this.client.post(endpoint, payload, {
             ...expectStatus(201),
             ...opts,
         })
+        return this.responseMapper.mapOne(body)
     }
 
-    read({ params = {}, query = {}, opts = {} } = {}) {
+    async read({ params = {}, query = {}, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.one(params, query)
-        return this.client.get(endpoint, {
+        const { data: body } = await this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,
         })
+        return this.responseMapper.mapOne(body)
     }
 
-    update({ params = {}, query = {}, payload, opts = {} } = {}) {
+    async update({ params = {}, query = {}, payload, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.one(params, query)
-        return this.client.post(endpoint, payload, {
+        const { data: body } = await this.client.post(endpoint, payload, {
             ...expectStatus(200),
             ...opts,
         })
+        return this.responseMapper.mapOne(body)
     }
 
-    delete({ params = {}, query = {}, opts = {} } = {}) {
+    async delete({ params = {}, query = {}, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.one(params, query)
-        return this.client.delete(endpoint, {
+        const { data: body } = await this.client.delete(endpoint, {
             ...expectStatus(204),
             ...opts,
         })
+        return this.responseMapper.mapOne(body)
     }
 
-    list({ params = {}, query = { list: true }, opts = {} } = {}) {
+    async list({ params = {}, query = { list: true }, opts = {} } = {}) {
         const endpoint = this.endpointBuilder.collection(params, query)
-        return this.client.get(endpoint, {
+        const { data: body } = await this.client.get(endpoint, {
             ...expectStatus(200),
             ...opts,
         })
+        return this.responseMapper.mapMany(body)
+    }
+}
+
+class NoopResponseMapper {
+    mapOne(x) {
+        return x
+    }
+    mapMany(x) {
+        return x
+    }
+}
+
+export class SingleFieldReponseMapper {
+    constructor(onePath = "data", listPath = "data") {
+        this.onePath = onePath
+        this.listPath = listPath
+    }
+
+    mapOne(x) {
+        return _.get(x, this.onePath)
+    }
+
+    mapMany(x) {
+        return _.get(x, this.listPath)
     }
 }

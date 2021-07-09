@@ -51,16 +51,10 @@ describe("User", function () {
         })
 
         expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
+        expect(body.data).to.include.keys("uuid", "tenant_uuid", "resource_version")
         expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
         expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(body.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -88,17 +82,12 @@ describe("User", function () {
             params: { tenant: tid, user: uid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
+        expect(read.data).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
         expect(read.data).to.deep.eq(
             created.data,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.data.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {
@@ -262,11 +251,7 @@ describe("User", function () {
     })
 
     describe("multipass", function () {
-        const endpointBuilder = new EndpointBuilder([
-            "tenant",
-            "user",
-            "multipass",
-        ])
+        const endpointBuilder = new EndpointBuilder(["tenant", "user", "multipass"])
         const rootMPClient = new API(rootClient, endpointBuilder)
 
         async function createMultipass(t, u, override = {}) {
@@ -346,8 +331,7 @@ describe("User", function () {
             const t = await createTenant()
             const u = await createUser(t.uuid)
 
-            const createId = () =>
-                createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
+            const createId = () => createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
 
             const ids = await Promise.all([createId(), createId(), createId()])
 

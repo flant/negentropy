@@ -1,16 +1,28 @@
 import { expect } from "chai"
+import { API, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { FeatureFlagAPI, genFeatureFlag } from "./lib/feature_flag.mjs"
+import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
+import { genFeatureFlag } from "./lib/feature_flag.mjs"
 
 describe("Feature flag", function () {
     const rootClient = getClient(rootToken)
-    const root = new FeatureFlagAPI(rootClient)
+    function getAPIClient(client) {
+        return new API(
+            client,
+            new EndpointBuilder(["feature_flag"]),
+            new SingleFieldReponseMapper("data.feature_flag", "data.names"),
+        )
+    }
+    const root = getAPIClient(rootClient)
+    // const root = new FeatureFlagAPI(rootClient)
 
     describe("payload", () => {
         describe("name", () => {
             after("clean", async () => {
                 const names = await root.list()
-                const deletions = names.map((name) => root.delete(name))
+                const deletions = names.map((feature_flag) =>
+                    root.delete({ params: { feature_flag } }),
+                )
                 await Promise.all(deletions)
             })
 
@@ -50,8 +62,11 @@ describe("Feature flag", function () {
 
             invalidCases.forEach((x) =>
                 it(x.title, async () => {
-                    await root.create(x.payload, {
-                        validateStatus: x.validateStatus,
+                    await root.create({
+                        payload: x.payload,
+                        opts: {
+                            validateStatus: x.validateStatus,
+                        },
                     })
                 }),
             )
@@ -61,14 +76,14 @@ describe("Feature flag", function () {
     it("can be created", async () => {
         const payload = genFeatureFlag()
 
-        const ff = await root.create(payload)
+        const ff = await root.create({ payload })
 
         expect(ff.name).to.eq(payload.name)
     })
 
     it("can be listed", async () => {
         const payload = genFeatureFlag()
-        await root.create(payload)
+        await root.create({ payload })
 
         const names = await root.list()
 
@@ -77,7 +92,7 @@ describe("Feature flag", function () {
 
     it("has identifying fields in list", async () => {
         const payload = genFeatureFlag()
-        const ff = await root.create(payload)
+        const ff = await root.create({ payload })
 
         const list = await root.list()
 
@@ -85,11 +100,12 @@ describe("Feature flag", function () {
     })
 
     it("can be deleted", async () => {
-        const createPld = genFeatureFlag()
+        const payload = genFeatureFlag()
 
-        const ff = await root.create(createPld)
+        const ff = await root.create({ payload })
 
-        await root.delete(ff.name)
+        const params = { feature_flag: ff.name }
+        await root.delete({ params })
 
         const list = await root.list()
         expect(list).to.not.include(ff.name)
@@ -99,7 +115,7 @@ describe("Feature flag", function () {
         const opts = expectStatus(404)
 
         it("cannot delete, gets 404", async () => {
-            await root.delete("no-such", opts)
+            await root.delete({ params: { feature_flag: "no-such" }, opts })
         })
     })
 
@@ -113,20 +129,23 @@ describe("Feature flag", function () {
         })
 
         function runWithClient(client, expectedStatus) {
-            const unauth = new FeatureFlagAPI(client)
+            const unauth = getAPIClient(client)
             const opts = expectStatus(expectedStatus)
 
             it(`cannot create, gets ${expectedStatus}`, async () => {
-                await unauth.create(genFeatureFlag(), opts)
+                const payload = genFeatureFlag()
+                await unauth.create({ payload, opts })
             })
 
             it(`cannot list, gets ${expectedStatus}`, async () => {
-                await unauth.list(opts)
+                await unauth.list({ opts })
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const ff = await root.create(genFeatureFlag())
-                await unauth.delete(ff.name, opts)
+                const payload = genFeatureFlag()
+                const ff = await root.create({ payload })
+                const params = { feature_flag: ff.name }
+                await unauth.delete({ params, opts })
             })
         }
     })
