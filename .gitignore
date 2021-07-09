@@ -29,3 +29,7 @@ vault-plugins/build/
 vault-plugins/shared/kafka/example_plugin/build
 vault-plugins/flant_iam/tests/data/*
 vault-plugins/tests/data/*
+
+# e2e
+vault-plugins/e2e/data/*
+vault-plugins/e2e/tools/*
