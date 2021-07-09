@@ -1,4 +1,4 @@
-import { stringifyQuery } from "./api.mjs"
+import { stringifyQuery } from "./endpoint_builder.mjs"
 import Faker from "faker"
 import { TenantEndpointBuilder } from "./tenant.mjs"
 import { join } from "path"
@@ -24,61 +24,6 @@ export class SubTenantEntrypointBuilder extends TenantEndpointBuilder {
         return (
             join(super.one(p), this.entryName, "privileged") + stringifyQuery(q)
         )
-    }
-}
-
-export class EndpointBuilder {
-    constructor(fields = []) {
-        this.fields = fields
-    }
-
-    one(p = {}, q = {}) {
-        const parts = this.concat(this.fields, p, true)
-        return "/" + parts.join("/") + stringifyQuery(q)
-    }
-
-    collection(p = {}, q = {}) {
-        const parts = this.concat(this.fields, p, false)
-        return "/" + parts.join("/") + stringifyQuery(q)
-    }
-
-    privileged(p = {}, q = {}) {
-        const lastField = this.fields[this.fields.length - 1]
-        p[lastField] = "privileged"
-        const parts = this.concat(this.fields, p, true)
-        return "/" + parts.join("/") + stringifyQuery(q)
-    }
-
-    concat(fields, values, demandTail = false) {
-        const parts = []
-
-        for (let i = 0; i < fields.length; i++) {
-            const field = fields[i]
-            parts.push(field)
-
-            const value = values[field]
-
-            const isLast = i === fields.length - 1
-            const notLast = !isLast
-
-            if (demandTail || notLast) {
-                if (!value) {
-                    const valstr = JSON.stringify(values)
-                    const msg = `expected to have value for field "${field}", got ${valstr}`
-                    throw new Error(msg)
-                }
-            }
-
-            if (isLast) {
-                if (demandTail) {
-                    parts.push(value)
-                }
-                break
-            }
-
-            parts.push(value)
-        }
-        return parts
     }
 }
 

@@ -1,18 +1,21 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
+import Faker from "faker"
+import { API } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
+import { genRoleCreatePayload, RoleAPI } from "./lib/role.mjs"
 import {
+    genGroupPayload,
     genRoleBindingPayload,
+    genServiceAccountPayload,
+    genUserPayload,
     SubTenantEntrypointBuilder,
 } from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
-import { genGroupPayload } from "./lib/subtenant.mjs"
-import { genUserPayload } from "./lib/subtenant.mjs"
-import { genServiceAccountPayload } from "./lib/subtenant.mjs"
+import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 
 //    /tenant/{tid}/role_binding/{rbid}
 
-describe("Role Binding", function () {
+describe.only("Role Binding", function () {
     const rootClient = getClient(rootToken)
     const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
@@ -91,14 +94,13 @@ describe("Role Binding", function () {
     }
 
     async function createSubjects(tid) {
-        const user = await createUser(tid)
-        const group = await createGroup(tid)
-        const sa = await createServiceAccount(tid)
-        return [
-            subject("group", group.uuid),
-            subject("user", user.uuid),
-            subject("service_account", sa.uuid),
-        ]
+        return await Promise.all([
+            createUser(tid).then((x) => subject("user", x.uuid)),
+            createGroup(tid).then((x) => subject("group", x.uuid)),
+            createServiceAccount(tid).then((x) =>
+                subject("service_account", x.uuid),
+            ),
+        ])
     }
 
     function subject(type, id) {

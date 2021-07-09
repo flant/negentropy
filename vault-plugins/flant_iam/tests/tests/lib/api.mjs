@@ -23,31 +23,6 @@ class CRUD {
     }
 }
 
-export function stringifyQuery(q = {}) {
-    if (!q || Object.keys(q).length === 0) {
-        return ""
-    }
-    return "?" + new URLSearchParams(q).toString()
-}
-
-// Example class, not to be used
-export class ExampleEndpointBuilder {
-    constructor() {
-        this.prefix = "items"
-    }
-
-    one(p = {}, q = {}) {
-        return join(this.prefix, p.item) + stringifyQuery(q)
-    }
-
-    collection(p = {}, q = {}) {
-        return this.prefix + stringifyQuery(q)
-    }
-
-    privileged(p = {}, q = {}) {
-        return join(this.prefix, "privileged") + stringifyQuery(q)
-    }
-}
 
 export class API {
     constructor(client, endpointBuilder) {

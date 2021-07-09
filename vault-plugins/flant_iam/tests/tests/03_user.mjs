@@ -1,8 +1,8 @@
 import { expect } from "chai"
 import { API } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import { EndpointBuilder } from "./lib/endpoint_builder.mjs"
 import {
-    EndpointBuilder,
     genMultipassPayload,
     genUserPayload,
     SubTenantEntrypointBuilder,

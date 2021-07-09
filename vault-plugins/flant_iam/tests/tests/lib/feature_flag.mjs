@@ -1,7 +1,7 @@
-import { API, stringifyQuery } from "./api.mjs"
 import Faker from "faker"
 import { join } from "path"
-
+import { API } from "./api.mjs"
+import { stringifyQuery } from "./endpoint_builder.mjs"
 export class FeatureFlagEndpointBuilder {
     one(p = {}, q = {}) {
         return join("/feature_flag", p.name) + stringifyQuery(q)
