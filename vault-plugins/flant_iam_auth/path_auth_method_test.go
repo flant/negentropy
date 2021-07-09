@@ -392,6 +392,64 @@ func TestAuthMethod_CreateError(t *testing.T) {
 	t.Run("user claims", func(t *testing.T) {
 		b, storage := getBackend(t)
 
+		oidcSourceName := "b"
+
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "allowed_redirect_uris is not passed",
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeOIDC,
+					"bound_audiences": "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"claim_mappings": map[string]string{
+						"foo":        "a",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified.",
+			},
+
+			{
+				title: "max_age is negative",
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeOIDC,
+					"bound_audiences": "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "a",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+					"max_age": "-1s",
+				},
+
+				hasBackendErr: true,
+			},
+
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("user claims", func(t *testing.T) {
+		b, storage := getBackend(t)
+
 		jwtSourceName := "a"
 		oidcSourceName := "b"
 
