@@ -70,19 +70,21 @@ func responseErr(req *logical.Request, err error) (*logical.Response, error) {
 	}
 }
 
+func responseErrMessage(req *logical.Request, message string, status int) (*logical.Response, error) {
+	rr := logical.ErrorResponse(message)
+	return logical.RespondWithStatusCode(rr, req, status)
+}
+
 func responseNotFound(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("not found")
-	return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+	return responseErrMessage(req, "not found", http.StatusNotFound)
 }
 
 func responseBadVersion(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("bad version")
-	return logical.RespondWithStatusCode(rr, req, http.StatusConflict)
+	return responseErrMessage(req, "bad version", http.StatusConflict)
 }
 
 func responseBadOrigin(req *logical.Request) (*logical.Response, error) {
-	rr := logical.ErrorResponse("bad origin")
-	return logical.RespondWithStatusCode(rr, req, http.StatusForbidden)
+	return responseErrMessage(req, "bad origin", http.StatusForbidden)
 }
 
 // commit wraps the committing and error logging

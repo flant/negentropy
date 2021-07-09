@@ -42,15 +42,16 @@ func GroupSchema() *memdb.DBSchema {
 }
 
 type Group struct {
-	UUID            GroupUUID            `json:"uuid"` // PK
-	TenantUUID      TenantUUID           `json:"tenant_uuid"`
-	Version         string               `json:"resource_version"`
-	BuiltinType     string               `json:"-"`
-	Identifier      string               `json:"identifier"`
-	FullIdentifier  string               `json:"full_identifier"`
-	Users           []UserUUID           `json:"users"`
-	Groups          []GroupUUID          `json:"groups"`
-	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
+	UUID           GroupUUID  `json:"uuid"` // PK
+	TenantUUID     TenantUUID `json:"tenant_uuid"`
+	Version        string     `json:"resource_version"`
+	Identifier     string     `json:"identifier"`
+	FullIdentifier string     `json:"full_identifier"`
+
+	Users           []UserUUID           `json:"-"`
+	Groups          []GroupUUID          `json:"-"`
+	ServiceAccounts []ServiceAccountUUID `json:"-"`
+	Subjects        []SubjectNotation    `json:"subjects"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -70,9 +71,6 @@ func (u *Group) ObjId() string {
 func CalcGroupFullIdentifier(g *Group, tenant *Tenant) string {
 	name := g.Identifier
 	domain := "group." + tenant.Identifier
-	if g.BuiltinType != "" {
-		domain = g.BuiltinType + "." + domain
-	}
 	return name + "@" + domain
 }
 
@@ -106,6 +104,10 @@ func (r *GroupRepository) Create(group *Group) error {
 	}
 	group.Version = NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
+
+	if err := r.fillSubjects(group); err != nil {
+		return err
+	}
 
 	return r.save(group)
 }
@@ -148,7 +150,22 @@ func (r *GroupRepository) Update(group *Group) error {
 	}
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
+	if err := r.fillSubjects(group); err != nil {
+		return err
+	}
+
 	return r.save(group)
+}
+
+func (r *GroupRepository) fillSubjects(g *Group) error {
+	subj, err := NewSubjectsFetcher(r.db, g.Subjects).Fetch()
+	if err != nil {
+		return err
+	}
+	g.Groups = subj.Groups
+	g.ServiceAccounts = subj.ServiceAccounts
+	g.Users = subj.Users
+	return nil
 }
 
 /*
