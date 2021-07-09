@@ -14,7 +14,6 @@ describe("Feature flag", function () {
         )
     }
     const root = getAPIClient(rootClient)
-    // const root = new FeatureFlagAPI(rootClient)
 
     describe("payload", () => {
         describe("name", () => {
