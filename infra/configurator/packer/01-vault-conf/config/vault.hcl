@@ -4,10 +4,11 @@ storage "gcs" {
 
 listener "tcp" {
   address         = "$INTERNAL_ADDRESS:8200"
-  tls_disable     = "true"
+  tls_cert_file   = "/etc/vault.crt"
+  tls_key_file    = "/etc/vault.key"
 }
 
-api_addr = "http://$INTERNAL_ADDRESS:8200"
+api_addr = "https://$INTERNAL_ADDRESS:8200"
 
 seal "gcpckms" {
   project = "$GCP_PROJECT"

@@ -8,15 +8,129 @@ adduser -S -G vault vault
 
 cat <<'EOF' > /etc/vault-config.sh
 #!/usr/bin/env bash
-. /etc/vault-variables.sh
+
+. /etc/common-variables.sh
+. /etc/vault-common-variables.sh
+
 envsubst < /etc/vault.hcl > /tmp/vault.hcl
 EOF
 
 chmod +x /etc/vault-config.sh
 
+cat <<'EOF' > /etc/get-ca.sh
+#!/usr/bin/env bash
+
+. /etc/common-variables.sh
+. /etc/vault-common-variables.sh
+
+# TODO: add check for empty argument and if it empty then show help output with available parameters.
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --get) target="get";;
+        --update) target="update";;
+        *) echo "Unknown parameter $1"; exit 1;;
+    esac
+    shift
+done
+
+if [ "$target" == "get" ]; then
+    if [ -f "/usr/local/share/ca-certificates/ca.crt" ]; then
+        echo "CA already exists"
+    else
+        echo "Get CA"
+        while true; do
+            gcloud privateca roots describe ${VAULT_CA_NAME} --location=${VAULT_CA_LOCATION} --pool=${VAULT_CA_POOL} --format="get(pemCaCertificates)" > /usr/local/share/ca-certificates/ca.crt
+            status=$?
+            if [ $status -eq 0 ]; then
+                break
+            fi
+        done
+        update-ca-certificates &> /dev/null
+    fi
+fi
+
+# TODO: add support for check and update CA, when it expire soon.
+if [ "$target" == "update" ]; then
+    echo "Update CA not implemented yet :("
+fi
+EOF
+
+chmod +x /etc/get-ca.sh
+
+cat <<'EOF' > /etc/get-cert.sh
+#!/usr/bin/env bash
+
+. /etc/common-variables.sh
+. /etc/vault-common-variables.sh
+
+getcert() {
+pushd /tmp
+echo "Generate CSR"
+openssl req -nodes -newkey rsa:2048 -keyout server.key -out server.csr -subj "/C=RU/O=JSC Flant/CN=${VAULT_CONF_DOMAIN}" -addext "subjectAltName=DNS:${VAULT_CONF_DOMAIN},IP:${INTERNAL_ADDRESS}"
+echo "Signing certificate"
+while true; do
+    gcloud privateca certificates create vault-conf --issuer-pool ${VAULT_CA_POOL} --issuer-location ${VAULT_CA_LOCATION} --csr server.csr --cert-output-file server.crt --validity "P${VAULT_CERT_VALIDITY_DAYS}D"
+    status=$?
+    if [ $status -eq 0 ]; then
+        break
+    fi
+done
+echo "Move certificates and set right permissions"
+mv server.crt /etc/vault.crt
+mv server.key /etc/vault.key
+chown vault:vault /etc/vault.crt
+chown vault:vault /etc/vault.key
+echo "Cleanup"
+rm server.csr
+popd
+}
+
+# TODO: add check for empty argument and if it empty then show help output with available parameters.
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --get) target="get";;
+        --update) target="update";;
+        *) echo "Unknown parameter $1"; exit 1;;
+    esac
+    shift
+done
+
+if [ "$target" == "get" ]; then
+    if [[ -f "/etc/vault.crt" && -f "/etc/vault.key" ]]; then
+        echo "Vault certificate already exists"
+    else
+        getcert
+    fi
+fi
+
+if [ "$target" == "update" ]; then
+    CERT_EXPIRE_SECONDS="${VAULT_CERT_EXPIRE_SECONDS}"
+    TIMESTAMP="$(date +"%s")"
+    CERT_EXPIRATION_DATE="$(openssl x509 -enddate -noout -in /etc/vault.crt | sed "s/notAfter=//")"
+    # convert to YYYY-MM-DD hh:mm:ss into the same variable
+    CERT_EXPIRATION_DATE="$(echo "$CERT_EXPIRATION_DATE" | awk '{ printf "%04d-%02d-%02d %3s", $4, (index("JanFebMarAprMayJunJulAugSepOctNovDec",$1)+2)/3, $2, $3}')"
+    CERT_EXPIRATION_DATE_TIMESTAMP="$(date +%s --date "${CERT_EXPIRATION_DATE}")"
+
+    if (( ${CERT_EXPIRATION_DATE_TIMESTAMP}-${TIMESTAMP}>${CERT_EXPIRE_SECONDS} )); then
+        echo "Vault certificate not expired. Exiting."
+        exit 0
+    else
+        echo "Vault certificate expiring"
+        getcert
+        echo "Vault certificate updated"
+        /etc/init.d/vault reload
+        echo "Vault reloaded"
+    fi
+fi
+EOF
+
+chmod +x /etc/get-cert.sh
+
 cat <<'EOF' > /etc/vault-init.sh
 #!/usr/bin/env bash
-. /etc/vault-variables.sh
+
+. /etc/common-variables.sh
+. /etc/vault-common-variables.sh
 
 while true; do
     vault status &>/dev/null
@@ -74,9 +188,12 @@ depend() {
 	after firewall
 }
 
+# TODO: remove debug output forwarding.
 start_pre() {
 	checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
     && /bin/update-hostname \
+    && /etc/get-ca.sh --get &> /var/log/vault-ca.log \
+    && /etc/get-cert.sh --get &> /var/log/vault-cert.log \
     && /etc/vault-config.sh
 }
 
@@ -95,6 +212,9 @@ EOF
 chmod +x /etc/init.d/vault
 rc-update add vault
 
+# Add update certificate cronjob
+echo '*/30 * * * * /etc/get-cert.sh --update' >> /etc/crontabs/root
+
 # Add memlock capability
 setcap cap_ipc_lock=+ep /bin/vault
 
@@ -103,4 +223,5 @@ cat <<'EOF' > /etc/conf.d/vault
 rc_ulimit="-n 65536"
 EOF
 
-echo "source /etc/vault-variables.sh" > /root/.profile
+echo "source /etc/common-variables.sh" > /root/.profile
+echo "source /etc/vault-common-variables.sh" >> /root/.profile
