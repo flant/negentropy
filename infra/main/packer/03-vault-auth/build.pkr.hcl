@@ -118,15 +118,28 @@ build {
   }
 
   provisioner "file" {
-    source      = "../../../common/config/scripts/vault-variables.sh"
-    destination = "/etc/vault-variables.sh"
+    source      = "../../../common/config/scripts/common-variables.sh"
+    destination = "/etc/common-variables.sh"
+  }
+
+  provisioner "file" {
+    source      = "../../../common/config/scripts/vault-common-variables.sh"
+    destination = "/etc/vault-common-variables.sh"
+  }
+
+  provisioner "shell" {
+    environment_vars = [
+      "GCP_PROJECT=${var.gcp_project}",
+      "GCP_REGION=${var.gcp_region}"
+    ]
+    inline = [
+      "tmp=$(mktemp); envsubst < /etc/common-variables.sh > $tmp && cat $tmp > /etc/common-variables.sh"
+    ]
   }
 
   provisioner "shell" {
     environment_vars = [
       "GCP_VAULT_AUTH_BUCKET_TRAILER=${var.gcp_vault_auth_bucket_trailer}",
-      "GCP_PROJECT=${var.gcp_project}",
-      "GCP_REGION=${var.gcp_region}",
       "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
       "GCPCKMS_SEAL_CRYPTO_KEY=${var.gcp_ckms_seal_crypto_key}",
       "TFSTATE_BUCKET=${var.tfstate_bucket}",
@@ -134,7 +147,7 @@ build {
       "VAULT_RECOVERY_THRESHOLD=${var.vault_recovery_threshold}"
     ]
     inline = [
-      "tmp=$(mktemp); envsubst < /etc/vault-variables.sh > $tmp && cat $tmp > /etc/vault-variables.sh"
+      "tmp=$(mktemp); envsubst < /etc/vault-common-variables.sh > $tmp && cat $tmp > /etc/vault-common-variables.sh"
     ]
   }
 

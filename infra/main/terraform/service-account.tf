@@ -3,7 +3,7 @@ resource "google_service_account" "vault_storage_and_kms_access" {
   display_name = "A service account for dedicated vault instances"
 }
 
-resource "google_project_iam_member" "vault-srorage-object-admin" {
+resource "google_project_iam_member" "vault-storage-object-admin" {
   project = data.google_project.project.project_id
   role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.vault_storage_and_kms_access.email}"
