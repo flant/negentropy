@@ -119,7 +119,7 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 
 	var wrapTTL time.Duration
 	if wrapTTLRaw := req.Get(fieldNameVaultRequestWrapTTL); wrapTTLRaw != nil {
-		wrapTTL, err := time.ParseDuration(wrapTTLRaw.(string))
+		wrapTTL, err = time.ParseDuration(wrapTTLRaw.(string))
 		if err != nil {
 			return logical.ErrorResponse("invalid option %q given, expected golang time duration: %s", fieldNameVaultRequestWrapTTL, err), nil
 		}
