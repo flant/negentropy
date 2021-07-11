@@ -1,4 +1,4 @@
-package jwtauth
+package jwt
 
 import (
 	"errors"
@@ -13,10 +13,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
-// getClaim returns a claim value from allClaims given a provided claim string.
+// GetClaim returns a claim value from allClaims given a provided claim string.
 // If this string is a valid JSONPointer, it will be interpreted as such to locate
 // the claim. Otherwise, the claim string will be used directly.
-func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string) interface{} {
+func GetClaim(logger log.Logger, allClaims map[string]interface{}, claim string) interface{} {
 	var val interface{}
 	var err error
 
@@ -57,7 +57,7 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 func extractMetadata(logger log.Logger, allClaims map[string]interface{}, claimMappings map[string]string) (map[string]string, error) {
 	metadata := make(map[string]string)
 	for source, target := range claimMappings {
-		if value := getClaim(logger, allClaims, source); value != nil {
+		if value := GetClaim(logger, allClaims, source); value != nil {
 			strValue, ok := value.(string)
 			if !ok {
 				return nil, fmt.Errorf("error converting claim '%s' to string", source)
@@ -89,23 +89,23 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 	return nil
 }
 
-// validateBoundClaims checks that all of the claim:value requirements in boundClaims are
+// ValidateBoundClaims checks that all of the claim:value requirements in boundClaims are
 // met in allClaims.
-func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
+func ValidateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
 	useGlobs := boundClaimsType == model.BoundClaimsTypeGlob
 
 	for claim, expValue := range boundClaims {
-		actValue := getClaim(logger, allClaims, claim)
+		actValue := GetClaim(logger, allClaims, claim)
 		if actValue == nil {
 			return fmt.Errorf("claim %q is missing", claim)
 		}
 
-		actVals, ok := normalizeList(actValue)
+		actVals, ok := NormalizeList(actValue)
 		if !ok {
 			return fmt.Errorf("received claim is not a string or list: %v", actValue)
 		}
 
-		expVals, ok := normalizeList(expValue)
+		expVals, ok := NormalizeList(expValue)
 		if !ok {
 			return fmt.Errorf("bound claim is not a string or list: %v", expValue)
 		}
@@ -146,10 +146,10 @@ func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 	return false, nil
 }
 
-// normalizeList takes a string, bool or list and returns a list. This is useful when
+// NormalizeList takes a string, bool or list and returns a list. This is useful when
 // providers are expected to return a list (typically of strings) but reduce it
 // to a string type when the list count is 1.
-func normalizeList(raw interface{}) ([]interface{}, bool) {
+func NormalizeList(raw interface{}) ([]interface{}, bool) {
 	var normalized []interface{}
 
 	switch v := raw.(type) {

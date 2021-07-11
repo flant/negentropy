@@ -35,16 +35,22 @@ func GetClient(token string) *api.Client {
 	return cl
 }
 
-func CreateGoodRole(token string) *GoodAppRole {
+func CreatePolicy(token, name, content string) {
 	cl := GetClient(token)
 
-	policyFromServer, err := cl.Sys().GetPolicy(goodPolicyName)
+	policyFromServer, err := cl.Sys().GetPolicy(name)
 	Expect(err).To(BeNil())
 
 	if policyFromServer == "" {
-		err := cl.Sys().PutPolicy(goodPolicyName, goodPolicy)
+		err := cl.Sys().PutPolicy(name, content)
 		Expect(err).To(BeNil())
 	}
+}
+
+func CreateGoodRole(token string) *GoodAppRole {
+	cl := GetClient(token)
+
+	CreatePolicy(token, goodPolicyName, goodPolicy)
 
 	EnableAuthPlugin("flant_iam_auth", "flant_iam_auth", token)
 	EnableAuthPlugin("approle", "approle", token)

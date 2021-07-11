@@ -84,7 +84,7 @@ func insert(t *testing.T, s *io.MemoryStore, table string, o io.MemoryStorableOb
 func getAllAliases(t *testing.T, tx *io.MemoryStoreTxn, iamModelId string) ([]*model.EntityAlias, map[string]*model.EntityAlias) {
 	aliases := make([]*model.EntityAlias, 0)
 	aliasesBySourceId := map[string]*model.EntityAlias{}
-	err := model.NewEntityAliasRepo(tx).GetForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
+	err := model.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
 		aliases = append(aliases, a)
 		aliasesBySourceId[a.SourceId] = a
 		return true, nil
@@ -270,7 +270,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 }
 
 func TestRootMessageDispatcherCreate(t *testing.T) {
-	t.Skipf("Revert after debug")
 	onlySaveCases := []struct {
 		title string
 		obj   io.MemoryStorableObject
@@ -416,7 +415,6 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 }
 
 func TestRootMessageDispatcherDelete(t *testing.T) {
-	t.Skipf("Revert after debug")
 	onlySaveCases := []struct {
 		title     string
 		obj       io.MemoryStorableObject

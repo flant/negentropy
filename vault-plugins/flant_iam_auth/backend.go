@@ -29,6 +29,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
+const loggerModule = "IamAuth"
+
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
 	b, err := backend(c)
@@ -57,6 +59,8 @@ type flantIamAuthBackend struct {
 	accessVaultController *client.VaultClientController
 
 	storage *sharedio.MemoryStore
+
+	accessorGetter *vault.MountAccessorGetter
 }
 
 func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
@@ -65,8 +69,12 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 
+	iamAuthLogger := conf.Logger.Named(loggerModule)
+
 	b.tokenController = njwt.NewTokenController()
-	b.accessVaultController = client.NewVaultClientController(hclog.L)
+	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
+		return iamAuthLogger.Named("ApiClient")
+	})
 
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
@@ -82,13 +90,8 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 		return b.accessVaultController.APIClient()
 	}
 
-	iamAuthLogger := conf.Logger.Named("IamAuth")
-
-	mountAceessorGetter := vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth")
-	clientLogger := iamAuthLogger.Named("VaultClient")
-	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, mountAceessorGetter, func() hclog.Logger {
-		return clientLogger
-	})
+	b.accessorGetter = vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth/")
+	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, b.accessorGetter, iamAuthLogger.Named("VaultIdentityClient"))
 
 	storage, err := sharedio.NewMemoryStore(schema, mb)
 	if err != nil {
@@ -176,6 +179,10 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	}
 
 	return b, nil
+}
+
+func (b *flantIamAuthBackend) NamedLogger(name string) hclog.Logger {
+	return b.Logger().Named(loggerModule).Named(name)
 }
 
 func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {

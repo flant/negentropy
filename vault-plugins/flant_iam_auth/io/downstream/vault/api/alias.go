@@ -62,7 +62,7 @@ func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, erro
 		return "", err
 	}
 	if resp == nil {
-		return "", nil
+		return "", fmt.Errorf("nil response")
 	}
 
 	aliasesRaw, ok := resp.Data["aliases"]

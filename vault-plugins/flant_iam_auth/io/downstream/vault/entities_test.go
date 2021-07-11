@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -162,7 +163,7 @@ func TestEntites_WriteNewEntity(t *testing.T) {
 			t.Fatal("action returns error", err)
 		}
 
-		id, err := vault_identity.NewIdentityAPI(client).EntityApi().GetID(entity.Name)
+		id, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().GetID(entity.Name)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}
@@ -202,7 +203,7 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 			t.Fatal("does not commit", err)
 		}
 
-		err = vault_identity.NewIdentityAPI(client).EntityApi().Create(entity.Name)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().Create(entity.Name)
 		if err != nil {
 			t.Fatal("does not create entity", err)
 		}
@@ -234,7 +235,7 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 			t.Fatal("not getting accessor", err)
 		}
 
-		id, err := vault_identity.NewIdentityAPI(client).AliasApi().FindAliasIDByName(entityAlias.Name, accessor)
+		id, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().FindAliasIDByName(entityAlias.Name, accessor)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}
@@ -274,12 +275,12 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("does not commit", err)
 		}
 
-		err = vault_identity.NewIdentityAPI(client).EntityApi().Create(entity.Name)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().Create(entity.Name)
 		if err != nil {
 			t.Fatal("does not create entity", err)
 		}
 
-		entityId, err := vault_identity.NewIdentityAPI(client).EntityApi().GetID(entity.Name)
+		entityId, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().GetID(entity.Name)
 		if err != nil {
 			t.Fatal("does not get entity id", err)
 		}
@@ -295,7 +296,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("not getting accessor", err)
 		}
 
-		err = vault_identity.NewIdentityAPI(client).AliasApi().Create(entityAlias.Name, entityId, accessor)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().Create(entityAlias.Name, entityId, accessor)
 		if err != nil {
 			t.Fatal("not create entity alias 1", err)
 		}
@@ -312,7 +313,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("action returns error", err)
 		}
 
-		id, err := vault_identity.NewIdentityAPI(client).EntityApi().GetID(entity.Name)
+		id, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().GetID(entity.Name)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}
@@ -321,7 +322,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("entity not deleted")
 		}
 
-		id, err = vault_identity.NewIdentityAPI(client).AliasApi().FindAliasIDByName(entityAlias.Name, accessor)
+		id, err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().FindAliasIDByName(entityAlias.Name, accessor)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}
@@ -372,12 +373,12 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("does not commit", err)
 		}
 
-		err = vault_identity.NewIdentityAPI(client).EntityApi().Create(entity.Name)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().Create(entity.Name)
 		if err != nil {
 			t.Fatal("does not create entity", err)
 		}
 
-		entityId, err := vault_identity.NewIdentityAPI(client).EntityApi().GetID(entity.Name)
+		entityId, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).EntityApi().GetID(entity.Name)
 		if err != nil {
 			t.Fatal("does not get entity id", err)
 		}
@@ -399,11 +400,11 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("not getting accessor", err)
 		}
 
-		err = vault_identity.NewIdentityAPI(client).AliasApi().Create(entityAlias1.Name, entityId, accessor)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().Create(entityAlias1.Name, entityId, accessor)
 		if err != nil {
 			t.Fatal("not create entity alias 1", err)
 		}
-		err = vault_identity.NewIdentityAPI(client).AliasApi().Create(entityAlias2.Name, entityId, accessor)
+		err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().Create(entityAlias2.Name, entityId, accessor)
 		if err != nil {
 			t.Fatal("not create entity alias 1", err)
 		}
@@ -420,7 +421,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("action returns error", err)
 		}
 
-		id, err := vault_identity.NewIdentityAPI(client).AliasApi().FindAliasIDByName(entityAlias1.Name, accessor)
+		id, err := vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().FindAliasIDByName(entityAlias1.Name, accessor)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}
@@ -429,7 +430,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("entity not deleted")
 		}
 
-		id, err = vault_identity.NewIdentityAPI(client).AliasApi().FindAliasIDByName(entityAlias2.Name, accessor)
+		id, err = vault_identity.NewIdentityAPI(client, hclog.NewNullLogger()).AliasApi().FindAliasIDByName(entityAlias2.Name, accessor)
 		if err != nil {
 			t.Fatal("getting entity id returns error", err)
 		}

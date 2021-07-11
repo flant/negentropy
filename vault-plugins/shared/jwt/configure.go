@@ -9,6 +9,11 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+type Config struct {
+	Issuer string
+	OwnAudience string
+}
+
 func PathConfigure(b *TokenController) *framework.Path {
 	return &framework.Path{
 		Pattern: `jwt/configure`,
@@ -73,6 +78,23 @@ func getConfig(ctx context.Context, storage logical.Storage) (map[string]interfa
 	}
 
 	return data, nil
+}
+
+func (b *TokenController) GetConfig(ctx context.Context, storage logical.Storage) (*Config, error) {
+	// todo return already object
+	conf, err := getConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf == nil {
+		return nil, nil
+	}
+
+	return &Config{
+		Issuer: conf["issuer"].(string),
+		OwnAudience: conf["own_audience"].(string),
+	}, nil
 }
 
 func (b *TokenController) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {

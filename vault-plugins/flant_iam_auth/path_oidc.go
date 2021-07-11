@@ -19,6 +19,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
@@ -324,12 +325,12 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		}
 	}
 
-	alias, groupAliases, err := createIdentity(b.Logger(), allClaims, method, tokenSource)
+	alias, _, err := authnjwt.CreateIdentity(b.Logger(), allClaims, method, tokenSource)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	if err := validateBoundClaims(b.Logger(), method.BoundClaimsType, method.BoundClaims, allClaims); err != nil {
+	if err := authnjwt.ValidateBoundClaims(b.Logger(), method.BoundClaimsType, method.BoundClaims, allClaims); err != nil {
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
@@ -344,7 +345,6 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		Period:       method.TokenPeriod,
 		NumUses:      method.TokenNumUses,
 		Alias:        alias,
-		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
 			"flantIamAuthMethod": methodName,
 		},

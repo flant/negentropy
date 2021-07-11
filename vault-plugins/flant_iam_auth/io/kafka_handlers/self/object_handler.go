@@ -37,89 +37,80 @@ func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vau
 }
 
 func (h *ObjectHandler) HandleAuthSource(source *model.AuthSource) error {
-	// TODO revert after debug
-	// l := h.logger
-	// l.Debug("Handle auth source", source.Name)
-	// err := h.usersRepo.Iter(func(user *iamrepos.User) (bool, error) {
-	//	l.Debug("Create new ea mem object for user an source", user.FullIdentifier, source.Name)
-	//	err := h.eaRepo.CreateForUser(user, source)
-	//	if err != nil {
-	//		l.Error("Cannot create ea mem object for user an source", user.FullIdentifier, source.Name, err)
-	//		return false, err
-	//	}
-	//
-	//	l.Debug("Create new ea mem object for user an source", user.FullIdentifier)
-	//
-	//	return true, nil
-	// })
-	// if err != nil {
-	//	return nil
-	// }
-	//
-	// if !source.AllowForSA() {
-	//	l.Error("Source not allow for SA skip", source.Name)
-	//	return nil
-	// }
-	//
-	// return h.saRepo.Iter(func(account *iamrepos.ServiceAccount) (bool, error) {
-	//	l.Debug("Create new ea mem object for SA and source", account.FullIdentifier, source.Name)
-	//	err := h.eaRepo.CreateForSA(account, source)
-	//	if err != nil {
-	//		l.Error("Cannot create ea mem object for SA an source", account.FullIdentifier, source.Name, err)
-	//		return false, nil
-	//	}
-	//
-	//	l.Debug("Created new ea mem object for SA and source", account.FullIdentifier, source.Name)
-	//	return true, nil
-	// })
+	l := h.logger
+	l.Debug("Handle auth source", source.Name)
+	err := h.usersRepo.Iter(func(user *iamrepos.User) (bool, error) {
+		l.Debug(fmt.Sprintf("Create new ea mem object for user %s and source %s", user.FullIdentifier, source.Name))
+		err := h.eaRepo.CreateForUser(user, source)
+		if err != nil {
+			l.Error("Cannot create ea mem object for user an source", user.FullIdentifier, source.Name, err)
+			return false, err
+		}
 
-	return nil
+		l.Debug("Create new ea mem object for user an source", user.FullIdentifier)
+
+		return true, nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	if !source.AllowForSA() {
+		l.Error("Source not allow for SA skip", source.Name)
+		return nil
+	}
+
+	return h.saRepo.Iter(func(account *iamrepos.ServiceAccount) (bool, error) {
+		l.Debug("Create new ea mem object for SA and source", account.FullIdentifier, source.Name)
+		err := h.eaRepo.CreateForSA(account, source)
+		if err != nil {
+			l.Error("Cannot create ea mem object for SA an source", account.FullIdentifier, source.Name, err)
+			return false, nil
+		}
+
+		l.Debug("Created new ea mem object for SA and source", account.FullIdentifier, source.Name)
+		return true, nil
+	})
 }
 
 func (h *ObjectHandler) HandleEntity(entity *model.Entity) error {
-	// return h.processActions(h.downstream.ProcessEntity(h.memStore, h.txn, entity))
-	return nil
+	return h.processActions(h.downstream.ProcessEntity(h.memStore, h.txn, entity))
 }
 
 func (h *ObjectHandler) HandleEntityAlias(entityAlias *model.EntityAlias) error {
-	// return h.processActions(h.downstream.ProcessEntityAlias(h.memStore, h.txn, entityAlias))
-	return nil
+	return h.processActions(h.downstream.ProcessEntityAlias(h.memStore, h.txn, entityAlias))
 }
 
 func (h *ObjectHandler) DeletedAuthSource(uuid string) error {
-	// todo revert after debug
-	// l := h.logger
-	//
-	// l.Debug("Handle delete source", uuid)
-	// err := h.eaRepo.GetBySource(uuid, func(alias *model.EntityAlias) (bool, error) {
-	//	l.Debug("Delete entity alias obj", alias.UUID, alias.Name)
-	//	err := h.eaRepo.DeleteByID(alias.UUID)
-	//	if err != nil {
-	//		l.Debug("Can not delete entity alias obj", alias.UUID, alias.Name, err)
-	//		return false, err
-	//	}
-	//	l.Debug("Deleted entity alias obj", alias.UUID, alias.Name)
-	//	return true, nil
-	// })
-	//
-	// return err
+	l := h.logger
 
-	return nil
+	l.Debug("Handle delete source", uuid)
+	err := h.eaRepo.GetBySource(uuid, func(alias *model.EntityAlias) (bool, error) {
+		l.Debug("Delete entity alias obj", alias.UUID, alias.Name)
+		err := h.eaRepo.DeleteByID(alias.UUID)
+		if err != nil {
+			l.Debug("Can not delete entity alias obj", alias.UUID, alias.Name, err)
+			return false, err
+		}
+		l.Debug("Deleted entity alias obj", alias.UUID, alias.Name)
+		return true, nil
+	})
+
+	return err
 }
 
 func (h *ObjectHandler) DeletedEntity(id string) error {
-	// return h.processActions(h.downstream.ProcessDeleteEntity(h.memStore, h.txn, id))
-	return nil
+	return h.processActions(h.downstream.ProcessDeleteEntity(h.memStore, h.txn, id))
 }
 
 func (h *ObjectHandler) DeletedEntityAlias(id string) error {
-	// actions, err := h.downstream.ProcessDeleteEntityAlias(h.memStore, h.txn, id)
-	// return h.processActions(actions, err)
-	return nil
+	actions, err := h.downstream.ProcessDeleteEntityAlias(h.memStore, h.txn, id)
+	return h.processActions(actions, err)
 }
 
 func (h *ObjectHandler) processActions(actions []io.DownstreamAPIAction, err error) error {
 	if err != nil {
+		h.logger.Error(fmt.Sprintf("Receive error from action processor: %v", err), "err", err)
 		return err
 	}
 

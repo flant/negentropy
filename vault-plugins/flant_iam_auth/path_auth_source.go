@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
@@ -318,7 +319,7 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	// NOTE: the OIDC lib states that if nothing is passed into its sourceForStore, it
 	// defaults to "RS256". So in the case of a zero value here it won't
 	// default to e.g. "none".
-	if err := jwt.SupportedSigningAlgorithm(toAlg(sourceForStore.JWTSupportedAlgs)...); err != nil {
+	if err := jwt.SupportedSigningAlgorithm(authnjwt.ToAlg(sourceForStore.JWTSupportedAlgs)...); err != nil {
 		return logical.ErrorResponse("invalid jwt_supported_algs: %s", err), nil
 	}
 
@@ -357,7 +358,7 @@ func (b *flantIamAuthBackend) pathAuthSourceList(ctx context.Context, req *logic
 	repo := repos.NewAuthSourceRepo(tnx)
 
 	var sourcesNames []string
-	err := repo.Iter(func(s *model.AuthSource) (bool, error) {
+	err := repo.Iter(false, func(s *model.AuthSource) (bool, error) {
 		sourcesNames = append(sourcesNames, s.Name)
 		return true, nil
 	})
@@ -422,14 +423,6 @@ func (b *flantIamAuthBackend) createProvider(source *model.AuthSource) (*oidc.Pr
 	}
 
 	return provider, nil
-}
-
-func toAlg(a []string) []jwt.Alg {
-	alg := make([]jwt.Alg, len(a))
-	for i, e := range a {
-		alg[i] = jwt.Alg(e)
-	}
-	return alg
 }
 
 const (
