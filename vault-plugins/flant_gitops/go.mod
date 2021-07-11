@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.2.0
 	github.com/werf/logboek v0.5.4
-	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210707133059-d7d1d5e42e5b
+	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210711194427-c6b9eff2aec3
 )
 
 replace github.com/theupdateframework/go-tuf => github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2
