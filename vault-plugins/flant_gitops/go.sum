@@ -92,6 +92,7 @@ github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga
 github.com/flant/negentropy/vault-plugins/shared v0.0.0-20210708154747-5592c1b9eceb h1:zK9gIj6ZvhhAdlvAV08v983MdsScAWWjFPeDT4LRkrA=
 github.com/flant/negentropy/vault-plugins/shared v0.0.0-20210708154747-5592c1b9eceb/go.mod h1:dJt3NlDh7cdJzdi+oM8Mx1NHtFrmdp0bypVBNqB5nOo=
 github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e/go.mod h1:HyVoz1Mz5Co8TFO8EupIdlcpwShBmY98dkT2xeHkvEI=
+github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 h1:BHsljHzVlRcyQhjrss6TZTdY2VfCqZPbv5k3iBFa2ZQ=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/frankban/quicktest v1.10.0/go.mod h1:ui7WezCLWMWxVWr1GETZY3smRy0G4KWq9vcPtJmFl7Y=
 github.com/frankban/quicktest v1.11.3 h1:8sXhOn0uLys67V8EsXLc6eszDs8VXWxL3iRvebPhedY=
@@ -494,6 +495,9 @@ github.com/werf/logboek v0.5.4/go.mod h1:anq9+mQPKXf67BVtFnXG9wPpMi9Q0RkQ3jFSCzI
 github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2/go.mod h1:L+uU/NRFK/7h0NYAnsmvsX9EghDB5QVCcHCIrK2h5nw=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210707133059-d7d1d5e42e5b h1:Y6lHfJ0Ao/f4ZtyhCbBdPlO69JEvSXpADg+U6xmcSEw=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210707133059-d7d1d5e42e5b/go.mod h1:QPnDYczrZBYgPYvqJ7AbvLpTNSLD1IxbzWKuMWwlnRw=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210709012212-5fa15a942c7b h1:WCSiPQWF+RjfG8CZWvKVCXE1LRRX3GYAPUrV/CHZbSs=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210711194427-c6b9eff2aec3 h1:771GTSQHXu0Wft7a/uW+ul7+UsjwFKXkwu0eiarmurs=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210711194427-c6b9eff2aec3/go.mod h1:lVWKjcbYzJ5CBw8NmDI4kQlO5FQNb/Pe9fGY3RtJ6BA=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=

@@ -22,7 +22,7 @@ import (
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
 	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
@@ -85,7 +85,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	}
 
 	now := systemClock.Now()
-	uuid, err := b.TaskQueueManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
+	uuid, err := b.TasksManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
 		err := b.periodicTask(ctx, storage, config, gitCredentials, vaultRequestsConfig, apiConfig)
 		if err != nil {
 			b.Logger().Error(fmt.Sprintf("Background task have failed: %s", err))
@@ -95,7 +95,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return err
 	})
 
-	if err == queue_manager.QueueBusyError {
+	if err == tasks_manager.BusyError {
 		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GetGitPollPeroid()))
 		return nil
 	}

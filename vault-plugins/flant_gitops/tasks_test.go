@@ -42,7 +42,7 @@ func GetTaskStatus(t *testing.T, ctx context.Context, b *backend, storage logica
 
 	statusData := resp.Data["status"].(map[string]interface{})
 
-	return statusData["Status"].(string), statusData["Reason"].(string)
+	return statusData["status"].(string), statusData["reason"].(string)
 }
 
 func GetTaskLog(t *testing.T, ctx context.Context, b *backend, storage logical.Storage, uuid string) string {
