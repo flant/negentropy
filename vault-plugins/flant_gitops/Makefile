@@ -38,7 +38,7 @@ enable:
                 role_id="$$(VAULT_ADDR='http://localhost:8200' vault read -ca-cert=examples/conf/ca-cert.pem -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')" \
                 vault_cacert="$$(cat examples/conf/ca-cert.pem)"
 	VAULT_ADDR='http://127.0.0.1:8200' vault write flant-gitops/configure git_repo_url=https://github.com/flant/negentropy git_branch_name=flant_gitops_test_infra required_number_of_verified_signatures_on_commit=0 git_poll_period="1m" initial_last_successful_commit="" docker_image="alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0" command="./flant_gitops.sh"
-	VAULT_ADDR='http://127.0.0.1:8200' vault write flant-gitops/configure/vault_request/get_configuration name=get_configuration method=GET path="v1/flant-gitops/configure" wrap_ttl="1m"
+	VAULT_ADDR='http://127.0.0.1:8200' vault write flant-gitops/configure/vault_request/get_configuration name=get_configuration method=GET path="/v1/flant-gitops/configure" wrap_ttl="1m"
 
 	touch flant_gitops.log
 	tail -f flant_gitops.log
