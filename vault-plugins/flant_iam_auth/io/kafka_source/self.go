@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
-	self "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/self"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -109,6 +109,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 			return
 		}
 		objType := splitted[0]
+		objId := splitted[1]
 
 		var signature []byte
 		var chunked bool
@@ -148,7 +149,12 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 		}
 
 		operation := func() error {
-			return sks.processMessage(source, store, objType, decrypted)
+			msgDecoded := &sharedkafka.MsgDecoded{
+				Type: objType,
+				ID: objId,
+				Data: decrypted,
+			}
+			return sks.processMessage(source, store, msgDecoded)
 		}
 		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
 		if err != nil {
@@ -157,11 +163,11 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 	}
 }
 
-func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, objType string, data []byte) error {
+func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, msg *sharedkafka.MsgDecoded) error {
 	tx := store.Txn(true)
 	defer tx.Abort()
 
-	err := self.HandleNewMessageSelfSource(tx, self.NewObjectHandler(store, tx, sks.api), objType, data)
+	err := self.HandleNewMessageSelfSource(tx, self.NewObjectHandler(store, tx, sks.api), msg)
 	if err != nil {
 		return err
 	}

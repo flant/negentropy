@@ -8,7 +8,6 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -39,13 +38,13 @@ func (a *VaultEntityDownstreamApi) ProcessObject(ms *io.MemoryStore, txn *io.Mem
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.processEntity(ms, txn, entity)
+		return a.ProcessEntity(ms, txn, entity)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.processEntityAlias(ms, txn, entityAlias)
+		return a.ProcessEntityAlias(ms, txn, entityAlias)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
@@ -58,19 +57,19 @@ func (a *VaultEntityDownstreamApi) ProcessObjectDelete(ms *io.MemoryStore, txn *
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.processDeleteEntity(ms, txn, entity)
+		return a.ProcessDeleteEntity(ms, txn, entity)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.processDeleteEntityAlias(ms, txn, entityAlias)
+		return a.ProcessDeleteEntityAlias(ms, txn, entityAlias)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
 }
 
-func (a *VaultEntityDownstreamApi) processEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
 	clientApi, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -83,7 +82,7 @@ func (a *VaultEntityDownstreamApi) processEntity(ms *io.MemoryStore, txn *io.Mem
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) processEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
 	// got current snapshot in mem db
 	readTxn := ms.Txn(false)
 
@@ -93,7 +92,7 @@ func (a *VaultEntityDownstreamApi) processEntityAlias(ms *io.MemoryStore, txn *i
 	// does not atomic
 
 	// first, get entity for user id
-	entityRepo := repos.NewEntityRepo(readTxn)
+	entityRepo := model.NewEntityRepo(readTxn)
 	entity, err := entityRepo.GetByUserId(entityAlias.UserId)
 	if err != nil {
 		return nil, err
@@ -132,7 +131,7 @@ func (a *VaultEntityDownstreamApi) processEntityAlias(ms *io.MemoryStore, txn *i
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) processDeleteEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -145,7 +144,7 @@ func (a *VaultEntityDownstreamApi) processDeleteEntity(ms *io.MemoryStore, txn *
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) processDeleteEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err

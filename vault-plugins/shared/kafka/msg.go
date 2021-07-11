@@ -5,6 +5,16 @@ import (
 	"github.com/hashicorp/go-memdb"
 )
 
+type MsgDecoded struct {
+	Type string
+	ID   string
+	Data []byte
+}
+
+func (m *MsgDecoded) IsDeleted() bool {
+	return len(m.Data) == 0
+}
+
 type MessageHandler func(sourceConsumer *kafka.Consumer, msg *kafka.Message)
 
 func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan struct{}) {

@@ -2,7 +2,6 @@ package model
 
 import (
 	"crypto"
-
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
@@ -62,6 +61,10 @@ func (s *AuthSource) ObjType() string {
 
 func (s *AuthSource) ObjId() string {
 	return s.UUID
+}
+
+func (s *AuthSource) AllowForSA() bool {
+	return s.AllowServiceAccounts && s.EntityAliasName != EntityAliasNameEmail
 }
 
 func (s *AuthSource) PopulatePubKeys() error {

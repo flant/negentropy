@@ -4,8 +4,6 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,8 +12,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/iam"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -86,26 +83,7 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	// TODO: need huge switch-case here, with object Unmarshaling
-	var inputObject interface{}
-	switch splitted[0] {
-	case model.UserType:
-		inputObject = &model.User{}
-
-	default:
-		return errors.New("is not implemented yet")
-	}
-	err = json.Unmarshal(decrypted, inputObject)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Insert(splitted[0], inputObject)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
 }
 
 func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
@@ -123,7 +101,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 			// return fmt.Errorf("key has wong format: %s", string(msg.Key))
 			return
 		}
-		objType, objID := splitted[0], splitted[1]
+		objType, objId := splitted[0], splitted[1]
 
 		var signature []byte
 		var chunked bool
@@ -164,7 +142,12 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		}
 
 		operation := func() error {
-			return rk.processMessage(source, store, objType, objID, decrypted)
+			msgDecoded := &sharedkafka.MsgDecoded{
+				Type: objType,
+				ID: objId,
+				Data: decrypted,
+			}
+			return rk.processMessage(source, store, msgDecoded)
 		}
 		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
 		if err != nil {
@@ -182,11 +165,11 @@ func (rk *RootKafkaSource) verifySign(signature []byte, data []byte) error {
 	return rsa.VerifyPKCS1v15(rk.kf.PluginConfig.RootPublicKey, crypto.SHA256, hashed[:], signature)
 }
 
-func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, objType, objID string, data []byte) error {
+func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, msg *sharedkafka.MsgDecoded) error {
 	tx := store.Txn(true)
 	defer tx.Abort()
 
-	err := iam.HandleNewMessageIamRootSource(tx, iam.NewObjectHandler(tx), objType, objID, data)
+	err := root.HandleNewMessageIamRootSource(tx, root.NewObjectHandler(tx), msg)
 	if err != nil {
 		return backoff.Permanent(err)
 	}
