@@ -306,7 +306,8 @@ func (s subjectInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, []
 	serviceAccountsLabel := "ServiceAccounts"
 	groupsLabel := "Groups"
 	projectLabel := "Projects"
-	validSubjectFieldNames := map[string]struct{}{usersLabel: {}, serviceAccountsLabel: {}, groupsLabel: {}}
+	validSubjectFieldNames := map[string]struct{}{usersLabel: {}, serviceAccountsLabel: {},
+		groupsLabel: {}, projectLabel: {}}
 	if _, valid := validSubjectFieldNames[s.subjectFieldName]; !valid {
 		return false, nil, fmt.Errorf("invalid subject_field_name: %s", s.subjectFieldName)
 	}
