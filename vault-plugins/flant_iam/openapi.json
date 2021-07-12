@@ -944,7 +944,7 @@
     },
     "/flant_iam/role": {
       "get": {
-        "summary": "Lists all roles IDs.",
+        "summary": "Lists all roles IDs",
         "operationId": "getFlant_iamRole",
         "tags": [
           "secrets"
@@ -980,7 +980,7 @@
         }
       ],
       "get": {
-        "summary": "Retrieve the role by ID.",
+        "summary": "Retrieve the role by ID",
         "operationId": "getFlant_iamRoleName",
         "tags": [
           "secrets"
@@ -992,7 +992,7 @@
         }
       },
       "post": {
-        "summary": "Update the role by ID.",
+        "summary": "Update the role by ID",
         "operationId": "postFlant_iamRoleName",
         "tags": [
           "secrets"
@@ -1035,7 +1035,7 @@
         }
       },
       "delete": {
-        "summary": "Deletes the role by ID.",
+        "summary": "Deletes the role by ID",
         "operationId": "deleteFlant_iamRoleName",
         "tags": [
           "secrets"
@@ -1192,9 +1192,9 @@
                   }
                 },
                 "required": [
+                  "uuid",
                   "identifier",
-                  "subjects",
-                  "uuid"
+                  "subjects"
                 ]
               }
             }
@@ -1272,9 +1272,9 @@
                   }
                 },
                 "required": [
-                  "subjects",
                   "resource_version",
-                  "identifier"
+                  "identifier",
+                  "subjects"
                 ]
               }
             }
@@ -1445,8 +1445,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -1556,10 +1556,10 @@
                   }
                 },
                 "required": [
-                  "uuid",
                   "subjects",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "uuid"
                 ]
               }
             }
@@ -1641,10 +1641,10 @@
                   }
                 },
                 "required": [
-                  "resource_version",
                   "subjects",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "resource_version"
                 ]
               }
             }
@@ -1760,11 +1760,11 @@
                   }
                 },
                 "required": [
-                  "token_ttl",
-                  "token_max_ttl",
                   "uuid",
                   "identifier",
-                  "allowed_cidrs"
+                  "allowed_cidrs",
+                  "token_ttl",
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2060,11 +2060,11 @@
                   }
                 },
                 "required": [
-                  "token_max_ttl",
-                  "resource_version",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl"
+                  "token_ttl",
+                  "token_max_ttl",
+                  "resource_version"
                 ]
               }
             }
@@ -2339,8 +2339,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
