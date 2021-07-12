@@ -23,6 +23,12 @@ func IdentitySharingSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
+					"source_tenant_uuid": {
+						Name: "source_tenant_uuid",
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "SourceTenantUUID",
+						},
+					},
 				},
 			},
 		},
@@ -30,9 +36,9 @@ func IdentitySharingSchema() *memdb.DBSchema {
 }
 
 type IdentitySharing struct {
-	UUID             IdentitySharingUUID `json:"uuid"` // PK
-	SourceTenantUUID TenantUUID          `json:"source_tenant_uuid"`
-	TargetTenantUUID TenantUUID          `json:"target_tenant_uuid"`
+	UUID                  IdentitySharingUUID `json:"uuid"` // PK
+	SourceTenantUUID      TenantUUID          `json:"source_tenant_uuid"`
+	DestinationTenantUUID TenantUUID          `json:"target_tenant_uuid"`
 
 	Version string `json:"resource_version"`
 
@@ -50,11 +56,14 @@ func (t *IdentitySharing) ObjId() string {
 
 type IdentitySharingRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+
+	tenantRepo *TenantRepository
 }
 
 func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingRepository {
 	return &IdentitySharingRepository{
-		db: tx,
+		db:         tx,
+		tenantRepo: NewTenantRepository(tx),
 	}
 }
 
@@ -81,6 +90,20 @@ func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySh
 	}
 	ra := raw.(*IdentitySharing)
 	return ra, nil
+}
+
+func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
+	_, err := r.tenantRepo.GetByID(is.SourceTenantUUID)
+	if err != nil {
+		return err
+	}
+	_, err = r.tenantRepo.GetByID(is.DestinationTenantUUID)
+	if err != nil {
+		return err
+	}
+
+	is.Version = NewResourceVersion()
+	return r.save(is)
 }
 
 func (r *IdentitySharingRepository) Update(ra *IdentitySharing) error {
@@ -117,4 +140,22 @@ func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool,
 	}
 
 	return nil
+}
+
+func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]IdentitySharingUUID, error) {
+	iter, err := r.db.Get(IdentitySharingType, "source_tenant_uuid", tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]TenantUUID, 0)
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*IdentitySharing)
+		ids = append(ids, u.UUID)
+	}
+	return ids, nil
 }

@@ -100,6 +100,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),
+		identitySharingPaths(b, storage),
 	)
 
 	return b, nil
