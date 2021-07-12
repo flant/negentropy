@@ -212,8 +212,8 @@ rc-update add vault
 # Add update certificate cronjob
 echo '*/30 * * * * /etc/get-cert.sh --update' >> /etc/crontabs/root
 
-# Add memlock capability
-setcap cap_ipc_lock=+ep /bin/vault
+# Add memlock capability and capability to bind to 443 port as non-root
+setcap cap_ipc_lock,cap_net_bind_service=+ep /bin/vault
 
 # Increase ulimit
 cat <<'EOF' > /etc/conf.d/vault

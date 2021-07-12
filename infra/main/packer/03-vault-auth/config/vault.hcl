@@ -3,12 +3,12 @@ storage "gcs" {
 }
 
 listener "tcp" {
-  address         = "127.0.0.1:8200"
+  address         = "127.0.0.1:443"
   tls_cert_file   = "/tmp/vault.crt"
   tls_key_file    = "/tmp/vault.key"
 }
 
-api_addr = "https://127.0.0.1:8200"
+api_addr = "https://127.0.0.1:443"
 
 seal "gcpckms" {
   project = "$GCP_PROJECT"

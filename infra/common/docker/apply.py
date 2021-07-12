@@ -171,7 +171,7 @@ tfstate_bucket = "{terraform_state_bucket}"
 
         print("export VAULT_TOKEN=%s" % vault_root_token)
 
-        vault_address = 'https://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
+        vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
         print("export VAULT_ADDR=%s" % vault_address)
 
         if vault['name'] == 'conf':
