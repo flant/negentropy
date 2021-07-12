@@ -10,7 +10,3 @@ terraform {
     prefix = "base"
   }
 }
-
-# 1. Create bucket for terraform-state `$GOOGLE_PROJECT-base-terraform-state`
-# 2. Create KMS and key with names from `apply.py` variables template
-# 3. terraform init -backend-config "bucket=$GOOGLE_PROJECT-base-terraform-state"
