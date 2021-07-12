@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -9,8 +10,10 @@ import (
 )
 
 const (
-	GroupType = "group" // also, memdb schema name
-
+	GroupType                        = "group" // also, memdb schema name
+	UserInTenantGroupIndex           = "user_in_tenant_group_index"
+	ServiceAccountInTenantGroupIndex = "service_account_in_tenant_group_index"
+	GroupInTenantGroupIndex          = "group_in_tenant_group_index"
 )
 
 type GroupObjectType string
@@ -33,6 +36,30 @@ func GroupSchema() *memdb.DBSchema {
 						Indexer: &memdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
+						},
+					},
+					UserInTenantGroupIndex: {
+						Name:         UserInTenantGroupIndex,
+						Unique:       false,
+						AllowMissing: true,
+						Indexer: &subjectInTenantGroupIndexer{
+							subjectFieldName: "Users",
+						},
+					},
+					ServiceAccountInTenantGroupIndex: {
+						Name:         ServiceAccountInTenantGroupIndex,
+						Unique:       false,
+						AllowMissing: true,
+						Indexer: &subjectInTenantGroupIndexer{
+							subjectFieldName: "ServiceAccounts",
+						},
+					},
+					GroupInTenantGroupIndex: {
+						Name:         GroupInTenantGroupIndex,
+						Unique:       false,
+						AllowMissing: true,
+						Indexer: &subjectInTenantGroupIndexer{
+							subjectFieldName: "Groups",
 						},
 					},
 				},
@@ -254,4 +281,135 @@ func (r *GroupRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(gr)
+}
+
+func extractGroupUUIDs(iter memdb.ResultIterator) map[GroupUUID]struct{} {
+	ids := map[GroupUUID]struct{}{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		g := raw.(*Group)
+		ids[g.UUID] = struct{}{}
+	}
+	return ids
+}
+
+type subjectInTenantGroupIndexer struct {
+	subjectFieldName string
+}
+
+func (_ subjectInTenantGroupIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	if len(args) != 2 {
+		return nil, ErrNeedDoubleArgument
+	}
+	tenantUUID, ok := args[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
+	}
+	subjectUUID, ok := args[1].(string)
+	if !ok {
+		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
+	}
+	// Add the null character as a terminator
+	return []byte(tenantUUID + subjectUUID + "\x00"), nil
+}
+
+func (s subjectInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
+	usersLabel := "Users"
+	serviceAccountsLabel := "ServiceAccounts"
+	groupsLabel := "Groups"
+	validSubjectFieldNames := map[string]struct{}{usersLabel: {}, serviceAccountsLabel: {}, groupsLabel: {}}
+	if _, valid := validSubjectFieldNames[s.subjectFieldName]; !valid {
+		return false, nil, fmt.Errorf("invalid subject_field_name: %s", s.subjectFieldName)
+	}
+	group, ok := raw.(*Group)
+	if !ok {
+		return false, nil, fmt.Errorf("format error: need Role type, actual passed %#v", raw)
+	}
+	result := [][]byte{}
+	tenantUUID := group.TenantUUID
+	switch s.subjectFieldName {
+	case usersLabel:
+		for i := range group.Users {
+			result = append(result, []byte(tenantUUID+group.Users[i]+"\x00"))
+		}
+	case serviceAccountsLabel:
+		for i := range group.ServiceAccounts {
+			result = append(result, []byte(tenantUUID+group.ServiceAccounts[i]+"\x00"))
+		}
+	case groupsLabel:
+		for i := range group.Groups {
+			result = append(result, []byte(tenantUUID+group.Groups[i]+"\x00"))
+		}
+	}
+	if len(result) == 0 {
+		return false, nil, nil
+	}
+	return true, result, nil
+}
+
+func (r *GroupRepository) findDirectParentGroupsByUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, UserInTenantGroupIndex, tenantUUID, userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return extractGroupUUIDs(iter), nil
+}
+
+func (r *GroupRepository) findDirectParentGroupsByServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, ServiceAccountInTenantGroupIndex, tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	return extractGroupUUIDs(iter), nil
+}
+
+func (r *GroupRepository) findDirectParentGroupsByGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, GroupInTenantGroupIndex, tenantUUID, groupUUID)
+	if err != nil {
+		return nil, err
+	}
+	return extractGroupUUIDs(iter), nil
+}
+
+// returns map with found parent uuids and originally passed uuids
+func (r *GroupRepository) findAllParentGroupsForGroupUUIDs(tenantUUID TenantUUID, groupUUIDs map[GroupUUID]struct{}) (map[GroupUUID]struct{}, error) {
+	resultGroupsSet := groupUUIDs
+	currentGroupsSet := groupUUIDs
+	for len(currentGroupsSet) != 0 {
+		nextSet := map[RoleName]struct{}{}
+		for currentGroupUUID := range currentGroupsSet {
+			candidates, err := r.findDirectParentGroupsByGroupUUID(tenantUUID, currentGroupUUID)
+			if err != nil {
+				return nil, err
+			}
+			for candidate := range candidates {
+				if _, found := resultGroupsSet[candidate]; !found {
+					resultGroupsSet[candidate] = struct{}{}
+					nextSet[candidate] = struct{}{}
+				}
+			}
+		}
+		currentGroupsSet = nextSet
+	}
+	return resultGroupsSet, nil
+}
+
+func (r *GroupRepository) FindAllParentGroupsForUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
+	groups, err := r.findDirectParentGroupsByUserUUID(tenantUUID, userUUID)
+	if err != nil {
+		return nil, err
+	}
+	return r.findAllParentGroupsForGroupUUIDs(tenantUUID, groups)
+}
+
+func (r *GroupRepository) FindAllParentGroupsForServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
+	groups, err := r.findDirectParentGroupsByServiceAccountUUID(tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	return r.findAllParentGroupsForGroupUUIDs(tenantUUID, groups)
 }
