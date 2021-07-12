@@ -62,6 +62,8 @@ type Role struct {
 
 	RequireOneOfFeatureFlags []FeatureFlagName `json:"require_one_of_feature_flags"`
 	IncludedRoles            []IncludedRole    `json:"included_roles"`
+
+	// FIXME add version?
 }
 
 type IncludedRole struct {
@@ -238,4 +240,51 @@ func (r *RoleRepository) FindAllIncludingRoles(role RoleName) (map[RoleName]stru
 		currentSet = nextSet
 	}
 	return result, nil
+}
+
+func (r *RoleRepository) Include(targetName RoleName, adding *IncludedRole) error {
+	// validate target exists
+	target, err := r.Get(targetName)
+	if err != nil {
+		return err
+	}
+
+	// validate source exists
+	if _, err := r.Get(adding.Name); err != nil {
+		return err
+	}
+
+	// TODO validate the template
+
+	for _, present := range target.IncludedRoles {
+		if present.Name == adding.Name {
+			present.OptionsTemplate = adding.OptionsTemplate
+			return r.save(target)
+		}
+	}
+
+	target.IncludedRoles = append(target.IncludedRoles, *adding)
+	return r.save(target)
+}
+
+func (r *RoleRepository) Exclude(targetName, exclName RoleName, ) error {
+	target, err := r.Get(targetName)
+	if err != nil {
+		return err
+	}
+
+	var i int
+	var ir IncludedRole
+
+	for i, ir = range target.IncludedRoles {
+		if ir.Name == exclName {
+			break
+		}
+	}
+
+	cleaned := make([]IncludedRole, len(target.IncludedRoles)-1)
+	copy(cleaned, target.IncludedRoles[:i])
+	copy(cleaned, target.IncludedRoles[i+1:])
+
+	return r.save(target)
 }

@@ -123,6 +123,38 @@ func (b roleBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Include/exclude inherited role
+		{
+
+			Pattern: "role/" + framework.GenericNameRegex("name") + "/include/" + framework.GenericNameRegex("included_name") + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeNameString,
+					Description: "Destination role name",
+					Required:    true,
+				},
+				"included_name": {
+					Type:        framework.TypeNameString,
+					Description: "Role name to include",
+					Required:    true,
+				},
+				"options_template": {
+					Type:        framework.TypeString,
+					Description: "Go template to use outermost values in the included role schema",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleInclude(),
+					Summary:  "Include role",
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleExclude(),
+					Summary:  "Exclude role",
+				},
+			},
+		},
 	}
 }
 
@@ -243,5 +275,59 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 			},
 		}
 		return resp, nil
+	}
+}
+
+func (b *roleBackend) handleInclude() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("including role", "path", req.Path)
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		var (
+			destName = data.Get("name").(string)
+			srcName  = data.Get("included_name").(string)
+			template = data.Get("options_template").(string)
+		)
+
+		incl := &model.IncludedRole{
+			Name:            srcName,
+			OptionsTemplate: template,
+		}
+
+		err := model.NewRoleRepository(tx).Include(destName, incl)
+		if err != nil {
+			return responseErr(req, err)
+		}
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
+	}
+}
+
+func (b *roleBackend) handleExclude() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("excluding role", "path", req.Path)
+
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		var (
+			destName = data.Get("name").(string)
+			srcName  = data.Get("included_name").(string)
+		)
+
+		err := model.NewRoleRepository(tx).Exclude(destName, srcName)
+		if err != nil {
+			return responseErr(req, err)
+		}
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
 }
