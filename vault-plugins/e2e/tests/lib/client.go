@@ -35,13 +35,17 @@ func (t *customHeadersTransport) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 const (
-	baseURL    = "http://127.0.0.1:8200/v1/"
-	pluginPath = "flant_iam"
+	baseURL       = "http://127.0.0.1:8200/v1/"
+	iamPluginPath = "flant_iam"
 
 	RootToken = "root"
 )
 
-func GetVaultClient(token string) *http.Client {
+func GetIamVaultClient(token string) *http.Client {
+	return GetVaultClient(token, iamPluginPath)
+}
+
+func GetVaultClient(token string, pluginPath string) *http.Client {
 	pluginURL, err := url.Parse(baseURL + pluginPath)
 	if err != nil {
 		panic(err)
