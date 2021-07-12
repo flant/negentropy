@@ -380,7 +380,7 @@ func (r *GroupRepository) findAllParentGroupsForGroupUUIDs(tenantUUID TenantUUID
 	resultGroupsSet := groupUUIDs
 	currentGroupsSet := groupUUIDs
 	for len(currentGroupsSet) != 0 {
-		nextSet := map[RoleName]struct{}{}
+		nextSet := map[GroupUUID]struct{}{}
 		for currentGroupUUID := range currentGroupsSet {
 			candidates, err := r.findDirectParentGroupsByGroupUUID(tenantUUID, currentGroupUUID)
 			if err != nil {
