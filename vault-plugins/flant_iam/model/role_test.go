@@ -1,7 +1,6 @@
 package model
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -14,20 +13,6 @@ const (
 	roleName4 = "roleName4"
 	roleName5 = "roleName5"
 )
-
-func dieOnErr(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func checkDeepEqual(t *testing.T, expected, got interface{}) {
-	t.Helper()
-	if !reflect.DeepEqual(expected, got) {
-		t.Fatalf("\nExpected:\n%#v\nGot:\n%#v\n", expected, got)
-	}
-}
 
 var (
 	role1 = Role{
@@ -57,13 +42,6 @@ var (
 	}
 )
 
-func Test_RoleDbSchema(t *testing.T) {
-	schema := RoleSchema()
-	if err := schema.Validate(); err != nil {
-		t.Fatalf("role schema is invalid: %v", err)
-	}
-}
-
 func createRoles(t *testing.T, repo *RoleRepository, roles ...Role) {
 	for _, role := range roles {
 		tmp := role
@@ -72,30 +50,36 @@ func createRoles(t *testing.T, repo *RoleRepository, roles ...Role) {
 	}
 }
 
-func prepareRepoForRolesTests(t *testing.T) *RoleRepository {
-	schema, err := mergeSchema()
-	dieOnErr(t, err)
-	store, err := io.NewMemoryStore(schema, nil)
-	dieOnErr(t, err)
+func roleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	repo := NewRoleRepository(tx)
 	createRoles(t, repo, []Role{role1, role2, role3, role4, role5}...)
-	return repo
+	err := tx.Commit()
+	dieOnErr(t, err)
+}
+
+func Test_RoleDbSchema(t *testing.T) {
+	schema := RoleSchema()
+	if err := schema.Validate(); err != nil {
+		t.Fatalf("role schema is invalid: %v", err)
+	}
 }
 
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
-	repoRole := prepareRepoForRolesTests(t)
+	tx := runFixtures(t, roleFixture).Txn(true)
+	repo := NewRoleRepository(tx)
 
-	roles, err := repoRole.findDirectIncludingRoles(roleName1)
+	roles, err := repo.findDirectIncludingRoles(roleName1)
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{roleName3: {}, roleName4: {}}, roles)
 }
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
-	repoRole := prepareRepoForRolesTests(t)
+	tx := runFixtures(t, roleFixture).Txn(true)
+	repo := NewRoleRepository(tx)
 
-	roles, err := repoRole.FindAllIncludingRoles(roleName1)
+	roles, err := repo.FindAllIncludingRoles(roleName1)
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{roleName3: {}, roleName4: {}, roleName5: {}}, roles)
