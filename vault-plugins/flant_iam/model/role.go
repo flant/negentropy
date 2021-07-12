@@ -275,7 +275,7 @@ func (r *RoleRepository) Exclude(name, exclName RoleName) error {
 func includeRole(role *Role, subRole *IncludedRole) {
 	for i, present := range role.IncludedRoles {
 		if present.Name == subRole.Name {
-			role.IncludedRoles[i] = *subRole // copying the string
+			role.IncludedRoles[i] = *subRole
 			return
 		}
 	}
