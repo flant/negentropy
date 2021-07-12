@@ -302,7 +302,8 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, user, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -330,7 +331,8 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, user, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -366,7 +368,8 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, user, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -426,7 +429,8 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, multipass, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": multipass}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -472,7 +476,8 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		return responseWithData(mp)
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

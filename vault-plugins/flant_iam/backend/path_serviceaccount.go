@@ -447,7 +447,8 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -481,7 +482,8 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -517,7 +519,8 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, serviceAccount, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -580,7 +583,8 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, multipass, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": multipass}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -627,7 +631,9 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		return responseWithData(mp)
+
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -748,7 +754,9 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		return responseWithData(pass)
+
+		resp := &logical.Response{Data: map[string]interface{}{"password": model.OmitSensitive(pass)}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

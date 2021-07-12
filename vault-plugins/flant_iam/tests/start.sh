@@ -67,7 +67,6 @@ if [[ "${ci_mode}x" == "x" ]]; then
     -v "$PWD/flant_iam_auth:/go/src/app/flant_iam_auth" \
     -v "$PWD/flant_gitopts:/go/src/app/flant_gitopts" \
     -v "$PWD/shared:/go/src/app/shared" \
-    -v /tmp/vault-build:/go/pkg/mod \
     -e CGO_ENABLED=1 \
     tetafro/golang-gcc:1.16-alpine \
     sh -c "echo -e '#!/bin/sh\ncd \$1 && go build -tags musl -o /src/build/\$1 cmd/\$1/main.go' > /gobuild.sh && chmod +x /gobuild.sh && sleep infinity"

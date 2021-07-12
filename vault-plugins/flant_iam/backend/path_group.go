@@ -217,7 +217,8 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -254,7 +255,8 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -289,7 +291,8 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

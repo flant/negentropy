@@ -1,22 +1,28 @@
 import { expect } from "chai"
-import { API } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import {
-    EndpointBuilder,
-    genMultipassPayload,
-    genUserPayload,
-    SubTenantEntrypointBuilder,
-} from "./lib/subtenant.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
+import { genMultipassPayload, genTenantPayload, genUserPayload } from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/user/{uid}
 
 describe("User", function () {
     const rootClient = getClient(rootToken)
-    const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
-    const entrypointBuilder = new SubTenantEntrypointBuilder("user")
-    const rootUserClient = new API(rootClient, entrypointBuilder)
+    const rootTenantAPI = new API(
+        rootClient,
+        new EndpointBuilder(["tenant"]),
+        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+    )
+
+    function getAPIClient(client) {
+        return new API(
+            client,
+            new EndpointBuilder(["tenant", "user"]),
+            new SingleFieldReponseMapper("data.user", "data.uuids"),
+        )
+    }
+
+    const rootUserAPI = getAPIClient(rootClient)
 
     function genPayload(override) {
         return genUserPayload(override)
@@ -24,8 +30,7 @@ describe("User", function () {
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        return await rootTenantAPI.create({ payload })
     }
 
     async function createTenantId() {
@@ -35,32 +40,24 @@ describe("User", function () {
 
     async function createUser(tid) {
         const payload = genPayload()
-        const { data: body } = await rootUserClient.create({
+        return await rootUserAPI.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     it("can be created", async () => {
         const tid = await createTenantId()
 
-        const { data: body } = await rootUserClient.create({
+        const user = await rootUserAPI.create({
             params: { tenant: tid },
             payload: genPayload(),
         })
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
-        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(user).to.include.keys("uuid", "tenant_uuid", "resource_version")
+        expect(user.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(user.tenant_uuid).to.eq(tid)
+        expect(user.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -68,37 +65,32 @@ describe("User", function () {
         const tid = tenant.uuid
         // create
         const payload = genPayload()
-        const { data: created } = await rootUserClient.create({
+        const created = await rootUserAPI.create({
             params: { tenant: tid },
             payload,
         })
-        const uid = created.data.uuid
+        const uid = created.uuid
         const generated = {
             email: "",
-            uuid: created.data.uuid,
-            tenant_uuid: created.data.tenant_uuid,
-            resource_version: created.data.resource_version,
+            uuid: created.uuid,
+            tenant_uuid: created.tenant_uuid,
+            resource_version: created.resource_version,
             full_identifier: payload.identifier + "@" + tenant.identifier,
             origin: "iam",
             extensions: null,
         }
 
         // read
-        const { data: read } = await rootUserClient.read({
+        const read = await rootUserAPI.read({
             params: { tenant: tid, user: uid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
-        expect(read.data).to.deep.eq(
-            created.data,
+        expect(read).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
+        expect(read).to.deep.eq(
+            created,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {
@@ -112,16 +104,14 @@ describe("User", function () {
             resource_version: created.resource_version,
         })
         const params = { tenant: tid, user: created.uuid }
-        const { data: updated } = await rootUserClient.update({
+        const updated = await rootUserAPI.update({
             params,
             payload,
         })
 
         // read
-        const { data: read } = await rootUserClient.read({ params })
-        const sub = read.data
-
-        expect(read.data).to.deep.eq(updated.data)
+        const read = await rootUserAPI.read({ params })
+        expect(read).to.deep.eq(updated)
     })
 
     it("can be deleted", async () => {
@@ -133,10 +123,10 @@ describe("User", function () {
 
         // delete
         const params = { tenant: tid, user: uid }
-        await rootUserClient.delete({ params })
+        await rootUserAPI.delete({ params })
 
         // read
-        await rootUserClient.read({ params, opts: expectStatus(404) })
+        await rootUserAPI.read({ params, opts: expectStatus(404) })
     })
 
     it("can be listed", async () => {
@@ -147,11 +137,10 @@ describe("User", function () {
 
         // delete
         const params = { tenant: tid }
-        const { data: body } = await rootUserClient.list({ params })
+        const list = await rootUserAPI.list({ params })
 
-        expect(body.data).to.be.an("object").and.include.keys("uuids")
-        expect(body.data.uuids).to.be.an("array").of.length(1) // if not 1, maybe users are not filtered by tenants
-        expect(body.data.uuids[0]).to.eq(uid)
+        expect(list).to.be.an("array").of.length(1) // if not 1, maybe users are not filtered by tenants
+        expect(list[0]).to.eq(uid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -162,7 +151,7 @@ describe("User", function () {
 
         const params = { tenant: tid, user: user.uuid }
         const opts = expectStatus(404)
-        await rootUserClient.read({ params, opts })
+        await rootUserAPI.read({ params, opts })
     })
 
     describe("when does not exist", () => {
@@ -174,11 +163,11 @@ describe("User", function () {
         })
 
         it("cannot read, gets 404", async () => {
-            await rootUserClient.read({ params, opts })
+            await rootUserAPI.read({ params, opts })
         })
 
         it("cannot update, gets 404", async () => {
-            await rootUserClient.update({
+            await rootUserAPI.update({
                 params,
                 opts,
                 payload: genTenantPayload(),
@@ -186,7 +175,7 @@ describe("User", function () {
         })
 
         it("cannot delete, gets 404", async () => {
-            await rootUserClient.delete({ params, opts })
+            await rootUserAPI.delete({ params, opts })
         })
     })
 
@@ -201,7 +190,7 @@ describe("User", function () {
 
         function runWithClient(client, expectedStatus) {
             const opts = expectStatus(expectedStatus)
-            const unauth = new API(client, entrypointBuilder)
+            const unauth = getAPIClient(client)
             let payload = {}
 
             const params = {}
@@ -222,11 +211,11 @@ describe("User", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const { data } = await rootUserClient.create({
+                const user = await rootUserAPI.create({
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const uid = user.uuid
 
                 await unauth.read({
                     params: { ...params, user: uid },
@@ -235,11 +224,11 @@ describe("User", function () {
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const { data } = await rootUserClient.create({
+                const user = await rootUserAPI.create({
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const uid = user.uuid
                 await unauth.update({
                     params: { ...params, user: uid },
                     payload,
@@ -248,11 +237,11 @@ describe("User", function () {
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await rootUserClient.create({
+                const user = await rootUserAPI.create({
                     params,
                     payload,
                 })
-                const uid = data.data.uuid
+                const uid = user.uuid
                 await unauth.delete({
                     params: { ...params, user: uid },
                     opts,
@@ -262,18 +251,18 @@ describe("User", function () {
     })
 
     describe("multipass", function () {
-        const endpointBuilder = new EndpointBuilder([
-            "tenant",
-            "user",
-            "multipass",
-        ])
-        const rootMPClient = new API(rootClient, endpointBuilder)
+        const endpointBuilder = new EndpointBuilder(["tenant", "user", "multipass"])
+        const rootMPClient = new API(
+            rootClient,
+            endpointBuilder,
+            new SingleFieldReponseMapper("data.multipass", "data.uuids"),
+        )
 
         async function createMultipass(t, u, override = {}) {
             const payload = genMultipassPayload(override)
             const params = { tenant: t, user: u }
-            const { data } = await rootMPClient.create({ params, payload })
-            return data.data
+            const mp = await rootMPClient.create({ params, payload })
+            return mp
         }
 
         it("can be created", async () => {
@@ -336,8 +325,7 @@ describe("User", function () {
                 user: u.uuid,
                 multipass: created.uuid,
             }
-            const { data } = await rootMPClient.read({ params })
-            const read = data.data
+            const read = await rootMPClient.read({ params })
 
             expect(read).to.deep.eq(created)
         })
@@ -346,8 +334,7 @@ describe("User", function () {
             const t = await createTenant()
             const u = await createUser(t.uuid)
 
-            const createId = () =>
-                createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
+            const createId = () => createMultipass(t.uuid, u.uuid).then((mp) => mp.uuid)
 
             const ids = await Promise.all([createId(), createId(), createId()])
 
@@ -356,9 +343,9 @@ describe("User", function () {
                 user: u.uuid,
             }
 
-            const { data } = await rootMPClient.list({ params })
+            const uuids = await rootMPClient.list({ params })
 
-            expect(data.data.uuids).to.have.all.members(ids)
+            expect(uuids).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {
@@ -388,7 +375,7 @@ describe("User", function () {
                 multipass: createdMP.uuid,
             }
 
-            const { data } = await rootMPClient.update({
+            await rootMPClient.update({
                 params,
                 payload: genMultipassPayload(),
                 opts: expectStatus(405),

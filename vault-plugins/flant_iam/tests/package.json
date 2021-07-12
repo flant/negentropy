@@ -13,6 +13,7 @@
         "axios": "^0.21.1",
         "chai": "^4.3.4",
         "faker": "^5.5.3",
+        "lodash": "^4.17.21",
         "mocha": "^8.3.2",
         "organize-imports-cli": "^0.8.0",
         "prettier": "^2.2.1",

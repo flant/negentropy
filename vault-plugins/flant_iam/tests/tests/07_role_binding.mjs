@@ -1,39 +1,39 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
+    genGroupPayload,
     genRoleBindingPayload,
-    SubTenantEntrypointBuilder,
-} from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
-import { genGroupPayload } from "./lib/subtenant.mjs"
-import { genUserPayload } from "./lib/subtenant.mjs"
-import { genServiceAccountPayload } from "./lib/subtenant.mjs"
+    genServiceAccountPayload,
+    genTenantPayload,
+    genUserPayload,
+} from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/role_binding/{rbid}
 
 describe("Role Binding", function () {
     const rootClient = getClient(rootToken)
-    const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
-    // Rolebinding API access
-    const roleBindingEntrypointBuilder = new SubTenantEntrypointBuilder(
-        "role_binding",
-    )
-    const rootRoleBindingClient = new API(
+    const rootTenantAPI = new API(
         rootClient,
-        roleBindingEntrypointBuilder,
+        new EndpointBuilder(["tenant"]),
+        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
     )
+
+    function getSubtenantClient(client, name) {
+        return new API(
+            client,
+            new EndpointBuilder(["tenant", name]),
+            new SingleFieldReponseMapper("data." + name, "data.uuids"),
+        )
+    }
+
+    const rootRoleBindingClient = getSubtenantClient(rootClient, "role_binding")
 
     // Clients to provide dependencies
-    const userEntrypointBuilder = new SubTenantEntrypointBuilder("user")
-    const groupEntrypointBuilder = new SubTenantEntrypointBuilder("group")
-    const saEntrypointBuilder = new SubTenantEntrypointBuilder(
-        "service_account",
-    )
-    const rootUserClient = new API(rootClient, userEntrypointBuilder)
-    const rootGroupClient = new API(rootClient, groupEntrypointBuilder)
-    const rootServiceAccountClient = new API(rootClient, saEntrypointBuilder)
+    const rootUserClient = getSubtenantClient(rootClient, "user")
+    const rootServiceAccountClient = getSubtenantClient(rootClient, "service_account")
+    const rootGroupClient = getSubtenantClient(rootClient, "group")
 
     function genPayload(override) {
         return genRoleBindingPayload(override)
@@ -41,8 +41,7 @@ describe("Role Binding", function () {
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        return await rootTenantAPI.create({ payload })
     }
 
     async function createTenantId() {
@@ -52,11 +51,10 @@ describe("Role Binding", function () {
 
     async function createRoleBinding(tid, overrides) {
         const payload = genPayload(overrides)
-        const { data: body } = await rootRoleBindingClient.create({
+        return await rootRoleBindingClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     async function createGroup(tid) {
@@ -65,40 +63,34 @@ describe("Role Binding", function () {
         const payload = genGroupPayload({
             subjects: [subject("service_account", sa.uuid)],
         })
-        const { data: body } = await rootGroupClient.create({
+        return await rootGroupClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     async function createServiceAccount(tid) {
         const payload = genServiceAccountPayload()
-        const { data: body } = await rootServiceAccountClient.create({
+        return await rootServiceAccountClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     async function createUser(tid) {
         const payload = genUserPayload()
-        const { data: body } = await rootUserClient.create({
+        return await rootUserClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     async function createSubjects(tid) {
-        const user = await createUser(tid)
-        const group = await createGroup(tid)
-        const sa = await createServiceAccount(tid)
-        return [
-            subject("group", group.uuid),
-            subject("user", user.uuid),
-            subject("service_account", sa.uuid),
-        ]
+        return await Promise.all([
+            createUser(tid).then((x) => subject("user", x.uuid)),
+            createGroup(tid).then((x) => subject("group", x.uuid)),
+            createServiceAccount(tid).then((x) => subject("service_account", x.uuid)),
+        ])
     }
 
     function subject(type, id) {
@@ -109,25 +101,17 @@ describe("Role Binding", function () {
         const tid = await createTenantId()
         const subjects = await createSubjects(tid)
 
-        const { data: body } = await rootRoleBindingClient.create({
+        const rb = await rootRoleBindingClient.create({
             params: { tenant: tid },
             payload: genPayload({ subjects }),
         })
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-            "subjects",
-        )
-        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(rb).to.include.keys("uuid", "tenant_uuid", "resource_version", "subjects")
+        expect(rb.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(rb.tenant_uuid).to.eq(tid)
+        expect(rb.resource_version).to.be.a("string").of.length.greaterThan(5)
 
-        expect(body.data.subjects).to.deep.eq(subjects)
+        expect(rb.subjects).to.deep.eq(subjects)
     })
 
     it("can be read", async () => {
@@ -137,36 +121,31 @@ describe("Role Binding", function () {
 
         // create
         const payload = genPayload({ subjects })
-        const { data: created } = await rootRoleBindingClient.create({
+        const created = await rootRoleBindingClient.create({
             params: { tenant: tid },
             payload,
         })
-        const rbid = created.data.uuid
+        const rbid = created.uuid
         const generated = {
-            uuid: created.data.uuid,
-            tenant_uuid: created.data.tenant_uuid,
-            resource_version: created.data.resource_version,
+            uuid: created.uuid,
+            tenant_uuid: created.tenant_uuid,
+            resource_version: created.resource_version,
         }
 
         // read
         const params = { tenant: tid, role_binding: rbid }
-        const { data: read } = await rootRoleBindingClient.read({ params })
+        const read = await rootRoleBindingClient.read({ params })
 
         const subResp = { ...payload, ...generated }
         delete subResp.ttl
 
-        expect(read.data).to.deep.contain(
-            subResp,
-            "must contain generated fields",
-        )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read).to.deep.contain(subResp, "must contain generated fields")
+        expect(read.resource_version).to.be.a("string").of.length.greaterThan(5)
 
-        expect(read.data.valid_till).to.lt(Date.now() + payload.ttl)
+        expect(read.valid_till).to.lt(Date.now() + payload.ttl)
 
-        expect(read.data).to.deep.eq(
-            created.data,
+        expect(read).to.deep.eq(
+            created,
             "reading and creation responses should contain the same data",
         )
     })
@@ -185,15 +164,15 @@ describe("Role Binding", function () {
             subjects: newSubjects,
         })
         const params = { tenant: tid, role_binding: created.uuid }
-        const { data: updated } = await rootRoleBindingClient.update({
+        const updated = await rootRoleBindingClient.update({
             params,
             payload,
         })
 
         // read
-        const { data: read } = await rootRoleBindingClient.read({ params })
+        const read = await rootRoleBindingClient.read({ params })
 
-        expect(read.data).to.deep.eq(updated.data)
+        expect(read).to.deep.eq(updated)
     })
 
     it("can be deleted", async () => {
@@ -221,11 +200,10 @@ describe("Role Binding", function () {
 
         // delete
         const params = { tenant: tid }
-        const { data: body } = await rootRoleBindingClient.list({ params })
+        const list = await rootRoleBindingClient.list({ params })
 
-        expect(body.data).to.be.an("object").and.include.keys("uuids")
-        expect(body.data.uuids).to.be.an("array").of.length(1) // if not 1, maybe roleBindings are not filtered by tenants
-        expect(body.data.uuids[0]).to.eq(rbid)
+        expect(list).to.be.an("array").of.length(1) // if not 1, maybe roleBindings are not filtered by tenants
+        expect(list[0]).to.eq(rbid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -276,7 +254,7 @@ describe("Role Binding", function () {
 
         function runWithClient(client, expectedStatus) {
             const opts = expectStatus(expectedStatus)
-            const unauth = new API(client, roleBindingEntrypointBuilder)
+            const unauth = getSubtenantClient(client, "role_binding")
             let payload = {}
 
             const params = {}
@@ -298,11 +276,11 @@ describe("Role Binding", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const { data } = await rootRoleBindingClient.create({
+                const rb = await rootRoleBindingClient.create({
                     params,
                     payload,
                 })
-                const rbid = data.data.uuid
+                const rbid = rb.uuid
 
                 await unauth.read({
                     params: { ...params, role_binding: rbid },
@@ -311,11 +289,11 @@ describe("Role Binding", function () {
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const { data } = await rootRoleBindingClient.create({
+                const rb = await rootRoleBindingClient.create({
                     params,
                     payload,
                 })
-                const rbid = data.data.uuid
+                const rbid = rb.uuid
                 await unauth.update({
                     params: { ...params, role_binding: rbid },
                     payload,
@@ -324,11 +302,11 @@ describe("Role Binding", function () {
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await rootRoleBindingClient.create({
+                const rb = await rootRoleBindingClient.create({
                     params,
                     payload,
                 })
-                const rbid = data.data.uuid
+                const rbid = rb.uuid
                 await unauth.delete({
                     params: { ...params, role_binding: rbid },
                     opts,

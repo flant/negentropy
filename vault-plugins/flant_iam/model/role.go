@@ -9,7 +9,15 @@ import (
 )
 
 const (
-	RoleType = "role" // also, memdb schema name
+	RoleType      = "role" // also, memdb schema name
+	RoleSopeIndex = "scope"
+)
+
+type RoleScope string
+
+const (
+	GroupScopeTenant  RoleScope = "tenant"
+	GroupScopeProject RoleScope = "project"
 )
 
 func RoleSchema() *memdb.DBSchema {
@@ -25,10 +33,10 @@ func RoleSchema() *memdb.DBSchema {
 							Field: "Name",
 						},
 					},
-					"type": {
-						Name: "type",
+					RoleSopeIndex: {
+						Name: RoleSopeIndex,
 						Indexer: &memdb.StringFieldIndex{
-							Field: "Type",
+							Field: "Scope",
 						},
 					},
 				},
@@ -37,16 +45,9 @@ func RoleSchema() *memdb.DBSchema {
 	}
 }
 
-type GroupScope string
-
-const (
-	GroupScopeTenant  GroupScope = "tenant"
-	GroupScopeProject GroupScope = "project"
-)
-
 type Role struct {
-	Name RoleName   `json:"name"`
-	Type GroupScope `json:"type"`
+	Name  RoleName  `json:"name"`
+	Scope RoleScope `json:"scope"`
 
 	Description   string `json:"description"`
 	OptionsSchema string `json:"options_schema"`
@@ -100,7 +101,7 @@ func (r *RoleRepository) Update(updated *Role) error {
 		return err
 	}
 
-	updated.Type = stored.Type // type cannot be changed
+	updated.Scope = stored.Scope // type cannot be changed
 
 	// TODO validate feature flags: role must not become unaccessable in the scope where it is used
 	// TODO forbid backwards-incompatible changes of the options schema

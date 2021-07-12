@@ -115,7 +115,8 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, featureFlag, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"feature_flag": featureFlag}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -127,11 +128,8 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {

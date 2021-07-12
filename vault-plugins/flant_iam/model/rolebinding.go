@@ -57,7 +57,7 @@ type RoleBinding struct {
 	AnyProject bool          `json:"any_project"`
 	Projects   []ProjectUUID `json:"projects"`
 
-	Roles []BoundRole `json:"-"`
+	Roles []BoundRole `json:"roles"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -74,6 +74,7 @@ func (u *RoleBinding) ObjId() string {
 
 type BoundRole struct {
 	Name    RoleName               `json:"name"`
+	Scoep   RoleScope              `json:"scope"`
 	Version string                 `json:"resource_version"`
 	Options map[string]interface{} `json:"options"`
 }
