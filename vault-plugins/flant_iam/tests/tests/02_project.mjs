@@ -10,13 +10,13 @@ describe("Project", function () {
     const rootTenantAPI = new API(
         rootClient,
         new EndpointBuilder(["tenant"]),
-        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+        new SingleFieldReponseMapper("data.tenant", "data.tenants"),
     )
     function getAPIClient(client) {
         return new API(
             client,
             new EndpointBuilder(["tenant", "project"]),
-            new SingleFieldReponseMapper("data.project", "data.uuids"),
+            new SingleFieldReponseMapper("data.project", "data.projects"),
         )
     }
 
@@ -135,7 +135,7 @@ describe("Project", function () {
         const list = await rootProjectAPI.list({ params })
 
         expect(list).to.be.an("array").of.length(1) // if not 1, maybe projects are not filtered by tenants
-        expect(list[0]).to.eq(pid)
+        expect(list[0].uuid).to.eq(pid)
     })
 
     it("can be deleted by the tenant deletion", async () => {

@@ -79,7 +79,7 @@ func (r *ExtensionRepository) Delete(origin ObjectOrigin, ownerUUID OwnerUUID) e
 		NewServiceAccountRepository(r.db),
 		NewRoleBindingRepository(r.db),
 		NewGroupRepository(r.db),
-		// TODO: case MultipassType repo for ServiceAccount
+		NewMultipassRepository(r.db),
 	}
 
 	for _, repo := range repos {

@@ -16,14 +16,14 @@ describe("Service Account", function () {
     const rootTenantAPI = new API(
         rootClient,
         new EndpointBuilder(["tenant"]),
-        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+        new SingleFieldReponseMapper("data.tenant", "data.tenants"),
     )
 
     function getAPIClient(client) {
         return new API(
             client,
             new EndpointBuilder(["tenant", "service_account"]),
-            new SingleFieldReponseMapper("data.service_account", "data.uuids"),
+            new SingleFieldReponseMapper("data.service_account", "data.service_accounts"),
         )
     }
 
@@ -143,7 +143,7 @@ describe("Service Account", function () {
         const list = await rootServiceAccountClient.list({ params })
 
         expect(list).to.be.an("array").of.length(1) // if not 1, maybe serviceAccounts are not filtered by tenants
-        expect(list[0]).to.eq(sa.uuid)
+        expect(list[0].uuid).to.eq(sa.uuid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -257,7 +257,7 @@ describe("Service Account", function () {
         const rootMPClient = new API(
             rootClient,
             endpointBuilder,
-            new SingleFieldReponseMapper("data.multipass", "data.uuids"),
+            new SingleFieldReponseMapper("data.multipass", "data.multipasses"),
         )
 
         async function createMultipass(t, u, override = {}) {
@@ -346,7 +346,7 @@ describe("Service Account", function () {
 
             const list = await rootMPClient.list({ params })
 
-            expect(list).to.have.all.members(ids)
+            expect(list.map((mp) => mp.uuid)).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {
@@ -389,7 +389,7 @@ describe("Service Account", function () {
         const rootPasswordClient = new API(
             rootClient,
             endpointBuilder,
-            new SingleFieldReponseMapper("data.password", "data.uuids"),
+            new SingleFieldReponseMapper("data.password", "data.passwords"),
         )
 
         async function createPassword(t, sa, override = {}) {
@@ -479,7 +479,7 @@ describe("Service Account", function () {
 
             const list = await rootPasswordClient.list({ params })
 
-            expect(list).to.have.all.members(ids)
+            expect(list.map((x) => x.uuid)).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {

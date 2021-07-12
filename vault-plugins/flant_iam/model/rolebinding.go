@@ -177,22 +177,22 @@ func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id RoleBindingUUID) 
 	return r.delete(id)
 }
 
-func (r *RoleBindingRepository) List(tid TenantUUID) ([]RoleBindingUUID, error) {
+func (r *RoleBindingRepository) List(tid TenantUUID) ([]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tid)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []RoleBindingUUID{}
+	list := []*RoleBinding{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		u := raw.(*RoleBinding)
-		ids = append(ids, u.UUID)
+		rb := raw.(*RoleBinding)
+		list = append(list, rb)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *RoleBindingRepository) DeleteByTenant(tid TenantUUID) error {

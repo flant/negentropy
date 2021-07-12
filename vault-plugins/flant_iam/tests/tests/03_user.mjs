@@ -11,14 +11,14 @@ describe("User", function () {
     const rootTenantAPI = new API(
         rootClient,
         new EndpointBuilder(["tenant"]),
-        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+        new SingleFieldReponseMapper("data.tenant", "data.tenants"),
     )
 
     function getAPIClient(client) {
         return new API(
             client,
             new EndpointBuilder(["tenant", "user"]),
-            new SingleFieldReponseMapper("data.user", "data.uuids"),
+            new SingleFieldReponseMapper("data.user", "data.users"),
         )
     }
 
@@ -140,7 +140,7 @@ describe("User", function () {
         const list = await rootUserAPI.list({ params })
 
         expect(list).to.be.an("array").of.length(1) // if not 1, maybe users are not filtered by tenants
-        expect(list[0]).to.eq(uid)
+        expect(list[0].uuid).to.eq(uid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -255,7 +255,7 @@ describe("User", function () {
         const rootMPClient = new API(
             rootClient,
             endpointBuilder,
-            new SingleFieldReponseMapper("data.multipass", "data.uuids"),
+            new SingleFieldReponseMapper("data.multipass", "data.multipasses"),
         )
 
         async function createMultipass(t, u, override = {}) {
@@ -343,9 +343,12 @@ describe("User", function () {
                 user: u.uuid,
             }
 
-            const uuids = await rootMPClient.list({ params })
+            const list = await rootMPClient.list({ params })
 
-            expect(uuids).to.have.all.members(ids)
+            expect(list.map((mp) => mp.uuid)).to.have.all.members(ids)
+            for (const mp of list) {
+                expect(mp.salt).to.be.undefined
+            }
         })
 
         it("can be deleted", async () => {

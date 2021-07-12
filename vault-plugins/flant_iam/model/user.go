@@ -162,22 +162,22 @@ func (r *UserRepository) Delete(origin ObjectOrigin, id UserUUID) error {
 	return r.delete(id)
 }
 
-func (r *UserRepository) List(tenantID TenantUUID) ([]UserUUID, error) {
+func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
 	iter, err := r.db.Get(UserType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []UserUUID{}
+	list := []*User{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		u := raw.(*User)
-		ids = append(ids, u.UUID)
+		list = append(list, u)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *UserRepository) DeleteByTenant(tenantUUID TenantUUID) error {

@@ -192,22 +192,22 @@ func (r *ServiceAccountRepository) Delete(origin ObjectOrigin, id ServiceAccount
 	return r.delete(id)
 }
 
-func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]ServiceAccountUUID, error) {
+func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount, error) {
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	list := []*ServiceAccount{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		u := raw.(*ServiceAccount)
-		ids = append(ids, u.UUID)
+		sa := raw.(*ServiceAccount)
+		list = append(list, sa)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *ServiceAccountRepository) DeleteByTenant(tenantUUID TenantUUID) error {

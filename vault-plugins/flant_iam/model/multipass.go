@@ -205,7 +205,7 @@ func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 	return multipass, nil
 }
 
-func (r *MultipassRepository) List(filter *Multipass) ([]MultipassUUID, error) {
+func (r *MultipassRepository) List(filter *Multipass) ([]*Multipass, error) {
 	err := r.validate(filter)
 	if err != nil {
 		return nil, err
@@ -216,16 +216,16 @@ func (r *MultipassRepository) List(filter *Multipass) ([]MultipassUUID, error) {
 		return nil, err
 	}
 
-	ids := []MultipassUUID{}
+	list := []*Multipass{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		mp := raw.(*Multipass)
-		ids = append(ids, mp.UUID)
+		list = append(list, mp)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *MultipassRepository) SetExtension(ext *Extension) error {

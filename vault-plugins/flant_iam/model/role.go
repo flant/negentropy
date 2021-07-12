@@ -139,22 +139,22 @@ func (r *RoleRepository) delete(name string) error {
 	return r.db.Delete(RoleType, role)
 }
 
-func (r *RoleRepository) List() ([]RoleName, error) {
+func (r *RoleRepository) List() ([]*Role, error) {
 	iter, err := r.db.Get(RoleType, PK)
 	if err != nil {
 		return nil, err
 	}
 
-	names := []RoleName{}
+	list := []*Role{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		t := raw.(*Role)
-		names = append(names, t.Name)
+		role := raw.(*Role)
+		list = append(list, role)
 	}
-	return names, nil
+	return list, nil
 }
 
 func (r *RoleRepository) Sync(objID string, data []byte) error {

@@ -11,7 +11,7 @@ describe("Tenant", function () {
         return new API(
             client,
             new EndpointBuilder(["tenant"]),
-            new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+            new SingleFieldReponseMapper("data.tenant", "data.tenants"),
         )
     }
 
@@ -159,7 +159,8 @@ describe("Tenant", function () {
 
         const list = await root.list()
 
-        expect(list).to.be.an("array").and.to.contain(t.uuid)
+        expect(list).to.be.an("array")
+        expect(list.some((x) => x.uuid === t.uuid))
     })
 
     it("has identifying fields in list", async () => {
@@ -169,7 +170,7 @@ describe("Tenant", function () {
 
         const list = await root.list()
 
-        expect(list).to.include(id)
+        expect(list.map((t) => t.uuid)).to.include(id)
     })
 
     describe("when does not exist", () => {

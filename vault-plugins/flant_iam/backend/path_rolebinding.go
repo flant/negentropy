@@ -333,14 +333,14 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingRepository(tx)
 
-		list, err := repo.List(tenantID)
+		roleBindings, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"role_bindings": roleBindings,
 			},
 		}
 		return resp, nil

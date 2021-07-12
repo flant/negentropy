@@ -17,14 +17,14 @@ describe("Role Binding", function () {
     const rootTenantAPI = new API(
         rootClient,
         new EndpointBuilder(["tenant"]),
-        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+        new SingleFieldReponseMapper("data.tenant", "data.tenants"),
     )
 
     function getSubtenantClient(client, name) {
         return new API(
             client,
             new EndpointBuilder(["tenant", name]),
-            new SingleFieldReponseMapper("data." + name, "data.uuids"),
+            new SingleFieldReponseMapper(`data.${name}`, `data.${name}s`),
         )
     }
 
@@ -203,7 +203,7 @@ describe("Role Binding", function () {
         const list = await rootRoleBindingClient.list({ params })
 
         expect(list).to.be.an("array").of.length(1) // if not 1, maybe roleBindings are not filtered by tenants
-        expect(list[0]).to.eq(rbid)
+        expect(list[0].uuid).to.eq(rbid)
     })
 
     it("can be deleted by the tenant deletion", async () => {

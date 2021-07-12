@@ -6,6 +6,7 @@ import { genRoleCreatePayload } from "./lib/payloads.mjs"
 
 describe("Role", function () {
     const rootClient = getClient(rootToken)
+
     function getAPIClient(client) {
         return new API(
             client,
@@ -13,13 +14,14 @@ describe("Role", function () {
             new SingleFieldReponseMapper("data.role", "data.names"),
         )
     }
+
     const root = getAPIClient(rootClient)
 
     describe("payload", () => {
         describe("name", () => {
             after("clean", async () => {
                 const names = await root.list()
-                const deletions = names.map((role) => root.delete({ params: { role } }))
+                const deletions = names.map((role) => root.delete({ params: { role: role.name } }))
                 await Promise.all(deletions)
             })
 
@@ -100,7 +102,7 @@ describe("Role", function () {
 
         const list = await root.list()
 
-        expect(list).to.include(role.name)
+        expect(list.map((r) => r.name)).to.include(role.name)
     })
 
     it("can be deleted", async () => {

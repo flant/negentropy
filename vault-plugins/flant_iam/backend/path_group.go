@@ -303,14 +303,14 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewGroupRepository(tx)
 
-		list, err := repo.List(tenantID)
+		groups, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"groups": groups,
 			},
 		}
 		return resp, nil

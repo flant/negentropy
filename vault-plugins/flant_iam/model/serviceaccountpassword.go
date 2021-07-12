@@ -151,7 +151,7 @@ func (r *ServiceAccountPasswordRepository) GetByID(id string) (*ServiceAccountPa
 	return pass, nil
 }
 
-func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]ServiceAccountPasswordUUID, error) {
+func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]*ServiceAccountPassword, error) {
 	err := r.validate(filter)
 	if err != nil {
 		return nil, err
@@ -162,16 +162,16 @@ func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) 
 		return nil, err
 	}
 
-	ids := []ServiceAccountPasswordUUID{}
+	list := []*ServiceAccountPassword{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		p := raw.(*ServiceAccountPassword)
-		ids = append(ids, p.UUID)
+		list = append(list, p)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error {

@@ -100,16 +100,16 @@ func (r *FeatureFlagRepository) List() ([]FeatureFlagName, error) {
 		return nil, err
 	}
 
-	ids := []FeatureFlagName{}
+	list := []FeatureFlagName{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		ff := raw.(*FeatureFlag)
-		ids = append(ids, ff.Name)
+		list = append(list, ff.Name)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
