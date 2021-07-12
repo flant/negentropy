@@ -21,7 +21,7 @@ build:
 	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vault-plugin-flant-gitops cmd/flant_gitops/main.go
 
 start:
-	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./vault/plugins -log-level trace
+	vault server -dev -dev-listen-address 0.0.0.0:8200 -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
 enable:
 	VAULT_ADDR='http://127.0.0.1:8200' vault secrets enable -path=flant-gitops vault-plugin-flant-gitops
@@ -29,7 +29,7 @@ enable:
 	VAULT_ADDR='http://127.0.0.1:8200' vault policy write -ca-cert=examples/conf/ca-cert.pem good examples/conf/good.hcl
 	VAULT_ADDR='http://127.0.0.1:8200' vault write -ca-cert=examples/conf/ca-cert.pem auth/approle/role/good secret_id_ttl=30m token_ttl=90s token_policies=good
 	VAULT_ADDR='http://127.0.0.1:8200' vault write -ca-cert=examples/conf/ca-cert.pem flant-gitops/configure_vault_access \
-                vault_addr="http://localhost:8200" \
+                vault_addr="http://$$(docker network inspect bridge -f '{{ (index .IPAM.Config 0).Gateway }}'):8200" \
                 vault_tls_server_name="localhost" \
 		role_name="good" \
 		secret_id_ttl="120m" \
