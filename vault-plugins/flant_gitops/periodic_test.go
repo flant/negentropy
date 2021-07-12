@@ -77,10 +77,10 @@ func TestPeriodic_PollOperation(t *testing.T) {
 			fieldNameGitRepoUrl:    "no-such-repo",
 			fieldNameGitBranch:     "main",
 			fieldNameGitPollPeriod: "5m",
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
 			fieldNameInitialLastSuccessfulCommit:                "",
 			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
-			fieldNameCommand:                                    "echo DONE",
+			fieldNameCommands:                                   []string{"echo DONE"},
 		},
 		Storage:    storage,
 		Connection: &logical.Connection{},
@@ -178,10 +178,10 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 			fieldNameGitRepoUrl:    testGitRepoDir,
 			fieldNameGitBranch:     "main",
 			fieldNameGitPollPeriod: "5m",
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
+			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
 			fieldNameInitialLastSuccessfulCommit:                "",
 			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
-			fieldNameCommand:                                    "cat data",
+			fieldNameCommands:                                   []string{"cat data"},
 		},
 		Storage:    storage,
 		Connection: &logical.Connection{},
@@ -299,7 +299,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		reason := WaitForTaskFailure(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
-		expectedReason := fmt.Sprintf("unable to run task for git commit %q which is not descendant of the last successfully processed commit %q", currentCommit, prevLastSuccessfulCommit)
+		expectedReason := fmt.Sprintf("unable to run periodic task for git commit %q which is not descendant of the last successfully processed commit %q", currentCommit, prevLastSuccessfulCommit)
 		if !strings.Contains(reason, expectedReason) {
 			t.Fatalf("got unexpected failure reason:\n%q\nexpected:\n%q\n", reason, expectedReason)
 		}

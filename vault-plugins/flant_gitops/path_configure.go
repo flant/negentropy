@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
+	"github.com/fatih/structs"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/util"
 )
 
 const (
@@ -21,13 +20,20 @@ const (
 	fieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
 	fieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 	fieldNameDockerImage                                = "docker_image"
-	fieldNameCommand                                    = "command"
+	fieldNameCommands                                   = "commands"
 
-	fieldNameGitCredentialUsername = "username"
-	fieldNameGitCredentialPassword = "password"
-
-	storageKeyLastSuccessfulCommit = "last_successful_commit"
+	storageKeyConfiguration = "configuration"
 )
+
+type configuration struct {
+	GitRepoUrl                                 string        `structs:"git_repo_url" json:"git_repo_url"`
+	GitBranch                                  string        `structs:"git_branch" json:"git_branch"`
+	GitPollPeriod                              time.Duration `structs:"git_poll_period" json:"git_poll_period"`
+	RequiredNumberOfVerifiedSignaturesOnCommit int           `structs:"required_number_of_verified_signatures_on_commit" json:"required_number_of_verified_signatures_on_commit"`
+	InitialLastSuccessfulCommit                string        `structs:"initial_last_successful_commit" json:"initial_last_successful_commit"`
+	DockerImage                                string        `structs:"docker_image" json:"docker_image"`
+	Commands                                   []string      `structs:"commands" json:"commands"`
+}
 
 func configurePaths(b *backend) []*framework.Path {
 	return []*framework.Path{
@@ -35,31 +41,35 @@ func configurePaths(b *backend) []*framework.Path {
 			Pattern: "^configure/?$",
 			Fields: map[string]*framework.FieldSchema{
 				fieldNameGitRepoUrl: {
-					Type:     framework.TypeString,
-					Required: true,
+					Type:        framework.TypeString,
+					Description: "Git repo URL",
 				},
 				fieldNameGitBranch: {
-					Type:     framework.TypeString,
-					Required: true,
+					Type:        framework.TypeString,
+					Default:     "main",
+					Description: "Git repo branch",
 				},
 				fieldNameGitPollPeriod: {
-					Type:    framework.TypeDurationSecond,
-					Default: "5m",
+					Type:        framework.TypeDurationSecond,
+					Default:     "5m",
+					Description: "Period between polls of Git repo",
 				},
 				fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: {
-					Type:     framework.TypeInt,
-					Required: true,
+					Type:        framework.TypeInt,
+					Default:     0,
+					Description: "Verify that the commit has enough verified signatures",
 				},
 				fieldNameInitialLastSuccessfulCommit: {
-					Type: framework.TypeString,
+					Type:        framework.TypeString,
+					Description: "Last successful commit",
 				},
 				fieldNameDockerImage: {
-					Type:     framework.TypeString,
-					Required: true,
+					Type:        framework.TypeString,
+					Description: "Docker image name for the container in which the commands will be executed",
 				},
-				fieldNameCommand: {
-					Type:     framework.TypeString,
-					Required: true,
+				fieldNameCommands: {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Comma-separated list of commands to execute in Docker container. Can also be passed as a list of strings in JSON payload",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -72,28 +82,8 @@ func configurePaths(b *backend) []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureRead,
 				},
-			},
-		},
-		{
-			Pattern: "^configure/git_credential/?$",
-			Fields: map[string]*framework.FieldSchema{
-				fieldNameGitCredentialUsername: {
-					Type:        framework.TypeString,
-					Description: "Git username",
-					Required:    true,
-				},
-				fieldNameGitCredentialPassword: {
-					Type:        framework.TypeString,
-					Description: "Git password",
-					Required:    true,
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.pathConfigureGitCredential,
-				},
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathConfigureGitCredential,
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathConfigureDelete,
 				},
 			},
 		},
@@ -101,74 +91,32 @@ func configurePaths(b *backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Start configuring ...")
+	b.Logger().Debug("Configuration started...")
 
-	resp, err := util.ValidateRequestFields(req, fields)
-	if resp != nil || err != nil {
-		return resp, err
+	config := configuration{
+		GitRepoUrl:    fields.Get(fieldNameGitRepoUrl).(string),
+		GitBranch:     fields.Get(fieldNameGitBranch).(string),
+		GitPollPeriod: time.Duration(fields.Get(fieldNameGitPollPeriod).(int)) * time.Second,
+		RequiredNumberOfVerifiedSignaturesOnCommit: fields.Get(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(int),
+		InitialLastSuccessfulCommit:                fields.Get(fieldNameInitialLastSuccessfulCommit).(string),
+		DockerImage:                                fields.Get(fieldNameDockerImage).(string),
+		Commands:                                   fields.Get(fieldNameCommands).([]string),
 	}
 
-	if err := docker.ValidateImageNameWithDigest(req.Get(fieldNameDockerImage).(string)); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf(`%q field is invalid: %s'`, fieldNameDockerImage, err)), nil
+	if err := docker.ValidateImageNameWithDigest(config.DockerImage); err != nil {
+		return logical.ErrorResponse("%q field is invalid: %s", fieldNameDockerImage, err), nil
 	}
 
-	gitRepoUrl := req.Get(fieldNameGitRepoUrl).(string)
-	if _, err := transport.NewEndpoint(gitRepoUrl); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid option %q given: %s", fieldNameGitRepoUrl, err)), nil
-	}
-
-	gitBranch := req.Get(fieldNameGitBranch).(string)
-
-	var gitPollPeriod string
-	gitPollPeriodI := req.Get(fieldNameGitPollPeriod)
-	if gitPollPeriodI == nil {
-		gitPollPeriod = fields.Schema[fieldNameGitPollPeriod].Default.(string)
-	} else {
-		gitPollPeriod = gitPollPeriodI.(string)
-
-		if _, err := time.ParseDuration(gitPollPeriod); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected golang time duration: %s", fieldNameGitPollPeriod, err)), nil
-		}
-	}
-
-	var initialLastSuccessfulCommit string
-	if v := req.Get(fieldNameInitialLastSuccessfulCommit); v != nil {
-		initialLastSuccessfulCommit = v.(string)
-	}
-
-	var requiredNumberOfVerifiedSignaturesOnCommit int
-	{
-		valueStr := req.Get(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(string)
-		valueUint, err := strconv.ParseUint(valueStr, 10, 64)
-		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected number: %s", fieldNameGitPollPeriod, err)), nil
-		}
-		requiredNumberOfVerifiedSignaturesOnCommit = int(valueUint)
-	}
-
-	dockerImage := req.Get(fieldNameDockerImage).(string)
-	if err := docker.ValidateImageNameWithDigest(dockerImage); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid option %q given, expected docker image name with digest: %s", fieldNameDockerImage, err)), nil
-	}
-
-	command := req.Get(fieldNameCommand).(string)
-
-	cfg := &configuration{
-		GitRepoUrl:    gitRepoUrl,
-		GitBranch:     gitBranch,
-		GitPollPeriod: gitPollPeriod,
-		RequiredNumberOfVerifiedSignaturesOnCommit: requiredNumberOfVerifiedSignaturesOnCommit,
-		InitialLastSuccessfulCommit:                initialLastSuccessfulCommit,
-		DockerImage:                                dockerImage,
-		Command:                                    command,
+	if _, err := transport.NewEndpoint(config.GitRepoUrl); err != nil {
+		return logical.ErrorResponse("%q field is invalid: %s", fieldNameGitRepoUrl, err), nil
 	}
 
 	{
-		cfgData, cfgErr := json.MarshalIndent(cfg, "", "  ")
+		cfgData, cfgErr := json.MarshalIndent(config, "", "  ")
 		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", cfgErr, string(cfgData)))
 	}
 
-	if err := putConfiguration(ctx, req.Storage, cfg); err != nil {
+	if err := putConfiguration(ctx, req.Storage, config); err != nil {
 		return nil, err
 	}
 
@@ -176,35 +124,62 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 }
 
 func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("Reading configuration...")
+
 	config, err := getConfiguration(ctx, req.Storage)
 	if err != nil {
-		return nil, err
-	} else if config == nil {
-		return logical.ErrorResponse("configuration not set"), nil
+		return logical.ErrorResponse("Unable to get configuration: %s", err), nil
+	}
+	if config == nil {
+		return nil, nil
 	}
 
-	return &logical.Response{
-		Data: map[string]interface{}{
-			fieldNameGitRepoUrl:    config.GitRepoUrl,
-			fieldNameGitBranch:     config.GitBranch,
-			fieldNameGitPollPeriod: config.GitPollPeriod,
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: config.RequiredNumberOfVerifiedSignaturesOnCommit,
-			fieldNameInitialLastSuccessfulCommit:                config.InitialLastSuccessfulCommit,
-			fieldNameDockerImage:                                config.DockerImage,
-			fieldNameCommand:                                    config.Command,
-		},
-	}, nil
+	data := structs.Map(config)
+	data[fieldNameGitPollPeriod] = config.GitPollPeriod.Seconds()
+
+	return &logical.Response{Data: data}, nil
 }
 
-func (b *backend) pathConfigureGitCredential(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	resp, err := util.ValidateRequestFields(req, fields)
-	if resp != nil || err != nil {
-		return resp, err
-	}
+func (b *backend) pathConfigureDelete(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("Deleting configuration...")
 
-	if err := putGitCredential(ctx, req.Storage, fields.Raw); err != nil {
-		return nil, err
+	if err := deleteConfiguration(ctx, req.Storage); err != nil {
+		return logical.ErrorResponse("Unable to delete configuration: %s", err), nil
 	}
 
 	return nil, nil
+}
+
+func putConfiguration(ctx context.Context, storage logical.Storage, config configuration) error {
+	storageEntry, err := logical.StorageEntryJSON(storageKeyConfiguration, config)
+	if err != nil {
+		return err
+	}
+
+	if err := storage.Put(ctx, storageEntry); err != nil {
+		return err
+	}
+
+	return err
+}
+
+func getConfiguration(ctx context.Context, storage logical.Storage) (*configuration, error) {
+	storageEntry, err := storage.Get(ctx, storageKeyConfiguration)
+	if err != nil {
+		return nil, err
+	}
+	if storageEntry == nil {
+		return nil, nil
+	}
+
+	var config *configuration
+	if err := storageEntry.DecodeJSON(&config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func deleteConfiguration(ctx context.Context, storage logical.Storage) error {
+	return storage.Delete(ctx, storageKeyConfiguration)
 }

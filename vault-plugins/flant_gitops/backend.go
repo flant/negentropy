@@ -61,6 +61,7 @@ func newBackend() (*backend, error) {
 		BackendType: logical.TypeLogical,
 		Paths: framework.PathAppend(
 			configurePaths(b),
+			configureGitCredentialPaths(b),
 			configureVaultRequestPaths(b),
 			b.TasksManager.Paths(),
 			pgp.Paths(),
