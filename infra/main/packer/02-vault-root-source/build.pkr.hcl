@@ -2,7 +2,7 @@ variable "root_password" {
   type =  string
   sensitive = true
 }
-variable "gcp_vault_root_source_bucket" {
+variable "vault_root_source_bucket" {
   type = string
 }
 variable "gcp_ckms_seal_key_ring" {
@@ -30,6 +30,22 @@ variable "vault_recovery_shares" {
 variable "vault_recovery_threshold" {
   type =  string
   default = "2"
+}
+variable "vault_ca_name" {
+  type =  string
+}
+variable "vault_ca_pool" {
+  type =  string
+}
+variable "vault_ca_location" {
+  type =  string
+}
+variable "vault_internal_root_domain" {
+  type =  string
+}
+variable "vault_internal_subdomain" {
+  type =  string
+  default = "root-source"
 }
 variable "image_sources_checksum" {
   type    = string
@@ -118,36 +134,28 @@ build {
   }
 
   provisioner "file" {
-    source      = "../../../common/config/scripts/common-variables.sh"
-    destination = "/etc/common-variables.sh"
-  }
-
-  provisioner "file" {
-    source      = "../../../common/config/scripts/vault-common-variables.sh"
-    destination = "/etc/vault-common-variables.sh"
+    source      = "../../../common/config/scripts/vault-variables.sh"
+    destination = "/etc/vault-variables.sh"
   }
 
   provisioner "shell" {
     environment_vars = [
+      "VAULT_ROOT_SOURCE_BUCKET=${var.vault_root_source_bucket}",
       "GCP_PROJECT=${var.gcp_project}",
-      "GCP_REGION=${var.gcp_region}"
-    ]
-    inline = [
-      "tmp=$(mktemp); envsubst < /etc/common-variables.sh > $tmp && cat $tmp > /etc/common-variables.sh"
-    ]
-  }
-
-  provisioner "shell" {
-    environment_vars = [
-      "GCP_VAULT_ROOT_SOURCE_BUCKET=${var.gcp_vault_root_source_bucket}",
+      "GCP_REGION=${var.gcp_region}",
       "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
       "GCPCKMS_SEAL_CRYPTO_KEY=${var.gcp_ckms_seal_crypto_key}",
       "TFSTATE_BUCKET=${var.tfstate_bucket}",
       "VAULT_RECOVERY_SHARES=${var.vault_recovery_shares}",
-      "VAULT_RECOVERY_THRESHOLD=${var.vault_recovery_threshold}"
+      "VAULT_RECOVERY_THRESHOLD=${var.vault_recovery_threshold}",
+      "VAULT_CA_NAME=${var.vault_ca_name}",
+      "VAULT_CA_POOL=${var.vault_ca_pool}",
+      "VAULT_CA_LOCATION=${var.vault_ca_location}",
+      "VAULT_INTERNAL_SUBDOMAIN=${var.vault_internal_subdomain}",
+      "VAULT_INTERNAL_ROOT_DOMAIN=${var.vault_internal_root_domain}"
     ]
     inline = [
-      "tmp=$(mktemp); envsubst < /etc/vault-common-variables.sh > $tmp && cat $tmp > /etc/vault-common-variables.sh"
+      "tmp=$(mktemp); envsubst < /etc/vault-variables.sh > $tmp && cat $tmp > /etc/vault-variables.sh"
     ]
   }
 

@@ -8,16 +8,16 @@ All main and configurator instances SA should have:
 1. Logging Admin - to push logs to Cloud Logs
 
 `vault-conf` instance SA should have:
-1. Storage Object Admin - to access bucket `gcp_vault_conf_bucket`
+1. Storage Object Admin - to access bucket `vault_conf_bucket`
 
 `vault-conf-conf` instance SA should have:
-1. Storage Object Admin - to access bucket `gcp_vault_conf_conf_bucket`
+1. Storage Object Admin - to access bucket `vault_conf_conf_bucket`
 
 `vault-root-source` instance SA should have:
-1. Storage Object Admin - to access bucket `gcp_vault_root_source_bucket`
+1. Storage Object Admin - to access bucket `vault_root_source_bucket`
 
 `vault-auth` instance SA should have:
-1. Storage Object Admin - to access buckets `$(hostname).gcp_vault_auth_bucket_trailer`
+1. Storage Object Admin - to access buckets `$(hostname).vault_auth_bucket_trailer`
 
 `kafka` instance SA should have:
 1. Storage Object Admin - to access bucket `kafka_bucket`
