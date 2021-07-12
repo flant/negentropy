@@ -13,14 +13,14 @@ import (
 
 func (b *projectBackend) featureFlagPath() *framework.Path {
 	return &framework.Path{
-		Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/" + uuid.Pattern("uuid") + "/feature_flag/" + framework.GenericNameRegex("feature_flag_name"),
+		Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/" + uuid.Pattern("project_uuid") + "/feature_flag/" + framework.GenericNameRegex("feature_flag_name"),
 		Fields: map[string]*framework.FieldSchema{
 			"tenant_uuid": {
 				Type:        framework.TypeNameString,
 				Description: "ID of a tenant",
 				Required:    true,
 			},
-			"uuid": {
+			"project_uuid": {
 				Type:        framework.TypeNameString,
 				Description: "ID of a project",
 				Required:    true,
@@ -51,7 +51,7 @@ func (b *projectBackend) featureFlagPath() *framework.Path {
 func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tenantID := data.Get(model.TenantForeignPK).(string)
-		projectID := data.Get("uuid").(string)
+		projectID := data.Get("project_uuid").(string)
 		featureFlagName := data.Get("feature_flag_name").(string)
 		if featureFlagName == "" {
 			return nil, logical.CodedError(http.StatusBadRequest, "feature_flag_name required")
@@ -83,7 +83,7 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tenantID := data.Get(model.TenantForeignPK).(string)
-		projectID := data.Get("uuid").(string)
+		projectID := data.Get("project_uuid").(string)
 		featureFlagName := data.Get("feature_flag_name").(string)
 
 		if featureFlagName == "" {
