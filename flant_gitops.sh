@@ -1,5 +1,8 @@
 #!/bin/sh
 
+set -x
+set -e
+
 echo flant_gitops.sh BEGIN
 echo VAULT_ADDR="${VAULT_ADDR}"
 echo VAULT_CACERT="${VAULT_CACERT}"
@@ -10,4 +13,8 @@ echo VAULT_CACERT BEGIN
 cat $VAULT_CACERT
 echo VAULT_CACERT END
 echo
+echo root | vault login -
+echo VAULT_REQUEST_TOKEN_GET_CONFIGURATION UNWRAP BEGIN
+vault write -format=json sys/wrapping/unwrap token="${VAULT_REQUEST_TOKEN_GET_CONFIGURATION}"
+echo VAULT_REQUEST_TOKEN_GET_CONFIGURATION UNWRAP end
 echo flant_gitops.sh END
