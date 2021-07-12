@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -83,4 +85,126 @@ func Test_Role_FindAllIncludingRoles(t *testing.T) {
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{roleName3: {}, roleName4: {}, roleName5: {}}, roles)
+}
+
+func Test_includeRole(t *testing.T) {
+	t.Run("adds sub-role to empty role", func(t *testing.T) {
+		r := &Role{}
+		sub := &IncludedRole{}
+
+		includeRole(r, sub)
+
+		assert.Contains(t, r.IncludedRoles, *sub)
+	})
+
+	t.Run("does not duplicate sub-roles", func(t *testing.T) {
+		r := &Role{}
+		sub := &IncludedRole{}
+
+		includeRole(r, sub)
+		includeRole(r, sub)
+
+		assert.Contains(t, r.IncludedRoles, *sub)
+		assert.Len(t, r.IncludedRoles, 1)
+	})
+
+	t.Run("does not duplicate sub-roles based by name", func(t *testing.T) {
+		r := &Role{}
+		sub1 := &IncludedRole{Name: "one"}
+		sub2 := &IncludedRole{Name: "two"}
+		sub3 := &IncludedRole{Name: "three"}
+		sub11 := &IncludedRole{Name: "two"}
+
+		includeRole(r, sub1)
+		includeRole(r, sub2)
+		includeRole(r, sub3)
+		includeRole(r, sub11)
+
+		assert.Contains(t, r.IncludedRoles, *sub1)
+		assert.Contains(t, r.IncludedRoles, *sub2)
+		assert.Contains(t, r.IncludedRoles, *sub3)
+		assert.Len(t, r.IncludedRoles, 3)
+		assert.Equal(t, "one", r.IncludedRoles[0].Name)
+		assert.Equal(t, "two", r.IncludedRoles[1].Name)
+		assert.Equal(t, "three", r.IncludedRoles[2].Name)
+	})
+
+	t.Run("updates options for the met name same", func(t *testing.T) {
+		r := &Role{}
+		sub1 := &IncludedRole{Name: "one", OptionsTemplate: "prev"}
+		sub2 := &IncludedRole{Name: "one", OptionsTemplate: "new"}
+
+		includeRole(r, sub1)
+		includeRole(r, sub2)
+
+		assert.NotContains(t, r.IncludedRoles, *sub1)
+		assert.Contains(t, r.IncludedRoles, *sub2)
+		assert.Len(t, r.IncludedRoles, 1)
+		assert.Equal(t, "one", r.IncludedRoles[0].Name)
+		assert.Equal(t, "new", r.IncludedRoles[0].OptionsTemplate)
+	})
+}
+
+func Test_excludeRole(t *testing.T) {
+	t.Run("empty values do nothing", func(t *testing.T) {
+		r := &Role{}
+
+		excludeRole(r, "")
+	})
+
+	t.Run("name mismatch does nothing", func(t *testing.T) {
+		subRoles := []IncludedRole{{Name: "one", OptionsTemplate: "<>"}}
+		expectedSubRoles := make([]IncludedRole, len(subRoles))
+		copy(expectedSubRoles, subRoles)
+		r := &Role{IncludedRoles: subRoles}
+
+		excludeRole(r, "zz")
+
+		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+	})
+
+	t.Run("name match removes sub-role from the start", func(t *testing.T) {
+		subRoles := []IncludedRole{
+			{Name: "one", OptionsTemplate: "<1>"},
+			{Name: "two", OptionsTemplate: "<2>"},
+			{Name: "three", OptionsTemplate: "<3>"},
+		}
+		expectedSubRoles := make([]IncludedRole, len(subRoles)-1)
+		copy(expectedSubRoles, subRoles[1:])
+		r := &Role{IncludedRoles: subRoles}
+
+		excludeRole(r, "one")
+
+		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+	})
+
+	t.Run("name match removes sub-role from the end", func(t *testing.T) {
+		subRoles := []IncludedRole{
+			{Name: "one", OptionsTemplate: "<1>"},
+			{Name: "two", OptionsTemplate: "<2>"},
+			{Name: "three", OptionsTemplate: "<3>"},
+		}
+		expectedSubRoles := make([]IncludedRole, len(subRoles)-1)
+		copy(expectedSubRoles, subRoles[:2])
+		r := &Role{IncludedRoles: subRoles}
+
+		excludeRole(r, "three")
+
+		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+	})
+
+	t.Run("name match removes sub-role from the middle", func(t *testing.T) {
+		subRoles := []IncludedRole{
+			{Name: "one", OptionsTemplate: "<1>"},
+			{Name: "two", OptionsTemplate: "<2>"},
+			{Name: "three", OptionsTemplate: "<3>"},
+		}
+		expectedSubRoles := make([]IncludedRole, 0)
+		expectedSubRoles = append(expectedSubRoles, subRoles[0], subRoles[2])
+		r := &Role{IncludedRoles: subRoles}
+
+		excludeRole(r, "two")
+
+		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+	})
 }

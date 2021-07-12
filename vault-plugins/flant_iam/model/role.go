@@ -242,49 +242,66 @@ func (r *RoleRepository) FindAllIncludingRoles(role RoleName) (map[RoleName]stru
 	return result, nil
 }
 
-func (r *RoleRepository) Include(targetName RoleName, adding *IncludedRole) error {
+func (r *RoleRepository) Include(name RoleName, subRole *IncludedRole) error {
 	// validate target exists
-	target, err := r.Get(targetName)
+	role, err := r.Get(name)
 	if err != nil {
 		return err
 	}
 
 	// validate source exists
-	if _, err := r.Get(adding.Name); err != nil {
+	if _, err := r.Get(subRole.Name); err != nil {
 		return err
 	}
 
 	// TODO validate the template
 
-	for _, present := range target.IncludedRoles {
-		if present.Name == adding.Name {
-			present.OptionsTemplate = adding.OptionsTemplate
-			return r.save(target)
-		}
-	}
+	includeRole(role, subRole)
 
-	target.IncludedRoles = append(target.IncludedRoles, *adding)
-	return r.save(target)
+	return r.save(role)
 }
 
-func (r *RoleRepository) Exclude(targetName, exclName RoleName, ) error {
-	target, err := r.Get(targetName)
+func (r *RoleRepository) Exclude(name, exclName RoleName) error {
+	target, err := r.Get(name)
 	if err != nil {
 		return err
 	}
 
+	excludeRole(target, exclName)
+
+	return r.save(target)
+}
+
+func includeRole(role *Role, subRole *IncludedRole) {
+	for i, present := range role.IncludedRoles {
+		if present.Name == subRole.Name {
+			role.IncludedRoles[i] = *subRole // copying the string
+			return
+		}
+	}
+
+	role.IncludedRoles = append(role.IncludedRoles, *subRole)
+}
+
+func excludeRole(role *Role, exclName RoleName) {
 	var i int
 	var ir IncludedRole
+	var found bool
 
-	for i, ir = range target.IncludedRoles {
-		if ir.Name == exclName {
+	for i, ir = range role.IncludedRoles {
+		found = ir.Name == exclName
+		if found {
 			break
 		}
 	}
 
-	cleaned := make([]IncludedRole, len(target.IncludedRoles)-1)
-	copy(cleaned, target.IncludedRoles[:i])
-	copy(cleaned, target.IncludedRoles[i+1:])
+	if !found {
+		return
+	}
 
-	return r.save(target)
+	cleaned := make([]IncludedRole, len(role.IncludedRoles)-1)
+	copy(cleaned, role.IncludedRoles[:i])
+	copy(cleaned[i:], role.IncludedRoles[i+1:])
+
+	role.IncludedRoles = cleaned
 }
