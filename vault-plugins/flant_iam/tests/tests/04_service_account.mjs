@@ -10,7 +10,7 @@ import {
 
 //    /tenant/{tid}/service_account/{sa.uuid}
 
-describe("Service Account", function() {
+describe("Service Account", function () {
     const rootClient = getClient(rootToken)
 
     const rootTenantAPI = new API(
@@ -182,12 +182,12 @@ describe("Service Account", function() {
         })
     })
 
-    describe("access", function() {
-        describe("when unauthenticated", function() {
+    describe("access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -252,7 +252,7 @@ describe("Service Account", function() {
         }
     })
 
-    describe("multipass", function() {
+    describe("multipass", function () {
         const endpointBuilder = new EndpointBuilder(["tenant", "service_account", "multipass"])
         const rootMPClient = new API(
             rootClient,
@@ -282,19 +282,19 @@ describe("Service Account", function() {
             expect(mp)
                 .to.be.an("object")
                 .and.include.keys(
-                "allowed_cidrs",
-                "allowed_roles",
-                "description",
-                "max_ttl",
-                "owner_type",
-                "owner_uuid",
-                "tenant_uuid",
-                "origin",
-                "extensions",
-                "ttl",
-                "uuid",
-                "valid_till",
-            )
+                    "allowed_cidrs",
+                    "allowed_roles",
+                    "description",
+                    "max_ttl",
+                    "owner_type",
+                    "owner_uuid",
+                    "tenant_uuid",
+                    "origin",
+                    "extensions",
+                    "ttl",
+                    "uuid",
+                    "valid_till",
+                )
                 .and.not.include.keys("salt")
 
             expect(mp.uuid, "uuid").to.be.a("string")
@@ -346,7 +346,7 @@ describe("Service Account", function() {
 
             const list = await rootMPClient.list({ params })
 
-            expect(list.map(mp => mp.uuid)).to.have.all.members(ids)
+            expect(list.map((mp) => mp.uuid)).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {
@@ -384,7 +384,7 @@ describe("Service Account", function() {
         })
     })
 
-    describe("password", function() {
+    describe("password", function () {
         const endpointBuilder = new EndpointBuilder(["tenant", "service_account", "password"])
         const rootPasswordClient = new API(
             rootClient,
@@ -417,16 +417,16 @@ describe("Service Account", function() {
             expect(password)
                 .to.be.an("object")
                 .and.include.keys(
-                "uuid",
-                "owner_uuid",
-                "tenant_uuid",
-                "description",
-                "allowed_cidrs",
-                "allowed_roles",
-                "ttl",
-                "valid_till",
-                "secret",
-            )
+                    "uuid",
+                    "owner_uuid",
+                    "tenant_uuid",
+                    "description",
+                    "allowed_cidrs",
+                    "allowed_roles",
+                    "ttl",
+                    "valid_till",
+                    "secret",
+                )
 
             expect(password.uuid, "uuid").to.be.a("string")
             expect(password.owner_uuid, "owner_uuid").to.be.a("string")
@@ -479,7 +479,7 @@ describe("Service Account", function() {
 
             const list = await rootPasswordClient.list({ params })
 
-            expect(list.map(x => x.uuid)).to.have.all.members(ids)
+            expect(list.map((x) => x.uuid)).to.have.all.members(ids)
         })
 
         it("can be deleted", async () => {

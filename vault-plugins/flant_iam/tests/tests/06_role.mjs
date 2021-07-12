@@ -4,7 +4,7 @@ import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genRoleCreatePayload } from "./lib/payloads.mjs"
 
-describe("Role", function() {
+describe("Role", function () {
     const rootClient = getClient(rootToken)
 
     function getAPIClient(client) {
@@ -102,7 +102,7 @@ describe("Role", function() {
 
         const list = await root.list()
 
-        expect(list.map(r => r.name)).to.include(role.name)
+        expect(list.map((r) => r.name)).to.include(role.name)
     })
 
     it("can be deleted", async () => {
@@ -166,12 +166,12 @@ describe("Role", function() {
         })
     })
 
-    describe("no access", function() {
-        describe("when unauthenticated", function() {
+    describe("no access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 

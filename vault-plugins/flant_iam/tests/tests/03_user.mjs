@@ -5,7 +5,7 @@ import { genMultipassPayload, genTenantPayload, genUserPayload } from "./lib/pay
 
 //    /tenant/{tid}/user/{uid}
 
-describe("User", function() {
+describe("User", function () {
     const rootClient = getClient(rootToken)
 
     const rootTenantAPI = new API(
@@ -179,12 +179,12 @@ describe("User", function() {
         })
     })
 
-    describe("access", function() {
-        describe("when unauthenticated", function() {
+    describe("access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -250,7 +250,7 @@ describe("User", function() {
         }
     })
 
-    describe("multipass", function() {
+    describe("multipass", function () {
         const endpointBuilder = new EndpointBuilder(["tenant", "user", "multipass"])
         const rootMPClient = new API(
             rootClient,
@@ -281,19 +281,19 @@ describe("User", function() {
             expect(mp)
                 .to.be.an("object")
                 .and.include.keys(
-                "allowed_cidrs",
-                "allowed_roles",
-                "description",
-                "max_ttl",
-                "owner_type",
-                "owner_uuid",
-                "tenant_uuid",
-                "origin",
-                "extensions",
-                "ttl",
-                "uuid",
-                "valid_till",
-            )
+                    "allowed_cidrs",
+                    "allowed_roles",
+                    "description",
+                    "max_ttl",
+                    "owner_type",
+                    "owner_uuid",
+                    "tenant_uuid",
+                    "origin",
+                    "extensions",
+                    "ttl",
+                    "uuid",
+                    "valid_till",
+                )
                 .and.not.include.keys("salt")
 
             expect(mp.uuid, "uuid").to.be.a("string")
@@ -345,7 +345,7 @@ describe("User", function() {
 
             const list = await rootMPClient.list({ params })
 
-            expect(list.map(mp => mp.uuid)).to.have.all.members(ids)
+            expect(list.map((mp) => mp.uuid)).to.have.all.members(ids)
             for (const mp of list) {
                 expect(mp.salt).to.be.undefined
             }

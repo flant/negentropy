@@ -11,7 +11,7 @@ import {
 
 //    /tenant/{tid}/role_binding/{rbid}
 
-describe("Role Binding", function() {
+describe("Role Binding", function () {
     const rootClient = getClient(rootToken)
 
     const rootTenantAPI = new API(
@@ -243,12 +243,12 @@ describe("Role Binding", function() {
         })
     })
 
-    describe("access", function() {
-        describe("when unauthenticated", function() {
+    describe("access", function () {
+        describe("when unauthenticated", function () {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function() {
+        describe("when unauthorized", function () {
             runWithClient(getClient("xxx"), 403)
         })
 
