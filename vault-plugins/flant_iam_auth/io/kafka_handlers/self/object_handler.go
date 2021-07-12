@@ -78,22 +78,12 @@ func (h *ObjectHandler) DeletedAuthSource(uuid string) error {
 	return err
 }
 
-func (h *ObjectHandler) DeletedEntity(uuid string) error {
-	entity, err := h.entityRepo.GetByID(uuid)
-	if err != nil {
-		return err
-	}
-
-	return h.processActions(h.downstream.ProcessDeleteEntity(h.memStore, h.txn, entity))
+func (h *ObjectHandler) DeletedEntity(id string) error {
+	return h.processActions(h.downstream.ProcessDeleteEntity(h.memStore, h.txn, id))
 }
 
-func (h *ObjectHandler) DeletedEntityAlias(uuid string) error {
-	ea, err := h.eaRepo.GetById(uuid)
-	if err != nil {
-		return err
-	}
-
-	actions, err := h.downstream.ProcessDeleteEntityAlias(h.memStore, h.txn, ea)
+func (h *ObjectHandler) DeletedEntityAlias(id string) error {
+	actions, err := h.downstream.ProcessDeleteEntityAlias(h.memStore, h.txn, id)
 	return h.processActions(actions, err)
 }
 

@@ -57,13 +57,13 @@ func (a *VaultEntityDownstreamApi) ProcessObjectDelete(ms *io.MemoryStore, txn *
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.ProcessDeleteEntity(ms, txn, entity)
+		return a.ProcessDeleteEntity(ms, txn, entity.Name)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.ProcessDeleteEntityAlias(ms, txn, entityAlias)
+		return a.ProcessDeleteEntityAlias(ms, txn, entityAlias.Name)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
@@ -131,20 +131,20 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityName string) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err
 	}
 
 	action := io.NewVaultApiAction(func() error {
-		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entity.Name)
+		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entityName)
 	})
 
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAliasName string) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, 
 	}
 
 	action := io.NewVaultApiAction(func() error {
-		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAlias.Name, mountAccessor)
+		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
 	})
 
 	return []io.DownstreamAPIAction{action}, nil
