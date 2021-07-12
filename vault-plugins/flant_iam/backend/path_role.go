@@ -45,8 +45,8 @@ func (b roleBackend) paths() []*framework.Path {
 					Description: "The scope of the role",
 					Required:    true,
 					AllowedValues: []interface{}{
-						model.GroupScopeProject,
-						model.GroupScopeTenant,
+						model.RoleScopeProject,
+						model.RoleScopeProject,
 					},
 				},
 				"options_schema": {
