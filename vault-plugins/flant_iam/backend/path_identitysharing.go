@@ -136,7 +136,8 @@ func (b *identitySharingBackend) handleCreate(ctx context.Context, req *logical.
 		return nil, err
 	}
 
-	return responseWithDataAndCode(req, is, http.StatusCreated)
+	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": is}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 }
 
 func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -176,7 +177,8 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 	}
 	_ = commit(tx, b.Logger())
 
-	return responseWithDataAndCode(req, identitySharing, http.StatusOK)
+	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": identitySharing}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
 func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

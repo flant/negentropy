@@ -156,7 +156,8 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, roleBindingApproval, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding_approval": roleBindingApproval}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -192,7 +193,8 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, roleBindingApproval, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding_approval": roleBindingApproval}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

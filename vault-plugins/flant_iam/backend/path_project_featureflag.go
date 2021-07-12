@@ -75,7 +75,8 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, project, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -103,6 +104,7 @@ func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, project, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

@@ -78,7 +78,8 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -105,6 +106,7 @@ func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, tenant, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

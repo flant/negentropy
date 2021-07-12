@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set +e
 
 SCRIPTDIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 2 ; pwd -P )"
 
