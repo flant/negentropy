@@ -121,6 +121,9 @@ func (b *roleBindingApprovalBackend) handleExistence() framework.ExistenceFunc {
 func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		if id == "" {
+			id = uuid.New()
+		}
 		userIDs := data.Get("users").([]string)
 		groupIDs := data.Get("groups").([]string)
 		serviceAccountIDs := data.Get("service_accounts").([]string)
@@ -148,7 +151,17 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		repo := model.NewRoleBindingApprovalRepository(tx)
-		err := repo.Update(roleBindingApproval)
+		_, err := repo.GetByID(id)
+		if err != nil {
+			if err == model.ErrNotFound {
+				err = repo.Create(roleBindingApproval)
+				if err != nil {
+					return responseErr(req, err)
+				}
+			}
+		} else {
+			err = repo.Update(roleBindingApproval)
+		}
 		if err != nil {
 			return responseErr(req, err)
 		}

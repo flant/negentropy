@@ -56,7 +56,7 @@ type RoleBindingApproval struct {
 	RequiredVotes int  `json:"required_votes"`
 	RequireMFA    bool `json:"require_mfa"`
 
-	RequireUniqueApprover bool `json:"require_unique_approver`
+	RequireUniqueApprover bool `json:"require_unique_approver"`
 }
 
 func (t *RoleBindingApproval) ObjType() string {
@@ -102,6 +102,13 @@ func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*Ro
 	}
 	ra := raw.(*RoleBindingApproval)
 	return ra, nil
+}
+
+func (r *RoleBindingApprovalRepository) Create(ra *RoleBindingApproval) error {
+	ra.Version = NewResourceVersion()
+
+	// Update
+	return r.save(ra)
 }
 
 func (r *RoleBindingApprovalRepository) Update(ra *RoleBindingApproval) error {

@@ -14,6 +14,8 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/identitysharing"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 )
@@ -39,6 +41,8 @@ var (
 	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
 	_ URLBuilder = (*featureflag.EndpointBuilder)(nil)
 	_ URLBuilder = (*identitysharing.EndpointBuilder)(nil)
+	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
+	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
 )
 
 type BuilderBasedAPI struct {
@@ -120,4 +124,12 @@ func NewFeatureFlagAPI(client *http.Client) TestAPI {
 
 func NewIdentitySharingAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &identitysharing.EndpointBuilder{}}
+}
+
+func NewRoleBindingAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &rolebinding.EndpointBuilder{}}
+}
+
+func NewRoleBindingApprovalAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &rolebindingapproval.EndpointBuilder{}}
 }
