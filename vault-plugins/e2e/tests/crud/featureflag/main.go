@@ -30,7 +30,7 @@ var _ = Describe("Feature Flag", func() {
 
 				flagsAPI.Create(params, nil, payload)
 			},
-			Entry("number not allowed", rand.Intn(32), "%d == 400"), // the matter of fact ¯\_(ツ)_/¯
+			Entry("number allowed", rand.Intn(32), "%d == 201"), // the matter of fact ¯\_(ツ)_/¯
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),
