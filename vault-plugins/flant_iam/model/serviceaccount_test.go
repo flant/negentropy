@@ -71,8 +71,12 @@ func Test_ServiceAccountList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, serviceAccountFixture).Txn(true)
 	repo := NewServiceAccountRepository(tx)
 
-	ids, err := repo.List(tenantUUID1)
+	serviceAccounts, err := repo.List(tenantUUID1)
 
 	dieOnErr(t, err)
+	ids := make([]string, 0)
+	for _, obj := range serviceAccounts {
+		ids = append(ids, obj.ObjId())
+	}
 	checkDeepEqual(t, []string{serviceAccountUUID1, serviceAccountUUID2, serviceAccountUUID3}, ids)
 }

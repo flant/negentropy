@@ -18,11 +18,6 @@ func Test_RoleBindingDbSchema(t *testing.T) {
 	}
 }
 
-type Model interface {
-	ObjType() string
-	ObjId() string
-}
-
 func toSubjectNotation(m Model) SubjectNotation {
 	return SubjectNotation{
 		Type: m.ObjType(),

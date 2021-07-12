@@ -122,8 +122,12 @@ func Test_UserList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
 	repo := NewUserRepository(tx)
 
-	ids, err := repo.List(tenantUUID1)
+	users, err := repo.List(tenantUUID1)
 
 	dieOnErr(t, err)
+	ids := make([]string, 0)
+	for _, obj := range users {
+		ids = append(ids, obj.ObjId())
+	}
 	checkDeepEqual(t, []string{userUUID1, userUUID2, userUUID3, userUUID4}, ids)
 }

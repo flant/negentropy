@@ -58,12 +58,12 @@ type ServiceAccount struct {
 	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
 }
 
-func (u *ServiceAccount) ObjType() string {
+func (sa *ServiceAccount) ObjType() string {
 	return ServiceAccountType
 }
 
-func (u *ServiceAccount) ObjId() string {
-	return u.UUID
+func (sa *ServiceAccount) ObjId() string {
+	return sa.UUID
 }
 
 // generic: <identifier>@serviceaccount.<tenant_identifier>

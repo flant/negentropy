@@ -109,9 +109,13 @@ func Test_ListGroups(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repo := NewGroupRepository(tx)
 
-	ids, err := repo.List(tenantUUID1)
+	groups, err := repo.List(tenantUUID1)
 
 	dieOnErr(t, err)
+	ids := make([]string, 0)
+	for _, obj := range groups {
+		ids = append(ids, obj.ObjId())
+	}
 	checkDeepEqual(t, []string{groupUUID1, groupUUID2, groupUUID4, groupUUID5}, ids)
 }
 

@@ -79,8 +79,12 @@ func Test_TenantList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
 	repo := NewTenantRepository(tx)
 
-	ids, err := repo.List()
+	tenants, err := repo.List()
 
 	dieOnErr(t, err)
+	ids := make([]string, 0)
+	for _, obj := range tenants {
+		ids = append(ids, obj.ObjId())
+	}
 	checkDeepEqual(t, []string{tenantUUID1, tenantUUID2}, ids)
 }

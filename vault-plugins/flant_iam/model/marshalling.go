@@ -51,7 +51,7 @@ func OmitSensitive(obj interface{}) interface{} {
 func omitMap(f reflect.Value) {
 	iter := f.MapRange()
 	for iter.Next() {
-		if _, ok := iter.Value().Interface().(sensitiveObjectHolder); ok {
+		if _, ok := iter.Value().Interface().(Model); ok {
 			newValue := OmitSensitive(iter.Value().Elem().Interface())
 			p := reflect.New(reflect.TypeOf(newValue))
 			p.Elem().Set(reflect.ValueOf(newValue))
@@ -64,8 +64,8 @@ func omitSlice(f reflect.Value) {
 	for si := 0; si < f.Len(); si++ {
 		value := f.Index(si)
 
-		_, isValueM := value.Interface().(sensitiveObjectHolder)
-		_, isPointerM := value.Addr().Interface().(sensitiveObjectHolder)
+		_, isValueM := value.Interface().(Model)
+		_, isPointerM := value.Addr().Interface().(Model)
 
 		if isValueM || isPointerM {
 			if value.Kind() == reflect.Ptr {
@@ -85,7 +85,7 @@ func omitSlice(f reflect.Value) {
 	}
 }
 
-type sensitiveObjectHolder interface {
+type Model interface {
 	ObjType() string
 	ObjId() string
 }
