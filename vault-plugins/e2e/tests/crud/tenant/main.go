@@ -3,11 +3,12 @@ package tenant
 import (
 	"net/url"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
@@ -41,7 +42,7 @@ var _ = Describe("Tenant", func() {
 
 		params := tools.Params{
 			"expectPayload": func(b []byte) {
-				data := tools.UnmarshalVaultResponse(b)
+				data := tools.UnmarshalVaultResponse(b).Get("tenant")
 
 				Expect(data.Map()).To(HaveKey("uuid"))
 				Expect(data.Map()).To(HaveKey("identifier"))
@@ -66,7 +67,7 @@ var _ = Describe("Tenant", func() {
 		}, nil, payload)
 
 		tenantsAPI.Read(tools.Params{
-			"tenant": createdData.Get("uuid").String(),
+			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
 				Expect(createdData).To(Equal(data))
@@ -86,21 +87,21 @@ var _ = Describe("Tenant", func() {
 
 		updatePayload := tenant.GetPayload()
 		updatedTenant := model.Tenant{
-			UUID:       createdData.Get("uuid").String(),
-			Version:    createdData.Get("resource_version").String(),
+			UUID:       createdData.Get("tenant.uuid").String(),
+			Version:    createdData.Get("tenant.resource_version").String(),
 			Identifier: updatePayload.Identifier.(string),
 		}
 
 		var updateData gjson.Result
 		tenantsAPI.Update(tools.Params{
-			"tenant": createdData.Get("uuid").String(),
+			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(b []byte) {
 				updateData = tools.UnmarshalVaultResponse(b)
 			},
 		}, nil, updatedTenant)
 
 		tenantsAPI.Read(tools.Params{
-			"tenant": createdData.Get("uuid").String(),
+			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
 				Expect(updateData).To(Equal(data))
@@ -119,11 +120,11 @@ var _ = Describe("Tenant", func() {
 		}, nil, createPayload)
 
 		tenantsAPI.Delete(tools.Params{
-			"tenant": createdData.Get("uuid").String(),
+			"tenant": createdData.Get("tenant.uuid").String(),
 		}, nil)
 
 		tenantsAPI.Read(tools.Params{
-			"tenant":       createdData.Get("uuid").String(),
+			"tenant":       createdData.Get("tenant.uuid").String(),
 			"expectStatus": tools.ExpectExactStatus(404),
 		}, nil)
 	})
