@@ -4,8 +4,9 @@ import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genRoleCreatePayload } from "./lib/payloads.mjs"
 
-describe("Role", function () {
+describe("Role", function() {
     const rootClient = getClient(rootToken)
+
     function getAPIClient(client) {
         return new API(
             client,
@@ -13,13 +14,14 @@ describe("Role", function () {
             new SingleFieldReponseMapper("data.role", "data.names"),
         )
     }
+
     const root = getAPIClient(rootClient)
 
     describe("payload", () => {
         describe("name", () => {
             after("clean", async () => {
                 const names = await root.list()
-                const deletions = names.map((role) => root.delete({ params: { role } }))
+                const deletions = names.map((role) => root.delete({ params: { role: role.name } }))
                 await Promise.all(deletions)
             })
 
@@ -100,7 +102,7 @@ describe("Role", function () {
 
         const list = await root.list()
 
-        expect(list).to.include(role.name)
+        expect(list.map(r => r.name)).to.include(role.name)
     })
 
     it("can be deleted", async () => {
@@ -164,12 +166,12 @@ describe("Role", function () {
         })
     })
 
-    describe("no access", function () {
-        describe("when unauthenticated", function () {
+    describe("no access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 

@@ -531,14 +531,14 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewServiceAccountRepository(tx)
 
-		list, err := repo.List(tenantID)
+		serviceAccounts, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"service_accounts": serviceAccounts,
 			},
 		}
 		return resp, nil
@@ -648,14 +648,14 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewMultipassRepository(tx)
 
-		ids, err := repo.List(filter)
+		multipasses, err := repo.List(filter)
 		if err != nil {
 			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": ids,
+				"multipasses": multipasses,
 			},
 		}
 
@@ -770,14 +770,14 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewServiceAccountPasswordRepository(tx)
 
-		ids, err := repo.List(filter)
+		passwords, err := repo.List(filter)
 		if err != nil {
 			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": ids,
+				"passwords": passwords,
 			},
 		}
 

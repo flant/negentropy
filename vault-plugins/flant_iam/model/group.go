@@ -195,22 +195,22 @@ func (r *GroupRepository) delete(id string) error {
 	return r.db.Delete(GroupType, group)
 }
 
-func (r *GroupRepository) List(tenantID TenantUUID) ([]GroupUUID, error) {
+func (r *GroupRepository) List(tenantID TenantUUID) ([]*Group, error) {
 	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []GroupUUID{}
+	list := []*Group{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		u := raw.(*Group)
-		ids = append(ids, u.UUID)
+		g := raw.(*Group)
+		list = append(list, g)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *GroupRepository) DeleteByTenant(tenantUUID TenantUUID) error {

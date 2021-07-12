@@ -240,14 +240,14 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewTenantRepository(tx)
 
-		list, err := repo.List()
+		tenants, err := repo.List()
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"tenants": tenants,
 			},
 		}
 		return resp, nil

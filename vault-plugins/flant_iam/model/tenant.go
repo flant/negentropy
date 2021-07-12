@@ -151,22 +151,22 @@ func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo
 	return nil
 }
 
-func (r *TenantRepository) List() ([]TenantUUID, error) {
+func (r *TenantRepository) List() ([]*Tenant, error) {
 	iter, err := r.db.Get(TenantType, PK)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	list := []*Tenant{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		t := raw.(*Tenant)
-		ids = append(ids, t.UUID)
+		list = append(list, t)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *TenantRepository) Sync(objID string, data []byte) error {

@@ -272,14 +272,14 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewProjectRepository(tx)
 
-		list, err := repo.List(tenantID)
+		projects, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"projects": projects,
 			},
 		}
 		return resp, nil

@@ -4,14 +4,14 @@ import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
 import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import { genTenantPayload } from "./lib/payloads.mjs"
 
-describe("Tenant", function () {
+describe("Tenant", function() {
     const rootClient = getClient(rootToken)
 
     function getAPIClient(client) {
         return new API(
             client,
             new EndpointBuilder(["tenant"]),
-            new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+            new SingleFieldReponseMapper("data.tenant", "data.tenants"),
         )
     }
 
@@ -159,7 +159,8 @@ describe("Tenant", function () {
 
         const list = await root.list()
 
-        expect(list).to.be.an("array").and.to.contain(t.uuid)
+        expect(list).to.be.an("array")
+        expect(list.some(x => x.uuid === t.uuid))
     })
 
     it("has identifying fields in list", async () => {
@@ -169,7 +170,7 @@ describe("Tenant", function () {
 
         const list = await root.list()
 
-        expect(list).to.include(id)
+        expect(list.map(t => t.uuid)).to.include(id)
     })
 
     describe("when does not exist", () => {
@@ -187,12 +188,12 @@ describe("Tenant", function () {
         })
     })
 
-    describe("no access", function () {
-        describe("when unauthenticated", function () {
+    describe("no access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -226,7 +227,7 @@ describe("Tenant", function () {
         }
     })
 
-    describe("privileged access", function () {
+    describe("privileged access", function() {
         it(`creates`, async () => {
             const payload = genTenantPayload({ uuid: uuidv4() })
 

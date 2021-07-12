@@ -147,22 +147,22 @@ func (r *ProjectRepository) Delete(id ProjectUUID) error {
 	return r.delete(id)
 }
 
-func (r *ProjectRepository) List(tenantID TenantUUID) ([]ProjectUUID, error) {
+func (r *ProjectRepository) List(tenantID TenantUUID) ([]*Project, error) {
 	iter, err := r.db.Get(ProjectType, TenantForeignPK, tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	list := []*Project{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		u := raw.(*Project)
-		ids = append(ids, u.UUID)
+		project := raw.(*Project)
+		list = append(list, project)
 	}
-	return ids, nil
+	return list, nil
 }
 
 func (r *ProjectRepository) DeleteByTenant(tenantUUID TenantUUID) error {

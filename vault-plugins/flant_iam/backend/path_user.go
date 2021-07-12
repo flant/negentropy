@@ -380,14 +380,14 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewUserRepository(tx)
 
-		list, err := repo.List(tenantID)
+		users, err := repo.List(tenantID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"users": users,
 			},
 		}
 		return resp, nil
@@ -492,14 +492,14 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewMultipassRepository(tx)
 
-		ids, err := repo.List(filter)
+		multipasses, err := repo.List(filter)
 		if err != nil {
 			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": ids,
+				"multipasses": multipasses,
 			},
 		}
 

@@ -5,20 +5,20 @@ import { genMultipassPayload, genTenantPayload, genUserPayload } from "./lib/pay
 
 //    /tenant/{tid}/user/{uid}
 
-describe("User", function () {
+describe("User", function() {
     const rootClient = getClient(rootToken)
 
     const rootTenantAPI = new API(
         rootClient,
         new EndpointBuilder(["tenant"]),
-        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+        new SingleFieldReponseMapper("data.tenant", "data.tenants"),
     )
 
     function getAPIClient(client) {
         return new API(
             client,
             new EndpointBuilder(["tenant", "user"]),
-            new SingleFieldReponseMapper("data.user", "data.uuids"),
+            new SingleFieldReponseMapper("data.user", "data.users"),
         )
     }
 
@@ -140,7 +140,7 @@ describe("User", function () {
         const list = await rootUserAPI.list({ params })
 
         expect(list).to.be.an("array").of.length(1) // if not 1, maybe users are not filtered by tenants
-        expect(list[0]).to.eq(uid)
+        expect(list[0].uuid).to.eq(uid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -179,12 +179,12 @@ describe("User", function () {
         })
     })
 
-    describe("access", function () {
-        describe("when unauthenticated", function () {
+    describe("access", function() {
+        describe("when unauthenticated", function() {
             runWithClient(getClient(), 400)
         })
 
-        describe("when unauthorized", function () {
+        describe("when unauthorized", function() {
             runWithClient(getClient("xxx"), 403)
         })
 
@@ -250,12 +250,12 @@ describe("User", function () {
         }
     })
 
-    describe("multipass", function () {
+    describe("multipass", function() {
         const endpointBuilder = new EndpointBuilder(["tenant", "user", "multipass"])
         const rootMPClient = new API(
             rootClient,
             endpointBuilder,
-            new SingleFieldReponseMapper("data.multipass", "data.uuids"),
+            new SingleFieldReponseMapper("data.multipass", "data.multipasses"),
         )
 
         async function createMultipass(t, u, override = {}) {
@@ -281,19 +281,19 @@ describe("User", function () {
             expect(mp)
                 .to.be.an("object")
                 .and.include.keys(
-                    "allowed_cidrs",
-                    "allowed_roles",
-                    "description",
-                    "max_ttl",
-                    "owner_type",
-                    "owner_uuid",
-                    "tenant_uuid",
-                    "origin",
-                    "extensions",
-                    "ttl",
-                    "uuid",
-                    "valid_till",
-                )
+                "allowed_cidrs",
+                "allowed_roles",
+                "description",
+                "max_ttl",
+                "owner_type",
+                "owner_uuid",
+                "tenant_uuid",
+                "origin",
+                "extensions",
+                "ttl",
+                "uuid",
+                "valid_till",
+            )
                 .and.not.include.keys("salt")
 
             expect(mp.uuid, "uuid").to.be.a("string")
@@ -343,9 +343,12 @@ describe("User", function () {
                 user: u.uuid,
             }
 
-            const uuids = await rootMPClient.list({ params })
+            const list = await rootMPClient.list({ params })
 
-            expect(uuids).to.have.all.members(ids)
+            expect(list.map(mp => mp.uuid)).to.have.all.members(ids)
+            for (const mp of list) {
+                expect(mp.salt).to.be.undefined
+            }
         })
 
         it("can be deleted", async () => {
