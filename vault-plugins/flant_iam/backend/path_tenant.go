@@ -233,7 +233,6 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return logical.ErrorResponse(msg), nil
 		}
 		if err := commit(tx, b.Logger()); err != nil {
-			b.Logger().Error("zxczxczxc", "err", err.Error(), "configu", b.storage.GetKafkaBroker().Configured())
 			return nil, err
 		}
 
