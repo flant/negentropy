@@ -43,19 +43,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
@@ -94,19 +84,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
@@ -168,19 +148,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 				"ttl": {
@@ -242,15 +212,21 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		roleBinding := &model.RoleBinding{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			ValidTill:       expiration,
-			RequireMFA:      data.Get("require_mfa").(bool),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			ValidTill:  expiration,
+			RequireMFA: data.Get("require_mfa").(bool),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -266,7 +242,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -277,23 +254,29 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		roleBinding := &model.RoleBinding{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			Version:         data.Get("resource_version").(string),
-			ValidTill:       expiration,
-			RequireMFA:      data.Get("require_mfa").(bool),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Version:    data.Get("resource_version").(string),
+			ValidTill:  expiration,
+			RequireMFA: data.Get("require_mfa").(bool),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		repo := model.NewRoleBindingRepository(tx)
-		err := repo.Update(roleBinding)
+		err = repo.Update(roleBinding)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -301,7 +284,8 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -337,7 +321,8 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, roleBinding, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

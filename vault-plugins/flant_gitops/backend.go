@@ -8,14 +8,14 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/queue_manager"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 type backend struct {
 	*framework.Backend
-	TaskQueueManager      queue_manager.Interface
+	TasksManager          tasks_manager.Interface
 	AccessVaultController *client.VaultClientController
 
 	LastPeriodicTaskUUID string
@@ -38,13 +38,17 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 func newBackend() (*backend, error) {
 	b := &backend{
-		TaskQueueManager:      queue_manager.NewManager(),
+		TasksManager:          tasks_manager.NewManager(),
 		AccessVaultController: client.NewVaultClientController(hclog.L),
 	}
 
 	b.Backend = &framework.Backend{
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
 			if err := b.AccessVaultController.OnPeriodical(ctx, req); err != nil {
+				return err
+			}
+
+			if err := b.TasksManager.PeriodicTask(ctx, req); err != nil {
 				return err
 			}
 
@@ -57,7 +61,8 @@ func newBackend() (*backend, error) {
 		BackendType: logical.TypeLogical,
 		Paths: framework.PathAppend(
 			configurePaths(b),
-			b.TaskQueueManager.Paths(),
+			configureVaultRequestPaths(b),
+			b.TasksManager.Paths(),
 			pgp.Paths(),
 			[]*framework.Path{
 				client.PathConfigure(b.AccessVaultController),

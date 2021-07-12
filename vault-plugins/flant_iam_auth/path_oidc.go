@@ -415,7 +415,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
 
-	if authSource.AuthType() != model.OIDCFlow {
+	if authSource.AuthType() != model.AuthSourceOIDCFlow {
 		return logical.ErrorResponse(errNotOIDCFlow), nil
 	}
 

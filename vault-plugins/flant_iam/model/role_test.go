@@ -32,27 +32,27 @@ func checkDeepEqual(t *testing.T, expected, got interface{}) {
 var (
 	role1 = Role{
 		Name:          roleName1,
-		Type:          GroupScopeProject,
+		Scope:         RoleScopeProject,
 		IncludedRoles: nil,
 	}
 	role2 = Role{
 		Name:          roleName2,
-		Type:          GroupScopeProject,
+		Scope:         RoleScopeProject,
 		IncludedRoles: nil,
 	}
 	role3 = Role{
 		Name:          roleName3,
-		Type:          GroupScopeProject,
+		Scope:         RoleScopeProject,
 		IncludedRoles: []IncludedRole{{Name: roleName1}},
 	}
 	role4 = Role{
 		Name:          roleName4,
-		Type:          GroupScopeProject,
+		Scope:         RoleScopeProject,
 		IncludedRoles: []IncludedRole{{Name: roleName1}, {Name: roleName2}},
 	}
 	role5 = Role{
 		Name:          roleName5,
-		Type:          GroupScopeProject,
+		Scope:         RoleScopeProject,
 		IncludedRoles: []IncludedRole{{Name: roleName2}, {Name: roleName3}},
 	}
 )

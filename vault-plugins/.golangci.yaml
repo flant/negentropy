@@ -22,7 +22,7 @@ linters:
   - gci
   - gocritic
   - gofmt
-  - goimports
+  # - goimports
   - gofumpt
   # - golint
   - gosimple

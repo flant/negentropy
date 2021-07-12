@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	storageKeyVaultRequestPrefix = "vault_request/"
-
 	fieldNameVaultRequestName    = "name"
 	fieldNameVaultRequestPath    = "path"
 	fieldNameVaultRequestMethod  = "method"
 	fieldNameVaultRequestOptions = "options"
 	fieldNameVaultRequestWrapTTL = "wrap_ttl"
+
+	wrapTTLMinSec = 60
 )
 
 func configureVaultRequestPaths(b *backend) []*framework.Path {
@@ -32,7 +32,7 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 			},
 		},
 		{
-			Pattern: "^configure/vault_request/" + framework.GenericNameRegex("name") + "$",
+			Pattern: "^configure/vault_request/" + framework.GenericNameRegex(fieldNameVaultRequestName) + "/?$",
 			Fields: map[string]*framework.FieldSchema{
 				fieldNameVaultRequestName: {
 					Type:        framework.TypeNameString,
@@ -46,28 +46,40 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 				},
 				fieldNameVaultRequestMethod: {
 					Type:        framework.TypeString,
-					Description: "GET, POST, LIST or PUT",
+					Description: "GET, POST, LIST, PUT or DELETE",
 					Required:    true,
 				},
 				fieldNameVaultRequestOptions: {
 					Type:        framework.TypeString,
-					Description: "JSON encoded string with parameters for a request",
+					Description: "Optional JSON encoded string with data for the request",
 				},
 				fieldNameVaultRequestWrapTTL: {
 					Type:        framework.TypeString,
-					Description: "Vault response wrap TTL specified as golang duration string (https://golang.org/pkg/time/#ParseDuration)",
+					Description: fmt.Sprintf("Vault response wrap TTL specified as golang duration string (https://golang.org/pkg/time/#ParseDuration). Minimum: %ds", wrapTTLMinSec),
 					Default:     "1m",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.pathConfigureVaultRequestCreate,
-				},
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.pathConfigureVaultRequestRead,
+					Callback: b.pathConfigureVaultRequestCreateOrUpdate,
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathConfigureVaultRequestUpdate,
+					Callback: b.pathConfigureVaultRequestCreateOrUpdate,
+				},
+			},
+		},
+		{
+			Pattern: "^configure/vault_request/" + framework.GenericNameRegex(fieldNameVaultRequestName) + "/?$",
+			Fields: map[string]*framework.FieldSchema{
+				fieldNameVaultRequestName: {
+					Type:        framework.TypeNameString,
+					Description: "Name this request so that request result will be available in the $VAULT_REQUEST_TOKEN_$name variable",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathConfigureVaultRequestRead,
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestDelete,
@@ -77,15 +89,7 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 	}
 }
 
-func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Start listing vault request configuration ...")
-
-	// TODO
-
-	return nil, nil
-}
-
-func (b *backend) pathConfigureVaultRequestCreate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("Start creating vault request configuration ...")
 
 	resp, err := util.ValidateRequestFields(req, fields)
@@ -98,9 +102,9 @@ func (b *backend) pathConfigureVaultRequestCreate(ctx context.Context, req *logi
 
 	method := req.Get(fieldNameVaultRequestMethod).(string)
 	switch method {
-	case "GET", "POST", "LIST", "PUT":
+	case "GET", "POST", "LIST", "PUT", "DELETE":
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("invalid %s given: expected GET, POST, LIST or PUT", fieldNameVaultRequestMethod)), nil
+		return logical.ErrorResponse("invalid option %q given: expected GET, POST, LIST, PUT or DELETE", fieldNameVaultRequestMethod), nil
 	}
 
 	var options string
@@ -108,21 +112,24 @@ func (b *backend) pathConfigureVaultRequestCreate(ctx context.Context, req *logi
 		options = v.(string)
 
 		var data interface{}
-		if err := json.Unmarshal([]byte(options), data); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid %s given: expected json: %s", fieldNameVaultRequestOptions, err)), nil
+		if err := json.Unmarshal([]byte(options), &data); err != nil {
+			return logical.ErrorResponse("invalid option %q given: expected json: %s", fieldNameVaultRequestOptions, err), nil
 		}
 	}
 
-	var wrapTTL string
-	if v := req.Get(fieldNameVaultRequestWrapTTL); v != nil {
-		wrapTTL = v.(string)
+	var wrapTTL time.Duration
+	if wrapTTLRaw := req.Get(fieldNameVaultRequestWrapTTL); wrapTTLRaw != nil {
+		wrapTTL, err = time.ParseDuration(wrapTTLRaw.(string))
+		if err != nil {
+			return logical.ErrorResponse("invalid option %q given, expected golang time duration: %s", fieldNameVaultRequestWrapTTL, err), nil
+		}
 
-		if _, err := time.ParseDuration(wrapTTL); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid %s given, expected golang time duration: %s", wrapTTL, err)), nil
+		if wrapTTL.Seconds() < wrapTTLMinSec {
+			return logical.ErrorResponse("Can't set %q for Vault request as %.0f, minimum value of %qs required", fieldNameVaultRequestWrapTTL, wrapTTL.Seconds(), wrapTTLMinSec), nil
 		}
 	}
 
-	vaultRequest := &vaultRequest{
+	vaultRequest := vaultRequest{
 		Name:    name,
 		Path:    path,
 		Method:  method,
@@ -135,37 +142,85 @@ func (b *backend) pathConfigureVaultRequestCreate(ctx context.Context, req *logi
 		b.Logger().Debug(fmt.Sprintf("Got vault request configuration (err=%v):\n%s", cfgErr, string(cfgData)))
 	}
 
-	vaultRequestsConfig, err := getVaultRequests(ctx, req.Storage)
-	if err != nil {
-		return nil, fmt.Errorf("error getting existing vault requests from the storage: %s", err)
+	if err := putVaultRequest(ctx, req.Storage, vaultRequest); err != nil {
+		return logical.ErrorResponse("Can't put Vault request %q into storage: %s", name, err), nil
 	}
 
-	vaultRequestsConfig = append(vaultRequestsConfig, vaultRequest)
-
-	if err := putVaultRequests(ctx, req.Storage, vaultRequestsConfig); err != nil {
-		return nil, fmt.Errorf("error putting updated vault requests into the storage: %s", err)
-	}
-
-	return nil, nil
-}
-
-func (b *backend) pathConfigureVaultRequestUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Start updating vault request configuration ...")
-
-	// TODO
 	return nil, nil
 }
 
 func (b *backend) pathConfigureVaultRequestRead(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("Start reading vault request configuration ...")
 
-	// TODO
-	return nil, nil
+	// TODO: return only error instead?
+	resp, err := util.ValidateRequestFields(req, fields)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+
+	vaultRequestName := req.Get(fieldNameVaultRequestName).(string)
+
+	vaultRequest, err := getVaultRequest(ctx, req.Storage, vaultRequestName)
+	if err != nil {
+		return logical.ErrorResponse("Unable to Read Vault request %q configuration: %s", vaultRequestName, err), nil
+	}
+	if vaultRequest == nil {
+		return logical.ErrorResponse("Vault request %q not found", vaultRequestName), nil
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			fieldNameVaultRequestName:    vaultRequest.Name,
+			fieldNameVaultRequestPath:    vaultRequest.Path,
+			fieldNameVaultRequestMethod:  vaultRequest.Method,
+			fieldNameVaultRequestOptions: vaultRequest.Options,
+			fieldNameVaultRequestWrapTTL: vaultRequest.WrapTTL.String(),
+		},
+	}, nil
+}
+
+func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("Start listing vault request configuration ...")
+
+	var keys []string
+	keysInfo := map[string]interface{}{}
+
+	allVaultRequests, err := listVaultRequests(ctx, req.Storage)
+	if err != nil {
+		return logical.ErrorResponse("Unable to List all Vault requests configurations: %s", err), nil
+	}
+	if len(allVaultRequests) == 0 {
+		return logical.ListResponseWithInfo(keys, keysInfo), nil
+	}
+
+	for _, vaultRequest := range allVaultRequests {
+		keys = append(keys, vaultRequest.Name)
+		keysInfo[vaultRequest.Name] = map[string]interface{}{
+			fieldNameVaultRequestName:    vaultRequest.Name,
+			fieldNameVaultRequestPath:    vaultRequest.Path,
+			fieldNameVaultRequestMethod:  vaultRequest.Method,
+			fieldNameVaultRequestOptions: vaultRequest.Options,
+			fieldNameVaultRequestWrapTTL: vaultRequest.WrapTTL.String(),
+		}
+	}
+
+	return logical.ListResponseWithInfo(keys, keysInfo), nil
 }
 
 func (b *backend) pathConfigureVaultRequestDelete(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("Start deleting vault request configuration ...")
 
-	// TODO
+	// TODO: return only error instead?
+	resp, err := util.ValidateRequestFields(req, fields)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+
+	vaultRequestName := req.Get(fieldNameVaultRequestName).(string)
+
+	if err := deleteVaultRequest(ctx, req.Storage, vaultRequestName); err != nil {
+		return logical.ErrorResponse("Unable to Delete Vault request %q: %s", vaultRequestName, err), nil
+	}
+
 	return nil, nil
 }

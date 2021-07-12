@@ -42,19 +42,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 			},
@@ -88,19 +78,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 			},
@@ -157,19 +137,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"users": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "User UUIDs",
-					Required:    true,
-				},
-				"groups": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Group UUIDs",
-					Required:    true,
-				},
-				"service_accounts": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Service account UUIDs",
+				"subjects": {
+					Type:        framework.TypeSlice,
+					Description: "Subjects list",
 					Required:    true,
 				},
 			},
@@ -218,15 +188,20 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		group := &model.Group{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			BuiltinType:     "",
-			Identifier:      data.Get("identifier").(string),
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Identifier: data.Get("identifier").(string),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -242,7 +217,8 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -250,23 +226,28 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
+		subjects, err := parseSubjects(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
 		group := &model.Group{
-			UUID:            id,
-			TenantUUID:      data.Get(model.TenantForeignPK).(string),
-			Version:         data.Get("resource_version").(string),
-			Identifier:      data.Get("identifier").(string),
-			BuiltinType:     "",
-			Users:           data.Get("users").([]string),
-			Groups:          data.Get("groups").([]string),
-			ServiceAccounts: data.Get("service_accounts").([]string),
-			Origin:          model.OriginIAM,
+			UUID:       id,
+			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			Version:    data.Get("resource_version").(string),
+			Identifier: data.Get("identifier").(string),
+			Subjects:   subjects,
+			Origin:     model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		repo := model.NewGroupRepository(tx)
-		err := repo.Update(group)
+		err = repo.Update(group)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -274,7 +255,8 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -309,7 +291,8 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		return responseWithDataAndCode(req, group, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

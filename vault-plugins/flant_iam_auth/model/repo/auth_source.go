@@ -1,21 +1,30 @@
 package repo
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
+var (
+	ErrSourceNotFound       = errors.New("ErrSourceNotFound")
+	ErrSourceUsingInMethods = errors.New("ErrSourceUsingInMethods")
+)
+
 type AuthSourceRepo struct {
-	db        *io.MemoryStoreTxn
-	tableName string
+	db          *io.MemoryStoreTxn
+	tableName   string
+	methodsRepo *AuthMethodRepo
 }
 
 func NewAuthSourceRepo(db *io.MemoryStoreTxn) *AuthSourceRepo {
 	return &AuthSourceRepo{
-		db:        db,
-		tableName: model.AuthSourceType,
+		db:          db,
+		tableName:   model.AuthSourceType,
+		methodsRepo: NewAuthMethodRepo(db),
 	}
 }
 
@@ -46,10 +55,29 @@ func (r *AuthSourceRepo) Put(source *model.AuthSource) error {
 }
 
 func (r *AuthSourceRepo) Delete(name string) error {
+	methods, err := r.methodsRepo.BySource(name)
+	if err != nil {
+		return err
+	}
+
+	if len(methods) > 0 {
+		methodsNames := make([]string, 0)
+		for _, m := range methods {
+			methodsNames = append(methodsNames, m.Name)
+		}
+
+		return fmt.Errorf("%w can not delete source. use in [%s]", ErrSourceUsingInMethods, strings.Join(methodsNames, ","))
+	}
+
 	source, err := r.Get(name)
 	if err != nil {
 		return err
 	}
+
+	if source == nil {
+		return ErrSourceNotFound
+	}
+
 	return r.db.Delete(r.tableName, source)
 }
 

@@ -1,20 +1,26 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
-import {
-    genProjectPayload,
-    SubTenantEntrypointBuilder,
-} from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
+import { genProjectPayload, genTenantPayload } from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/project/{pid}
 
 describe("Project", function () {
     const rootClient = getClient(rootToken)
-    const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
+    const rootTenantAPI = new API(
+        rootClient,
+        new EndpointBuilder(["tenant"]),
+        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+    )
+    function getAPIClient(client) {
+        return new API(
+            client,
+            new EndpointBuilder(["tenant", "project"]),
+            new SingleFieldReponseMapper("data.project", "data.uuids"),
+        )
+    }
 
-    const entrypointBuilder = new SubTenantEntrypointBuilder("project")
-    const rootProjectClient = new API(rootClient, entrypointBuilder)
+    const rootProjectAPI = getAPIClient(rootClient)
 
     function genPayload(override) {
         return genProjectPayload(override)
@@ -22,8 +28,7 @@ describe("Project", function () {
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        return await rootTenantAPI.create({ payload })
     }
 
     async function createTenantId() {
@@ -33,32 +38,24 @@ describe("Project", function () {
 
     async function createProject(tid) {
         const payload = genPayload()
-        const { data: body } = await rootProjectClient.create({
+        return await rootProjectAPI.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
     }
 
     it("can be created", async () => {
         const tid = await createTenantId()
 
-        const { data: body } = await rootProjectClient.create({
+        const project = await rootProjectAPI.create({
             params: { tenant: tid },
             payload: genPayload(),
         })
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
-        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(project).to.include.keys("uuid", "tenant_uuid", "resource_version")
+        expect(project.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(project.tenant_uuid).to.eq(tid)
+        expect(project.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be read", async () => {
@@ -66,33 +63,28 @@ describe("Project", function () {
         const tid = tenant.uuid
         // create
         const payload = genPayload()
-        const { data: created } = await rootProjectClient.create({
+        const created = await rootProjectAPI.create({
             params: { tenant: tid },
             payload,
         })
-        const pid = created.data.uuid
+        const pid = created.uuid
         const generated = {
-            uuid: created.data.uuid,
-            tenant_uuid: created.data.tenant_uuid,
-            resource_version: created.data.resource_version,
+            uuid: created.uuid,
+            tenant_uuid: created.tenant_uuid,
+            resource_version: created.resource_version,
         }
 
         // read
-        const { data: read } = await rootProjectClient.read({
+        const read = await rootProjectAPI.read({
             params: { tenant: tid, project: pid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
-        expect(read.data).to.deep.eq(
-            created.data,
+        expect(read).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
+        expect(read).to.deep.eq(
+            created,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.resource_version).to.be.a("string").of.length.greaterThan(5)
     })
 
     it("can be updated", async () => {
@@ -106,16 +98,15 @@ describe("Project", function () {
             resource_version: created.resource_version,
         })
         const params = { tenant: tid, project: created.uuid }
-        const { data: updated } = await rootProjectClient.update({
+        const updated = await rootProjectAPI.update({
             params,
             payload,
         })
 
         // read
-        const { data: read } = await rootProjectClient.read({ params })
-        const sub = read.data
+        const read = await rootProjectAPI.read({ params })
 
-        expect(read.data).to.deep.eq(updated.data)
+        expect(read).to.deep.eq(updated)
     })
 
     it("can be deleted", async () => {
@@ -127,10 +118,10 @@ describe("Project", function () {
 
         // delete
         const params = { tenant: tid, project: pid }
-        await rootProjectClient.delete({ params })
+        await rootProjectAPI.delete({ params })
 
         // read
-        await rootProjectClient.read({ params, opts: expectStatus(404) })
+        await rootProjectAPI.read({ params, opts: expectStatus(404) })
     })
 
     it("can be listed", async () => {
@@ -141,11 +132,10 @@ describe("Project", function () {
 
         // delete
         const params = { tenant: tid }
-        const { data: body } = await rootProjectClient.list({ params })
+        const list = await rootProjectAPI.list({ params })
 
-        expect(body.data).to.be.an("object").and.include.keys("uuids")
-        expect(body.data.uuids).to.be.an("array").of.length(1) // if not 1, maybe projects are not filtered by tenants
-        expect(body.data.uuids[0]).to.eq(pid)
+        expect(list).to.be.an("array").of.length(1) // if not 1, maybe projects are not filtered by tenants
+        expect(list[0]).to.eq(pid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -156,7 +146,7 @@ describe("Project", function () {
 
         const params = { tenant: tid, project: project.uuid }
         const opts = expectStatus(404)
-        await rootProjectClient.read({ params, opts })
+        await rootProjectAPI.read({ params, opts })
     })
 
     describe("when does not exist", () => {
@@ -168,11 +158,11 @@ describe("Project", function () {
         })
 
         it("cannot read, gets 404", async () => {
-            await rootProjectClient.read({ params, opts })
+            await rootProjectAPI.read({ params, opts })
         })
 
         it("cannot update, gets 404", async () => {
-            await rootProjectClient.update({
+            await rootProjectAPI.update({
                 params,
                 opts,
                 payload: genTenantPayload(),
@@ -180,7 +170,7 @@ describe("Project", function () {
         })
 
         it("cannot delete, gets 404", async () => {
-            await rootProjectClient.delete({ params, opts })
+            await rootProjectAPI.delete({ params, opts })
         })
     })
 
@@ -195,7 +185,7 @@ describe("Project", function () {
 
         function runWithClient(client, expectedStatus) {
             const opts = expectStatus(expectedStatus)
-            const unauth = new API(client, entrypointBuilder)
+            const unauth = getAPIClient(client)
             let payload = {}
 
             const params = {}
@@ -216,11 +206,11 @@ describe("Project", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const { data } = await rootProjectClient.create({
+                const project = await rootProjectAPI.create({
                     params,
                     payload,
                 })
-                const pid = data.data.uuid
+                const pid = project.uuid
 
                 await unauth.read({
                     params: { ...params, project: pid },
@@ -229,11 +219,11 @@ describe("Project", function () {
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const { data } = await rootProjectClient.create({
+                const project = await rootProjectAPI.create({
                     params,
                     payload,
                 })
-                const pid = data.data.uuid
+                const pid = project.uuid
                 await unauth.update({
                     params: { ...params, project: pid },
                     payload,
@@ -242,11 +232,11 @@ describe("Project", function () {
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await rootProjectClient.create({
+                const project = await rootProjectAPI.create({
                     params,
                     payload,
                 })
-                const pid = data.data.uuid
+                const pid = project.uuid
                 await unauth.delete({
                     params: { ...params, project: pid },
                     opts,

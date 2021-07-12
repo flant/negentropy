@@ -1,29 +1,45 @@
-import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
-import { genTenantPayload, TenantEndpointBuilder } from "./lib/tenant.mjs"
 import { expect } from "chai"
+import { API, EndpointBuilder, SingleFieldReponseMapper } from "./lib/api.mjs"
+import { expectStatus, getClient, rootToken } from "./lib/client.mjs"
 import {
     genGroupPayload,
-    SubTenantEntrypointBuilder,
-} from "./lib/subtenant.mjs"
-import { API } from "./lib/api.mjs"
+    genServiceAccountPayload,
+    genTenantPayload,
+    genUserPayload,
+} from "./lib/payloads.mjs"
 
 //    /tenant/{tid}/group/{gid}
 
 describe("Group", function () {
     const rootClient = getClient(rootToken)
-    const rootTenantAPI = new API(rootClient, new TenantEndpointBuilder())
 
-    const entrypointBuilder = new SubTenantEntrypointBuilder("group")
-    const rootGroupClient = new API(rootClient, entrypointBuilder)
+    const rootTenantAPI = new API(
+        rootClient,
+        new EndpointBuilder(["tenant"]),
+        new SingleFieldReponseMapper("data.tenant", "data.uuids"),
+    )
+
+    function getSubtenantClient(client, name) {
+        return new API(
+            client,
+            new EndpointBuilder(["tenant", name]),
+            new SingleFieldReponseMapper("data." + name, "data.uuids"),
+        )
+    }
+
+    const rootGroupClient = getSubtenantClient(rootClient, "group")
+
+    // Clients to provide dependencies
+    const rootUserClient = getSubtenantClient(rootClient, "user")
+    const rootServiceAccountClient = getSubtenantClient(rootClient, "service_account")
 
     function genPayload(override) {
-        return genGroupPayload(override)
+        return genRoleBindingPayload(override)
     }
 
     async function createTenant() {
         const payload = genTenantPayload()
-        const { data } = await rootTenantAPI.create({ payload })
-        return data.data
+        return await rootTenantAPI.create({ payload })
     }
 
     async function createTenantId() {
@@ -31,71 +47,96 @@ describe("Group", function () {
         return tenant.uuid
     }
 
-    async function createGroup(tid) {
-        const payload = genPayload()
-        const { data: body } = await rootGroupClient.create({
+    async function createServiceAccount(tid) {
+        const payload = genServiceAccountPayload()
+        return await rootServiceAccountClient.create({
             params: { tenant: tid },
             payload,
         })
-        return body.data
+    }
+
+    async function createUser(tid) {
+        const payload = genUserPayload()
+        return await rootUserClient.create({
+            params: { tenant: tid },
+            payload,
+        })
+    }
+
+    async function createSubjects(tid) {
+        const user = await createUser(tid)
+        const sa = await createServiceAccount(tid)
+        return [subject("user", user.uuid), subject("service_account", sa.uuid)]
+    }
+
+    function subject(type, id) {
+        return { type, id }
+    }
+
+    function genPayload(override) {
+        return genGroupPayload(override)
+    }
+
+    async function createGroup(tid) {
+        const subjects = await createSubjects(tid)
+        const payload = genPayload({ subjects })
+        return await rootGroupClient.create({
+            params: { tenant: tid },
+            payload,
+        })
     }
 
     it("can be created", async () => {
         const tid = await createTenantId()
+        const subjects = await createSubjects(tid)
 
-        const { data: body } = await rootGroupClient.create({
+        const group = await rootGroupClient.create({
             params: { tenant: tid },
-            payload: genPayload(),
+            payload: genPayload({ subjects }),
         })
 
-        expect(body).to.exist.and.to.include.key("data")
-        expect(body.data).to.include.keys(
-            "uuid",
-            "tenant_uuid",
-            "resource_version",
-        )
-        expect(body.data.uuid).to.be.a("string").of.length.greaterThan(10)
-        expect(body.data.tenant_uuid).to.eq(tid)
-        expect(body.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(group).to.include.keys("uuid", "tenant_uuid", "resource_version")
+        expect(group.uuid).to.be.a("string").of.length.greaterThan(10)
+        expect(group.tenant_uuid).to.eq(tid)
+        expect(group.resource_version).to.be.a("string").of.length.greaterThan(5)
+
+        expect(group.subjects).to.deep.eq(subjects)
     })
 
     it("can be read", async () => {
         const tenant = await createTenant()
         const tid = tenant.uuid
+        const subjects = await createSubjects(tid)
+
         // create
-        const payload = genPayload()
-        const { data: created } = await rootGroupClient.create({
+        const payload = genPayload({ subjects })
+        const created = await rootGroupClient.create({
             params: { tenant: tid },
             payload,
         })
-        const gid = created.data.uuid
+        const gid = created.uuid
         const generated = {
-            uuid: created.data.uuid,
-            tenant_uuid: created.data.tenant_uuid,
-            resource_version: created.data.resource_version,
+            uuid: created.uuid,
+            tenant_uuid: created.tenant_uuid,
+            resource_version: created.resource_version,
             full_identifier: payload.identifier + "@group." + tenant.identifier,
             origin: "iam",
             extensions: null,
         }
 
         // read
-        const { data: read } = await rootGroupClient.read({
+        const read = await rootGroupClient.read({
             params: { tenant: tid, group: gid },
         })
 
-        expect(read.data).to.deep.eq(
-            { ...payload, ...generated },
-            "must have generated fields",
-        )
-        expect(read.data).to.deep.eq(
-            created.data,
+        expect(read).to.deep.eq({ ...payload, ...generated }, "must have generated fields")
+        expect(read).to.deep.eq(
+            created,
             "reading and creation responses should contain the same data",
         )
-        expect(read.data.resource_version)
-            .to.be.a("string")
-            .of.length.greaterThan(5)
+        expect(read.resource_version).to.be.a("string").of.length.greaterThan(5)
+
+        expect(read.subjects).to.deep.eq(subjects)
     })
 
     it("can be updated", async () => {
@@ -105,20 +146,21 @@ describe("Group", function () {
         const created = await createGroup(tid)
 
         // update
+        const subjects = await createSubjects(tid)
         const payload = genPayload({
             resource_version: created.resource_version,
+            subjects,
         })
         const params = { tenant: tid, group: created.uuid }
-        const { data: updated } = await rootGroupClient.update({
+        const updated = await rootGroupClient.update({
             params,
             payload,
         })
 
         // read
-        const { data: read } = await rootGroupClient.read({ params })
-        const sub = read.data
+        const read = await rootGroupClient.read({ params })
 
-        expect(read.data).to.deep.eq(updated.data)
+        expect(read).to.deep.eq(updated)
     })
 
     it("can be deleted", async () => {
@@ -144,11 +186,10 @@ describe("Group", function () {
 
         // delete
         const params = { tenant: tid }
-        const { data: body } = await rootGroupClient.list({ params })
+        const list = await rootGroupClient.list({ params })
 
-        expect(body.data).to.be.an("object").and.include.keys("uuids")
-        expect(body.data.uuids).to.be.an("array").of.length(1) // if not 1, maybe groups are not filtered by tenants
-        expect(body.data.uuids[0]).to.eq(gid)
+        expect(list).to.be.an("array").of.length(1) // if not 1, maybe groups are not filtered by tenants
+        expect(list[0]).to.eq(gid)
     })
 
     it("can be deleted by the tenant deletion", async () => {
@@ -198,7 +239,7 @@ describe("Group", function () {
 
         function runWithClient(client, expectedStatus) {
             const opts = expectStatus(expectedStatus)
-            const unauth = new API(client, entrypointBuilder)
+            const unauth = getSubtenantClient(client, "group")
             let payload = {}
 
             const params = {}
@@ -207,7 +248,8 @@ describe("Group", function () {
             })
 
             beforeEach("create group payload", async () => {
-                payload = genPayload()
+                const subjects = await createSubjects(params.tenant)
+                payload = genPayload({ subjects })
             })
 
             it(`cannot create, gets ${expectedStatus}`, async () => {
@@ -219,11 +261,11 @@ describe("Group", function () {
             })
 
             it(`cannot read, gets ${expectedStatus}`, async () => {
-                const { data } = await rootGroupClient.create({
+                const group = await rootGroupClient.create({
                     params,
                     payload,
                 })
-                const gid = data.data.uuid
+                const gid = group.uuid
 
                 await unauth.read({
                     params: { ...params, group: gid },
@@ -232,11 +274,11 @@ describe("Group", function () {
             })
 
             it(`cannot update, gets ${expectedStatus}`, async () => {
-                const { data } = await rootGroupClient.create({
+                const group = await rootGroupClient.create({
                     params,
                     payload,
                 })
-                const gid = data.data.uuid
+                const gid = group.uuid
                 await unauth.update({
                     params: { ...params, group: gid },
                     payload,
@@ -245,11 +287,11 @@ describe("Group", function () {
             })
 
             it(`cannot delete, gets ${expectedStatus}`, async () => {
-                const { data } = await rootGroupClient.create({
+                const group = await rootGroupClient.create({
                     params,
                     payload,
                 })
-                const gid = data.data.uuid
+                const gid = group.uuid
                 await unauth.delete({
                     params: { ...params, group: gid },
                     opts,

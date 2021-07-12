@@ -192,7 +192,8 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, project, http.StatusCreated)
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
@@ -212,20 +213,15 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 		repo := model.NewProjectRepository(tx)
 		err := repo.Update(project)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
-		if err == model.ErrBadVersion {
-			return responseBadVersion(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, project, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -238,11 +234,8 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 		repo := model.NewProjectRepository(tx)
 
 		err := repo.Delete(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return responseErr(req, err)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
@@ -260,14 +253,15 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 		repo := model.NewProjectRepository(tx)
 
 		project, err := repo.GetByID(id)
-		if err == model.ErrNotFound {
-			return responseNotFound(req)
+		if err != nil {
+			return responseErr(req, err)
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		return responseWithDataAndCode(req, project, http.StatusOK)
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

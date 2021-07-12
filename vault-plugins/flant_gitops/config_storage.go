@@ -65,33 +65,3 @@ func putConfiguration(ctx context.Context, storage logical.Storage, config *conf
 
 	return err
 }
-
-func getVaultRequests(ctx context.Context, storage logical.Storage) (vaultRequests, error) {
-	raw, err := storage.Get(ctx, storageKeyConfiguration)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, nil
-	}
-
-	var requestsConfig vaultRequests
-	if err := raw.DecodeJSON(requestsConfig); err != nil {
-		return nil, err
-	}
-
-	return requestsConfig, nil
-}
-
-func putVaultRequests(ctx context.Context, storage logical.Storage, requestsConfig vaultRequests) error {
-	entry, err := logical.StorageEntryJSON(storageKeyConfigurationRequests, requestsConfig)
-	if err != nil {
-		return err
-	}
-
-	if err := storage.Put(ctx, entry); err != nil {
-		return err
-	}
-
-	return err
-}
