@@ -27,7 +27,7 @@ enable:
 	VAULT_ADDR='http://127.0.0.1:8200' vault secrets enable -path=flant-gitops vault-plugin-flant-gitops
 	VAULT_ADDR='http://127.0.0.1:8200' vault auth enable -ca-cert=examples/conf/ca-cert.pem approle
 	VAULT_ADDR='http://127.0.0.1:8200' vault policy write -ca-cert=examples/conf/ca-cert.pem good examples/conf/good.hcl
-	VAULT_ADDR='http://127.0.0.1:8200' VAULT_ADDR='http://localhost:8200' vault write -ca-cert=examples/conf/ca-cert.pem auth/approle/role/good secret_id_ttl=30m token_ttl=90s token_policies=good
+	VAULT_ADDR='http://127.0.0.1:8200' vault write -ca-cert=examples/conf/ca-cert.pem auth/approle/role/good secret_id_ttl=30m token_ttl=90s token_policies=good
 	VAULT_ADDR='http://127.0.0.1:8200' vault write -ca-cert=examples/conf/ca-cert.pem flant-gitops/configure_vault_access \
                 vault_addr="http://localhost:8200" \
                 vault_tls_server_name="localhost" \

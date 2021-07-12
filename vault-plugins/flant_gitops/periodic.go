@@ -244,19 +244,19 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 				if apiConfig != nil {
 					vaultAddr := apiConfig.APIURL
 					vaultCACert := apiConfig.APICa
-					vaultCACertPath := path.Join(serviceDirInContext, "ca.crt")
+					vaultCACertPath := path.Join(".flant_gitops", "ca.crt")
 					vaultTLSServerName := apiConfig.APIHost
 
-					if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert)}); err != nil {
+					if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert + "\n")}); err != nil {
 						return fmt.Errorf("error writing file %s to tar: %s", vaultCACertPath, err)
 					}
 
 					dockerfileOpts.EnvVars["VAULT_ADDR"] = vaultAddr
-					dockerfileOpts.EnvVars["VAULT_CA_CERT"] = vaultCACertPath
+					dockerfileOpts.EnvVars["VAULT_CACERT"] = path.Join("/git", vaultCACertPath)
 					dockerfileOpts.EnvVars["VAULT_TLS_SERVER_NAME"] = vaultTLSServerName
 				}
 
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, serviceDirInContext, config.DockerImage, []string{config.Command}, dockerfileOpts); err != nil {
+				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, config.DockerImage, []string{config.Command}, dockerfileOpts); err != nil {
 					return fmt.Errorf("unable to add service dockerfile to tar: %s", err)
 				}
 
