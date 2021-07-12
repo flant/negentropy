@@ -266,11 +266,11 @@ func (b *flantIamAuthBackend) jwtValidator(methodName string, config *model.Auth
 
 	// Configure the key set for the validator
 	switch config.AuthType() {
-	case model.JWKS:
+	case model.AuthSourceJWKS:
 		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
-	case model.StaticKeys:
+	case model.AuthSourceStaticKeys:
 		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
-	case model.OIDCDiscovery:
+	case model.AuthSourceOIDCDiscovery:
 		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 	default:
 		return nil, errors.New("unsupported config type")

@@ -2,11 +2,14 @@ package jwtauth
 
 import (
 	"context"
-	"reflect"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -14,969 +17,1360 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
-func TestAuthMethod_Create(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		b, storage := getBackend(t)
+type errCase struct {
+	title         string
+	body          map[string]interface{}
+	errPrefix     string
+	hasBackendErr bool
+}
 
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
+func assertAuthMethod(t *testing.T, b *flantIamAuthBackend, methodName string, expected model.AuthMethod) {
+	actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get(methodName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		data := map[string]interface{}{
-			"method_type":     model.MethodTypeJWT,
-			"bound_subject":   "testsub",
-			"bound_audiences": "vault",
-			"user_claim":      "user",
-			"groups_claim":    "groups",
-			"bound_cidrs":     "127.0.0.1/8",
-			"source":          sourceName,
-		}
+	if actual.UUID == "" {
+		t.Fatal("not set uuid")
+	}
 
-		expected := &model.AuthMethod{
-			TokenParams:     tokenutil.TokenParams{},
-			MethodType:      model.MethodTypeJWT,
-			BoundSubject:    "testsub",
-			BoundAudiences:  []string{"vault"},
-			BoundClaimsType: "string",
-			UserClaim:       "user",
-			GroupsClaim:     "groups",
-			Source:          sourceName,
-			Name:            "plugin-test",
-		}
+	uuid := actual.UUID
+	defer func() {
+		actual.UUID = uuid
+	}()
 
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/plugin-test",
-			Storage:   storage,
-			Data:      data,
-		}
+	actual.UUID = ""
 
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+	if diff := deep.Equal(expected, *actual); diff != nil {
+		t.Fatalf("Unexpected authMethod data: diff %#v\n", diff)
+	}
+}
 
-		actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("plugin-test")
-		if err != nil {
-			t.Fatal(err)
-		}
+func createJwtAuthMethod(t *testing.T, b *flantIamAuthBackend, storage logical.Storage, methodName, jwtSourceName string) {
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      fmt.Sprintf("auth_method/%s", methodName),
+		Storage:   storage,
+		Data: withBoundClaims(
+			withLeaways(
+				withVaultTokenParts(
+					withUserClaims(map[string]interface{}{
+						"method_type": model.MethodTypeJWT,
+						"source":      jwtSourceName,
+					})))),
+	}
 
-		if actual.UUID == "" {
-			t.Fatal("not set uuid")
-		}
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+}
 
-		actual.UUID = ""
-
-		if !reflect.DeepEqual(expected, actual) {
-			t.Fatalf("Unexpected authMethod data: expected %#v\n got %#v\n", expected, actual)
-		}
-	})
-
-	t.Run("oidc need oids source jwt need jwt source", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
-			model.MethodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
-				creteTestJWTBasedSource(t, b, s, n)
-			},
-
-			model.MethodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
-				creteTestOIDCBasedSource(t, b, s, n)
-			},
-		}
-
-		for methodType, sourceCreator := range methods {
-			sourceName := "a"
-			sourceCreator(t, b, storage, sourceName)
-
-			data := map[string]interface{}{
-				"method_type":     methodType,
-				"bound_subject":   "testsub",
-				"bound_audiences": "vault",
-				"user_claim":      "user",
-				"groups_claim":    "groups",
-				"bound_cidrs":     "127.0.0.1/8",
-				"source":          sourceName,
-			}
-
+func assertErrorCasesAuthMethod(t *testing.T, b logical.Backend, storage logical.Storage, cases []errCase) {
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("does not create method %s", c.title), func(t *testing.T) {
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
-				Path:      "auth_method/plugin-test",
+				Path:      "auth_method/err_method",
 				Storage:   storage,
-				Data:      data,
+				Data:      c.body,
 			}
 
 			resp, err := b.HandleRequest(context.Background(), req)
 			if err != nil {
-				t.Fatalf("err:%v\n", err)
-			}
-
-			if resp == nil || !resp.IsError() || !strings.Contains(resp.Error().Error(), "incorrect source") {
-				t.Fatalf("need incorect source error")
-			}
-		}
-	})
-
-	t.Run("need source name for jwt and oidc", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		for _, methodType := range []string{model.MethodTypeOIDC, model.MethodTypeJWT} {
-			data := map[string]interface{}{
-				"method_type":     methodType,
-				"bound_subject":   "testsub",
-				"bound_audiences": "vault",
-				"user_claim":      "user",
-				"groups_claim":    "groups",
-				"bound_cidrs":     "127.0.0.1/8",
-			}
-
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/plugin-test-source",
-				Storage:   storage,
-				Data:      data,
-			}
-
-			resp, err := b.HandleRequest(context.Background(), req)
-			if err != nil || resp == nil {
+				if c.hasBackendErr {
+					return
+				}
 				t.Fatalf("err:%s or response is nil", err)
 			}
 
-			if resp.Error().Error() != "missing source" {
-				t.Fatalf("must return need source name error")
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
 			}
-		}
-	})
 
-	t.Run("check source is exists for jwt and oidc", func(t *testing.T) {
+			if c.errPrefix != "" && !strings.Contains(resp.Error().Error(), c.errPrefix) {
+				t.Fatalf("got unexpected error: %v, need %v", resp.Error(), c.errPrefix)
+			}
+		})
+	}
+}
+
+func enableJwtBackend(t *testing.T, b logical.Backend, storage logical.Storage) {
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "jwt/enable",
+		Storage:   storage,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if resp != nil && resp.IsError() || err != nil {
+		t.Fatalf("error enable jwt %v %v", resp, err)
+	}
+}
+
+func disableJwtBackend(t *testing.T, b logical.Backend, storage logical.Storage) {
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "jwt/disable",
+		Storage:   storage,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if resp != nil && resp.IsError() || err != nil {
+		t.Fatalf("error enable jwt %v %v", resp, err)
+	}
+}
+
+func withVaultTokenParts(body map[string]interface{}) map[string]interface{} {
+	tokenPart := map[string]interface{}{
+		"token_bound_cidrs":       []string{"127.0.0.1/8"},
+		"token_explicit_max_ttl":  "100s",
+		"token_max_ttl":           "100s",
+		"token_no_default_policy": true,
+		"token_period":            "10s",
+		"token_policies":          []string{"good"},
+		"token_type":              "default",
+		"token_ttl":               "5s",
+		"token_num_uses":          5,
+	}
+
+	for k, v := range tokenPart {
+		body[k] = v
+	}
+
+	return body
+}
+
+func expectedWithTokenParams(m model.AuthMethod) model.AuthMethod {
+	cidrsObj, err := parseutil.ParseAddrs([]string{"127.0.0.1/8"})
+	if err != nil {
+		panic(err)
+	}
+
+	m.TokenParams = tokenutil.TokenParams{
+		TokenType:            logical.TokenTypeDefault,
+		TokenTTL:             5 * time.Second,
+		TokenMaxTTL:          100 * time.Second,
+		TokenNumUses:         5,
+		TokenPeriod:          10 * time.Second,
+		TokenExplicitMaxTTL:  100 * time.Second,
+		TokenPolicies:        []string{"good"},
+		TokenNoDefaultPolicy: true,
+		TokenBoundCIDRs:      cidrsObj,
+	}
+
+	return m
+}
+
+func withLeaways(body map[string]interface{}) map[string]interface{} {
+	body["expiration_leeway"] = "5s"
+	body["not_before_leeway"] = "5s"
+	body["clock_skew_leeway"] = "5s"
+
+	return body
+}
+
+func expectedWithLeaways(m model.AuthMethod) model.AuthMethod {
+	m.ExpirationLeeway = 5 * time.Second
+	m.NotBeforeLeeway = 5 * time.Second
+	m.ClockSkewLeeway = 5 * time.Second
+
+	return m
+}
+
+func withBoundClaims(body map[string]interface{}) map[string]interface{} {
+	body["bound_subject"] = "testsub"
+	body["bound_audiences"] = "vault"
+	body["bound_claims_type"] = "glob"
+	body["bound_claims"] = map[string]interface{}{
+		"foo": []interface{}{"baz"},
+	}
+	body["bound_cidrs"] = "127.0.0.1/8"
+
+	return body
+}
+
+func expectedWithBoundClaims(m model.AuthMethod) model.AuthMethod {
+	m.BoundSubject = "testsub"
+	m.BoundAudiences = []string{"vault"}
+	m.BoundClaimsType = "glob"
+	m.BoundClaims = map[string]interface{}{
+		"foo": []interface{}{"baz"},
+	}
+
+	return m
+}
+
+func withUserClaims(body map[string]interface{}) map[string]interface{} {
+	body["user_claim"] = "user"
+	body["groups_claim"] = "groups"
+	body["claim_mappings"] = map[string]string{
+		"foo": "a",
+	}
+
+	return body
+}
+
+func expectedWithUser(m model.AuthMethod) model.AuthMethod {
+	m.UserClaim = "user"
+	m.GroupsClaim = "groups"
+	m.ClaimMappings = map[string]string{
+		"foo": "a",
+	}
+
+	return m
+}
+
+func TestAuthMethod_CreateError(t *testing.T) {
+	t.Run("incorrect method type", func(t *testing.T) {
 		b, storage := getBackend(t)
+		jwtSourceName := "a"
+		oidcSourceName := "b"
 
-		for _, methodType := range []string{model.MethodTypeOIDC, model.MethodTypeJWT} {
-			data := map[string]interface{}{
-				"method_type":     methodType,
-				"bound_subject":   "testsub",
-				"bound_audiences": "vault",
-				"user_claim":      "user",
-				"groups_claim":    "groups",
-				"bound_cidrs":     "127.0.0.1/8",
-				"source":          "no",
-			}
+		enableJwtBackend(t, b, storage)
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
 
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/plugin-test-source-no",
-				Storage:   storage,
-				Data:      data,
-			}
-
-			resp, err := b.HandleRequest(context.Background(), req)
-			if err != nil || resp == nil {
-				t.Fatalf("err:%s or response is nil", err)
-			}
-
-			if resp.Error().Error() != "'no': auth source not found" {
-				t.Fatalf("must return no auth source error")
-			}
-		}
-	})
-
-	t.Run("no user claim", func(t *testing.T) {
-		b, storage := getBackend(t)
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"policies":    "test",
-			"method_type": model.MethodTypeJWT,
-			"source":      sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test2",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if resp.Error().Error() != "a user claim must be defined on the authMethodConfig" {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
-
-	t.Run("no binding", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type": model.MethodTypeJWT,
-			"user_claim":  "user",
-			"policies":    "test",
-			"source":      sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test3",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if !strings.HasPrefix(resp.Error().Error(), "must have at least one bound constraint") {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
-
-	t.Run("has bound subject", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":   model.MethodTypeJWT,
-			"user_claim":    "user",
-			"policies":      "test",
-			"bound_subject": "testsub",
-			"source":        sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test4",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
-		}
-	})
-
-	t.Run("has audience", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":     model.MethodTypeJWT,
-			"user_claim":      "user",
-			"policies":        "test",
-			"bound_audiences": "vault",
-			"source":          sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test5",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
-		}
-	})
-
-	t.Run("has cidr", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
-			data := map[string]interface{}{
-				"method_type":       methodType,
-				"user_claim":        "user",
-				"policies":          "test",
-				"token_bound_cidrs": "127.0.0.1/8",
-			}
-
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/test6",
-				Storage:   storage,
-				Data:      data,
-			}
-
-			resp, err := b.HandleRequest(context.Background(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp != nil && resp.IsError() {
-				t.Fatalf("did not expect error")
-			}
-		}
-	})
-
-	t.Run("has bound claims", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type": model.MethodTypeJWT,
-			"user_claim":  "user",
-			"policies":    "test",
-			"bound_claims": map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			"source": sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test7",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
-		}
-	})
-
-	t.Run("has expiration, not before custom leeways for own type auth", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
-			data := map[string]interface{}{
-				"method_type":       methodType,
-				"user_claim":        "user",
-				"policies":          "test",
-				"expiration_leeway": "5s",
-				"not_before_leeway": "5s",
-				"clock_skew_leeway": "5s",
-				"bound_claims": map[string]interface{}{
-					"foo": 10,
-					"bar": "baz",
+		cases := []errCase{
+			{
+				title: "not pass method type",
+				body: map[string]interface{}{
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
 				},
-			}
+			},
 
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/test8",
-				Storage:   storage,
-				Data:      data,
-			}
-
-			resp, err := b.HandleRequest(context.Background(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp != nil && resp.IsError() {
-				t.Fatalf("did not expect error:%s", resp.Error().Error())
-			}
-
-			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test8")
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			expectedDuration := "5s"
-			if actual.ExpirationLeeway.String() != expectedDuration {
-				t.Fatalf("expiration_leeway - expected: %s, got: %s", expectedDuration, actual.ExpirationLeeway)
-			}
-
-			if actual.NotBeforeLeeway.String() != expectedDuration {
-				t.Fatalf("not_before_leeway - expected: %s, got: %s", expectedDuration, actual.NotBeforeLeeway)
-			}
-
-			if actual.ClockSkewLeeway.String() != expectedDuration {
-				t.Fatalf("clock_skew_leeway - expected: %s, got: %s", expectedDuration, actual.ClockSkewLeeway)
-			}
+			{
+				title: "incorrect method type",
+				body: map[string]interface{}{
+					"method_type":       "incorrect",
+					"bound_claims_type": "string",
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+				},
+			},
 		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+
+		disableJwtBackend(t, b, storage)
+		casesDisable := []errCase{
+			{
+				title: " multipass method does not create if jwt disabled",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeMultipass,
+					"source":      jwtSourceName,
+				},
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, casesDisable)
 	})
 
-	t.Run("storing zero leeways for jwt and oidc and sa", func(t *testing.T) {
-		methods := map[string]func(*testing.T, logical.Backend, logical.Storage, string){
-			model.MethodTypeOIDC: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
-				creteTestOIDCBasedSource(t, b, s, n)
+	t.Run("incorrect relation between type and source", func(t *testing.T) {
+		b, storage := getBackend(t)
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		enableJwtBackend(t, b, storage)
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "jwt type need source",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_claims_type": "string",
+					"bound_audiences":   "vault",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+				},
 			},
-			model.MethodTypeJWT: func(t *testing.T, b logical.Backend, s logical.Storage, n string) {
-				creteTestJWTBasedSource(t, b, s, n)
+
+			{
+				title: "oidc type need source",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"bound_claims": map[string]interface{}{
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "b",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+				},
 			},
-			model.MethodTypeSAPassword: func(*testing.T, logical.Backend, logical.Storage, string) {},
+
+			{
+				title: "multipass type don't need source",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeMultipass,
+					"source":      jwtSourceName,
+				},
+			},
+
+			{
+				title: "sa password type don't need source",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeSAPassword,
+					"source":      oidcSourceName,
+				},
+			},
 		}
 
-		for methodType, sourceCreator := range methods {
-			b, storage := getBackend(t)
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
 
-			sourceName := "a"
-			sourceCreator(t, b, storage, sourceName)
+	t.Run("incorrect source", func(t *testing.T) {
+		b, storage := getBackend(t)
 
-			data := map[string]interface{}{
-				"method_type": methodType,
-				"user_claim":  "user",
-				"policies":    "test",
-				"bound_claims": map[string]interface{}{
-					"foo": 10,
-					"bar": "baz",
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "not found source",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+					"source":            "not exists",
+				},
+			},
+
+			{
+				title: "jwt type with oidc source",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+					"source":            oidcSourceName,
+				},
+			},
+
+			{
+				title: "oidc type with jwt source",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "b",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       jwtSourceName,
+				},
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("incorrect bound claims", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "bound claims type for jwt",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"bound_claims_type": "invalid",
+					"bound_subject":     "testsub",
+					"bound_audiences":   "vault",
+					"user_claim":        "user",
+					"groups_claim":      "groups",
+					"bound_cidrs":       "127.0.0.1/8",
+					"source":            jwtSourceName,
 				},
 
-				"expiration_leeway":     "5s",
-				"not_before_leeway":     "5s",
-				"clock_skew_leeway":     "5s",
-				"allowed_redirect_uris": []string{"https://example.com"},
-				"source":                sourceName,
-			}
+				errPrefix: "invalid 'bound_claims_type'",
+			},
 
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/test9",
-				Storage:   storage,
-				Data:      data,
-			}
-
-			resp, err := b.HandleRequest(context.Background(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp != nil && resp.IsError() {
-				t.Fatalf("did not expect error:%s", resp.Error().Error())
-			}
-
-			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test9")
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if actual.ClockSkewLeeway.Seconds() != 0 {
-				t.Fatalf("clock_skew_leeway - expected: 0, got: %v", actual.ClockSkewLeeway.Seconds())
-			}
-			if actual.ExpirationLeeway.Seconds() != 0 {
-				t.Fatalf("expiration_leeway - expected: 0, got: %v", actual.ExpirationLeeway.Seconds())
-			}
-			if actual.NotBeforeLeeway.Seconds() != 0 {
-				t.Fatalf("not_before_leeway - expected: 0, got: %v", actual.NotBeforeLeeway.Seconds())
-			}
-		}
-	})
-
-	t.Run("storing negative leeways", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		for _, methodType := range []string{model.MethodTypeOwn, model.MethodTypeSAPassword} {
-			data := map[string]interface{}{
-				"method_type":       methodType,
-				"user_claim":        "user",
-				"policies":          "test",
-				"clock_skew_leeway": "-1",
-				"expiration_leeway": "-1",
-				"not_before_leeway": "-1",
-				"bound_claims": map[string]interface{}{
-					"foo": 10,
-					"bar": "baz",
+			{
+				title: "obound claims type for oidc",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_claims_type": "invalid",
+					"bound_audiences":   "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "b",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
 				},
-			}
 
-			req := &logical.Request{
-				Operation: logical.CreateOperation,
-				Path:      "auth_method/test9",
-				Storage:   storage,
-				Data:      data,
-			}
+				errPrefix: "invalid 'bound_claims_type'",
+			},
 
-			resp, err := b.HandleRequest(context.Background(), req)
+			{
+				title: "bound claims glob for jwt",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"user_claim":        "user",
+					"policies":          "test",
+					"bound_claims_type": "glob",
+					"bound_claims": map[string]interface{}{
+						"bar": "baz",
+						"foo": 25,
+					},
+
+					"source": jwtSourceName,
+				},
+
+				errPrefix: "claim is not a string or list",
+			},
+
+			{
+				title: "bound claims glob for oidc",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_claims_type": "glob",
+					"bound_claims": map[string]interface{}{
+						"bar": "baz",
+						"foo": 25,
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "b",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "claim is not a string or list",
+			},
+
+			{
+				title: "bound claim glob is not string for jwt",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"user_claim":        "user",
+					"policies":          "test",
+					"bound_claims_type": "glob",
+					"bound_claims": map[string]interface{}{
+						"foo": []interface{}{"baz", 10},
+					},
+
+					"source": jwtSourceName,
+				},
+
+				errPrefix: "claim is not a string",
+			},
+
+			{
+				title: "bound claim glob is not string for oidc",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_claims_type": "glob",
+					"bound_claims": map[string]interface{}{
+						"foo": []interface{}{"baz", 10},
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "b",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "claim is not a string",
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("oidc params", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		oidcSourceName := "b"
+
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "allowed_redirect_uris is not passed",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"bound_claims": map[string]interface{}{
+						"bar": "baz",
+					},
+					"oidc_scopes": []string{"email", "profile"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "allowed_redirect_uris' must be set if 'method_type' is 'oidc' or unspecified.",
+			},
+
+			{
+				title: "max_age is negative",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeOIDC,
+					"bound_audiences":   "vault",
+					"bound_claims_type": "string",
+					"bound_claims": map[string]interface{}{
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "a",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+					"max_age":      "-1s",
+				},
+
+				hasBackendErr: true,
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("user claims", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "metadata key in claims mapping for jwt",
+				body: map[string]interface{}{
+					"method_type":       model.MethodTypeJWT,
+					"bound_claims_type": "string",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"bound_subject":   "testsub",
+					"bound_audiences": "vault",
+					"user_claim":      "user",
+					"claim_mappings": map[string]string{
+						"foo":        "a",
+						"some_claim": "flantIamAuthMethod",
+					},
+					"groups_claim": "groups",
+					"bound_cidrs":  "127.0.0.1/8",
+					"source":       jwtSourceName,
+				},
+
+				errPrefix: "metadata key \"flantIamAuthMethod\" is reserved",
+			},
+
+			{
+				title: "metadata key in claims mapping for oidc",
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeOIDC,
+					"bound_audiences": "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo":        "a",
+						"some_claim": "flantIamAuthMethod",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "metadata key \"flantIamAuthMethod\" is reserved",
+			},
+
+			{
+				title: "duplicate key destination in claims mapping for jwt",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"bound_subject":   "testsub",
+					"bound_audiences": "vault",
+					"user_claim":      "user",
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "a",
+					},
+					"groups_claim": "groups",
+					"bound_cidrs":  "127.0.0.1/8",
+					"source":       jwtSourceName,
+				},
+
+				errPrefix: "multiple keys are mapped to metadata key",
+			},
+
+			{
+				title: "duplicate key destination for oidc",
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeOIDC,
+					"bound_audiences": "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "a",
+					},
+					"user_claim":   "user",
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "multiple keys are mapped to metadata key",
+			},
+
+			{
+				title: "must define user claim for jwt",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"bound_subject":   "testsub",
+					"bound_audiences": "vault",
+					"claim_mappings": map[string]string{
+						"foo": "a",
+					},
+					"groups_claim": "groups",
+					"bound_cidrs":  "127.0.0.1/8",
+					"source":       jwtSourceName,
+				},
+
+				errPrefix: "a user claim must be defined on the authMethod",
+			},
+
+			{
+				title: "must define user claim for oidc",
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeOIDC,
+					"bound_audiences": "vault",
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"oidc_scopes":           []string{"email", "profile"},
+					"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+					"claim_mappings": map[string]string{
+						"foo": "a",
+					},
+					"groups_claim": "groups",
+					"source":       oidcSourceName,
+				},
+
+				errPrefix: "a user claim must be defined on the authMethod",
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("bound constraint", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		cases := []errCase{
+			{
+				title: "must one bound constraint for jwt",
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"user_claim":  "user",
+					"claim_mappings": map[string]string{
+						"foo":        "a",
+						"some_claim": "flantIamAuthMethod",
+					},
+					"groups_claim": "groups",
+					"source":       jwtSourceName,
+				},
+
+				errPrefix: "must have at least one bound constraint when creating/updating a authMethod",
+			},
+		}
+
+		assertErrorCasesAuthMethod(t, b, storage, cases)
+	})
+
+	t.Run("vault token params", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		jwtSourceName := "a"
+		oidcSourceName := "b"
+
+		enableJwtBackend(t, b, storage)
+		creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+		creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
+
+		clone := func(o map[string]interface{}) map[string]interface{} {
+			s, err := json.Marshal(o)
 			if err != nil {
-				t.Fatal(err)
-			}
-			if resp != nil && resp.IsError() {
-				t.Fatalf("did not expect error:%s", resp.Error().Error())
+				t.Fatalf("error wile clone %v", err)
 			}
 
-			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("test9")
+			c := map[string]interface{}{}
+			err = json.Unmarshal(s, &c)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("error wile clone %v", err)
 			}
 
-			if actual.ClockSkewLeeway.Seconds() != -1 {
-				t.Fatalf("clock_skew_leeway - expected: -1, got: %v", actual.ClockSkewLeeway.Seconds())
-			}
-			if actual.ExpirationLeeway.Seconds() != -1 {
-				t.Fatalf("expiration_leeway - expected: -1, got: %v", actual.ExpirationLeeway.Seconds())
-			}
-			if actual.NotBeforeLeeway.Seconds() != -1 {
-				t.Fatalf("not_before_leeway - expected: -1, got: %v", actual.NotBeforeLeeway.Seconds())
-			}
-		}
-	})
-
-	t.Run("storing an invalid bound_claim_type", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":       model.MethodTypeJWT,
-			"user_claim":        "user",
-			"policies":          "test",
-			"bound_claims_type": "invalid",
-			"bound_claims": map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			"source": sourceName,
+			return c
 		}
 
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test10",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if resp.Error().Error() != "invalid 'bound_claims_type': invalid" {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
-
-	t.Run("with invalid glob in claim", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":       model.MethodTypeJWT,
-			"user_claim":        "user",
-			"policies":          "test",
-			"bound_claims_type": "glob",
-			"bound_claims": map[string]interface{}{
-				"bar": "baz",
-				"foo": 25,
+		methods := []struct {
+			body       map[string]interface{}
+			methodName string
+		}{
+			{
+				methodName: model.MethodTypeJWT,
+				body: map[string]interface{}{
+					"method_type":     model.MethodTypeJWT,
+					"bound_subject":   "testsub",
+					"bound_audiences": "vault",
+					"user_claim":      "user",
+					"groups_claim":    "groups",
+					"bound_cidrs":     "127.0.0.1/8",
+					"source":          jwtSourceName,
+				},
 			},
 
-			"source": sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test11",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if resp.Error().Error() != "claim is not a string or list: 25" {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
-
-	t.Run("authMethod with invalid glob in claim array", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "a"
-		creteTestJWTBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":       model.MethodTypeJWT,
-			"user_claim":        "user",
-			"policies":          "test",
-			"clock_skew_leeway": "-1",
-			"expiration_leeway": "-1",
-			"not_before_leeway": "-1",
-			"bound_claims_type": "glob",
-			"bound_claims": map[string]interface{}{
-				"foo": []interface{}{"baz", 10},
+			{
+				methodName: model.MethodTypeMultipass,
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeMultipass,
+				},
 			},
 
-			"source": sourceName,
+			{
+				methodName: model.MethodTypeSAPassword,
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeSAPassword,
+				},
+			},
+
+			{
+				methodName: model.MethodTypeOIDC,
+				body: map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"bound_claims": map[string]interface{}{
+						"foo": 10,
+						"bar": "baz",
+					},
+					"bound_subject":   "testsub",
+					"bound_audiences": "vault",
+					"user_claim":      "user",
+					"claim_mappings": map[string]string{
+						"foo": "a",
+						"bar": "a",
+					},
+					"groups_claim": "groups",
+					"bound_cidrs":  "127.0.0.1/8",
+					"source":       jwtSourceName,
+				},
+			},
 		}
 
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test12",
-			Storage:   storage,
-			Data:      data,
+		cases := []struct {
+			title     string
+			tokenPart map[string]interface{}
+			errPrefix string
+			hasErr    bool
+		}{
+			{
+				title: "incorrect bound cidrs",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"invalid"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "100s",
+					"token_no_default_policy": false,
+					"token_period":            "10s",
+					"token_policies":          []string{"good"},
+					"token_type":              "default",
+					"token_ttl":               "5s",
+					"token_num_uses":          5,
+				},
+			},
+
+			{
+				title: "negative token max ttl",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "-1s",
+					"token_no_default_policy": false,
+					"token_period":            "10s",
+					"token_policies":          []string{"good"},
+					"token_type":              "default",
+					"token_ttl":               "5s",
+					"token_num_uses":          5,
+				},
+
+				hasErr: true,
+			},
+
+			{
+				title: "incorrect token type",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "100s",
+					"token_no_default_policy": false,
+					"token_period":            "10s",
+					"token_policies":          []string{"good"},
+					"token_type":              "invalid",
+					"token_ttl":               "5s",
+					"token_num_uses":          5,
+				},
+
+				errPrefix: "invalid 'token_type' value",
+			},
+
+			{
+				title: "cannot batch token with period",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "100s",
+					"token_no_default_policy": false,
+					"token_period":            "10s",
+					"token_policies":          []string{"good"},
+					"token_type":              "batch",
+					"token_ttl":               "5s",
+					"token_num_uses":          0,
+				},
+
+				errPrefix: "'token_type' cannot be 'batch' or 'default_batch' when set to generate periodic tokens",
+			},
+
+			{
+				title: "cannot batch token with num uses",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "100s",
+					"token_no_default_policy": false,
+					"token_period":            "0s",
+					"token_policies":          []string{"good"},
+					"token_type":              "batch",
+					"token_ttl":               "5s",
+					"token_num_uses":          5,
+				},
+
+				errPrefix: "'token_type' cannot be 'batch' or 'default_batch' when set to generate tokens with limited use count",
+			},
+
+			{
+				title: "negative token num uses",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "100s",
+					"token_no_default_policy": false,
+					"token_period":            "0s",
+					"token_policies":          []string{"good"},
+					"token_type":              "batch",
+					"token_ttl":               "5s",
+					"token_num_uses":          -5,
+				},
+
+				hasErr: true,
+			},
+
+			{
+				title: "token max ttl less than token ttl",
+				tokenPart: map[string]interface{}{
+					"token_bound_cidrs":       []string{"127.0.0.1/8"},
+					"token_explicit_max_ttl":  "100s",
+					"token_max_ttl":           "1s",
+					"token_no_default_policy": false,
+					"token_period":            "0s",
+					"token_policies":          []string{"good"},
+					"token_type":              "batch",
+					"token_ttl":               "500s",
+					"token_num_uses":          5,
+				},
+
+				hasErr: true,
+			},
 		}
 
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
+		allCasesPerMethods := make([]errCase, 0)
+
+		for _, m := range methods {
+			for _, c := range cases {
+				body := clone(m.body)
+				for k, v := range c.tokenPart {
+					body[k] = v
+				}
+
+				allCasesPerMethods = append(allCasesPerMethods, errCase{
+					title:         fmt.Sprintf("%s for %s", c.title, m.methodName),
+					body:          body,
+					errPrefix:     c.errPrefix,
+					hasBackendErr: c.hasErr,
+				})
+			}
 		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if resp.Error().Error() != "claim is not a string: 10" {
-			t.Fatalf("unexpected err: %v", resp)
-		}
+
+		assertErrorCasesAuthMethod(t, b, storage, allCasesPerMethods)
 	})
 }
 
-func TestAuthMethod_OIDCCreate(t *testing.T) {
-	t.Run("create oidc", func(t *testing.T) {
-		b, storage := getBackend(t)
+func TestAuthMethod_CreateUpdate(t *testing.T) {
+	b, storage := getBackend(t)
 
-		sourceName := "b"
-		creteTestOIDCBasedSource(t, b, storage, sourceName)
+	jwtSourceName := "a"
+	oidcSourceName := "b"
 
-		data := map[string]interface{}{
-			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			"oidc_scopes":           []string{"email", "profile"},
-			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-			"claim_mappings": map[string]string{
-				"foo": "a",
-				"bar": "b",
-			},
-			"user_claim":   "user",
-			"groups_claim": "groups",
-			"source":       sourceName,
-		}
+	enableJwtBackend(t, b, storage)
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+	creteTestOIDCBasedSource(t, b, storage, oidcSourceName)
 
-		expected := &model.AuthMethod{
-			TokenParams:     tokenutil.TokenParams{},
-			MethodType:      "oidc",
-			BoundAudiences:  []string{"vault"},
-			BoundClaimsType: "string",
-			BoundClaims: map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
-			ClaimMappings: map[string]string{
-				"foo": "a",
-				"bar": "b",
-			},
-			OIDCScopes:  []string{"email", "profile"},
-			UserClaim:   "user",
-			GroupsClaim: "groups",
-			Source:      sourceName,
-			Name:        "plugin-test",
-		}
+	methods := []struct {
+		methodName string
 
-		for _, methodType := range []string{model.MethodTypeOIDC} {
-			data["method_type"] = methodType
+		body     map[string]interface{}
+		expected model.AuthMethod
+
+		updateBody     map[string]interface{}
+		updateExpected model.AuthMethod
+	}{
+		{
+			methodName: model.MethodTypeJWT,
+			body: withBoundClaims(
+				withLeaways(
+					withVaultTokenParts(
+						withUserClaims(map[string]interface{}{
+							"method_type": model.MethodTypeJWT,
+							"source":      jwtSourceName,
+						})))),
+
+			expected: expectedWithLeaways(
+				expectedWithUser(
+					expectedWithBoundClaims(
+						expectedWithTokenParams(model.AuthMethod{
+							MethodType: model.MethodTypeJWT,
+							Source:     jwtSourceName,
+							Name:       model.MethodTypeJWT,
+						})))),
+
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeJWT,
+				"source":      jwtSourceName,
+
+				"bound_audiences":   "new",
+				"user_claim":        "new",
+				"expiration_leeway": "6s",
+				"token_period":      "10s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.BoundAudiences = []string{"new"}
+				m.UserClaim = "new"
+				m.ExpirationLeeway = 6 * time.Second
+				m.TokenPeriod = 10 * time.Second
+				return m
+			}(expectedWithLeaways(
+				expectedWithUser(
+					expectedWithBoundClaims(
+						expectedWithTokenParams(model.AuthMethod{
+							MethodType: model.MethodTypeJWT,
+							Source:     jwtSourceName,
+							Name:       model.MethodTypeJWT,
+						}))))),
+		},
+
+		{
+			methodName: model.MethodTypeMultipass,
+			body: withVaultTokenParts(map[string]interface{}{
+				"method_type": model.MethodTypeMultipass,
+			}),
+
+			expected: expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeMultipass,
+				Name:       model.MethodTypeMultipass,
+			}),
+
+			updateBody: map[string]interface{}{
+				"method_type":       model.MethodTypeMultipass,
+				"token_period":      "10s",
+				"expiration_leeway": "6s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.TokenPeriod = 10 * time.Second
+				m.ExpirationLeeway = 6 * time.Second
+
+				return m
+			}(expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeMultipass,
+				Name:       model.MethodTypeMultipass,
+			})),
+		},
+
+		{
+			methodName: model.MethodTypeSAPassword,
+			body: withVaultTokenParts(map[string]interface{}{
+				"method_type": model.MethodTypeSAPassword,
+			}),
+			expected: expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeSAPassword,
+				Name:       model.MethodTypeSAPassword,
+			}),
+
+			updateBody: map[string]interface{}{
+				"method_type":  model.MethodTypeSAPassword,
+				"token_period": "10s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.TokenPeriod = 10 * time.Second
+
+				return m
+			}(expectedWithTokenParams(model.AuthMethod{
+				MethodType: model.MethodTypeSAPassword,
+				Name:       model.MethodTypeSAPassword,
+			})),
+		},
+
+		{
+			methodName: model.MethodTypeOIDC,
+			body: withBoundClaims(
+				withLeaways(
+					withVaultTokenParts(
+						withUserClaims(map[string]interface{}{
+							"method_type":           model.MethodTypeOIDC,
+							"source":                oidcSourceName,
+							"oidc_scopes":           []string{"email", "profile"},
+							"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+							"max_age":               "5s",
+						})))),
+			expected: expectedWithUser(
+				expectedWithBoundClaims(
+					expectedWithTokenParams(model.AuthMethod{
+						MethodType:          model.MethodTypeOIDC,
+						Source:              oidcSourceName,
+						Name:                model.MethodTypeOIDC,
+						AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
+						OIDCScopes:          []string{"email", "profile"},
+						MaxAge:              5 * time.Second,
+					}))),
+
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeOIDC,
+				"source":      oidcSourceName,
+
+				"bound_audiences":   "new",
+				"user_claim":        "new",
+				"expiration_leeway": "6s",
+				"token_period":      "10s",
+
+				"oidc_scopes":           []string{"email"},
+				"allowed_redirect_uris": []string{"http://localhost:8250"},
+				"max_age":               "3s",
+			},
+
+			updateExpected: func(m model.AuthMethod) model.AuthMethod {
+				m.BoundAudiences = []string{"new"}
+				m.UserClaim = "new"
+				m.TokenPeriod = 10 * time.Second
+
+				m.MaxAge = 3 * time.Second
+				m.OIDCScopes = []string{"email"}
+				m.AllowedRedirectURIs = []string{"http://localhost:8250"}
+
+				return m
+			}(expectedWithUser(
+				expectedWithBoundClaims(
+					expectedWithTokenParams(model.AuthMethod{
+						MethodType: model.MethodTypeOIDC,
+						Source:     oidcSourceName,
+						Name:       model.MethodTypeOIDC,
+					})))),
+		},
+	}
+
+	for _, m := range methods {
+		t.Run(fmt.Sprintf("create happy path for %s", m.methodName), func(t *testing.T) {
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
-				Path:      "auth_method/plugin-test",
+				Path:      fmt.Sprintf("auth_method/%s", m.methodName),
 				Storage:   storage,
-				Data:      data,
+				Data:      m.body,
 			}
 
 			resp, err := b.HandleRequest(context.Background(), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
-			actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get("plugin-test")
-			if err != nil {
-				t.Fatal(err)
-			}
 
-			if actual.UUID == "" {
-				t.Fatal("uuid not set")
-			}
+			assertAuthMethod(t, b, m.methodName, m.expected)
 
-			actual.UUID = ""
-			if diff := deep.Equal(expected, actual); diff != nil {
-				t.Fatal(diff)
-			}
-		}
-	})
+			t.Run(fmt.Sprintf("update happy path for %s", m.methodName), func(t *testing.T) {
+				req := &logical.Request{
+					Operation: logical.UpdateOperation,
+					Path:      fmt.Sprintf("auth_method/%s", m.methodName),
+					Storage:   storage,
+					Data:      m.updateBody,
+				}
 
-	t.Run("invalid reserved metadata key method", func(t *testing.T) {
-		b, storage := getBackend(t)
+				resp, err := b.HandleRequest(context.Background(), req)
+				if err != nil || (resp != nil && resp.IsError()) {
+					t.Fatalf("err:%s resp:%#v\n", err, resp)
+				}
 
-		sourceName := "b"
-		creteTestOIDCBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":     model.MethodTypeOIDC,
-			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			"oidc_scopes":           []string{"email", "profile"},
-			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-			"claim_mappings": map[string]string{
-				"foo":        "a",
-				"some_claim": "flantIamAuthMethod",
-			},
-			"user_claim":   "user",
-			"groups_claim": "groups",
-			"source":       sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test2",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if !strings.Contains(resp.Error().Error(), `metadata key "flantIamAuthMethod" is reserved`) {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
-
-	t.Run("invalid duplicate metadata destination", func(t *testing.T) {
-		b, storage := getBackend(t)
-
-		sourceName := "b"
-		creteTestOIDCBasedSource(t, b, storage, sourceName)
-
-		data := map[string]interface{}{
-			"method_type":     model.MethodTypeOIDC,
-			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
-				"foo": 10,
-				"bar": "baz",
-			},
-			"oidc_scopes":           []string{"email", "profile"},
-			"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
-			"claim_mappings": map[string]string{
-				"foo": "a",
-				"bar": "a",
-			},
-			"user_claim":        "user",
-			"groups_claim":      "groups",
-			"policies":          "test",
-			"period":            "3s",
-			"ttl":               "1s",
-			"num_uses":          12,
-			"max_ttl":           "5s",
-			"expiration_leeway": "300s",
-			"not_before_leeway": "300s",
-			"clock_skew_leeway": "1s",
-			"source":            sourceName,
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "auth_method/test2",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
-		}
-		if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
-			t.Fatalf("unexpected err: %v", resp)
-		}
-	})
+				assertAuthMethod(t, b, m.methodName, m.updateExpected)
+			})
+		})
+	}
 }
 
-// func TestAuthMethod_Read(t *testing.T) {
-//	b, storage := getBackend(t)
-//
-//	data := map[string]interface{}{
-//		"method_type":             "jwt",
-//		"bound_subject":         "testsub",
-//		"bound_audiences":       "vault",
-//		"allowed_redirect_uris": []string{"http://127.0.0.1"},
-//		"oidc_scopes":           []string{"email", "profile"},
-//		"user_claim":            "user",
-//		"groups_claim":          "groups",
-//		"bound_cidrs":           "127.0.0.1/8",
-//		"policies":              "test",
-//		"period":                "3s",
-//		"ttl":                   "1s",
-//		"num_uses":              12,
-//		"max_ttl":               "5s",
-//		"expiration_leeway":     "500s",
-//		"not_before_leeway":     "500s",
-//		"clock_skew_leeway":     "100s",
-//	}
-//
-//	expected := map[string]interface{}{
-//		"method_type":               "jwt",
-//		"bound_claims_type":       "string",
-//		"bound_claims":            map[string]interface{}(nil),
-//		"claim_mappings":          map[string]string(nil),
-//		"bound_subject":           "testsub",
-//		"bound_audiences":         []string{"vault"},
-//		"allowed_redirect_uris":   []string{"http://127.0.0.1"},
-//		"oidc_scopes":             []string{"email", "profile"},
-//		"user_claim":              "user",
-//		"groups_claim":            "groups",
-//		"token_policies":          []string{"test"},
-//		"policies":                []string{"test"},
-//		"token_period":            int64(3),
-//		"period":                  int64(3),
-//		"token_ttl":               int64(1),
-//		"ttl":                     int64(1),
-//		"token_num_uses":          12,
-//		"num_uses":                12,
-//		"token_max_ttl":           int64(5),
-//		"max_ttl":                 int64(5),
-//		"expiration_leeway":       int64(500),
-//		"not_before_leeway":       int64(500),
-//		"clock_skew_leeway":       int64(100),
-//		"verbose_oidc_logging":    false,
-//		"token_type":              logical.TokenTypeDefault.String(),
-//		"token_no_default_policy": false,
-//		"token_explicit_max_ttl":  int64(0),
-//		"max_age":                 int64(0),
-//	}
-//
-//	req := &logical.Request{
-//		Operation: logical.CreateOperation,
-//		Path:      "auth_method/plugin-test",
-//		Storage:   storage,
-//		Data:      data,
-//	}
-//
-//	resp, err := b.HandleRequest(context.Background(), req)
-//	if err != nil || (resp != nil && resp.IsError()) {
-//		t.Fatalf("err:%s resp:%#v\n", err, resp)
-//	}
-//
-//	readTest := func() {
-//		req = &logical.Request{
-//			Operation: logical.ReadOperation,
-//			Path:      "auth_method/plugin-test",
-//			Storage:   storage,
-//		}
-//
-//		resp, err = b.HandleRequest(context.Background(), req)
-//		if err != nil || (resp != nil && resp.IsError()) {
-//			t.Fatalf("err:%s resp:%#v\n", err, resp)
-//		}
-//
-//		if resp.Data["bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
-//			t.Fatal("unexpected bound cidrs")
-//		}
-//		delete(resp.Data, "bound_cidrs")
-//		if resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
-//			t.Fatal("unexpected token bound cidrs")
-//		}
-//		delete(resp.Data, "token_bound_cidrs")
-//		if diff := deep.Equal(expected, resp.Data); diff != nil {
-//			t.Fatal(diff)
-//		}
-//	}
-//
-//	// Run read test for normal case
-//	readTest()
-//
-//	// Remove the 'method_type' parameter in stored authMethodConfig to simulate a legacy authMethodConfig
-//	rolePath := rolePrefix + "plugin-test"
-//	raw, err := storage.Get(context.Background(), rolePath)
-//
-//	var role map[string]interface{}
-//	if err := raw.DecodeJSON(&role); err != nil {
-//		t.Fatal(err)
-//	}
-//	delete(role, "method_type")
-//	entry, err := logical.StorageEntryJSON(rolePath, role)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if err = req.Storage.Put(context.Background(), entry); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	// Run read test for "upgrade" case. The legacy authMethodConfig is not changed in storage, but
-//	// reads will populate the `method_type` with "jwt".
-//	readTest()
-//
-//	// Remove the 'bound_claims_type' parameter in stored authMethodConfig to simulate a legacy authMethodConfig
-//	raw, err = storage.Get(context.Background(), rolePath)
-//
-//	if err := raw.DecodeJSON(&role); err != nil {
-//		t.Fatal(err)
-//	}
-//	delete(role, "bound_claims_type")
-//	entry, err = logical.StorageEntryJSON(rolePath, role)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if err = req.Storage.Put(context.Background(), entry); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	// Run read test for "upgrade" case. The legacy authMethodConfig is not changed in storage, but
-//	// reads will populate the `bound_claims_type` with "string".
-//	readTest()
-//}
+func TestAuthMethod_IncorrectUpdate(t *testing.T) {
+	b, storage := getBackend(t)
+
+	jwtSourceName := "a"
+	enableJwtBackend(t, b, storage)
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+
+	cases := []struct {
+		title      string
+		updateBody map[string]interface{}
+		methodName string
+	}{
+		{
+			title:      "does not change method type when update",
+			methodName: "a",
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeOIDC,
+				"source":      jwtSourceName,
+			},
+		},
+
+		{
+			title:      "does not change source when update",
+			methodName: "a",
+			updateBody: map[string]interface{}{
+				"method_type": model.MethodTypeJWT,
+				"source":      "b",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.title, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      fmt.Sprintf("auth_method/%s", c.methodName),
+				Storage:   storage,
+				Data: withBoundClaims(
+					withLeaways(
+						withVaultTokenParts(
+							withUserClaims(map[string]interface{}{
+								"method_type": model.MethodTypeJWT,
+								"source":      jwtSourceName,
+							})))),
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      fmt.Sprintf("auth_method/%s", c.methodName),
+				Storage:   storage,
+				Data:      c.updateBody,
+			}
+
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatalf("err:%s or response is nil", err)
+			}
+
+			if resp == nil || !resp.IsError() {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
+func TestAuthMethod_Read(t *testing.T) {
+	b, storage := getBackend(t)
+
+	jwtSourceName := "a"
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
+
+	body := withBoundClaims(
+		withLeaways(
+			withVaultTokenParts(
+				withUserClaims(map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"source":      jwtSourceName,
+				}))))
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "auth_method/test",
+		Storage:   storage,
+		Data:      body,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	cidrsObj, err := parseutil.ParseAddrs([]string{"127.0.0.1/8"})
+	if err != nil {
+		panic(err)
+	}
+
+	expected := map[string]interface{}{
+		"method_type":       model.MethodTypeJWT,
+		"bound_claims_type": "glob",
+		"bound_claims": map[string]interface{}{
+			"foo": []interface{}{"baz"},
+		},
+		"claim_mappings": map[string]string{
+			"foo": "a",
+		},
+		"bound_subject":           "testsub",
+		"bound_audiences":         []string{"vault"},
+		"allowed_redirect_uris":   []string(nil),
+		"oidc_scopes":             []string(nil),
+		"user_claim":              "user",
+		"groups_claim":            "groups",
+		"token_policies":          []string{"good"},
+		"token_period":            int64(10),
+		"token_ttl":               int64(5),
+		"token_num_uses":          5,
+		"token_max_ttl":           int64(100),
+		"expiration_leeway":       int64(5),
+		"not_before_leeway":       int64(5),
+		"clock_skew_leeway":       int64(5),
+		"verbose_oidc_logging":    false,
+		"token_type":              logical.TokenTypeDefault.String(),
+		"token_no_default_policy": true,
+		"token_explicit_max_ttl":  int64(100),
+		"max_age":                 int64(0),
+		"token_bound_cidrs":       cidrsObj,
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "auth_method/test",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if diff := deep.Equal(expected, resp.Data); diff != nil {
+		t.Fatal(diff)
+	}
+}
 
 func TestAuthMethod_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
-	sourceName := "a"
-	creteTestJWTBasedSource(t, b, storage, sourceName)
+	jwtSourceName := "a"
+	creteTestJWTBasedSource(t, b, storage, jwtSourceName)
 
-	data := map[string]interface{}{
-		"method_type":       model.MethodTypeJWT,
-		"bound_subject":     "testsub",
-		"bound_audiences":   "vault",
-		"user_claim":        "user",
-		"groups_claim":      "groups",
-		"bound_cidrs":       "127.0.0.1/8",
-		"policies":          "test",
-		"period":            "3s",
-		"ttl":               "1s",
-		"num_uses":          12,
-		"max_ttl":           "5s",
-		"expiration_leeway": "300s",
-		"not_before_leeway": "300s",
-		"source":            sourceName,
-	}
+	body := withBoundClaims(
+		withLeaways(
+			withVaultTokenParts(
+				withUserClaims(map[string]interface{}{
+					"method_type": model.MethodTypeJWT,
+					"source":      jwtSourceName,
+				}))))
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      "auth_method/test",
 		Storage:   storage,
-		Data:      data,
+		Data:      body,
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -986,7 +1380,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 
 	req = &logical.Request{
 		Operation: logical.DeleteOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      "auth_method/test",
 		Storage:   storage,
 	}
 
@@ -1001,7 +1395,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
-		Path:      "auth_method/plugin-test",
+		Path:      "auth_method/test",
 		Storage:   storage,
 	}
 

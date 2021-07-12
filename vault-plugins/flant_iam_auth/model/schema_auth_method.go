@@ -20,7 +20,7 @@ const (
 const (
 	MethodTypeJWT        = "jwt"
 	MethodTypeOIDC       = "oidc"
-	MethodTypeOwn        = "jwt_own"
+	MethodTypeMultipass  = "multipass_jwt"
 	MethodTypeSAPassword = "service_account_password"
 )
 
@@ -86,4 +86,14 @@ func (p *AuthMethod) ObjType() string {
 
 func (p *AuthMethod) ObjId() string {
 	return p.UUID
+}
+
+func IsAuthMethod(expected string, methodsSet ...string) bool {
+	for _, m := range methodsSet {
+		if expected == m {
+			return true
+		}
+	}
+
+	return false
 }

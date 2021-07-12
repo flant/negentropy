@@ -14,10 +14,10 @@ const (
 )
 
 const (
-	StaticKeys = iota
-	JWKS
-	OIDCDiscovery
-	OIDCFlow
+	AuthSourceStaticKeys = iota
+	AuthSourceJWKS
+	AuthSourceOIDCDiscovery
+	AuthSourceOIDCFlow
 	Unconfigured
 )
 
@@ -80,14 +80,14 @@ func (s *AuthSource) PopulatePubKeys() error {
 func (s *AuthSource) AuthType() int {
 	switch {
 	case len(s.ParsedJWTPubKeys) > 0:
-		return StaticKeys
+		return AuthSourceStaticKeys
 	case s.JWKSURL != "":
-		return JWKS
+		return AuthSourceJWKS
 	case s.OIDCDiscoveryURL != "":
 		if s.OIDCClientID != "" && s.OIDCClientSecret != "" {
-			return OIDCFlow
+			return AuthSourceOIDCFlow
 		}
-		return OIDCDiscovery
+		return AuthSourceOIDCDiscovery
 	}
 
 	return Unconfigured
