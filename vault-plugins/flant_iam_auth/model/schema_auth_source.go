@@ -2,6 +2,7 @@ package model
 
 import (
 	"crypto"
+
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"

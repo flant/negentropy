@@ -12,7 +12,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func CreateTestStorage(t *testing.T) *io.MemoryStore{
+func CreateTestStorage(t *testing.T) *io.MemoryStore {
 	storageView := &logical.InmemStorage{}
 
 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storageView)

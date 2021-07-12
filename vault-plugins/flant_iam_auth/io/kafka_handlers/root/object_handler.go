@@ -79,7 +79,6 @@ func (h *ObjectHandler) deleteEntityWithAliases(uuid string) error {
 
 		return true, nil
 	})
-
 	if err != nil {
 		return err
 	}

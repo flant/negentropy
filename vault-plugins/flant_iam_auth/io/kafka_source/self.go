@@ -151,7 +151,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 		operation := func() error {
 			msgDecoded := &sharedkafka.MsgDecoded{
 				Type: objType,
-				ID: objId,
+				ID:   objId,
 				Data: decrypted,
 			}
 			return sks.processMessage(source, store, msgDecoded)

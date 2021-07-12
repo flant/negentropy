@@ -3,11 +3,11 @@ package model
 import (
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 	"github.com/hashicorp/go-memdb"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 const (
@@ -102,15 +102,15 @@ func (r *EntityAliasRepo) GetById(id string) (*EntityAlias, error) {
 	return r.get(ID, id)
 }
 
-func (r *EntityAliasRepo) GetForUser(id string, action func(*EntityAlias)(bool, error)) error {
+func (r *EntityAliasRepo) GetForUser(id string, action func(*EntityAlias) (bool, error)) error {
 	return r.iter(action, ByUserID, id)
 }
 
-func (r *EntityAliasRepo) GetBySource(sourceUUID string, action func(*EntityAlias)(bool, error)) error {
+func (r *EntityAliasRepo) GetBySource(sourceUUID string, action func(*EntityAlias) (bool, error)) error {
 	return r.iter(action, BySourceId, sourceUUID)
 }
 
-func (r *EntityAliasRepo) get(by string, vals... interface{}) (*EntityAlias, error) {
+func (r *EntityAliasRepo) get(by string, vals ...interface{}) (*EntityAlias, error) {
 	raw, err := r.db.First(r.tableName, by, vals...)
 	if err != nil {
 		return nil, err
@@ -235,7 +235,6 @@ func (r *EntityAliasRepo) putNew(iamEntityId string, source *AuthSource, eaName 
 			UUID:     utils.UUID(),
 			UserId:   iamEntityId,
 			SourceId: sourceId,
-
 		}
 	}
 

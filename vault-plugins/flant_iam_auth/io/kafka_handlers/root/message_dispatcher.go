@@ -2,10 +2,10 @@ package root
 
 import (
 	"encoding/json"
-	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ModelHandler interface {

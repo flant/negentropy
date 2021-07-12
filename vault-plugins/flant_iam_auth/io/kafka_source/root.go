@@ -144,7 +144,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		operation := func() error {
 			msgDecoded := &sharedkafka.MsgDecoded{
 				Type: objType,
-				ID: objId,
+				ID:   objId,
 				Data: decrypted,
 			}
 			return rk.processMessage(source, store, msgDecoded)

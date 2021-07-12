@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 	"github.com/stretchr/testify/require"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -15,6 +14,7 @@ import (
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecoded) (*io.MemoryStore, func(t *testing.T)) {
@@ -120,8 +120,7 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				switch object.ObjType() {
-				case iam.UserType:
+				if object.ObjType() == iam.UserType {
 					return object.(*iam.User).Email
 				}
 
@@ -145,8 +144,7 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				switch object.ObjType() {
-				case iam.UserType:
+				if object.ObjType() == iam.UserType {
 					return object.(*iam.User).FullIdentifier
 				}
 
@@ -170,11 +168,9 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				switch object.ObjType() {
-				case iam.UserType:
+				if object.ObjType() == iam.UserType {
 					return object.(*iam.User).UUID
 				}
-
 				return ""
 			},
 		},
@@ -252,11 +248,9 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				switch object.ObjType() {
-				case iam.UserType:
+				if object.ObjType() == iam.UserType {
 					return object.(*iam.User).Email
 				}
-
 				return ""
 			},
 		},

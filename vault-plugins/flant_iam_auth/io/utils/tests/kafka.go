@@ -10,7 +10,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func CreateDecryptCreateMessage(t *testing.T, obj io.MemoryStorableObject) *sharedkafka.MsgDecoded{
+func CreateDecryptCreateMessage(t *testing.T, obj io.MemoryStorableObject) *sharedkafka.MsgDecoded {
 	data, err := json.Marshal(obj)
 	require.NoError(t, err)
 
@@ -21,7 +21,7 @@ func CreateDecryptCreateMessage(t *testing.T, obj io.MemoryStorableObject) *shar
 	}
 }
 
-func CreateDecryptDeleteMessage(obj io.MemoryStorableObject) *sharedkafka.MsgDecoded{
+func CreateDecryptDeleteMessage(obj io.MemoryStorableObject) *sharedkafka.MsgDecoded {
 	return &sharedkafka.MsgDecoded{
 		Type: obj.ObjType(),
 		ID:   obj.ObjId(),

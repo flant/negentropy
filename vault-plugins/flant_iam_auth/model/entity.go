@@ -3,11 +3,11 @@ package model
 import (
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 	"github.com/hashicorp/go-memdb"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 const (
@@ -42,7 +42,7 @@ func EntitySchema() *memdb.DBSchema {
 						},
 					},
 					ByUserID: {
-						Name: ByUserID,
+						Name:   ByUserID,
 						Unique: true,
 						Indexer: &memdb.StringFieldIndex{
 							Field: "UserId",
