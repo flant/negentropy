@@ -158,6 +158,7 @@ build {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
       "../../../common/packer-scripts/02-vault.sh",
+      "scripts/01-vault-addr-localhost.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
       "../../../common/packer-scripts/80-read-only.sh",
       "../../../common/packer-scripts/90-cleanup.sh",

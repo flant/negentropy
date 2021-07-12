@@ -22,7 +22,7 @@ export VAULT_CERT_EXPIRE_SECONDS="82800" # 23 hours
 export VAULT_RECOVERY_SHARES="$VAULT_RECOVERY_SHARES"
 export VAULT_RECOVERY_THRESHOLD="$VAULT_RECOVERY_THRESHOLD"
 
-export VAULT_ADDR="https://$(ip r get 1 | awk '{print $7}'):8200"
+export VAULT_ADDR="https://$(ip r get 1 | awk '{print $7}'):443"
 
 export VAULT_ROOT_TOKEN_PGP_KEY="$(hostname)-temporary-pub-key.asc"
 export VAULT_ROOT_TOKEN_ENCRYPTED="$(hostname)-root-token"
@@ -31,8 +31,8 @@ export VAULT_RECOVERY_KEYS_ENCRYPTED="$(hostname)-recovery-keys"
 if [[ "$VAULT_INTERNAL_SUBDOMAIN" != "" ]]; then
   export VAULT_INTERNAL_FQDN="$VAULT_INTERNAL_SUBDOMAIN.$VAULT_INTERNAL_ROOT_DOMAIN"
 else
-  # If no subdomain provided base FQDN on hostname (for auth vaults).
-  export VAULT_INTERNAL_FQDN="$(hostname).$VAULT_INTERNAL_ROOT_DOMAIN"
+  # If no subdomain provided base FQDN on hostname (for auth vaults), replacing dash with dot.
+  export VAULT_INTERNAL_FQDN="$(hostname | sed 's/-/./g').$VAULT_INTERNAL_ROOT_DOMAIN"
 fi
 
 # Vault conf variables.
