@@ -24,7 +24,7 @@ func ListTasks(t *testing.T, ctx context.Context, b *backend, storage logical.St
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
 
-	return resp.Data["uuids"].([]string)
+	return resp.Data["keys"].([]string)
 }
 
 func GetTaskStatus(t *testing.T, ctx context.Context, b *backend, storage logical.Storage, uuid string) (string, string) {
@@ -40,14 +40,12 @@ func GetTaskStatus(t *testing.T, ctx context.Context, b *backend, storage logica
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
 
-	statusData := resp.Data["status"].(map[string]interface{})
-
-	return statusData["status"].(string), statusData["reason"].(string)
+	return resp.Data["status"].(string), resp.Data["reason"].(string)
 }
 
 func GetTaskLog(t *testing.T, ctx context.Context, b *backend, storage logical.Storage, uuid string) string {
 	req := &logical.Request{
-		Operation:  logical.UpdateOperation,
+		Operation:  logical.ReadOperation,
 		Path:       fmt.Sprintf("task/%s/log", uuid),
 		Storage:    storage,
 		Connection: &logical.Connection{},
@@ -58,7 +56,7 @@ func GetTaskLog(t *testing.T, ctx context.Context, b *backend, storage logical.S
 		t.Fatalf("err:%v resp:%#v\n", err, resp)
 	}
 
-	return resp.Data["log"].(string)
+	return resp.Data["result"].(string)
 }
 
 func WaitForTaskCompletion(t *testing.T, ctx context.Context, b *backend, storage logical.Storage, uuid string) {
@@ -91,7 +89,7 @@ func WaitForTaskSuccess(t *testing.T, ctx context.Context, b *backend, storage l
 		switch status {
 		case "QUEUED", "RUNNING":
 
-		case "COMPLETED":
+		case "SUCCEEDED":
 			return
 
 		default:
