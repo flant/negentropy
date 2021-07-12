@@ -68,7 +68,6 @@ func createJwtAuthMethod(t *testing.T, b *flantIamAuthBackend, storage logical.S
 
 func assertErrorCasesAuthMethod(t *testing.T, b logical.Backend, storage logical.Storage, cases []errCase) {
 	for _, c := range cases {
-
 		t.Run(fmt.Sprintf("does not create method %s", c.title), func(t *testing.T) {
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
@@ -93,7 +92,6 @@ func assertErrorCasesAuthMethod(t *testing.T, b logical.Backend, storage logical
 				t.Fatalf("got unexpected error: %v, need %v", resp.Error(), c.errPrefix)
 			}
 		})
-
 	}
 }
 
@@ -122,6 +120,7 @@ func disableJwtBackend(t *testing.T, b logical.Backend, storage logical.Storage)
 		t.Fatalf("error enable jwt %v %v", resp, err)
 	}
 }
+
 func withVaultTokenParts(body map[string]interface{}) map[string]interface{} {
 	tokenPart := map[string]interface{}{
 		"token_bound_cidrs":       []string{"127.0.0.1/8"},
@@ -1273,7 +1272,6 @@ func TestAuthMethod_IncorrectUpdate(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestAuthMethod_Read(t *testing.T) {
@@ -1292,7 +1290,7 @@ func TestAuthMethod_Read(t *testing.T) {
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
-		Path:      fmt.Sprintf("auth_method/test"),
+		Path:      "auth_method/test",
 		Storage:   storage,
 		Data:      body,
 	}
@@ -1370,7 +1368,7 @@ func TestAuthMethod_Delete(t *testing.T) {
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
-		Path:      fmt.Sprintf("auth_method/test"),
+		Path:      "auth_method/test",
 		Storage:   storage,
 		Data:      body,
 	}

@@ -9,8 +9,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-var ErrSourceUsingInMethods = errors.New("ErrSourceUsingInMethods")
-var ErrSourceNotFound = errors.New("ErrSourceNotFound")
+var (
+	ErrSourceNotFound       = errors.New("ErrSourceNotFound")
+	ErrSourceUsingInMethods = errors.New("ErrSourceUsingInMethods")
+)
 
 type AuthSourceRepo struct {
 	db          *io.MemoryStoreTxn
