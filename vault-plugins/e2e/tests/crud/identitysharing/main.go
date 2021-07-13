@@ -68,8 +68,8 @@ var _ = Describe("Identity sharing", func() {
 		list := identitySharingAPI.List(tools.Params{
 			"tenant_uuid": sourceTenantID,
 		}, url.Values{})
-		Expect(list.Get("uuids").Array()).To(HaveLen(1))
-		Expect(list.Get("uuids").Array()[0].String()).To(BeEquivalentTo(createdData.Get("identity_sharing.uuid").String()))
+		Expect(list.Get("identity_sharings").Array()).To(HaveLen(1))
+		Expect(list.Get("identity_sharings").Array()[0].Get("uuid").String()).To(BeEquivalentTo(createdData.Get("identity_sharing.uuid").String()))
 	})
 
 	It("can be deleted", func() {
