@@ -41,13 +41,11 @@ clean:
 .PHONY: fmt
 fmt:
 	-@$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
-	-@pushd tests && yarn fmt && popd
 
 .PHONY: deps
 deps:
 	go mod tidy
 	@go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
-	pushd tests && yarn && popd
 
 .PHONY: openapi
 openapi:
@@ -60,7 +58,6 @@ openapi:
 .PHONY: test
 test:
 	go test -race ./...
-	pushd tests && yarn && yarn test
 
 .PHONY: precommit
 precommit: fmt build test openapi
