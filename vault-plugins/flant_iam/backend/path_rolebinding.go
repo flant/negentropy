@@ -130,7 +130,6 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by uuid
 		{
-
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {

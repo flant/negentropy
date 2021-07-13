@@ -10,19 +10,24 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/featureflag"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/identitysharing"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
+	tenant_featureflag "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant-featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 )
 
 type TestAPI interface {
-	Create(tools.Params, url.Values, interface{})
-	CreatePrivileged(tools.Params, url.Values, interface{})
-	Read(tools.Params, url.Values)
-	Update(tools.Params, url.Values, interface{})
+	Create(tools.Params, url.Values, interface{}) gjson.Result
+	CreatePrivileged(tools.Params, url.Values, interface{}) gjson.Result
+	Read(tools.Params, url.Values) gjson.Result
+	Update(tools.Params, url.Values, interface{}) gjson.Result
 	Delete(tools.Params, url.Values)
-	List(tools.Params, url.Values)
+	List(tools.Params, url.Values) gjson.Result
 }
 
 type URLBuilder interface {
@@ -36,6 +41,10 @@ var (
 
 	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
 	_ URLBuilder = (*featureflag.EndpointBuilder)(nil)
+	_ URLBuilder = (*identitysharing.EndpointBuilder)(nil)
+	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
+	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
+	_ URLBuilder = (*tenant_featureflag.EndpointBuilder)(nil)
 )
 
 type BuilderBasedAPI struct {
@@ -43,7 +52,7 @@ type BuilderBasedAPI struct {
 	client *http.Client
 }
 
-func (b *BuilderBasedAPI) request(method, url string, params tools.Params, payload interface{}) {
+func (b *BuilderBasedAPI) request(method, url string, params tools.Params, payload interface{}) gjson.Result {
 	var body io.Reader
 	if payload != nil {
 		marshalPayload, err := json.Marshal(payload)
@@ -72,26 +81,28 @@ func (b *BuilderBasedAPI) request(method, url string, params tools.Params, paylo
 			expectPayload.(func([]byte))(data)
 		}
 	})
+
+	return tools.UnmarshalVaultResponse(data)
 }
 
-func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) {
+func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) gjson.Result {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	b.request(http.MethodPost, b.url.Collection(params, query), params, payload)
+	return b.request(http.MethodPost, b.url.Collection(params, query), params, payload)
 }
 
-func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) {
+func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) gjson.Result {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
+	return b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
 }
 
-func (b *BuilderBasedAPI) Read(params tools.Params, query url.Values) {
+func (b *BuilderBasedAPI) Read(params tools.Params, query url.Values) gjson.Result {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request(http.MethodGet, b.url.One(params, query), params, nil)
+	return b.request(http.MethodGet, b.url.One(params, query), params, nil)
 }
 
-func (b *BuilderBasedAPI) Update(params tools.Params, query url.Values, payload interface{}) {
+func (b *BuilderBasedAPI) Update(params tools.Params, query url.Values, payload interface{}) gjson.Result {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request(http.MethodPost, b.url.One(params, query), params, payload)
+	return b.request(http.MethodPost, b.url.One(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
@@ -99,10 +110,10 @@ func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
 	b.request(http.MethodDelete, b.url.One(params, query), params, nil)
 }
 
-func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) {
+func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Result {
 	query.Set("list", "true")
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
+	return b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
@@ -111,4 +122,20 @@ func NewTenantAPI(client *http.Client) TestAPI {
 
 func NewFeatureFlagAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &featureflag.EndpointBuilder{}}
+}
+
+func NewIdentitySharingAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &identitysharing.EndpointBuilder{}}
+}
+
+func NewRoleBindingAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &rolebinding.EndpointBuilder{}}
+}
+
+func NewRoleBindingApprovalAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &rolebindingapproval.EndpointBuilder{}}
+}
+
+func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &tenant_featureflag.EndpointBuilder{}}
 }

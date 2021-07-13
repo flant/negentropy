@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	RoleBindingType = "role_binding" // also, memdb schema name
-
+	RoleBindingType      = "role_binding" // also, memdb schema name
+	RoleBindingForeignPK = "role_binding_uuid"
 )
 
 type RoleBindingObjectType string
