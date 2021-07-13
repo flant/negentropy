@@ -41,9 +41,18 @@ func parseSubjects(rawList interface{}) ([]model.SubjectNotation, error) {
 		if !ok {
 			return nil, fmt.Errorf("cannot parse subject %v", raw)
 		}
+		typ, ok := s["type"].(string)
+		if !ok {
+			return nil, fmt.Errorf("cannot parse type in %v", raw)
+		}
+		id, ok := s["id"].(string)
+		if !ok {
+			return nil, fmt.Errorf("cannot parse id in %v", raw)
+		}
+
 		subj := model.SubjectNotation{
-			Type: s["type"].(string),
-			ID:   s["id"].(string),
+			Type: typ,
+			ID:   id,
 		}
 		subjects = append(subjects, subj)
 	}
@@ -58,21 +67,30 @@ func parseBoundRoles(rawList interface{}) ([]model.BoundRole, error) {
 		return boundRoles, nil
 	}
 
-	rawSubjects, ok := rawList.([]interface{})
+	rawBoundRoles, ok := rawList.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("cannot parse subjects list")
+		return nil, fmt.Errorf("cannot parse roles list")
 	}
 
-	for _, raw := range rawSubjects {
+	for _, raw := range rawBoundRoles {
 		s, ok := raw.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("cannot parse subject %v", raw)
+			return nil, fmt.Errorf("cannot parse role %v", raw)
 		}
-		subj := model.BoundRole{
-			Name:    s["name"].(string),
-			Options: s["options"].(map[string]interface{}),
+
+		name, ok := s["name"].(string)
+		if !ok {
+			return nil, fmt.Errorf("cannot parse name in %v", raw)
 		}
-		boundRoles = append(boundRoles, subj)
+		options, ok := s["options"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot parse options in %v", raw)
+		}
+		br := model.BoundRole{
+			Name:    name,
+			Options: options,
+		}
+		boundRoles = append(boundRoles, br)
 	}
 
 	return boundRoles, nil
