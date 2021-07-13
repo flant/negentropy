@@ -1020,9 +1020,9 @@
                   }
                 },
                 "required": [
-                  "description",
                   "require_one_of_feature_flags",
-                  "options_schema"
+                  "options_schema",
+                  "description"
                 ]
               }
             }
@@ -1037,6 +1037,72 @@
       "delete": {
         "summary": "Deletes the role by ID",
         "operationId": "deleteFlant_iamRoleName",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/role/{name}/include/{included_name}": {
+      "parameters": [
+        {
+          "name": "included_name",
+          "description": "Role name to include",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "description": "Destination role name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Include role",
+        "operationId": "postFlant_iamRoleNameIncludeIncluded_name",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "options_template": {
+                    "type": "string",
+                    "description": "Go template to use outermost values in the included role schema"
+                  }
+                },
+                "required": [
+                  "options_template"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Exclude role",
+        "operationId": "deleteFlant_iamRoleNameIncludeIncluded_name",
         "tags": [
           "secrets"
         ],
@@ -1097,8 +1163,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -1107,6 +1173,71 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/feature_flag/{feature_flag_name}": {
+      "parameters": [
+        {
+          "name": "feature_flag_name",
+          "description": "Feature flag's name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Add Feature flag to the tenant.",
+        "operationId": "postFlant_iamTenantTenant_uuidFeature_flagFeature_flag_name",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled_for_new_projects": {
+                    "type": "boolean",
+                    "description": "Enable by default for a new projects inside this tenant",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Feature flag from the tenant.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidFeature_flagFeature_flag_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
           }
         }
       }
@@ -1272,9 +1403,9 @@
                   }
                 },
                 "required": [
+                  "subjects",
                   "resource_version",
-                  "identifier",
-                  "subjects"
+                  "identifier"
                 ]
               }
             }
@@ -1289,6 +1420,90 @@
       "delete": {
         "summary": "Deletes the service account by ID.",
         "operationId": "deleteFlant_iamTenantTenant_uuidGroupUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/identity_sharing": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all tenant identity sharing IDs.",
+        "operationId": "getFlant_iamTenantTenant_uuidIdentity_sharing",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/identity_sharing/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of an identity sharing",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the identity sharing by ID",
+        "operationId": "getFlant_iamTenantTenant_uuidIdentity_sharingUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the identity sharing by ID",
+        "operationId": "deleteFlant_iamTenantTenant_uuidIdentity_sharingUuid",
         "tags": [
           "secrets"
         ],
@@ -1445,8 +1660,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1556,10 +1771,10 @@
                   }
                 },
                 "required": [
-                  "subjects",
                   "ttl",
                   "require_mfa",
-                  "uuid"
+                  "uuid",
+                  "subjects"
                 ]
               }
             }
@@ -1568,6 +1783,125 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval/{uuid}": {
+      "parameters": [
+        {
+          "name": "role_binding_uuid",
+          "description": "ID of a roleBinding",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a role binding approval",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the role binding approval by ID.",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the role binding approval by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "Array of group IDs.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "require_mfa": {
+                    "type": "boolean",
+                    "description": "Necessity to approve second auth factor.",
+                    "default": false
+                  },
+                  "require_unique_approver": {
+                    "type": "boolean",
+                    "description": "Whether the approver is required to be unique among all approvals.",
+                    "default": true
+                  },
+                  "required_votes": {
+                    "type": "integer",
+                    "description": "Cound of required approves."
+                  },
+                  "service_accounts": {
+                    "type": "array",
+                    "description": "Array of service account IDs.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "users": {
+                    "type": "array",
+                    "description": "Array of user IDs.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "required_votes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the role binding approval by ID.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
           }
         }
       }
@@ -1641,10 +1975,10 @@
                   }
                 },
                 "required": [
-                  "subjects",
-                  "ttl",
                   "require_mfa",
-                  "resource_version"
+                  "resource_version",
+                  "subjects",
+                  "ttl"
                 ]
               }
             }
@@ -2060,11 +2394,11 @@
                   }
                 },
                 "required": [
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -2163,8 +2497,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -2413,8 +2747,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -2435,6 +2769,32 @@
         "responses": {
           "204": {
             "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{uuid}/available_roles": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the tenant roles.",
+        "operationId": "getFlant_iamTenantUuidAvailable_roles",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
