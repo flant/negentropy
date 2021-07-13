@@ -24,10 +24,9 @@ func getCreationID(expectID bool, data *framework.FieldData) string {
 	return id
 }
 
-func parseSubjects(data *framework.FieldData) ([]model.SubjectNotation, error) {
+func parseSubjects(rawList interface{}) ([]model.SubjectNotation, error) {
 	subjects := make([]model.SubjectNotation, 0)
 
-	rawList := data.Get("subjects")
 	if rawList == nil {
 		return subjects, nil
 	}
@@ -42,9 +41,39 @@ func parseSubjects(data *framework.FieldData) ([]model.SubjectNotation, error) {
 		if !ok {
 			return nil, fmt.Errorf("cannot parse subject %v", raw)
 		}
-		subj := model.SubjectNotation{Type: s["type"].(string), ID: s["id"].(string)}
+		subj := model.SubjectNotation{
+			Type: s["type"].(string),
+			ID:   s["id"].(string),
+		}
 		subjects = append(subjects, subj)
 	}
 
 	return subjects, nil
+}
+
+func parseBoundRoles(rawList interface{}) ([]model.BoundRole, error) {
+	boundRoles := make([]model.BoundRole, 0)
+
+	if rawList == nil {
+		return boundRoles, nil
+	}
+
+	rawSubjects, ok := rawList.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("cannot parse subjects list")
+	}
+
+	for _, raw := range rawSubjects {
+		s, ok := raw.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot parse subject %v", raw)
+		}
+		subj := model.BoundRole{
+			Name:    s["name"].(string),
+			Options: s["options"].(map[string]interface{}),
+		}
+		boundRoles = append(boundRoles, subj)
+	}
+
+	return boundRoles, nil
 }
