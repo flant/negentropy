@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 type RoleResolver interface {
 	IsUserSharedWith(TenantUUID) (bool, error)
 	IsServiceAccountSharedWith(TenantUUID) (bool, error)
