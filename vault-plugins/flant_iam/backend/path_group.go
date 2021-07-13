@@ -188,7 +188,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
 
-		subjects, err := parseSubjects(data)
+		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +226,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
 
-		subjects, err := parseSubjects(data)
+		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
 		}

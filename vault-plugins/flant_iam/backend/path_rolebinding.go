@@ -48,6 +48,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Subjects list",
 					Required:    true,
 				},
+				"roles": {
+					Type:        framework.TypeSlice,
+					Description: "Roles list",
+					Required:    true,
+				},
 				"ttl": {
 					Type:        framework.TypeDurationSecond,
 					Description: "TTL in seconds",
@@ -87,6 +92,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 				"subjects": {
 					Type:        framework.TypeSlice,
 					Description: "Subjects list",
+					Required:    true,
+				},
+				"roles": {
+					Type:        framework.TypeSlice,
+					Description: "Roles list",
 					Required:    true,
 				},
 				"ttl": {
@@ -152,6 +162,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Subjects list",
 					Required:    true,
 				},
+				"roles": {
+					Type:        framework.TypeSlice,
+					Description: "Roles list",
+					Required:    true,
+				},
 				"ttl": {
 					Type:        framework.TypeDurationSecond,
 					Description: "TTL in seconds",
@@ -211,12 +226,20 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
-		subjects, err := parseSubjects(data)
+		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return responseErrMessage(req, "subjects list must not be empty", http.StatusBadRequest)
+		}
+
+		roles, err := parseBoundRoles(data.Get("roles"))
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "roles list must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -225,6 +248,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
 			Subjects:   subjects,
+			Roles:      roles,
 			Origin:     model.OriginIAM,
 		}
 
@@ -253,12 +277,20 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
-		subjects, err := parseSubjects(data)
+		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
 		}
 		if len(subjects) == 0 {
 			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
+
+		roles, err := parseBoundRoles(data.Get("roles"))
+		if err != nil {
+			return nil, err
+		}
+		if len(subjects) == 0 {
+			return responseErrMessage(req, "roles list must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -268,6 +300,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
 			Subjects:   subjects,
+			Roles:      roles,
 			Origin:     model.OriginIAM,
 		}
 
