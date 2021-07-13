@@ -44,6 +44,41 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"first_name": {
+					Type:        framework.TypeString,
+					Description: "first_name",
+					Required:    true,
+				},
+				"last_name": {
+					Type:        framework.TypeString,
+					Description: "last_name",
+					Required:    true,
+				},
+				"display_name": {
+					Type:        framework.TypeString,
+					Description: "display_name",
+					Required:    true,
+				},
+				"email": {
+					Type:        framework.TypeString,
+					Description: "email",
+					Required:    true,
+				},
+				"additional_emails": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_emails",
+					Required:    true,
+				},
+				"mobile_phone": {
+					Type:        framework.TypeString,
+					Description: "mobile_phone",
+					Required:    true,
+				},
+				"additional_phones": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_phones",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -73,6 +108,41 @@ func (b userBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"first_name": {
+					Type:        framework.TypeString,
+					Description: "first_name",
+					Required:    true,
+				},
+				"last_name": {
+					Type:        framework.TypeString,
+					Description: "last_name",
+					Required:    true,
+				},
+				"display_name": {
+					Type:        framework.TypeString,
+					Description: "display_name",
+					Required:    true,
+				},
+				"email": {
+					Type:        framework.TypeString,
+					Description: "email",
+					Required:    true,
+				},
+				"additional_emails": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_emails",
+					Required:    true,
+				},
+				"mobile_phone": {
+					Type:        framework.TypeString,
+					Description: "mobile_phone",
+					Required:    true,
+				},
+				"additional_phones": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_phones",
 					Required:    true,
 				},
 			},
@@ -127,6 +197,41 @@ func (b userBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"first_name": {
+					Type:        framework.TypeString,
+					Description: "first_name",
+					Required:    true,
+				},
+				"last_name": {
+					Type:        framework.TypeString,
+					Description: "last_name",
+					Required:    true,
+				},
+				"display_name": {
+					Type:        framework.TypeString,
+					Description: "display_name",
+					Required:    true,
+				},
+				"email": {
+					Type:        framework.TypeString,
+					Description: "email",
+					Required:    true,
+				},
+				"additional_emails": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_emails",
+					Required:    true,
+				},
+				"mobile_phone": {
+					Type:        framework.TypeString,
+					Description: "mobile_phone",
+					Required:    true,
+				},
+				"additional_phones": {
+					Type:        framework.TypeStringSlice,
+					Description: "additional_phones",
 					Required:    true,
 				},
 			},
@@ -283,10 +388,17 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
 		user := &model.User{
-			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
-			Identifier: data.Get("identifier").(string),
-			Origin:     model.OriginIAM,
+			UUID:             id,
+			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			Identifier:       data.Get("identifier").(string),
+			FirstName:        data.Get("first_name").(string),
+			LastName:         data.Get("last_name").(string),
+			DisplayName:      data.Get("display_name").(string),
+			Email:            data.Get("email").(string),
+			AdditionalEmails: data.Get("additional_emails").([]string),
+			MobilePhone:      data.Get("mobile_phone").(string),
+			AdditionalPhones: data.Get("additional_phones").([]string),
+			Origin:           model.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -315,11 +427,18 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		user := &model.User{
-			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
-			Version:    data.Get("resource_version").(string),
-			Identifier: data.Get("identifier").(string),
-			Origin:     model.OriginIAM,
+			UUID:             id,
+			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			Version:          data.Get("resource_version").(string),
+			Identifier:       data.Get("identifier").(string),
+			FirstName:        data.Get("first_name").(string),
+			LastName:         data.Get("last_name").(string),
+			DisplayName:      data.Get("display_name").(string),
+			Email:            data.Get("email").(string),
+			AdditionalEmails: data.Get("additional_emails").([]string),
+			MobilePhone:      data.Get("mobile_phone").(string),
+			AdditionalPhones: data.Get("additional_phones").([]string),
+			Origin:           model.OriginIAM,
 		}
 
 		repo := model.NewUserRepository(tx)
