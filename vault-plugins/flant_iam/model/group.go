@@ -82,7 +82,7 @@ type Group struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
 func (u *Group) ObjType() string {
@@ -179,6 +179,11 @@ func (r *GroupRepository) Update(group *Group) error {
 
 	if err := r.fillSubjects(group); err != nil {
 		return err
+	}
+
+	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	if group.Extensions == nil {
+		group.Extensions = stored.Extensions
 	}
 
 	return r.save(group)

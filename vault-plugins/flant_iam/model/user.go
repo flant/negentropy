@@ -58,7 +58,7 @@ type User struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[ObjectOrigin]*Extension `json:"-"`
 
 	Identifier     string `json:"identifier"`
 	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
@@ -142,9 +142,6 @@ func (r *UserRepository) Update(user *User) error {
 	}
 	user.Version = NewResourceVersion()
 
-	// Preserve fields
-	user.Extensions = stored.Extensions
-
 	// Update
 	tenant, err := r.tenantRepo.GetByID(user.TenantUUID)
 	if err != nil {
@@ -152,6 +149,10 @@ func (r *UserRepository) Update(user *User) error {
 	}
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 
+	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	if user.Extensions == nil {
+		user.Extensions = stored.Extensions
+	}
 	return r.save(user)
 }
 

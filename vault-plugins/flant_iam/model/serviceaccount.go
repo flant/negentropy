@@ -55,7 +55,7 @@ type ServiceAccount struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
 func (sa *ServiceAccount) ObjType() string {
@@ -164,6 +164,11 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 		return err
 	}
 	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
+
+	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	if sa.Extensions == nil {
+		sa.Extensions = stored.Extensions
+	}
 
 	return r.save(sa)
 }
