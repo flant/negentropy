@@ -39,7 +39,7 @@ resource "google_project_iam_member" "terraform-storage-admin" {
   member  = "serviceAccount:${google_service_account.terraform.email}"
 }
 
-resource "google_project_iam_member" "terraform-srorage-object-admin" {
+resource "google_project_iam_member" "terraform-storage-object-admin" {
   project = data.google_project.project.project_id
   role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.terraform.email}"
@@ -54,5 +54,12 @@ resource "google_project_iam_member" "terraform-kms-crypto-key-encrypter-decrypt
 resource "google_project_iam_member" "terraform-kms-admin" {
   project = data.google_project.project.project_id
   role    = "roles/cloudkms.admin"
+  member  = "serviceAccount:${google_service_account.terraform.email}"
+}
+
+resource "google_project_iam_member" "terraform-privateca-certmanager" {
+  provider = google-beta
+  project = data.google_project.project.project_id
+  role    = "roles/privateca.certificateManager"
   member  = "serviceAccount:${google_service_account.terraform.email}"
 }

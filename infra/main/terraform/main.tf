@@ -115,7 +115,7 @@ resource "google_compute_firewall" "main" {
 
   allow {
     protocol = "tcp"
-    ports    = ["8200"]
+    ports    = ["443"]
   }
 
   allow {

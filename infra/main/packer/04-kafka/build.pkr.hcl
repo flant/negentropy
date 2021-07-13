@@ -128,6 +128,11 @@ build {
     destination = "/etc/kafka/"
   }
 
+  provisioner "file" {
+    source      = "../../../common/config/scripts/kafka-variables.sh"
+    destination = "/etc/kafka/scripts/variables.sh"
+  }
+
   provisioner "shell" {
     environment_vars = [
       "MAIN_DOMAIN=${var.kafka_main_domain}",
