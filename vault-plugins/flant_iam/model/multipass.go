@@ -100,7 +100,7 @@ type Multipass struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[ObjectOrigin]*Extension `json:"-"` 
 }
 
 func (t *Multipass) ObjType() string {

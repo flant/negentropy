@@ -61,7 +61,7 @@ type RoleBinding struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
 func (u *RoleBinding) ObjType() string {
@@ -129,15 +129,22 @@ func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
 	}
 
 	// Validate tenant relation
-	if stored, err := r.GetByID(rb.UUID); err != nil {
+	stored, err := r.GetByID(rb.UUID)
+	if err != nil {
 		return err
-	} else if stored.TenantUUID != rb.TenantUUID {
+	}
+	if stored.TenantUUID != rb.TenantUUID {
 		return ErrNotFound
 	}
 
 	// Refill data
 	if err := r.fillSubjects(rb); err != nil {
 		return err
+	}
+
+	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	if rb.Extensions == nil {
+		rb.Extensions = stored.Extensions
 	}
 
 	// Store
