@@ -13,7 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-var _ = Describe("Role binding approval", func() {
+var _ = Describe("Tenant feature flags", func() {
 	rootClient := lib.GetVaultClient(lib.RootToken)
 	tenantsAPI := lib.NewTenantAPI(rootClient)
 	featureFlagAPI := lib.NewFeatureFlagAPI(rootClient)

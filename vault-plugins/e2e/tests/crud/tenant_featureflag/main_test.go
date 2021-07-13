@@ -9,5 +9,5 @@ import (
 
 func Test(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Identity sharing")
+	RunSpecs(t, "CRUD: tenant feature flags")
 }
