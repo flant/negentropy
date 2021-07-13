@@ -73,8 +73,8 @@ def main():
 
     os.environ['PKR_VAR_vault_ca_name'] = "20210708-4qi-uyu"
     os.environ['PKR_VAR_vault_ca_pool'] = "negentropy-flant-local"
-    os.environ['PKR_VAR_vault_ca_location'] = "negentropy.flant.local"
-    os.environ['PKR_VAR_vault_internal_root_domain'] = "europe-west1"
+    os.environ['PKR_VAR_vault_ca_location'] = "europe-west1"
+    os.environ['PKR_VAR_vault_internal_root_domain'] = "negentropy.flant.local"
 
     os.environ['PKR_VAR_gcp_project'] = google_project_id
     os.environ['PKR_VAR_gcp_zone'] = "europe-west3-a"
