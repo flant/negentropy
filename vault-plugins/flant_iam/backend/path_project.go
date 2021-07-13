@@ -256,9 +256,6 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err != nil {
-			return nil, err
-		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
