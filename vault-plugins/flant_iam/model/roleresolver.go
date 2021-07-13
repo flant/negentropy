@@ -66,12 +66,11 @@ func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
+	roleNames[roleName] = struct{}{}
 	groups, err := r.gi.FindAllParentGroupsForUserUUID(tenantUUID, userUUID)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
-	fmt.Printf("roles : %#v\n", roleNames)
-	fmt.Printf("groups : %#v\n", groups)
 	userRBs, err := r.rbi.FindDirectRoleBindingsForTenantUser(tenantUUID, userUUID)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
@@ -100,7 +99,11 @@ func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName
 	for _, roleBinding := range roleBindings {
 		_, rbHasRole := roleBindingsForRoles[roleBinding.UUID]
 		_, rbHasProject := roleBindingsForProject[roleBinding.UUID]
+		if roleBinding.AnyProject {
+			rbHasProject = true
+		}
 		if rbHasProject && rbHasRole {
+			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
 			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
 			roleExists = true
 		}
@@ -128,7 +131,10 @@ func mergeRoleBindingParams(origin RoleBindingParams, roleBinding *RoleBinding, 
 }
 
 func stringSlice(uuidSet map[string]struct{}) []string {
-	result := make([]string, len(uuidSet), 0)
+	if len(uuidSet) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(uuidSet))
 	for uuid := range uuidSet {
 		result = append(result, uuid)
 	}

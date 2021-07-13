@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -14,29 +13,6 @@ const (
 	groupUUID4 = "00000000-0004-0000-0000-000000000000"
 	groupUUID5 = "00000000-0005-0000-0000-000000000000"
 )
-
-func makeSubjectNotations(subjectType string, uuids []string) []SubjectNotation {
-	validTypes := map[string]struct{}{ServiceAccountType: {}, UserType: {}, GroupType: {}}
-	if _, valid := validTypes[subjectType]; !valid {
-		panic(fmt.Errorf("subject_type %s is invalid", subjectType))
-	}
-	result := make([]SubjectNotation, len(uuids))
-	for i := range uuids {
-		result[i] = SubjectNotation{
-			Type: subjectType,
-			ID:   uuids[i],
-		}
-	}
-	return result
-}
-
-func appendSubjects(subjectsGroups ...[]SubjectNotation) []SubjectNotation {
-	result := []SubjectNotation{}
-	for i := range subjectsGroups {
-		result = append(result, subjectsGroups[i]...)
-	}
-	return result
-}
 
 var (
 	group1 = Group{

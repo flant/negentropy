@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -30,4 +31,42 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 		fixture(t, store)
 	}
 	return store
+}
+
+func toSubjectNotation(m Model) SubjectNotation {
+	return SubjectNotation{
+		Type: m.ObjType(),
+		ID:   m.ObjId(),
+	}
+}
+
+func toSubjectNotations(ms ...Model) []SubjectNotation {
+	sns := make([]SubjectNotation, 0)
+	for _, m := range ms {
+		sns = append(sns, toSubjectNotation(m))
+	}
+	return sns
+}
+
+func makeSubjectNotations(subjectType string, uuids []string) []SubjectNotation {
+	validTypes := map[string]struct{}{ServiceAccountType: {}, UserType: {}, GroupType: {}}
+	if _, valid := validTypes[subjectType]; !valid {
+		panic(fmt.Errorf("subject_type %s is invalid", subjectType))
+	}
+	result := make([]SubjectNotation, len(uuids))
+	for i := range uuids {
+		result[i] = SubjectNotation{
+			Type: subjectType,
+			ID:   uuids[i],
+		}
+	}
+	return result
+}
+
+func appendSubjects(subjectsGroups ...[]SubjectNotation) []SubjectNotation {
+	result := []SubjectNotation{}
+	for i := range subjectsGroups {
+		result = append(result, subjectsGroups[i]...)
+	}
+	return result
 }
