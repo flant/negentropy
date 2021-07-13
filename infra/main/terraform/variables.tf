@@ -53,7 +53,7 @@ locals {
           "scopes" : ["cloud-platform"]
         }
         "bucket" : "${local.google_project_id}-vault-auth"
-        "private_static_ip" : "10.20.2.4"
+        "private_static_ip" : "10.20.3.4"
         "image_family" : "vault-auth"
     }),
     merge(local.common,
