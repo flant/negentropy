@@ -283,17 +283,20 @@ func (r *GroupRepository) Sync(objID string, data []byte) error {
 	return r.save(gr)
 }
 
-func extractGroupUUIDs(iter memdb.ResultIterator) map[GroupUUID]struct{} {
+func extractGroupUUIDs(iter memdb.ResultIterator) (map[GroupUUID]struct{}, error) {
 	ids := map[GroupUUID]struct{}{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		g := raw.(*Group)
+		g, ok := raw.(*Group)
+		if !ok {
+			return nil, fmt.Errorf("need type Group, actually passed: %#v", raw)
+		}
 		ids[g.UUID] = struct{}{}
 	}
-	return ids
+	return ids, nil
 }
 
 type subjectInTenantGroupIndexer struct {
@@ -326,7 +329,7 @@ func (s subjectInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte
 	}
 	group, ok := raw.(*Group)
 	if !ok {
-		return false, nil, fmt.Errorf("format error: need Role type, actual passed %#v", raw)
+		return false, nil, fmt.Errorf("format error: need Group type, actual passed %#v", raw)
 	}
 	result := [][]byte{}
 	tenantUUID := group.TenantUUID
@@ -355,8 +358,7 @@ func (r *GroupRepository) findDirectParentGroupsByUserUUID(tenantUUID TenantUUID
 	if err != nil {
 		return nil, err
 	}
-
-	return extractGroupUUIDs(iter), nil
+	return extractGroupUUIDs(iter)
 }
 
 func (r *GroupRepository) findDirectParentGroupsByServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
@@ -364,7 +366,7 @@ func (r *GroupRepository) findDirectParentGroupsByServiceAccountUUID(tenantUUID 
 	if err != nil {
 		return nil, err
 	}
-	return extractGroupUUIDs(iter), nil
+	return extractGroupUUIDs(iter)
 }
 
 func (r *GroupRepository) findDirectParentGroupsByGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
@@ -372,7 +374,7 @@ func (r *GroupRepository) findDirectParentGroupsByGroupUUID(tenantUUID TenantUUI
 	if err != nil {
 		return nil, err
 	}
-	return extractGroupUUIDs(iter), nil
+	return extractGroupUUIDs(iter)
 }
 
 // returns map with found parent uuids and originally passed uuids

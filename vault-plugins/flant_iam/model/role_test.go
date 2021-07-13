@@ -9,11 +9,16 @@ import (
 )
 
 const (
-	roleName1 = "roleName1"
-	roleName2 = "roleName2"
-	roleName3 = "roleName3"
-	roleName4 = "roleName4"
-	roleName5 = "roleName5"
+	roleName1  = "roleName1"
+	roleName2  = "roleName2"
+	roleName3  = "roleName3"
+	roleName4  = "roleName4"
+	roleName5  = "roleName5"
+	roleName6  = "roleName6"
+	roleName7  = "roleName7"
+	roleName8  = "roleName8"
+	roleName9  = "roleName9"
+	roleName10 = "roleName10"
 )
 
 var (
@@ -42,6 +47,26 @@ var (
 		Scope:         RoleScopeProject,
 		IncludedRoles: []IncludedRole{{Name: roleName2}, {Name: roleName3}},
 	}
+	role6 = Role{
+		Name:  roleName6,
+		Scope: RoleScopeProject,
+	}
+	role7 = Role{
+		Name:  roleName7,
+		Scope: RoleScopeProject,
+	}
+	role8 = Role{
+		Name:  roleName8,
+		Scope: RoleScopeTenant,
+	}
+	role9 = Role{
+		Name:  roleName9,
+		Scope: RoleScopeTenant,
+	}
+	role10 = Role{
+		Name:  roleName10,
+		Scope: RoleScopeTenant,
+	}
 )
 
 func createRoles(t *testing.T, repo *RoleRepository, roles ...Role) {
@@ -55,7 +80,7 @@ func createRoles(t *testing.T, repo *RoleRepository, roles ...Role) {
 func roleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	repo := NewRoleRepository(tx)
-	createRoles(t, repo, []Role{role1, role2, role3, role4, role5}...)
+	createRoles(t, repo, []Role{role1, role2, role3, role4, role5, role6, role7, role8, role9, role10}...)
 	err := tx.Commit()
 	dieOnErr(t, err)
 }

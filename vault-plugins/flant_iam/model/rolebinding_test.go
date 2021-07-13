@@ -1,15 +1,120 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
+
+const (
+	rbUUID1 = "00000000-0000-0001-0000-000000000000"
+	rbUUID2 = "00000000-0000-0002-0000-000000000000"
+	rbUUID3 = "00000000-0000-0003-0000-000000000000"
+	rbUUID4 = "00000000-0000-0004-0000-000000000000"
+)
+
+var (
+	rb1 = RoleBinding{
+		UUID:            rbUUID1,
+		TenantUUID:      tenantUUID1,
+		Version:         "",
+		ValidTill:       100,
+		RequireMFA:      false,
+		Users:           []string{userUUID1, userUUID2},
+		Groups:          []string{groupUUID2, groupUUID3},
+		ServiceAccounts: []string{serviceAccountUUID1},
+		Subjects:        nil,
+		AnyProject:      false,
+		Projects:        []ProjectUUID{projectUUID1, projectUUID3},
+		Roles: []BoundRole{{
+			Name:    roleName1,
+			Options: map[string]interface{}{"o1": "data1"},
+		}},
+		Origin:     OriginIAM,
+		Extensions: nil,
+	}
+	rb2 = RoleBinding{
+		UUID:       rbUUID2,
+		TenantUUID: tenantUUID2,
+		Version:    "",
+		ValidTill:  100,
+		RequireMFA: false,
+		Users:      []string{userUUID1, userUUID2},
+		Subjects:   nil,
+		AnyProject: true,
+		Projects:   nil,
+		Roles: []BoundRole{{
+			Name:    roleName1,
+			Options: map[string]interface{}{"o1": "data2"},
+		}},
+		Origin:     OriginIAM,
+		Extensions: nil,
+	}
+	rb3 = RoleBinding{
+		UUID:            rbUUID3,
+		TenantUUID:      tenantUUID1,
+		Version:         "",
+		ValidTill:       200,
+		RequireMFA:      false,
+		Users:           []string{userUUID2},
+		Groups:          []string{groupUUID2, groupUUID5},
+		ServiceAccounts: []string{serviceAccountUUID2},
+		Subjects:        nil,
+		AnyProject:      true,
+		Projects:        nil,
+		Roles: []BoundRole{{
+			Name:    roleName5,
+			Options: map[string]interface{}{"o1": "data3"},
+		}, {
+			Name:    roleName7,
+			Options: map[string]interface{}{"o1": "data4"},
+		}},
+		Origin:     OriginIAM,
+		Extensions: nil,
+	}
+	rb4 = RoleBinding{
+		UUID:       rbUUID4,
+		TenantUUID: tenantUUID1,
+		Version:    "",
+		ValidTill:  150,
+		RequireMFA: false,
+		Users:      []string{userUUID1},
+		Subjects:   nil,
+		AnyProject: false,
+		Projects:   []ProjectUUID{projectUUID3, projectUUID4},
+		Roles: []BoundRole{{
+			Name:    roleName8,
+			Options: map[string]interface{}{"o1": "data5"},
+		}},
+		Origin:     OriginIAM,
+		Extensions: nil,
+	}
+)
+
+func createRoleBindings(t *testing.T, repo *RoleBindingRepository, rbs ...RoleBinding) {
+	for _, rb := range rbs {
+		tmp := rb
+		err := repo.Create(&tmp)
+		dieOnErr(t, err)
+	}
+}
+
+func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
+	rbs := []RoleBinding{rb1, rb2, rb3, rb4}
+	for i := range rbs {
+		rbs[i].Subjects = appendSubjects(makeSubjectNotations(UserType, rbs[i].Users),
+			makeSubjectNotations(ServiceAccountType, rbs[i].ServiceAccounts),
+			makeSubjectNotations(GroupType, rbs[i].Groups))
+	}
+	tx := store.Txn(true)
+	repo := NewRoleBindingRepository(tx)
+	createRoleBindings(t, repo, rbs...)
+	err := tx.Commit()
+	dieOnErr(t, err)
+}
 
 func Test_RoleBindingDbSchema(t *testing.T) {
 	schema := RoleBindingSchema()
@@ -18,33 +123,16 @@ func Test_RoleBindingDbSchema(t *testing.T) {
 	}
 }
 
-func toSubjectNotation(m Model) SubjectNotation {
-	return SubjectNotation{
-		Type: m.ObjType(),
-		ID:   m.ObjId(),
-	}
-}
-
-func toSubjectNotations(ms ...Model) []SubjectNotation {
-	sns := make([]SubjectNotation, 0)
-	for _, m := range ms {
-		sns = append(sns, toSubjectNotation(m))
-	}
-	return sns
-}
-
 func Test_RoleBindingOnCreationSubjectsCalculation(t *testing.T) {
-	store, _ := initTestDB()
-	tx := store.Txn(true)
-
-	// Data
-	ten := genTenant(tx)
-	sa1 := genServiceAccount(tx, ten.UUID)
-	sa2 := genServiceAccount(tx, ten.UUID)
-	u1 := genUser(tx, ten.UUID)
-	u2 := genUser(tx, ten.UUID)
-	g1 := genGroup(tx, ten.UUID)
-	g2 := genGroup(tx, ten.UUID)
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	ten := &tenant1
+	sa1 := &sa1
+	sa2 := &sa2
+	u1 := &user1
+	u2 := &user2
+	g1 := &group1
+	g2 := &group2
 
 	tests := []struct {
 		name       string
@@ -157,56 +245,84 @@ func Test_RoleBindingOnCreationSubjectsCalculation(t *testing.T) {
 	}
 }
 
-func initTestDB() (*io.MemoryStore, error) {
-	schema, err := mergeSchema()
-	if err != nil {
-		return nil, err
+func roleBindingsUUIDSFromSlice(rbs []*RoleBinding) map[string]struct{} {
+	uuids := map[string]struct{}{}
+	for _, rb := range rbs {
+		uuids[rb.UUID] = struct{}{}
 	}
-	return io.NewMemoryStore(schema, nil)
+	return uuids
 }
 
-func genTenant(tx *io.MemoryStoreTxn) *Tenant {
-	identifier, _ := password.Generate(10, 3, 3, false, true) // pretty random string
-	ten := &Tenant{
-		UUID:       uuid.New(),
-		Identifier: identifier,
+func roleBindingsUUIDsFromMap(rbs map[RoleBindingUUID]*RoleBinding) map[string]struct{} {
+	uuids := map[string]struct{}{}
+	for rbUUID := range rbs {
+		uuids[rbUUID] = struct{}{}
 	}
-	err := NewTenantRepository(tx).Create(ten)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create tenant: %v", err))
-	}
-	return ten
+	return uuids
 }
 
-func genUser(tx *io.MemoryStoreTxn, tid TenantUUID) *User {
-	identifier, _ := password.Generate(10, 3, 3, false, true) // pretty random string
-	u := &User{
-		UUID:       uuid.New(),
-		TenantUUID: tid,
-		Origin:     OriginIAM,
-		Identifier: identifier,
-	}
-	err := NewUserRepository(tx).Create(u)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create user: %v", err))
-	}
-	return u
+func Test_RoleBindingList(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbs, err := repo.List(tenantUUID1)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}}, roleBindingsUUIDSFromSlice(rbs))
 }
 
-func genServiceAccount(tx *io.MemoryStoreTxn, tid TenantUUID) *ServiceAccount {
-	sa := &ServiceAccount{UUID: uuid.New(), TenantUUID: tid, Origin: OriginIAM}
-	err := NewServiceAccountRepository(tx).Create(sa)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create serviceaccount: %v", err))
-	}
-	return sa
+func Test_FindDirectRoleBindingsForTenantUser(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbsMap, err := repo.FindDirectRoleBindingsForTenantUser(tenantUUID1, userUUID1)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}}, roleBindingsUUIDsFromMap(rbsMap))
 }
 
-func genGroup(tx *io.MemoryStoreTxn, tid TenantUUID) *Group {
-	g := &Group{UUID: uuid.New(), TenantUUID: tid, Origin: OriginIAM}
-	err := NewGroupRepository(tx).Create(g)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create group: %v", err))
-	}
-	return g
+func Test_FindDirectRoleBindingsForTenantServiceAccount(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbsMap, err := repo.FindDirectRoleBindingsForTenantServiceAccount(tenantUUID1, serviceAccountUUID1)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}}, roleBindingsUUIDsFromMap(rbsMap))
+}
+
+func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbsMap, err := repo.FindDirectRoleBindingsForTenantGroups(tenantUUID1, groupUUID2, groupUUID3)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}}, roleBindingsUUIDsFromMap(rbsMap))
+}
+
+func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbsSet, err := repo.FindDirectRoleBindingsForRoles(tenantUUID1, roleName1, roleName5, roleName8)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}}, rbsSet)
+}
+
+func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	repo := NewRoleBindingRepository(tx)
+
+	rbsSet, err := repo.FindDirectRoleBindingsForTenantProject(tenantUUID1, projectUUID3)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}}, rbsSet)
 }
