@@ -117,24 +117,6 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *gitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
 	b.Logger().Debug("Started periodic task")
 
-	vaultRequestEnvs := map[string]string{}
-	for _, requestConfig := range vaultRequestsConfig {
-		{
-			reqData, _ := json.MarshalIndent(requestConfig, "", "  ")
-			b.Logger().Debug(fmt.Sprintf("Perform vault request:\n%s\n", string(reqData)))
-		}
-
-		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
-		if err != nil {
-			return fmt.Errorf("unable to perform vault request named %q: %s", requestConfig.Name, err)
-		}
-
-		envName := fmt.Sprintf("VAULT_REQUEST_TOKEN_%s", strings.ReplaceAll(strings.ToUpper(requestConfig.Name), "-", "_"))
-		vaultRequestEnvs[envName] = token
-
-		b.Logger().Info(fmt.Sprintf("Performed vault request %s, got token %q", requestConfig.Name, token))
-	}
-
 	// clone git repository and get head commit
 	var gitRepo *goGit.Repository
 	var headCommit string
@@ -215,6 +197,24 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		}
 
 		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
+	}
+
+	vaultRequestEnvs := map[string]string{}
+	for _, requestConfig := range vaultRequestsConfig {
+		{
+			reqData, _ := json.MarshalIndent(requestConfig, "", "  ")
+			b.Logger().Debug(fmt.Sprintf("Perform vault request:\n%s\n", string(reqData)))
+		}
+
+		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
+		if err != nil {
+			return fmt.Errorf("unable to perform vault request named %q: %s", requestConfig.Name, err)
+		}
+
+		envName := fmt.Sprintf("VAULT_REQUEST_TOKEN_%s", strings.ReplaceAll(strings.ToUpper(requestConfig.Name), "-", "_"))
+		vaultRequestEnvs[envName] = token
+
+		b.Logger().Info(fmt.Sprintf("Performed vault request %s, got token %q", requestConfig.Name, token))
 	}
 
 	// run docker build with service dockerfile and context
