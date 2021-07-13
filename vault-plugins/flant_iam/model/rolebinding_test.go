@@ -1,10 +1,8 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
@@ -131,17 +129,15 @@ func Test_RoleBindingDbSchema(t *testing.T) {
 }
 
 func Test_RoleBindingOnCreationSubjectsCalculation(t *testing.T) {
-	store, _ := initTestDB()
-	tx := store.Txn(true)
-
-	// Data
-	ten := genTenant(tx)
-	sa1 := genServiceAccount(tx, ten.UUID)
-	sa2 := genServiceAccount(tx, ten.UUID)
-	u1 := genUser(tx, ten.UUID)
-	u2 := genUser(tx, ten.UUID)
-	g1 := genGroup(tx, ten.UUID)
-	g2 := genGroup(tx, ten.UUID)
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture).Txn(true)
+	ten := &tenant1
+	sa1 := &sa1
+	sa2 := &sa2
+	u1 := &user1
+	u2 := &user2
+	g1 := &group1
+	g2 := &group2
 
 	tests := []struct {
 		name       string
@@ -254,60 +250,6 @@ func Test_RoleBindingOnCreationSubjectsCalculation(t *testing.T) {
 	}
 }
 
-func initTestDB() (*io.MemoryStore, error) {
-	schema, err := mergeSchema()
-	if err != nil {
-		return nil, err
-	}
-	return io.NewMemoryStore(schema, nil)
-}
-
-func genTenant(tx *io.MemoryStoreTxn) *Tenant {
-	identifier, _ := password.Generate(10, 3, 3, false, true) // pretty random string
-	ten := &Tenant{
-		UUID:       uuid.New(),
-		Identifier: identifier,
-	}
-	err := NewTenantRepository(tx).Create(ten)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create tenant: %v", err))
-	}
-	return ten
-}
-
-func genUser(tx *io.MemoryStoreTxn, tid TenantUUID) *User {
-	identifier, _ := password.Generate(10, 3, 3, false, true) // pretty random string
-	u := &User{
-		UUID:       uuid.New(),
-		TenantUUID: tid,
-		Origin:     OriginIAM,
-		Identifier: identifier,
-	}
-	err := NewUserRepository(tx).Create(u)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create user: %v", err))
-	}
-	return u
-}
-
-func genServiceAccount(tx *io.MemoryStoreTxn, tid TenantUUID) *ServiceAccount {
-	sa := &ServiceAccount{UUID: uuid.New(), TenantUUID: tid, Origin: OriginIAM}
-	err := NewServiceAccountRepository(tx).Create(sa)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create serviceaccount: %v", err))
-	}
-	return sa
-}
-
-func genGroup(tx *io.MemoryStoreTxn, tid TenantUUID) *Group {
-	g := &Group{UUID: uuid.New(), TenantUUID: tid, Origin: OriginIAM}
-	err := NewGroupRepository(tx).Create(g)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create group: %v", err))
-	}
-	return g
-}
-
 func roleBindingsUUIDSFromSlice(rbs []*RoleBinding) map[string]struct{} {
 	uuids := map[string]struct{}{}
 	for _, rb := range rbs {
@@ -318,8 +260,8 @@ func roleBindingsUUIDSFromSlice(rbs []*RoleBinding) map[string]struct{} {
 
 func roleBindingsUUIDsFromMap(rbs map[RoleBindingUUID]*RoleBinding) map[string]struct{} {
 	uuids := map[string]struct{}{}
-	for uuid := range rbs {
-		uuids[uuid] = struct{}{}
+	for rbUUID := range rbs {
+		uuids[rbUUID] = struct{}{}
 	}
 	return uuids
 }
