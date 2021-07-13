@@ -25,8 +25,10 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		GroupSchema(),
 		RoleSchema(),
 		RoleBindingSchema(),
+		RoleBindingApprovalSchema(),
 		MultipassSchema(),
 		ServiceAccountPasswordSchema(),
+		IdentitySharingSchema(),
 	}
 
 	schema := &memdb.DBSchema{

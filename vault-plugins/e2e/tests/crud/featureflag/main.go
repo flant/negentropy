@@ -44,7 +44,7 @@ var _ = Describe("Feature Flag", func() {
 		params := tools.Params{
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
-				Expect(data.Map()).To(HaveKey("name"))
+				Expect(data.Get("feature_flag").Map()).To(HaveKey("name"))
 			},
 		}
 		flagsAPI.Create(params, url.Values{}, payload)
@@ -83,7 +83,7 @@ var _ = Describe("Feature Flag", func() {
 		}, nil, createPayload)
 
 		flagsAPI.Delete(tools.Params{
-			"name": createdData.Get("name").String(),
+			"name": createdData.Get("feature_flag.name").String(),
 		}, nil)
 
 		flagsAPI.List(tools.Params{

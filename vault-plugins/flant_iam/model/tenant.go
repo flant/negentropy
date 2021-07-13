@@ -54,11 +54,6 @@ type Tenant struct {
 	FeatureFlags []TenantFeatureFlag `json:"feature_flags"`
 }
 
-type TenantFeatureFlag struct {
-	FeatureFlag           `json:",inline"`
-	EnabledForNewProjects bool `json:"enabled_for_new"`
-}
-
 func (t *Tenant) ObjType() string {
 	return TenantType
 }

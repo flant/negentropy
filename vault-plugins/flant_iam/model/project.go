@@ -56,6 +56,8 @@ type Project struct {
 	TenantUUID TenantUUID  `json:"tenant_uuid"`
 	Version    string      `json:"resource_version"`
 	Identifier string      `json:"identifier"`
+
+	FeatureFlags []FeatureFlag `json:"feature_flags"`
 }
 
 func (p *Project) ObjType() string {

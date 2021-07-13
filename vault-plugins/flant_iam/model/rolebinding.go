@@ -11,6 +11,7 @@ import (
 
 const (
 	RoleBindingType                        = "role_binding" // also, memdb schema name
+	RoleBindingForeignPK                   = "role_binding_uuid"
 	UserInTenantRoleBindingIndex           = "user_in_tenant_role_binding"
 	ServiceAccountInTenantRoleBindingIndex = "service_account_in_tenant_role_binding"
 	GroupInTenantRoleBindingIndex          = "group_in_tenant_role_binding"

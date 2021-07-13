@@ -13,8 +13,10 @@ type VaultPayload struct {
 
 func UnmarshalVaultResponse(b []byte) gjson.Result {
 	payload := &VaultPayload{}
-	err := json.Unmarshal(b, payload)
-	Expect(err).ToNot(HaveOccurred())
+	if len(b) > 0 {
+		err := json.Unmarshal(b, payload)
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	return gjson.Parse(string(payload.Data))
 }

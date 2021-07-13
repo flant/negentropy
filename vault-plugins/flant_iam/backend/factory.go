@@ -95,10 +95,12 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		projectPaths(b, storage),
 		featureFlagPaths(b, storage),
 		roleBindingPaths(b, storage),
+		roleBindingApprovalPaths(b, storage),
 		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),
+		identitySharingPaths(b, storage),
 	)
 
 	return b, nil
