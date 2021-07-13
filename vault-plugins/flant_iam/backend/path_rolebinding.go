@@ -230,16 +230,10 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects list must not be empty", http.StatusBadRequest)
-		}
 
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
 			return nil, err
-		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "roles list must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -281,16 +275,10 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
-		}
 
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
 			return nil, err
-		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "roles list must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{

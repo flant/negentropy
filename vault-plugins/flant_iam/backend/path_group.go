@@ -192,9 +192,6 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
-		}
 
 		group := &model.Group{
 			UUID:       id,
@@ -229,9 +226,6 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
-		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
