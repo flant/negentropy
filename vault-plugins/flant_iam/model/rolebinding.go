@@ -100,6 +100,8 @@ type RoleBinding struct {
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
 
+	FullIdentifier string `json:"full_identifier"`
+
 	Users           []UserUUID           `json:"-"`
 	Groups          []GroupUUID          `json:"-"`
 	ServiceAccounts []ServiceAccountUUID `json:"-"`
@@ -146,6 +148,20 @@ func (r *RoleBindingRepository) save(rb *RoleBinding) error {
 
 func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	roleBinding := raw.(*RoleBinding)
+	return roleBinding, nil
+}
+
+func (r *RoleBindingRepository) GetByIdentifier(rbID, tenantID string) (*RoleBinding, error) {
+	fullID := CalcRoleBindingFullIdentifier(rbID, tenantID)
+
+	raw, err := r.db.First(ServiceAccountType, "full_identifier", fullID)
 	if err != nil {
 		return nil, err
 	}
@@ -396,4 +412,11 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(tenantUUID Tenant
 		}
 	}
 	return roleBindings, nil
+}
+
+// generic: <identifier>@serviceaccount.<tenant_identifier>
+func CalcRoleBindingFullIdentifier(rbID, tenantID string) string {
+	domain := "rolebinding." + tenantID
+
+	return rbID + "@" + domain
 }

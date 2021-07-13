@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/extension_server_access"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -103,6 +104,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		roleBindingPaths(b, storage),
 		roleBindingApprovalPaths(b, storage),
 		rolePaths(b, storage),
+		extension_server_access.ServerPaths(b, storage),
 
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),

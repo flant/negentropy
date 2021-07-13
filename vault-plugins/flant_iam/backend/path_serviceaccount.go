@@ -443,7 +443,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -476,9 +476,9 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewServiceAccountRepository(tx)
 		err := repo.Update(serviceAccount)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -497,9 +497,9 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -516,7 +516,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 		serviceAccount, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
@@ -576,7 +576,7 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 
 		err := repo.Create(multipass)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -605,7 +605,7 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 
 		err := repo.Delete(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -629,7 +629,7 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 
 		mp, err := repo.Get(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
@@ -650,7 +650,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 		multipasses, err := repo.List(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{
@@ -686,7 +686,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 		var err error
 		pass.Secret, err = generatePassword()
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		tx := b.storage.Txn(true)
@@ -696,7 +696,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 		err = repo.Create(pass)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -729,7 +729,7 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 
 		err := repo.Delete(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -752,7 +752,7 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 
 		pass, err := repo.Get(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"password": model.OmitSensitive(pass)}}
@@ -772,7 +772,7 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 
 		passwords, err := repo.List(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{

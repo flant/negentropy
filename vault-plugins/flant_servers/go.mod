@@ -2,12 +2,12 @@ module github.com/flant/negentropy/vault-plugins/flant_servers
 
 go 1.16
 
-replace github.com/flant/negentropy/vault-plugins/shared v0.0.0 => ../shared
+replace github.com/flant/negentropy/vault-plugins/shared => ../shared
 
 replace github.com/flant/negentropy/vault-plugins/flant_iam => ../flant_iam
 
 require (
-	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0-20210429072305-24eb8fd49da4
+	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.0
 	github.com/hashicorp/go-hclog v0.15.0
 	github.com/hashicorp/go-memdb v1.3.2
