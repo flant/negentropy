@@ -193,7 +193,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -213,7 +213,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -231,7 +231,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -249,9 +249,9 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewGroupRepository(tx)
 		err = repo.Update(group)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -270,9 +270,9 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -288,7 +288,7 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		repo := model.NewGroupRepository(tx)
 		group, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"group": group}}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	servermodel "github.com/flant/negentropy/vault-plugins/flant_servers/model"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -49,7 +48,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	for name, table := range servermodel.ServerSchema().Tables {
+	for name, table := range model.ServerSchema().Tables {
 		if _, ok := schema.Tables[name]; ok {
 			return nil, fmt.Errorf("table %q already there", name)
 		}
@@ -80,7 +79,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	*/
 
 	b.Paths = framework.PathAppend(
-		serverPaths(b, storage))
+		backend.serverPaths(b, storage))
 
 	return b, nil
 }

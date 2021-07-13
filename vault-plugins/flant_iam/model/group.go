@@ -102,9 +102,9 @@ func (u *Group) ObjId() string {
 
 // generic: <identifier>@group.<tenant_identifier>
 // builtin: <identifier>@<builtin_group_type>.group.<tenant_identifier>
-func CalcGroupFullIdentifier(g *Group, tenant *Tenant) string {
-	name := g.Identifier
-	domain := "group." + tenant.Identifier
+func CalcGroupFullIdentifier(groupID string, tenantID string) string {
+	name := groupID
+	domain := "group." + tenantID
 	return name + "@" + domain
 }
 
@@ -137,7 +137,7 @@ func (r *GroupRepository) Create(group *Group) error {
 		return ErrBadOrigin
 	}
 	group.Version = NewResourceVersion()
-	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
+	group.FullIdentifier = CalcGroupFullIdentifier(group.Identifier, tenant.Identifier)
 
 	if err := r.fillSubjects(group); err != nil {
 		return err
@@ -148,6 +148,20 @@ func (r *GroupRepository) Create(group *Group) error {
 
 func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
 	raw, err := r.db.First(GroupType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	group := raw.(*Group)
+	return group, nil
+}
+
+func (r *GroupRepository) GetByIDAndTenant(id string, tenant *Tenant) (*Group, error) {
+	fullIdentifier := CalcGroupFullIdentifier(id, tenant.Identifier)
+
+	raw, err := r.db.First(GroupType, "full_identifier", fullIdentifier)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +196,7 @@ func (r *GroupRepository) Update(group *Group) error {
 	if err != nil {
 		return err
 	}
-	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
+	group.FullIdentifier = CalcGroupFullIdentifier(group.Identifier, tenant.Identifier)
 
 	if err := r.fillSubjects(group); err != nil {
 		return err

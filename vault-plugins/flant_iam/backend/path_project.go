@@ -188,7 +188,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return logical.ErrorResponse(msg), nil
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -214,9 +214,9 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewProjectRepository(tx)
 		err := repo.Update(project)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -235,9 +235,9 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -254,7 +254,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		project, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 		if err != nil {
 			return nil, err

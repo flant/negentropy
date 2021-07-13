@@ -216,7 +216,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -237,7 +237,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -258,7 +258,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -277,9 +277,9 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewRoleBindingRepository(tx)
 		err = repo.Update(roleBinding)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -298,9 +298,9 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -317,7 +317,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 
 		roleBinding, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
