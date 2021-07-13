@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -138,4 +139,8 @@ func NewRoleBindingApprovalAPI(client *http.Client) TestAPI {
 
 func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &tenant_featureflag.EndpointBuilder{}}
+}
+
+func NewClientAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &user.EndpointBuilder{}}
 }

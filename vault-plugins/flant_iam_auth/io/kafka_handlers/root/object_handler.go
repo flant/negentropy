@@ -5,34 +5,44 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/hashicorp/go-hclog"
 )
 
 type ObjectHandler struct {
 	entityRepo     *model.EntityRepo
 	eaRepo         *model.EntityAliasRepo
 	authSourceRepo *repo.AuthSourceRepo
+
+	loggerFactory func() hclog.Logger
 }
 
-func NewObjectHandler(txn *io.MemoryStoreTxn) *ObjectHandler {
+func NewObjectHandler(txn *io.MemoryStoreTxn, loggerFactory func() hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
 		entityRepo:     model.NewEntityRepo(txn),
 		eaRepo:         model.NewEntityAliasRepo(txn),
 		authSourceRepo: repo.NewAuthSourceRepo(txn),
+		loggerFactory: loggerFactory,
 	}
 }
 
 func (h *ObjectHandler) HandleUser(user *iam.User) error {
+	l := h.loggerFactory()
+
+	l.Debug("Handle new user. Create entity object", user.FullIdentifier)
 	err := h.entityRepo.CreateForUser(user)
 	if err != nil {
 		return err
 	}
 
+	l.Debug("Entity object created for user", user.FullIdentifier)
 	err = h.authSourceRepo.Iter(func(source *model.AuthSource) (bool, error) {
+		l.Debug("Create entity alias for user and source", user.FullIdentifier, source.Name)
 		err := h.eaRepo.CreateForUser(user, source)
 		if err != nil {
 			return false, err
 		}
 
+		l.Debug("Entity alias for user and source created", user.FullIdentifier, source.Name)
 		return true, nil
 	})
 

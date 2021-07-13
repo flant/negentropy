@@ -98,6 +98,51 @@ func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, erro
 	return "", fmt.Errorf("cannot find entity alias %s", name)
 }
 
+func (a *AliasAPI) FindAliasByName(name string, accessor string) (map[string]interface{}, error) {
+	var resp *api.Secret
+	op := func() error {
+		var err error
+		resp, err = a.clientApi.Logical().Write("/identity/lookup/entity", map[string]interface{}{
+			"alias_name":           name,
+			"alias_mount_accessor": accessor,
+		})
+		return err
+	}
+
+	err := a.callOp(op)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, nil
+	}
+
+	aliasesRaw, ok := resp.Data["aliases"]
+	aliases, okCast := aliasesRaw.([]interface{})
+	if !ok || !okCast {
+		return nil, fmt.Errorf("cannot find aliases in response or don't cast it lookup entityAlias %s", name)
+	}
+
+	for _, aliasRaw := range aliases {
+		alias, okCast := aliasRaw.(map[string]interface{})
+		if !okCast {
+			return nil, fmt.Errorf("cannot find aliases in response or don't cast it lookup entityAlias %s", name)
+		}
+		nameRaw, ok := alias["name"]
+		nameAlias, okCast := nameRaw.(string)
+		if !ok || !okCast {
+			return nil, fmt.Errorf("cannot get alias name in response or don't cast it lookup entityAlias %s", name)
+		}
+
+		if nameAlias == name {
+			return alias, nil
+		}
+
+	}
+
+	return nil, fmt.Errorf("cannot find entity alias %s", name)
+}
+
 func (a *AliasAPI) idPath(id string) string {
 	return fmt.Sprintf("/identity/entity-alias/id/%s", id)
 }

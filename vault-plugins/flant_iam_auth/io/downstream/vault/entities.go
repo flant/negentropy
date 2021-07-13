@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
+	log "github.com/hashicorp/go-hclog"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -22,12 +23,14 @@ func backOffSettings() backoff.BackOff {
 type VaultEntityDownstreamApi struct {
 	getClient           io.BackoffClientGetter
 	mountAccessorGetter *MountAccessorGetter
+	loggerFactory func() log.Logger
 }
 
-func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter) *VaultEntityDownstreamApi {
+func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, loggerFactory func() log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
 		getClient:           getClient,
 		mountAccessorGetter: mountAccessorGetter,
+		loggerFactory: loggerFactory,
 	}
 }
 
@@ -75,6 +78,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.Mem
 		return nil, err
 	}
 
+	a.loggerFactory().Debug("Creating entity with name %s", entity.Name)
 	action := io.NewVaultApiAction(func() error {
 		return api.NewIdentityAPIWithBackOff(clientApi, backOffSettings).EntityApi().Create(entity.Name)
 	})
@@ -124,6 +128,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 		return nil, err
 	}
 
+	a.loggerFactory().Debug("Creating entity with name %s for entity id % with mount accessor %s", entityAlias.Name, entityId, mountAccessor)
 	action := io.NewVaultApiAction(func() error {
 		return identityApi.AliasApi().Create(entityAlias.Name, entityId, mountAccessor)
 	})
@@ -137,6 +142,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *
 		return nil, err
 	}
 
+	a.loggerFactory().Debug("Delete entity with name %s", entityName)
 	action := io.NewVaultApiAction(func() error {
 		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entityName)
 	})
@@ -156,6 +162,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, 
 		return nil, err
 	}
 
+	a.loggerFactory().Debug("Delete entity alias with name %s", entityAliasName)
 	action := io.NewVaultApiAction(func() error {
 		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
 	})

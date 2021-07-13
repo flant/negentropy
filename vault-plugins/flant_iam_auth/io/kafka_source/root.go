@@ -10,6 +10,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
@@ -17,19 +18,26 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
+type RootSourceMsgHandlerFactory func(tx *io.MemoryStoreTxn) root.ModelHandler
+
 type RootKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
 
 	stopC chan struct{}
+
+	logger hclog.Logger
+	msgHandlerFactory RootSourceMsgHandlerFactory
 }
 
-func NewRootKafkaSource(kf *sharedkafka.MessageBroker) *RootKafkaSource {
+func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, logger hclog.Logger) *RootKafkaSource {
 	return &RootKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
 		stopC: make(chan struct{}),
+		logger: logger,
+		msgHandlerFactory: msgHandlerFactory,
 	}
 }
 
@@ -41,21 +49,31 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
 	rootTopic := rk.kf.PluginConfig.RootTopicName
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 
+	rk.logger.Error("Restore started", "root topic", rk.kf.PluginConfig.RootTopicName, "self topic", rk.kf.PluginConfig.SelfTopicName)
+	defer rk.logger.Error("Restore finished")
+
 	runConsumer := rk.kf.GetConsumer(replicaName, rootTopic, false)
 	defer runConsumer.Close()
 
+	rk.logger.Error("Restore - got consumer")
+
 	r := rk.kf.GetRestorationReader(rootTopic)
 	defer r.Close()
+
+	rk.logger.Error("Restore - got restoration reader")
 
 	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, rk.restoreMsgHandler)
 }
 
 func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message) error {
+	rk.logger.Error("Restore - handler run")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		log.Printf("wrong object Key format: %s\n", msg.Key)
 		return fmt.Errorf("key has wong format: %s", msg.Key)
 	}
+
+	rk.logger.Error("Restore - messages keys", "keys", splitted)
 
 	var signature []byte
 	var chunked bool
@@ -69,10 +87,14 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		}
 	}
 
+	rk.logger.Error("Restore - signature", "sig", signature, "chuncked", chunked)
+
 	decrypted, err := rk.decryptData(msg.Value, chunked)
 	if err != nil {
 		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
+
+	rk.logger.Error("Restore - decrypted msg", "msg", decrypted)
 
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
@@ -83,19 +105,30 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
+	rk.logger.Error("Restore - signature verified", decrypted)
+
 	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
 }
 
 func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
+
 	rootTopic := rk.kf.PluginConfig.RootTopicName
 	replicaName := rk.kf.PluginConfig.SelfTopicName
-	rd := rk.kf.GetConsumer(replicaName, rootTopic, false)
+	rk.logger.Error("Watcher - start", "root_topic", rootTopic, "replica_name", replicaName)
+	defer func() {
+		rk.logger.Error("Watcher - stop", "root_topic", rootTopic, "replica_name", replicaName)
+	}()
 
-	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC)
+	rd := rk.kf.GetConsumer(replicaName, rootTopic, false)
+	rk.logger.Error("Watcher - got consumer", "root_topic", rootTopic, "replica_name", replicaName)
+
+	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
 func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
+		panic("??????????????????????????????????????????????????????????")
+		rk.logger.Error("Handle root source message")
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
 			// return fmt.Errorf("key has wong format: %s", string(msg.Key))
@@ -103,6 +136,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		}
 		objType, objId := splitted[0], splitted[1]
 
+		rk.logger.Error("Message id", objType, objId)
 		var signature []byte
 		var chunked bool
 		for _, header := range msg.Headers {
@@ -115,12 +149,16 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 			}
 		}
 
+		rk.logger.Error("Root message signture and chunked", signature, chunked)
+
 		decrypted, err := rk.decryptData(msg.Value, chunked)
 		if err != nil {
 			log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 			return
 		}
+
+		rk.logger.Error("Root message decrypted data", decrypted)
 
 		if len(signature) == 0 {
 			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
@@ -134,6 +172,8 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 			return
 		}
+
+		rk.logger.Error("Root message verified")
 
 		source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 		if err != nil {
@@ -169,10 +209,15 @@ func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 	tx := store.Txn(true)
 	defer tx.Abort()
 
-	err := root.HandleNewMessageIamRootSource(tx, root.NewObjectHandler(tx), msg)
+	rk.logger.Debug("Handle root source message", msg.Type, msg.ID)
+	panic("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	err := root.HandleNewMessageIamRootSource(tx, rk.msgHandlerFactory(tx), msg)
 	if err != nil {
+		rk.logger.Debug("Root source message handle err", msg.Type, msg.ID, err)
 		return backoff.Permanent(err)
 	}
+
+	rk.logger.Debug("Root source message handled", msg.Type, msg.ID)
 
 	return tx.Commit(source)
 }

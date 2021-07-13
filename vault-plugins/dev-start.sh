@@ -18,6 +18,8 @@ function connect_plugins() {
 
   # create replica
   docker-compose exec -T vault sh -c "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$auth_pubkey\""
+
+  echo "Connected"
 }
 
 function activate_plugin() {
@@ -56,9 +58,10 @@ function user_example() {
 #		allow_service_accounts=false
 #
 #  vault write flant_iam/tenant/$tnu/user identifier=vasya
-  tnu=$(vault write flant_iam/tenant identifier=tudasuda | grep "^uuid" | awk '{print $2}' | cut -c -36)
-  tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
-  docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
+#  tnu=$(vault write flant_iam/tenant identifier=tudasuda | grep "^uuid" | awk '{print $2}' | cut -c -36)
+#  tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
+#  docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
+  echo "DA"
 }
 
 specified_plugin=""
@@ -75,7 +78,7 @@ fi
 docker-compose up -d
 sleep 3
 
-plugins=(flant_iam flant_iam_auth flant_gitops)
+plugins=(flant_iam flant_iam_auth)
 
 docker-compose exec -T vault sh -c "vault token create -orphan -policy=root -field=token > /vault/testdata/token"
 
