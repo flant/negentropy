@@ -9,5 +9,5 @@ import (
 
 func Test(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: tenant feature flags")
+	RunSpecs(t, "CRUD: Tenant Feature Flags")
 }
