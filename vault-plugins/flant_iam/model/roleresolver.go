@@ -49,39 +49,79 @@ type roleResolver struct {
 
 var emptyRoleBindingParams = RoleBindingParams{}
 
-func (r *roleResolver) IsUserSharedWith(uuid TenantUUID) (bool, error) {
+func (r *roleResolver) IsUserSharedWith(TenantUUID) (bool, error) {
 	panic("implement me")
 }
 
-func (r *roleResolver) IsServiceAccountSharedWith(uuid TenantUUID) (bool, error) {
+func (r *roleResolver) IsServiceAccountSharedWith(TenantUUID) (bool, error) {
 	panic("implement me")
 }
 
-func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName RoleName, tenantUUID TenantUUID,
-	projectUUID ProjectUUID) (bool, RoleBindingParams, error) {
-	// TODO refactor it, after other 3 funcs will be designed
+func (r *roleResolver) collectAllRolesAndRoleBindings(tenantUUID TenantUUID,
+	roleName RoleName) (map[RoleName]struct{}, map[RoleBindingUUID]struct{}, error) {
 	roleNames, err := r.ri.FindAllIncludingRoles(roleName)
 	if err != nil {
-		return false, emptyRoleBindingParams, err
+		return nil, nil, err
 	}
 	roleNames[roleName] = struct{}{}
+	roleBindings, err := r.rbi.FindDirectRoleBindingsForRoles(tenantUUID, stringSlice(roleNames)...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return roleNames, roleBindings, nil
+}
+
+func (r *roleResolver) collectAllRoleBindingsForUser(tenantUUID TenantUUID,
+	userUUID UserUUID) (map[RoleBindingUUID]*RoleBinding, error) {
 	groups, err := r.gi.FindAllParentGroupsForUserUUID(tenantUUID, userUUID)
 	if err != nil {
-		return false, emptyRoleBindingParams, err
+		return nil, err
 	}
+	fmt.Printf("groups : %#v\n", groups)
 	userRBs, err := r.rbi.FindDirectRoleBindingsForTenantUser(tenantUUID, userUUID)
 	if err != nil {
-		return false, emptyRoleBindingParams, err
+		return nil, err
 	}
 	groupsRBs, err := r.rbi.FindDirectRoleBindingsForTenantGroups(tenantUUID, stringSlice(groups)...)
 	if err != nil {
-		return false, emptyRoleBindingParams, err
+		return nil, err
 	}
 	roleBindings := groupsRBs
 	for uuid, rb := range userRBs {
 		roleBindings[uuid] = rb
 	}
-	roleBindingsForRoles, err := r.rbi.FindDirectRoleBindingsForRoles(tenantUUID, stringSlice(roleNames)...)
+	return roleBindings, nil
+}
+
+func (r *roleResolver) collectAllRoleBindingsForServiceAccount(tenantUUID TenantUUID,
+	serviceAccountUUID ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error) {
+	groups, err := r.gi.FindAllParentGroupsForServiceAccountUUID(tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("groups : %#v\n", groups)
+	serviceAccountRBs, err := r.rbi.FindDirectRoleBindingsForTenantServiceAccount(tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	groupsRBs, err := r.rbi.FindDirectRoleBindingsForTenantGroups(tenantUUID, stringSlice(groups)...)
+	if err != nil {
+		return nil, err
+	}
+	roleBindings := groupsRBs
+	for uuid, rb := range serviceAccountRBs {
+		roleBindings[uuid] = rb
+	}
+	return roleBindings, nil
+}
+
+func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName RoleName, tenantUUID TenantUUID,
+	projectUUID ProjectUUID) (bool, RoleBindingParams, error) {
+	roleBindings, err := r.collectAllRoleBindingsForUser(tenantUUID, userUUID)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	roleNames, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
@@ -89,7 +129,7 @@ func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
-	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 || len(roleBindingsForProject) == 0 {
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
 		return false, emptyRoleBindingParams, nil
 	}
 	roleBindingParams := emptyRoleBindingParams
@@ -149,29 +189,114 @@ func (r *roleResolver) CheckUserForTenantScopedRole(userUUID UserUUID, roleName 
 		return false, emptyRoleBindingParams, ErrBadProjectScopeRole
 	}
 
+	roleBindings, err := r.collectAllRoleBindingsForUser(tenantUUID, userUUID)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	roleNames, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
+		return false, emptyRoleBindingParams, nil
+	}
+	roleBindingParams := emptyRoleBindingParams
+	roleExists := false
+	for _, roleBinding := range roleBindings {
+		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
+			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
+			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
+			roleExists = true
+		}
+	}
+	return roleExists, roleBindingParams, nil
+}
+
+func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUID ServiceAccountUUID, roleName RoleName,
+	tenantUUID TenantUUID, projectUUID ProjectUUID) (bool, RoleBindingParams, error) {
+	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	roleNames, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	roleBindingsForProject, err := r.rbi.FindDirectRoleBindingsForTenantProject(tenantUUID, projectUUID)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
+		return false, emptyRoleBindingParams, nil
+	}
+	roleBindingParams := emptyRoleBindingParams
+	roleExists := false
+	for _, roleBinding := range roleBindings {
+		_, rbHasRole := roleBindingsForRoles[roleBinding.UUID]
+		_, rbHasProject := roleBindingsForProject[roleBinding.UUID]
+		if roleBinding.AnyProject {
+			rbHasProject = true
+		}
+		if rbHasProject && rbHasRole {
+			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
+			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
+			roleExists = true
+		}
+	}
+	return roleExists, roleBindingParams, nil
+}
+
+func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount ServiceAccountUUID, roleName RoleName,
+	tenantUUID TenantUUID) (bool, RoleBindingParams, error) {
+	role, err := r.ri.Get(roleName)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	if role.Scope == RoleScopeProject {
+		return false, emptyRoleBindingParams, ErrBadProjectScopeRole
+	}
+
+	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(tenantUUID, serviceAccount)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+	roleNames, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return false, emptyRoleBindingParams, err
+	}
+
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
+		return false, emptyRoleBindingParams, nil
+	}
+	roleBindingParams := emptyRoleBindingParams
+	roleExists := false
+	for _, roleBinding := range roleBindings {
+		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
+			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
+			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
+			roleExists = true
+		}
+	}
+	return roleExists, roleBindingParams, nil
+}
+
+func (r *roleResolver) FindSubjectsWithProjectScopedRole(RoleName, TenantUUID, ProjectUUID) ([]UserUUID, []ServiceAccountUUID, error) {
 	panic("implement me")
 }
 
-func (r *roleResolver) CheckServiceAccountForProjectScopedRole(uuid ServiceAccountUUID, name RoleName, uuid2 TenantUUID, uuid3 ProjectUUID) (bool, RoleBindingParams, error) {
+func (r *roleResolver) FindSubjectsWithTenantScopedRole(RoleName, TenantUUID) ([]UserUUID, []ServiceAccountUUID, error) {
 	panic("implement me")
 }
 
-func (r *roleResolver) CheckServiceAccountForTenantScopedRole(uuid ServiceAccountUUID, name RoleName, uuid2 TenantUUID) (bool, RoleBindingParams, error) {
+func (r *roleResolver) CheckGroupForRole(GroupUUID, RoleName) (bool, error) {
 	panic("implement me")
 }
 
-func (r *roleResolver) FindSubjectsWithProjectScopedRole(name RoleName, uuid TenantUUID, uuid2 ProjectUUID) ([]UserUUID, []ServiceAccountUUID, error) {
-	panic("implement me")
-}
-
-func (r *roleResolver) FindSubjectsWithTenantScopedRole(name RoleName, uuid TenantUUID) ([]UserUUID, []ServiceAccountUUID, error) {
-	panic("implement me")
-}
-
-func (r *roleResolver) CheckGroupForRole(uuid GroupUUID, name RoleName) (bool, error) {
-	panic("implement me")
-}
-
-func NewRoleResolver() (RoleResolver, error) {
-	return &roleResolver{}, nil
+func NewRoleResolver(ri RoleInformer, gi GroupInformer, rbi RoleBindingsInformer) (RoleResolver, error) {
+	return &roleResolver{
+		ri:  ri,
+		gi:  gi,
+		rbi: rbi,
+	}, nil
 }

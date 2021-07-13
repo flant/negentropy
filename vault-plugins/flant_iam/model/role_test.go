@@ -64,8 +64,9 @@ var (
 		Scope: RoleScopeTenant,
 	}
 	role10 = Role{
-		Name:  roleName10,
-		Scope: RoleScopeTenant,
+		Name:          roleName10,
+		Scope:         RoleScopeTenant,
+		IncludedRoles: []IncludedRole{{Name: roleName9}},
 	}
 )
 

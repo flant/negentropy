@@ -14,55 +14,52 @@ const (
 	rbUUID2 = "00000000-0000-0002-0000-000000000000"
 	rbUUID3 = "00000000-0000-0003-0000-000000000000"
 	rbUUID4 = "00000000-0000-0004-0000-000000000000"
+	rbUUID5 = "00000000-0000-0005-0000-000000000000"
+	// tenant_scoped_roles
+	rbUUID6 = "00000000-0000-0006-0000-000000000000"
+	rbUUID7 = "00000000-0000-0007-0000-000000000000"
+	rbUUID8 = "00000000-0000-0008-0000-000000000000"
 )
 
 var (
 	rb1 = RoleBinding{
 		UUID:            rbUUID1,
 		TenantUUID:      tenantUUID1,
-		Version:         "",
 		ValidTill:       100,
 		RequireMFA:      false,
 		Users:           []string{userUUID1, userUUID2},
 		Groups:          []string{groupUUID2, groupUUID3},
 		ServiceAccounts: []string{serviceAccountUUID1},
-		Subjects:        nil,
 		AnyProject:      false,
 		Projects:        []ProjectUUID{projectUUID1, projectUUID3},
 		Roles: []BoundRole{{
 			Name:    roleName1,
 			Options: map[string]interface{}{"o1": "data1"},
 		}},
-		Origin:     OriginIAM,
-		Extensions: nil,
+		Origin: OriginIAM,
 	}
 	rb2 = RoleBinding{
 		UUID:       rbUUID2,
 		TenantUUID: tenantUUID2,
-		Version:    "",
-		ValidTill:  100,
+		ValidTill:  110,
 		RequireMFA: false,
 		Users:      []string{userUUID1, userUUID2},
-		Subjects:   nil,
 		AnyProject: true,
 		Projects:   nil,
 		Roles: []BoundRole{{
 			Name:    roleName1,
 			Options: map[string]interface{}{"o1": "data2"},
 		}},
-		Origin:     OriginIAM,
-		Extensions: nil,
+		Origin: OriginIAM,
 	}
 	rb3 = RoleBinding{
 		UUID:            rbUUID3,
 		TenantUUID:      tenantUUID1,
-		Version:         "",
-		ValidTill:       200,
+		ValidTill:       120,
 		RequireMFA:      false,
 		Users:           []string{userUUID2},
 		Groups:          []string{groupUUID2, groupUUID5},
 		ServiceAccounts: []string{serviceAccountUUID2},
-		Subjects:        nil,
 		AnyProject:      true,
 		Projects:        nil,
 		Roles: []BoundRole{{
@@ -72,25 +69,81 @@ var (
 			Name:    roleName7,
 			Options: map[string]interface{}{"o1": "data4"},
 		}},
-		Origin:     OriginIAM,
-		Extensions: nil,
+		Origin: OriginIAM,
 	}
 	rb4 = RoleBinding{
 		UUID:       rbUUID4,
 		TenantUUID: tenantUUID1,
-		Version:    "",
 		ValidTill:  150,
 		RequireMFA: false,
 		Users:      []string{userUUID1},
-		Subjects:   nil,
 		AnyProject: false,
 		Projects:   []ProjectUUID{projectUUID3, projectUUID4},
 		Roles: []BoundRole{{
 			Name:    roleName8,
 			Options: map[string]interface{}{"o1": "data5"},
 		}},
-		Origin:     OriginIAM,
-		Extensions: nil,
+		Origin: OriginIAM,
+	}
+	rb5 = RoleBinding{
+		UUID:            rbUUID5,
+		TenantUUID:      tenantUUID1,
+		ValidTill:       160,
+		RequireMFA:      false,
+		ServiceAccounts: []string{serviceAccountUUID1},
+		AnyProject:      false,
+		Projects:        []ProjectUUID{projectUUID3, projectUUID1},
+		Roles: []BoundRole{{
+			Name:    roleName1,
+			Scope:   RoleScopeProject,
+			Options: map[string]interface{}{"o1": "data6"},
+		}},
+		Origin: OriginIAM,
+	}
+	rb6 = RoleBinding{
+		UUID:            rbUUID6,
+		TenantUUID:      tenantUUID1,
+		ValidTill:       170,
+		RequireMFA:      false,
+		ServiceAccounts: []string{serviceAccountUUID2},
+		AnyProject:      false,
+		Projects:        nil,
+		Roles: []BoundRole{{
+			Name:    roleName9,
+			Scope:   RoleScopeTenant,
+			Options: map[string]interface{}{"o1": "data7"},
+		}},
+		Origin: OriginIAM,
+	}
+	rb7 = RoleBinding{
+		UUID:       rbUUID7,
+		TenantUUID: tenantUUID1,
+		ValidTill:  180,
+		RequireMFA: false,
+		Groups:     []GroupUUID{groupUUID4},
+		AnyProject: false,
+		Projects:   nil,
+		Roles: []BoundRole{{
+			Name:    roleName10,
+			Scope:   RoleScopeProject,
+			Options: map[string]interface{}{"o1": "data8"},
+		}},
+		Origin: OriginIAM,
+	}
+	rb8 = RoleBinding{
+		UUID:       rbUUID8,
+		TenantUUID: tenantUUID1,
+		ValidTill:  190,
+		RequireMFA: false,
+		Users:      []UserUUID{userUUID2},
+		AnyProject: false,
+		Projects:   nil,
+		Roles: []BoundRole{{
+			Name:    roleName9,
+			Scope:   RoleScopeProject,
+			Options: map[string]interface{}{"o1": "data9"},
+		}},
+		Origin: OriginIAM,
 	}
 )
 
@@ -103,7 +156,7 @@ func createRoleBindings(t *testing.T, repo *RoleBindingRepository, rbs ...RoleBi
 }
 
 func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
-	rbs := []RoleBinding{rb1, rb2, rb3, rb4}
+	rbs := []RoleBinding{rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8}
 	for i := range rbs {
 		rbs[i].Subjects = appendSubjects(makeSubjectNotations(UserType, rbs[i].Users),
 			makeSubjectNotations(ServiceAccountType, rbs[i].ServiceAccounts),
@@ -269,7 +322,11 @@ func Test_RoleBindingList(t *testing.T) {
 	rbs, err := repo.List(tenantUUID1)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}}, roleBindingsUUIDSFromSlice(rbs))
+	checkDeepEqual(t, map[string]struct{}{
+		rbUUID1: {}, rbUUID3: {}, rbUUID4: {}, rbUUID5: {},
+		rbUUID6: {}, rbUUID7: {}, rbUUID8: {},
+	},
+		roleBindingsUUIDSFromSlice(rbs))
 }
 
 func Test_FindDirectRoleBindingsForTenantUser(t *testing.T) {
@@ -291,7 +348,7 @@ func Test_FindDirectRoleBindingsForTenantServiceAccount(t *testing.T) {
 	rbsMap, err := repo.FindDirectRoleBindingsForTenantServiceAccount(tenantUUID1, serviceAccountUUID1)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}}, roleBindingsUUIDsFromMap(rbsMap))
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID5: {}}, roleBindingsUUIDsFromMap(rbsMap))
 }
 
 func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
@@ -313,7 +370,7 @@ func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
 	rbsSet, err := repo.FindDirectRoleBindingsForRoles(tenantUUID1, roleName1, roleName5, roleName8)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}}, rbsSet)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}, rbUUID5: {}}, rbsSet)
 }
 
 func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
@@ -324,5 +381,5 @@ func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
 	rbsSet, err := repo.FindDirectRoleBindingsForTenantProject(tenantUUID1, projectUUID3)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}}, rbsSet)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}, rbUUID5: {}}, rbsSet)
 }
