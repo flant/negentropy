@@ -1,37 +1,51 @@
 # Should be the same during bas image build and others.
 root_password = "[PASSWORD]"
+
 # Following two are used only for alpine-base-builder instance.
 gcp_builder_service_account = "[BASE_IMAGE_BUILDER_SA_EMAIL]"
 gcp_image_bucket = "[TEMPORARY_BUCKET_NAME]"
-# FQDN buckets for single instance vaults.
-gcp_vault_root_source_bucket = "[VAULT_ROOT_SOURCE_FULL_BUCKET_NAME]"
-gcp_vault_conf_bucket = "[VAULT_CONF_FULL_BUCKET_NAME]"
-gcp_vault_conf_conf_bucket = "[VAULT_CONF_CONF_FULL_BUCKET_NAME]"
-# Will be used as "hostname.gcp_vault_auth_bucket_trailer".
-gcp_vault_auth_bucket_trailer = "[VAULT_AUTH_BUCKET_NAME_TRAILER]"
+
 # Variables to determine where are builder instances will run.
 ## Project will be also used for kafka CA request.
 ## Project and region will be also used for vault conf gcpckms.
 gcp_project = "[PROJECT]"
 gcp_region = "[REGION]"
 gcp_zone = "[ZONE]"
-# GCP ckms.
-gcp_ckms_seal_key_ring = "[KEY_RING]"
-gcp_ckms_seal_crypto_key = "[CRYPTO_KEY]"
-# Will be used as "hostname.kafka_main_domain".
-kafka_main_domain = "[KAFKA_INSTANCES_SUBDOMAIN]"
-# Kafka server key password.
-kafka_server_key_pass = "[KAFKA_SERVER_KEY_PASSWORD]"
-# Bucket to store cert update lockfile.
-kafka_bucket = "[KAFKA_FULL_BUCKET_NAME]"
-# Name of root CA for kafka SSL.
-kafka_gcp_ca_name = "[KAFKA_GCP_CA_NAME]"
-# Root CA location (aka gcp region).
-kafka_gcp_ca_location = "[KAFKA_GCP_CA_LOCATION]"
-# How many replicas to configure in zookeeper and kafka configuration files.
-kafka_replicas = "1"
-# Terraform state and keys bucket name.
+
+# Terraform state and temporary keys (transmit them from vault to `apply.py`) bucket name.
 tfstate_bucket = "terraform-state"
+
 # Current environment to build to (prepend with "-"). Default is empty.
 ## This string will be added to images name and family right after its name.
 env = "-test"
+
+# Vaults variables.
+## Vault GCP CKMS ring and key names.
+gcp_ckms_seal_key_ring = "[KEY_RING]"
+gcp_ckms_seal_crypto_key = "[CRYPTO_KEY]"
+## FQDN buckets for single instance vaults.
+vault_conf_bucket = "[VAULT_CONF_FULL_BUCKET_NAME]"
+vault_conf_conf_bucket = "[VAULT_CONF_CONF_FULL_BUCKET_NAME]"
+vault_root_source_bucket = "[VAULT_ROOT_SOURCE_FULL_BUCKET_NAME]"
+## Will be used as "$(hostname).vault_auth_bucket_trailer".
+vault_auth_bucket_trailer = "[VAULT_AUTH_BUCKET_NAME_TRAILER]"
+## GCP CA for all vaults.
+vault_ca_name="[CA_RESOURCE_NAME]"
+vault_ca_pool="[CA_RESOURCE_POOL]"
+vault_ca_location="[CA_RESOURCE_LOCATION]"
+## Root domain for vaults. According to specific instance subdomain will be added to it.
+vault_internal_root_domain="negentropy.flant.local"
+
+# Kafka variables.
+## Will be used as "$(hostname).kafka_main_domain".
+kafka_main_domain = "[KAFKA_INSTANCES_SUBDOMAIN]"
+## Password for truststore, keystore and ssl key.
+kafka_server_key_pass = "[KAFKA_SERVER_KEY_PASSWORD]"
+## Bucket to store cert update lockfile.
+kafka_bucket = "[KAFKA_FULL_BUCKET_NAME]"
+## Name of root CA for Kafka SSL.
+kafka_gcp_ca_name = "[KAFKA_GCP_CA_NAME]"
+## Root CA location (aka gcp region).
+kafka_gcp_ca_location = "[KAFKA_GCP_CA_LOCATION]"
+## How many replicas to configure in zookeeper and kafka configuration files.
+kafka_replicas = "1"

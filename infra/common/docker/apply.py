@@ -66,10 +66,10 @@ def main():
     os.environ['PKR_VAR_gcp_builder_service_account'] = "negentropy-packer@%s.iam.gserviceaccount.com" % google_project_id
     os.environ['PKR_VAR_gcp_image_bucket'] = "%s-packer" % google_project_id
 
-    os.environ['PKR_VAR_gcp_vault_root_source_bucket'] = "%s-vault-root-source-1" % google_project_id
-    os.environ['PKR_VAR_gcp_vault_conf_bucket'] = "%s-vault-conf" % google_project_id
-    os.environ['PKR_VAR_gcp_vault_conf_conf_bucket'] = "%s-vault-conf-conf" % google_project_id
-    os.environ['PKR_VAR_gcp_vault_auth_bucket_trailer'] = "%s-vault-auth" % google_project_id
+    os.environ['PKR_VAR_vault_root_source_bucket'] = "%s-vault-root-source-1" % google_project_id
+    os.environ['PKR_VAR_vault_conf_bucket'] = "%s-vault-conf" % google_project_id
+    os.environ['PKR_VAR_vault_conf_conf_bucket'] = "%s-vault-conf-conf" % google_project_id
+    os.environ['PKR_VAR_vault_auth_bucket_trailer'] = "%s-vault-auth" % google_project_id
 
     os.environ['PKR_VAR_gcp_project'] = google_project_id
     os.environ['PKR_VAR_gcp_zone'] = "europe-west3-a"
@@ -92,11 +92,11 @@ root_password = "{os.environ.get('PKR_VAR_root_password')}"
 gcp_builder_service_account = "{os.environ.get('PKR_VAR_gcp_builder_service_account')}"
 gcp_image_bucket = "{os.environ.get('PKR_VAR_gcp_image_bucket')}"
 # FQDN buckets for single instance vaults.
-gcp_vault_root_source_bucket = "{os.environ.get('PKR_VAR_gcp_vault_root_source_bucket')}"
-gcp_vault_conf_bucket = "{os.environ.get('PKR_VAR_gcp_vault_conf_bucket')}"
-gcp_vault_conf_conf_bucket = "{os.environ.get('PKR_VAR_gcp_vault_conf_conf_bucket')}"
-# Will be used as "hostname.gcp_vault_auth_bucket_trailer".
-gcp_vault_auth_bucket_trailer = "{os.environ.get('PKR_VAR_gcp_vault_auth_bucket_trailer')}"
+vault_root_source_bucket = "{os.environ.get('PKR_VAR_vault_root_source_bucket')}"
+vault_conf_bucket = "{os.environ.get('PKR_VAR_vault_conf_bucket')}"
+vault_conf_conf_bucket = "{os.environ.get('PKR_VAR_vault_conf_conf_bucket')}"
+# Will be used as "hostname.vault_auth_bucket_trailer".
+vault_auth_bucket_trailer = "{os.environ.get('PKR_VAR_vault_auth_bucket_trailer')}"
 # Variables to determine where are builder instances will run.
 ## Project will be also used for kafka CA request.
 gcp_project = "{os.environ.get('PKR_VAR_gcp_project')}"
@@ -171,7 +171,7 @@ tfstate_bucket = "{terraform_state_bucket}"
 
         print("export VAULT_TOKEN=%s" % vault_root_token)
 
-        vault_address = 'https://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
+        vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
         print("export VAULT_ADDR=%s" % vault_address)
 
         if vault['name'] == 'conf':

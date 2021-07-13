@@ -9,8 +9,7 @@ adduser -S -G vault vault
 cat <<'EOF' > /etc/vault-config.sh
 #!/usr/bin/env bash
 
-. /etc/common-variables.sh
-. /etc/vault-common-variables.sh
+. /etc/vault-variables.sh
 
 envsubst < /etc/vault.hcl > /tmp/vault.hcl
 EOF
@@ -20,8 +19,7 @@ chmod +x /etc/vault-config.sh
 cat <<'EOF' > /etc/get-ca.sh
 #!/usr/bin/env bash
 
-. /etc/common-variables.sh
-. /etc/vault-common-variables.sh
+. /etc/vault-variables.sh
 
 # TODO: add check for empty argument and if it empty then show help output with available parameters.
 while [[ "$#" -gt 0 ]]; do
@@ -33,6 +31,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# TODO: make a symlink of /usr/local/share/ca-certificates to /tmp/ca-certificates in base image and use tmp folder here
 if [ "$target" == "get" ]; then
     if [ -f "/usr/local/share/ca-certificates/ca.crt" ]; then
         echo "CA already exists"
@@ -60,13 +59,12 @@ chmod +x /etc/get-ca.sh
 cat <<'EOF' > /etc/get-cert.sh
 #!/usr/bin/env bash
 
-. /etc/common-variables.sh
-. /etc/vault-common-variables.sh
+. /etc/vault-variables.sh
 
 getcert() {
 pushd /tmp
 echo "Generate CSR"
-openssl req -nodes -newkey rsa:2048 -keyout server.key -out server.csr -subj "/C=RU/O=JSC Flant/CN=${VAULT_CONF_DOMAIN}" -addext "subjectAltName=DNS:${VAULT_CONF_DOMAIN},IP:${INTERNAL_ADDRESS}"
+openssl req -nodes -newkey rsa:2048 -keyout server.key -out server.csr -subj "/C=RU/O=JSC Flant/CN=${VAULT_INTERNAL_FQDN}" -addext "subjectAltName=DNS:${VAULT_INTERNAL_FQDN},IP:${INTERNAL_ADDRESS},IP:127.0.0.1"
 echo "Signing certificate"
 while true; do
     gcloud privateca certificates create vault-conf --issuer-pool ${VAULT_CA_POOL} --issuer-location ${VAULT_CA_LOCATION} --csr server.csr --cert-output-file server.crt --validity "P${VAULT_CERT_VALIDITY_DAYS}D"
@@ -76,10 +74,10 @@ while true; do
     fi
 done
 echo "Move certificates and set right permissions"
-mv server.crt /etc/vault.crt
-mv server.key /etc/vault.key
-chown vault:vault /etc/vault.crt
-chown vault:vault /etc/vault.key
+mv server.crt vault.crt
+mv server.key vault.key
+chown vault:vault vault.crt
+chown vault:vault vault.key
 echo "Cleanup"
 rm server.csr
 popd
@@ -96,7 +94,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [ "$target" == "get" ]; then
-    if [[ -f "/etc/vault.crt" && -f "/etc/vault.key" ]]; then
+    if [[ -f "/tmp/vault.crt" && -f "/tmp/vault.key" ]]; then
         echo "Vault certificate already exists"
     else
         getcert
@@ -106,7 +104,7 @@ fi
 if [ "$target" == "update" ]; then
     CERT_EXPIRE_SECONDS="${VAULT_CERT_EXPIRE_SECONDS}"
     TIMESTAMP="$(date +"%s")"
-    CERT_EXPIRATION_DATE="$(openssl x509 -enddate -noout -in /etc/vault.crt | sed "s/notAfter=//")"
+    CERT_EXPIRATION_DATE="$(openssl x509 -enddate -noout -in /tmp/vault.crt | sed "s/notAfter=//")"
     # convert to YYYY-MM-DD hh:mm:ss into the same variable
     CERT_EXPIRATION_DATE="$(echo "$CERT_EXPIRATION_DATE" | awk '{ printf "%04d-%02d-%02d %3s", $4, (index("JanFebMarAprMayJunJulAugSepOctNovDec",$1)+2)/3, $2, $3}')"
     CERT_EXPIRATION_DATE_TIMESTAMP="$(date +%s --date "${CERT_EXPIRATION_DATE}")"
@@ -129,8 +127,7 @@ chmod +x /etc/get-cert.sh
 cat <<'EOF' > /etc/vault-init.sh
 #!/usr/bin/env bash
 
-. /etc/common-variables.sh
-. /etc/vault-common-variables.sh
+. /etc/vault-variables.sh
 
 while true; do
     vault status &>/dev/null
@@ -215,13 +212,12 @@ rc-update add vault
 # Add update certificate cronjob
 echo '*/30 * * * * /etc/get-cert.sh --update' >> /etc/crontabs/root
 
-# Add memlock capability
-setcap cap_ipc_lock=+ep /bin/vault
+# Add memlock capability and capability to bind to 443 port as non-root
+setcap cap_ipc_lock,cap_net_bind_service=+ep /bin/vault
 
 # Increase ulimit
 cat <<'EOF' > /etc/conf.d/vault
 rc_ulimit="-n 65536"
 EOF
 
-echo "source /etc/common-variables.sh" > /root/.profile
-echo "source /etc/vault-common-variables.sh" >> /root/.profile
+echo "source /etc/vault-variables.sh" >> /root/.profile

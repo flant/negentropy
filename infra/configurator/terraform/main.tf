@@ -93,7 +93,7 @@ resource "google_compute_firewall" "main" {
 
   allow {
     protocol = "tcp"
-    ports    = ["8200"]
+    ports    = ["443"]
   }
 
   target_tags = [join("-", [var.prefix, local.vault_name])]
