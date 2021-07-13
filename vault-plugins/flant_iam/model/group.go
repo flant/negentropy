@@ -100,6 +100,14 @@ func (u *Group) ObjId() string {
 	return u.UUID
 }
 
+// generic: <identifier>@group.<tenant_identifier>
+// builtin: <identifier>@<builtin_group_type>.group.<tenant_identifier>
+func CalcGroupFullIdentifier(groupID string, tenantID string) string {
+	name := groupID
+	domain := "group." + tenantID
+	return name + "@" + domain
+}
+
 type GroupRepository struct {
 	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository

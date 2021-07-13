@@ -410,7 +410,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -444,9 +444,9 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewUserRepository(tx)
 		err := repo.Update(user)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -465,9 +465,9 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -484,7 +484,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 		user, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
@@ -541,7 +541,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 		err := repo.Create(multipass)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -569,7 +569,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 		err := repo.Delete(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		if err := commit(tx, b.Logger()); err != nil {
@@ -593,7 +593,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 		mp, err := repo.Get(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
@@ -613,7 +613,7 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 
 		multipasses, err := repo.List(filter)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{

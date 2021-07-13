@@ -222,7 +222,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -247,9 +247,9 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewTenantRepository(tx)
 		err := repo.Update(tenant)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -267,9 +267,9 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 		err := repo.Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -286,7 +286,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		tenant, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}

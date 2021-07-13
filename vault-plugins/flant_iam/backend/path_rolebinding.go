@@ -255,7 +255,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -280,6 +280,9 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
+		if len(subjects) == 0 {
+			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		}
 
 		roleBinding := &model.RoleBinding{
 			UUID:       id,
@@ -297,9 +300,9 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 		err = usecase.RoleBindings(tx).Update(roleBinding)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -317,9 +320,9 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -336,7 +339,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 
 		roleBinding, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
