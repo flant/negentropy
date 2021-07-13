@@ -118,8 +118,6 @@ func (u *RoleBinding) ObjId() string {
 
 type BoundRole struct {
 	Name    RoleName               `json:"name"`
-	Scope   RoleScope              `json:"scope"`
-	Version string                 `json:"resource_version"`
 	Options map[string]interface{} `json:"options"`
 }
 

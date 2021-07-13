@@ -31,7 +31,6 @@ var (
 		Projects:        []ProjectUUID{projectUUID1, projectUUID3},
 		Roles: []BoundRole{{
 			Name:    roleName1,
-			Scope:   RoleScopeProject,
 			Options: map[string]interface{}{"o1": "data1"},
 		}},
 		Origin:     OriginIAM,
@@ -49,7 +48,6 @@ var (
 		Projects:   nil,
 		Roles: []BoundRole{{
 			Name:    roleName1,
-			Scope:   RoleScopeProject,
 			Options: map[string]interface{}{"o1": "data2"},
 		}},
 		Origin:     OriginIAM,
@@ -69,11 +67,9 @@ var (
 		Projects:        nil,
 		Roles: []BoundRole{{
 			Name:    roleName5,
-			Scope:   RoleScopeProject,
 			Options: map[string]interface{}{"o1": "data3"},
 		}, {
 			Name:    roleName7,
-			Scope:   RoleScopeProject,
 			Options: map[string]interface{}{"o1": "data4"},
 		}},
 		Origin:     OriginIAM,
@@ -91,7 +87,6 @@ var (
 		Projects:   []ProjectUUID{projectUUID3, projectUUID4},
 		Roles: []BoundRole{{
 			Name:    roleName8,
-			Scope:   RoleScopeProject,
 			Options: map[string]interface{}{"o1": "data5"},
 		}},
 		Origin:     OriginIAM,
