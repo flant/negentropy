@@ -142,20 +142,20 @@ func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool,
 	return nil
 }
 
-func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]IdentitySharingUUID, error) {
+func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]*IdentitySharing, error) {
 	iter, err := r.db.Get(IdentitySharingType, "source_tenant_uuid", tenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := make([]TenantUUID, 0)
+	res := make([]*IdentitySharing, 0)
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		u := raw.(*IdentitySharing)
-		ids = append(ids, u.UUID)
+		res = append(res, u)
 	}
-	return ids, nil
+	return res, nil
 }

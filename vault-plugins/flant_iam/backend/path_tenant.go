@@ -130,16 +130,6 @@ func (b tenantBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"resource_version": {
-					Type:        framework.TypeString,
-					Description: "Resource version",
-					Required:    true,
-				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{

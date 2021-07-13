@@ -30,13 +30,6 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					RoleBindingForeignPK: {
-						Name: RoleBindingForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "RoleBindingUUID",
-							Lowercase: true,
-						},
-					},
 				},
 			},
 		},
@@ -104,16 +97,13 @@ func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*Ro
 	return ra, nil
 }
 
-func (r *RoleBindingApprovalRepository) Create(ra *RoleBindingApproval) error {
-	ra.Version = NewResourceVersion()
-
-	// Update
-	return r.save(ra)
-}
-
-func (r *RoleBindingApprovalRepository) Update(ra *RoleBindingApproval) error {
+func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *RoleBindingApproval) error {
 	stored, err := r.GetByID(ra.UUID)
 	if err != nil {
+		if err == ErrNotFound {
+			ra.Version = NewResourceVersion()
+			return r.save(ra)
+		}
 		return err
 	}
 
@@ -130,6 +120,29 @@ func (r *RoleBindingApprovalRepository) Update(ra *RoleBindingApproval) error {
 
 func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error {
 	return r.delete(id)
+}
+
+func (r *RoleBindingApprovalRepository) List(tenantID, roleBindingID string) ([]*RoleBindingApproval, error) {
+	iter, err := r.db.Get(RoleBindingApprovalType, TenantForeignPK, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*RoleBindingApproval, 0)
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		t := raw.(*RoleBindingApproval)
+		if t.RoleBindingUUID != roleBindingID {
+			continue
+		}
+		result = append(result, t)
+	}
+
+	return result, nil
 }
 
 func (r *RoleBindingApprovalRepository) Iter(action func(approval *RoleBindingApproval) (bool, error)) error {

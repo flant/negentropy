@@ -151,17 +151,7 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		repo := model.NewRoleBindingApprovalRepository(tx)
-		_, err := repo.GetByID(id)
-		if err != nil {
-			if err == model.ErrNotFound {
-				err = repo.Create(roleBindingApproval)
-				if err != nil {
-					return responseErr(req, err)
-				}
-			}
-		} else {
-			err = repo.Update(roleBindingApproval)
-		}
+		err := repo.UpdateOrCreate(roleBindingApproval)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -219,21 +209,14 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingApprovalRepository(tx)
 
-		uuids := make([]string, 0)
-		err := repo.Iter(func(approval *model.RoleBindingApproval) (bool, error) {
-			if approval.TenantUUID == tenantID && approval.RoleBindingUUID == rbID {
-				uuids = append(uuids, approval.UUID)
-			}
-
-			return true, nil
-		})
+		rolebindings, err := repo.List(tenantID, rbID)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": uuids,
+				"role_bindings": rolebindings,
 			},
 		}
 		return resp, nil

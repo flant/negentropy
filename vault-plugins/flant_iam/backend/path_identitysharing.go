@@ -157,7 +157,7 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"uuids": list,
+			"identity_sharings": list,
 		},
 	}
 	return resp, nil
