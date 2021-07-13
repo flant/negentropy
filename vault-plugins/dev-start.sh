@@ -75,7 +75,7 @@ fi
 docker-compose up -d
 sleep 3
 
-plugins=(flant_iam flant_iam_auth)
+plugins=(flant_iam flant_iam_auth flant_gitops)
 
 docker-compose exec -T vault sh -c "vault token create -orphan -policy=root -field=token > /vault/testdata/token"
 
