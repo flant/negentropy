@@ -44,6 +44,7 @@ func (d *ServiceAccountDeleter) Delete(id model.ServiceAccountUUID) error {
 	if err != nil {
 		return err
 	}
+	// TODO clean groups, rolebindings
 	return model.NewServiceAccountRepository(d.tx).Delete(id)
 }
 

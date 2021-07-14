@@ -44,6 +44,7 @@ func (d *UserDeleter) Delete(id model.UserUUID) error {
 	if err != nil {
 		return err
 	}
+	// TODO clean groups, rolebindings
 	return model.NewUserRepository(d.tx).Delete(id)
 }
 
