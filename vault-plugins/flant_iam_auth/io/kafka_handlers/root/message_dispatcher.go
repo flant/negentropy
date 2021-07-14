@@ -67,6 +67,10 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		inputObject = t
 		table = iam.TenantType
 
+	case iam.ServerType:
+		inputObject = &iam.Server{}
+		table = iam.ServerType
+
 	default:
 		return nil
 	}

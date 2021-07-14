@@ -66,8 +66,6 @@ func (mkd *MetadataKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *m
 // TODO: (permanent) fill all object types for metadata queue
 func (mkd *MetadataKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
-	// TODO IdentitySharing
-	// TODO RoleBindingApproval
 	case model.TenantType,
 		model.ProjectType,
 		model.UserType,

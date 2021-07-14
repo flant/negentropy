@@ -26,6 +26,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		iam.TenantSchema(),
 		iam.ProjectSchema(),
 		iam.ServiceAccountSchema(),
+		iam.ServerSchema(),
 	}
 
 	for _, o := range others {
