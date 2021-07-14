@@ -64,6 +64,10 @@ func (s *AuthSource) ObjId() string {
 	return s.UUID
 }
 
+func (s *AuthSource) AllowForSA() bool {
+	return s.AllowServiceAccounts && s.EntityAliasName != EntityAliasNameEmail
+}
+
 func (s *AuthSource) PopulatePubKeys() error {
 	for _, v := range s.JWTValidationPubKeys {
 		key, err := certutil.ParsePublicKeyPEM([]byte(v))

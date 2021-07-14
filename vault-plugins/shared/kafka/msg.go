@@ -1,16 +1,33 @@
 package kafka
 
 import (
+	"fmt"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 )
 
+type MsgDecoded struct {
+	Type string
+	ID   string
+	Data []byte
+}
+
+func (m *MsgDecoded) IsDeleted() bool {
+	return len(m.Data) == 0
+}
+
 type MessageHandler func(sourceConsumer *kafka.Consumer, msg *kafka.Message)
 
-func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan struct{}) {
+func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan struct{}, logger hclog.Logger) {
+	defer logger.Info("Stop message loop")
+	logger.Info("Start message loop")
+
 	for {
 		select {
 		case <-stopC:
+			logger.Warn("Receive stop signal")
 			c.Unsubscribe() // nolint:errcheck
 			c.Close()
 			return
@@ -21,7 +38,7 @@ func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan str
 				msgHandler(c, e)
 
 			default:
-				// ignore other events
+				logger.Debug(fmt.Sprintf("Recieve not handled event %s", e.String()))
 			}
 		}
 	}

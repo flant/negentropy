@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("Tenant feature flags", func() {
-	rootClient := lib.GetVaultClient(lib.RootToken)
+	rootClient := lib.GetIamVaultClient(lib.RootToken)
 	tenantsAPI := lib.NewTenantAPI(rootClient)
 	featureFlagAPI := lib.NewFeatureFlagAPI(rootClient)
 	tenantFFApi := lib.NewTenantFeatureFlagAPI(rootClient)

@@ -216,11 +216,12 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocommit bool) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":  brokers,
-		"group.id":           consumerGroupID,
-		"auto.offset.reset":  "earliest",
-		"enable.auto.commit": autocommit,
-		"isolation.level":    "read_committed",
+		"bootstrap.servers":        brokers,
+		"group.id":                 consumerGroupID,
+		"auto.offset.reset":        "earliest",
+		"enable.auto.commit":       autocommit,
+		"isolation.level":          "read_committed",
+		"go.events.channel.enable": true,
 	})
 	if err != nil {
 		panic(err)
@@ -236,11 +237,12 @@ func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocomm
 func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":  brokers,
-		"auto.offset.reset":  "earliest",
-		"group.id":           false,
-		"enable.auto.commit": true,
-		"isolation.level":    "read_committed",
+		"bootstrap.servers":        brokers,
+		"auto.offset.reset":        "earliest",
+		"group.id":                 false,
+		"enable.auto.commit":       true,
+		"isolation.level":          "read_committed",
+		"go.events.channel.enable": true,
 	})
 	if err != nil {
 		panic(err)

@@ -17,7 +17,7 @@ import (
 )
 
 var _ = Describe("Feature Flag", func() {
-	rootClient := lib.GetVaultClient(lib.RootToken)
+	rootClient := lib.GetIamVaultClient(lib.RootToken)
 	flagsAPI := lib.NewFeatureFlagAPI(rootClient)
 
 	Describe("payload", func() {
@@ -142,11 +142,11 @@ var _ = Describe("Feature Flag", func() {
 		}
 
 		Describe("when unauthenticated", func() {
-			runWithClient(lib.GetVaultClient(""), tools.ExpectExactStatus(400))
+			runWithClient(lib.GetIamVaultClient(""), tools.ExpectExactStatus(400))
 		})
 
 		Describe("when unauthorized", func() {
-			runWithClient(lib.GetVaultClient("xxx"), tools.ExpectExactStatus(403))
+			runWithClient(lib.GetIamVaultClient("xxx"), tools.ExpectExactStatus(403))
 		})
 	})
 })

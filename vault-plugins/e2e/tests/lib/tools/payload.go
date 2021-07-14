@@ -20,3 +20,13 @@ func UnmarshalVaultResponse(b []byte) gjson.Result {
 
 	return gjson.Parse(string(payload.Data))
 }
+
+func ToMap(v interface{}) map[string]interface{} {
+	js, err := json.Marshal(v)
+	Expect(err).ToNot(HaveOccurred())
+	out := map[string]interface{}{}
+	err = json.Unmarshal(js, &out)
+	Expect(err).ToNot(HaveOccurred())
+
+	return out
+}
