@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
@@ -166,6 +167,10 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 			},
 			pathOIDC(b),
 			kafkaPaths(b, storage),
+
+			// server_access_extension
+			extension_server_access.ServerAccessPaths(b, storage),
+			pathTenant(b),
 		),
 		Clean: b.cleanup,
 	}

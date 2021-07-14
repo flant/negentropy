@@ -29,6 +29,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		iam.ProjectSchema(),
 		iam.ServiceAccountSchema(),
 		jwt.JWKSSchema(),
+		iam.ServerSchema(),
 	}
 
 	for _, o := range others {

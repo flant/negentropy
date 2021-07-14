@@ -72,7 +72,8 @@ func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 		model.RoleBindingType,
 		model.GroupType,
 		model.MultipassType,
-		model.ServiceAccountPasswordType:
+		model.ServiceAccountPasswordType,
+		model.ServerType:
 		return true
 
 	default:
