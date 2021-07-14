@@ -275,7 +275,6 @@ func Test_ExtensionServer_JWT(t *testing.T) {
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		panic(err)
-
 	}
 	jwk := jose.JSONWebKey{
 		Key: privateKey,
