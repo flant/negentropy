@@ -58,7 +58,6 @@ func (pb *posixUserBuilder) userToPosix(user *iam.User) (posixUser, error) {
 	}
 
 	return pb.buildPosixUser(ext, user.UUID, user.TenantUUID, user.Identifier, user.FullIdentifier)
-
 }
 
 func (pb *posixUserBuilder) serviceAccountToPosix(sa *iam.ServiceAccount) (posixUser, error) {
@@ -68,7 +67,6 @@ func (pb *posixUserBuilder) serviceAccountToPosix(sa *iam.ServiceAccount) (posix
 	}
 
 	return pb.buildPosixUser(ext, sa.UUID, sa.TenantUUID, sa.Identifier, sa.FullIdentifier)
-
 }
 
 func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectTenantID, identifier, fullIdentifier string) (posixUser, error) {
