@@ -65,7 +65,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "${local.google_project_id}-vault-root-source-1"
+        "bucket" : "${local.google_project_id}-vault-root-source"
         "private_static_ip" : "10.20.1.11"
         "image_family" : "vault-root-source"
     }),
@@ -78,7 +78,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "${local.google_project_id}-vault-root-source-2"
+        "bucket" : "${local.google_project_id}-vault-root-source"
         "private_static_ip" : "10.20.2.11"
         "image_family" : "vault-root-source"
     }),
@@ -91,7 +91,7 @@ locals {
         "service_account" : {
           "scopes" : ["cloud-platform"]
         }
-        "bucket" : "${local.google_project_id}-vault-root-source-3"
+        "bucket" : "${local.google_project_id}-vault-root-source"
         "private_static_ip" : "10.20.3.11"
         "image_family" : "vault-root-source"
     }),

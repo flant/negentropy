@@ -66,7 +66,7 @@ def main():
     os.environ['PKR_VAR_gcp_builder_service_account'] = "negentropy-packer@%s.iam.gserviceaccount.com" % google_project_id
     os.environ['PKR_VAR_gcp_image_bucket'] = "%s-packer" % google_project_id
 
-    os.environ['PKR_VAR_vault_root_source_bucket'] = "%s-vault-root-source-1" % google_project_id
+    os.environ['PKR_VAR_vault_root_source_bucket'] = "%s-vault-root-source" % google_project_id
     os.environ['PKR_VAR_vault_conf_bucket'] = "%s-vault-conf" % google_project_id
     os.environ['PKR_VAR_vault_conf_conf_bucket'] = "%s-vault-conf-conf" % google_project_id
     os.environ['PKR_VAR_vault_auth_bucket_trailer'] = "%s-vault-auth" % google_project_id
