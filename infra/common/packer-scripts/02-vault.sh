@@ -142,16 +142,24 @@ cat <<'EOF' > /etc/vault-init.sh
 
 . /etc/vault-variables.sh
 
+sealed_status_threshold=5
+sealed_status_count=0
 while true; do
     vault status &>/dev/null
     status=$?
+    echo "Got 'vault status' exit code $status"
     if [ $status -eq 0 ]; then
       echo "Vault already initialized."
       exit 0
     elif [ $status -eq 2 ]; then
-      break
+      sealed_status_count=$((sealed_status_count+1))
+      if [ $sealed_status_count -ge $sealed_status_threshold ]; then
+        break
+      fi
+      echo "Waiting sealed status to repeat at least $sealed_status_threshold times, sleeping for 2 seconds..."
+    else
+      echo "Waiting for vault server start, sleeping for 2 seconds..."
     fi
-    echo "Waiting for vault server start, sleeping for 2 seconds..."
     sleep 2
 done
 
@@ -193,9 +201,12 @@ error_log="/var/log/vault.log"
 respawn_max=0
 respawn_delay=10
 
+# todo: remove sshd dependency, when proceeding to production,
+# todo: otherwise during some problems with init we won't be able
+# todo: to login to the VM and check what is going wrong.
 depend() {
 	need net
-	after firewall
+	after firewall sshd
 }
 
 # TODO: remove debug output forwarding.
