@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -147,13 +148,12 @@ func (b tenantBackend) paths() []*framework.Path {
 
 func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		tenantID := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model.NewTenantFeatureFlagRepository(tx)
 
-		available, err := repo.AvailableRoles(id)
+		available, err := usecase.TenantFeatureFlags(tx, tenantID).AvailableRoles()
 		if err != nil {
 			return responseErr(req, err)
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
@@ -57,16 +58,14 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 			return nil, logical.CodedError(http.StatusBadRequest, "feature_flag_name required")
 		}
 
-		tff := model.FeatureFlag{
+		ff := model.FeatureFlag{
 			Name: featureFlagName,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewProjectFeatureFlagRepository(tx)
-
-		project, err := repo.SetFlagToProject(tenantID, projectID, tff)
+		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Add(ff)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -93,9 +92,7 @@ func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewProjectFeatureFlagRepository(tx)
-
-		project, err := repo.RemoveFlagFromProject(tenantID, projectID, featureFlagName)
+		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Delete(featureFlagName)
 		if err != nil {
 			return responseErr(req, err)
 		}
