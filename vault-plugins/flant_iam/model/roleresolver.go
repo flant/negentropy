@@ -31,14 +31,16 @@ type RoleInformer interface {
 type GroupInformer interface {
 	FindAllParentGroupsForUserUUID(TenantUUID, UserUUID) (map[GroupUUID]struct{}, error)
 	FindAllParentGroupsForServiceAccountUUID(TenantUUID, ServiceAccountUUID) (map[GroupUUID]struct{}, error)
+	FindAllSubjectsFor(TenantUUID, []UserUUID, []ServiceAccountUUID, []GroupUUID) (
+		map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error)
 }
 
 type RoleBindingsInformer interface {
 	FindDirectRoleBindingsForTenantUser(TenantUUID, UserUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantServiceAccount(TenantUUID, ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantGroups(TenantUUID, ...GroupUUID) (map[RoleBindingUUID]*RoleBinding, error)
-	FindDirectRoleBindingsForTenantProject(TenantUUID, ProjectUUID) (map[RoleBindingUUID]struct{}, error)
-	FindDirectRoleBindingsForRoles(TenantUUID, ...RoleName) (map[RoleBindingUUID]struct{}, error)
+	FindDirectRoleBindingsForTenantProject(TenantUUID, ProjectUUID) (map[RoleBindingUUID]*RoleBinding, error)
+	FindDirectRoleBindingsForRoles(TenantUUID, ...RoleName) (map[RoleBindingUUID]*RoleBinding, error)
 }
 
 type roleResolver struct {
@@ -58,7 +60,7 @@ func (r *roleResolver) IsServiceAccountSharedWith(TenantUUID) (bool, error) {
 }
 
 func (r *roleResolver) collectAllRolesAndRoleBindings(tenantUUID TenantUUID,
-	roleName RoleName) (map[RoleName]struct{}, map[RoleBindingUUID]struct{}, error) {
+	roleName RoleName) (map[RoleName]struct{}, map[RoleBindingUUID]*RoleBinding, error) {
 	roleNames, err := r.ri.FindAllIncludingRoles(roleName)
 	if err != nil {
 		return nil, nil, err
@@ -165,17 +167,6 @@ func mergeRoleBindingParams(origin RoleBindingParams, roleBinding *RoleBinding, 
 	return origin
 }
 
-func stringSlice(uuidSet map[string]struct{}) []string {
-	if len(uuidSet) == 0 {
-		return nil
-	}
-	result := make([]string, 0, len(uuidSet))
-	for uuid := range uuidSet {
-		result = append(result, uuid)
-	}
-	return result
-}
-
 func (r *roleResolver) CheckUserForTenantScopedRole(userUUID UserUUID, roleName RoleName,
 	tenantUUID TenantUUID) (bool, RoleBindingParams, error) {
 	role, err := r.ri.Get(roleName)
@@ -274,12 +265,73 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount Ser
 	return roleExists, roleBindingParams, nil
 }
 
-func (r *roleResolver) FindSubjectsWithProjectScopedRole(RoleName, TenantUUID, ProjectUUID) ([]UserUUID, []ServiceAccountUUID, error) {
-	panic("implement me")
+func (r *roleResolver) FindSubjectsWithProjectScopedRole(roleName RoleName, tenantUUID TenantUUID,
+	projectUUID ProjectUUID) ([]UserUUID, []ServiceAccountUUID, error) {
+	_, roleBindings, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(roleBindings) == 0 {
+		return nil, nil, nil
+	}
+	roleBindingsForProject, err := r.rbi.FindDirectRoleBindingsForTenantProject(tenantUUID, projectUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	users := map[UserUUID]struct{}{}
+	serviceAccounts := map[ServiceAccountUUID]struct{}{}
+	groups := map[GroupUUID]struct{}{}
+	for _, rb := range roleBindings {
+		if _, hasProject := roleBindingsForProject[rb.UUID]; hasProject || rb.AnyProject {
+			users = mergeUUIDs(users, rb.Users)
+			serviceAccounts = mergeUUIDs(serviceAccounts, rb.ServiceAccounts)
+			groups = mergeUUIDs(groups, rb.Groups)
+		}
+	}
+	users, serviceAccounts, err = r.gi.FindAllSubjectsFor(tenantUUID,
+		stringSlice(users), stringSlice(serviceAccounts), stringSlice(groups))
+	if err != nil {
+		return nil, nil, err
+	}
+	return stringSlice(users), stringSlice(serviceAccounts), nil
 }
 
-func (r *roleResolver) FindSubjectsWithTenantScopedRole(RoleName, TenantUUID) ([]UserUUID, []ServiceAccountUUID, error) {
-	panic("implement me")
+func mergeUUIDs(originUUIDs map[string]struct{}, extraUUIDs []string) map[string]struct{} {
+	for i := range extraUUIDs {
+		originUUIDs[extraUUIDs[i]] = struct{}{}
+	}
+	return originUUIDs
+}
+
+func (r *roleResolver) FindSubjectsWithTenantScopedRole(roleName RoleName, tenantUUID TenantUUID) ([]UserUUID, []ServiceAccountUUID, error) {
+	role, err := r.ri.Get(roleName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if role.Scope == RoleScopeProject {
+		return nil, nil, ErrBadProjectScopeRole
+	}
+	_, roleBindings, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(roleBindings) == 0 {
+		return nil, nil, nil
+	}
+	users := map[UserUUID]struct{}{}
+	serviceAccounts := map[ServiceAccountUUID]struct{}{}
+	groups := map[GroupUUID]struct{}{}
+	for _, rb := range roleBindings {
+		users = mergeUUIDs(users, rb.Users)
+		serviceAccounts = mergeUUIDs(serviceAccounts, rb.ServiceAccounts)
+		groups = mergeUUIDs(groups, rb.Groups)
+	}
+	users, serviceAccounts, err = r.gi.FindAllSubjectsFor(tenantUUID,
+		stringSlice(users), stringSlice(serviceAccounts), stringSlice(groups))
+	if err != nil {
+		return nil, nil, err
+	}
+	return stringSlice(users), stringSlice(serviceAccounts), nil
 }
 
 func (r *roleResolver) CheckGroupForRole(GroupUUID, RoleName) (bool, error) {
