@@ -119,8 +119,6 @@ func (mst *MemoryStoreTxn) Delete(table string, obj interface{}) error {
 func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInputMessage) error {
 	changes := mst.Txn.Changes()
 
-	mst.memstore.logger.Debug("1", "changes", changes)
-
 	kafkaMessages := make([]kafka.Message, 0)
 	for _, change := range changes {
 		if mst.memstore.kafkaConnection == nil || !mst.memstore.kafkaConnection.Configured() {
