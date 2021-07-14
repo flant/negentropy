@@ -52,3 +52,26 @@ func (logger *TestLogger) Grep(text string) (bool, []string) {
 
 	return len(matchedLines) > 0, matchedLines
 }
+
+func (logger *TestLogger) GetDataByMarkers(beginMark, endMark string) (bool, []byte) {
+	var matchedLines []string
+
+	state := ""
+	for _, line := range logger.GetLines() {
+		switch state {
+		case "":
+			if strings.Contains(line, beginMark) {
+				state = "beginMark"
+			}
+		case "beginMark":
+			if strings.Contains(line, endMark) {
+				return true, []byte(strings.Join(matchedLines, "\n"))
+			}
+			matchedLines = append(matchedLines, line)
+		default:
+			panic("unexpected")
+		}
+	}
+
+	return false, nil
+}

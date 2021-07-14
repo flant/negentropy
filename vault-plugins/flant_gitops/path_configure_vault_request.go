@@ -100,7 +100,7 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	vaultRequestName := fields.Get(fieldNameVaultRequestName).(string)
 
-	b.Logger().Debug("%q Vault request configuration started...", vaultRequestName)
+	b.Logger().Debug(fmt.Sprintf("%q Vault request configuration started...", vaultRequestName))
 
 	vaultRequest := vaultRequest{
 		Name:    vaultRequestName,
