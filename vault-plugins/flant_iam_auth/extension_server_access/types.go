@@ -8,10 +8,22 @@ import (
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type ServerAccessConfig struct {
 	RoleForSSHAccess string
+}
+
+type posixUserBuilder struct {
+	tx *io.MemoryStoreTxn
+
+	serverID string
+	tenantID string
+}
+
+func newPosixUserBuilder(tx *io.MemoryStoreTxn, serverID, tenantID string) *posixUserBuilder {
+	return &posixUserBuilder{tx, serverID, tenantID}
 }
 
 type posixUser struct {
@@ -26,7 +38,7 @@ type posixUser struct {
 	Gid      int    `json:"gid"`
 }
 
-func newPosixUser(uid int, principal, name, homeDir, pass string) posixUser {
+func (pb *posixUserBuilder) newPosixUser(uid int, principal, name, homeDir, pass string) posixUser {
 	return posixUser{
 		UID:       uid,
 		Principal: principal,
@@ -39,33 +51,33 @@ func newPosixUser(uid int, principal, name, homeDir, pass string) posixUser {
 	}
 }
 
-func userToPosix(serverID, tenantID string, user *iam.User) (posixUser, error) {
+func (pb *posixUserBuilder) userToPosix(user *iam.User) (posixUser, error) {
 	ext, ok := user.Extensions["server_access"]
 	if !ok {
 		return posixUser{}, fmt.Errorf("server_access extension not found for user: %s", user.FullIdentifier)
 	}
 
-	return buildPosixUser(ext, serverID, tenantID, user.UUID, user.TenantUUID, user.Identifier, user.FullIdentifier)
+	return pb.buildPosixUser(ext, user.UUID, user.TenantUUID, user.Identifier, user.FullIdentifier)
 
 }
 
-func saToPosix(serverID, tenantID string, sa *iam.ServiceAccount) (posixUser, error) {
+func (pb *posixUserBuilder) serviceAccountToPosix(sa *iam.ServiceAccount) (posixUser, error) {
 	ext, ok := sa.Extensions["server_access"]
 	if !ok {
 		return posixUser{}, fmt.Errorf("server_access extension not found for service account: %s", sa.FullIdentifier)
 	}
 
-	return buildPosixUser(ext, serverID, tenantID, sa.UUID, sa.TenantUUID, sa.Identifier, sa.FullIdentifier)
+	return pb.buildPosixUser(ext, sa.UUID, sa.TenantUUID, sa.Identifier, sa.FullIdentifier)
 
 }
 
-func buildPosixUser(ext *iam.Extension, serverID, tenantID, objectID, objectTenantID, identifier, fullIdentifier string) (posixUser, error) {
+func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectTenantID, identifier, fullIdentifier string) (posixUser, error) {
 	uid, ok := ext.Attributes["UID"]
 	if !ok {
 		return posixUser{}, fmt.Errorf("UID not found in server_access extension for %s", fullIdentifier)
 	}
 	principalHash := sha256.New()
-	principalHash.Write([]byte(serverID))
+	principalHash.Write([]byte(pb.serverID))
 	principalHash.Write([]byte(objectID))
 	principalSum := principalHash.Sum(nil)
 	principal := fmt.Sprintf("%x", principalSum)
@@ -73,9 +85,14 @@ func buildPosixUser(ext *iam.Extension, serverID, tenantID, objectID, objectTena
 	name := identifier
 	homeDirRelPath := identifier
 
-	if tenantID != objectTenantID {
+	if pb.tenantID != objectTenantID {
 		name = fullIdentifier
-		homeDirRelPath = fmt.Sprintf("%s/%s", objectTenantID, identifier)
+		repo := iam.NewTenantRepository(pb.tx)
+		tenant, err := repo.GetByID(objectTenantID)
+		if err != nil {
+			return posixUser{}, fmt.Errorf("tenant error: %s", err)
+		}
+		homeDirRelPath = fmt.Sprintf("%s/%s", tenant.Identifier, identifier)
 	}
 
 	homeDir := "/home/" + homeDirRelPath
@@ -94,10 +111,10 @@ func buildPosixUser(ext *iam.Extension, serverID, tenantID, objectID, objectTena
 	lastPass := passwords[len(passwords)-1]
 
 	crypter := crypt.SHA512.New()
-	pass, err := crypter.Generate([]byte(serverID), []byte("$6$"+lastPass.Salt))
+	pass, err := crypter.Generate([]byte(pb.serverID), []byte("$6$"+lastPass.Salt))
 	if err != nil {
 		return posixUser{}, fmt.Errorf("password crypt failed (%s) for %q", err, fullIdentifier)
 	}
 
-	return newPosixUser(uid.(int), principal, name, homeDir, pass), nil
+	return pb.newPosixUser(uid.(int), principal, name, homeDir, pass), nil
 }

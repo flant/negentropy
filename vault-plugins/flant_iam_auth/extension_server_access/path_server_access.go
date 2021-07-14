@@ -314,9 +314,10 @@ func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 
 		var posixUsers []posixUser
 		var warnings []string
+		posixBuilder := newPosixUserBuilder(txn, serverID, tenantID)
 
 		for _, user := range users {
-			posix, err := userToPosix(serverID, tenantID, user)
+			posix, err := posixBuilder.userToPosix(user)
 			if err != nil {
 				warnings = append(warnings, err.Error())
 				continue
@@ -325,7 +326,7 @@ func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 		}
 
 		for _, sa := range serviceAccounts {
-			posix, err := saToPosix(serverID, tenantID, sa)
+			posix, err := posixBuilder.serviceAccountToPosix(sa)
 			if err != nil {
 				warnings = append(warnings, err.Error())
 				continue
