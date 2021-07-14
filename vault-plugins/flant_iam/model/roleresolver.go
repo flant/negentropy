@@ -33,6 +33,8 @@ type GroupInformer interface {
 	FindAllParentGroupsForServiceAccountUUID(TenantUUID, ServiceAccountUUID) (map[GroupUUID]struct{}, error)
 	FindAllSubjectsFor(TenantUUID, []UserUUID, []ServiceAccountUUID, []GroupUUID) (
 		map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error)
+	FindAllParentGroupsForGroupUUID(TenantUUID, GroupUUID) (map[GroupUUID]struct{}, error)
+	GetByID(GroupUUID) (*Group, error)
 }
 
 type RoleBindingsInformer interface {
@@ -334,8 +336,30 @@ func (r *roleResolver) FindSubjectsWithTenantScopedRole(roleName RoleName, tenan
 	return stringSlice(users), stringSlice(serviceAccounts), nil
 }
 
-func (r *roleResolver) CheckGroupForRole(GroupUUID, RoleName) (bool, error) {
-	panic("implement me")
+func (r *roleResolver) CheckGroupForRole(groupUUID GroupUUID, roleName RoleName) (bool, error) {
+	group, err := r.gi.GetByID(groupUUID)
+	if err != nil {
+		return false, err
+	}
+	tenantUUID := group.TenantUUID
+	groupUUIDs, err := r.gi.FindAllParentGroupsForGroupUUID(tenantUUID, groupUUID)
+	if err != nil {
+		return false, err
+	}
+	roleBindingsForGroup, err := r.rbi.FindDirectRoleBindingsForTenantGroups(tenantUUID, stringSlice(groupUUIDs)...)
+	if err != nil {
+		return false, err
+	}
+	_, roleBindingsForRole, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
+	if err != nil {
+		return false, err
+	}
+	for rbUUID := range roleBindingsForRole {
+		if _, found := roleBindingsForGroup[rbUUID]; found {
+			return true, nil
+		}
+	}
+	return false, err
 }
 
 func NewRoleResolver(ri RoleInformer, gi GroupInformer, rbi RoleBindingsInformer) RoleResolver {

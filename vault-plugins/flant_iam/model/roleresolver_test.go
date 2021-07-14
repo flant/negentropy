@@ -160,3 +160,33 @@ func Test_FindSubjectsWithTenantScopedRole(t *testing.T) {
 	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
 	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}, serviceAccountUUID3: {}}, stringSet(serviceAccounts))
 }
+
+func Test_CheckGroupForRole(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
+		roleBindingFixture).Txn(true)
+	rr := roleResolver{
+		ri:  NewRoleRepository(tx),
+		gi:  NewGroupRepository(tx),
+		rbi: NewRoleBindingRepository(tx),
+	}
+
+	hasRole, err := rr.CheckGroupForRole(groupUUID2, roleName1)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, true, hasRole)
+}
+
+func Test_CheckGroupForRoleNegative(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
+		roleBindingFixture).Txn(true)
+	rr := roleResolver{
+		ri:  NewRoleRepository(tx),
+		gi:  NewGroupRepository(tx),
+		rbi: NewRoleBindingRepository(tx),
+	}
+
+	hasRole, err := rr.CheckGroupForRole(groupUUID2, roleName4)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, false, hasRole)
+}
