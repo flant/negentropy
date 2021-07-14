@@ -74,7 +74,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 
 	if len(vaultRequests) > 0 && apiConfig == nil {
 		reqCfgData, _ := json.MarshalIndent(vaultRequests, "", "  ")
-		b.Logger().Info("Vault API access configuration not set, but there are Vault requests configured: skipping periodic task:\n%s\n", reqCfgData)
+		b.Logger().Info(fmt.Sprintf("Vault API access configuration not set, but there are Vault requests configured: skipping periodic task:\n%s\n", reqCfgData))
 		return nil
 	}
 
