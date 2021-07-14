@@ -28,7 +28,7 @@ var (
 		ValidTill:       100,
 		RequireMFA:      false,
 		Users:           []string{userUUID1, userUUID2},
-		Groups:          []string{groupUUID2, groupUUID3},
+		Groups:          []string{groupUUID2},
 		ServiceAccounts: []string{serviceAccountUUID1},
 		AnyProject:      false,
 		Projects:        []ProjectUUID{projectUUID1, projectUUID3},
@@ -43,7 +43,8 @@ var (
 		TenantUUID: tenantUUID2,
 		ValidTill:  110,
 		RequireMFA: false,
-		Users:      []string{userUUID1, userUUID2},
+		Users:      []string{userUUID5},
+		Groups:     []string{groupUUID3},
 		AnyProject: true,
 		Projects:   nil,
 		Roles: []BoundRole{{
@@ -352,7 +353,7 @@ func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
 		roleBindingFixture).Txn(true)
 	repo := NewRoleBindingRepository(tx)
 
-	rbsMap, err := repo.FindDirectRoleBindingsForTenantGroups(tenantUUID1, groupUUID2, groupUUID3)
+	rbsMap, err := repo.FindDirectRoleBindingsForTenantGroups(tenantUUID1, groupUUID2, groupUUID1)
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}}, roleBindingsUUIDsFromMap(rbsMap))

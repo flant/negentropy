@@ -32,15 +32,15 @@ var (
 	group3 = Group{
 		UUID:            groupUUID3,
 		TenantUUID:      tenantUUID2,
-		Users:           []string{userUUID3, userUUID4},
-		ServiceAccounts: []string{serviceAccountUUID1},
+		Users:           []string{userUUID5},
+		ServiceAccounts: []string{serviceAccountUUID4},
 		Origin:          OriginIAM,
 	}
 	group4 = Group{
 		UUID:            groupUUID4,
 		TenantUUID:      tenantUUID1,
 		Users:           []string{userUUID2, userUUID3},
-		Groups:          []string{groupUUID2, groupUUID3},
+		Groups:          []string{groupUUID2},
 		ServiceAccounts: []string{serviceAccountUUID2, serviceAccountUUID3},
 		Origin:          OriginIAM,
 	}

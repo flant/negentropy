@@ -124,8 +124,9 @@ func Test_FindSubjectsWithProjectScopedRole(t *testing.T) {
 	users, serviceAccounts, err := rr.FindSubjectsWithProjectScopedRole(roleName1, tenantUUID1, projectUUID3)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
-	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}}, stringSet(serviceAccounts))
+	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID5: {}}, stringSet(users))
+	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}, serviceAccountUUID4: {}},
+		stringSet(serviceAccounts))
 }
 
 func Test_FindSubjectsWithTenantScopedRole(t *testing.T) {
@@ -136,8 +137,9 @@ func Test_FindSubjectsWithTenantScopedRole(t *testing.T) {
 	users, serviceAccounts, err := rr.FindSubjectsWithTenantScopedRole(roleName9, tenantUUID1)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
-	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}, serviceAccountUUID3: {}}, stringSet(serviceAccounts))
+	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}}, stringSet(users))
+	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID2: {}, serviceAccountUUID3: {}},
+		stringSet(serviceAccounts))
 }
 
 func Test_CheckGroupForRole(t *testing.T) {
@@ -160,4 +162,26 @@ func Test_CheckGroupForRoleNegative(t *testing.T) {
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, false, hasRole)
+}
+
+func Test_IsUserSharedWithTenant(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
+		identitySharingFixture).Txn(true)
+	rr := NewRoleResolver(tx)
+
+	isShared, err := rr.IsUserSharedWithTenant(&user1, tenantUUID2)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, true, isShared)
+}
+
+func Test_IsServiceAccountSharedWithTenant(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
+		identitySharingFixture).Txn(true)
+	rr := NewRoleResolver(tx)
+
+	isShared, err := rr.IsServiceAccountSharedWithTenant(&sa4, tenantUUID1)
+
+	dieOnErr(t, err)
+	checkDeepEqual(t, true, isShared)
 }
