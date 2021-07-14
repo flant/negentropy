@@ -3,6 +3,7 @@ package flant_gitops
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -29,6 +30,10 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, err
 	}
 
+	if conf == nil {
+		return nil, fmt.Errorf("configuration passed into backend is nil")
+	}
+
 	if err := b.SetupBackend(ctx, conf); err != nil {
 		return nil, err
 	}
@@ -43,6 +48,9 @@ func newBackend() (*backend, error) {
 	}
 
 	b.Backend = &framework.Backend{
+		BackendType: logical.TypeLogical,
+		Help:        "TODO",
+
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
 			if err := b.AccessVaultController.OnPeriodical(ctx, req); err != nil {
 				return err
@@ -58,7 +66,7 @@ func newBackend() (*backend, error) {
 
 			return nil
 		},
-		BackendType: logical.TypeLogical,
+
 		Paths: framework.PathAppend(
 			configurePaths(b),
 			configureGitCredentialPaths(b),

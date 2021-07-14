@@ -33,6 +33,7 @@ func configureGitCredentialPaths(b *backend) []*framework.Path {
 					Description: "Git password. Required for CREATE, UPDATE.",
 				},
 			},
+
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureGitCredentialCreateOrUpdate,
@@ -44,6 +45,9 @@ func configureGitCredentialPaths(b *backend) []*framework.Path {
 					Callback: b.pathConfigureGitCredentialDelete,
 				},
 			},
+
+			HelpSynopsis:    "TODO",
+			HelpDescription: "TODO",
 		},
 	}
 }

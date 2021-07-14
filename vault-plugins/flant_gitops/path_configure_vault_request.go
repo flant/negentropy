@@ -44,6 +44,9 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 					Callback: b.pathConfigureVaultRequestList,
 				},
 			},
+
+			HelpSynopsis:    "TODO",
+			HelpDescription: "TODO",
 		},
 		{
 			Pattern: "^configure/vault_request/" + framework.GenericNameRegex(fieldNameVaultRequestName) + "/?$",
@@ -72,6 +75,7 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 					Description: fmt.Sprintf("Vault response wrap TTL specified as golang duration string (https://golang.org/pkg/time/#ParseDuration). Minimum: %ds", vaultRequestWrapTTLMinSec),
 				},
 			},
+
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestCreateOrUpdate,
@@ -86,6 +90,9 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 					Callback: b.pathConfigureVaultRequestDelete,
 				},
 			},
+
+			HelpSynopsis:    "TODO",
+			HelpDescription: "TODO",
 		},
 	}
 }
