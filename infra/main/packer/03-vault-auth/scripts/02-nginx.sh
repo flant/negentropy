@@ -60,8 +60,7 @@ gsutil cp gs://${TFSTATE_BUCKET}/${NGINX_LE_ARCHIVE} .
 if [ -f "${NGINX_LE_ARCHIVE}" ]; then
   tar xvf ${NGINX_LE_ARCHIVE}
 else
-  # TODO: remove --staging, change email
-  certbot certonly --dns-google -d ${VAULT_PUBLIC_FQDN} --staging --non-interactive --agree-tos -m pavel.golovin@flant.com
+  certbot certonly --dns-google -d ${VAULT_PUBLIC_FQDN} --non-interactive --agree-tos -m ${VAULT_AUTH_PUBLIC_CERTIFICATE_EMAIL}
   openssl dhparam -out /tmp/letsencrypt/ssl-dhparams.pem 2048
   upload
 fi

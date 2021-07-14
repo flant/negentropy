@@ -46,6 +46,9 @@ variable "vault_internal_root_domain" {
 variable "vault_public_root_domain" {
   type =  string
 }
+variable "lets_encrypt_email" {
+  type =  string
+}
 variable "image_sources_checksum" {
   type    = string
 }
@@ -151,7 +154,8 @@ build {
       "VAULT_CA_POOL=${var.vault_ca_pool}",
       "VAULT_CA_LOCATION=${var.vault_ca_location}",
       "VAULT_INTERNAL_ROOT_DOMAIN=${var.vault_internal_root_domain}",
-      "VAULT_PUBLIC_ROOT_DOMAIN=${var.vault_public_root_domain}"
+      "VAULT_PUBLIC_ROOT_DOMAIN=${var.vault_public_root_domain}",
+      "VAULT_AUTH_PUBLIC_CERTIFICATE_EMAIL=${var.lets_encrypt_email}"
     ]
     inline = [
       "tmp=$(mktemp); envsubst < /etc/vault-variables.sh > $tmp && cat $tmp > /etc/vault-variables.sh"
