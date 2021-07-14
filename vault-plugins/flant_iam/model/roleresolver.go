@@ -1,7 +1,5 @@
 package model
 
-import "fmt"
-
 type RoleResolver interface {
 	IsUserSharedWith(TenantUUID) (bool, error)
 	IsServiceAccountSharedWith(TenantUUID) (bool, error)
@@ -79,7 +77,6 @@ func (r *roleResolver) collectAllRoleBindingsForUser(tenantUUID TenantUUID,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("groups : %#v\n", groups)
 	userRBs, err := r.rbi.FindDirectRoleBindingsForTenantUser(tenantUUID, userUUID)
 	if err != nil {
 		return nil, err
@@ -101,7 +98,6 @@ func (r *roleResolver) collectAllRoleBindingsForServiceAccount(tenantUUID Tenant
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("groups : %#v\n", groups)
 	serviceAccountRBs, err := r.rbi.FindDirectRoleBindingsForTenantServiceAccount(tenantUUID, serviceAccountUUID)
 	if err != nil {
 		return nil, err
@@ -143,7 +139,6 @@ func (r *roleResolver) CheckUserForProjectScopedRole(userUUID UserUUID, roleName
 			rbHasProject = true
 		}
 		if rbHasProject && rbHasRole {
-			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
 			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
 			roleExists = true
 		}
@@ -207,7 +202,6 @@ func (r *roleResolver) CheckUserForTenantScopedRole(userUUID UserUUID, roleName 
 	roleExists := false
 	for _, roleBinding := range roleBindings {
 		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
-			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
 			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
 			roleExists = true
 		}
@@ -215,8 +209,7 @@ func (r *roleResolver) CheckUserForTenantScopedRole(userUUID UserUUID, roleName 
 	return roleExists, roleBindingParams, nil
 }
 
-func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUID ServiceAccountUUID, roleName RoleName,
-	tenantUUID TenantUUID, projectUUID ProjectUUID) (bool, RoleBindingParams, error) {
+func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUID ServiceAccountUUID, roleName RoleName, tenantUUID TenantUUID, projectUUID ProjectUUID) (bool, RoleBindingParams, error) {
 	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(tenantUUID, serviceAccountUUID)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
@@ -241,7 +234,6 @@ func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUI
 			rbHasProject = true
 		}
 		if rbHasProject && rbHasRole {
-			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
 			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
 			roleExists = true
 		}
@@ -275,7 +267,6 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount Ser
 	roleExists := false
 	for _, roleBinding := range roleBindings {
 		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
-			fmt.Printf("tatget rb UUID = %s\n", roleBinding.UUID)
 			roleBindingParams = mergeRoleBindingParams(roleBindingParams, roleBinding, roleNames)
 			roleExists = true
 		}
@@ -295,10 +286,10 @@ func (r *roleResolver) CheckGroupForRole(GroupUUID, RoleName) (bool, error) {
 	panic("implement me")
 }
 
-func NewRoleResolver(ri RoleInformer, gi GroupInformer, rbi RoleBindingsInformer) (RoleResolver, error) {
+func NewRoleResolver(ri RoleInformer, gi GroupInformer, rbi RoleBindingsInformer) RoleResolver {
 	return &roleResolver{
 		ri:  ri,
 		gi:  gi,
 		rbi: rbi,
-	}, nil
+	}
 }
