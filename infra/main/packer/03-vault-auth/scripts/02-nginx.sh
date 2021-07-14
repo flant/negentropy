@@ -9,24 +9,150 @@ pip3 install certbot-dns-google
 mkdir -p /tmp/letsencrypt
 ln -s /tmp/letsencrypt /etc/letsencrypt
 
+cat <<'EOF' > /etc/nginx-config.sh
+#!/usr/bin/env bash
+
+. /etc/vault-variables.sh
+
+mkdir -p /var/lib/nginx/logs
+chown -R nginx:nginx /var/lib/nginx
+
+mkdir -p /tmp/nginx
+envsubst '$INTERNAL_ADDRESS,$VAULT_INTERNAL_FQDN,$VAULT_INTERNAL_DOMAIN' < /etc/nginx/nginx-vault-internal.conf > /tmp/nginx/nginx-vault-internal.conf
+envsubst '$INTERNAL_ADDRESS,$VAULT_PUBLIC_FQDN,$VAULT_PUBLIC_DOMAIN' < /etc/nginx/nginx-vault-public.conf > /tmp/nginx/nginx-vault-public.conf
+EOF
+
+chmod +x /etc/nginx-config.sh
+
+
+cat <<'EOF' > /etc/nginx-public-cert.sh
+#!/usr/bin/env bash
+
+. /etc/vault-variables.sh
+
+NGINX_LE_ARCHIVE="$(hostname)-le-public-cert.tar.gz"
+
+upload() {
+  pushd /tmp
+  tar -czvf ${NGINX_LE_ARCHIVE} letsencrypt
+  gsutil cp ${NGINX_LE_ARCHIVE} gs://${TFSTATE_BUCKET}/
+  popd
+}
+
+renew() {
+  CHECKSUM_BEFORE="$(find /tmp/letsencrypt/archive/ -type f \( -exec sha1sum {} \; \) | awk '{print $1}' | sort | sha1sum | awk '{print $1}')"
+  certbot renew --quiet
+  CHECKSUM_AFTER="$(find /tmp/letsencrypt/archive/ -type f \( -exec sha1sum {} \; \) | awk '{print $1}' | sort | sha1sum | awk '{print $1}')"
+  if [[ "$CHECKSUM_BEFORE" != "$CHECKSUM_AFTER" ]]; then
+      /etc/init.d/nginx reload
+      upload
+  fi
+}
+
+if [ -d "/tmp/letsencrypt" ]; then
+  renew
+  exit 0
+fi
+
 mkdir -p /tmp/letsencrypt
-# if no archive and /tmp/letsencrypt is empty - generate cert, else run renew
-# TODO: remove --staging
-certbot certonly --dns-google -d ew1a1.auth.negentropy.p.golovin.hf.flant.com --staging --non-interactive --agree-tos -m pavel.golovin@flant.com
-openssl dhparam -out /tmp/letsencrypt/ssl-dhparams.pem 2048
-# call renew script here to upload certs to the vault bucket
+pushd /tmp
+gsutil cp gs://${TFSTATE_BUCKET}/${NGINX_LE_ARCHIVE} .
+if [ -f "${NGINX_LE_ARCHIVE}" ]; then
+  tar xvf ${NGINX_LE_ARCHIVE}
+else
+  # TODO: remove --staging, change email
+  certbot certonly --dns-google -d ${VAULT_PUBLIC_FQDN} --staging --non-interactive --agree-tos -m pavel.golovin@flant.com
+  openssl dhparam -out /tmp/letsencrypt/ssl-dhparams.pem 2048
+  upload
+fi
+popd
+EOF
 
-# make one more variable to have external root domain
-# covert ew1a1.auth.negentropy.flant.local to .com and one more auth.negentropy.flant.com
+chmod +x /etc/nginx-public-cert.sh
 
-# add to vault cert additional domain auth.negentropy.flant.local
+# Following init.d script almost copied as is, except of:
+## 1. In `start_pre` we need to ensure certificates are exists and fresh by executing /etc/nginx-public-cert.sh.
+## 2. In `start_pre` we need to substitute nginx virtual hosts configuration.
+## 3. In `depend` we should start after the vault, because we are using its certificates.
+cat <<'EOF' > /etc/init.d/nginx
+#!/sbin/openrc-run
 
-mkdir /tmp/nginx
-envsubst '$INTERNAL_ADDRESS' < /etc/nginx/http.d/nginx-vault-public.conf > /tmp/nginx/nginx-vault-public.conf
+description="Nginx http and reverse proxy server"
+extra_commands="checkconfig"
+extra_started_commands="reload reopen upgrade"
 
-envsubst '$INTERNAL_ADDRESS' nginx-vault-internal.conf > /tmp/nginx/
-envsubst '$INTERNAL_ADDRESS' nginx-vault-public.conf > /tmp/nginx/
+cfgfile=${cfgfile:-/etc/nginx/nginx.conf}
+pidfile=/run/nginx/nginx.pid
+command=${command:-/usr/sbin/nginx}
+command_args="-c $cfgfile"
+required_files="$cfgfile"
 
-# cron
-# todo: we need special renew script with cert upload to bucket on renewal
-echo "0 12 * * * /usr/bin/certbot renew --quiet" >> /etc/crontabs/root
+depend() {
+	need net
+	use dns logger netmount
+	after vault
+}
+
+# TODO: remove debug output forwarding.
+start_pre() {
+	checkpath --directory --owner nginx:nginx ${pidfile%/*} \
+	  && /etc/nginx-public-cert.sh &> /var/log/nginx-public-cert.log \
+	  && /etc/nginx-config.sh
+	$command $command_args -t -q
+}
+
+checkconfig() {
+	ebegin "Checking $RC_SVCNAME configuration"
+	start_pre
+	eend $?
+}
+
+reload() {
+	ebegin "Reloading $RC_SVCNAME configuration"
+	start_pre && start-stop-daemon --signal HUP --pidfile $pidfile
+	eend $?
+}
+
+reopen() {
+	ebegin "Reopening $RC_SVCNAME log files"
+	start-stop-daemon --signal USR1 --pidfile $pidfile
+	eend $?
+}
+
+upgrade() {
+	start_pre || return 1
+
+	ebegin "Upgrading $RC_SVCNAME binary"
+
+	einfo "Sending USR2 to old binary"
+	start-stop-daemon --signal USR2 --pidfile $pidfile
+
+	einfo "Sleeping 3 seconds before pid-files checking"
+	sleep 3
+
+	if [ ! -f $pidfile.oldbin ]; then
+		eerror "File with old pid ($pidfile.oldbin) not found"
+		return 1
+	fi
+
+	if [ ! -f $pidfile ]; then
+		eerror "New binary failed to start"
+		return 1
+	fi
+
+	einfo "Sleeping 3 seconds before WINCH"
+	sleep 3 ; start-stop-daemon --signal 28 --pidfile $pidfile.oldbin
+
+	einfo "Sending QUIT to old binary"
+	start-stop-daemon --signal QUIT --pidfile $pidfile.oldbin
+
+	einfo "Upgrade completed"
+
+	eend $? "Upgrade failed"
+}
+EOF
+
+rc-update add nginx
+
+# The same script renews certificates.
+echo "0 12 * * * /etc/nginx-public-cert.sh" >> /etc/crontabs/root

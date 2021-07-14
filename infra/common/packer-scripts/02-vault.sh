@@ -16,6 +16,10 @@ EOF
 
 chmod +x /etc/vault-config.sh
 
+mkdir -p /tmp/ca-certificates
+rm -rf /usr/local/share/ca-certificates
+ln -s /tmp/ca-certificates /usr/local/share/ca-certificates
+
 cat <<'EOF' > /etc/get-ca.sh
 #!/usr/bin/env bash
 
@@ -31,14 +35,15 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# TODO: make a symlink of /usr/local/share/ca-certificates to /tmp/ca-certificates in base image and use tmp folder here
+mkdir -p /tmp/ca-certificates
+
 if [ "$target" == "get" ]; then
-    if [ -f "/usr/local/share/ca-certificates/ca.crt" ]; then
+    if [ -f "/tmp/ca-certificates/ca.crt" ]; then
         echo "CA already exists"
     else
         echo "Get CA"
         while true; do
-            gcloud privateca roots describe ${VAULT_CA_NAME} --location=${VAULT_CA_LOCATION} --pool=${VAULT_CA_POOL} --format="get(pemCaCertificates)" > /usr/local/share/ca-certificates/ca.crt
+            gcloud privateca roots describe ${VAULT_CA_NAME} --location=${VAULT_CA_LOCATION} --pool=${VAULT_CA_POOL} --format="get(pemCaCertificates)" > /tmp/ca-certificates/ca.crt
             status=$?
             if [ $status -eq 0 ]; then
                 break
@@ -64,7 +69,11 @@ cat <<'EOF' > /etc/get-cert.sh
 getcert() {
 pushd /tmp
 echo "Generate CSR"
-openssl req -nodes -newkey rsa:2048 -keyout server.key -out server.csr -subj "/C=RU/O=JSC Flant/CN=${VAULT_INTERNAL_FQDN}" -addext "subjectAltName=DNS:${VAULT_INTERNAL_FQDN},IP:${INTERNAL_ADDRESS},IP:127.0.0.1"
+CERT_ALT_NAMES="DNS:${VAULT_INTERNAL_FQDN},IP:${INTERNAL_ADDRESS},IP:127.0.0.1"
+if [[ "$VAULT_INTERNAL_DOMAIN" != "" ]]; then
+  CERT_ALT_NAMES="$CERT_ALT_NAMES,DNS:$VAULT_INTERNAL_DOMAIN"
+fi
+openssl req -nodes -newkey rsa:2048 -keyout server.key -out server.csr -subj "/C=RU/O=JSC Flant/CN=${VAULT_INTERNAL_FQDN}" -addext "subjectAltName=${CERT_ALT_NAMES}"
 echo "Signing certificate"
 while true; do
     gcloud privateca certificates create vault-conf --issuer-pool ${VAULT_CA_POOL} --issuer-location ${VAULT_CA_LOCATION} --csr server.csr --cert-output-file server.crt --validity "P${VAULT_CERT_VALIDITY_DAYS}D"
@@ -117,6 +126,10 @@ if [ "$target" == "update" ]; then
         getcert
         echo "Vault certificate updated"
         /etc/init.d/vault reload
+        if [ -f /etc/init.d/nginx ]; then
+          # Reload Nginx therefore it uses our certificates too.
+          /etc/init.d/nginx reload
+        fi
         echo "Vault reloaded"
     fi
 fi
