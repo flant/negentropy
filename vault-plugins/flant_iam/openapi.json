@@ -1163,8 +1163,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1403,9 +1403,9 @@
                   }
                 },
                 "required": [
-                  "subjects",
                   "resource_version",
-                  "identifier"
+                  "identifier",
+                  "subjects"
                 ]
               }
             }
@@ -1752,6 +1752,13 @@
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
                   },
+                  "roles": {
+                    "type": "array",
+                    "description": "Roles list",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
                   "subjects": {
                     "type": "array",
                     "description": "Subjects list",
@@ -1771,10 +1778,11 @@
                   }
                 },
                 "required": [
-                  "ttl",
-                  "require_mfa",
                   "uuid",
-                  "subjects"
+                  "subjects",
+                  "roles",
+                  "ttl",
+                  "require_mfa"
                 ]
               }
             }
@@ -1961,6 +1969,13 @@
                     "type": "string",
                     "description": "Resource version"
                   },
+                  "roles": {
+                    "type": "array",
+                    "description": "Roles list",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
                   "subjects": {
                     "type": "array",
                     "description": "Subjects list",
@@ -1975,10 +1990,11 @@
                   }
                 },
                 "required": [
+                  "roles",
+                  "ttl",
                   "require_mfa",
                   "resource_version",
-                  "subjects",
-                  "ttl"
+                  "subjects"
                 ]
               }
             }
@@ -2094,11 +2110,11 @@
                   }
                 },
                 "required": [
-                  "uuid",
                   "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "uuid"
                 ]
               }
             }
@@ -2394,11 +2410,11 @@
                   }
                 },
                 "required": [
+                  "resource_version",
+                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl",
-                  "resource_version",
-                  "identifier"
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2485,10 +2501,44 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
                   },
                   "uuid": {
                     "type": "string",
@@ -2498,7 +2548,14 @@
                 },
                 "required": [
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "first_name",
+                  "additional_emails",
+                  "additional_phones",
+                  "mobile_phone",
+                  "display_name",
+                  "last_name",
+                  "email"
                 ]
               }
             }
@@ -2662,10 +2719,44 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
                   },
                   "resource_version": {
                     "type": "string",
@@ -2673,8 +2764,15 @@
                   }
                 },
                 "required": [
+                  "first_name",
+                  "display_name",
+                  "email",
                   "resource_version",
-                  "identifier"
+                  "last_name",
+                  "mobile_phone",
+                  "additional_phones",
+                  "identifier",
+                  "additional_emails"
                 ]
               }
             }
@@ -2747,8 +2845,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
