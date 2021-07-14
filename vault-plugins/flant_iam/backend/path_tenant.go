@@ -148,12 +148,12 @@ func (b tenantBackend) paths() []*framework.Path {
 
 func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		tenantID := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
 
-		available, err := usecase.TenantFeatureFlags(tx).AvailableRoles(id)
+		available, err := usecase.TenantFeatureFlags(tx, tenantID).AvailableRoles()
 		if err != nil {
 			return responseErr(req, err)
 		}
