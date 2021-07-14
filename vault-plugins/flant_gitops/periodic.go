@@ -102,7 +102,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return err
 	})
 
-	if err == tasks_manager.BusyError {
+	if err == tasks_manager.ErrBusy {
 		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GitPollPeriod))
 		return nil
 	}
