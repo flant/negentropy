@@ -63,6 +63,10 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return fmt.Errorf("unable to get all Vault requests configurations: %s", err)
 	}
 
+	for _, cfg := range vaultRequests {
+		b.Logger().Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
+	}
+
 	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
 	if err != nil {
 		return fmt.Errorf("unable to get Vault API config: %s", err)
