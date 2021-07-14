@@ -120,6 +120,11 @@ func (r *GroupRepository) Update(group *Group) error {
 }
 
 func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
+	raw, err := r.GetRawByID(id)
+	return raw.(*Group), err
+}
+
+func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
 	raw, err := r.db.First(GroupType, PK, id)
 	if err != nil {
 		return nil, err
@@ -127,8 +132,7 @@ func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	group := raw.(*Group)
-	return group, nil
+	return raw, nil
 }
 
 func (r *GroupRepository) Delete(id GroupUUID) error {

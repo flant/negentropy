@@ -112,7 +112,6 @@ func (r *TenantRepository) Update(updated *Tenant) error {
 }
 
 func (r *TenantRepository) Delete(id TenantUUID) error {
-
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err

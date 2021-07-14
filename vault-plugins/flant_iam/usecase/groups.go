@@ -36,7 +36,7 @@ func (r *Groups) Create(group *model.Group) error {
 	group.Version = model.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := NewSubjectsFetcher(r.db, group.Subjects).Fetch()
+	subj, err := NewSubjectsFetcher(r.db).Fetch(group.Subjects)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (r *Groups) Update(group *model.Group) error {
 	}
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := NewSubjectsFetcher(r.db, group.Subjects).Fetch()
+	subj, err := NewSubjectsFetcher(r.db).Fetch(group.Subjects)
 	if err != nil {
 		return err
 	}
@@ -139,4 +139,3 @@ func (r *Groups) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID)
 	delete(obj.Extensions, origin)
 	return repo.Update(obj)
 }
-

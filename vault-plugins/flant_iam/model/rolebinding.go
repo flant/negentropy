@@ -166,6 +166,7 @@ func (r *RoleBindingRepository) List(tid TenantUUID) ([]*RoleBinding, error) {
 	}
 	return list, nil
 }
+
 func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
 	rb, err := r.GetByID(id)
 	if err != nil {
@@ -200,8 +201,6 @@ func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 
 	return r.save(rb)
 }
-
-
 
 type subjectInTenantRoleBindingIndexer struct {
 	subjectFieldName string

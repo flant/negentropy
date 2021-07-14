@@ -24,7 +24,7 @@ func (r *RoleBindings) Create(rb *model.RoleBinding) error {
 	rb.Version = model.NewResourceVersion()
 
 	// Refill data
-	subj, err := NewSubjectsFetcher(r.db, rb.Subjects).Fetch()
+	subj, err := NewSubjectsFetcher(r.db).Fetch(rb.Subjects)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,6 @@ func (r *RoleBindings) Create(rb *model.RoleBinding) error {
 }
 
 func (r *RoleBindings) Update(rb *model.RoleBinding) error {
-
 	// Validate
 	if rb.Origin == "" {
 		return model.ErrBadOrigin
@@ -53,7 +52,7 @@ func (r *RoleBindings) Update(rb *model.RoleBinding) error {
 	}
 
 	// Refill data
-	subj, err := NewSubjectsFetcher(r.db, rb.Subjects).Fetch()
+	subj, err := NewSubjectsFetcher(r.db).Fetch(rb.Subjects)
 	if err != nil {
 		return err
 	}
