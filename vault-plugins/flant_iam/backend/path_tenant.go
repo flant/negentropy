@@ -153,7 +153,7 @@ func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
 
-		available, err := usecase.NewTenantFeatureFlagger(tx).AvailableRoles(id)
+		available, err := usecase.TenantFeatureFlags(tx).AvailableRoles(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

@@ -65,7 +65,7 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		project, err := usecase.NewProjectFeatureFlagger(tx).SetFlagToProject(tenantID, projectID, tff)
+		project, err := usecase.ProjectFeatureFlags(tx).Add(tenantID, projectID, tff)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -92,7 +92,7 @@ func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		project, err := usecase.NewProjectFeatureFlagger(tx).RemoveFlagFromProject(tenantID, projectID, featureFlagName)
+		project, err := usecase.ProjectFeatureFlags(tx).Delete(tenantID, projectID, featureFlagName)
 		if err != nil {
 			return responseErr(req, err)
 		}

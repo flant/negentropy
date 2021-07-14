@@ -68,7 +68,7 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		tenant, err := usecase.NewTenantFeatureFlagger(tx).SetFlagToTenant(tenantID, tff)
+		tenant, err := usecase.TenantFeatureFlags(tx).Add(tenantID, tff)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -94,7 +94,7 @@ func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		tenant, err := usecase.NewTenantFeatureFlagger(tx).RemoveFlagFromTenant(tenantID, featureFlagName)
+		tenant, err := usecase.TenantFeatureFlags(tx).Delete(tenantID, featureFlagName)
 		if err != nil {
 			return responseErr(req, err)
 		}

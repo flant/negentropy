@@ -5,22 +5,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-// TenantFeatureFlagger manager feature flags for tenants
-type TenantFeatureFlagger struct {
+// TenantFeatureFlagManager manages feature flags for tenants
+type TenantFeatureFlagManager struct {
 	ffRepo     *model.FeatureFlagRepository
 	tenantRepo *model.TenantRepository
 	roleRepo   *model.RoleRepository
 }
 
-func NewTenantFeatureFlagger(tx *io.MemoryStoreTxn) *TenantFeatureFlagger {
-	return &TenantFeatureFlagger{
+func TenantFeatureFlags(tx *io.MemoryStoreTxn) *TenantFeatureFlagManager {
+	return &TenantFeatureFlagManager{
 		ffRepo:     model.NewFeatureFlagRepository(tx),
 		tenantRepo: model.NewTenantRepository(tx),
 		roleRepo:   model.NewRoleRepository(tx),
 	}
 }
 
-func (t *TenantFeatureFlagger) GetFeatureFlags(tenantID string) ([]model.TenantFeatureFlag, error) {
+func (t *TenantFeatureFlagManager) List(tenantID string) ([]model.TenantFeatureFlag, error) {
 	tenant, err := t.tenantRepo.GetByID(tenantID)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (t *TenantFeatureFlagger) GetFeatureFlags(tenantID string) ([]model.TenantF
 	return tenant.FeatureFlags, nil
 }
 
-func (t *TenantFeatureFlagger) AvailableRoles(tenantID string) ([]*model.Role, error) {
+func (t *TenantFeatureFlagManager) AvailableRoles(tenantID string) ([]*model.Role, error) {
 	tenant, err := t.tenantRepo.GetByID(tenantID)
 	if err != nil {
 		return nil, err
@@ -44,12 +44,12 @@ func (t *TenantFeatureFlagger) AvailableRoles(tenantID string) ([]*model.Role, e
 		featureFlagsMap[ff.Name] = struct{}{}
 	}
 
-	available := make([]*model.Role, 0)
+	roles := make([]*model.Role, 0)
 
 	err = t.roleRepo.Iter(func(role *model.Role) (bool, error) {
 		for _, rf := range role.RequireOneOfFeatureFlags {
 			if _, ok := featureFlagsMap[rf]; ok {
-				available = append(available, role)
+				roles = append(roles, role)
 				break
 			}
 		}
@@ -60,10 +60,10 @@ func (t *TenantFeatureFlagger) AvailableRoles(tenantID string) ([]*model.Role, e
 		return nil, err
 	}
 
-	return available, nil
+	return roles, nil
 }
 
-func (t *TenantFeatureFlagger) SetFlagToTenant(tenantID string, featureFlag model.TenantFeatureFlag) (*model.Tenant, error) {
+func (t *TenantFeatureFlagManager) Add(tenantID string, featureFlag model.TenantFeatureFlag) (*model.Tenant, error) {
 	_, err := t.ffRepo.Get(featureFlag.Name)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (t *TenantFeatureFlagger) SetFlagToTenant(tenantID string, featureFlag mode
 	return tenant, t.tenantRepo.Update(tenant)
 }
 
-func (t *TenantFeatureFlagger) RemoveFlagFromTenant(tenantID string, featureFlagName string) (*model.Tenant, error) {
+func (t *TenantFeatureFlagManager) Delete(tenantID string, featureFlagName string) (*model.Tenant, error) {
 	ff, err := t.ffRepo.Get(featureFlagName)
 	if err != nil {
 		return nil, err
@@ -112,18 +112,21 @@ func (t *TenantFeatureFlagger) RemoveFlagFromTenant(tenantID string, featureFlag
 	return tenant, nil
 }
 
-// ProjectFeatureFlagger manager feature flags for projects
-type ProjectFeatureFlagger struct {
+// ProjectFeatureFlagManager manages feature flags for projects
+type ProjectFeatureFlagManager struct {
 	ffRepo      *model.FeatureFlagRepository
 	projectRepo *model.ProjectRepository
 }
 
 // Feature flag for projects
-func NewProjectFeatureFlagger(tx *io.MemoryStoreTxn) *ProjectFeatureFlagger {
-	return &ProjectFeatureFlagger{model.NewFeatureFlagRepository(tx), model.NewProjectRepository(tx)}
+func ProjectFeatureFlags(tx *io.MemoryStoreTxn) *ProjectFeatureFlagManager {
+	return &ProjectFeatureFlagManager{
+		ffRepo:      model.NewFeatureFlagRepository(tx),
+		projectRepo: model.NewProjectRepository(tx),
+	}
 }
 
-func (t *ProjectFeatureFlagger) SetFlagToProject(tenantID, projectID string, featureFlag model.FeatureFlag) (*model.Project, error) {
+func (t *ProjectFeatureFlagManager) Add(tenantID, projectID string, featureFlag model.FeatureFlag) (*model.Project, error) {
 	_, err := t.ffRepo.Get(featureFlag.Name)
 	if err != nil {
 		return nil, err
@@ -148,7 +151,7 @@ func (t *ProjectFeatureFlagger) SetFlagToProject(tenantID, projectID string, fea
 	return project, t.projectRepo.Update(project)
 }
 
-func (t *ProjectFeatureFlagger) RemoveFlagFromProject(tenantID, projectID string, featureFlagName string) (*model.Project, error) {
+func (t *ProjectFeatureFlagManager) Delete(tenantID, projectID string, featureFlagName string) (*model.Project, error) {
 	ff, err := t.ffRepo.Get(featureFlagName)
 	if err != nil {
 		return nil, err
