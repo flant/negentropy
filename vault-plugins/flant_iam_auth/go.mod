@@ -3,6 +3,7 @@ module github.com/flant/negentropy/vault-plugins/flant_iam_auth
 go 1.16
 
 require (
+	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/confluentinc/confluent-kafka-go v1.6.1
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
@@ -22,6 +23,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gotest.tools v2.2.0+incompatible
+	k8s.io/apimachinery v0.21.2
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared

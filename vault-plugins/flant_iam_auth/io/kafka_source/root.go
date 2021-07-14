@@ -14,7 +14,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/handlers/iam"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
@@ -89,8 +89,17 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 	// TODO: need huge switch-case here, with object Unmarshaling
 	var inputObject interface{}
 	switch splitted[0] {
-	case model.UserType:
-		inputObject = &model.User{}
+	case iam_model.UserType:
+		inputObject = &iam_model.User{}
+
+	case iam_model.TenantType:
+		inputObject = &iam_model.Tenant{}
+
+	case iam_model.ProjectType:
+		inputObject = &iam_model.Project{}
+
+	case iam_model.ServerType:
+		inputObject = &iam_model.Server{}
 
 	default:
 		return errors.New("is not implemented yet")

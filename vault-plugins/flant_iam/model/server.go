@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -12,7 +13,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
 const (
@@ -79,7 +79,8 @@ func ServerSchema() *memdb.DBSchema {
 					"tenant_project": {
 						Name: "tenant_project",
 						Indexer: &memdb.CompoundIndex{
-							Indexes: tenantProjectMultiIndexer},
+							Indexes: tenantProjectMultiIndexer,
+						},
 					},
 				},
 			},
@@ -108,13 +109,14 @@ func (u *Server) ObjId() string {
 	return u.UUID
 }
 
-func (u *Server) Marshal(_ bool) ([]byte, error) {
-	return jsonutil.EncodeJSON(u)
-}
+func (u *Server) AsMap() map[string]interface{} {
+	var res map[string]interface{}
 
-func (u *Server) Unmarshal(data []byte) error {
-	err := jsonutil.DecodeJSON(data, u)
-	return err
+	data, _ := json.Marshal(u)
+
+	_ = json.Unmarshal(data, &res)
+
+	return res
 }
 
 type ServerRepository struct {
@@ -167,7 +169,7 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		return err
 	}
 	if rawServer != nil {
-		return fmt.Errorf("server with identifier %q already exists")
+		return fmt.Errorf("server with identifier %q already exists", server.Identifier)
 	}
 
 	group, err = r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", server.Identifier), tenant)
@@ -364,20 +366,37 @@ func (r *ServerRepository) Delete(id string) error {
 	return r.db.Delete(ServerType, server)
 }
 
-func (r *ServerRepository) List(tenantID, projectID string) ([]string, error) {
-	iter, err := r.db.Get(ServerType, "tenant_project", tenantID, projectID)
+func (r *ServerRepository) List(tenantID, projectID string) ([]*Server, error) {
+	var (
+		iter memdb.ResultIterator
+		err  error
+	)
+
+	switch {
+	case tenantID != "" && projectID != "":
+		iter, err = r.db.Get(ServerType, "tenant_project", tenantID, projectID)
+
+	case tenantID != "":
+		iter, err = r.db.Get(ServerType, TenantForeignPK, tenantID)
+
+	case projectID != "":
+		iter, err = r.db.Get(ServerType, ProjectForeignPK, projectID)
+
+	default:
+		iter, err = r.db.Get(ServerType, PK)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	ids := make([]*Server, 0)
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
 		u := raw.(*Server)
-		ids = append(ids, u.UUID)
+		ids = append(ids, u)
 	}
 	return ids, nil
 }
