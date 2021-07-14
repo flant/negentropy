@@ -211,11 +211,15 @@ func (ms *MemoryStore) SetLogger(l log.Logger) {
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
-	ms.RemoveKafkaSource(s.Name())
+	name := s.Name()
+	ms.logger.Debug(fmt.Sprintf("Add kafka source '%s'", s.Name()))
+	ms.RemoveKafkaSource(name)
 
 	ms.kafkaMutex.Lock()
 	ms.kafkaSources = append(ms.kafkaSources, s)
-	ms.kafkaMapSources[s.Name()] = s
+	if name != "" {
+		ms.kafkaMapSources[name] = s
+	}
 	ms.kafkaMutex.Unlock()
 
 	if ms.kafkaConnection.Configured() {
@@ -225,12 +229,21 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 
 func (ms *MemoryStore) ReinitializeKafka() {
 	ms.kafkaMutex.RLock()
+	// need sync restore before kafka sources rewatch
+	ms.logger.Debug("Call reinitialize kafka")
+	defer ms.logger.Debug("Kafka reinitialized")
+	ms.Restore() // nolint: errcheck
 	for _, s := range ms.kafkaSources {
+		name := s.Name()
+		if name == "" {
+			ms.logger.Debug("Reinitialize with empty name")
+		} else {
+			ms.kafkaMapSources[name] = s
+		}
+		ms.logger.Debug(fmt.Sprintf("Reinitialize source %s", name))
 		go s.Run(ms)
 	}
 	ms.kafkaMutex.RUnlock()
-	// TODO: maybe we dont need it here or need to stop previous
-	go ms.Restore() // nolint: errcheck
 }
 
 func (ms *MemoryStore) AddKafkaDestination(s KafkaDestination) {
