@@ -77,11 +77,13 @@ func (h *ObjectHandler) HandleAuthSource(source *model.AuthSource) error {
 }
 
 func (h *ObjectHandler) HandleEntity(entity *model.Entity) error {
-	return h.processActions(h.downstream.ProcessEntity(h.memStore, h.txn, entity))
+	// return h.processActions(h.downstream.ProcessEntity(h.memStore, h.txn, entity))
+	return nil
 }
 
 func (h *ObjectHandler) HandleEntityAlias(entityAlias *model.EntityAlias) error {
-	return h.processActions(h.downstream.ProcessEntityAlias(h.memStore, h.txn, entityAlias))
+	// return h.processActions(h.downstream.ProcessEntityAlias(h.memStore, h.txn, entityAlias))
+	return nil
 }
 
 func (h *ObjectHandler) DeletedAuthSource(uuid string) error {
