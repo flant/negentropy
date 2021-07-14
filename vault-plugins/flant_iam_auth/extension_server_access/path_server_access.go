@@ -10,13 +10,12 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
-
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -271,11 +270,14 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 			warnings []string
 		)
 
-		if len(serverNames) > 0 {
+		switch {
+		case len(serverNames) > 0:
 			result, warnings, err = findSeversByNames(txn, serverNames, tenantID, projectID)
-		} else if labelSelector != "" {
+
+		case labelSelector != "":
 			result, err = findServersByLabels(txn, labelSelector, tenantID, projectID)
-		} else {
+
+		default:
 			result, err = findServers(txn, tenantID, projectID)
 		}
 		if err != nil {

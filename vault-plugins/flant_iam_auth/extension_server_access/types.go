@@ -81,7 +81,6 @@ func userToPosix(serverID, tenantID string, user *iam.User) (posixUser, error) {
 	pass, err := crypter.Generate([]byte(serverID), []byte("$6$"+lastPass.Salt))
 	if err != nil {
 		return posixUser{}, fmt.Errorf("password crypt failed (%s) for user: %s", err, user.FullIdentifier)
-
 	}
 
 	return newPosixUser(uid.(int), principal, name, homeDir, pass), nil
@@ -129,7 +128,6 @@ func saToPosix(serverID, tenantID string, sa *iam.ServiceAccount) (posixUser, er
 	pass, err := crypter.Generate([]byte(serverID), []byte("$6$"+lastPass.Salt))
 	if err != nil {
 		return posixUser{}, fmt.Errorf("password crypt failed (%s) for service account: %s", err, sa.FullIdentifier)
-
 	}
 
 	return newPosixUser(uid.(int), principal, name, homeDir, pass), nil
