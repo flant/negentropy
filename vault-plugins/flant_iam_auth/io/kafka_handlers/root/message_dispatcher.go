@@ -94,9 +94,10 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		return err
 	}
 
-	if entityHandler != nil {
-		return entityHandler()
-	}
+	// TODO revert after debug
+	//if entityHandler != nil {
+	//	return entityHandler()
+	//}
 
 	return nil
 }

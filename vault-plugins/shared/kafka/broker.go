@@ -221,7 +221,9 @@ func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocomm
 		"auto.offset.reset":  "earliest",
 		"enable.auto.commit": autocommit,
 		"isolation.level":    "read_committed",
+		"go.events.channel.enable": true,
 	})
+
 	if err != nil {
 		panic(err)
 	}

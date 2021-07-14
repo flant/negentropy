@@ -19,10 +19,10 @@ type ObjectHandler struct {
 	memStore   *io.MemoryStore
 	txn        *io.MemoryStoreTxn
 
-	loggerFactory func () hclog.Logger
+	logger hclog.Logger
 }
 
-func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vault.VaultEntityDownstreamApi, loggerFact func () hclog.Logger) *ObjectHandler {
+func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vault.VaultEntityDownstreamApi, logger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
 		eaRepo:     model.NewEntityAliasRepo(txn),
 		entityRepo: model.NewEntityRepo(txn),
@@ -31,12 +31,12 @@ func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vau
 		memStore:   memStore,
 		txn:        txn,
 		downstream: api,
-		loggerFactory: loggerFact,
+		logger:     logger,
 	}
 }
 
 func (h *ObjectHandler) HandleAuthSource(source *model.AuthSource) error {
-	l := h.loggerFactory()
+	l := h.logger
 	l.Debug("Handle auth source", source.Name)
 	err := h.usersRepo.Iter(func(user *iamrepos.User) (bool, error) {
 		l.Debug("Create new ea mem object for user an source", user.FullIdentifier, source.Name)
@@ -81,7 +81,7 @@ func (h *ObjectHandler) HandleEntityAlias(entityAlias *model.EntityAlias) error 
 }
 
 func (h *ObjectHandler) DeletedAuthSource(uuid string) error {
-	l := h.loggerFactory()
+	l := h.logger
 
 	l.Debug("Handle delete source", uuid)
 	err := h.eaRepo.GetBySource(uuid, func(alias *model.EntityAlias) (bool, error) {

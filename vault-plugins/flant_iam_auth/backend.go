@@ -80,28 +80,32 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 		return b.accessVaultController.APIClient()
 	}
 
+	iamAuthLogger := conf.Logger.Named("IamAuth")
+
 	mountAceessorGetter := vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth")
-	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, mountAceessorGetter, hclog.L)
+	clientLogger := iamAuthLogger.Named("VaultClient")
+	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, mountAceessorGetter, func() hclog.Logger {
+		return clientLogger
+	})
 
 	storage, err := sharedio.NewMemoryStore(schema, mb)
 	if err != nil {
 		return nil, err
 	}
-	storage.SetLogger(conf.Logger.Named("MemStorage"))
+	storage.SetLogger(iamAuthLogger.Named("MemStorage"))
 
-	loggerFactory := func() hclog.Logger{
-		return conf.Logger
-	}
-
+	selfSourceHandlerLogger := iamAuthLogger.Named("SelfSourceHandler")
 	selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler{
-		return self.NewObjectHandler(store, tx, entityApi, loggerFactory)
-	}
-	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler{
-		return root.NewObjectHandler(tx, hclog.L)
+		return self.NewObjectHandler(store, tx, entityApi, selfSourceHandlerLogger)
 	}
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, conf.Logger.Named("Kafka Source Self")))
-	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, conf.Logger.Named("Kafka Source Root")))
+	rootSourceHandlerLogger := iamAuthLogger.Named("RootSourceHandler")
+	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler{
+		return root.NewObjectHandler(tx, rootSourceHandlerLogger)
+	}
+
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, iamAuthLogger.Named("KafkaSourceSelf")))
+	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, iamAuthLogger.Named("KafkaSourceRoot")))
 
 	err = storage.Restore()
 	if err != nil {

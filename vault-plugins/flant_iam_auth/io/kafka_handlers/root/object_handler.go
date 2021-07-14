@@ -13,28 +13,28 @@ type ObjectHandler struct {
 	eaRepo         *model.EntityAliasRepo
 	authSourceRepo *repo.AuthSourceRepo
 
-	loggerFactory func() hclog.Logger
+	logger hclog.Logger
 }
 
-func NewObjectHandler(txn *io.MemoryStoreTxn, loggerFactory func() hclog.Logger) *ObjectHandler {
+func NewObjectHandler(txn *io.MemoryStoreTxn, logger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
 		entityRepo:     model.NewEntityRepo(txn),
 		eaRepo:         model.NewEntityAliasRepo(txn),
 		authSourceRepo: repo.NewAuthSourceRepo(txn),
-		loggerFactory: loggerFactory,
+		logger:         logger,
 	}
 }
 
 func (h *ObjectHandler) HandleUser(user *iam.User) error {
-	l := h.loggerFactory()
+	l := h.logger
 
 	l.Debug("Handle new user. Create entity object", user.FullIdentifier)
 	err := h.entityRepo.CreateForUser(user)
 	if err != nil {
 		return err
 	}
-
 	l.Debug("Entity object created for user", user.FullIdentifier)
+
 	err = h.authSourceRepo.Iter(func(source *model.AuthSource) (bool, error) {
 		l.Debug("Create entity alias for user and source", user.FullIdentifier, source.Name)
 		err := h.eaRepo.CreateForUser(user, source)

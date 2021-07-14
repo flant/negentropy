@@ -34,11 +34,10 @@ func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan str
 		case ev := <-c.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
-				logger.Error(fmt.Sprintf("%t recieve event", ev))
 				msgHandler(c, e)
 
 			default:
-				logger.Error(fmt.Sprintf("%t recieve not handled event", ev))
+				logger.Debug(fmt.Sprintf("Recieve not handled event %s", e.String()))
 			}
 		}
 	}
