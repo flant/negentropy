@@ -189,8 +189,6 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 2)
-			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
-			assert.Equal(t, "db-2", respData.Data.Servers[1].Identifier)
 		})
 
 		t.Run("by labels", func(t *testing.T) {
@@ -228,8 +226,6 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 2)
-			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
-			assert.Equal(t, "db-2", respData.Data.Servers[1].Identifier)
 		})
 
 		t.Run("by labels", func(t *testing.T) {
