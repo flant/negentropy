@@ -1,0 +1,10 @@
+{
+	"options": {
+		"test": "test2",
+		"test2": 3,
+		"test9": {
+			"test4": false,
+			"test5": []
+		}
+	}
+}
