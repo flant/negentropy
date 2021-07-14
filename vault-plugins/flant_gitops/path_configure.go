@@ -42,7 +42,7 @@ func configurePaths(b *backend) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				fieldNameGitRepoUrl: {
 					Type:        framework.TypeString,
-					Description: "Git repo URL",
+					Description: "Git repo URL. Required for CREATE, UPDATE.",
 				},
 				fieldNameGitBranch: {
 					Type:        framework.TypeString,
@@ -65,13 +65,14 @@ func configurePaths(b *backend) []*framework.Path {
 				},
 				fieldNameDockerImage: {
 					Type:        framework.TypeString,
-					Description: "Docker image name for the container in which the commands will be executed",
+					Description: "Docker image name for the container in which the commands will be executed. Required for CREATE, UPDATE.",
 				},
 				fieldNameCommands: {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Comma-separated list of commands to execute in Docker container. Can also be passed as a list of strings in JSON payload",
 				},
 			},
+
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
@@ -86,6 +87,9 @@ func configurePaths(b *backend) []*framework.Path {
 					Callback: b.pathConfigureDelete,
 				},
 			},
+
+			HelpSynopsis:    "TODO",
+			HelpDescription: "TODO",
 		},
 	}
 }
