@@ -13,16 +13,16 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 	return name + "@" + domain
 }
 
-type Groups struct {
+type GroupsService struct {
 	db *io.MemoryStoreTxn
 }
 
-func NewGroups(tx *io.MemoryStoreTxn) *Groups {
-	return &Groups{tx}
+func Groups(tx *io.MemoryStoreTxn) *GroupsService {
+	return &GroupsService{tx}
 }
 
-func (r *Groups) Create(group *model.Group) error {
-	tenant, err := model.NewTenantRepository(r.db).GetByID(group.TenantUUID)
+func (s *GroupsService) Create(group *model.Group) error {
+	tenant, err := model.NewTenantRepository(s.db).GetByID(group.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (r *Groups) Create(group *model.Group) error {
 	group.Version = model.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := NewSubjectsFetcher(r.db).Fetch(group.Subjects)
+	subj, err := NewSubjectsFetcher(s.db).Fetch(group.Subjects)
 	if err != nil {
 		return err
 	}
@@ -44,11 +44,11 @@ func (r *Groups) Create(group *model.Group) error {
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
 
-	return model.NewGroupRepository(r.db).Create(group)
+	return model.NewGroupRepository(s.db).Create(group)
 }
 
-func (r *Groups) Update(group *model.Group) error {
-	stored, err := model.NewGroupRepository(r.db).GetByID(group.UUID)
+func (s *GroupsService) Update(group *model.Group) error {
+	stored, err := model.NewGroupRepository(s.db).GetByID(group.UUID)
 	if err != nil {
 		return err
 	}
@@ -67,13 +67,13 @@ func (r *Groups) Update(group *model.Group) error {
 
 	// Update
 
-	tenant, err := model.NewTenantRepository(r.db).GetByID(group.TenantUUID)
+	tenant, err := model.NewTenantRepository(s.db).GetByID(group.TenantUUID)
 	if err != nil {
 		return err
 	}
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := NewSubjectsFetcher(r.db).Fetch(group.Subjects)
+	subj, err := NewSubjectsFetcher(s.db).Fetch(group.Subjects)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (r *Groups) Update(group *model.Group) error {
 		group.Extensions = stored.Extensions
 	}
 
-	return model.NewGroupRepository(r.db).Update(group)
+	return model.NewGroupRepository(s.db).Update(group)
 }
 
 /*
@@ -96,8 +96,8 @@ TODO Clean from everywhere:
 	* approvals
 	* identity_sharings
 */
-func (r *Groups) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
-	repo := model.NewGroupRepository(r.db)
+func (s *GroupsService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
+	repo := model.NewGroupRepository(s.db)
 	group, err := repo.GetByID(id)
 	if err != nil {
 		return err
@@ -108,14 +108,14 @@ func (r *Groups) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
 	return repo.Delete(id)
 }
 
-func (r *Groups) DeleteByTenant(tenantUUID model.TenantUUID) error {
+func (s *GroupsService) DeleteByTenant(tenantUUID model.TenantUUID) error {
 	// TODO clean from parent groups
-	_, err := r.db.DeleteAll(model.GroupType, model.TenantForeignPK, tenantUUID)
+	_, err := s.db.DeleteAll(model.GroupType, model.TenantForeignPK, tenantUUID)
 	return err
 }
 
-func (r *Groups) SetExtension(ext *model.Extension) error {
-	repo := model.NewGroupRepository(r.db)
+func (s *GroupsService) SetExtension(ext *model.Extension) error {
+	repo := model.NewGroupRepository(s.db)
 	obj, err := repo.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
@@ -127,8 +127,8 @@ func (r *Groups) SetExtension(ext *model.Extension) error {
 	return repo.Update(obj)
 }
 
-func (r *Groups) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID) error {
-	repo := model.NewGroupRepository(r.db)
+func (s *GroupsService) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID) error {
+	repo := model.NewGroupRepository(s.db)
 	obj, err := repo.GetByID(uuid)
 	if err != nil {
 		return err
