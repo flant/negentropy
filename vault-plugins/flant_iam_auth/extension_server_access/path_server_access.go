@@ -347,9 +347,18 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*mode
 	userRepo := model.NewUserRepository(tx)
 	saRepo := model.NewServiceAccountRepository(tx)
 
+	resUsers := make([]*model.User, 0)
+	resSa := make([]*model.ServiceAccount, 0)
+
 	uList, err := userRepo.List(tenantID)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	for _, user := range uList {
+		if _, ok := user.Extensions["server_access"]; ok {
+			resUsers = append(resUsers, user)
+		}
 	}
 
 	saList, err := saRepo.List(tenantID)
@@ -357,7 +366,13 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*mode
 		return nil, nil, err
 	}
 
-	return uList, saList, nil
+	for _, sa := range saList {
+		if _, ok := sa.Extensions["server_access"]; ok {
+			resSa = append(resSa, sa)
+		}
+	}
+
+	return resUsers, resSa, nil
 }
 
 func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]queryServer, error) {
