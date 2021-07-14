@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -151,9 +152,8 @@ func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model.NewTenantFeatureFlagRepository(tx)
 
-		available, err := repo.AvailableRoles(id)
+		available, err := usecase.NewTenantFeatureFlagger(tx).AvailableRoles(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

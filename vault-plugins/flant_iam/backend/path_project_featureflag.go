@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
@@ -64,9 +65,7 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewProjectFeatureFlagRepository(tx)
-
-		project, err := repo.SetFlagToProject(tenantID, projectID, tff)
+		project, err := usecase.NewProjectFeatureFlagger(tx).SetFlagToProject(tenantID, projectID, tff)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -93,9 +92,7 @@ func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewProjectFeatureFlagRepository(tx)
-
-		project, err := repo.RemoveFlagFromProject(tenantID, projectID, featureFlagName)
+		project, err := usecase.NewProjectFeatureFlagger(tx).RemoveFlagFromProject(tenantID, projectID, featureFlagName)
 		if err != nil {
 			return responseErr(req, err)
 		}
