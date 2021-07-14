@@ -19,7 +19,7 @@ function used_common_scripts_checksum() {
   echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}')
 }
 
-# Calculates cumulative checksum for base image.
+# Calculates cumulative checksum for the base image.
 function base_image_sources_checksum()
 {
   path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -45,11 +45,24 @@ function vault_plugins_checksum()
   echo "$( cd "$path"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )"
 }
 
-# Calculates cumulative checksum for current image.
+# Outputs checksum of the current image directory.
+function current_image_directory_checksum()
+{
+  echo "$( cd "$SCRIPT_PATH"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )"
+}
+
+# Outputs checksum for variables values used to build the current image.
+function packer_variables_checksum()
+{
+  echo "$(packer inspect -var-file="$SCRIPT_PATH"/../../../variables.pkrvars.hcl -var 'image_sources_checksum=checksum' "$SCRIPT_PATH"/build.pkr.hcl | grep -E '^(var|local)' | sort | sha1sum | awk '{print $1}')"
+}
+
+# Calculates cumulative checksum for the current image.
 function image_sources_checksum()
 {
   dir_name=${SCRIPT_PATH##*/}
-  checksums=("$( cd "$SCRIPT_PATH"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )")
+  checksums=("$(current_image_directory_checksum)")
+  checksums+=("$(packer_variables_checksum)")
   # If we building outside of common directory we need to add base image sources checksum
   # to rebuilt image if base image changed.
   if [[ "$SCRIPT_PATH" != *"infra/common/packer"* ]]; then
@@ -68,7 +81,7 @@ function image_sources_checksum()
   echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}' | head -c8)
 }
 
-# Outputs resulting image name for current image.
+# Outputs resulting image name for the current image.
 function image_name()
 {
     echo "$(packer inspect -var-file="$SCRIPT_PATH"/../../../variables.pkrvars.hcl -var 'image_sources_checksum='"$(image_sources_checksum)"'' "$SCRIPT_PATH"/build.pkr.hcl | grep local.image_name | awk -F' ' '{ print $2 }' | tr -d '"')"
