@@ -40,7 +40,7 @@ type RoleBindingsInformer interface {
 	FindDirectRoleBindingsForTenantServiceAccount(TenantUUID, ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantGroups(TenantUUID, ...GroupUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantProject(TenantUUID, ProjectUUID) (map[RoleBindingUUID]struct{}, error)
-	FindDirectRoleBindingsForRoles(TenantUUID, ...RoleName) (map[RoleBindingUUID]struct{}, error)
+	FindDirectRoleBindingsForRoles(TenantUUID, ...RoleName) (map[RoleBindingUUID]*RoleBinding, error)
 }
 
 type roleResolver struct {
@@ -60,7 +60,7 @@ func (r *roleResolver) IsServiceAccountSharedWith(TenantUUID) (bool, error) {
 }
 
 func (r *roleResolver) collectAllRolesAndRoleBindings(tenantUUID TenantUUID,
-	roleName RoleName) (map[RoleName]struct{}, map[RoleBindingUUID]struct{}, error) {
+	roleName RoleName) (map[RoleName]struct{}, map[RoleBindingUUID]*RoleBinding, error) {
 	roleNames, err := r.ri.FindAllIncludingRoles(roleName)
 	if err != nil {
 		return nil, nil, err

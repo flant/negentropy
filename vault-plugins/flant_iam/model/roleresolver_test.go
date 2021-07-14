@@ -16,12 +16,12 @@ func Test_collectAllRolesAndRoleBindings(t *testing.T) {
 	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(tenantUUID1, roleName1)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{"roleName1": {}, "roleName3": {}, "roleName4": {}, "roleName5": {}}, roles)
+	checkDeepEqual(t, map[string]struct{}{roleName1: {}, roleName3: {}, roleName4: {}, roleName5: {}}, roles)
 	checkDeepEqual(t, map[string]struct{}{
 		rbUUID1: {},
 		rbUUID3: {},
 		rbUUID5: {},
-	}, roleBindings)
+	}, roleBindingsUUIDsFromMap(roleBindings))
 }
 
 func Test_collectAllRoleBindingsForUser(t *testing.T) {

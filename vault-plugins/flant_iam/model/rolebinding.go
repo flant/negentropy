@@ -463,26 +463,26 @@ func (roleInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byt
 	return true, result, nil
 }
 
-func (r *RoleBindingRepository) findDirectRoleBindingsForRole(tenantUUID TenantUUID, role RoleName) (map[RoleBindingUUID]struct{}, error) {
+func (r *RoleBindingRepository) findDirectRoleBindingsForRole(tenantUUID TenantUUID, role RoleName) (map[RoleBindingUUID]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, RoleInTenantRoleBindingIndex, tenantUUID, role)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindingUUIDs(iter)
+	return extractRoleBindings(iter)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(tenantUUID TenantUUID, roles ...RoleName) (map[RoleBindingUUID]struct{}, error) {
-	uuids := map[RoleBindingUUID]struct{}{}
+func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(tenantUUID TenantUUID, roles ...RoleName) (map[RoleBindingUUID]*RoleBinding, error) {
+	roleBindings := map[RoleBindingUUID]*RoleBinding{}
 	for _, role := range roles {
-		partUUIDs, err := r.findDirectRoleBindingsForRole(tenantUUID, role)
+		partRoleBindings, err := r.findDirectRoleBindingsForRole(tenantUUID, role)
 		if err != nil {
 			return nil, err
 		}
-		for uuid := range partUUIDs {
-			if _, found := uuids[uuid]; !found {
-				uuids[uuid] = struct{}{}
+		for uuid, rb := range partRoleBindings {
+			if _, found := roleBindings[uuid]; !found {
+				roleBindings[uuid] = rb
 			}
 		}
 	}
-	return uuids, nil
+	return roleBindings, nil
 }
