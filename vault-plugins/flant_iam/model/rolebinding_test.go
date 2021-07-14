@@ -374,8 +374,8 @@ func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
 		roleBindingFixture).Txn(true)
 	repo := NewRoleBindingRepository(tx)
 
-	rbsSet, err := repo.FindDirectRoleBindingsForTenantProject(tenantUUID1, projectUUID3)
+	rbsMap, err := repo.FindDirectRoleBindingsForTenantProject(tenantUUID1, projectUUID3)
 
 	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}, rbUUID5: {}}, rbsSet)
+	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID4: {}, rbUUID5: {}}, roleBindingsUUIDsFromMap(rbsMap))
 }

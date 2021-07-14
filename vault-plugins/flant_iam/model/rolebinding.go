@@ -365,23 +365,8 @@ func extractRoleBindings(iter memdb.ResultIterator) (map[RoleBindingUUID]*RoleBi
 	return rbs, nil
 }
 
-func extractRoleBindingUUIDs(iter memdb.ResultIterator) (map[RoleBindingUUID]struct{}, error) {
-	uuids := map[RoleBindingUUID]struct{}{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		rb, ok := raw.(*RoleBinding)
-		if !ok {
-			return nil, fmt.Errorf("need type RoleBindig, actually passed: %#v", raw)
-		}
-		uuids[rb.UUID] = struct{}{}
-	}
-	return uuids, nil
-}
-
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantUser(tenantUUID TenantUUID, userUUID UserUUID) (map[RoleBindingUUID]*RoleBinding, error) {
+func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantUser(tenantUUID TenantUUID,
+	userUUID UserUUID) (map[RoleBindingUUID]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, UserInTenantRoleBindingIndex, tenantUUID, userUUID)
 	if err != nil {
 		return nil, err
@@ -389,7 +374,8 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantUser(tenantUUID T
 	return extractRoleBindings(iter)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantServiceAccount(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error) {
+func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantServiceAccount(tenantUUID TenantUUID,
+	serviceAccountUUID ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, ServiceAccountInTenantRoleBindingIndex, tenantUUID, serviceAccountUUID)
 	if err != nil {
 		return nil, err
@@ -397,7 +383,8 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantServiceAccount(te
 	return extractRoleBindings(iter)
 }
 
-func (r *RoleBindingRepository) findDirectRoleBindingsForTenantGroup(tenantUUID TenantUUID, groupUUID GroupUUID) (map[RoleBindingUUID]*RoleBinding, error) {
+func (r *RoleBindingRepository) findDirectRoleBindingsForTenantGroup(tenantUUID TenantUUID, groupUUID GroupUUID) (
+	map[RoleBindingUUID]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, GroupInTenantRoleBindingIndex, tenantUUID, groupUUID)
 	if err != nil {
 		return nil, err
@@ -405,7 +392,8 @@ func (r *RoleBindingRepository) findDirectRoleBindingsForTenantGroup(tenantUUID 
 	return extractRoleBindings(iter)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantGroups(tenantUUID TenantUUID, groupUUIDs ...GroupUUID) (map[RoleBindingUUID]*RoleBinding, error) {
+func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantGroups(tenantUUID TenantUUID, groupUUIDs ...GroupUUID) (
+	map[RoleBindingUUID]*RoleBinding, error) {
 	rbs := map[RoleBindingUUID]*RoleBinding{}
 	for _, groupUUID := range groupUUIDs {
 		partRBs, err := r.findDirectRoleBindingsForTenantGroup(tenantUUID, groupUUID)
@@ -421,12 +409,13 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantGroups(tenantUUID
 	return rbs, nil
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantProject(tenantUUID TenantUUID, projectUUID ProjectUUID) (map[RoleBindingUUID]struct{}, error) {
+func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantProject(tenantUUID TenantUUID, projectUUID ProjectUUID) (
+	map[RoleBindingUUID]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, ProjectInTenantRoleBindingIndex, tenantUUID, projectUUID)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindingUUIDs(iter)
+	return extractRoleBindings(iter)
 }
 
 type roleInTenantRoleBindingIndexer struct{}

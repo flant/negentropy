@@ -39,7 +39,7 @@ type RoleBindingsInformer interface {
 	FindDirectRoleBindingsForTenantUser(TenantUUID, UserUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantServiceAccount(TenantUUID, ServiceAccountUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForTenantGroups(TenantUUID, ...GroupUUID) (map[RoleBindingUUID]*RoleBinding, error)
-	FindDirectRoleBindingsForTenantProject(TenantUUID, ProjectUUID) (map[RoleBindingUUID]struct{}, error)
+	FindDirectRoleBindingsForTenantProject(TenantUUID, ProjectUUID) (map[RoleBindingUUID]*RoleBinding, error)
 	FindDirectRoleBindingsForRoles(TenantUUID, ...RoleName) (map[RoleBindingUUID]*RoleBinding, error)
 }
 
