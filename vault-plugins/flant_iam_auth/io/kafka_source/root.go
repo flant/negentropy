@@ -26,7 +26,7 @@ type RootKafkaSource struct {
 
 	stopC chan struct{}
 
-	logger hclog.Logger
+	logger            hclog.Logger
 	msgHandlerFactory RootSourceMsgHandlerFactory
 }
 
@@ -35,8 +35,8 @@ func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSou
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
-		stopC: make(chan struct{}),
-		logger: logger,
+		stopC:             make(chan struct{}),
+		logger:            logger,
 		msgHandlerFactory: msgHandlerFactory,
 	}
 }
@@ -118,7 +118,7 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 	rk.logger.Debug("Watcher - start", "root_topic", rootTopic, "replica_name", replicaName)
 	defer rk.logger.Debug("Watcher - stop", "root_topic", rootTopic, "replica_name", replicaName)
 
-	//groupId := fmt.Sprintf("run-%s", replicaName)
+	// groupId := fmt.Sprintf("run-%s", replicaName)
 	groupId := replicaName
 
 	rd := rk.kf.GetConsumer(groupId, rootTopic, false)

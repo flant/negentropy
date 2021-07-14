@@ -2,6 +2,7 @@ package configure
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/gomega"
 )
@@ -12,16 +13,18 @@ path "*" {
 }
 `
 
-const goodPolicyName = "good"
-const goodRoleName = goodPolicyName
+const (
+	goodPolicyName = "good"
+	goodRoleName = goodPolicyName
+)
 
 type GoodAppRole struct {
-	Name string
+	Name     string
 	SecretId string
-	ID string
+	ID       string
 }
 
-func GetClient(token string) *api.Client{
+func GetClient(token string) *api.Client {
 	cl, err := api.NewClient(api.DefaultConfig())
 	Expect(err).To(BeNil())
 
@@ -32,7 +35,7 @@ func GetClient(token string) *api.Client{
 	return cl
 }
 
-func CreateGoodRole(token string) *GoodAppRole{
+func CreateGoodRole(token string) *GoodAppRole {
 	cl := GetClient(token)
 
 	policyFromServer, err := cl.Sys().GetPolicy(goodPolicyName)
@@ -51,15 +54,15 @@ func CreateGoodRole(token string) *GoodAppRole{
 	Expect(err).To(BeNil())
 	if roleFromServer == nil {
 		res, err := cl.Logical().Write(appRolePath, map[string]interface{}{
-			"secret_id_ttl": "30m",
-			"token_ttl": "25m",
+			"secret_id_ttl":  "30m",
+			"token_ttl":      "25m",
 			"token_policies": []string{goodPolicyName},
 		})
 		Expect(err).To(BeNil())
 		Expect(res).To(BeNil())
 	}
 
-	secretIdData, err := cl.Logical().Write(appRolePath + "/secret-id", nil)
+	secretIdData, err := cl.Logical().Write(appRolePath+"/secret-id", nil)
 	Expect(err).To(BeNil())
 
 	roleIdData, err := cl.Logical().Read(appRolePath + "/role-id")
@@ -67,30 +70,30 @@ func CreateGoodRole(token string) *GoodAppRole{
 	Expect(roleIdData).ToNot(BeNil())
 
 	return &GoodAppRole{
-		Name: goodRoleName,
+		Name:     goodRoleName,
 		SecretId: secretIdData.Data["secret_id"].(string),
-		ID: roleIdData.Data["role_id"].(string),
+		ID:       roleIdData.Data["role_id"].(string),
 	}
 }
 
 func ConfigureVaultAccess(token, pluginPath string, appRole *GoodAppRole) {
 	cl := GetClient(token)
 
-	_, err := cl.Logical().Write(pluginPath + "/configure_vault_access", map[string]interface{}{
-		"vault_addr": "http://127.0.0.1:8200",
+	_, err := cl.Logical().Write(pluginPath+"/configure_vault_access", map[string]interface{}{
+		"vault_addr":            "http://127.0.0.1:8200",
 		"vault_tls_server_name": "vault_host",
-		"role_name": appRole.Name,
-		"secret_id_ttl": "30m",
-		"approle_mount_point": "/auth/approle/",
-		"secret_id": appRole.SecretId,
-		"role_id": appRole.ID,
-		"vault_api_ca": "",
+		"role_name":             appRole.Name,
+		"secret_id_ttl":         "30m",
+		"approle_mount_point":   "/auth/approle/",
+		"secret_id":             appRole.SecretId,
+		"role_id":               appRole.ID,
+		"vault_api_ca":          "",
 	})
 
 	Expect(err).To(BeNil())
 }
 
-func EnableAuthPlugin(plugin, path, token string){
+func EnableAuthPlugin(plugin, path, token string) {
 	cl := GetClient(token)
 	err := cl.Sys().EnableAuthWithOptions(path, &api.EnableAuthOptions{
 		Type: plugin,

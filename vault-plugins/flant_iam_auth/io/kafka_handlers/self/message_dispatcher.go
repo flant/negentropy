@@ -87,9 +87,7 @@ func HandleNewMessageSelfSource(txn *io.MemoryStoreTxn, handler ModelHandler, ms
 	}
 
 	if entityHandler != nil {
-		return nil
-		// TODO revert after debug
-		// return entityHandler()
+		return entityHandler()
 	}
 
 	return nil

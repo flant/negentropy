@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fmt"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"

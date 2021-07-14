@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"sync"
 
 	"github.com/hashicorp/cap/jwt"
@@ -18,13 +16,15 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
-	openapi "github.com/flant/negentropy/vault-plugins/shared/openapi"
+	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
 // Factory is used by framework
@@ -95,12 +95,12 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	storage.SetLogger(iamAuthLogger.Named("MemStorage"))
 
 	selfSourceHandlerLogger := iamAuthLogger.Named("SelfSourceHandler")
-	selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler{
+	selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler {
 		return self.NewObjectHandler(store, tx, entityApi, selfSourceHandlerLogger)
 	}
 
 	rootSourceHandlerLogger := iamAuthLogger.Named("RootSourceHandler")
-	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler{
+	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler {
 		return root.NewObjectHandler(tx, rootSourceHandlerLogger)
 	}
 

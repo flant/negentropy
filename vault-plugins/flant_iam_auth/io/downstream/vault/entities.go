@@ -23,14 +23,14 @@ func backOffSettings() backoff.BackOff {
 type VaultEntityDownstreamApi struct {
 	getClient           io.BackoffClientGetter
 	mountAccessorGetter *MountAccessorGetter
-	loggerFactory func() log.Logger
+	loggerFactory       func() log.Logger
 }
 
 func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, loggerFactory func() log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
 		getClient:           getClient,
 		mountAccessorGetter: mountAccessorGetter,
-		loggerFactory: loggerFactory,
+		loggerFactory:       loggerFactory,
 	}
 }
 

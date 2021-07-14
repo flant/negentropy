@@ -24,16 +24,16 @@ type SelfKafkaSource struct {
 	decryptor *sharedkafka.Encrypter
 
 	handlerFactory SelfSourceMsgHandlerFactory
-	logger hclog.Logger
+	logger         hclog.Logger
 
 	stopC chan struct{}
 }
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, logger hclog.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
-		kf:        kf,
-		decryptor: sharedkafka.NewEncrypter(),
-		handlerFactory:       handlerFactory,
+		kf:             kf,
+		decryptor:      sharedkafka.NewEncrypter(),
+		handlerFactory: handlerFactory,
 
 		stopC: make(chan struct{}),
 
@@ -47,14 +47,13 @@ func (sks *SelfKafkaSource) Name() string {
 
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
-	sks.logger.Debug("Restore - start",  "replica name", replicaName)
-	defer sks.logger.Debug("Restore - end",  "replica name", replicaName)
-
+	sks.logger.Debug("Restore - start", "replica name", replicaName)
+	defer sks.logger.Debug("Restore - end", "replica name", replicaName)
 
 	r := sks.kf.GetRestorationReader(sks.kf.PluginConfig.SelfTopicName)
 	defer r.Close()
 
-	//groupId := fmt.Sprintf("restore-%s", replicaName)
+	// groupId := fmt.Sprintf("restore-%s", replicaName)
 	groupId := replicaName
 	runConsumer := sks.kf.GetConsumer(groupId, replicaName, false)
 	defer runConsumer.Close()
@@ -87,7 +86,7 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 		}
 	}
 
-	sks.logger.Debug("Restore - Start decrypt message", "msg",  msg.Value)
+	sks.logger.Debug("Restore - Start decrypt message", "msg", msg.Value)
 	decrypted, err := sks.decryptData(msg.Value, chunked)
 	if err != nil {
 		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
@@ -152,8 +151,8 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 
 		decrypted, err := sks.decryptData(msg.Value, chunked)
 		if err != nil {
-			    sks.logger.Debug(fmt.Sprintf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
-					msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
+			sks.logger.Debug(fmt.Sprintf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
+				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
 

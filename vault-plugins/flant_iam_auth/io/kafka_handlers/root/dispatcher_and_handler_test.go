@@ -3,10 +3,10 @@ package root
 import (
 	"crypto"
 	"fmt"
-	"github.com/hashicorp/go-hclog"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"

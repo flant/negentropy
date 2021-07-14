@@ -54,14 +54,14 @@ var _ = Describe("Creating entity and entity aliases", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entity).ToNot(BeNil())
 
-		//for _, s := range sources {
+		// for _, s := range sources {
 		//	eaName := s.ExpectedEaName(&user)
 		//	if eaName != "" {
 		//		aliasId, err := identityApi.AliasApi().FindAliasIDByName(eaName, "flant_iam_auth")
 		//		Expect(err).ToNot(HaveOccurred())
 		//		Expect(aliasId).ToNot(BeEmpty())
 		//	}
-		//}
+		// }
 
 	})
 

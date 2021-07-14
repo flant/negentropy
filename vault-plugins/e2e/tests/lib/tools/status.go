@@ -27,6 +27,5 @@ func ExpectStatus(condition string) func(response *http.Response) {
 
 			Expect(tv.Value.String()).To(Equal("true"))
 		})
-
 	}
 }
