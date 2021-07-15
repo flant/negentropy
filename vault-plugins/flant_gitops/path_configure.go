@@ -27,7 +27,7 @@ const (
 
 type configuration struct {
 	GitRepoUrl                                 string        `structs:"git_repo_url" json:"git_repo_url"`
-	GitBranch                                  string        `structs:"git_branch" json:"git_branch"`
+	GitBranch                                  string        `structs:"git_branch_name" json:"git_branch_name"`
 	GitPollPeriod                              time.Duration `structs:"git_poll_period" json:"git_poll_period"`
 	RequiredNumberOfVerifiedSignaturesOnCommit int           `structs:"required_number_of_verified_signatures_on_commit" json:"required_number_of_verified_signatures_on_commit"`
 	InitialLastSuccessfulCommit                string        `structs:"initial_last_successful_commit" json:"initial_last_successful_commit"`
@@ -115,6 +115,9 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 		return logical.ErrorResponse("%q field is invalid: %s", fieldNameDockerImage, err), nil
 	}
 
+	if config.GitRepoUrl == "" {
+		return logical.ErrorResponse("%q field value should not be empty", fieldNameGitRepoUrl), nil
+	}
 	if _, err := transport.NewEndpoint(config.GitRepoUrl); err != nil {
 		return logical.ErrorResponse("%q field is invalid: %s", fieldNameGitRepoUrl, err), nil
 	}
@@ -142,10 +145,7 @@ func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _
 		return nil, nil
 	}
 
-	data := structs.Map(config)
-	data[fieldNameGitPollPeriod] = config.GitPollPeriod.Seconds()
-
-	return &logical.Response{Data: data}, nil
+	return &logical.Response{Data: configurationStructToMap(config)}, nil
 }
 
 func (b *backend) pathConfigureDelete(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
@@ -190,6 +190,13 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*configurat
 
 func deleteConfiguration(ctx context.Context, storage logical.Storage) error {
 	return storage.Delete(ctx, storageKeyConfiguration)
+}
+
+func configurationStructToMap(config *configuration) map[string]interface{} {
+	data := structs.Map(config)
+	data[fieldNameGitPollPeriod] = config.GitPollPeriod.Seconds()
+
+	return data
 }
 
 const (

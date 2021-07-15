@@ -144,7 +144,7 @@ func (b *backend) pathConfigureVaultRequestCreateOrUpdate(ctx context.Context, r
 func (b *backend) pathConfigureVaultRequestRead(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	vaultRequestName := fields.Get(fieldNameVaultRequestName).(string)
 
-	b.Logger().Debug("Getting %q Vault request configuration...", vaultRequestName)
+	b.Logger().Debug(fmt.Sprintf("Getting %q Vault request configuration...", vaultRequestName))
 
 	vaultRequest, err := getVaultRequest(ctx, req.Storage, vaultRequestName)
 	if err != nil {
@@ -185,7 +185,7 @@ func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logica
 func (b *backend) pathConfigureVaultRequestDelete(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	vaultRequestName := fields.Get(fieldNameVaultRequestName).(string)
 
-	b.Logger().Debug("Deleting %q Vault request configuration...", vaultRequestName)
+	b.Logger().Debug(fmt.Sprintf("Deleting %q Vault request configuration...", vaultRequestName))
 
 	if err := deleteVaultRequest(ctx, req.Storage, vaultRequestName); err != nil {
 		return logical.ErrorResponse("Unable to delete %q Vault request: %s", vaultRequestName, err), nil

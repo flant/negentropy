@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/werf/vault-plugin-secrets-trdl/pkg/git"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
@@ -16,7 +17,7 @@ import (
 
 type backend struct {
 	*framework.Backend
-	TasksManager          tasks_manager.Interface
+	TasksManager          *tasks_manager.Manager
 	AccessVaultController *client.VaultClientController
 
 	LastPeriodicTaskUUID string
@@ -56,7 +57,7 @@ func newBackend() (*backend, error) {
 				return err
 			}
 
-			if err := b.TasksManager.PeriodicTask(ctx, req); err != nil {
+			if err := b.TasksManager.PeriodicFunc(ctx, req); err != nil {
 				return err
 			}
 
@@ -69,9 +70,9 @@ func newBackend() (*backend, error) {
 
 		Paths: framework.PathAppend(
 			configurePaths(b),
-			configureGitCredentialPaths(b),
 			configureVaultRequestPaths(b),
 			b.TasksManager.Paths(),
+			git.CredentialsPaths(),
 			pgp.Paths(),
 			[]*framework.Path{
 				client.PathConfigure(b.AccessVaultController),
