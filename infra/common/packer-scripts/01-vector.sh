@@ -16,6 +16,7 @@ addgroup vector && \
 adduser -S -G vector vector
 setcap cap_dac_override=+eip /bin/vector
 
+# todo: add sources for nginx
 cat <<'EOF' > /etc/vector.toml.tpl
 [sources.syslog]
 type = "file"
