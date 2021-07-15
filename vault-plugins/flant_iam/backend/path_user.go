@@ -547,7 +547,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -578,7 +578,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 		return nil, nil

@@ -67,10 +67,6 @@ func (b *serverBackend) paths() []*framework.Path {
 					Callback: b.handleRegister(),
 					Summary:  "Register server",
 				},
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRegister(),
-					Summary:  "Register server",
-				},
 			},
 		},
 		{
@@ -124,7 +120,6 @@ func (b *serverBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// TODO: label selector for lists?
 		{
 			Pattern: path.Join(
 				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "servers"),
@@ -213,8 +208,16 @@ func (b *serverBackend) paths() []*framework.Path {
 
 func (b *serverBackend) handleRegister() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// TODO: clarify use of getCreationID()
 		id := uuid.New()
+
+		if !liveConfig.isConfigured() {
+			err := errors.New("backend not yet configured")
+			return logical.ErrorResponse(err.Error()), err
+		}
+		config, err := liveConfig.GetServerAccessConfig(ctx, req.Storage)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), err
+		}
 
 		var (
 			labels      = make(map[string]string)
@@ -240,13 +243,13 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 		defer tx.Abort()
 		repo := model.NewServerRepository(tx)
 
-		if err := repo.Create(server); err != nil {
+		if err := repo.Create(server, config.RolesForServers); err != nil {
 			msg := "cannot create server"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), err
 		}
 
-		err := tx.Commit()
+		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"
 			b.Logger().Debug(msg, "err", err.Error())
@@ -375,12 +378,8 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 		}
 
 		err := repo.Update(server)
-		if errors.Is(err, model.ErrNotFound) {
-			return backend.ResponseNotFound(req)
-		}
 		if err != nil {
-			b.Logger().Debug("err", err.Error())
-			return logical.ErrorResponse(err.Error()), nil
+			return backend.ResponseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -404,11 +403,8 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 		repo := model.NewServerRepository(tx)
 
 		err := repo.Delete(id)
-		if err == model.ErrNotFound {
-			return backend.ResponseNotFound(req)
-		}
 		if err != nil {
-			return nil, err
+			return backend.ResponseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -428,7 +424,7 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 		projectID := data.Get(model.ProjectForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := NewServerRepository(tx)
+		repo := model.NewServerRepository(tx)
 
 		list, err := repo.List(tenantID, projectID)
 		if err != nil {
@@ -440,6 +436,7 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 				"uuids": list,
 			},
 		}
+
 		return resp, nil
 	}
 }

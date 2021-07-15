@@ -579,7 +579,7 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -608,7 +608,7 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 		return nil, nil
@@ -699,7 +699,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -732,7 +732,7 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 		return nil, nil

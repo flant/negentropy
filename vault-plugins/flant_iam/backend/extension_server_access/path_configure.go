@@ -10,7 +10,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -70,15 +69,8 @@ func (b *serverConfigureBackend) configurePaths() []*framework.Path {
 
 func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		storedConfigEntry, _ := req.Storage.Get(ctx, serverAccessConfigStorageKey)
-		if len(storedConfigEntry.Value) == 0 && data.Get("last_allocated_uid") == nil {
+		if !liveConfig.isConfigured() && data.Get("last_allocated_uid") == nil {
 			return backend.ResponseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
-		}
-
-		var storedServerAccessConfig ServerAccessConfig
-		err := storedConfigEntry.DecodeJSON(&storedServerAccessConfig)
-		if err != nil {
-			return backend.ResponseErr(req, err)
 		}
 
 		var newServerAccessConfig ServerAccessConfig
@@ -94,19 +86,11 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 		rawExpirePasswordSeedAfterRevealIn := data.Get("expire_password_seed_after_reveal_in")
 		newServerAccessConfig.ExpirePasswordSeedAfterReveialIn = time.Duration(rawExpirePasswordSeedAfterRevealIn.(int))
 
-		rawLastAllocatedUID := data.Get("last_allocated_uid")
-		newServerAccessConfig.LastAllocatedUID = rawLastAllocatedUID.(int)
-
-		jsonBytes, err := jsonutil.EncodeJSON(newServerAccessConfig)
-		if err != nil {
-			return backend.ResponseErr(req, err)
+		if rawLastAllocatedUID, ok := data.GetOk("last_allocated_uid"); ok {
+			newServerAccessConfig.LastAllocatedUID = rawLastAllocatedUID.(int)
 		}
 
-		err = req.Storage.Put(ctx, &logical.StorageEntry{
-			Key:      serverAccessConfigStorageKey,
-			Value:    jsonBytes,
-			SealWrap: true,
-		})
+		err := liveConfig.SetServerAccessConfig(ctx, req.Storage, &newServerAccessConfig)
 		if err != nil {
 			return backend.ResponseErr(req, err)
 		}

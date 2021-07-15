@@ -67,10 +67,10 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 
 		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Add(ff)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -94,10 +94,10 @@ func (b *projectBackend) handleFeatureFlagDelete() framework.OperationFunc {
 
 		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Delete(featureFlagName)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

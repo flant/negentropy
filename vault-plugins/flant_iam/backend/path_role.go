@@ -298,9 +298,9 @@ func (b *roleBackend) handleInclude() framework.OperationFunc {
 
 		err := model.NewRoleRepository(tx).Include(destName, incl)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -322,9 +322,9 @@ func (b *roleBackend) handleExclude() framework.OperationFunc {
 
 		err := model.NewRoleRepository(tx).Exclude(destName, srcName)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

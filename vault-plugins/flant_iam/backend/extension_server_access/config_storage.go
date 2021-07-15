@@ -10,49 +10,70 @@ import (
 
 const serverAccessConfigStorageKey = "iam.extensions.server_access_config"
 
+var liveConfig = &mutexedConfig{}
+
 type mutexedConfig struct {
 	m sync.RWMutex
 
-	isConfigured bool
-	sac          ServerAccessConfig
+	configured bool
+	sac        ServerAccessConfig
 }
 
-var liveConfig = &mutexedConfig{}
-
-func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest) error {
-	storage := initRequest.Storage
-
-	sac, err := GetServerAccessConfig(ctx, storage)
-	if err != nil {
-		return err
-	}
-
-	SetServerAccessConfig()
+func (c *mutexedConfig) isConfigured() bool {
+	return c.isConfigured()
 }
 
-func GetServerAccessConfig(ctx context.Context, storage logical.Storage) (ServerAccessConfig, error) {
+func (c *mutexedConfig) GetServerAccessConfig(ctx context.Context, storage logical.Storage) (*ServerAccessConfig, error) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
 	storedConfigEntry, err := storage.Get(ctx, serverAccessConfigStorageKey)
 	if err != nil {
-		return ServerAccessConfig{}, err
+		return nil, err
+	}
+	if storedConfigEntry == nil {
+		return nil, nil
 	}
 
 	var config ServerAccessConfig
 	err = storedConfigEntry.DecodeJSON(&config)
 	if err != nil {
-		return ServerAccessConfig{}, err
+		return nil, err
 	}
 
-	return config, nil
+	return &config, nil
 }
 
-func SetServerAccessConfig(ctx context.Context, storage logical.Storage, config ServerAccessConfig) error {
-	encodedValue, err := jsonutil.EncodeJSON(config)
+func (c *mutexedConfig) SetServerAccessConfig(ctx context.Context, storage logical.Storage, config *ServerAccessConfig) error {
+	encodedValue, err := jsonutil.EncodeJSON(*config)
 	if err != nil {
 		return err
 	}
 
-	return storage.Put(ctx, &logical.StorageEntry{
+	err = storage.Put(ctx, &logical.StorageEntry{
 		Key:   serverAccessConfigStorageKey,
 		Value: encodedValue,
 	})
+	if err != nil {
+		return err
+	}
+
+	c.configured = true
+
+	return nil
+}
+
+func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest) error {
+	storage := initRequest.Storage
+
+	config, err := liveConfig.GetServerAccessConfig(ctx, storage)
+	if err != nil {
+		return err
+	}
+
+	if config != nil {
+		liveConfig.configured = true
+	}
+
+	return nil
 }

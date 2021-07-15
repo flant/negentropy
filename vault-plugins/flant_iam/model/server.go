@@ -216,16 +216,15 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 			return err
 		}
 
+		// FIXME: scope got removed after refactoring
 		switch role.Scope {
 		case RoleScopeTenant:
 			tenantBoundRoles = append(tenantBoundRoles, BoundRole{
-				Name:  role.Name,
-				Scope: RoleScopeTenant,
+				Name: role.Name,
 			})
 		case RoleScopeProject:
 			projectBoundRoles = append(projectBoundRoles, BoundRole{
-				Name:  role.Name,
-				Scope: RoleScopeProject,
+				Name: role.Name,
 			})
 		}
 	}
@@ -482,7 +481,7 @@ func (r *ServerRepository) Delete(id string) error {
 		}
 
 		if groupToDelete != nil {
-			err := r.groupRepo.Delete(OriginServerAccess, groupToDelete.UUID)
+			err := r.groupRepo.Delete(groupToDelete.UUID)
 			if err != nil {
 				return err
 			}
@@ -495,7 +494,7 @@ func (r *ServerRepository) Delete(id string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == OriginServerAccess {
-				err := r.roleBindingRepo.Delete(OriginServerAccess, rb.UUID)
+				err := r.roleBindingRepo.Delete(rb.UUID)
 				if err != nil {
 					return err
 				}
@@ -511,7 +510,7 @@ func (r *ServerRepository) Delete(id string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == OriginServerAccess {
-				err := r.roleBindingRepo.Delete(OriginServerAccess, rb.UUID)
+				err := r.roleBindingRepo.Delete(rb.UUID)
 				if err != nil {
 					return err
 				}

@@ -155,10 +155,10 @@ func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 
 		available, err := usecase.TenantFeatureFlags(tx, tenantID).AvailableRoles()
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

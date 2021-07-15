@@ -8,6 +8,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
+// FIXME: probably doesn't work
+
 func RegisterServerAccessUserExtension(initialUID int,
 	expireSeedAfterRevealIn time.Duration, deleteExpiredPasswordSeedsAfter time.Duration,
 	storage *io.MemoryStore) error {
@@ -49,7 +51,7 @@ func RegisterServerAccessUserExtension(initialUID int,
 					continue
 				}
 
-				projectRepo.GetByID(group.)
+				projectRepo.GetByID(group.UUID)
 			}
 
 			return nil
