@@ -24,6 +24,10 @@ infra/**/packer_cache
 infra/**/output
 variables.pkrvars.hcl
 
+.terraform
+.terraform.lock.hcl
+env_vars
+
 # Plugins
 vault-plugins/build/
 vault-plugins/shared/kafka/example_plugin/build

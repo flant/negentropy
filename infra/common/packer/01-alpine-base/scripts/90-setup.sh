@@ -9,7 +9,7 @@ EOF
 rc-service syslog stop
 echo "tmpfs /tmp tmpfs defaults,size=200M 0 0" >> /etc/fstab
 echo "tmpfs /var/log tmpfs defaults,size=200M 0 0" >> /etc/fstab
-echo "tmpfs /var/lib tmpfs defaults,size=1000M 0 0" >> /etc/fstab
+echo "tmpfs /var/lib tmpfs defaults,size=10240M 0 0" >> /etc/fstab
 rm -rf /var/log && mkdir /var/log && mount /var/log
 rm -rf /var/lib && mkdir /var/lib && mount /var/lib
 rc-service syslog start
