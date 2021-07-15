@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set +e
+#set -x
 
 SCRIPTDIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 2 ; pwd -P )"
 
@@ -17,12 +18,13 @@ function build_plugin() {
   docker run --rm \
     -w /go/src/app/"$PLUGIN_NAME" \
     -v $SCRIPTDIR/build:/src/build \
-    -v $SCRIPTDIR/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
+    -v $SCRIPTDIR/"$PLUGIN_NAME":/go/src/app/"$PLUGIN_NAME" \
     -v $SCRIPTDIR/shared:/go/src/app/shared \
+    -v /tmp/vault-build:/go/pkg/mod \
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
     tetafro/golang-gcc:1.16-alpine \
-    go build -tags musl -o /src/build/$PLUGIN_NAME cmd/$PLUGIN_NAME/main.go
+    go build -tags musl -o /src/build/"$PLUGIN_NAME" cmd/"$PLUGIN_NAME"/main.go
 }
 
 mkdir -p $SCRIPTDIR/build
