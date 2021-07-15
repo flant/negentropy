@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"path"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -230,7 +230,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			annotations[k] = v.(string)
 		}
 
-		server := &model.Server{
+		server := &model2.Server{
 			UUID:        id,
 			TenantUUID:  data.Get(model.TenantForeignPK).(string),
 			ProjectUUID: data.Get(model.ProjectForeignPK).(string),
@@ -241,7 +241,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		if err := repo.Create(server, config.RolesForServers); err != nil {
 			msg := "cannot create server"
@@ -267,18 +267,18 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		server, err := repo.GetById(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		err = backend.Commit(tx, b.Logger())
+		err = commit(tx, b.Logger())
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"fingerprint": server.Fingerprint}}
@@ -292,20 +292,20 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		if !ok {
 			err := errors.New("fingerprint is not provided or is invalid")
 			b.Logger().Debug("err", err.Error())
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		fingerprint := fingerprintRaw.(string)
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		server, err := repo.GetById(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		server.Fingerprint = fingerprint
@@ -314,12 +314,12 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		if err != nil {
 			err := fmt.Errorf("cannot update server: %s", err)
 			b.Logger().Debug("err", err.Error())
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		err = backend.Commit(tx, b.Logger())
+		err = commit(tx, b.Logger())
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"fingerprint": server.Fingerprint}}
@@ -331,18 +331,18 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		server, err := repo.GetById(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		err = backend.Commit(tx, b.Logger())
+		err = commit(tx, b.Logger())
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"server": server}}
@@ -354,7 +354,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		var (
 			labels      = make(map[string]string)
@@ -367,7 +367,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 			annotations[k] = v.(string)
 		}
 
-		server := &model.Server{
+		server := &model2.Server{
 			UUID:        data.Get("server_uuid").(string),
 			TenantUUID:  data.Get(model.TenantForeignPK).(string),
 			ProjectUUID: data.Get(model.ProjectForeignPK).(string),
@@ -379,7 +379,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 
 		err := repo.Update(server)
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -400,11 +400,11 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		err := repo.Delete(id)
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -424,7 +424,7 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 		projectID := data.Get(model.ProjectForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 
 		list, err := repo.List(tenantID, projectID)
 		if err != nil {
@@ -445,17 +445,13 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServerRepository(tx)
+		repo := model2.NewServerRepository(tx)
 		serverUUID := data.Get("server_uuid").(string)
 		server, err := repo.GetById(serverUUID)
 		if err != nil {
-			return backend.ResponseNotFound(req)
+			return responseErr(req, err)
 		}
-		if err != nil {
-			b.Logger().Debug("err", err.Error())
-			return logical.ErrorResponse(err.Error()), nil
-		}
-		connectionInfo := model.ConnectionInfo{
+		connectionInfo := model2.ConnectionInfo{
 			Hostname:     data.Get("hostname").(string),
 			Port:         data.Get("port").(string),
 			JumpHostname: data.Get("jump_hostname").(string),
@@ -464,14 +460,11 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 
 		connectionInfo.FillDefaultPorts()
 		server.ConnectionInfo = connectionInfo
-		err := repo.Update(server)
-		if errors.Is(err, model.ErrNotFound) {
-			return backend.ResponseNotFound(req)
-		}
+		err = repo.Update(server)
 		if err != nil {
-			b.Logger().Debug("err", err.Error())
-			return logical.ErrorResponse(err.Error()), nil
+			return responseErr(req, err)
 		}
+
 		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"

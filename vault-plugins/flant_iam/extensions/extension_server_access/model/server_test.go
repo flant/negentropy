@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -11,14 +12,14 @@ import (
 )
 
 func Test_ServerDbSchema(t *testing.T) {
-	schema := TenantSchema()
+	schema := model.TenantSchema()
 	if err := schema.Validate(); err != nil {
 		t.Fatalf("server schema is invalid: %v", err)
 	}
 }
 
 func Test_Register(t *testing.T) {
-	schema, err := GetSchema()
+	schema, err := model.GetSchema()
 	require.NoError(t, err)
 
 	memdb, _ := io.NewMemoryStore(schema, nil)
@@ -29,13 +30,13 @@ func Test_Register(t *testing.T) {
 
 	tenant := GenerateTenantFixtures(t, tx)
 	project := GenerateProjectFixtures(t, tx, tenant.UUID)
-	_ = GenerateRoleFixtures(t, tx, RoleScopeTenant)
+	_ = GenerateRoleFixtures(t, tx, model.RoleScopeTenant)
 
 	server := &Server{
 		UUID:        uuid.New(),
 		TenantUUID:  tenant.UUID,
 		ProjectUUID: project.UUID,
-		Version:     NewResourceVersion(),
+		Version:     model.NewResourceVersion(),
 		Identifier:  "main",
 	}
 
@@ -94,14 +95,14 @@ func Test_List(t *testing.T) {
 	})
 }
 
-func GenerateTenantFixtures(t *testing.T, tx *io.MemoryStoreTxn) *Tenant {
+func GenerateTenantFixtures(t *testing.T, tx *io.MemoryStoreTxn) *model.Tenant {
 	t.Helper()
 
-	tenantRepo := NewTenantRepository(tx)
+	tenantRepo := model.NewTenantRepository(tx)
 
-	tenant := &Tenant{
+	tenant := &model.Tenant{
 		UUID:       uuid.New(),
-		Version:    NewResourceVersion(),
+		Version:    model.NewResourceVersion(),
 		Identifier: "main",
 	}
 
@@ -111,15 +112,15 @@ func GenerateTenantFixtures(t *testing.T, tx *io.MemoryStoreTxn) *Tenant {
 	return tenant
 }
 
-func GenerateProjectFixtures(t *testing.T, tx *io.MemoryStoreTxn, tenantUUID string) *Project {
+func GenerateProjectFixtures(t *testing.T, tx *io.MemoryStoreTxn, tenantUUID string) *model.Project {
 	t.Helper()
 
-	projectRepo := NewProjectRepository(tx)
+	projectRepo := model.NewProjectRepository(tx)
 
-	project := &Project{
+	project := &model.Project{
 		UUID:       uuid.New(),
 		TenantUUID: tenantUUID,
-		Version:    NewResourceVersion(),
+		Version:    model.NewResourceVersion(),
 		Identifier: "main",
 	}
 
@@ -129,18 +130,18 @@ func GenerateProjectFixtures(t *testing.T, tx *io.MemoryStoreTxn, tenantUUID str
 	return project
 }
 
-func GenerateRoleFixtures(t *testing.T, tx *io.MemoryStoreTxn, roleScope RoleScope) *Role {
+func GenerateRoleFixtures(t *testing.T, tx *io.MemoryStoreTxn, roleScope model.RoleScope) *model.Role {
 	t.Helper()
 
-	roleRepo := NewRoleRepository(tx)
+	roleRepo := model.NewRoleRepository(tx)
 
-	role := &Role{Name: "main"}
+	role := &model.Role{Name: "main"}
 
 	switch roleScope {
-	case RoleScopeTenant:
-		role.Scope = RoleScopeTenant
-	case RoleScopeProject:
-		role.Scope = RoleScopeProject
+	case model.RoleScopeTenant:
+		role.Scope = model.RoleScopeTenant
+	case model.RoleScopeProject:
+		role.Scope = model.RoleScopeProject
 	}
 
 	err := roleRepo.Create(role)

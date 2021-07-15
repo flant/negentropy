@@ -3,6 +3,7 @@ package root
 import (
 	"encoding/json"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
@@ -67,9 +68,9 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		inputObject = t
 		table = iam.TenantType
 
-	case iam.ServerType:
-		inputObject = &iam.Server{}
-		table = iam.ServerType
+	case model.ServerType:
+		inputObject = &model.Server{}
+		table = model.ServerType
 
 	default:
 		return nil

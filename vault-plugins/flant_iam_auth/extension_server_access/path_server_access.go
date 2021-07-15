@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/labels"
@@ -208,7 +209,7 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
 
-		repo := model.NewServerRepository(txn)
+		repo := model2.NewServerRepository(txn)
 		server, err := repo.GetById(serverID)
 		if err != nil {
 			return nil, err
@@ -384,7 +385,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 		return result, err
 	}
 
-	repo := model.NewServerRepository(tx)
+	repo := model2.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
@@ -409,7 +410,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 }
 
 func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]queryServer, error) {
-	repo := model.NewServerRepository(tx)
+	repo := model2.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
@@ -438,7 +439,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 	for _, name := range names {
 		nameMap[strings.ToLower(name)] = false
 	}
-	repo := model.NewServerRepository(tx)
+	repo := model2.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {

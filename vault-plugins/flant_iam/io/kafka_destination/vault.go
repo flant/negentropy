@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -73,7 +74,7 @@ func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 		model.GroupType,
 		model.MultipassType,
 		model.ServiceAccountPasswordType,
-		model.ServerType:
+		model2.ServerType:
 		return true
 
 	default:

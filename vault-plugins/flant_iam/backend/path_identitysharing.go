@@ -132,7 +132,7 @@ func (b *identitySharingBackend) handleCreate(ctx context.Context, req *logical.
 		return logical.ErrorResponse(msg), nil
 	}
 
-	if err := Commit(tx, b.Logger()); err != nil {
+	if err := commit(tx, b.Logger()); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
-	_ = Commit(tx, b.Logger())
+	_ = commit(tx, b.Logger())
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
@@ -173,9 +173,9 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 
 	identitySharing, err := repo.GetByID(id)
 	if err != nil {
-		return ResponseErr(req, err)
+		return responseErr(req, err)
 	}
-	_ = Commit(tx, b.Logger())
+	_ = commit(tx, b.Logger())
 
 	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": identitySharing}}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
@@ -191,9 +191,9 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 
 	err := repo.Delete(id)
 	if err != nil {
-		return ResponseErr(req, err)
+		return responseErr(req, err)
 	}
-	if err := Commit(tx, b.Logger()); err != nil {
+	if err := commit(tx, b.Logger()); err != nil {
 		return nil, err
 	}
 

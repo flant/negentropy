@@ -8,6 +8,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,7 +80,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	type response struct {
 		Warnings []string `json:"warnings"`
 		Data     struct {
-			Servers []iam.Server `json:"servers"`
+			Servers []model.Server `json:"servers"`
 		} `json:"data"`
 	}
 
@@ -326,38 +327,36 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	if len(serverID) > 0 {
 		predefinedID = serverID[0]
 	}
-	serverDB1 := &iam.Server{
-		UUID:           predefinedID,
-		TenantUUID:     tenantID,
-		ProjectUUID:    projectID,
-		Version:        uuid.New(),
-		Identifier:     "db-1",
-		FullIdentifier: "db-1@tenant1",
-		Fingerprint:    "F1",
-		Labels:         nil,
-		Annotations:    nil,
+	serverDB1 := &model.Server{
+		UUID:        predefinedID,
+		TenantUUID:  tenantID,
+		ProjectUUID: projectID,
+		Version:     uuid.New(),
+		Identifier:  "db-1",
+		Fingerprint: "F1",
+		Labels:      nil,
+		Annotations: nil,
 	}
 
-	serverWithLabels := &iam.Server{
-		UUID:           uuid.New(),
-		TenantUUID:     tenantID,
-		ProjectUUID:    projectID,
-		Version:        uuid.New(),
-		Identifier:     "db-2",
-		FullIdentifier: "db-2@tenant1",
-		Fingerprint:    "F2",
+	serverWithLabels := &model.Server{
+		UUID:        uuid.New(),
+		TenantUUID:  tenantID,
+		ProjectUUID: projectID,
+		Version:     uuid.New(),
+		Identifier:  "db-2",
+		Fingerprint: "F2",
 		Labels: map[string]string{
 			"foo": "bar",
 		},
 		Annotations: nil,
 	}
 
-	err := tx.Insert(iam.ServerType, serverDB1)
+	err := tx.Insert(model.ServerType, serverDB1)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Insert(iam.ServerType, serverWithLabels)
+	err = tx.Insert(model.ServerType, serverWithLabels)
 	if err != nil {
 		return err
 	}
@@ -377,14 +376,14 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 				Origin: "server_access",
 				Attributes: map[string]interface{}{
 					"UID": 42,
-					"passwords": []iam.UserServerPassword{
+					"passwords": []model.UserServerPassword{
 						{
-							Seed: "1",
-							Salt: "1",
+							Seed: []byte("1"),
+							Salt: []byte("1"),
 						},
 						{
-							Seed: "2",
-							Salt: "2",
+							Seed: []byte("2"),
+							Salt: []byte("2"),
 						},
 					},
 				},
@@ -402,14 +401,14 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 				Origin: "server_access",
 				Attributes: map[string]interface{}{
 					"UID": 56,
-					"passwords": []iam.UserServerPassword{
+					"passwords": []model.UserServerPassword{
 						{
-							Seed: "3",
-							Salt: "3",
+							Seed: []byte("3"),
+							Salt: []byte("3"),
 						},
 						{
-							Seed: "4",
-							Salt: "4",
+							Seed: []byte("4"),
+							Salt: []byte("4"),
 						},
 					},
 				},

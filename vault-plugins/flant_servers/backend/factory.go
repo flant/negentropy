@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -38,7 +39,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		BackendType: logical.TypeLogical,
 	}
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView, "root_source")
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +49,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	for name, table := range model.ServerSchema().Tables {
+	for name, table := range model2.ServerSchema().Tables {
 		if _, ok := schema.Tables[name]; ok {
 			return nil, fmt.Errorf("table %q already there", name)
 		}

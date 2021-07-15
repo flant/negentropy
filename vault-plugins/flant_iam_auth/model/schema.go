@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/go-memdb"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -29,7 +30,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		iam.ProjectSchema(),
 		iam.ServiceAccountSchema(),
 		jwt.JWKSSchema(),
-		iam.ServerSchema(),
+		model.ServerSchema(),
 	}
 
 	for _, o := range others {

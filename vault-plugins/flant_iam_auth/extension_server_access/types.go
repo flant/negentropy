@@ -6,6 +6,7 @@ import (
 
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -99,7 +100,7 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	if !ok {
 		return posixUser{}, fmt.Errorf("passwords field not found in server_access extension for %q", fullIdentifier)
 	}
-	passwords, ok := passwordsRaw.([]iam.UserServerPassword)
+	passwords, ok := passwordsRaw.([]model.UserServerPassword)
 	if !ok {
 		return posixUser{}, fmt.Errorf("passwords field type mismatch in server_access extension for %q", fullIdentifier)
 	}
@@ -109,7 +110,7 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	lastPass := passwords[len(passwords)-1]
 
 	crypter := crypt.SHA512.New()
-	pass, err := crypter.Generate([]byte(pb.serverID), []byte("$6$"+lastPass.Salt))
+	pass, err := crypter.Generate([]byte(pb.serverID), []byte("$6$"+string(lastPass.Salt)))
 	if err != nil {
 		return posixUser{}, fmt.Errorf("password crypt failed (%s) for %q", err, fullIdentifier)
 	}

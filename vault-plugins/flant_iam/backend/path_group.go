@@ -194,7 +194,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -213,7 +213,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -231,7 +231,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 		if len(subjects) == 0 {
-			return ResponseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -248,9 +248,9 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 		err = usecase.Groups(tx).Update(group)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -268,9 +268,9 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Groups(tx).Delete(model.OriginIAM, id)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -286,7 +286,7 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		repo := model.NewGroupRepository(tx)
 		group, err := repo.GetByID(id)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"group": group}}

@@ -70,10 +70,10 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 
 		tenant, err := usecase.TenantFeatureFlags(tx, tenantID).Add(tff)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -96,10 +96,10 @@ func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 
 		tenant, err := usecase.TenantFeatureFlags(tx, tenantID).Delete(featureFlagName)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

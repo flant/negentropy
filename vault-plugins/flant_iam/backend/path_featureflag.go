@@ -111,7 +111,7 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -129,10 +129,10 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
 		if err != nil {
-			return ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
-		if err := Commit(tx, b.Logger()); err != nil {
+		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
