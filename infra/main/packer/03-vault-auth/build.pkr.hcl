@@ -2,7 +2,7 @@ variable "root_password" {
   type =  string
   sensitive = true
 }
-variable "vault_auth_bucket_trailer" {
+variable "vault_auth_bucket" {
   type = string
 }
 variable "gcp_ckms_seal_key_ring" {
@@ -142,7 +142,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "VAULT_AUTH_BUCKET_TRAILER=${var.vault_auth_bucket_trailer}",
+      "VAULT_AUTH_BUCKET=${var.vault_auth_bucket}",
       "GCP_PROJECT=${var.gcp_project}",
       "GCP_REGION=${var.gcp_region}",
       "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
