@@ -66,8 +66,6 @@ type TenantRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
-
-
 func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
 	return &TenantRepository{
 		db: tx,
@@ -137,4 +135,3 @@ func (r *TenantRepository) Sync(objID string, data []byte) error {
 
 	return r.save(tenant)
 }
-

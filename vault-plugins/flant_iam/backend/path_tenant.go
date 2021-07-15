@@ -195,9 +195,8 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewTenantRepository(tx)
 
-		t, err := repo.GetByID(id)
+		t, err := usecase.Tenants(tx).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -279,9 +278,8 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewTenantRepository(tx)
 
-		tenant, err := repo.GetByID(id)
+		tenant, err := usecase.Tenants(tx).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -294,9 +292,8 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 func (b *tenantBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
-		repo := model.NewTenantRepository(tx)
 
-		tenants, err := repo.List()
+		tenants, err := usecase.Tenants(tx).List()
 		if err != nil {
 			return nil, err
 		}
