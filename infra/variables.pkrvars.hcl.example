@@ -35,6 +35,7 @@ vault_ca_pool="[CA_RESOURCE_POOL]"
 vault_ca_location="[CA_RESOURCE_LOCATION]"
 ## Root domain for vaults. According to specific instance subdomain will be added to it.
 vault_internal_root_domain="negentropy.flant.local"
+vault_public_root_domain="negentropy.flant.com"
 
 # Kafka variables.
 ## Will be used as "$(hostname).kafka_main_domain".
