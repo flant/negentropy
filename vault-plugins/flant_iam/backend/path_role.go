@@ -174,9 +174,8 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewRoleRepository(tx)
 
-		if err := repo.Create(role); err != nil {
+		if err := usecase.Roles(tx).Create(role); err != nil {
 			msg := "cannot create role"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -204,8 +203,7 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
 		}
 
-		repo := model.NewRoleRepository(tx)
-		err := repo.Update(role)
+		err := usecase.Roles(tx).Update(role)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -222,12 +220,12 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("deleting role", "path", req.Path)
 
+		name := data.Get("name").(string)
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewRoleRepository(tx)
 
-		name := data.Get("name").(string)
-		err := repo.Delete(name)
+		err := usecase.Roles(tx).Delete(name)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -246,9 +244,8 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 		name := data.Get("name").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleRepository(tx)
 
-		role, err := repo.Get(name)
+		role, err := usecase.Roles(tx).Get(name)
 		if err != nil {
 			return responseErr(req, err)
 		}

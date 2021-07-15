@@ -17,6 +17,10 @@ func (s *RoleService) Create(role *model.Role) error {
 	return model.NewRoleRepository(s.db).Create(role)
 }
 
+func (s *RoleService) Get(name string) (*model.Role, error) {
+	return model.NewRoleRepository(s.db).Get(name)
+}
+
 func (s *RoleService) List() ([]*model.Role, error) {
 	return model.NewRoleRepository(s.db).List()
 }
@@ -45,7 +49,6 @@ func (s *RoleService) Delete(name model.RoleName) error {
 	//      * service account passwords
 	return model.NewRoleRepository(s.db).Delete(name)
 }
-
 
 func (s *RoleService) Include(name model.RoleName, subRole *model.IncludedRole) error {
 	repo := model.NewRoleRepository(s.db)
@@ -81,7 +84,6 @@ func (s *RoleService) Exclude(name, exclName model.RoleName) error {
 	return repo.Update(role)
 }
 
-
 func includeRole(role *model.Role, subRole *model.IncludedRole) {
 	for i, present := range role.IncludedRoles {
 		if present.Name == subRole.Name {
@@ -115,4 +117,3 @@ func excludeRole(role *model.Role, exclName model.RoleName) {
 
 	role.IncludedRoles = cleaned
 }
-
