@@ -10,9 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -575,7 +575,6 @@ type UserServerAccessRepository struct {
 func NewUserServerAccessRepository(
 	tx *io.MemoryStoreTxn, initialUID int, expireSeedAfterRevealIn, deleteExpiredPasswordSeedsAfter time.Duration,
 ) *UserServerAccessRepository {
-
 	return &UserServerAccessRepository{
 		db:                              tx,
 		userRepo:                        model.NewUserRepository(tx),
@@ -675,7 +674,6 @@ func returnFreshPassword(usps []UserServerPassword) (UserServerPassword, error) 
 
 func garbageCollectPasswords(usps []UserServerPassword, seed, salt []byte,
 	expirePasswordSeedAfterRevealIn, deleteAfter time.Duration) (ret []UserServerPassword) {
-
 	var (
 		currentTime                            = time.Now()
 		expirePasswordSeedAfterTimestamp       = currentTime.Add(expirePasswordSeedAfterRevealIn)

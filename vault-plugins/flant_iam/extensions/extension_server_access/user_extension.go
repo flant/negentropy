@@ -14,7 +14,6 @@ import (
 func RegisterServerAccessUserExtension(initialUID int,
 	expireSeedAfterRevealIn time.Duration, deleteExpiredPasswordSeedsAfter time.Duration,
 	storage *io.MemoryStore) error {
-
 	storage.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.UserType,
@@ -52,7 +51,11 @@ func RegisterServerAccessUserExtension(initialUID int,
 					continue
 				}
 
-				projectRepo.GetByID(group.UUID)
+				_, err := projectRepo.GetByID(group.UUID)
+				if err != nil {
+					// i dont know why it here. i fix lint only. i am not owner this code :-)
+					continue
+				}
 			}
 
 			return nil
