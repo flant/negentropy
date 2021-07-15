@@ -2,7 +2,6 @@ package model
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
@@ -48,36 +47,6 @@ func MultipassSchema() *memdb.DBSchema {
 	}
 }
 
-/*
-
-Особенности:
-	* Не работает, если не выполнен /jwt/enable.
-	* Это JWT которые используются в auth.negentropy.flant.com для получения JWT access токенов, которые уже дают доступ непосредственно к сервисам. По-сути это refresh токены.
-	* При создании нового токена генерируется (и сохраняются), но пользователю не отображается, длинный случайный идентификатор (соль).
-	* Обычно при каждом выпуске инкрементируется номер поколения токена, и новое значение публикуется в специальную общую очередь в Kafka (см. подробнее формат очереди TokenGenerationNumber). Но так как при создании токена номер поколения ноль – ничего в очередь не публикуется (при отсутствии в этой очереди данных для токена считается, что номер его поколения 0).
-	* При создании на основании переданного token_max_ttl создается параметр valid_till с конкретным временем окончания токена.
-	* Пользователю выдается “первичный” JWT токен, содержащий:
-		iss: issuer из /jwt/configure (в нашем случае это https://auth.negentropy.flant.com)
-		aud: own_audience из /jwt/configure (в нашем случае это auth.negentropy.flant.com)
-		sub: <token_uuid>
-		jti: контрольная сумма от соли и номера поколения
-	* При этом плагин flant_iam_auth:
-		проверяет корректность jti при аутентификации по токену (вход по устаревшему jti невозможен, но ввиду
-		распределенных свойств системы есть небольшое окно, в которое возможно использование родированного токена);
-		предоставляет метод, позволяющий провести ротацию этого токена (с инкрементацией поколения).
-
-description – комментарий о том, где это используется и зачем (чтобы потом можно было вспомнить).
-...
-allowed_roles – список ролей, которые может использовать этот токен (итоговый список вычисляется на основании пересечения role_binding’ов и этого массива, можно использовать *, например: “iam.*”)
-…
-allowed_cidrs
-token_ttl – период жизни JWT токена (по-умолчанию 2 недели, токен должен быть ротирован не реже, чем раз в TTL);
-	Важно! Не может быть больше чем время rotation_period у JWKS, и не может быть больше, чем время хранения сообщений в очереди TokenGenerationNumber.
-token_max_ttl – максимальная продолжительность жизни токенов (по-умолчанию 0, после окончания этого TTL токен невозможножно больше ротировать, он автоматически удаляется);
-
-
-*/
-
 type MultipassOwnerType string
 
 const (
@@ -86,17 +55,19 @@ const (
 )
 
 type Multipass struct {
-	UUID        MultipassUUID      `json:"uuid"` // PK
-	TenantUUID  TenantUUID         `json:"tenant_uuid"`
-	OwnerUUID   OwnerUUID          `json:"owner_uuid"`
-	OwnerType   MultipassOwnerType `json:"owner_type"`
-	Description string             `json:"description"`
-	TTL         time.Duration      `json:"ttl"`
-	MaxTTL      time.Duration      `json:"max_ttl"`
-	ValidTill   int64              `json:"valid_till"`
-	CIDRs       []string           `json:"allowed_cidrs"`
-	Roles       []RoleName         `json:"allowed_roles" `
-	Salt        string             `json:"salt,omitempty" sensitive:""`
+	UUID       MultipassUUID      `json:"uuid"` // PK
+	TenantUUID TenantUUID         `json:"tenant_uuid"`
+	OwnerUUID  OwnerUUID          `json:"owner_uuid"`
+	OwnerType  MultipassOwnerType `json:"owner_type"`
+
+	Description string        `json:"description"`
+	TTL         time.Duration `json:"ttl"`
+	MaxTTL      time.Duration `json:"max_ttl"`
+	CIDRs       []string      `json:"allowed_cidrs"`
+	Roles       []RoleName    `json:"allowed_roles" `
+
+	ValidTill int64  `json:"valid_till"`
+	Salt      string `json:"salt,omitempty" sensitive:""`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -119,43 +90,11 @@ func NewMultipassRepository(tx *io.MemoryStoreTxn) *MultipassRepository {
 	return &MultipassRepository{db: tx}
 }
 
-func (r *MultipassRepository) validate(mp *Multipass) error {
-	tenantRepo := NewTenantRepository(r.db)
-	_, err := tenantRepo.GetByID(mp.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	if mp.OwnerType == MultipassOwnerUser {
-		repo := NewUserRepository(r.db)
-		owner, err := repo.GetByID(mp.OwnerUUID)
-		if err != nil {
-			return err
-		}
-		if owner.TenantUUID != mp.TenantUUID {
-			return ErrNotFound
-		}
-	}
-
-	if mp.OwnerType == MultipassOwnerServiceAccount {
-		repo := NewServiceAccountRepository(r.db)
-		owner, err := repo.GetByID(mp.OwnerUUID)
-		if err != nil {
-			return err
-		}
-		if owner.TenantUUID != mp.TenantUUID {
-			return ErrNotFound
-		}
-	}
-
-	return nil
-}
-
 func (r *MultipassRepository) save(mp *Multipass) error {
 	return r.db.Insert(MultipassType, mp)
 }
 
-func (r *MultipassRepository) delete(id string) error {
+func (r *MultipassRepository) Delete(id string) error {
 	mp, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -164,33 +103,15 @@ func (r *MultipassRepository) delete(id string) error {
 }
 
 func (r *MultipassRepository) Create(mp *Multipass) error {
-	if mp.Origin == "" {
-		return ErrBadOrigin
-	}
-	err := r.validate(mp)
+	return r.save(mp)
+}
+
+func (r *MultipassRepository) Update(mp *Multipass) error {
+	_, err := r.GetByID(mp.UUID)
 	if err != nil {
 		return err
 	}
 	return r.save(mp)
-}
-
-func (r *MultipassRepository) Delete(filter *Multipass) error {
-	if filter.Origin == "" {
-		return ErrBadOrigin
-	}
-	err := r.validate(filter)
-	if err != nil {
-		return err
-	}
-	return r.delete(filter.UUID)
-}
-
-func (r *MultipassRepository) Get(filter *Multipass) (*Multipass, error) {
-	err := r.validate(filter)
-	if err != nil {
-		return nil, err
-	}
-	return r.GetByID(filter.UUID)
 }
 
 func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
@@ -205,13 +126,9 @@ func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 	return multipass, nil
 }
 
-func (r *MultipassRepository) List(filter *Multipass) ([]*Multipass, error) {
-	err := r.validate(filter)
-	if err != nil {
-		return nil, err
-	}
+func (r *MultipassRepository) List(oid OwnerUUID) ([]*Multipass, error) {
 
-	iter, err := r.db.Get(MultipassType, OwnerForeignPK, filter.OwnerUUID)
+	iter, err := r.db.Get(MultipassType, OwnerForeignPK, oid)
 	if err != nil {
 		return nil, err
 	}
@@ -228,36 +145,9 @@ func (r *MultipassRepository) List(filter *Multipass) ([]*Multipass, error) {
 	return list, nil
 }
 
-func (r *MultipassRepository) SetExtension(ext *Extension) error {
-	if ext.OwnerType != ServiceAccountType {
-		return fmt.Errorf("multipass extension is suppoted only for serviceaacounts, got type %q", ext.OwnerType)
-	}
-	obj, err := r.GetByID(ext.OwnerUUID)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[ObjectOrigin]*Extension)
-	}
-	obj.Extensions[ext.Origin] = ext
-	return r.save(obj)
-}
-
-func (r *MultipassRepository) UnsetExtension(origin ObjectOrigin, uuid MultipassUUID) error {
-	obj, err := r.GetByID(uuid)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		return nil
-	}
-	delete(obj.Extensions, origin)
-	return r.save(obj)
-}
-
 func (r *MultipassRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	mp := &Multipass{}
