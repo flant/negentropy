@@ -56,14 +56,11 @@ func (t *IdentitySharing) ObjId() string {
 
 type IdentitySharingRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
-	tenantRepo *TenantRepository
 }
 
 func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingRepository {
 	return &IdentitySharingRepository{
 		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
 	}
 }
 
@@ -71,50 +68,14 @@ func (r *IdentitySharingRepository) save(ra *IdentitySharing) error {
 	return r.db.Insert(IdentitySharingType, ra)
 }
 
-func (r *IdentitySharingRepository) delete(id IdentitySharingUUID) error {
+
+func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
 	ra, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(IdentitySharingType, ra)
-}
-
-func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySharing, error) {
-	raw, err := r.db.First(IdentitySharingType, PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	ra := raw.(*IdentitySharing)
-	return ra, nil
-}
-
-func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
-	_, err := r.tenantRepo.GetByID(is.SourceTenantUUID)
-	if err != nil {
-		return err
-	}
-	_, err = r.tenantRepo.GetByID(is.DestinationTenantUUID)
-	if err != nil {
-		return err
-	}
-
-	is.Version = NewResourceVersion()
-	return r.save(is)
-}
-
-func (r *IdentitySharingRepository) Update(ra *IdentitySharing) error {
-	ra.Version = NewResourceVersion()
-
-	// Update
-	return r.save(ra)
-}
-
-func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
-	return r.delete(id)
 }
 
 func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool, error)) error {
@@ -158,4 +119,27 @@ func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]*IdentitySharin
 		res = append(res, u)
 	}
 	return res, nil
+}
+
+
+func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySharing, error) {
+	raw, err := r.db.First(IdentitySharingType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	ra := raw.(*IdentitySharing)
+	return ra, nil
+}
+
+
+
+func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
+	return r.save(is)
+}
+
+func (r *IdentitySharingRepository) Update(ra *IdentitySharing) error {
+	return r.save(ra)
 }

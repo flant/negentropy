@@ -81,7 +81,7 @@ func (s *GroupsService) Update(group *model.Group) error {
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
 
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if group.Extensions == nil {
 		group.Extensions = stored.Extensions
 	}
