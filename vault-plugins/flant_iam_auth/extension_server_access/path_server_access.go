@@ -137,7 +137,7 @@ func (b *serverAccessBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.queryServer(),
 					Summary:  "Query servers in project by names or labels",
 				},
@@ -252,15 +252,24 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		if ok {
 			projectID = projectIDRaw.(string)
 		}
+
 		serverNamesRaw, ok := data.GetOk("names")
 		if ok {
 			serverNames = serverNamesRaw.([]string)
 		}
 		labelSelector := data.Get("labelSelector").(string)
 
+		if projectID == "" {
+			// ?names= query param available only for /tenant/<uuid>/project/<uuid>/query_server path
+			// ignore it for /tenant/<uuid>/query_server and /query_server
+			serverNames = []string{}
+		}
+
 		if len(serverNames) > 0 && labelSelector != "" {
 			return nil, errors.New("only names or labelSelector must be set")
 		}
+
+		b.Logger().Debug("query servers", "names", serverNames, "labelSelector", labelSelector)
 
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
