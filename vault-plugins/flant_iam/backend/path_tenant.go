@@ -215,9 +215,8 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewTenantRepository(tx)
 
-		if err := repo.Create(tenant); err != nil {
+		if err := usecase.Tenants(tx).Create(tenant); err != nil {
 			msg := "cannot create tenant"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -244,8 +243,7 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 		}
 
-		repo := model.NewTenantRepository(tx)
-		err := repo.Update(tenant)
+		err := usecase.Tenants(tx).Update(tenant)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -262,10 +260,9 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewTenantRepository(tx)
 
 		id := data.Get("uuid").(string)
-		err := repo.Delete(id)
+		err := usecase.Tenants(tx).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
