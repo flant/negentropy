@@ -36,13 +36,6 @@ func ServiceAccountSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					"full_identifier": {
-						Name: "full_identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "FullIdentifier",
-							Lowercase: true,
-						},
-					},
 				},
 			},
 		},
@@ -74,10 +67,14 @@ func (sa *ServiceAccount) ObjId() string {
 }
 
 // generic: <identifier>@serviceaccount.<tenant_identifier>
-func CalcServiceAccountFullIdentifier(saID, tenantID string) string {
-	domain := "serviceaccount." + tenantID
-
-	return saID + "@" + domain
+// builtin: <identifier>@<builtin_service_account_type>.serviceaccount.<tenant_identifier>
+func CalcServiceAccountFullIdentifier(sa *ServiceAccount, tenant *Tenant) string {
+	name := sa.Identifier
+	domain := "serviceaccount." + tenant.Identifier
+	if sa.BuiltinType != "" {
+		domain = sa.BuiltinType + "." + domain
+	}
+	return name + "@" + domain
 }
 
 type ServiceAccountRepository struct {
@@ -108,7 +105,7 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 		return ErrBadOrigin
 	}
 	sa.Version = NewResourceVersion()
-	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
 
 	return r.save(sa)
 }
@@ -130,20 +127,6 @@ func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{
 		return nil, ErrNotFound
 	}
 	return raw, nil
-}
-
-func (r *ServiceAccountRepository) GetByIdentifier(saID, tenantID string) (*ServiceAccount, error) {
-	fullID := CalcServiceAccountFullIdentifier(saID, tenantID)
-
-	raw, err := r.db.First(ServiceAccountType, "full_identifier", fullID)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	serviceAccount := raw.(*ServiceAccount)
-	return serviceAccount, nil
 }
 
 /*
@@ -187,7 +170,7 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 	if err != nil {
 		return err
 	}
-	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
 
 	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
 	if sa.Extensions == nil {
