@@ -134,8 +134,8 @@ func (r *MultipassService) CreateWithJWT(
 		return "", nil, err
 	}
 
-	safeMp := model.OmitSensitive(mp).(*model.Multipass)
-	return jwtString, safeMp, nil
+	safeMp := model.OmitSensitive(mp).(model.Multipass)
+	return jwtString, &safeMp, nil
 }
 
 func (r *MultipassService) Delete(id model.MultipassUUID) error {
