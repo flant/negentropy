@@ -81,9 +81,12 @@ func TestJWTConfigure(t *testing.T) {
 	// #4 Generate and verify token
 	{
 		options := PrimaryTokenOptions{
-			TTL:        10 * time.Minute,
-			UUID:       "test",
-			SecretSalt: "test",
+			TTL:  10 * time.Minute,
+			UUID: "test",
+			JTI: TokenJTI{
+				Generation: 0,
+				SecretSalt: "test",
+			},
 		}
 		options.now = func() time.Time { return time.Unix(1619592212, 0) }
 		token, err := NewPrimaryToken(context.TODO(), storage, &options)

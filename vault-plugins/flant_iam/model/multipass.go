@@ -1,13 +1,16 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 const (
@@ -172,6 +175,34 @@ func (r *MultipassRepository) Create(mp *Multipass) error {
 		return err
 	}
 	return r.save(mp)
+}
+
+// CreateWithJWT saves a Multipass object and generate jwt.
+func (r *MultipassRepository) CreateWithJWT(ctx context.Context, storage logical.Storage, mp *Multipass) (string, error) {
+	if mp.Origin == "" {
+		return "", ErrBadOrigin
+	}
+	err := r.validate(mp)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate JWT
+	options := &jwt.PrimaryTokenOptions{
+		TTL:  mp.TTL,
+		UUID: mp.UUID,
+		JTI: jwt.TokenJTI{
+			Generation: 0,
+			SecretSalt: mp.Salt,
+		},
+	}
+
+	jwtString, err := jwt.NewPrimaryToken(ctx, storage, options)
+	if err != nil {
+		return "", err
+	}
+
+	return jwtString, r.save(mp)
 }
 
 func (r *MultipassRepository) Delete(filter *Multipass) error {

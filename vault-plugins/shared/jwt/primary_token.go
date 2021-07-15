@@ -24,17 +24,21 @@ type PrimaryTokenClaims struct {
 	JTI      string `json:"jti"`
 }
 
-type PrimaryTokenOptions struct {
-	TTL        time.Duration
-	UUID       string
+type TokenJTI struct {
 	Generation int64
 	SecretSalt string
-
-	now func() time.Time
 }
 
-func (o *PrimaryTokenOptions) SaltHash() string {
-	return shaEncode(fmt.Sprintf("%d %s", o.Generation, o.SecretSalt))
+func (j TokenJTI) Hash() string {
+	return shaEncode(fmt.Sprintf("%d %s", j.Generation, j.SecretSalt))
+}
+
+type PrimaryTokenOptions struct {
+	TTL  time.Duration
+	UUID string
+	JTI  TokenJTI
+
+	now func() time.Time
 }
 
 func (o *PrimaryTokenOptions) getCurrentTime() time.Time {
@@ -91,7 +95,7 @@ func NewPrimaryToken(ctx context.Context, storage logical.Storage, options *Prim
 		},
 		Audience: audience,
 		Subject:  options.UUID,
-		JTI:      options.SaltHash(),
+		JTI:      options.JTI.Hash(),
 	}
 
 	payload, err := json.Marshal(claims)

@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -87,6 +88,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		}
 	}
 
+	tokenController := sharedjwt.NewTokenController()
+
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
 		userPaths(b, storage),
@@ -101,6 +104,13 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),
 		identitySharingPaths(b, storage),
+		[]*framework.Path{
+			sharedjwt.PathEnable(tokenController),
+			sharedjwt.PathDisable(tokenController),
+			sharedjwt.PathConfigure(tokenController),
+			sharedjwt.PathJWKS(tokenController),
+			sharedjwt.PathRotateKey(tokenController),
+		},
 	)
 
 	return b, nil
