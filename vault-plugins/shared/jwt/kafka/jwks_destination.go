@@ -1,4 +1,4 @@
-package destination
+package kafka
 
 import (
 	"crypto"
@@ -26,7 +26,7 @@ func NewJWKSKafkaDestination(mb *kafka.MessageBroker) *JWKSKafkaDestination {
 }
 
 func (mkd *JWKSKafkaDestination) ReplicaName() string {
-	return "jwks"
+	return topicName
 }
 
 func (mkd *JWKSKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {

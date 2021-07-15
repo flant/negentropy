@@ -1,4 +1,4 @@
-package kafka_source
+package kafka
 
 import (
 	"crypto"
@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/cenkalti/backoff"
@@ -18,6 +17,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
+
+const topicName = "jwks"
 
 type JWKSKafkaSource struct {
 	kf *sharedkafka.MessageBroker
@@ -37,26 +38,26 @@ func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *JWK
 }
 
 func (rk *JWKSKafkaSource) Name() string {
-	return "jwks"
+	return topicName
 }
 
 func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
-	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, "jwks", false)
+	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
 	defer runConsumer.Close()
 
-	r := rk.kf.GetRestorationReader("jwks")
+	r := rk.kf.GetRestorationReader(topicName)
 	defer r.Close()
 
 	rk.logger.Debug("Restore - got restoration reader")
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, "jwks", txn, rk.restoreMsgHandler)
+	return sharedkafka.RunRestorationLoop(r, runConsumer, topicName, txn, rk.restoreMsgHandler)
 }
 
 func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message) error {
 	rk.logger.Debug("Restore - handler run")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
-		log.Printf("wrong object Key format: %s\n", msg.Key)
+		rk.logger.Error("wrong object Key format: %s\n", msg.Key)
 		return fmt.Errorf("key has wong format: %s", msg.Key)
 	}
 
@@ -74,8 +75,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 
 	var signature []byte
 	for _, header := range msg.Headers {
-		switch header.Key {
-		case "signature":
+		if header.Key == "signature" {
 			signature = header.Value
 		}
 	}
@@ -100,8 +100,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
-
-	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, "jwks", false)
+	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
 
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
@@ -118,28 +117,27 @@ func (rk *JWKSKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		rk.logger.Debug("Got message", objType, objId)
 		var signature []byte
 		for _, header := range msg.Headers {
-			switch header.Key {
-			case "signature":
+			if header.Key == "signature" {
 				signature = header.Value
 			}
 		}
 
 		if len(signature) == 0 {
-			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
+			rk.logger.Warn("no signature found. Skipping message: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 			return
 		}
 
 		err := rk.verifySign(signature, msg.Value)
 		if err != nil {
-			log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			rk.logger.Warn("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 			return
 		}
 
 		source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 		if err != nil {
-			log.Println("build source message failed", err)
+			rk.logger.Error("build source message failed", err)
 			return
 		}
 		msgDecoded := &sharedkafka.MsgDecoded{
