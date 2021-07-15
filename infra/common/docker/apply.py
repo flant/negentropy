@@ -76,6 +76,9 @@ def main():
     os.environ['PKR_VAR_vault_ca_location'] = "europe-west1"
     os.environ['PKR_VAR_vault_internal_root_domain'] = "negentropy.flant.local"
 
+    os.environ['PKR_VAR_lets_encrypt_email'] = "admin@domain.com"
+    os.environ['PKR_VAR_vault_public_root_domain'] = 'negentropy.flant.com'
+
     os.environ['PKR_VAR_gcp_project'] = google_project_id
     os.environ['PKR_VAR_gcp_zone'] = "europe-west3-a"
 
