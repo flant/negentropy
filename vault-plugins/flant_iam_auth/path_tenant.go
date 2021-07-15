@@ -15,7 +15,7 @@ import (
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: `tenant`,
+			Pattern: "tenant/?",
 			Fields:  map[string]*framework.FieldSchema{},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
@@ -25,7 +25,7 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 			},
 		},
 		{
-			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"), "project"),
+			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"), "project/?"),
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeString,
@@ -52,12 +52,16 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
+	b.Logger().Debug("got tenant request in auth")
+
 	repo := model.NewTenantRepository(txn)
 
 	tenants, err := repo.List()
 	if err != nil {
 		return nil, err
 	}
+
+	b.Logger().Debug("list", "tenants", tenants)
 
 	result := make([]uuidIdentifier, 0, len(tenants))
 
