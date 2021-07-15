@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -158,9 +159,8 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewProjectRepository(tx)
 
-		obj, err := repo.GetByID(id)
+		obj, err := usecase.Projects(tx).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -180,9 +180,8 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewProjectRepository(tx)
 
-		if err := repo.Create(project); err != nil {
+		if err := usecase.Projects(tx).Create(project); err != nil {
 			msg := "cannot create project"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -211,8 +210,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 			Identifier: data.Get("identifier").(string),
 		}
 
-		repo := model.NewProjectRepository(tx)
-		err := repo.Update(project)
+		err := usecase.Projects(tx).Update(project)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -231,9 +229,8 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewProjectRepository(tx)
 
-		err := repo.Delete(id)
+		err := usecase.Projects(tx).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -250,9 +247,8 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewProjectRepository(tx)
 
-		project, err := repo.GetByID(id)
+		project, err := usecase.Projects(tx).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -267,9 +263,8 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewProjectRepository(tx)
 
-		projects, err := repo.List(tenantID)
+		projects, err := usecase.Projects(tx).List(tenantID)
 		if err != nil {
 			return nil, err
 		}

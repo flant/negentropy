@@ -84,30 +84,11 @@ func NewServiceAccountPasswordRepository(tx *io.MemoryStoreTxn) *ServiceAccountP
 	return &ServiceAccountPasswordRepository{db: tx}
 }
 
-func (r *ServiceAccountPasswordRepository) validate(p *ServiceAccountPassword) error {
-	tenantRepo := NewTenantRepository(r.db)
-	_, err := tenantRepo.GetByID(p.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	repo := NewServiceAccountRepository(r.db)
-	owner, err := repo.GetByID(p.OwnerUUID)
-	if err != nil {
-		return err
-	}
-	if owner.TenantUUID != p.TenantUUID {
-		return ErrNotFound
-	}
-
-	return nil
-}
-
 func (r *ServiceAccountPasswordRepository) save(p *ServiceAccountPassword) error {
 	return r.db.Insert(ServiceAccountPasswordType, p)
 }
 
-func (r *ServiceAccountPasswordRepository) delete(objID string) error {
+func (r *ServiceAccountPasswordRepository) Delete(objID string) error {
 	sap, err := r.GetByID(objID)
 	if err != nil {
 		return err
@@ -116,27 +97,7 @@ func (r *ServiceAccountPasswordRepository) delete(objID string) error {
 }
 
 func (r *ServiceAccountPasswordRepository) Create(p *ServiceAccountPassword) error {
-	err := r.validate(p)
-	if err != nil {
-		return err
-	}
 	return r.save(p)
-}
-
-func (r *ServiceAccountPasswordRepository) Delete(filter *ServiceAccountPassword) error {
-	err := r.validate(filter)
-	if err != nil {
-		return err
-	}
-	return r.delete(filter.UUID)
-}
-
-func (r *ServiceAccountPasswordRepository) Get(filter *ServiceAccountPassword) (*ServiceAccountPassword, error) {
-	err := r.validate(filter)
-	if err != nil {
-		return nil, err
-	}
-	return r.GetByID(filter.UUID)
 }
 
 func (r *ServiceAccountPasswordRepository) GetByID(id string) (*ServiceAccountPassword, error) {
@@ -151,13 +112,8 @@ func (r *ServiceAccountPasswordRepository) GetByID(id string) (*ServiceAccountPa
 	return pass, nil
 }
 
-func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) ([]*ServiceAccountPassword, error) {
-	err := r.validate(filter)
-	if err != nil {
-		return nil, err
-	}
-
-	iter, err := r.db.Get(ServiceAccountPasswordType, OwnerForeignPK, filter.OwnerUUID)
+func (r *ServiceAccountPasswordRepository) List(said ServiceAccountUUID) ([]*ServiceAccountPassword, error) {
+	iter, err := r.db.Get(ServiceAccountPasswordType, OwnerForeignPK, said)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +132,7 @@ func (r *ServiceAccountPasswordRepository) List(filter *ServiceAccountPassword) 
 
 func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	sap := &ServiceAccountPassword{}

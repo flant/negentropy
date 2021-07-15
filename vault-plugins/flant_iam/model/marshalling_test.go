@@ -107,7 +107,7 @@ func TestSlice(t *testing.T) {
 		assert.Equal(t, "t1", items[0]["public"])
 	})
 
-	t.Run("value slice with pointer marshaler", func(t *testing.T) {
+	t.Run("value slice with pointer marshaller", func(t *testing.T) {
 		dc1 := test2Container{
 			Public:    "t1",
 			Sensitive: "t2",
@@ -125,7 +125,7 @@ func TestSlice(t *testing.T) {
 		assert.Equal(t, "t1", items[0]["public"])
 	})
 
-	t.Run("pointer slice with pointer marshaler", func(t *testing.T) {
+	t.Run("pointer slice with pointer marshaller", func(t *testing.T) {
 		dc1 := &test2Container{
 			Public:    "t1",
 			Sensitive: "t2",

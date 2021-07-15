@@ -64,7 +64,6 @@ func (t *Tenant) ObjId() string {
 
 type TenantRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
 }
 
 func NewTenantRepository(tx *io.MemoryStoreTxn) *TenantRepository {
@@ -78,7 +77,6 @@ func (r *TenantRepository) save(t *Tenant) error {
 }
 
 func (r *TenantRepository) Create(t *Tenant) error {
-	t.Version = NewResourceVersion()
 	return r.db.Insert(TenantType, t)
 }
 
@@ -93,22 +91,8 @@ func (r *TenantRepository) GetByID(id TenantUUID) (*Tenant, error) {
 	return raw.(*Tenant), nil
 }
 
-func (r *TenantRepository) Update(updated *Tenant) error {
-	stored, err := r.GetByID(updated.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-
-	if stored.Version != updated.Version {
-		return ErrBadVersion
-	}
-	updated.Version = NewResourceVersion()
-
-	// Update
-
-	return r.db.Insert(TenantType, updated)
+func (r *TenantRepository) Update(t *Tenant) error {
+	return r.save(t)
 }
 
 func (r *TenantRepository) Delete(id TenantUUID) error {
@@ -150,8 +134,4 @@ func (r *TenantRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(tenant)
-}
-
-type SubTenantRepo interface {
-	DeleteByTenant(string) error
 }

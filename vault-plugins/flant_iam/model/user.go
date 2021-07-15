@@ -83,37 +83,19 @@ func (u *User) ObjId() string {
 }
 
 type UserRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
 func NewUserRepository(tx *io.MemoryStoreTxn) *UserRepository {
-	return &UserRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
+	return &UserRepository{db: tx}
+}
+
+func (r *UserRepository) save(user *User) error {
+	return r.db.Insert(UserType, user)
 }
 
 func (r *UserRepository) Create(user *User) error {
-	tenant, err := r.tenantRepo.GetByID(user.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	user.Version = NewResourceVersion()
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-	if user.Origin == "" {
-		return ErrBadOrigin
-	}
 	return r.save(user)
-}
-
-func (r *UserRepository) GetByID(id UserUUID) (*User, error) {
-	raw, err := r.GetRawByID(id)
-	if raw == nil {
-		return nil, err
-	}
-	return raw.(*User), err
 }
 
 func (r *UserRepository) GetRawByID(id UserUUID) (interface{}, error) {
@@ -127,60 +109,29 @@ func (r *UserRepository) GetRawByID(id UserUUID) (interface{}, error) {
 	return raw, nil
 }
 
-func (r *UserRepository) save(user *User) error {
-	return r.db.Insert(UserType, user)
+func (r *UserRepository) GetByID(id UserUUID) (*User, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*User), err
 }
 
 func (r *UserRepository) Update(user *User) error {
-	stored, err := r.GetByID(user.UUID)
+	_, err := r.GetByID(user.UUID)
 	if err != nil {
 		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != user.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != user.Version {
-		return ErrBadVersion
-	}
-	if stored.Origin != user.Origin {
-		return ErrBadOrigin
-	}
-	user.Version = NewResourceVersion()
-
-	// Update
-	tenant, err := r.tenantRepo.GetByID(user.TenantUUID)
-	if err != nil {
-		return err
-	}
-	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
-	if user.Extensions == nil {
-		user.Extensions = stored.Extensions
 	}
 	return r.save(user)
 }
 
-func (r *UserRepository) delete(id UserUUID) error {
+func (r *UserRepository) Delete(id UserUUID) error {
 	user, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(UserType, user)
-}
-
-func (r *UserRepository) Delete(origin ObjectOrigin, id UserUUID) error {
-	user, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	if user.Origin != origin {
-		return ErrBadOrigin
-	}
-	return r.delete(id)
 }
 
 func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
@@ -199,11 +150,6 @@ func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
 		list = append(list, u)
 	}
 	return list, nil
-}
-
-func (r *UserRepository) DeleteByTenant(tenantUUID TenantUUID) error {
-	_, err := r.db.DeleteAll(UserType, TenantForeignPK, tenantUUID)
-	return err
 }
 
 func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
@@ -231,33 +177,9 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 	return nil
 }
 
-func (r *UserRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetByID(ext.OwnerUUID)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[ObjectOrigin]*Extension)
-	}
-	obj.Extensions[ext.Origin] = ext
-	return r.save(obj)
-}
-
-func (r *UserRepository) UnsetExtension(origin ObjectOrigin, uuid UserUUID) error {
-	obj, err := r.GetByID(uuid)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		return nil
-	}
-	delete(obj.Extensions, origin)
-	return r.save(obj)
-}
-
 func (r *UserRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	user := &User{}

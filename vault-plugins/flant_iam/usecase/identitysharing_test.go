@@ -1,8 +1,9 @@
-package model
+package usecase
 
 import (
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -12,13 +13,13 @@ const (
 )
 
 var (
-	share1 = IdentitySharing{
+	share1 = model.IdentitySharing{
 		UUID:                  shareUUID1,
 		SourceTenantUUID:      tenantUUID1,
 		DestinationTenantUUID: tenantUUID2,
 		Groups:                []string{groupUUID2},
 	}
-	share2 = IdentitySharing{
+	share2 = model.IdentitySharing{
 		UUID:                  shareUUID2,
 		SourceTenantUUID:      tenantUUID2,
 		DestinationTenantUUID: tenantUUID1,
@@ -26,7 +27,7 @@ var (
 	}
 )
 
-func createIdentitySharings(t *testing.T, repo *IdentitySharingRepository, shares ...IdentitySharing) {
+func createIdentitySharings(t *testing.T, repo *model.IdentitySharingRepository, shares ...model.IdentitySharing) {
 	for _, share := range shares {
 		tmp := share
 		err := repo.Create(&tmp)
@@ -35,16 +36,16 @@ func createIdentitySharings(t *testing.T, repo *IdentitySharingRepository, share
 }
 
 func identitySharingFixture(t *testing.T, store *io.MemoryStore) {
-	shs := []IdentitySharing{share1, share2}
+	shs := []model.IdentitySharing{share1, share2}
 	tx := store.Txn(true)
-	repo := NewIdentitySharingRepository(tx)
+	repo := model.NewIdentitySharingRepository(tx)
 	createIdentitySharings(t, repo, shs...)
 	err := tx.Commit()
 	dieOnErr(t, err)
 }
 
 func Test_IdentitySharingDbSchema(t *testing.T) {
-	schema := IdentitySharingSchema()
+	schema := model.IdentitySharingSchema()
 	if err := schema.Validate(); err != nil {
 		t.Fatalf("identity sharing schema is invalid: %v", err)
 	}
@@ -53,7 +54,7 @@ func Test_IdentitySharingDbSchema(t *testing.T) {
 func Test_ListIdentitySharing(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
 		identitySharingFixture).Txn(true)
-	repo := NewIdentitySharingRepository(tx)
+	repo := model.NewIdentitySharingRepository(tx)
 
 	shares, err := repo.List(tenantUUID1)
 
@@ -68,7 +69,7 @@ func Test_ListIdentitySharing(t *testing.T) {
 func Test_ListForDestinationTenant(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
 		identitySharingFixture).Txn(true)
-	repo := NewIdentitySharingRepository(tx)
+	repo := model.NewIdentitySharingRepository(tx)
 
 	shares, err := repo.ListForDestinationTenant(tenantUUID1)
 

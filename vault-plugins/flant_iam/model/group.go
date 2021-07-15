@@ -180,6 +180,112 @@ func (r *GroupRepository) Sync(objID string, data []byte) error {
 	return r.save(gr)
 }
 
+func (r *GroupRepository) FindDirectParentGroupsByUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, UserInTenantGroupIndex, tenantUUID, userUUID)
+	if err != nil {
+		return nil, err
+	}
+	return extractGroupUUIDs(iter)
+}
+
+func (r *GroupRepository) FindDirectParentGroupsByServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, ServiceAccountInTenantGroupIndex, tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	return extractGroupUUIDs(iter)
+}
+
+func (r *GroupRepository) FindDirectParentGroupsByGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
+	iter, err := r.db.Get(GroupType, GroupInTenantGroupIndex, tenantUUID, groupUUID)
+	if err != nil {
+		return nil, err
+	}
+	return extractGroupUUIDs(iter)
+}
+
+// returns map with found parent uuids and originally passed uuids
+func (r *GroupRepository) FindAllParentGroupsForGroupUUIDs(tenantUUID TenantUUID, groupUUIDs map[GroupUUID]struct{}) (map[GroupUUID]struct{}, error) {
+	resultGroupsSet := groupUUIDs
+	currentGroupsSet := groupUUIDs
+	for len(currentGroupsSet) != 0 {
+		nextSet := map[GroupUUID]struct{}{}
+		for currentGroupUUID := range currentGroupsSet {
+			candidates, err := r.FindDirectParentGroupsByGroupUUID(tenantUUID, currentGroupUUID)
+			if err != nil {
+				return nil, err
+			}
+			for candidate := range candidates {
+				if _, found := resultGroupsSet[candidate]; !found {
+					resultGroupsSet[candidate] = struct{}{}
+					nextSet[candidate] = struct{}{}
+				}
+			}
+		}
+		currentGroupsSet = nextSet
+	}
+	return resultGroupsSet, nil
+}
+
+func (r *GroupRepository) FindAllParentGroupsForUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
+	groups, err := r.FindDirectParentGroupsByUserUUID(tenantUUID, userUUID)
+	if err != nil {
+		return nil, err
+	}
+	return r.FindAllParentGroupsForGroupUUIDs(tenantUUID, groups)
+}
+
+func (r *GroupRepository) FindAllParentGroupsForServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
+	groups, err := r.FindDirectParentGroupsByServiceAccountUUID(tenantUUID, serviceAccountUUID)
+	if err != nil {
+		return nil, err
+	}
+	return r.FindAllParentGroupsForGroupUUIDs(tenantUUID, groups)
+}
+
+func (r *GroupRepository) FindAllParentGroupsForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
+	return r.FindAllParentGroupsForGroupUUIDs(tenantUUID, map[GroupUUID]struct{}{groupUUID: {}})
+}
+
+func (r *GroupRepository) FindAllSubjectsFor(tenantUUID TenantUUID, users []UserUUID, serviceAccounts []ServiceAccountUUID, groups []GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+	resultUsers := make(map[UserUUID]struct{})
+	resultSAs := make(map[ServiceAccountUUID]struct{})
+
+	for _, user := range users {
+		resultUsers[user] = struct{}{}
+	}
+	for _, sa := range serviceAccounts {
+		resultSAs[sa] = struct{}{}
+	}
+
+	for _, groupUUID := range groups {
+		groupsUsers, groupsSAs, err := r.FindAllSubjectsForGroupUUID(tenantUUID, groupUUID)
+		if err != nil {
+			return nil, nil, err
+		}
+		for user := range groupsUsers {
+			resultUsers[user] = struct{}{}
+		}
+		for sa := range groupsSAs {
+			resultSAs[sa] = struct{}{}
+		}
+	}
+
+	return resultUsers, resultSAs, nil
+}
+
+func (r *GroupRepository) FindAllSubjectsForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+	group, err := r.GetByID(groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r.FindAllSubjectsForGroup(group)
+}
+
+func (r *GroupRepository) FindAllSubjectsForGroup(group *Group) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+	return r.FindAllSubjectsFor(group.TenantUUID, group.Users, group.ServiceAccounts, group.Groups)
+}
+
 func extractGroupUUIDs(iter memdb.ResultIterator) (map[GroupUUID]struct{}, error) {
 	ids := map[GroupUUID]struct{}{}
 	for {
@@ -248,110 +354,4 @@ func (s subjectInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte
 		return false, nil, nil
 	}
 	return true, result, nil
-}
-
-func (r *GroupRepository) findDirectParentGroupsByUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
-	iter, err := r.db.Get(GroupType, UserInTenantGroupIndex, tenantUUID, userUUID)
-	if err != nil {
-		return nil, err
-	}
-	return extractGroupUUIDs(iter)
-}
-
-func (r *GroupRepository) findDirectParentGroupsByServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
-	iter, err := r.db.Get(GroupType, ServiceAccountInTenantGroupIndex, tenantUUID, serviceAccountUUID)
-	if err != nil {
-		return nil, err
-	}
-	return extractGroupUUIDs(iter)
-}
-
-func (r *GroupRepository) findDirectParentGroupsByGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
-	iter, err := r.db.Get(GroupType, GroupInTenantGroupIndex, tenantUUID, groupUUID)
-	if err != nil {
-		return nil, err
-	}
-	return extractGroupUUIDs(iter)
-}
-
-// returns map with found parent uuids and originally passed uuids
-func (r *GroupRepository) findAllParentGroupsForGroupUUIDs(tenantUUID TenantUUID, groupUUIDs map[GroupUUID]struct{}) (map[GroupUUID]struct{}, error) {
-	resultGroupsSet := groupUUIDs
-	currentGroupsSet := groupUUIDs
-	for len(currentGroupsSet) != 0 {
-		nextSet := map[GroupUUID]struct{}{}
-		for currentGroupUUID := range currentGroupsSet {
-			candidates, err := r.findDirectParentGroupsByGroupUUID(tenantUUID, currentGroupUUID)
-			if err != nil {
-				return nil, err
-			}
-			for candidate := range candidates {
-				if _, found := resultGroupsSet[candidate]; !found {
-					resultGroupsSet[candidate] = struct{}{}
-					nextSet[candidate] = struct{}{}
-				}
-			}
-		}
-		currentGroupsSet = nextSet
-	}
-	return resultGroupsSet, nil
-}
-
-func (r *GroupRepository) FindAllParentGroupsForUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {
-	groups, err := r.findDirectParentGroupsByUserUUID(tenantUUID, userUUID)
-	if err != nil {
-		return nil, err
-	}
-	return r.findAllParentGroupsForGroupUUIDs(tenantUUID, groups)
-}
-
-func (r *GroupRepository) FindAllParentGroupsForServiceAccountUUID(tenantUUID TenantUUID, serviceAccountUUID ServiceAccountUUID) (map[GroupUUID]struct{}, error) {
-	groups, err := r.findDirectParentGroupsByServiceAccountUUID(tenantUUID, serviceAccountUUID)
-	if err != nil {
-		return nil, err
-	}
-	return r.findAllParentGroupsForGroupUUIDs(tenantUUID, groups)
-}
-
-func (r *GroupRepository) FindAllParentGroupsForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[GroupUUID]struct{}, error) {
-	return r.findAllParentGroupsForGroupUUIDs(tenantUUID, map[GroupUUID]struct{}{groupUUID: {}})
-}
-
-func (r *GroupRepository) FindAllSubjectsFor(tenantUUID TenantUUID, users []UserUUID, serviceAccounts []ServiceAccountUUID, groups []GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
-	resultUsers := make(map[UserUUID]struct{})
-	resultSAs := make(map[ServiceAccountUUID]struct{})
-
-	for _, user := range users {
-		resultUsers[user] = struct{}{}
-	}
-	for _, sa := range serviceAccounts {
-		resultSAs[sa] = struct{}{}
-	}
-
-	for _, groupUUID := range groups {
-		groupsUsers, groupsSAs, err := r.FindAllSubjectsForGroupUUID(tenantUUID, groupUUID)
-		if err != nil {
-			return nil, nil, err
-		}
-		for user := range groupsUsers {
-			resultUsers[user] = struct{}{}
-		}
-		for sa := range groupsSAs {
-			resultSAs[sa] = struct{}{}
-		}
-	}
-
-	return resultUsers, resultSAs, nil
-}
-
-func (r *GroupRepository) FindAllSubjectsForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
-	group, err := r.GetByID(groupUUID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return r.FindAllSubjectsForGroup(group)
-}
-
-func (r *GroupRepository) FindAllSubjectsForGroup(group *Group) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
-	return r.FindAllSubjectsFor(group.TenantUUID, group.Users, group.ServiceAccounts, group.Groups)
 }

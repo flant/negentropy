@@ -2,15 +2,23 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type RoleBindingService struct {
-	db *io.MemoryStoreTxn
+	repo        *model.RoleBindingRepository
+	tenantsRepo *model.TenantRepository
+
+	subjectFetcher *SubjectsFetcher
 }
 
-func RoleBindings(tx *io.MemoryStoreTxn) *RoleBindingService {
-	return &RoleBindingService{tx}
+func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
+	return &RoleBindingService{
+		repo:           model.NewRoleBindingRepository(db),
+		subjectFetcher: NewSubjectsFetcher(db),
+		tenantsRepo:    model.NewTenantRepository(db),
+	}
 }
 
 func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
@@ -24,15 +32,16 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	rb.Version = model.NewResourceVersion()
 
 	// Refill data
-	subj, err := NewSubjectsFetcher(s.db).Fetch(rb.Subjects)
+	subj, err := s.subjectFetcher.Fetch(rb.Subjects)
 	if err != nil {
 		return err
 	}
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
+	rb.UUID = uuid.New()
 
-	return model.NewRoleBindingRepository(s.db).Create(rb)
+	return s.repo.Create(rb)
 }
 
 func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
@@ -42,8 +51,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	}
 
 	// Validate tenant relation
-	repo := model.NewRoleBindingRepository(s.db)
-	stored, err := repo.GetByID(rb.UUID)
+	stored, err := s.repo.GetByID(rb.UUID)
 	if err != nil {
 		return err
 	}
@@ -52,7 +60,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	}
 
 	// Refill data
-	subj, err := NewSubjectsFetcher(s.db).Fetch(rb.Subjects)
+	subj, err := s.subjectFetcher.Fetch(rb.Subjects)
 	if err != nil {
 		return err
 	}
@@ -60,35 +68,28 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
 
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}
 
 	// Store
-	return model.NewRoleBindingRepository(s.db).Update(rb)
+	return s.repo.Update(rb)
 }
 
 func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBindingUUID) error {
-	repo := model.NewRoleBindingRepository(s.db)
-	roleBinding, err := repo.GetByID(id)
+	roleBinding, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
 	if roleBinding.Origin != origin {
 		return model.ErrBadOrigin
 	}
-	return repo.Delete(id)
-}
-
-func (s *RoleBindingService) DeleteByTenant(tid model.TenantUUID) error {
-	_, err := s.db.DeleteAll(model.RoleBindingType, model.TenantForeignPK, tid)
-	return err
+	return s.repo.Delete(id)
 }
 
 func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
-	repo := model.NewRoleBindingRepository(s.db)
-	obj, err := repo.GetByID(ext.OwnerUUID)
+	obj, err := s.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -96,12 +97,11 @@ func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
 		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	return repo.Update(obj)
+	return s.repo.Update(obj)
 }
 
 func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, rbid model.RoleBindingUUID) error {
-	repo := model.NewRoleBindingRepository(s.db)
-	obj, err := repo.GetByID(rbid)
+	obj, err := s.repo.GetByID(rbid)
 	if err != nil {
 		return err
 	}
@@ -109,5 +109,5 @@ func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, rbid mode
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	return s.Update(obj)
+	return s.repo.Update(obj)
 }

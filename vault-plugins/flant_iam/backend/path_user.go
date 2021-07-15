@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -373,9 +374,8 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		obj, err := repo.GetByID(id)
+		obj, err := usecase.Users(tx, tenantID).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -387,9 +387,10 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 		user := &model.User{
 			UUID:             id,
-			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			TenantUUID:       tenantID,
 			Identifier:       data.Get("identifier").(string),
 			FirstName:        data.Get("first_name").(string),
 			LastName:         data.Get("last_name").(string),
@@ -403,9 +404,8 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewUserRepository(tx)
 
-		if err := repo.Create(user); err != nil {
+		if err := usecase.Users(tx, tenantID).Create(user); err != nil {
 			msg := "cannot create user"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -422,13 +422,13 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 func (b *userBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
-
+		tenantID := data.Get(model.TenantForeignPK).(string)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		user := &model.User{
 			UUID:             id,
-			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			TenantUUID:       tenantID,
 			Version:          data.Get("resource_version").(string),
 			Identifier:       data.Get("identifier").(string),
 			FirstName:        data.Get("first_name").(string),
@@ -441,8 +441,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			Origin:           model.OriginIAM,
 		}
 
-		repo := model.NewUserRepository(tx)
-		err := repo.Update(user)
+		err := usecase.Users(tx, tenantID).Update(user)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -458,12 +457,12 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewUserRepository(tx)
 
-		err := repo.Delete(model.OriginIAM, id)
+		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -478,11 +477,11 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		user, err := repo.GetByID(id)
+		user, err := usecase.Users(tx, tenantID).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -497,9 +496,8 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		users, err := repo.List(tenantID)
+		users, err := usecase.Users(tx, tenantID).List()
 		if err != nil {
 			return nil, err
 		}
@@ -516,33 +514,22 @@ func (b *userBackend) handleList() framework.OperationFunc {
 func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var (
-			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
-			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
-			validTill = time.Now().Add(ttl).Unix()
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+
+			ttl         = time.Duration(data.Get("ttl").(int)) * time.Second
+			maxTTL      = time.Duration(data.Get("max_ttl").(int)) * time.Second
+			cidrs       = data.Get("allowed_cidrs").([]string)
+			roles       = data.Get("allowed_roles").([]string)
+			description = data.Get("description").(string)
 		)
-
-		multipass := &model.Multipass{
-			UUID:        uuid.New(),
-			TenantUUID:  data.Get("tenant_uuid").(string),
-			OwnerUUID:   data.Get("owner_uuid").(string),
-			OwnerType:   model.MultipassOwnerUser,
-			Description: data.Get("description").(string),
-			TTL:         ttl,
-			MaxTTL:      maxTTL,
-			ValidTill:   validTill,
-			CIDRs:       data.Get("allowed_cidrs").([]string),
-			Roles:       data.Get("allowed_roles").([]string),
-			Origin:      model.OriginIAM,
-		}
-
-		// Prepare salt for JWT generation.
-		multipass.Salt = uuid.New()
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewMultipassRepository(tx)
 
-		jwtString, err := repo.CreateWithJWT(ctx, req.Storage, multipass)
+		jwtString, multipass, err := usecase.
+			UserMultipasses(tx, model.OriginIAM, tid, uid).
+			CreateWithJWT(ctx, req.Storage, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -561,19 +548,16 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-			Origin:     model.OriginIAM,
-		}
+		var (
+			id  = data.Get("uuid").(string)
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+		)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewMultipassRepository(tx)
 
-		err := repo.Delete(filter)
+		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -587,17 +571,14 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-		}
-
+		var (
+			id  = data.Get("uuid").(string)
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+		)
 		tx := b.storage.Txn(false)
-		repo := model.NewMultipassRepository(tx)
 
-		mp, err := repo.Get(filter)
+		mp, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -608,16 +589,12 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-		}
+		tid := data.Get("tenant_uuid").(string)
+		uid := data.Get("owner_uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewMultipassRepository(tx)
 
-		multipasses, err := repo.List(filter)
+		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).List()
 		if err != nil {
 			return responseErr(req, err)
 		}
