@@ -137,6 +137,9 @@ if [ -n "$specified_plugin" ]; then
   	exit 0;
 fi
 
+rm -rf /tmp/token_root
+unset VAULT_TOKEN
+
 for i in "${plugins[@]}"
 do
 	activate_plugin "$i"

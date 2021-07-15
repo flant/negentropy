@@ -176,6 +176,7 @@ func (mst *MemoryStoreTxn) Commit(sourceMsg ...*kafka.SourceInputMessage) error 
 		return err
 	}
 
+	mst.memstore.logger.Debug("Commit transaction")
 	mst.Txn.Commit()
 	return nil
 }
