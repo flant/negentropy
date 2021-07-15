@@ -62,13 +62,6 @@ func GroupSchema() *memdb.DBSchema {
 							subjectFieldName: "Groups",
 						},
 					},
-					"full_identifier": {
-						Name: "full_identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "FullIdentifier",
-							Lowercase: true,
-						},
-					},
 				},
 			},
 		},
@@ -98,14 +91,6 @@ func (u *Group) ObjType() string {
 
 func (u *Group) ObjId() string {
 	return u.UUID
-}
-
-// generic: <identifier>@group.<tenant_identifier>
-// builtin: <identifier>@<builtin_group_type>.group.<tenant_identifier>
-func CalcGroupFullIdentifier(groupID string, tenantID string) string {
-	name := groupID
-	domain := "group." + tenantID
-	return name + "@" + domain
 }
 
 type GroupRepository struct {
@@ -151,20 +136,6 @@ func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
 		return nil, ErrNotFound
 	}
 	return raw, nil
-}
-
-func (r *GroupRepository) GetByIDAndTenant(id string, tenantID string) (*Group, error) {
-	fullIdentifier := CalcGroupFullIdentifier(id, tenantID)
-
-	raw, err := r.db.First(GroupType, "full_identifier", fullIdentifier)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	group := raw.(*Group)
-	return group, nil
 }
 
 func (r *GroupRepository) Delete(id GroupUUID) error {
