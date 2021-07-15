@@ -58,7 +58,7 @@ func UserMultipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model
 }
 
 func ServiceAccountMultipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID, said model.OwnerUUID) *MultipassService {
-	return Multipasses(db, origin, model.MultipassOwnerUser, tid, said)
+	return Multipasses(db, origin, model.MultipassOwnerServiceAccount, tid, said)
 }
 
 func Multipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, otype model.MultipassOwnerType, tid model.TenantUUID, oid model.OwnerUUID) *MultipassService {
