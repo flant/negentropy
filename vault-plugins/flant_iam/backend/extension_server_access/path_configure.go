@@ -14,25 +14,12 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-const (
-	serverAccessConfigStorageKey = "iam.extensions.server_access_config"
-)
-
 type serverConfigureBackend struct {
 	logical.Backend
 	storage *io.MemoryStore
 }
 
 func ServerConfigurePaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
-	b.Syst
-
-	storedConfigEntry, _ := req.Storage.Get(ctx, serverAccessConfigStorageKey)
-	if len(storedConfigEntry.Value) == 0 && data.Get("last_allocated_uid") == nil {
-		return backend.ResponseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
-	}
-
-	RegisterServerAccessUserExtension()
-
 	bb := &serverConfigureBackend{
 		Backend: b,
 		storage: storage,

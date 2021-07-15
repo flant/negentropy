@@ -29,6 +29,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		MultipassSchema(),
 		ServiceAccountPasswordSchema(),
 		IdentitySharingSchema(),
+		ServerSchema(),
 	}
 
 	schema := &memdb.DBSchema{

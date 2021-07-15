@@ -89,12 +89,11 @@ func ServerSchema() *memdb.DBSchema {
 }
 
 type Server struct {
-	UUID           string `json:"uuid"` // ID
-	TenantUUID     string `json:"tenant_uuid"`
-	ProjectUUID    string `json:"project_uuid"`
-	Version        string `json:"resource_version"`
-	Identifier     string `json:"identifier"`
-	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
+	UUID        string `json:"uuid"` // ID
+	TenantUUID  string `json:"tenant_uuid"`
+	ProjectUUID string `json:"project_uuid"`
+	Version     string `json:"resource_version"`
+	Identifier  string `json:"identifier"`
 
 	Fingerprint string            `json:"fingerprint"`
 	Labels      map[string]string `json:"labels"`
@@ -120,24 +119,26 @@ func (u *Server) AsMap() map[string]interface{} {
 }
 
 type ServerRepository struct {
-	db             *io.MemoryStoreTxn
-	tenantRepo     *TenantRepository
-	projectRepo    *ProjectRepository
-	groupRepo      *GroupRepository
-	roleRepo       *RoleRepository
-	roleBinding    *RoleBindingRepository
-	serviceAccount *ServiceAccountRepository
+	db                 *io.MemoryStoreTxn
+	tenantRepo         *TenantRepository
+	projectRepo        *ProjectRepository
+	groupRepo          *GroupRepository
+	roleRepo           *RoleRepository
+	roleBindingRepo    *RoleBindingRepository
+	serviceAccountRepo *ServiceAccountRepository
+	multipassRepo      *MultipassRepository
 }
 
 func NewServerRepository(tx *io.MemoryStoreTxn) *ServerRepository {
 	return &ServerRepository{
-		db:             tx,
-		tenantRepo:     NewTenantRepository(tx),
-		projectRepo:    NewProjectRepository(tx),
-		groupRepo:      NewGroupRepository(tx),
-		roleRepo:       NewRoleRepository(tx),
-		roleBinding:    NewRoleBindingRepository(tx),
-		serviceAccount: NewServiceAccountRepository(tx),
+		db:                 tx,
+		tenantRepo:         NewTenantRepository(tx),
+		projectRepo:        NewProjectRepository(tx),
+		groupRepo:          NewGroupRepository(tx),
+		roleRepo:           NewRoleRepository(tx),
+		roleBindingRepo:    NewRoleBindingRepository(tx),
+		serviceAccountRepo: NewServiceAccountRepository(tx),
+		multipassRepo:      NewMultipassRepository(tx),
 	}
 }
 
@@ -164,26 +165,25 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		return err
 	}
 
-	rawServer, err := r.db.First(ServerType, "identifier")
+	rawServer, err := r.db.First(ServerType, "identifier", tenant.UUID, project.UUID, server.Identifier)
 	if err != nil {
 		return err
 	}
 	if rawServer != nil {
-		return fmt.Errorf("server with identifier %q already exists", server.Identifier)
+		return fmt.Errorf("server with identifier %q already exists in project %q", server.Identifier, project.Identifier)
 	}
 
-	group, err = r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", server.Identifier), tenant)
-	if err != nil {
+	group, getGroupErr := r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", project.Identifier), tenant.Identifier)
+	if getGroupErr != nil && !errors.Is(getGroupErr, ErrNotFound) {
 		return err
 	}
 
 	if group == nil {
 		newGroup := &Group{
-			UUID:            uuid.New(),
-			TenantUUID:      tenant.ObjId(),
-			Version:         NewResourceVersion(),
-			Identifier:      fmt.Sprintf("servers/%s", project.Identifier),
-			ServiceAccounts: []string{serviceAccount.ObjId()},
+			UUID:       uuid.New(),
+			TenantUUID: tenant.ObjId(),
+			Origin:     OriginServerAccess,
+			Identifier: fmt.Sprintf("servers/%s", project.Identifier),
 		}
 		newGroup.FullIdentifier = CalcGroupFullIdentifier(newGroup.Identifier, tenant.Identifier)
 
@@ -200,15 +200,13 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		switch role.Scope {
 		case RoleScopeTenant:
 			tenantBoundRoles = append(tenantBoundRoles, BoundRole{
-				Name:    role.Name,
-				Scope:   RoleScopeTenant,
-				Version: NewResourceVersion(),
+				Name:  role.Name,
+				Scope: RoleScopeTenant,
 			})
 		case RoleScopeProject:
 			projectBoundRoles = append(projectBoundRoles, BoundRole{
-				Name:    role.Name,
-				Scope:   RoleScopeProject,
-				Version: NewResourceVersion(),
+				Name:  role.Name,
+				Scope: RoleScopeProject,
 			})
 		}
 	}
@@ -220,7 +218,7 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 			err         error
 		)
 
-		roleBinding, err = r.roleBinding.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
+		roleBinding, err = r.roleBindingRepo.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
@@ -234,7 +232,7 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 				Roles:      tenantBoundRoles,
 			}
 
-			err := r.roleBinding.Create(newRoleBinding)
+			err := r.roleBindingRepo.Create(newRoleBinding)
 			if err != nil {
 				return err
 			}
@@ -247,7 +245,7 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 			err         error
 		)
 
-		roleBinding, err = r.roleBinding.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
+		roleBinding, err = r.roleBindingRepo.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
@@ -256,19 +254,19 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 			newRoleBinding := &RoleBinding{
 				UUID:       uuid.New(),
 				TenantUUID: tenant.ObjId(),
-				Origin:     "server_access", // TODO: ?
+				Origin:     OriginServerAccess,
 				Groups:     []GroupUUID{group.UUID},
 				Roles:      projectBoundRoles,
 			}
 
-			err := r.roleBinding.Create(newRoleBinding)
+			err := r.roleBindingRepo.Create(newRoleBinding)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	serviceAccount, err = r.serviceAccount.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier), tenant.Identifier)
+	serviceAccount, err = r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier), tenant.Identifier)
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return err
 	}
@@ -277,11 +275,11 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		newServiceAccount := &ServiceAccount{
 			UUID:       uuid.New(),
 			TenantUUID: tenant.ObjId(),
-			Origin:     "server_access", // TODO: ?
+			Origin:     OriginServerAccess,
 			Identifier: fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier),
 		}
 
-		err := r.serviceAccount.Create(newServiceAccount)
+		err := r.serviceAccountRepo.Create(newServiceAccount)
 		if err != nil {
 			return err
 		}
@@ -300,9 +298,16 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
 	}
 
-	err = r.db.Insert(GroupType, group)
-	if err != nil {
-		return err
+	if errors.Is(getGroupErr, ErrNotFound) {
+		err := r.groupRepo.Create(group)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = r.groupRepo.Update(group)
+		if err != nil {
+			return err
+		}
 	}
 
 	server.Version = NewResourceVersion()
@@ -311,6 +316,33 @@ func (r *ServerRepository) Create(server *Server, roles []string) error {
 		return err
 	}
 
+	var multipassRoleNames []RoleName
+	for _, tenantRole := range tenantBoundRoles {
+		multipassRoleNames = append(multipassRoleNames, tenantRole.Name)
+	}
+	for _, projectRole := range projectBoundRoles {
+		multipassRoleNames = append(multipassRoleNames, projectRole.Name)
+	}
+
+	mp := &Multipass{
+		UUID:       uuid.New(),
+		TenantUUID: tenant.UUID,
+		OwnerUUID:  serviceAccount.UUID,
+		OwnerType:  ServiceAccountType,
+		TTL:        24 * time.Hour, // TODO: change placeholders
+		MaxTTL:     72 * time.Hour,
+		ValidTill:  time.Now().Add(144 * time.Hour).Unix(),
+		Roles:      multipassRoleNames,
+		Salt:       "", // TODO: should it be empty?
+		Origin:     OriginServerAccess,
+	}
+
+	err = r.multipassRepo.Create(mp)
+	if err != nil {
+		return err
+	}
+
+	// TODO: return signed multipass
 	return nil
 }
 
@@ -338,16 +370,22 @@ func (r *ServerRepository) Update(server *Server) error {
 	}
 	server.Version = NewResourceVersion()
 
-	rawTenant, err := r.db.First(TenantType, PK, server.TenantUUID)
+	project, err := r.projectRepo.GetByID(server.ProjectUUID)
 	if err != nil {
 		return err
 	}
-	if rawTenant == nil {
-		return ErrNotFound
-	}
-	tenant := rawTenant.(*Tenant)
 
-	server.FullIdentifier = server.Identifier + "@" + tenant.Identifier
+	sa, err := r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, stored.Identifier), project.Identifier)
+	if err != nil {
+		return err
+	}
+
+	sa.Identifier = fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier)
+
+	err = r.serviceAccountRepo.Update(sa)
+	if err != nil {
+		return err
+	}
 
 	err = r.db.Insert(ServerType, server)
 	if err != nil {
@@ -361,6 +399,105 @@ func (r *ServerRepository) Delete(id string) error {
 	server, err := r.GetById(id)
 	if err != nil {
 		return err
+	}
+
+	tenant, err := r.tenantRepo.GetByID(server.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	project, err := r.projectRepo.GetByID(server.ProjectUUID)
+	if err != nil {
+		return err
+	}
+
+	sa, err := r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier), tenant.UUID)
+	if err != nil {
+		return err
+	}
+
+	err = r.multipassRepo.Delete(&Multipass{
+		TenantUUID: tenant.UUID,
+		OwnerUUID:  sa.UUID,
+		OwnerType:  ServiceAccountType,
+	})
+	if err != nil {
+		return err
+	}
+
+	// TODO: delete SA from roles
+
+	err = r.serviceAccountRepo.Delete(OriginServerAccess, sa.UUID)
+	if err != nil {
+		return err
+	}
+
+	var (
+		serversPresentInTenant  bool
+		serversPresentInProject bool
+	)
+
+	serverList, err := r.List(tenant.UUID, "")
+	if err != nil {
+		return err
+	}
+
+	for _, server := range serverList {
+		if serversPresentInTenant && serversPresentInProject {
+			break
+		}
+
+		if server.TenantUUID == tenant.UUID {
+			serversPresentInTenant = true
+		}
+
+		if server.ProjectUUID == project.UUID {
+			serversPresentInProject = true
+		}
+	}
+
+	if !serversPresentInProject {
+		groupToDelete, err := r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", project.Identifier), tenant.UUID)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return err
+		}
+
+		if groupToDelete != nil {
+			err := r.groupRepo.Delete(OriginServerAccess, groupToDelete.UUID)
+			if err != nil {
+				return err
+			}
+		}
+
+		// TODO: role scopes
+		rbsInProject, err := r.roleBindingRepo.List(tenant.UUID)
+		if err != nil {
+			return err
+		}
+		for _, rb := range rbsInProject {
+			if rb.Origin == OriginServerAccess {
+				err := r.roleBindingRepo.Delete(OriginServerAccess, rb.UUID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if !serversPresentInTenant {
+		// TODO: role scopes
+		rbsInProject, err := r.roleBindingRepo.List(tenant.UUID)
+		if err != nil {
+			return err
+		}
+		for _, rb := range rbsInProject {
+			if rb.Origin == OriginServerAccess {
+				err := r.roleBindingRepo.Delete(OriginServerAccess, rb.UUID)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	return r.db.Delete(ServerType, server)
@@ -401,11 +538,9 @@ func (r *ServerRepository) List(tenantID, projectID string) ([]*Server, error) {
 	return ids, nil
 }
 
-const ServerAccessExtensionName = "server_access"
-
 type UserServerPassword struct {
-	Seed      string    `json:"seed"`
-	Salt      string    `json:"salt"`
+	Seed      []byte    `json:"seed"`
+	Salt      []byte    `json:"salt"`
 	ValidTill time.Time `json:"valid_till"`
 }
 
@@ -433,7 +568,7 @@ func NewUserServerAccessRepository(
 }
 
 func (r *UserServerAccessRepository) CreateExtension(user *User) error {
-	if _, ok := user.Extensions[ServerAccessExtensionName]; ok {
+	if _, ok := user.Extensions[OriginServerAccess]; ok {
 		return nil
 	}
 
@@ -448,15 +583,15 @@ func (r *UserServerAccessRepository) CreateExtension(user *User) error {
 	}
 
 	err = r.userRepo.SetExtension(&Extension{
-		Origin:    ServerAccessExtensionName,
+		Origin:    OriginServerAccess,
 		OwnerType: ExtensionOwnerTypeUser,
 		OwnerUUID: user.ObjId(),
 		Attributes: map[string]interface{}{
 			"UID": r.currentUID,
 			"passwords": []UserServerPassword{
 				{
-					Seed:      string(randomSeed),
-					Salt:      string(randomSalt),
+					Seed:      randomSeed,
+					Salt:      randomSalt,
 					ValidTill: time.Time{},
 				},
 			},
@@ -478,10 +613,20 @@ func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) 
 		return "", err
 	}
 
-	passwordsRaw := user.Extensions[ServerAccessExtensionName].Attributes["passwords"]
+	randomSeed, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return "", err
+	}
+
+	randomSalt, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return "", err
+	}
+
+	passwordsRaw := user.Extensions[OriginServerAccess].Attributes["passwords"]
 	passwords := passwordsRaw.([]UserServerPassword)
 
-	passwords = garbageCollectPasswords(passwords, r.deleteExpiredPasswordSeedsAfter)
+	passwords = garbageCollectPasswords(passwords, randomSeed, randomSalt, r.expireSeedAfterRevealIn, r.deleteExpiredPasswordSeedsAfter)
 
 	freshPass, err := returnFreshPassword(passwords)
 	if err != nil {
@@ -489,7 +634,7 @@ func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) 
 	}
 
 	sha512Hash := sha512.New()
-	_, err = sha512Hash.Write([]byte(serverUUID + freshPass.Seed))
+	_, err = sha512Hash.Write(append([]byte(serverUUID), freshPass.Seed...))
 	retPass := hex.EncodeToString(sha512Hash.Sum(nil))
 
 	return retPass[:11], nil
@@ -506,19 +651,27 @@ func returnFreshPassword(usps []UserServerPassword) (UserServerPassword, error) 
 		return usps[i].ValidTill.Before(usps[j].ValidTill) // TODO: should iterate from freshest. check!!!
 	})
 
-	currentTime := time.Now()
-
-	for _, usp := range usps {
-		if !usp.ValidTill.Before(currentTime) {
-			return usp, nil
-		}
-	}
-
-	return UserServerPassword{}, NoValidPasswords
+	return usps[0], NoValidPasswords
 }
 
-func garbageCollectPasswords(usps []UserServerPassword, deleteAfter time.Duration) (ret []UserServerPassword) {
-	deleteAfterTimestamp := time.Now().Add(deleteAfter)
+func garbageCollectPasswords(usps []UserServerPassword, seed, salt []byte,
+	expirePasswordSeedAfterRevealIn, deleteAfter time.Duration) (ret []UserServerPassword) {
+
+	var (
+		currentTime                            = time.Now()
+		expirePasswordSeedAfterTimestamp       = currentTime.Add(expirePasswordSeedAfterRevealIn)
+		expirePasswordSeedAfterTimestampHalved = currentTime.Add(expirePasswordSeedAfterRevealIn / 2)
+		deleteAfterTimestamp                   = currentTime.Add(deleteAfter)
+	)
+
+	if !usps[len(usps)-1].ValidTill.After(expirePasswordSeedAfterTimestampHalved) {
+		usps[len(usps)-1].ValidTill = time.Time{}
+		usps = append(usps, UserServerPassword{
+			Seed:      seed,
+			Salt:      salt,
+			ValidTill: expirePasswordSeedAfterTimestamp,
+		})
+	}
 
 	for _, usp := range usps {
 		if !usp.ValidTill.Before(deleteAfterTimestamp) {
