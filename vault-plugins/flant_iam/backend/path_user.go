@@ -514,37 +514,24 @@ func (b *userBackend) handleList() framework.OperationFunc {
 func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var (
-			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
-			maxTTL    = time.Duration(data.Get("max_ttl").(int)) * time.Second
-			validTill = time.Now().Add(ttl).Unix()
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+
+			ttl         = time.Duration(data.Get("ttl").(int)) * time.Second
+			maxTTL      = time.Duration(data.Get("max_ttl").(int)) * time.Second
+			cidrs       = data.Get("allowed_cidrs").([]string)
+			roles       = data.Get("allowed_roles").([]string)
+			description = data.Get("description").(string)
 		)
-
-		multipass := &model.Multipass{
-			UUID:        uuid.New(),
-			TenantUUID:  data.Get("tenant_uuid").(string),
-			OwnerUUID:   data.Get("owner_uuid").(string),
-			OwnerType:   model.MultipassOwnerUser,
-			Description: data.Get("description").(string),
-			TTL:         ttl,
-			MaxTTL:      maxTTL,
-			ValidTill:   validTill,
-			CIDRs:       data.Get("allowed_cidrs").([]string),
-			Roles:       data.Get("allowed_roles").([]string),
-			Origin:      model.OriginIAM,
-		}
-
-		// Prepare salt for JWT generation.
-		multipass.Salt = uuid.New()
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewMultipassRepository(tx)
 
+		multipass, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Create(ttl, maxTTL, cidrs, roles, description)
 		jwtString, err := repo.CreateWithJWT(ctx, req.Storage, multipass)
 		if err != nil {
 			return responseErr(req, err)
 		}
-
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
@@ -559,19 +546,17 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-			Origin:     model.OriginIAM,
-		}
+
+		var (
+			id  = data.Get("uuid").(string)
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+		)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewMultipassRepository(tx)
 
-		err := repo.Delete(filter)
+		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -585,17 +570,14 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-		}
-
+		var (
+			id  = data.Get("uuid").(string)
+			tid = data.Get("tenant_uuid").(string)
+			uid = data.Get("owner_uuid").(string)
+		)
 		tx := b.storage.Txn(false)
-		repo := model.NewMultipassRepository(tx)
 
-		mp, err := repo.Get(filter)
+		mp, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -606,16 +588,13 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.Multipass{
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-			OwnerType:  model.MultipassOwnerUser,
-		}
+
+		tid := data.Get("tenant_uuid").(string)
+		uid := data.Get("owner_uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewMultipassRepository(tx)
 
-		multipasses, err := repo.List(filter)
+		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).List()
 		if err != nil {
 			return responseErr(req, err)
 		}

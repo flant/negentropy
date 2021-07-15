@@ -161,7 +161,6 @@ func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 }
 
 func (r *MultipassRepository) List(oid OwnerUUID) ([]*Multipass, error) {
-
 	iter, err := r.db.Get(MultipassType, OwnerForeignPK, oid)
 	if err != nil {
 		return nil, err
