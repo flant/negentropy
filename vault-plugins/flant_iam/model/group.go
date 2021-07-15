@@ -153,6 +153,20 @@ func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
 	return raw, nil
 }
 
+func (r *GroupRepository) GetByIDAndTenant(id string, tenantID string) (*Group, error) {
+	fullIdentifier := CalcGroupFullIdentifier(id, tenantID)
+
+	raw, err := r.db.First(GroupType, "full_identifier", fullIdentifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	group := raw.(*Group)
+	return group, nil
+}
+
 func (r *GroupRepository) Delete(id GroupUUID) error {
 	group, err := r.GetByID(id)
 	if err != nil {
