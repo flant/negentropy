@@ -28,11 +28,9 @@ export VAULT_ROOT_TOKEN_PGP_KEY="$(hostname)-temporary-pub-key.asc"
 export VAULT_ROOT_TOKEN_ENCRYPTED="$(hostname)-root-token"
 export VAULT_RECOVERY_KEYS_ENCRYPTED="$(hostname)-recovery-keys"
 
+# All vaults except `vault-auth` have fixed subdomain.
 if [[ "$VAULT_INTERNAL_SUBDOMAIN" != "" ]]; then
   export VAULT_INTERNAL_FQDN="$VAULT_INTERNAL_SUBDOMAIN.$VAULT_INTERNAL_ROOT_DOMAIN"
-else
-  # If no subdomain provided base FQDN on hostname (for auth vaults), replacing dash with dot.
-  export VAULT_INTERNAL_FQDN="$(hostname | sed 's/-/./g').$VAULT_INTERNAL_ROOT_DOMAIN"
 fi
 
 # Vault conf variables.
@@ -45,4 +43,12 @@ export VAULT_CONF_CONF_BUCKET="$VAULT_CONF_CONF_BUCKET"
 export VAULT_ROOT_SOURCE_BUCKET="$VAULT_ROOT_SOURCE_BUCKET"
 
 # Vault auth variables.
-export VAULT_AUTH_BUCKET_TRAILER="$VAULT_AUTH_BUCKET_TRAILER"
+export VAULT_AUTH_BUCKET="$(hostname)$VAULT_AUTH_BUCKET_TRAILER"
+# For auth vault no subdomain provided, so we base FQDN on the hostname, replacing dash with a dot.
+if [[ "$VAULT_INTERNAL_SUBDOMAIN" == "" ]]; then
+  export VAULT_INTERNAL_FQDN="$(hostname | sed 's/-/./g').$VAULT_INTERNAL_ROOT_DOMAIN"
+  export VAULT_INTERNAL_DOMAIN="${VAULT_INTERNAL_FQDN#*.}"
+  export VAULT_PUBLIC_FQDN="$(hostname | sed 's/-/./g').$VAULT_PUBLIC_ROOT_DOMAIN"
+  export VAULT_PUBLIC_DOMAIN="${VAULT_PUBLIC_FQDN#*.}"
+fi
+export VAULT_AUTH_PUBLIC_CERTIFICATE_EMAIL="$VAULT_AUTH_PUBLIC_CERTIFICATE_EMAIL"

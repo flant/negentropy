@@ -15,6 +15,10 @@ gcp_zone = "[ZONE]"
 # Terraform state and temporary keys (transmit them from vault to `apply.py`) bucket name.
 tfstate_bucket = "terraform-state"
 
+# Email used for registration and recovery contact of Let's Encrypt certificates.
+## Used for obtaining certificates for `vault-auth` on `vault_public_root_domain`.
+lets_encrypt_email="admin@domain.com"
+
 # Current environment to build to (prepend with "-"). Default is empty.
 ## This string will be added to images name and family right after its name.
 env = "-test"
@@ -35,6 +39,7 @@ vault_ca_pool="[CA_RESOURCE_POOL]"
 vault_ca_location="[CA_RESOURCE_LOCATION]"
 ## Root domain for vaults. According to specific instance subdomain will be added to it.
 vault_internal_root_domain="negentropy.flant.local"
+vault_public_root_domain="negentropy.flant.com"
 
 # Kafka variables.
 ## Will be used as "$(hostname).kafka_main_domain".

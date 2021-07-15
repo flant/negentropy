@@ -43,6 +43,12 @@ variable "vault_ca_location" {
 variable "vault_internal_root_domain" {
   type =  string
 }
+variable "vault_public_root_domain" {
+  type =  string
+}
+variable "lets_encrypt_email" {
+  type =  string
+}
 variable "image_sources_checksum" {
   type    = string
 }
@@ -147,7 +153,9 @@ build {
       "VAULT_CA_NAME=${var.vault_ca_name}",
       "VAULT_CA_POOL=${var.vault_ca_pool}",
       "VAULT_CA_LOCATION=${var.vault_ca_location}",
-      "VAULT_INTERNAL_ROOT_DOMAIN=${var.vault_internal_root_domain}"
+      "VAULT_INTERNAL_ROOT_DOMAIN=${var.vault_internal_root_domain}",
+      "VAULT_PUBLIC_ROOT_DOMAIN=${var.vault_public_root_domain}",
+      "VAULT_AUTH_PUBLIC_CERTIFICATE_EMAIL=${var.lets_encrypt_email}"
     ]
     inline = [
       "tmp=$(mktemp); envsubst < /etc/vault-variables.sh > $tmp && cat $tmp > /etc/vault-variables.sh"
@@ -159,7 +167,23 @@ build {
     scripts         = [
       "../../../common/packer-scripts/02-vault.sh",
       "scripts/01-vault-addr-localhost.sh",
-      "../../../common/packer-scripts/03-vector-enable.sh",
+      "scripts/02-nginx.sh",
+      "../../../common/packer-scripts/03-vector-enable.sh"
+    ]
+  }
+
+  provisioner "file" {
+    sources     = [
+      "config/nginx.conf",
+      "config/nginx-vault-internal.conf",
+      "config/nginx-vault-public.conf"
+    ]
+    destination = "/etc/nginx/"
+  }
+
+  provisioner "shell" {
+    execute_command = "/bin/sh -x '{{ .Path }}'"
+    scripts         = [
       "../../../common/packer-scripts/80-read-only.sh",
       "../../../common/packer-scripts/90-cleanup.sh",
       "../../../common/packer-scripts/91-minimize.sh",

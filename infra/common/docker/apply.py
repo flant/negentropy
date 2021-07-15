@@ -66,10 +66,18 @@ def main():
     os.environ['PKR_VAR_gcp_builder_service_account'] = "negentropy-packer@%s.iam.gserviceaccount.com" % google_project_id
     os.environ['PKR_VAR_gcp_image_bucket'] = "%s-packer" % google_project_id
 
-    os.environ['PKR_VAR_vault_root_source_bucket'] = "%s-vault-root-source-1" % google_project_id
+    os.environ['PKR_VAR_vault_root_source_bucket'] = "%s-vault-root-source" % google_project_id
     os.environ['PKR_VAR_vault_conf_bucket'] = "%s-vault-conf" % google_project_id
     os.environ['PKR_VAR_vault_conf_conf_bucket'] = "%s-vault-conf-conf" % google_project_id
     os.environ['PKR_VAR_vault_auth_bucket_trailer'] = "%s-vault-auth" % google_project_id
+
+    os.environ['PKR_VAR_vault_ca_name'] = "20210708-4qi-uyu"
+    os.environ['PKR_VAR_vault_ca_pool'] = "negentropy-flant-local"
+    os.environ['PKR_VAR_vault_ca_location'] = "europe-west1"
+    os.environ['PKR_VAR_vault_internal_root_domain'] = "negentropy.flant.local"
+
+    os.environ['PKR_VAR_lets_encrypt_email'] = "admin@domain.com"
+    os.environ['PKR_VAR_vault_public_root_domain'] = 'negentropy.flant.com'
 
     os.environ['PKR_VAR_gcp_project'] = google_project_id
     os.environ['PKR_VAR_gcp_zone'] = "europe-west3-a"
@@ -97,6 +105,10 @@ vault_conf_bucket = "{os.environ.get('PKR_VAR_vault_conf_bucket')}"
 vault_conf_conf_bucket = "{os.environ.get('PKR_VAR_vault_conf_conf_bucket')}"
 # Will be used as "hostname.vault_auth_bucket_trailer".
 vault_auth_bucket_trailer = "{os.environ.get('PKR_VAR_vault_auth_bucket_trailer')}"
+vault_ca_name = "{os.environ.get('PKR_VAR_vault_ca_name')}"
+vault_ca_pool = "{os.environ.get('PKR_VAR_vault_ca_pool')}"
+vault_ca_location = "{os.environ.get('PKR_VAR_vault_ca_location')}"
+vault_internal_root_domain = "{os.environ.get('PKR_VAR_vault_internal_root_domain')}"
 # Variables to determine where are builder instances will run.
 ## Project will be also used for kafka CA request.
 gcp_project = "{os.environ.get('PKR_VAR_gcp_project')}"
