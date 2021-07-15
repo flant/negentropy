@@ -93,24 +93,13 @@ func (u *Group) ObjId() string {
 	return u.UUID
 }
 
-// generic: <identifier>@group.<tenant_identifier>
-// builtin: <identifier>@<builtin_group_type>.group.<tenant_identifier>
-func CalcGroupFullIdentifier(g *Group, tenant *Tenant) string {
-	name := g.Identifier
-	domain := "group." + tenant.Identifier
-	return name + "@" + domain
-}
-
 type GroupRepository struct {
 	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
 
 func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
-	return &GroupRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
+	return &GroupRepository{db: tx}
 }
 
 func (r *GroupRepository) save(group *Group) error {
@@ -118,28 +107,27 @@ func (r *GroupRepository) save(group *Group) error {
 }
 
 func (r *GroupRepository) Create(group *Group) error {
-	tenant, err := r.tenantRepo.GetByID(group.TenantUUID)
+	// TODO check name collision?
+	return r.save(group)
+}
+
+func (r *GroupRepository) Update(group *Group) error {
+	_, err := r.GetByID(group.UUID)
 	if err != nil {
 		return err
 	}
-
-	if group.Version != "" {
-		return ErrBadVersion
-	}
-	if group.Origin == "" {
-		return ErrBadOrigin
-	}
-	group.Version = NewResourceVersion()
-	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
-
-	if err := r.fillSubjects(group); err != nil {
-		return err
-	}
-
 	return r.save(group)
 }
 
 func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*Group), err
+}
+
+func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
 	raw, err := r.db.First(GroupType, PK, id)
 	if err != nil {
 		return nil, err
@@ -147,78 +135,10 @@ func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	group := raw.(*Group)
-	return group, nil
+	return raw, nil
 }
 
-func (r *GroupRepository) Update(group *Group) error {
-	stored, err := r.GetByID(group.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != group.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Origin != group.Origin {
-		return ErrBadOrigin
-	}
-	if stored.Version != group.Version {
-		return ErrBadVersion
-	}
-	group.Version = NewResourceVersion()
-
-	// Update
-
-	tenant, err := r.tenantRepo.GetByID(group.TenantUUID)
-	if err != nil {
-		return err
-	}
-	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
-
-	if err := r.fillSubjects(group); err != nil {
-		return err
-	}
-
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
-	if group.Extensions == nil {
-		group.Extensions = stored.Extensions
-	}
-
-	return r.save(group)
-}
-
-func (r *GroupRepository) fillSubjects(g *Group) error {
-	subj, err := NewSubjectsFetcher(r.db, g.Subjects).Fetch()
-	if err != nil {
-		return err
-	}
-	g.Groups = subj.Groups
-	g.ServiceAccounts = subj.ServiceAccounts
-	g.Users = subj.Users
-	return nil
-}
-
-/*
-TODO Clean from everywhere:
-	* other groups
-	* role_bindings
-	* approvals
-	* identity_sharings
-*/
-func (r *GroupRepository) Delete(origin ObjectOrigin, id GroupUUID) error {
-	group, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	if group.Origin != origin {
-		return ErrBadOrigin
-	}
-	return r.db.Delete(GroupType, group)
-}
-
-func (r *GroupRepository) delete(id string) error {
+func (r *GroupRepository) Delete(id GroupUUID) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -245,38 +165,10 @@ func (r *GroupRepository) List(tenantID TenantUUID) ([]*Group, error) {
 	return list, nil
 }
 
-func (r *GroupRepository) DeleteByTenant(tenantUUID TenantUUID) error {
-	_, err := r.db.DeleteAll(GroupType, TenantForeignPK, tenantUUID)
-	return err
-}
-
-func (r *GroupRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetByID(ext.OwnerUUID)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[ObjectOrigin]*Extension)
-	}
-	obj.Extensions[ext.Origin] = ext
-	return r.save(obj)
-}
-
-func (r *GroupRepository) UnsetExtension(origin ObjectOrigin, uuid GroupUUID) error {
-	obj, err := r.GetByID(uuid)
-	if err != nil {
-		return err
-	}
-	if obj.Extensions == nil {
-		return nil
-	}
-	delete(obj.Extensions, origin)
-	return r.save(obj)
-}
-
+// Sync applies changes received from Kafka
 func (r *GroupRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	gr := &Group{}

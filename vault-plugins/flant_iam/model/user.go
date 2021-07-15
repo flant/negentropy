@@ -109,6 +109,14 @@ func (r *UserRepository) Create(user *User) error {
 }
 
 func (r *UserRepository) GetByID(id UserUUID) (*User, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*User), err
+}
+
+func (r *UserRepository) GetRawByID(id UserUUID) (interface{}, error) {
 	raw, err := r.db.First(UserType, PK, id)
 	if err != nil {
 		return nil, err
@@ -116,8 +124,7 @@ func (r *UserRepository) GetByID(id UserUUID) (*User, error) {
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	user := raw.(*User)
-	return user, nil
+	return raw, nil
 }
 
 func (r *UserRepository) save(user *User) error {

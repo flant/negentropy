@@ -111,6 +111,14 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 }
 
 func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*ServiceAccount), err
+}
+
+func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{}, error) {
 	raw, err := r.db.First(ServiceAccountType, PK, id)
 	if err != nil {
 		return nil, err
@@ -118,8 +126,7 @@ func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccou
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	serviceAccount := raw.(*ServiceAccount)
-	return serviceAccount, nil
+	return raw, nil
 }
 
 /*

@@ -112,38 +112,12 @@ func (r *TenantRepository) Update(updated *Tenant) error {
 }
 
 func (r *TenantRepository) Delete(id TenantUUID) error {
-	err := r.deleteNestedObjects(
-		id,
-		NewUserRepository(r.db),
-		NewProjectRepository(r.db),
-		NewServiceAccountRepository(r.db),
-		NewGroupRepository(r.db),
-		NewRoleBindingRepository(r.db),
-	)
-	if err != nil {
-		return err
-	}
-
-	return r.delete(id)
-}
-
-func (r *TenantRepository) delete(id string) error {
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(TenantType, tenant)
-}
-
-func (r *TenantRepository) deleteNestedObjects(id string, repos ...SubTenantRepo) error {
-	for _, r := range repos {
-		err := r.DeleteByTenant(id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *TenantRepository) List() ([]*Tenant, error) {
@@ -166,7 +140,7 @@ func (r *TenantRepository) List() ([]*Tenant, error) {
 
 func (r *TenantRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	tenant := &Tenant{}

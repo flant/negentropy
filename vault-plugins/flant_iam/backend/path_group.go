@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -203,9 +204,8 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewGroupRepository(tx)
 
-		if err := repo.Create(group); err != nil {
+		if err := usecase.Groups(tx).Create(group); err != nil {
 			msg := "cannot create service account"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -240,8 +240,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewGroupRepository(tx)
-		err = repo.Update(group)
+		err = usecase.Groups(tx).Update(group)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -260,9 +259,8 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewGroupRepository(tx)
 
-		err := repo.Delete(model.OriginIAM, id)
+		err := usecase.Groups(tx).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}

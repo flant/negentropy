@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -248,9 +249,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewRoleBindingRepository(tx)
 
-		if err := repo.Create(roleBinding); err != nil {
+		if err := usecase.RoleBindings(tx).Create(roleBinding); err != nil {
 			msg := "cannot create role binding"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -295,8 +295,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewRoleBindingRepository(tx)
-		err = repo.Update(roleBinding)
+		err = usecase.RoleBindings(tx).Update(roleBinding)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -315,9 +314,8 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewRoleBindingRepository(tx)
 
-		err := repo.Delete(model.OriginIAM, id)
+		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}

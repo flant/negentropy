@@ -137,64 +137,6 @@ func (r *RoleBindingRepository) save(rb *RoleBinding) error {
 	return r.db.Insert(RoleBindingType, rb)
 }
 
-func (r *RoleBindingRepository) fillSubjects(rb *RoleBinding) error {
-	subj, err := NewSubjectsFetcher(r.db, rb.Subjects).Fetch()
-	if err != nil {
-		return err
-	}
-	rb.Groups = subj.Groups
-	rb.ServiceAccounts = subj.ServiceAccounts
-	rb.Users = subj.Users
-	return nil
-}
-
-func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
-	// Validate
-	if rb.Origin == "" {
-		return ErrBadOrigin
-	}
-	if rb.Version != "" {
-		return ErrBadVersion
-	}
-	rb.Version = NewResourceVersion()
-
-	// Refill data
-	if err := r.fillSubjects(rb); err != nil {
-		return err
-	}
-
-	return r.save(rb)
-}
-
-func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
-	// Validate
-	if rb.Origin == "" {
-		return ErrBadOrigin
-	}
-
-	// Validate tenant relation
-	stored, err := r.GetByID(rb.UUID)
-	if err != nil {
-		return err
-	}
-	if stored.TenantUUID != rb.TenantUUID {
-		return ErrNotFound
-	}
-
-	// Refill data
-	if err := r.fillSubjects(rb); err != nil {
-		return err
-	}
-
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
-	if rb.Extensions == nil {
-		rb.Extensions = stored.Extensions
-	}
-
-	// Store
-	return r.save(rb)
-}
-
 func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
 	if err != nil {
@@ -205,25 +147,6 @@ func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error
 	}
 	roleBinding := raw.(*RoleBinding)
 	return roleBinding, nil
-}
-
-func (r *RoleBindingRepository) delete(id RoleBindingUUID) error {
-	rb, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(RoleBindingType, rb)
-}
-
-func (r *RoleBindingRepository) Delete(origin ObjectOrigin, id RoleBindingUUID) error {
-	roleBinding, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	if roleBinding.Origin != origin {
-		return ErrBadOrigin
-	}
-	return r.delete(id)
 }
 
 func (r *RoleBindingRepository) List(tid TenantUUID) ([]*RoleBinding, error) {
@@ -244,38 +167,30 @@ func (r *RoleBindingRepository) List(tid TenantUUID) ([]*RoleBinding, error) {
 	return list, nil
 }
 
-func (r *RoleBindingRepository) DeleteByTenant(tid TenantUUID) error {
-	_, err := r.db.DeleteAll(RoleBindingType, TenantForeignPK, tid)
-	return err
-}
-
-func (r *RoleBindingRepository) SetExtension(ext *Extension) error {
-	obj, err := r.GetByID(ext.OwnerUUID)
+func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
+	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[ObjectOrigin]*Extension)
-	}
-	obj.Extensions[ext.Origin] = ext
-	return r.save(obj)
+	return r.db.Delete(RoleBindingType, rb)
 }
 
-func (r *RoleBindingRepository) UnsetExtension(origin ObjectOrigin, rbid RoleBindingUUID) error {
-	obj, err := r.GetByID(rbid)
+func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
+	return r.save(rb)
+}
+
+func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
+	_, err := r.GetByID(rb.UUID)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
-		return nil
-	}
-	delete(obj.Extensions, origin)
-	return r.save(obj)
+	return r.save(rb)
 }
 
+// Sync saves aplies changes from Kafka
 func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	rb := &RoleBinding{}
