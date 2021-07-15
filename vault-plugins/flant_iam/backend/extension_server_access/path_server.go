@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
 )
 
 // TODO: changed group identifier once project indentifier changes in the flant_iam
@@ -169,6 +170,41 @@ func (b *serverBackend) paths() []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleFingerprintUpdate(),
 					Summary:  "Update a server's fingerprint",
+				},
+			},
+		},
+		{
+			Pattern: path.Join(
+				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid"), "connection_info",
+			),
+			Fields: map[string]*framework.FieldSchema{
+				"server_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a server",
+					Required:    true,
+				},
+				"hostname": {
+					Type:        framework.TypeString,
+					Description: "IP or a hostname",
+					Required:    true,
+				},
+				"port": {
+					Type:        framework.TypeString,
+					Description: "Port, optional, 22 by default",
+				},
+				"jump_hostname": {
+					Type:        framework.TypeString,
+					Description: "IP or a hostname, optional",
+				},
+				"jump_port": {
+					Type:        framework.TypeString,
+					Description: "Port, optional, 22 by default if jump_hostname is defined",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleConnectionInfoUpdate(),
+					Summary:  "Update a server's connection_info",
 				},
 			},
 		},
@@ -405,5 +441,48 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 			},
 		}
 		return resp, nil
+	}
+}
+
+func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+		repo := model.NewServerRepository(tx)
+		serverUUID := data.Get("server_uuid").(string)
+		server, err := repo.GetById(serverUUID)
+		if err != nil {
+			return backend.ResponseNotFound(req)
+		}
+		if err != nil {
+			b.Logger().Debug("err", err.Error())
+			return logical.ErrorResponse(err.Error()), nil
+		}
+		connectionInfo := model.ConnectionInfo{
+			Hostname:     data.Get("hostname").(string),
+			Port:         data.Get("port").(string),
+			JumpHostname: data.Get("jump_hostname").(string),
+			JumpPort:     data.Get("jump_port").(string),
+		}
+
+		connectionInfo.FillDefaultPorts()
+		server.ConnectionInfo = connectionInfo
+		err := repo.Update(server)
+		if errors.Is(err, model.ErrNotFound) {
+			return backend.ResponseNotFound(req)
+		}
+		if err != nil {
+			b.Logger().Debug("err", err.Error())
+			return logical.ErrorResponse(err.Error()), nil
+		}
+		err = tx.Commit()
+		if err != nil {
+			msg := "cannot commit transaction"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{"server": server}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

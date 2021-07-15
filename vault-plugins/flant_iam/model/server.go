@@ -10,9 +10,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/go-memdb"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/go-memdb"
 )
 
 const (
@@ -98,6 +99,24 @@ type Server struct {
 	Fingerprint string            `json:"fingerprint"`
 	Labels      map[string]string `json:"labels"`
 	Annotations map[string]string `json:"annotations"`
+
+	ConnectionInfo ConnectionInfo `json:"connection_info"`
+}
+
+type ConnectionInfo struct {
+	Hostname     string `json:"hostname"`
+	Port         string `json:"port"`
+	JumpHostname string `json:"jump_hostname"`
+	JumpPort     string `json:"jump_port"`
+}
+
+func (c *ConnectionInfo) FillDefaultPorts() {
+	if c.Port == "" {
+		c.Port = "22"
+	}
+	if c.JumpHostname != "" && c.JumpPort == "" {
+		c.JumpPort = "22"
+	}
 }
 
 func (u *Server) ObjType() string {
