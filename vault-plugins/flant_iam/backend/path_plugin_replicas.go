@@ -236,7 +236,7 @@ func (b replicaBackend) removeReplicaFromReplications(replica model.Replica) {
 }
 
 func (b replicaBackend) createTopicForReplica(ctx context.Context, replicaName string) error {
-	return b.storage.GetKafkaBroker().CreateTopic(ctx, "root_source."+replicaName)
+	return b.storage.GetKafkaBroker().CreateTopic(ctx, "root_source."+replicaName, nil)
 }
 
 func (b replicaBackend) deleteTopicForReplica(ctx context.Context, replicaName string) error {

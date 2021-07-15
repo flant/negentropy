@@ -134,7 +134,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 	kb.broker.PluginConfig.PublishQuotaUsage = data.Get("publish_quota_usage").(bool)
 
-	err = kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName)
+	err = kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 
 	kb.storage.ReinitializeKafka()
 
-	return nil, nil
+	return &logical.Response{}, nil
 }
 
 func parsePubkey(data string) (*rsa.PublicKey, error) {

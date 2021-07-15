@@ -3,7 +3,7 @@ set +e
 
 SCRIPTDIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 2 ; pwd -P )"
 
-plugins=(flant_iam flant_iam_auth flant_gitops)
+plugins=(flant_iam flant_iam_auth)
 
 function build_plugin() {
   PLUGIN_NAME="$1"
@@ -19,6 +19,7 @@ function build_plugin() {
     -v $SCRIPTDIR/build:/src/build \
     -v $SCRIPTDIR/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
     -v $SCRIPTDIR/shared:/go/src/app/shared \
+    -v /tmp/vault-build:/go/pkg/mod \
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
     tetafro/golang-gcc:1.16-alpine \

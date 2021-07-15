@@ -61,7 +61,17 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 
 	kb.broker.PluginConfig.SelfTopicName = topicName.(string)
-	err := kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName)
+	err := kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create JWKS topic
+	jwksConfig := map[string]string{
+		"cleanup.policy": "compact, delete",
+		"retention.ms":   "2678400000", // 31 days
+	}
+	err = kb.broker.CreateTopic(ctx, "jwks", jwksConfig)
 	if err != nil {
 		return nil, err
 	}
