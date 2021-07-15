@@ -75,11 +75,75 @@ func Multipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, otype model.M
 	}
 }
 
-func (r *MultipassService) validateContext() error {
-	if r.origin == "" {
-		return model.ErrBadOrigin
+func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []string, description string) (*model.Multipass, error) {
+	err := r.validateContext()
+	if err != nil {
+		return nil, err
 	}
 
+	mp := &model.Multipass{
+		TenantUUID: r.tenantUUID,
+		OwnerUUID:  r.ownerUUID,
+		OwnerType:  r.ownerType,
+		Origin:     r.origin,
+
+		Description: description,
+		TTL:         ttl,    // TODO validate TTL
+		MaxTTL:      maxTTL, // TODO validate MaxTTL
+		CIDRs:       cidrs,  // TODO validate CIDRs
+		Roles:       roles,  // TODO validate Roles
+
+		UUID:      uuid.New(),
+		ValidTill: time.Now().Add(ttl).Unix(),
+		Salt:      "", // TODO generate salt
+	}
+
+	err = r.repo.Create(mp)
+	if err != nil {
+		return nil, err
+	}
+	return mp, nil
+}
+
+func (r *MultipassService) Delete(id model.MultipassUUID) error {
+	err := r.validateContext()
+	if err != nil {
+		return err
+	}
+
+	return r.repo.Delete(id)
+}
+
+func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, error) {
+	err := r.validateContext()
+	if err != nil {
+		return nil, err
+	}
+
+	mp, err := r.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if mp.OwnerType != r.ownerType {
+		return nil, model.ErrNotFound
+	}
+	return mp, nil
+}
+
+// TODO add listing by origin
+func (r *MultipassService) List() ([]*model.Multipass, error) {
+	err := r.validateContext()
+	if err != nil {
+		return nil, err
+	}
+	return r.repo.List(r.ownerUUID)
+}
+
+func (r *MultipassService) validateContext() error {
+	if err := model.ValidateOrigin(r.origin); err != nil {
+		return err
+	}
 	_, err := r.tenantRepo.GetByID(r.tenantUUID)
 	if err != nil {
 		return err
@@ -108,75 +172,9 @@ func (r *MultipassService) validateContext() error {
 	return nil
 }
 
-func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []string, description string) (*model.Multipass, error) {
-	err := r.validateContext()
-	if err != nil {
-		return nil, err
-	}
-
-	mp := &model.Multipass{
-		TenantUUID: r.tenantUUID,
-		OwnerUUID:  r.ownerUUID,
-		OwnerType:  r.ownerType,
-		Origin:     r.origin,
-
-		Description: description,
-		TTL:         ttl,    // TODO validate TTL
-		MaxTTL:      maxTTL, // TODO validate MaxTTL
-		CIDRs:       cidrs,  // TODO validate CIDRs
-		Roles:       roles,  // TODO validate Roles
-
-		UUID:      uuid.New(),
-		ValidTill: time.Now().Add(ttl).Unix(),
-		Salt:      "",
-	}
-
-	err = r.repo.Create(mp)
-	if err != nil {
-		return nil, err
-	}
-	return mp, nil
-}
-
-func (r *MultipassService) Delete(id model.MultipassUUID) error {
-
-	err := r.validateContext()
-	if err != nil {
-		return err
-	}
-
-	return r.repo.Delete(id)
-}
-
-func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, error) {
-	err := r.validateContext()
-	if err != nil {
-		return nil, err
-	}
-
-	mp, err := r.repo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if mp.OwnerType != r.ownerType {
-		return nil, model.ErrNotFound
-	}
-	return mp, nil
-}
-
-func (r *MultipassService) List() ([]*model.Multipass, error) {
-	err := r.validateContext()
-	if err != nil {
-		return nil, err
-	}
-	return r.repo.List(r.ownerUUID)
-
-}
-
 func (r *MultipassService) SetExtension(ext *model.Extension) error {
-	if ext.OwnerType != model.ExtensionOwnerTypeServiceAccount || ext.OwnerType != model.ExtensionOwnerTypeUser {
-		return fmt.Errorf("multipass extension is suppoted only for serviceaacounts, got type %q", ext.OwnerType)
+	if ext.OwnerType != model.ExtensionOwnerTypeServiceAccount && ext.OwnerType != model.ExtensionOwnerTypeUser {
+		return fmt.Errorf("multipass extension is suppoted only for , got type %q", ext.OwnerType)
 	}
 	obj, err := r.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
