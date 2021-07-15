@@ -138,6 +138,7 @@ type BrokerConfig struct {
 	ConnectionPrivateKey  *ecdsa.PrivateKey `json:"connection_private_key,omitempty"`
 	ConnectionCertificate *x509.Certificate `json:"connection_cert,omitempty"`
 
+	// Self pair of keys from this vault plugin instance
 	EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
 	EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
 }
@@ -186,8 +187,9 @@ func (bc *BrokerConfig) UnmarshalJSON(data []byte) error {
 
 // PluginConfig plugin configuration
 type PluginConfig struct {
-	SelfTopicName     string           `json:"self_topic_name"`
-	RootTopicName     string           `json:"root_topic_name"`
+	SelfTopicName string `json:"self_topic_name"`
+	RootTopicName string `json:"root_topic_name"`
+	// RootPublicKey public rsa key from Root Source vault
 	RootPublicKey     *rsa.PublicKey   `json:"root_public_key,omitempty"`
 	PeersPublicKeys   []*rsa.PublicKey `json:"peers_public_keys,omitempty"`
 	PublishQuotaUsage bool             `json:"publish_quota,omitempty"`
@@ -389,7 +391,7 @@ func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 	return mb.transProducer
 }
 
-func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string) error {
+func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config map[string]string) error {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
@@ -414,6 +416,11 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string) error {
 			"cleanup.policy":      "compact",
 		},
 	}
+
+	for k, v := range config {
+		tc.Config[k] = v
+	}
+
 	res, err := ac.CreateTopics(ctx, []kafka.TopicSpecification{tc})
 	if err != nil {
 		return err

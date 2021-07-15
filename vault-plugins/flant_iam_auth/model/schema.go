@@ -7,6 +7,7 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 const (
@@ -27,6 +28,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		iam.TenantSchema(),
 		iam.ProjectSchema(),
 		iam.ServiceAccountSchema(),
+		jwt.JWKSSchema(),
 	}
 
 	for _, o := range others {

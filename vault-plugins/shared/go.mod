@@ -3,6 +3,7 @@ module github.com/flant/negentropy/vault-plugins/shared
 go 1.16
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/confluentinc/confluent-kafka-go v1.6.1
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/go-openapi/spec v0.20.3

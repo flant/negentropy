@@ -24,6 +24,8 @@ import (
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	shareddest "github.com/flant/negentropy/vault-plugins/shared/kafka/destination"
+	sharedsource "github.com/flant/negentropy/vault-plugins/shared/kafka/source"
 	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
@@ -106,6 +108,7 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 
 	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, iamAuthLogger.Named("KafkaSourceSelf")))
 	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, iamAuthLogger.Named("KafkaSourceRoot")))
+	storage.AddKafkaSource(sharedsource.NewJWKSKafkaSource(mb, iamAuthLogger.Named("KafkaSourceJWKS")))
 
 	err = storage.Restore()
 	if err != nil {
@@ -113,6 +116,7 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	}
 
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
+	storage.AddKafkaDestination(shareddest.NewJWKSKafkaDestination(mb))
 
 	b.storage = storage
 

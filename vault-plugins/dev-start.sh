@@ -4,6 +4,7 @@ function connect_plugins() {
   # initilize flant_iam
   docker-compose exec -T vault sh -c "vault write -force flant_iam/kafka/generate_csr" >/dev/null 2>&1
   docker-compose exec -T vault sh -c "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
+  sleep 1
   docker-compose exec -T vault sh -c "vault write flant_iam/kafka/configure self_topic_name=root_source"
   root_pubkey=$(docker-compose exec -T vault sh -c "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
@@ -11,6 +12,7 @@ function connect_plugins() {
   docker-compose exec -T vault sh -c "vault write -force auth/flant_iam_auth/kafka/generate_csr" >/dev/null 2>&1
   docker-compose exec -T vault sh -c "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
    # link replica
+  sleep 1
   docker-compose exec -T vault sh -c \
     "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
   auth_pubkey=$(docker-compose exec -T vault sh -c "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
@@ -92,5 +94,6 @@ do
 	activate_plugin "$i"
 done
 
-
+#sleep 10 # waiting for kafka
+#connect_plugins
 #docker-compose exec vault sh -c "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.testme root_topic_name=root_source.auth-testme"
