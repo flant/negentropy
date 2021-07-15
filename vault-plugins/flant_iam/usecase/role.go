@@ -31,7 +31,7 @@ func (s *RoleService) Update(updated *model.Role) error {
 
 	updated.Scope = stored.Scope // type cannot be changed
 
-	// TODO validate feature flags: role must not become unaccessable in the scope where it is used
+	// TODO validate feature flags: role must not become unaccessible in the scope where it is used
 	// TODO forbid backwards-incompatible changes of the options schema
 
 	return repo.Update(updated)

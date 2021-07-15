@@ -172,7 +172,7 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 	}
 	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa, tenant)
 
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if sa.Extensions == nil {
 		sa.Extensions = stored.Extensions
 	}

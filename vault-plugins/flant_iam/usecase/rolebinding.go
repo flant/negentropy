@@ -60,7 +60,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
 
-	// Preserve fields, that are not always accessable from the outside, e.g. from HTTP API
+	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}

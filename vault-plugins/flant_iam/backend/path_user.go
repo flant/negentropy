@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -373,9 +374,8 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		obj, err := repo.GetByID(id)
+		obj, err := usecase.Users(tx, tenantID).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -387,9 +387,10 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := getCreationID(expectID, data)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 		user := &model.User{
 			UUID:             id,
-			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			TenantUUID:       tenantID,
 			Identifier:       data.Get("identifier").(string),
 			FirstName:        data.Get("first_name").(string),
 			LastName:         data.Get("last_name").(string),
@@ -403,9 +404,8 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewUserRepository(tx)
 
-		if err := repo.Create(user); err != nil {
+		if err := usecase.Users(tx, tenantID).Create(user); err != nil {
 			msg := "cannot create user"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -422,13 +422,13 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 func (b *userBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
-
+		tenantID := data.Get(model.TenantForeignPK).(string)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		user := &model.User{
 			UUID:             id,
-			TenantUUID:       data.Get(model.TenantForeignPK).(string),
+			TenantUUID:       tenantID,
 			Version:          data.Get("resource_version").(string),
 			Identifier:       data.Get("identifier").(string),
 			FirstName:        data.Get("first_name").(string),
@@ -441,8 +441,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			Origin:           model.OriginIAM,
 		}
 
-		repo := model.NewUserRepository(tx)
-		err := repo.Update(user)
+		err := usecase.Users(tx, tenantID).Update(user)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -458,12 +457,12 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewUserRepository(tx)
 
-		err := repo.Delete(model.OriginIAM, id)
+		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -478,11 +477,11 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		user, err := repo.GetByID(id)
+		user, err := usecase.Users(tx, tenantID).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -497,9 +496,8 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewUserRepository(tx)
 
-		users, err := repo.List(tenantID)
+		users, err := usecase.Users(tx, tenantID).List()
 		if err != nil {
 			return nil, err
 		}
