@@ -34,8 +34,8 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 
 	// Wait until dev server started
 	for {
+		time.Sleep(1 * time.Second)
 		if _, err := RunVaultCommandWithError("status", "-address", "http://127.0.0.1:8201"); err != nil {
-			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		break
