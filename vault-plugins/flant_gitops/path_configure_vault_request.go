@@ -42,11 +42,12 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestList,
+					Summary:  "List currently configured flant_gitops backend vault requests",
 				},
 			},
 
-			HelpSynopsis:    "TODO",
-			HelpDescription: "TODO",
+			HelpSynopsis:    configureVaultRequestHelpSyn,
+			HelpDescription: configureVaultRequestHelpDesc,
 		},
 		{
 			Pattern: "^configure/vault_request/" + framework.GenericNameRegex(fieldNameVaultRequestName) + "/?$",
@@ -79,20 +80,24 @@ func configureVaultRequestPaths(b *backend) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestCreateOrUpdate,
+					Summary:  "Append new vault request configuration",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestCreateOrUpdate,
+					Summary:  "Update existing vault request configuration by the name",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestRead,
+					Summary:  "Read existing vault request configuration by the name",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.pathConfigureVaultRequestDelete,
+					Summary:  "Delete existing vault request configuration by the name",
 				},
 			},
 
-			HelpSynopsis:    "TODO",
-			HelpDescription: "TODO",
+			HelpSynopsis:    configureVaultRequestHelpSyn,
+			HelpDescription: configureVaultRequestHelpDesc,
 		},
 	}
 }
@@ -250,3 +255,16 @@ func deleteVaultRequest(ctx context.Context, storage logical.Storage, vaultReque
 func getAbsStoragePathToVaultRequest(vaultRequestName string) string {
 	return path.Join(storageKeyVaultRequestPrefix, vaultRequestName)
 }
+
+const (
+	configureVaultRequestHelpSyn = `
+Supplement configuration of the flant_gitops plugin to perform optional requests
+`
+	configureVaultRequestHelpDesc = `
+The flant_gitops periodic function will perform configured vault requests before running
+periodic command. All provided requests will be executed in the wrapped form, meaning that 
+the result of each request will be available by the token in the container written into
+the special variable $VAULT_REQUEST_TOKEN_<REQUEST_NAME>. These tokens can then be unwrapped
+from inside the container using provided vault connection settings.
+`
+)

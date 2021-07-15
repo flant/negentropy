@@ -40,8 +40,6 @@ func getTestBackend(t *testing.T, ctx context.Context) (*backend, logical.Storag
 	return b, config.StorageView, testLogger
 }
 
-// TODO: Add methods into tasks queue interface instead
-
 func ListTasks(t *testing.T, ctx context.Context, b *backend, storage logical.Storage) []string {
 	req := &logical.Request{
 		Operation:  logical.ReadOperation,
