@@ -1,18 +1,19 @@
 package flow
 
 import (
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func assertEntity(fullID string){
+func assertEntity(fullID string) {
 	entityID, err := identityApi.EntityApi().GetID(fullID)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(entityID).ToNot(BeEmpty())
 }
 
-func assertEntityAliases(o io.MemoryStorableObject){
+func assertEntityAliases(o io.MemoryStorableObject) {
 	for _, s := range sources {
 		eaName := s.ExpectedEaName(o)
 		if eaName != "" {
@@ -34,7 +35,7 @@ var _ = Describe("Entity and entity aliases", func() {
 	})
 
 	Context("creating service account", func() {
-		FIt("creates one entity and entity aliases for sources", func() {
+		It("creates one entity and entity aliases for sources", func() {
 			sa := createServiceAccount()
 
 			assertEntity(sa.FullIdentifier)

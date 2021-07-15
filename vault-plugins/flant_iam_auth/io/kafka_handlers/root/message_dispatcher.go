@@ -62,11 +62,60 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		p.UUID = objID
 		inputObject = p
 		table = iam.ProjectType
+
 	case iam.TenantType:
 		t := &iam.Tenant{}
 		t.UUID = objID
 		inputObject = t
 		table = iam.TenantType
+
+	case iam.FeatureFlagType:
+		t := &iam.FeatureFlag{}
+		t.Name = objID
+		inputObject = t
+		table = iam.FeatureFlagType
+
+	case iam.GroupType:
+		t := &iam.Group{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.GroupType
+
+	case iam.RoleType:
+		t := &iam.Role{}
+		t.Name = objID
+		inputObject = t
+		table = iam.RoleType
+
+	case iam.RoleBindingType:
+		t := &iam.RoleBinding{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.RoleBindingType
+
+	case iam.RoleBindingApprovalType:
+		t := &iam.RoleBindingApproval{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.RoleBindingApprovalType
+
+	case iam.MultipassType:
+		t := &iam.Multipass{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.MultipassType
+
+	case iam.ServiceAccountPasswordType:
+		t := &iam.ServiceAccountPassword{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.ServiceAccountPasswordType
+
+	case iam.IdentitySharingType:
+		t := &iam.IdentitySharing{}
+		t.UUID = objID
+		inputObject = t
+		table = iam.IdentitySharingType
 
 	case model.ServerType:
 		inputObject = &model.Server{}
