@@ -76,20 +76,24 @@ func configurePaths(b *backend) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
+					Summary:  "Create new flant_gitops backend configuration.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
+					Summary:  "Update the current flant_gitops backend configuration.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureRead,
+					Summary:  "Read the current flant_gitops backend configuration.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.pathConfigureDelete,
+					Summary:  "Delete the current flant_gitops backend configuration.",
 				},
 			},
 
-			HelpSynopsis:    "TODO",
-			HelpDescription: "TODO",
+			HelpSynopsis:    configureHelpSyn,
+			HelpDescription: configureHelpDesc,
 		},
 	}
 }
@@ -187,3 +191,16 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*configurat
 func deleteConfiguration(ctx context.Context, storage logical.Storage) error {
 	return storage.Delete(ctx, storageKeyConfiguration)
 }
+
+const (
+	configureHelpSyn = `
+Main configuration of the flant_gitops backend.
+`
+	configureHelpDesc = `
+The flant_gitops periodic function performs periodic run of configured command
+when a new commit arrives into the configured git repository.
+
+This is main configuration for the flant_gitops plugin. Plugin will not
+function when configuration is not set.
+`
+)

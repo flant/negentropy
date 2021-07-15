@@ -49,7 +49,7 @@ func newBackend() (*backend, error) {
 
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeLogical,
-		Help:        "TODO",
+		Help:        backendHelp,
 
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
 			if err := b.AccessVaultController.OnPeriodical(ctx, req); err != nil {
@@ -93,3 +93,9 @@ func (b *backend) SetupBackend(ctx context.Context, config *logical.BackendConfi
 
 	return nil
 }
+
+const (
+	backendHelp = `
+The flant_gitops plugin starts an operator which waits for new commits in the configured git repository, verifies commit signatures by configured pgp keys, then executes configured commands in this new commit.
+`
+)
