@@ -169,7 +169,7 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	b.Paths = framework.PathAppend(
 		replicasPaths(b, storage),
 		tenantPaths(b, storage),
-		userPaths(b, storage),
+		userPaths(b, nil, storage),
 	)
 	err = b.Setup(context.TODO(), config)
 	if err != nil {

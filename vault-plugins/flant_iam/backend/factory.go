@@ -109,8 +109,10 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
-		userPaths(b, storage),
-		serviceAccountPaths(b, storage),
+
+		userPaths(b, tokenController, storage),
+		serviceAccountPaths(b, tokenController, storage),
+
 		groupPaths(b, storage),
 		projectPaths(b, storage),
 		featureFlagPaths(b, storage),
