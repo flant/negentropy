@@ -112,6 +112,9 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 
 func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
 	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
 	return raw.(*ServiceAccount), err
 }
 

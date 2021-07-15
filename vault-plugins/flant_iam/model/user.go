@@ -110,6 +110,9 @@ func (r *UserRepository) Create(user *User) error {
 
 func (r *UserRepository) GetByID(id UserUUID) (*User, error) {
 	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
 	return raw.(*User), err
 }
 

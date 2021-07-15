@@ -121,6 +121,9 @@ func (r *GroupRepository) Update(group *Group) error {
 
 func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
 	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
 	return raw.(*Group), err
 }
 
