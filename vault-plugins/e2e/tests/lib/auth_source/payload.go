@@ -8,11 +8,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-const testJWTPubKey = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9
-q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
------END PUBLIC KEY-----`
-
 type SourceForTest struct {
 	Source         *model.AuthSource
 	Name           string
@@ -34,7 +29,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s1",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",
@@ -57,7 +52,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s2",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",
@@ -80,7 +75,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s3",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",
@@ -102,7 +97,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s4",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",
@@ -129,7 +124,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s5",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",
@@ -156,7 +151,7 @@ var (
 			UUID: utils.UUID(),
 			Name: "s6",
 
-			JWTValidationPubKeys: []string{testJWTPubKey},
+			JWTValidationPubKeys: []string{JWTPubKey},
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			BoundIssuer:          "http://vault.example.com/",

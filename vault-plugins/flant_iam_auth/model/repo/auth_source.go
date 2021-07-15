@@ -81,7 +81,7 @@ func (r *AuthSourceRepo) Delete(name string) error {
 	return r.db.Delete(r.tableName, source)
 }
 
-func (r *AuthSourceRepo) Iter(action func(*model.AuthSource) (bool, error)) error {
+func (r *AuthSourceRepo) Iter(withInternal bool, action func(*model.AuthSource) (bool, error)) error {
 	iter, err := r.db.Get(r.tableName, model.ID)
 	if err != nil {
 		return err
@@ -99,7 +99,24 @@ func (r *AuthSourceRepo) Iter(action func(*model.AuthSource) (bool, error)) erro
 		}
 
 		if !next {
-			break
+			return nil
+		}
+	}
+
+	if withInternal {
+		internals := []*model.AuthSource{
+			model.GetMultipassSource(),
+		}
+
+		for _, s := range internals {
+			next, err := action(s)
+			if err != nil {
+				return err
+			}
+
+			if !next {
+				return nil
+			}
 		}
 	}
 

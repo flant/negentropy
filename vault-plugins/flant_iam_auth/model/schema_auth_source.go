@@ -2,11 +2,14 @@ package model
 
 import (
 	"crypto"
+	"fmt"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 const (
@@ -66,6 +69,36 @@ func (s *AuthSource) ObjId() string {
 
 func (s *AuthSource) AllowForSA() bool {
 	return s.AllowServiceAccounts && s.EntityAliasName != EntityAliasNameEmail
+}
+
+func (s *AuthSource) NameForServiceAccount(sa *iam.ServiceAccount) (string, error) {
+	var name string
+	switch s.EntityAliasName {
+	case EntityAliasNameFullIdentifier:
+		name = sa.FullIdentifier
+	case EntityAliasNameUUID:
+		name = sa.UUID
+	default:
+		return "", fmt.Errorf("incorrect source entity alias name %s", s.EntityAliasName)
+	}
+
+	return name, nil
+}
+
+func (s *AuthSource) NameForUser(user *iam.User) (string, error) {
+	var name string
+	switch s.EntityAliasName {
+	case EntityAliasNameEmail:
+		name = user.Email
+	case EntityAliasNameFullIdentifier:
+		name = user.FullIdentifier
+	case EntityAliasNameUUID:
+		name = user.UUID
+	default:
+		return "", fmt.Errorf("incorrect source entity alias name %s", s.EntityAliasName)
+	}
+
+	return name, nil
 }
 
 func (s *AuthSource) PopulatePubKeys() error {

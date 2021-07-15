@@ -56,7 +56,11 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 
 	mount, ok := authLists[a.path]
 	if !ok {
-		return "", fmt.Errorf("not found auth mount %v", a.path)
+		hasMounts := make([]string, 0)
+		for k := range authLists {
+			hasMounts = append(hasMounts, k)
+		}
+		return "", fmt.Errorf("not found auth mount %v, has %v", a.path, hasMounts)
 	}
 
 	a.accessor = mount.Accessor

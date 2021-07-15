@@ -3,9 +3,9 @@ package model
 import (
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -25,10 +25,20 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		AuthMethodSchema(),
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
+
 		iam.UserSchema(),
 		iam.TenantSchema(),
 		iam.ProjectSchema(),
 		iam.ServiceAccountSchema(),
+		iam.FeatureFlagSchema(),
+		iam.GroupSchema(),
+		iam.RoleSchema(),
+		iam.RoleBindingSchema(),
+		iam.RoleBindingApprovalSchema(),
+		iam.MultipassSchema(),
+		iam.ServiceAccountPasswordSchema(),
+		iam.IdentitySharingSchema(),
+
 		jwt.JWKSSchema(),
 		model.ServerSchema(),
 	}

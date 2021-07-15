@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -37,16 +36,20 @@ func (a *EntityAPI) GetID(name string) (string, error) {
 	path := a.entityPath(name)
 	op := func() error {
 		resp, err = a.clientApi.Logical().Read(path)
+		if resp == nil {
+			return fmt.Errorf("empty response in op")
+		}
 		return err
 	}
 
 	err = a.callOp(op)
 
 	if err != nil {
-		return "", nil
+		return "", err
 	}
+
 	if resp == nil {
-		return "", nil
+		return "", fmt.Errorf("empty response")
 	}
 
 	idRaw, ok := resp.Data["id"]
@@ -82,5 +85,5 @@ func (a *EntityAPI) GetByName(name string) (map[string]interface{}, error) {
 }
 
 func (a *EntityAPI) entityPath(name string) string {
-	return fmt.Sprintf("/identity/entity/name/%s", url.QueryEscape(name))
+	return fmt.Sprintf("/identity/entity/name/%s", name)
 }

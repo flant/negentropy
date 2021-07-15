@@ -1,4 +1,4 @@
-package jwtauth
+package jwt
 
 import (
 	"encoding/json"
@@ -47,7 +47,7 @@ func TestGetClaim(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		v := getClaim(hclog.NewNullLogger(), claims, test.claim)
+		v := GetClaim(hclog.NewNullLogger(), claims, test.claim)
 
 		if diff := deep.Equal(v, test.value); diff != nil {
 			t.Fatal(diff)
@@ -511,8 +511,8 @@ func TestValidateBoundClaims(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaimsType, tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
-			t.Errorf("validateBoundClaims(%s) error = %v, wantErr %v", tt.name, err, tt.errExpected)
+		if err := ValidateBoundClaims(hclog.NewNullLogger(), tt.boundClaimsType, tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
+			t.Errorf("ValidateBoundClaims(%s) error = %v, wantErr %v", tt.name, err, tt.errExpected)
 		}
 	}
 }
@@ -560,12 +560,12 @@ func Test_normalizeList(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		normalized, ok := normalizeList(tt.raw)
+		normalized, ok := NormalizeList(tt.raw)
 		if !reflect.DeepEqual(normalized, tt.normalized) {
-			t.Errorf("normalizeList() got normalized = %v, want %v", normalized, tt.normalized)
+			t.Errorf("NormalizeList() got normalized = %v, want %v", normalized, tt.normalized)
 		}
 		if ok != tt.ok {
-			t.Errorf("normalizeList() got ok = %v, want %v", ok, tt.ok)
+			t.Errorf("NormalizeList() got ok = %v, want %v", ok, tt.ok)
 		}
 	}
 }

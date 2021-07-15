@@ -1306,6 +1306,7 @@ func TestAuthMethod_Read(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
+		"name":              "test",
 		"method_type":       model.MethodTypeJWT,
 		"bound_claims_type": "glob",
 		"bound_claims": map[string]interface{}{

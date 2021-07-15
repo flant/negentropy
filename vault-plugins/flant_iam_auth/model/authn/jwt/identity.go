@@ -1,4 +1,4 @@
-package jwtauth
+package jwt
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
-// createIdentity creates an alias and set of groups aliases based on the authMethodConfig
+// CreateIdentity creates an alias and set of groups aliases based on the authMethodConfig
 // definition and received claims.
-func createIdentity(logger log.Logger, allClaims map[string]interface{}, authMethod *model.AuthMethod, _ oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
+func CreateIdentity(logger log.Logger, allClaims map[string]interface{}, authMethod *model.AuthMethod, _ oauth2.TokenSource) (*logical.Alias, []string, error) {
 	userClaimRaw, ok := allClaims[authMethod.UserClaim]
 	if !ok {
 		return nil, nil, fmt.Errorf("claim %q not found in token", authMethod.UserClaim)
@@ -32,19 +32,19 @@ func createIdentity(logger log.Logger, allClaims map[string]interface{}, authMet
 		Metadata: metadata,
 	}
 
-	var groupAliases []*logical.Alias
+	var groupAliases []string
 
 	if authMethod.GroupsClaim == "" {
 		return alias, groupAliases, nil
 	}
 
-	groupsClaimRaw := getClaim(logger, allClaims, authMethod.GroupsClaim)
+	groupsClaimRaw := GetClaim(logger, allClaims, authMethod.GroupsClaim)
 
 	if groupsClaimRaw == nil {
 		return nil, nil, fmt.Errorf("%q claim not found in token", authMethod.GroupsClaim)
 	}
 
-	groups, ok := normalizeList(groupsClaimRaw)
+	groups, ok := NormalizeList(groupsClaimRaw)
 
 	if !ok {
 		return nil, nil, fmt.Errorf("%q claim could not be converted to string list", authMethod.GroupsClaim)
@@ -57,9 +57,7 @@ func createIdentity(logger log.Logger, allClaims map[string]interface{}, authMet
 		if group == "" {
 			continue
 		}
-		groupAliases = append(groupAliases, &logical.Alias{
-			Name: group,
-		})
+		groupAliases = append(groupAliases, group)
 	}
 
 	return alias, groupAliases, nil

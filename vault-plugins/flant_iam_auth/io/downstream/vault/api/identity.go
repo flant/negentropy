@@ -2,17 +2,20 @@ package api
 
 import (
 	"github.com/cenkalti/backoff"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 )
 
 type IdentityAPI struct {
 	clientApi     *api.Client
 	backoffGetter func() backoff.BackOff
+	logger        hclog.Logger
 }
 
-func NewIdentityAPI(clientApi *api.Client) *IdentityAPI {
+func NewIdentityAPI(clientApi *api.Client, logger hclog.Logger) *IdentityAPI {
 	return &IdentityAPI{
 		clientApi: clientApi,
+		logger:    logger,
 	}
 }
 

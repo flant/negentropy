@@ -102,12 +102,16 @@ func (r *EntityAliasRepo) GetById(id string) (*EntityAlias, error) {
 	return r.get(ID, id)
 }
 
-func (r *EntityAliasRepo) GetForUser(id string, action func(*EntityAlias) (bool, error)) error {
+func (r *EntityAliasRepo) GetAllForUser(id string, action func(*EntityAlias) (bool, error)) error {
 	return r.iter(action, ByUserID, id)
 }
 
 func (r *EntityAliasRepo) GetBySource(sourceUUID string, action func(*EntityAlias) (bool, error)) error {
 	return r.iter(action, BySourceId, sourceUUID)
+}
+
+func (r *EntityAliasRepo) GetForUser(id string, source *AuthSource) (*EntityAlias, error) {
+	return r.get(EntityAliasSource, id, source.UUID)
 }
 
 func (r *EntityAliasRepo) get(by string, vals ...interface{}) (*EntityAlias, error) {
@@ -132,19 +136,16 @@ func (r *EntityAliasRepo) Put(source *EntityAlias) error {
 }
 
 func (r *EntityAliasRepo) CreateForUser(user *iam.User, source *AuthSource) error {
-	var name string
-	switch source.EntityAliasName {
-	case EntityAliasNameEmail:
-		name = user.Email
-	case EntityAliasNameFullIdentifier:
-		name = user.FullIdentifier
-	case EntityAliasNameUUID:
-		name = user.UUID
-	default:
-		return fmt.Errorf("incorrect source entity alias name %s", source.EntityAliasName)
+	name, err := source.NameForUser(user)
+	if err != nil {
+		return err
 	}
 
-	err := r.putNew(user.UUID, source, name)
+	if name == "" {
+		return fmt.Errorf("empty ea name for source %s and user %s/%s/%s", source.Name, user.UUID, user.FullIdentifier, user.Email)
+	}
+
+	err = r.putNew(user.UUID, source, name)
 	if err != nil {
 		return err
 	}
@@ -158,14 +159,9 @@ func (r *EntityAliasRepo) CreateForSA(sa *iam.ServiceAccount, source *AuthSource
 		return nil
 	}
 
-	var name string
-	switch source.EntityAliasName {
-	case EntityAliasNameFullIdentifier:
-		name = sa.FullIdentifier
-	case EntityAliasNameUUID:
-		name = sa.UUID
-	default:
-		return fmt.Errorf("incorrect source entity alias name %s", source.EntityAliasName)
+	name, err := source.NameForServiceAccount(sa)
+	if err != nil {
+		return err
 	}
 
 	return r.putNew(sa.UUID, source, name)
@@ -225,7 +221,7 @@ func (r *EntityAliasRepo) iter(action func(alias *EntityAlias) (bool, error), ke
 func (r *EntityAliasRepo) putNew(iamEntityId string, source *AuthSource, eaName string) error {
 	sourceId := source.UUID
 
-	entityAlias, err := r.get(EntityAliasSource, iamEntityId, sourceId)
+	entityAlias, err := r.GetForUser(iamEntityId, source)
 	if err != nil {
 		return err
 	}

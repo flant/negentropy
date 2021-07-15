@@ -14,6 +14,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -206,6 +207,7 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 
 	// Create a map of data to be returned
 	d := map[string]interface{}{
+		"name":                  method.Name,
 		"method_type":           method.MethodType,
 		"bound_audiences":       method.BoundAudiences,
 		"bound_subject":         method.BoundSubject,
@@ -427,7 +429,7 @@ func fillBoundClaimsParamsToAuthMethod(method *model.AuthMethod, data *framework
 		if boundClaimsType == model.BoundClaimsTypeGlob {
 			// Check that the claims are all strings
 			for _, claimValues := range method.BoundClaims {
-				claimsValuesList, ok := normalizeList(claimValues)
+				claimsValuesList, ok := authnjwt.NormalizeList(claimValues)
 
 				if !ok {
 					return logical.ErrorResponse("claim is not a string or list: %v", claimValues), nil

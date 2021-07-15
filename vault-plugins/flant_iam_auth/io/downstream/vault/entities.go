@@ -23,14 +23,14 @@ func backOffSettings() backoff.BackOff {
 type VaultEntityDownstreamApi struct {
 	getClient           io.BackoffClientGetter
 	mountAccessorGetter *MountAccessorGetter
-	loggerFactory       func() log.Logger
+	logger              log.Logger
 }
 
-func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, loggerFactory func() log.Logger) *VaultEntityDownstreamApi {
+func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, logger log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
 		getClient:           getClient,
 		mountAccessorGetter: mountAccessorGetter,
-		loggerFactory:       loggerFactory,
+		logger:              logger,
 	}
 }
 
@@ -78,9 +78,16 @@ func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.Mem
 		return nil, err
 	}
 
-	a.loggerFactory().Debug("Creating entity with name %s", entity.Name)
 	action := io.NewVaultApiAction(func() error {
-		return api.NewIdentityAPIWithBackOff(clientApi, backOffSettings).EntityApi().Create(entity.Name)
+		a.logger.Debug(fmt.Sprintf("Creating vault entity with name %s", entity.Name), "name", entity.Name)
+		err := api.NewIdentityAPIWithBackOff(clientApi, backOffSettings).EntityApi().Create(entity.Name)
+		if err != nil {
+			a.logger.Error(fmt.Sprintf("Cannot create vault entity with name %s: %v", entity.Name, err), "name", entity.Name, "err", err)
+			return err
+		}
+
+		a.logger.Debug(fmt.Sprintf("Creating vault entity with name %s", entity.Name), "name", entity.Name)
+		return nil
 	})
 
 	return []io.DownstreamAPIAction{action}, nil
@@ -102,6 +109,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 		return nil, err
 	}
 	if entity == nil {
+		a.logger.Error(fmt.Sprintf("Cannot get entity entity alias %s: %v", entityAlias.Name, err), "name", entityAlias.Name, "err", err)
 		return nil, fmt.Errorf("not found entity %v", entityAlias.UserId)
 	}
 
@@ -119,18 +127,42 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 	}
 
 	if entityId == "" {
+		a.logger.Error(fmt.Sprintf("Cannot get vault entity id for entity %s: %v", entity.Name, err), "name", entity.Name, "err", err)
 		return nil, fmt.Errorf("not found entity id for %s", entity.Name)
 	}
 
 	// getting mount accessor - identifer for mount point plugin
 	mountAccessor, err := a.mountAccessorGetter.MountAccessor()
 	if err != nil {
+		a.logger.Error(fmt.Sprintf("Cannot get mount accessor: %v", err), "name", entityAlias.Name, "err", err)
 		return nil, err
 	}
 
-	a.loggerFactory().Debug("Creating entity with name %s for entity id % with mount accessor %s", entityAlias.Name, entityId, mountAccessor)
 	action := io.NewVaultApiAction(func() error {
-		return identityApi.AliasApi().Create(entityAlias.Name, entityId, mountAccessor)
+		a.logger.Debug(
+			fmt.Sprintf("Creating entity alias with name %s for entity id %s with mount accessor %s", entityAlias.Name, entityId, mountAccessor),
+			"eaName", entityAlias.Name, "entityId", entityId, "ma", mountAccessor,
+		)
+
+		err := identityApi.AliasApi().Create(entityAlias.Name, entityId, mountAccessor)
+		if err != nil {
+			a.logger.Error(
+				fmt.Sprintf(
+					"Can not create entity alias with name %s for entity id %s with mount accessor %s: %v",
+					entityAlias.Name, entityId, mountAccessor, err,
+				),
+				"eaName", entityAlias.Name, "enmtityId", entityId, "ma", mountAccessor, "err", err,
+			)
+
+			return err
+		}
+
+		a.logger.Debug(
+			fmt.Sprintf("Entity alias %s created for entity id %s with mount accessor %s", entityAlias.Name, entityId, mountAccessor),
+			"eaName", entityAlias.Name, "entityId", entityId, "ma", mountAccessor,
+		)
+
+		return nil
 	})
 
 	return []io.DownstreamAPIAction{action}, nil
@@ -142,9 +174,17 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *
 		return nil, err
 	}
 
-	a.loggerFactory().Debug("Delete entity with name %s", entityName)
 	action := io.NewVaultApiAction(func() error {
-		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entityName)
+		a.logger.Debug(fmt.Sprintf("Deleting entity with name %s", entityName), "entityName", entityName)
+		err := api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entityName)
+		if err != nil {
+			a.logger.Error(fmt.Sprintf("Can not delete entity %s: %v", entityName, err), "entityName", entityName, "err", err)
+			return err
+		}
+
+		a.logger.Debug(fmt.Sprintf("Entity %s deleted", entityName), "entityName", entityName)
+
+		return nil
 	})
 
 	return []io.DownstreamAPIAction{action}, nil
@@ -162,9 +202,15 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, 
 		return nil, err
 	}
 
-	a.loggerFactory().Debug("Delete entity alias with name %s", entityAliasName)
 	action := io.NewVaultApiAction(func() error {
-		return api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
+		a.logger.Debug(fmt.Sprintf("Deleting entity alias a with name %s", entityAliasName), "eaName", entityAliasName)
+		err := api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
+		if err != nil {
+			a.logger.Error(fmt.Sprintf("Can not delete entity alias %s: %v", entityAliasName, err), "eaName", entityAliasName, "err", err)
+			return err
+		}
+		a.logger.Debug(fmt.Sprintf("Entity alias %s deleted", entityAliasName), "eaName", entityAliasName)
+		return nil
 	})
 
 	return []io.DownstreamAPIAction{action}, nil

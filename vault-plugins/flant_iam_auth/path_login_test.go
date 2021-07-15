@@ -206,6 +206,7 @@ func getTestOIDC(t *testing.T) string {
 }
 
 func TestLogin_JWT(t *testing.T) {
+	t.Skip("add mocks. somtime")
 	testLogin_JWT(t, false)
 	testLogin_JWT(t, true)
 }
