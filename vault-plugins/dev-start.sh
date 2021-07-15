@@ -60,7 +60,7 @@ EOF
       role_id=\"$roleID\" \
       vault_api_ca=\"\""
 
-  docker-exec "vault write auth/flant_iam_auth/auth_method/goodmultipass \
+  docker-exec "vault write auth/flant_iam_auth/auth_method/multipass \
       token_ttl=\"30m\" \
 		  token_policies=\"good\" \
 		  token_no_default_policy=true \
