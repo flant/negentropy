@@ -80,18 +80,8 @@ func NewProjectRepository(tx *io.MemoryStoreTxn) *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) Create(project *Project) error {
-	_, err := r.tenantRepo.GetByID(project.TenantUUID)
-	if err != nil {
-		return err
-	}
-
-	project.Version = NewResourceVersion()
-	err = r.db.Insert(ProjectType, project)
-	if err != nil {
-		return err
-	}
-	return nil
+func (r *ProjectRepository) save(project *Project) error {
+	return r.db.Insert(ProjectType, project)
 }
 
 func (r *ProjectRepository) GetByID(id ProjectUUID) (*Project, error) {
@@ -107,46 +97,26 @@ func (r *ProjectRepository) GetByID(id ProjectUUID) (*Project, error) {
 	return project, nil
 }
 
+func (r *ProjectRepository) Create(project *Project) error {
+	return r.save(project)
+}
+
 func (r *ProjectRepository) Update(project *Project) error {
-	stored, err := r.GetByID(project.UUID)
+	_, err := r.GetByID(project.UUID)
 	if err != nil {
 		return err
 	}
 
-	// Validate
-	if stored.TenantUUID != project.TenantUUID {
-		return ErrNotFound
-	}
-	if stored.Version != project.Version {
-		return ErrBadVersion
-	}
-	project.Version = NewResourceVersion()
-
-	// Update
-
-	err = r.db.Insert(ProjectType, project)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.save(project)
 }
 
-func (r *ProjectRepository) save(project *Project) error {
-	return r.db.Insert(ProjectType, project)
-}
-
-func (r *ProjectRepository) delete(id string) error {
+func (r *ProjectRepository) Delete(id string) error {
 	project, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
 
 	return r.db.Delete(ProjectType, project)
-}
-
-func (r *ProjectRepository) Delete(id ProjectUUID) error {
-	return r.delete(id)
 }
 
 func (r *ProjectRepository) List(tenantID TenantUUID) ([]*Project, error) {
@@ -167,14 +137,9 @@ func (r *ProjectRepository) List(tenantID TenantUUID) ([]*Project, error) {
 	return list, nil
 }
 
-func (r *ProjectRepository) DeleteByTenant(tenantUUID TenantUUID) error {
-	_, err := r.db.DeleteAll(ProjectType, TenantForeignPK, tenantUUID)
-	return err
-}
-
 func (r *ProjectRepository) Sync(objID string, data []byte) error {
 	if data == nil {
-		return r.delete(objID)
+		return r.Delete(objID)
 	}
 
 	pr := &Project{}

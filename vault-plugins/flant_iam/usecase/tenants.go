@@ -41,3 +41,11 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 func (s *TenantService) Delete(id model.TenantUUID) error {
 	return model.NewTenantRepository(s.db).Delete(id)
 }
+
+func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {
+	return model.NewTenantRepository(s.db).GetByID(id)
+}
+
+func (s *TenantService) List() ([]*model.Tenant, error) {
+	return model.NewTenantRepository(s.db).List()
+}
