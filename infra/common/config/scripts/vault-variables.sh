@@ -43,7 +43,7 @@ export VAULT_CONF_CONF_BUCKET="$VAULT_CONF_CONF_BUCKET"
 export VAULT_ROOT_SOURCE_BUCKET="$VAULT_ROOT_SOURCE_BUCKET"
 
 # Vault auth variables.
-export VAULT_AUTH_BUCKET="$(hostname)$VAULT_AUTH_BUCKET_TRAILER"
+export VAULT_AUTH_BUCKET="$VAULT_AUTH_BUCKET"
 # For auth vault no subdomain provided, so we base FQDN on the hostname, replacing dash with a dot.
 if [[ "$VAULT_INTERNAL_SUBDOMAIN" == "" ]]; then
   export VAULT_INTERNAL_FQDN="$(hostname | sed 's/-/./g').$VAULT_INTERNAL_ROOT_DOMAIN"
