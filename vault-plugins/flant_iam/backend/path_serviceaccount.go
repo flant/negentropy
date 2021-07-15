@@ -396,37 +396,49 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 	}
 }
 
+func errExistenseVerdict(err error) (bool, error) {
+	if err == model.ErrNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
-		b.Logger().Debug("checking serviceAccount existence", "path", req.Path, "id", id, "op", req.Operation)
 
+		var (
+			id       = data.Get("uuid").(string)
+			tenantID = data.Get(model.TenantForeignPK).(string)
+		)
+
+		b.Logger().Debug("checking serviceAccount existence", "path", req.Path, "id", id, "op", req.Operation)
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServiceAccountRepository(tx)
 
-		obj, err := repo.GetByID(id)
-		if err != nil {
-			return false, err
-		}
-		exists := obj != nil && obj.TenantUUID == tenantID
-		return exists, nil
+		_, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantID).GetByID(id)
+		return errExistenseVerdict(err)
 	}
 }
 
 func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := getCreationID(expectID, data)
-		ttl := data.Get("token_ttl").(int)
-		maxttl := data.Get("token_max_ttl").(int)
+		var (
+			id         = getCreationID(expectID, data)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+
+			ttl    = data.Get("token_ttl").(int)
+			maxttl = data.Get("token_max_ttl").(int)
+		)
 
 		serviceAccount := &model.ServiceAccount{
 			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			TenantUUID:  tenantUUID,
 			BuiltinType: "",
 			Identifier:  data.Get("identifier").(string),
 			CIDRs:       data.Get("allowed_cidrs").([]string),
@@ -437,9 +449,8 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServiceAccountRepository(tx)
 
-		if err := repo.Create(serviceAccount); err != nil {
+		if err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Create(serviceAccount); err != nil {
 			msg := "cannot create service account"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -455,9 +466,13 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 
 func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
-		ttl := data.Get("token_ttl").(int)
-		maxttl := data.Get("token_max_ttl").(int)
+		var (
+			id         = data.Get("uuid").(string)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+
+			ttl    = data.Get("token_ttl").(int)
+			maxttl = data.Get("token_max_ttl").(int)
+		)
 
 		serviceAccount := &model.ServiceAccount{
 			UUID:        id,
@@ -474,8 +489,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewServiceAccountRepository(tx)
-		err := repo.Update(serviceAccount)
+		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Update(serviceAccount)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -490,13 +504,15 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		var (
+			id         = data.Get("uuid").(string)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+		)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewServiceAccountRepository(tx)
 
-		err := repo.Delete(model.OriginIAM, id)
+		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -510,12 +526,14 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		var (
+			id         = data.Get("uuid").(string)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+		)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServiceAccountRepository(tx)
 
-		serviceAccount, err := repo.GetByID(id)
+		serviceAccount, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -527,12 +545,11 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantUUID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServiceAccountRepository(tx)
 
-		serviceAccounts, err := repo.List(tenantID)
+		serviceAccounts, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).List()
 		if err != nil {
 			return nil, err
 		}
