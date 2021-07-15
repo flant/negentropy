@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/extension_server_access"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -37,10 +38,26 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
+func initializer(ctx context.Context, initRequest *logical.InitializationRequest) error {
+	initFuncs := []framework.InitializeFunc{
+		extension_server_access.InitializeExtensionServerAccess,
+	}
+
+	for _, f := range initFuncs {
+		err := f(ctx, initRequest)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
-		Help:        strings.TrimSpace(commonHelp),
-		BackendType: logical.TypeLogical,
+		Help:           strings.TrimSpace(commonHelp),
+		BackendType:    logical.TypeLogical,
+		InitializeFunc: initializer,
 	}
 
 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
@@ -103,6 +120,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		roleBindingPaths(b, storage),
 		roleBindingApprovalPaths(b, storage),
 		rolePaths(b, storage),
+		extension_server_access.ServerPaths(b, storage),
 
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),

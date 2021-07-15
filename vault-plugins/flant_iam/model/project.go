@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ProjectType = "project" // also, memdb schema name
-
+	ProjectType      = "project" // also, memdb schema name
+	ProjectForeignPK = "project_uuid"
 )
 
 func ProjectSchema() *memdb.DBSchema {

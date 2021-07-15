@@ -153,9 +153,9 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewRoleBindingApprovalRepository(tx)
 		err := repo.UpdateOrCreate(roleBindingApproval)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -174,9 +174,9 @@ func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 
 		err := repo.Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -193,7 +193,7 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 
 		roleBindingApproval, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding_approval": roleBindingApproval}}

@@ -180,7 +180,7 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -206,9 +206,9 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 		repo := model.NewRoleRepository(tx)
 		err := repo.Update(role)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -228,9 +228,9 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 		name := data.Get("name").(string)
 		err := repo.Delete(name)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -249,7 +249,7 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 
 		role, err := repo.Get(name)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role": role}}
@@ -298,9 +298,9 @@ func (b *roleBackend) handleInclude() framework.OperationFunc {
 
 		err := model.NewRoleRepository(tx).Include(destName, incl)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -322,9 +322,9 @@ func (b *roleBackend) handleExclude() framework.OperationFunc {
 
 		err := model.NewRoleRepository(tx).Exclude(destName, srcName)
 		if err != nil {
-			return responseErr(req, err)
+			return ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := Commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
