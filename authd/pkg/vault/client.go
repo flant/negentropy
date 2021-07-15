@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/vault/api"
@@ -11,20 +12,29 @@ import (
 )
 
 type Client struct {
-	Server string
-	Scheme string
+	Server        string
+	Scheme        string
+	LoginEndpoint string
 }
 
-const JWTLoginURL = "/v1/auth/myjwt/login"
-const ObtainJWTURL = "/v1/identity/oidc/token/myrole"
+const (
+	DefaultLoginEndpoint = "/v1/auth/flant_iam_auth/login"
+	ObtainJWTURL         = "/v1/identity/oidc/token/myrole"
+)
 
 var DefaultScheme = "https"
 
 func NewClient(addr string) *Client {
-	return &Client{
-		Server: addr,
-		Scheme: DetectScheme(addr),
+	cl := &Client{
+		Server:        addr,
+		Scheme:        DetectScheme(addr),
+		LoginEndpoint: os.Getenv("AUTHD_LOGIN_ENDPOINT"),
 	}
+
+	if cl.LoginEndpoint == "" {
+		cl.LoginEndpoint = DefaultLoginEndpoint
+	}
+	return cl
 }
 
 // LoginWithJWT use JWT to auth in Vault and get session token.
@@ -39,10 +49,11 @@ func (c *Client) LoginWithJWT(ctx context.Context, jwt string) (*api.Secret, err
 	}
 
 	// FIXME(far future): NewRequest do an uninterrupted SRV lookup if Port is not specified.
-	req := cl.NewRequest("POST", JWTLoginURL)
+	// TODO: make settings for login.
+	req := cl.NewRequest("POST", c.LoginEndpoint)
 	opts := map[string]interface{}{
-		"role": "authd",
-		"jwt":  jwt,
+		"method": "multipass",
+		"jwt":    jwt,
 	}
 	if err := req.SetJSONBody(opts); err != nil {
 		return nil, err
