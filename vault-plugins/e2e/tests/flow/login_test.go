@@ -72,11 +72,10 @@ var _ = Describe("Login", func() {
 	Context("with multipass", func() {
 		var jwtData string
 		var user *iam.User
-		var mp *iam.Multipass
 
 		JustBeforeEach(func() {
 			user = createUser()
-			mp, jwtData = createUserMultipass(user)
+			_, jwtData = createUserMultipass(user)
 		})
 
 		It("successful log in with jwt method", func() {

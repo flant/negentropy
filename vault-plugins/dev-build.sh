@@ -19,7 +19,6 @@ function build_plugin() {
     -v $SCRIPTDIR/build:/src/build \
     -v $SCRIPTDIR/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
     -v $SCRIPTDIR/shared:/go/src/app/shared \
-    -v /tmp/vault-build:/go/pkg/mod \
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
     tetafro/golang-gcc:1.16-alpine \
