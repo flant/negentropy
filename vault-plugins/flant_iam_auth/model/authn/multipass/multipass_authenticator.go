@@ -30,7 +30,13 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 
 	a.Logger.Debug("Start authn multipass")
 
-	p := gojwt.Parser{SkipClaimsValidation: true}
+	gojwt.RegisterSigningMethod("EdDSA", func() gojwt.SigningMethod {
+		return &gojwt.SigningMethodECDSA{}
+	})
+
+	p := gojwt.Parser{
+		SkipClaimsValidation: true,
+	}
 	claims := gojwt.MapClaims{}
 	_, _, err := p.ParseUnverified(token, claims)
 	if err != nil {
@@ -51,9 +57,9 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 
 	a.Logger.Debug("Expiration verified")
 
-	uuidMultipassRaw, ok := claims["uuid"]
+	uuidMultipassRaw, ok := claims["sub"]
 	if !ok {
-		return nil, fmt.Errorf("not found uuid")
+		return nil, fmt.Errorf("not found multipass uuid in token")
 	}
 
 	uuidMultipass, ok := uuidMultipassRaw.(string)

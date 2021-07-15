@@ -8,7 +8,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	t.Skip("Revert After debug")
+	//t.Skip("Not configured in ci")
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Vault entities")
 }

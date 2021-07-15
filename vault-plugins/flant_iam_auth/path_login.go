@@ -169,7 +169,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 
 	authnRes, err := authenticator.Authenticate(ctx, d)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Not authn %v", err))
+		logger.Error(fmt.Sprintf("Not authn, err: %v", err))
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 	}
 

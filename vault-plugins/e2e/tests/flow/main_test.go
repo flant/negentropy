@@ -2,9 +2,6 @@ package flow
 
 import (
 	"encoding/json"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/multipass"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/service_account"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"testing"
 	"time"
 
@@ -17,12 +14,15 @@ import (
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/configure"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/multipass"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/service_account"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	flant_vault_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 func Test(t *testing.T) {
@@ -39,14 +39,14 @@ path "auth/flant_iam_auth/auth_method/*" {
 `
 
 var (
-	iamAuthClient   *api.Client
-	iamClient       *api.Client
-	identityApi     *flant_vault_api.IdentityAPI
-	sources         []auth_source.SourceForTest
-	mountAccessorId string
-	jwtMethodName   string
-	multipassMethodName   string
-	tokenTTl = 5 * time.Second
+	iamAuthClient       *api.Client
+	iamClient           *api.Client
+	identityApi         *flant_vault_api.IdentityAPI
+	sources             []auth_source.SourceForTest
+	mountAccessorId     string
+	jwtMethodName       string
+	multipassMethodName string
+	tokenTTl            = 5 * time.Second
 )
 
 func uuidFromResp(resp *api.Secret, entityKey, key string) string {
@@ -79,7 +79,7 @@ func createUser() *iam.User {
 }
 
 func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
-	maRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/" + user.UUID + "/multipass", tools.ToMap(multipass.GetPayload()))
+	maRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass", tools.ToMap(multipass.GetPayload()))
 	Expect(err).ToNot(HaveOccurred())
 
 	maObj := iam.Multipass{}
@@ -91,6 +91,10 @@ func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
 	// todo verify is jwt
 	token := maRaw.Data["token"].(string)
 	Expect(token).ToNot(BeEmpty())
+
+	// need wait for sync with iam_auth
+	// todo need waitFor function?
+	time.Sleep(5 * time.Second)
 
 	return &maObj, token
 }
@@ -122,13 +126,13 @@ func createServiceAccount() *iam.ServiceAccount {
 
 func createJwtAuthMethod(methodName, userClaim string, source auth_source.SourceForTest, payloadRewrite map[string]interface{}) {
 	payload := map[string]interface{}{
-		"bound_audiences":  auth_source.Audience,
-		"token_policies": []string{"good"},
-		"token_type":     "default",
-		"token_ttl":      "1m",
-		"method_type":    model.MethodTypeJWT,
-		"source":         source.Source.Name,
-		"user_claim":     userClaim,
+		"bound_audiences": auth_source.Audience,
+		"token_policies":  []string{"good"},
+		"token_type":      "default",
+		"token_ttl":       "1m",
+		"method_type":     model.MethodTypeJWT,
+		"source":          source.Source.Name,
+		"user_claim":      userClaim,
 	}
 
 	if len(payloadRewrite) > 0 {
@@ -137,7 +141,7 @@ func createJwtAuthMethod(methodName, userClaim string, source auth_source.Source
 		}
 	}
 
- 	_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
+	_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -159,7 +163,7 @@ func createMultipassAuthMethod(methodName string, payloadRewrite map[string]inte
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func login(params map[string]interface{}) *api.SecretAuth{
+func login(params map[string]interface{}) *api.SecretAuth {
 	secret, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/login", params)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(secret).ToNot(BeNil())

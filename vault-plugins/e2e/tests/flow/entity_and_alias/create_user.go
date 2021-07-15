@@ -1,18 +1,21 @@
 package entity_and_alias
 
 import (
+	"time"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/api"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 	user "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 	flant_vault_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
-	"github.com/hashicorp/vault/api"
-	"time"
-
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Creating entity and entity aliases", func() {
@@ -23,8 +26,7 @@ var _ = Describe("Creating entity and entity aliases", func() {
 	iamClient := configure.GetClient(token)
 	iamClient.SetToken(token)
 
-
-	identityApi := flant_vault_api.NewIdentityAPI(configure.GetClient(token))
+	identityApi := flant_vault_api.NewIdentityAPI(configure.GetClient(token), hclog.NewNullLogger())
 
 	It("with auth sources", func() {
 		role := configure.CreateGoodRole(token)
@@ -32,16 +34,15 @@ var _ = Describe("Creating entity and entity aliases", func() {
 		sources := auth_source.GenerateSources()
 		for _, s := range sources {
 			p, name := s.ToPayload()
-			_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath + "/auth_source/" + name, p)
+			_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_source/"+name, p)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-
-		tenant, err := iamClient.Logical().Write(lib.IamPluginPath + "/tenant", tools.ToMap(tenant.GetPayload()))
+		tenant, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", tools.ToMap(tenant.GetPayload()))
 		Expect(err).ToNot(HaveOccurred())
 		tenantUUID := uuidFromResp(tenant, "tenant", "uuid")
 
-		userUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath + "/tenant/" + tenantUUID + "/user/", tools.ToMap(user.GetPayload()))
+		userUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/user/", tools.ToMap(user.GetPayload()))
 		Expect(err).ToNot(HaveOccurred())
 		userUUID := uuidFromResp(userUUIDResp, "user", "uuid")
 
@@ -67,6 +68,6 @@ var _ = Describe("Creating entity and entity aliases", func() {
 
 })
 
-func uuidFromResp(resp *api.Secret, entityKey, key string) string{
+func uuidFromResp(resp *api.Secret, entityKey, key string) string {
 	return resp.Data[entityKey].(map[string]interface{})[key].(string)
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam_ext_serv "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -38,9 +38,9 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		iam.MultipassSchema(),
 		iam.ServiceAccountPasswordSchema(),
 		iam.IdentitySharingSchema(),
+		iam_ext_serv.ServerSchema(),
 
 		jwt.JWKSSchema(),
-		model.ServerSchema(),
 	}
 
 	for _, o := range others {

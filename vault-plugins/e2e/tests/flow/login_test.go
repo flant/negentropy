@@ -23,7 +23,7 @@ var _ = Describe("Login", func() {
 			})
 		})
 
-		It("successful log in with jwt method", func() {
+		It("successful log in", func() {
 			auth := login(map[string]interface{}{
 				"method": jwtMethodName,
 				"jwt":    jwtData,
@@ -53,7 +53,7 @@ var _ = Describe("Login", func() {
 				Expect(method.Data["name"].(string)).To(BeEquivalentTo(jwtMethodName))
 			})
 
-			It("does not access to allowed method", func() {
+			It("does not access to not allowed method", func() {
 				auth := login(map[string]interface{}{
 					"method": jwtMethodName,
 					"jwt":    jwtData,
@@ -78,7 +78,7 @@ var _ = Describe("Login", func() {
 			_, jwtData = createUserMultipass(user)
 		})
 
-		It("successful log in with jwt method", func() {
+		It("successful log in", func() {
 			auth := login(map[string]interface{}{
 				"method": multipassMethodName,
 				"jwt":    jwtData,
@@ -108,7 +108,7 @@ var _ = Describe("Login", func() {
 				Expect(method.Data["name"].(string)).To(BeEquivalentTo(jwtMethodName))
 			})
 
-			It("does not access to allowed method", func() {
+			It("does not access to not allowed method", func() {
 				auth := login(map[string]interface{}{
 					"method": multipassMethodName,
 					"jwt":    jwtData,
