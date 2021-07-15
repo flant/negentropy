@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	IdentitySharingType = "identity_sharing"
+	IdentitySharingType        = "identity_sharing"
+	SourceTenantUUIDIndex      = "source_tenant_uuid_index"
+	DestinationTenantUUIDIndex = "destination_tenant_uuid_index"
 )
 
 func IdentitySharingSchema() *memdb.DBSchema {
@@ -23,10 +25,16 @@ func IdentitySharingSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"source_tenant_uuid": {
-						Name: "source_tenant_uuid",
+					SourceTenantUUIDIndex: {
+						Name: SourceTenantUUIDIndex,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "SourceTenantUUID",
+						},
+					},
+					DestinationTenantUUIDIndex: {
+						Name: DestinationTenantUUIDIndex,
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "DestinationTenantUUID",
 						},
 					},
 				},
@@ -143,7 +151,25 @@ func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool,
 }
 
 func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]*IdentitySharing, error) {
-	iter, err := r.db.Get(IdentitySharingType, "source_tenant_uuid", tenantID)
+	iter, err := r.db.Get(IdentitySharingType, SourceTenantUUIDIndex, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*IdentitySharing, 0)
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		u := raw.(*IdentitySharing)
+		res = append(res, u)
+	}
+	return res, nil
+}
+
+func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID TenantUUID) ([]*IdentitySharing, error) {
+	iter, err := r.db.Get(IdentitySharingType, DestinationTenantUUIDIndex, tenantID)
 	if err != nil {
 		return nil, err
 	}
