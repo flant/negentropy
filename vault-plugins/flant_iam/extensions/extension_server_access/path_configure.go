@@ -7,7 +7,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -70,7 +69,7 @@ func (b *serverConfigureBackend) configurePaths() []*framework.Path {
 func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		if !liveConfig.isConfigured() && data.Get("last_allocated_uid") == nil {
-			return backend.ResponseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
+			return responseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
 		}
 
 		var newServerAccessConfig ServerAccessConfig
@@ -92,7 +91,7 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 
 		err := liveConfig.SetServerAccessConfig(ctx, req.Storage, &newServerAccessConfig)
 		if err != nil {
-			return backend.ResponseErr(req, err)
+			return responseErr(req, err)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusOK)

@@ -1,4 +1,4 @@
-package backend
+package extension_server_access
 
 import (
 	"fmt"

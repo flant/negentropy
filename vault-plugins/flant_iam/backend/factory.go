@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/extension_server_access"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -39,9 +38,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 }
 
 func initializer(ctx context.Context, initRequest *logical.InitializationRequest) error {
-	initFuncs := []framework.InitializeFunc{
-		extension_server_access.InitializeExtensionServerAccess,
-	}
+	initFuncs := []framework.InitializeFunc{}
 
 	for _, f := range initFuncs {
 		err := f(ctx, initRequest)
@@ -120,7 +117,6 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		roleBindingPaths(b, storage),
 		roleBindingApprovalPaths(b, storage),
 		rolePaths(b, storage),
-		extension_server_access.ServerPaths(b, storage),
 
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),

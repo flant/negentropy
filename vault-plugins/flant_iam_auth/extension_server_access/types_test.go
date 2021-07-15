@@ -3,6 +3,7 @@ package extension_server_access
 import (
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/stretchr/testify/assert"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -24,14 +25,14 @@ func TestUserToPosix(t *testing.T) {
 				Origin: "server_access",
 				Attributes: map[string]interface{}{
 					"UID": 42,
-					"passwords": []iam.UserServerPassword{
+					"passwords": []model.UserServerPassword{
 						{
-							Seed: "1",
-							Salt: "1",
+							Seed: []byte("1"),
+							Salt: []byte("1"),
 						},
 						{
-							Seed: "2",
-							Salt: "2",
+							Seed: []byte("2"),
+							Salt: []byte("2"),
 						},
 					},
 				},
@@ -49,14 +50,14 @@ func TestUserToPosix(t *testing.T) {
 				Origin: "server_access",
 				Attributes: map[string]interface{}{
 					"UID": 56,
-					"passwords": []iam.UserServerPassword{
+					"passwords": []model.UserServerPassword{
 						{
-							Seed: "3",
-							Salt: "3",
+							Seed: []byte("3"),
+							Salt: []byte("3"),
 						},
 						{
-							Seed: "4",
-							Salt: "4",
+							Seed: []byte("4"),
+							Salt: []byte("4"),
 						},
 					},
 				},

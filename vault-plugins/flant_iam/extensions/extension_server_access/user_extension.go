@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -18,7 +19,7 @@ func RegisterServerAccessUserExtension(initialUID int,
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo := model.NewUserServerAccessRepository(txn, initialUID, expireSeedAfterRevealIn, deleteExpiredPasswordSeedsAfter)
+			repo := model2.NewUserServerAccessRepository(txn, initialUID, expireSeedAfterRevealIn, deleteExpiredPasswordSeedsAfter)
 
 			user := obj.(*model.User)
 
