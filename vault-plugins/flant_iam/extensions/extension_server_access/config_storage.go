@@ -62,18 +62,3 @@ func (c *mutexedConfig) SetServerAccessConfig(ctx context.Context, storage logic
 
 	return nil
 }
-
-func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest) error {
-	storage := initRequest.Storage
-
-	config, err := liveConfig.GetServerAccessConfig(ctx, storage)
-	if err != nil {
-		return err
-	}
-
-	if config != nil {
-		liveConfig.configured = true
-	}
-
-	return nil
-}
