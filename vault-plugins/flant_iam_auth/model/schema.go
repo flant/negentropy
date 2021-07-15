@@ -22,6 +22,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		AuthSourceSchema(),
 		AuthMethodSchema(),
 		JWTIssueTypeSchema(),
+		MultipassGenerationNumberSchema(),
 		iam.UserSchema(),
 		iam.TenantSchema(),
 		iam.ProjectSchema(),

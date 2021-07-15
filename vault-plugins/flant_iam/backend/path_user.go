@@ -535,11 +535,14 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			Origin:      model.OriginIAM,
 		}
 
+		// Prepare salt for JWT generation.
+		multipass.Salt = uuid.New()
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 		repo := model.NewMultipassRepository(tx)
 
-		err := repo.Create(multipass)
+		jwtString, err := repo.CreateWithJWT(ctx, req.Storage, multipass)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -548,7 +551,10 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"multipass": multipass}}
+		resp := &logical.Response{Data: map[string]interface{}{
+			"multipass": multipass,
+			"token":     jwtString,
+		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
