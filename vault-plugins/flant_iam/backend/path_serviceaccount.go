@@ -667,12 +667,15 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 		var (
 			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
 			validTill = time.Now().Add(ttl).Unix()
+
+			tenantUUID = data.Get("tenant_uuid").(string)
+			ownerUUID  = data.Get("owner_uuid").(string)
 		)
 
 		pass := &model.ServiceAccountPassword{
 			UUID:        uuid.New(),
-			TenantUUID:  data.Get("tenant_uuid").(string),
-			OwnerUUID:   data.Get("owner_uuid").(string),
+			TenantUUID:  tenantUUID,
+			OwnerUUID:   ownerUUID,
 			Description: data.Get("description").(string),
 			TTL:         ttl,
 			ValidTill:   validTill,
@@ -689,9 +692,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewServiceAccountPasswordRepository(tx)
-
-		err = repo.Create(pass)
+		err = usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Create(pass)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -713,18 +714,17 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.ServiceAccountPassword{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-		}
+
+		var (
+			tenantUUID = data.Get("tenant_uuid").(string)
+			ownerUUID  = data.Get("owner_uuid").(string)
+			id         = data.Get("uuid").(string)
+		)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewServiceAccountPasswordRepository(tx)
-
-		err := repo.Delete(filter)
+		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -738,16 +738,15 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.ServiceAccountPassword{
-			UUID:       data.Get("uuid").(string),
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-		}
+		var (
+			tenantUUID = data.Get("tenant_uuid").(string)
+			ownerUUID  = data.Get("owner_uuid").(string)
+			id         = data.Get("uuid").(string)
+		)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServiceAccountPasswordRepository(tx)
 
-		pass, err := repo.Get(filter)
+		pass, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -759,15 +758,14 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		filter := &model.ServiceAccountPassword{
-			TenantUUID: data.Get("tenant_uuid").(string),
-			OwnerUUID:  data.Get("owner_uuid").(string),
-		}
+		var (
+			tenantUUID = data.Get("tenant_uuid").(string)
+			ownerUUID  = data.Get("owner_uuid").(string)
+		)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewServiceAccountPasswordRepository(tx)
 
-		passwords, err := repo.List(filter)
+		passwords, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).List()
 		if err != nil {
 			return responseErr(req, err)
 		}
