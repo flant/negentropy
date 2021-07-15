@@ -27,9 +27,34 @@ function connect_plugins() {
   echo "Connected"
 }
 
-function jwt_enable() {
+function initalize() {
     docker-compose exec -T vault sh -c "vault write -force flant_iam/jwt/enable"
     docker-compose exec -T vault sh -c "vault write -force auth/flant_iam_auth/jwt/enable"
+
+    #  vault token create -orphan -policy=root -field=token > /tmp/token_aaaa
+#  export VAULT_TOKEN="$(cat /tmp/token_aaaa)"
+
+    docker-compose exec -T vault sh -c "vault auth enable approle"
+    docker-compose exec -T vault sh -c "vault policy write good good.hcl"
+    docker-compose exec -T vault sh -c "vault write auth/approle/role/good secret_id_ttl=30m token_ttl=900s token_policies=good"
+    secretID=$(docker-compose exec -T vault sh -c "vault write -format=json -f auth/approle/role/good/secret-id" | jq -r '.data.secret_id')
+    roleID=$(docker-compose exec -T vault sh -c "vault read -format=json auth/approle/role/good/role-id" | jq -r '.data.role_id')
+
+    docker-compose exec -T vault sh -c "vault write auth/flant_iam_auth/configure_vault_access \
+      vault_api_url=\"http://127.0.0.1:8200\" \
+      vault_api_host=\"vault_host\" \
+      role_name=\"good\" \
+      secret_id_ttl=\"120m\" \
+      approle_mount_point=\"/auth/approle/\" \
+      secret_id=\"$secretID\" \
+      role_id=\"$roleID\" \
+      vault_api_ca=\"\""
+
+  docker-compose exec -T vault sh -c "vault write auth/flant_iam_auth/auth_method/goodmultipass \
+      token_ttl=\"30m\" \
+		  token_policies=\"good\" \
+		  token_no_default_policy=true \
+      method_type=\"multipass_jwt\""
 }
 
 function fill_test_data() {
@@ -107,4 +132,4 @@ do
 	activate_plugin "$i"
 done
 
-jwt_enable
+initalize
