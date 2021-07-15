@@ -13,8 +13,9 @@ require (
 	github.com/hashicorp/vault v1.7.3 // indirect
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.2.1-0.20210614231108-a35199734e5f
+	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/werf/logboek v0.5.4
-	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210714094927-252da187d03e
+	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210715144355-3f054a5e3692
 )
 
 replace github.com/theupdateframework/go-tuf => github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2

@@ -53,7 +53,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", err, string(cfgData)))
 	}
 
-	gitCredentials, err := getGitCredential(ctx, req.Storage)
+	gitCredentials, err := trdlGit.GetGitCredential(ctx, req.Storage)
 	if err != nil {
 		return fmt.Errorf("unable to get Git credentials configuration: %s", err)
 	}
@@ -121,7 +121,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	return nil
 }
 
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *gitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
+func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *trdlGit.GitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
 	b.Logger().Debug("Started periodic task")
 
 	// clone git repository and get head commit
