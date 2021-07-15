@@ -1,4 +1,4 @@
-package model
+package usecase
 
 func stringSlice(uuidSet map[string]struct{}) []string {
 	if len(uuidSet) == 0 {

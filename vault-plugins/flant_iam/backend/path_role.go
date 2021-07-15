@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -296,7 +297,7 @@ func (b *roleBackend) handleInclude() framework.OperationFunc {
 			OptionsTemplate: template,
 		}
 
-		err := model.NewRoleRepository(tx).Include(destName, incl)
+		err := usecase.Roles(tx).Include(destName, incl)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -320,7 +321,7 @@ func (b *roleBackend) handleExclude() framework.OperationFunc {
 			srcName  = data.Get("included_name").(string)
 		)
 
-		err := model.NewRoleRepository(tx).Exclude(destName, srcName)
+		err := usecase.Roles(tx).Exclude(destName, srcName)
 		if err != nil {
 			return responseErr(req, err)
 		}
