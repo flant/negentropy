@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 func Test_ExtensionMarshalling(t *testing.T) {

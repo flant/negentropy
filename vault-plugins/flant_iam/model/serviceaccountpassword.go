@@ -95,6 +95,7 @@ func (r *ServiceAccountPasswordRepository) Delete(objID string) error {
 	}
 	return r.db.Delete(ServiceAccountPasswordType, sap)
 }
+
 func (r *ServiceAccountPasswordRepository) Create(p *ServiceAccountPassword) error {
 	return r.save(p)
 }

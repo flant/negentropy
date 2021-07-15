@@ -68,15 +68,13 @@ type IdentitySharingRepository struct {
 
 func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingRepository {
 	return &IdentitySharingRepository{
-		db:         tx,
+		db: tx,
 	}
 }
 
 func (r *IdentitySharingRepository) save(ra *IdentitySharing) error {
 	return r.db.Insert(IdentitySharingType, ra)
 }
-
-
 func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
 	ra, err := r.GetByID(id)
 	if err != nil {
@@ -147,7 +145,6 @@ func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID TenantUUID
 	return res, nil
 }
 
-
 func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySharing, error) {
 	raw, err := r.db.First(IdentitySharingType, PK, id)
 	if err != nil {
@@ -159,8 +156,6 @@ func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySh
 	ra := raw.(*IdentitySharing)
 	return ra, nil
 }
-
-
 
 func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
 	return r.save(is)

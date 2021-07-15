@@ -13,5 +13,3 @@ func Test_MergeSchema(t *testing.T) {
 		t.Fatalf("merged schema is invalid: %v", err)
 	}
 }
-
-

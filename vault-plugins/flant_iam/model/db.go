@@ -68,4 +68,3 @@ func GetSchema() (*memdb.DBSchema, error) {
 func NewResourceVersion() string {
 	return uuid.New()
 }
-

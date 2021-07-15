@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -546,7 +546,6 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -588,7 +587,6 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
 		tid := data.Get("tenant_uuid").(string)
 		uid := data.Get("owner_uuid").(string)
 

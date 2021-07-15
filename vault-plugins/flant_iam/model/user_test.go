@@ -2,7 +2,6 @@ package model
 
 import (
 	"testing"
-
 )
 
 func Test_UserDbSchema(t *testing.T) {

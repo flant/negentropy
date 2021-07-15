@@ -3,9 +3,9 @@ package usecase
 import (
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -86,8 +86,6 @@ func roleFixture(t *testing.T, store *io.MemoryStore) {
 	err := tx.Commit()
 	dieOnErr(t, err)
 }
-
-
 
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)

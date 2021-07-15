@@ -7,7 +7,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-
 const (
 	groupUUID1 = "00000000-0001-0000-0000-000000000000"
 	groupUUID2 = "00000000-0002-0000-0000-000000000000"
@@ -76,7 +75,6 @@ func groupFixture(t *testing.T, store *io.MemoryStore) {
 	dieOnErr(t, err)
 }
 
-
 func Test_ListGroups(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repo := model.NewGroupRepository(tx)
@@ -88,7 +86,7 @@ func Test_ListGroups(t *testing.T) {
 	for _, obj := range groups {
 		ids = append(ids, obj.ObjId())
 	}
- checkDeepEqual(t, []string{groupUUID1, groupUUID2, groupUUID4, groupUUID5}, ids)
+	checkDeepEqual(t, []string{groupUUID1, groupUUID2, groupUUID4, groupUUID5}, ids)
 }
 
 func Test_GetByID(t *testing.T) {
@@ -103,7 +101,7 @@ func Test_GetByID(t *testing.T) {
 		makeSubjectNotations(model.GroupType, group1.Groups))
 	group.Version = group1.Version
 	group.FullIdentifier = group1.FullIdentifier
- checkDeepEqual(t, &group1, group)
+	checkDeepEqual(t, &group1, group)
 }
 
 func Test_findDirectParentGroupsByUserUUID(t *testing.T) {
@@ -113,7 +111,7 @@ func Test_findDirectParentGroupsByUserUUID(t *testing.T) {
 	ids, err := repo.FindDirectParentGroupsByUserUUID(tenantUUID1, userUUID3)
 
 	dieOnErr(t, err)
- checkDeepEqual(t, map[string]struct{}{groupUUID1: {}, groupUUID2: {}, groupUUID4: {}}, ids)
+	checkDeepEqual(t, map[string]struct{}{groupUUID1: {}, groupUUID2: {}, groupUUID4: {}}, ids)
 }
 
 func Test_findDirectParentGroupsByServiceAccountUUID(t *testing.T) {
@@ -123,7 +121,7 @@ func Test_findDirectParentGroupsByServiceAccountUUID(t *testing.T) {
 	ids, err := repo.FindDirectParentGroupsByServiceAccountUUID(tenantUUID1, serviceAccountUUID1)
 
 	dieOnErr(t, err)
- checkDeepEqual(t, map[string]struct{}{groupUUID1: {}}, ids)
+	checkDeepEqual(t, map[string]struct{}{groupUUID1: {}}, ids)
 }
 
 func Test_findDirectParentGroupsByGroupUUID(t *testing.T) {
@@ -133,7 +131,7 @@ func Test_findDirectParentGroupsByGroupUUID(t *testing.T) {
 	ids, err := repo.FindDirectParentGroupsByGroupUUID(tenantUUID1, groupUUID1)
 
 	dieOnErr(t, err)
- checkDeepEqual(t, map[string]struct{}{groupUUID5: {}}, ids)
+	checkDeepEqual(t, map[string]struct{}{groupUUID5: {}}, ids)
 }
 
 func Test_FindAllParentGroupsForUserUUID(t *testing.T) {
@@ -143,7 +141,7 @@ func Test_FindAllParentGroupsForUserUUID(t *testing.T) {
 	ids, err := repo.FindAllParentGroupsForUserUUID(tenantUUID1, userUUID1)
 
 	dieOnErr(t, err)
- checkDeepEqual(t, map[string]struct{}{groupUUID2: {}, groupUUID4: {}, groupUUID5: {}}, ids)
+	checkDeepEqual(t, map[string]struct{}{groupUUID2: {}, groupUUID4: {}, groupUUID5: {}}, ids)
 }
 
 func Test_FindAllParentGroupsForServiceAccountUUID(t *testing.T) {
@@ -153,5 +151,5 @@ func Test_FindAllParentGroupsForServiceAccountUUID(t *testing.T) {
 	ids, err := repo.FindAllParentGroupsForServiceAccountUUID(tenantUUID1, serviceAccountUUID1)
 
 	dieOnErr(t, err)
- checkDeepEqual(t, map[string]struct{}{groupUUID1: {}, groupUUID5: {}}, ids)
+	checkDeepEqual(t, map[string]struct{}{groupUUID1: {}, groupUUID5: {}}, ids)
 }

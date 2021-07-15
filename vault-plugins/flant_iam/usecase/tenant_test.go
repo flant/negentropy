@@ -12,8 +12,6 @@ const (
 	tenantUUID2 = "00000002-0000-0000-0000-000000000000"
 )
 
-
-
 var (
 	tenant1 = model.Tenant{
 		UUID:         tenantUUID1,

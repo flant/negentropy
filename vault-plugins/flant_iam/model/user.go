@@ -176,6 +176,7 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 
 	return nil
 }
+
 func (r *UserRepository) Sync(objID string, data []byte) error {
 	if data == nil {
 		return r.Delete(objID)

@@ -195,4 +195,3 @@ func (dc arrayOfPointer) ObjType() string {
 func (dc arrayOfPointer) ObjId() string {
 	return "2"
 }
-
