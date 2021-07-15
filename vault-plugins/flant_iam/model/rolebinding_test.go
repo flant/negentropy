@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 )
+
 func Test_RoleBindingDbSchema(t *testing.T) {
 	schema := RoleBindingSchema()
 	if err := schema.Validate(); err != nil {

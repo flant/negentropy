@@ -187,8 +187,10 @@ func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := getCreationID(expectID, data)
-
+		var (
+			id         = getCreationID(expectID, data)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+		)
 		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
 			return nil, err
@@ -205,7 +207,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Groups(tx).Create(group); err != nil {
+		if err := usecase.Groups(tx, tenantUUID).Create(group); err != nil {
 			msg := "cannot create service account"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -221,7 +223,10 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		var (
+			id         = data.Get("uuid").(string)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+		)
 
 		subjects, err := parseSubjects(data.Get("subjects"))
 		if err != nil {
@@ -240,7 +245,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err = usecase.Groups(tx).Update(group)
+		err = usecase.Groups(tx, tenantUUID).Update(group)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -255,12 +260,15 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 func (b *groupBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := data.Get("uuid").(string)
+		var (
+			id         = data.Get("uuid").(string)
+			tenantUUID = data.Get(model.TenantForeignPK).(string)
+		)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Groups(tx).Delete(model.OriginIAM, id)
+		err := usecase.Groups(tx, tenantUUID).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}

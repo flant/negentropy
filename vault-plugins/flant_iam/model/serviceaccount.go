@@ -70,6 +70,7 @@ type ServiceAccountRepository struct {
 	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
+
 func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
 	return &ServiceAccountRepository{
 		db:         tx,
@@ -80,6 +81,7 @@ func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepositor
 func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
 	return r.db.Insert(ServiceAccountType, sa)
 }
+
 func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
 }

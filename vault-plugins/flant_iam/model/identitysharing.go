@@ -67,6 +67,7 @@ func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingReposit
 func (r *IdentitySharingRepository) save(ra *IdentitySharing) error {
 	return r.db.Insert(IdentitySharingType, ra)
 }
+
 func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
 	ra, err := r.GetByID(id)
 	if err != nil {

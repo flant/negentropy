@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -61,6 +62,7 @@ var (
 func createUsers(t *testing.T, repo *model.UserRepository, users ...model.User) {
 	for _, user := range users {
 		tmp := user
+		tmp.Version = uuid.New()
 		err := repo.Create(&tmp)
 		dieOnErr(t, err)
 	}
