@@ -59,7 +59,6 @@ func projectFixture(t *testing.T, store *io.MemoryStore) {
 	dieOnErr(t, err)
 }
 
-
 func Test_ProjectList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, projectFixture).Txn(true)
 

@@ -57,7 +57,6 @@ func (r *ServiceAccountPasswordsService) List() ([]*model.ServiceAccountPassword
 	return r.repo.List(r.ownerUUID)
 }
 
-
 func (r *ServiceAccountPasswordsService) validateContext() error {
 	if _, err := r.tenantRepo.GetByID(r.tenantUUID); err != nil {
 		return err

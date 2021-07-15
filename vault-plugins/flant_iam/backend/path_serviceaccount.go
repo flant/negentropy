@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/sethvargo/go-password/password"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -408,7 +408,6 @@ func errExistenseVerdict(err error) (bool, error) {
 
 func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-
 		var (
 			id       = data.Get("uuid").(string)
 			tenantID = data.Get(model.TenantForeignPK).(string)
@@ -567,7 +566,6 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
 		var (
 			tid  = data.Get("tenant_uuid").(string)
 			said = data.Get("owner_uuid").(string)
@@ -714,7 +712,6 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)

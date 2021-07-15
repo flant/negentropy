@@ -61,7 +61,6 @@ func serviceAccountFixture(t *testing.T, store *io.MemoryStore) {
 	dieOnErr(t, err)
 }
 
-
 func Test_ServiceAccountList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, serviceAccountFixture).Txn(true)
 	repo := model.NewServiceAccountRepository(tx)

@@ -66,13 +66,10 @@ func (sa *ServiceAccount) ObjId() string {
 	return sa.UUID
 }
 
-
 type ServiceAccountRepository struct {
 	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	tenantRepo *TenantRepository
 }
-
-
 func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
 	return &ServiceAccountRepository{
 		db:         tx,
@@ -83,8 +80,6 @@ func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepositor
 func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
 	return r.db.Insert(ServiceAccountType, sa)
 }
-
-
 func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
 }
@@ -125,7 +120,6 @@ func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
 	return r.db.Delete(ServiceAccountType, sa)
 }
 
-
 func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount, error) {
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
 	if err != nil {
@@ -143,8 +137,6 @@ func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount,
 	}
 	return list, nil
 }
-
-
 
 func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bool, error)) error {
 	iter, err := r.db.Get(ServiceAccountType, PK)
@@ -170,7 +162,6 @@ func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bo
 
 	return nil
 }
-
 
 func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
 	if data == nil {

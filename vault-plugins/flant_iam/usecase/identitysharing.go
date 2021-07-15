@@ -20,12 +20,9 @@ type IdentitySharingService struct {
 	tenantRepo *model.TenantRepository
 }
 
-
 func (s *IdentitySharingService) GetByID(id model.IdentitySharingUUID) (*model.IdentitySharing, error) {
 	return s.sharesRepo.GetByID(id)
 }
-
-
 
 func (s *IdentitySharingService) Create(is *model.IdentitySharing) error {
 	_, err := s.tenantRepo.GetByID(is.SourceTenantUUID)

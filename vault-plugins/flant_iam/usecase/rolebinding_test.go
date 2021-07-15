@@ -163,7 +163,6 @@ func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
 	dieOnErr(t, err)
 }
 
-
 func roleBindingsUUIDSFromSlice(rbs []*model.RoleBinding) map[string]struct{} {
 	uuids := map[string]struct{}{}
 	for _, rb := range rbs {
