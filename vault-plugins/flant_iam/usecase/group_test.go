@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -56,6 +57,7 @@ var (
 func createGroups(t *testing.T, repo *model.GroupRepository, groups ...model.Group) {
 	for _, group := range groups {
 		tmp := group
+		tmp.FullIdentifier = uuid.New()
 		err := repo.Create(&tmp)
 		dieOnErr(t, err)
 	}

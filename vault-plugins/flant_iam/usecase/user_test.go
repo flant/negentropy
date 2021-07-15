@@ -63,6 +63,7 @@ func createUsers(t *testing.T, repo *model.UserRepository, users ...model.User) 
 	for _, user := range users {
 		tmp := user
 		tmp.Version = uuid.New()
+		tmp.FullIdentifier = uuid.New()
 		err := repo.Create(&tmp)
 		dieOnErr(t, err)
 	}

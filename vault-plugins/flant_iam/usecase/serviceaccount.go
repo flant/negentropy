@@ -35,7 +35,7 @@ func (r *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 		return model.ErrBadOrigin
 	}
 	sa.Version = model.NewResourceVersion()
-	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
 	return r.repo.Create(sa)
 }
@@ -86,7 +86,7 @@ func (r *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 	// Update
 	sa.TenantUUID = r.tenantUUID
 	sa.Version = model.NewResourceVersion()
-	sa.FullIdentifier = CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
 	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if sa.Extensions == nil {
@@ -139,11 +139,4 @@ func (r *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid s
 	}
 	delete(obj.Extensions, origin)
 	return r.Update(obj)
-}
-
-// generic: <identifier>@serviceaccount.<tenant_identifier>
-func CalcServiceAccountFullIdentifier(saID, tenantID string) string {
-	domain := "serviceaccount." + tenantID
-
-	return saID + "@" + domain
 }

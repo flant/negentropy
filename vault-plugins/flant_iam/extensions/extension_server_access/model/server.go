@@ -610,7 +610,7 @@ func (r *UserServerAccessRepository) CreateExtension(user *model.User) error {
 		return err
 	}
 
-	err = r.userRepo.SetExtension(&model.Extension{
+	user.Extensions[model.OriginServerAccess] = &model.Extension{
 		Origin:    model.OriginServerAccess,
 		OwnerType: model.ExtensionOwnerTypeUser,
 		OwnerUUID: user.ObjId(),
@@ -625,8 +625,9 @@ func (r *UserServerAccessRepository) CreateExtension(user *model.User) error {
 			},
 		},
 		SensitiveAttributes: nil, // TODO: ?
-	})
-	if err != nil {
+	}
+
+	if err = r.userRepo.Update(user); err != nil {
 		return err
 	}
 

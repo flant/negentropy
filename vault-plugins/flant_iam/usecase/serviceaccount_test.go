@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -48,6 +49,7 @@ var (
 func createServiceAccounts(t *testing.T, repo *model.ServiceAccountRepository, sas ...model.ServiceAccount) {
 	for _, sa := range sas {
 		tmp := sa
+		tmp.FullIdentifier = uuid.New() // delete after bringing full identifiers to usecases
 		err := repo.Create(&tmp)
 		dieOnErr(t, err)
 	}

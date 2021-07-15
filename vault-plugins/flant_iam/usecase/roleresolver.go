@@ -1,14 +1,13 @@
 package usecase
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
-import "github.com/flant/negentropy/vault-plugins/shared/io"
+import (
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+)
 
 type RoleResolver interface {
-	IsUserSharedWith(model.TenantUUID) (bool, error)
-	IsServiceAccountSharedWith(model.TenantUUID) (bool, error)
-	IsUserSharedWithTenant(*User, TenantUUID) (bool, error)
-	IsServiceAccountSharedWithTenant(*ServiceAccount, TenantUUID) (bool, error)
+	IsUserSharedWithTenant(*model.User, model.TenantUUID) (bool, error)
+	IsServiceAccountSharedWithTenant(*model.ServiceAccount, model.TenantUUID) (bool, error)
 
 	CheckUserForProjectScopedRole(model.UserUUID, model.RoleName, model.TenantUUID, model.ProjectUUID) (bool, RoleBindingParams, error)
 	CheckUserForTenantScopedRole(model.UserUUID, model.RoleName, model.TenantUUID) (bool, RoleBindingParams, error)
@@ -37,8 +36,10 @@ type RoleInformer interface {
 type GroupInformer interface {
 	FindAllParentGroupsForUserUUID(model.TenantUUID, model.UserUUID) (map[model.GroupUUID]struct{}, error)
 	FindAllParentGroupsForServiceAccountUUID(model.TenantUUID, model.ServiceAccountUUID) (map[model.GroupUUID]struct{}, error)
+	FindAllParentGroupsForGroupUUID(model.TenantUUID, model.GroupUUID) (map[model.GroupUUID]struct{}, error)
 	FindAllSubjectsFor(model.TenantUUID, []model.UserUUID, []model.ServiceAccountUUID, []model.GroupUUID) (
 		map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error)
+	GetByID(model.GroupUUID) (*model.Group, error)
 }
 
 type RoleBindingsInformer interface {
@@ -50,7 +51,7 @@ type RoleBindingsInformer interface {
 }
 
 type SharingInformer interface {
-	ListForDestinationTenant(tenantID TenantUUID) ([]*IdentitySharing, error)
+	ListForDestinationTenant(tenantID model.TenantUUID) ([]*model.IdentitySharing, error)
 }
 
 type roleResolver struct {
@@ -62,7 +63,7 @@ type roleResolver struct {
 
 var emptyRoleBindingParams = RoleBindingParams{}
 
-func (r *roleResolver) IsUserSharedWithTenant(user *User, destinationTenantUUID TenantUUID) (bool, error) {
+func (r *roleResolver) IsUserSharedWithTenant(user *model.User, destinationTenantUUID model.TenantUUID) (bool, error) {
 	shares, err := r.si.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
 		return false, err
@@ -81,7 +82,7 @@ func (r *roleResolver) IsUserSharedWithTenant(user *User, destinationTenantUUID 
 	return false, nil
 }
 
-func (r *roleResolver) IsServiceAccountSharedWithTenant(serviceAccount *ServiceAccount, destinationTenantUUID TenantUUID) (
+func (r *roleResolver) IsServiceAccountSharedWithTenant(serviceAccount *model.ServiceAccount, destinationTenantUUID model.TenantUUID) (
 	bool, error) {
 	shares, err := r.si.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
@@ -376,7 +377,7 @@ func (r *roleResolver) FindSubjectsWithTenantScopedRole(roleName model.RoleName,
 	return stringSlice(users), stringSlice(serviceAccounts), nil
 }
 
-func (r *roleResolver) CheckGroupForRole(groupUUID GroupUUID, roleName RoleName) (bool, error) {
+func (r *roleResolver) CheckGroupForRole(groupUUID model.GroupUUID, roleName model.RoleName) (bool, error) {
 	group, err := r.gi.GetByID(groupUUID)
 	if err != nil {
 		return false, err
@@ -404,9 +405,9 @@ func (r *roleResolver) CheckGroupForRole(groupUUID GroupUUID, roleName RoleName)
 
 func NewRoleResolver(tx *io.MemoryStoreTxn) RoleResolver {
 	return &roleResolver{
-		ri:  NewRoleRepository(tx),
-		gi:  NewGroupRepository(tx),
-		rbi: NewRoleBindingRepository(tx),
-		si:  NewIdentitySharingRepository(tx),
+		ri:  model.NewRoleRepository(tx),
+		gi:  model.NewGroupRepository(tx),
+		rbi: model.NewRoleBindingRepository(tx),
+		si:  model.NewIdentitySharingRepository(tx),
 	}
 }

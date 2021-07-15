@@ -36,6 +36,13 @@ func ServiceAccountSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					fullIdentifierIndex: {
+						Name: fullIdentifierIndex,
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "FullIdentifier",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},
@@ -116,6 +123,21 @@ func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{
 	return raw, nil
 }
 
+func (r *ServiceAccountRepository) GetByIdentifier(said, tid string) (*ServiceAccount, error) {
+	// TODO move the calculation to usecases, accept only prepared fullID
+	fullID := CalcServiceAccountFullIdentifier(said, tid)
+
+	raw, err := r.db.First(ServiceAccountType, fullIdentifierIndex, fullID)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	serviceAccount := raw.(*ServiceAccount)
+	return serviceAccount, nil
+}
+
 func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 	_, err := r.GetByID(sa.UUID)
 	if err != nil {
@@ -188,4 +210,12 @@ func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(sa)
+}
+
+// TODO move to usecases
+// generic: <identifier>@serviceaccount.<tenant_identifier>
+func CalcServiceAccountFullIdentifier(saID, tenantID string) string {
+	domain := "serviceaccount." + tenantID
+
+	return saID + "@" + domain
 }

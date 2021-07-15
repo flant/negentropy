@@ -1,12 +1,16 @@
 package usecase
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 /*
@@ -103,6 +107,35 @@ func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []stri
 		return nil, err
 	}
 	return mp, nil
+}
+
+// CreateWithJWT saves a Multipass object and generate jwt.
+func (r *MultipassService) CreateWithJWT(
+	ctx context.Context, storage logical.Storage, // jwt
+	ttl, maxTTL time.Duration, cidrs, roles []string, description string, // multipass
+) (string, *model.Multipass, error) {
+	mp, err := r.Create(ttl, maxTTL, cidrs, roles, description)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Generate JWT
+	options := &jwt.PrimaryTokenOptions{
+		TTL:  mp.TTL,
+		UUID: mp.UUID,
+		JTI: jwt.TokenJTI{
+			Generation: 0,
+			SecretSalt: mp.Salt,
+		},
+	}
+
+	jwtString, err := jwt.NewPrimaryToken(ctx, storage, options)
+	if err != nil {
+		return "", nil, err
+	}
+
+	safeMp := model.OmitSensitive(mp).(*model.Multipass)
+	return jwtString, safeMp, nil
 }
 
 func (r *MultipassService) Delete(id model.MultipassUUID) error {

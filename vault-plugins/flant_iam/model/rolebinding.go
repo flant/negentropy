@@ -79,6 +79,13 @@ func RoleBindingSchema() *memdb.DBSchema {
 						AllowMissing: true,
 						Indexer:      &roleInTenantRoleBindingIndexer{},
 					},
+					fullIdentifierIndex: {
+						Name: fullIdentifierIndex,
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "FullIdentifier",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},
@@ -139,6 +146,20 @@ func (r *RoleBindingRepository) save(rb *RoleBinding) error {
 
 func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	roleBinding := raw.(*RoleBinding)
+	return roleBinding, nil
+}
+
+func (r *RoleBindingRepository) GetByIdentifier(rbID, tenantID string) (*RoleBinding, error) {
+	fullID := CalcRoleBindingFullIdentifier(rbID, tenantID)
+
+	raw, err := r.db.First(ServiceAccountType, fullIdentifierIndex, fullID)
 	if err != nil {
 		return nil, err
 	}

@@ -527,11 +527,13 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		multipass, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Create(ttl, maxTTL, cidrs, roles, description)
-		jwtString, err := repo.CreateWithJWT(ctx, req.Storage, multipass)
+		jwtString, multipass, err := usecase.
+			UserMultipasses(tx, model.OriginIAM, tid, uid).
+			CreateWithJWT(ctx, req.Storage, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return responseErr(req, err)
 		}
+
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
