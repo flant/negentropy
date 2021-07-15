@@ -6,8 +6,6 @@ import (
 )
 
 type UserService struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-
 	tenantUUID model.TenantUUID
 
 	tenantRepo *model.TenantRepository
@@ -17,7 +15,7 @@ type UserService struct {
 func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
 	return &UserService{
 		tenantUUID: tenantUUID,
-		db:         db,
+
 		tenantRepo: model.NewTenantRepository(db),
 		usersRepo:  model.NewUserRepository(db),
 	}
@@ -61,7 +59,6 @@ func (s *UserService) Update(user *model.User) error {
 	if stored.Origin != user.Origin {
 		return model.ErrBadOrigin
 	}
-
 
 	tenant, err := s.tenantRepo.GetByID(s.tenantUUID)
 	if err != nil {
