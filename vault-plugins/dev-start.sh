@@ -98,6 +98,24 @@ EOF
   # create multipass
   mpResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/user/$userID/multipass ttl=100000 max_ttl=1000000 description=test allowed_roles=ssh --format=json")
   jq -r '.' <<< "$mpResp"
+
+  docker-exec "vault write ssh/config/ca generate_signing_key=true"
+  docker-exec 'vault write ssh/roles/signer -<<"EOH"
+{
+  "allow_user_certificates": true,
+  "allowed_users": "*",
+  "allowed_extensions": "permit-pty,permit-agent-forwarding",
+  "default_extensions": [
+    {
+      "permit-pty": "",
+      "permit-agent-forwarding": ""
+    }
+  ],
+  "key_type": "ca",
+  "ttl": "2m0s"
+}
+EOH"'
+
 }
 
 function activate_plugin() {
@@ -105,7 +123,6 @@ function activate_plugin() {
 
   if [ $plugin == "flant_iam_auth" ]; then
       docker-exec "vault auth enable -path=$plugin $plugin"
-
   else
       docker-exec "vault secrets enable -path=$plugin $plugin"
   fi
@@ -130,7 +147,7 @@ fi
 docker-compose up -d
 sleep 3
 
-plugins=(flant_iam flant_iam_auth)
+plugins=(flant_iam flant_iam_auth ssh)
 
 if [ -n "$specified_plugin" ]; then
   	activate_plugin "$specified_plugin"
