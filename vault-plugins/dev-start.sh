@@ -4,18 +4,21 @@ function connect_plugins() {
   # initilize flant_iam
   docker-compose exec -T vault sh -c "vault write -force flant_iam/kafka/generate_csr" >/dev/null 2>&1
   docker-compose exec -T vault sh -c "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
-  sleep 1
-  docker-compose exec -T vault sh -c "vault write flant_iam/kafka/configure self_topic_name=root_source"
   root_pubkey=$(docker-compose exec -T vault sh -c "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
   # initialize flant_iam_auth
   docker-compose exec -T vault sh -c "vault write -force auth/flant_iam_auth/kafka/generate_csr" >/dev/null 2>&1
   docker-compose exec -T vault sh -c "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
-   # link replica
+  auth_pubkey=$(docker-compose exec -T vault sh -c "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+
   sleep 1
+
+  # configure flant_iam
+  docker-compose exec -T vault sh -c "vault write flant_iam/kafka/configure self_topic_name=root_source"
+
+  # configure flant_iam_auth
   docker-compose exec -T vault sh -c \
     "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
-  auth_pubkey=$(docker-compose exec -T vault sh -c "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
 
   # create replica
@@ -24,46 +27,53 @@ function connect_plugins() {
   echo "Connected"
 }
 
+function jwt_enable() {
+    docker-compose exec -T vault sh -c "vault write -force flant_iam/jwt/enable"
+    docker-compose exec -T vault sh -c "vault write -force auth/flant_iam_auth/jwt/enable"
+}
+
+function fill_test_data() {
+  tenantName="1tv"
+  projectName="main"
+  # create tenant
+  tenantResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=$tenantName --format=json")
+  tenantID=$(jq -r '.data.tenant.uuid' <<< "$tenantResp")
+
+
+  # create project
+  projectResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tenantID/project identifier=$projectName --format=json")
+  projectID=$(jq -r '.data.project.uuid' <<< "$projectResp")
+
+  # create user
+  userResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tenantID/user identifier=vasya first_name=Vasily last_name=Petrov email=vasya@mail.com --format=json")
+  userID=$(jq -r '.data.user.uuid' <<< "$userResp")
+
+
+  # create role
+  roleResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/role name=ssh scope=project --format=json")
+
+  # create role binding
+  cat <<EOF | docker-compose exec -T vault sh -
+  echo '{"subjects":[{"type": "user", "id": "$userID"}], "roles": [], "ttl": 100000 }' > /tmp/data.json
+EOF
+  roleBindingResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tenantID/role_binding @/tmp/data.json --format=json")
+  roleBindingID=$(jq -r '.data.role_binding.uuid' <<< "$roleBindingResp")
+
+
+  # create multipass
+  mpResp=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tenantID/user/$userID/multipass ttl=100000 max_ttl=1000000 description=test allowed_roles=ssh --format=json")
+  jq -r '.' <<< "$mpResp"
+}
+
 function activate_plugin() {
   plugin="$1"
 
   if [ $plugin == "flant_iam_auth" ]; then
       docker-compose exec -T vault sh -c "vault auth enable -path=$plugin $plugin"
+
   else
       docker-compose exec -T vault sh -c "vault secrets enable -path=$plugin $plugin"
   fi
-}
-
-function user_example() {
-#  unset VAULT_TOKEN
-#  export VAULT_ADDR="http://127.0.0.1:8200"
-#  vault token create -orphan -policy=root -field=token > /tmp/token_aaaa
-#  export VAULT_TOKEN="$(cat /tmp/token_aaaa)"
-#
-#  vault auth enable approle
-#  vault policy write good good.hcl
-#  vault write auth/approle/role/good secret_id_ttl=30m token_ttl=900s token_policies=good
-#  vault write auth/flant_iam_auth/configure_vault_access \
-#	  vault_api_url="http://127.0.0.1:8200" \
-#	  vault_api_host="vault_host" \
-#	  role_name="good" \
-#	  secret_id_ttl="120m" \
-#	  approle_mount_point="/auth/approle/" \
-#	  secret_id="$(vault write -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')" \
-#	  role_id="$(vault read -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')" \
-#	  vault_api_ca=""
-#
-#  vault write auth/flant_iam_auth/auth_source/a \
-#    jwt_validation_pubkeys="$(cat pub.keys)" \
-#    bound_issuer=http://vault.example.com/ \
-#    entity_alias_name=uuid \
-#		allow_service_accounts=false
-#
-#  vault write flant_iam/tenant/$tnu/user identifier=vasya
-#  tnu=$(vault write flant_iam/tenant identifier=tudasuda | grep "^uuid" | awk '{print $2}' | cut -c -36)
-#  tnu=$(docker-compose exec -T vault sh -c "vault write flant_iam/tenant identifier=tudasuda" | grep "^uuid" | awk '{print $2}' | cut -c -36)
-#  docker-compose exec -T vault sh -c "vault write flant_iam/tenant/$tnu/user identifier=vasya"
-  echo "DA"
 }
 
 specified_plugin=""
@@ -72,6 +82,9 @@ if [ "$1" == "connect_plugins" ]; then
   exit 0;
 elif [ "$1" == "user_example" ]; then
   user_example
+  exit 0;
+elif [ "$1" == "fill" ]; then
+  fill_test_data
   exit 0;
 else
   specified_plugin="$1"
@@ -94,6 +107,4 @@ do
 	activate_plugin "$i"
 done
 
-#sleep 10 # waiting for kafka
-#connect_plugins
-#docker-compose exec vault sh -c "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.testme root_topic_name=root_source.auth-testme"
+jwt_enable
