@@ -2,6 +2,7 @@ package flow
 
 import (
 	"encoding/json"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/multipass"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/service_account"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"testing"
@@ -25,6 +26,7 @@ import (
 )
 
 func Test(t *testing.T) {
+	t.Skip("no configure in ci")
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Vault entities")
 }
@@ -43,6 +45,7 @@ var (
 	sources         []auth_source.SourceForTest
 	mountAccessorId string
 	jwtMethodName   string
+	multipassMethodName   string
 	tokenTTl = 5 * time.Second
 )
 
@@ -73,6 +76,23 @@ func createUser() *iam.User {
 	time.Sleep(5 * time.Second)
 
 	return &userObj
+}
+
+func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
+	maRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/" + user.UUID + "/multipass", tools.ToMap(multipass.GetPayload()))
+	Expect(err).ToNot(HaveOccurred())
+
+	maObj := iam.Multipass{}
+	js, err := json.Marshal(maRaw.Data["multipass"])
+	Expect(err).ToNot(HaveOccurred())
+	err = json.Unmarshal(js, &maObj)
+	Expect(err).ToNot(HaveOccurred())
+
+	// todo verify is jwt
+	token := maRaw.Data["token"].(string)
+	Expect(token).ToNot(BeEmpty())
+
+	return &maObj, token
 }
 
 func createServiceAccount() *iam.ServiceAccount {
@@ -121,6 +141,24 @@ func createJwtAuthMethod(methodName, userClaim string, source auth_source.Source
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func createMultipassAuthMethod(methodName string, payloadRewrite map[string]interface{}) {
+	payload := map[string]interface{}{
+		"token_policies": []string{"good"},
+		"token_type":     "default",
+		"token_ttl":      "1m",
+		"method_type":    model.MethodTypeMultipass,
+	}
+
+	if len(payloadRewrite) > 0 {
+		for k, v := range payloadRewrite {
+			payload[k] = v
+		}
+	}
+
+	_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
+	Expect(err).ToNot(HaveOccurred())
+}
+
 func login(params map[string]interface{}) *api.SecretAuth{
 	secret, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/login", params)
 	Expect(err).ToNot(HaveOccurred())
@@ -144,6 +182,12 @@ var _ = BeforeSuite(func() {
 
 	configure.ConfigureVaultAccess(token, lib.IamAuthPluginPath, role)
 
+	var err error
+	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/enable", nil)
+	Expect(err).ToNot(HaveOccurred())
+	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/enable", nil)
+	Expect(err).ToNot(HaveOccurred())
+
 	sources = auth_source.GenerateSources()
 
 	for _, s := range sources {
@@ -161,7 +205,13 @@ var _ = BeforeSuite(func() {
 		"token_no_default_policy": true,
 	})
 
-	var err error
+	multipassMethodName = tools.RandomStr()
+	createMultipassAuthMethod(multipassMethodName, map[string]interface{}{
+		"token_ttl":               tokenTTl.String(),
+		"token_policies":          []string{methodReaderOnlyPolicyName},
+		"token_no_default_policy": true,
+	})
+
 	mountAccessorId, err = vault.NewMountAccessorGetter(func() (*api.Client, error) {
 		return configure.GetClient(token), nil
 	}, "flant_iam_auth/").MountAccessor()

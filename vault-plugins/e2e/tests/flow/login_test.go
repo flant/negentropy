@@ -72,18 +72,16 @@ var _ = Describe("Login", func() {
 	Context("with multipass", func() {
 		var jwtData string
 		var user *iam.User
+		var mp *iam.Multipass
 
 		JustBeforeEach(func() {
 			user = createUser()
-			jwtData = auth_source.SignJWT(user.FullIdentifier, time.Now().Add(5 * time.Second), map[string]interface{}{
-				"email": user.Email,
-				"uuid": user.UUID,
-			})
+			mp, jwtData = createUserMultipass(user)
 		})
 
 		It("successful log in with jwt method", func() {
 			auth := login(map[string]interface{}{
-				"method": jwtMethodName,
+				"method": multipassMethodName,
 				"jwt":    jwtData,
 			})
 
@@ -99,7 +97,7 @@ var _ = Describe("Login", func() {
 		Context("accessible", func() {
 			It("does access to allowed method", func() {
 				auth := login(map[string]interface{}{
-					"method": jwtMethodName,
+					"method": multipassMethodName,
 					"jwt":    jwtData,
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
@@ -113,7 +111,7 @@ var _ = Describe("Login", func() {
 
 			It("does not access to allowed method", func() {
 				auth := login(map[string]interface{}{
-					"method": jwtMethodName,
+					"method": multipassMethodName,
 					"jwt":    jwtData,
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
