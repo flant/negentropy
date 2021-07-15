@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	ServiceAccountType = "service_account" // also, memdb schema name
-
+	ServiceAccountType  = "service_account" // also, memdb schema name
+	fullIdentifierIndex = "full_identifier"
 )
 
 type ServiceAccountObjectType string
@@ -71,17 +71,6 @@ func (sa *ServiceAccount) ObjType() string {
 
 func (sa *ServiceAccount) ObjId() string {
 	return sa.UUID
-}
-
-// generic: <identifier>@serviceaccount.<tenant_identifier>
-// builtin: <identifier>@<builtin_service_account_type>.serviceaccount.<tenant_identifier>
-func CalcServiceAccountFullIdentifier(sa *ServiceAccount, tenant *Tenant) string {
-	name := sa.Identifier
-	domain := "serviceaccount." + tenant.Identifier
-	if sa.BuiltinType != "" {
-		domain = sa.BuiltinType + "." + domain
-	}
-	return name + "@" + domain
 }
 
 type ServiceAccountRepository struct {

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -145,7 +144,6 @@ var (
 func createRoleBindings(t *testing.T, repo *model.RoleBindingRepository, rbs ...model.RoleBinding) {
 	for _, rb := range rbs {
 		tmp := rb
-		tmp.FullIdentifier = uuid.New()
 		err := repo.Create(&tmp)
 		dieOnErr(t, err)
 	}

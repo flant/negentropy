@@ -39,13 +39,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
-
 	rb.UUID = uuid.New()
-	tenant, err := s.tenantsRepo.GetByID(rb.TenantUUID)
-	if err != nil {
-		return err
-	}
-	rb.FullIdentifier = model.CalcRoleBindingFullIdentifier(rb.UUID, tenant.Identifier)
 
 	return s.repo.Create(rb)
 }
@@ -78,12 +72,6 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}
-
-	tenant, err := s.tenantsRepo.GetByID(rb.TenantUUID)
-	if err != nil {
-		return err
-	}
-	rb.FullIdentifier = model.CalcRoleBindingFullIdentifier(rb.UUID, tenant.Identifier)
 
 	// Store
 	return s.repo.Update(rb)
