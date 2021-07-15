@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Issuer string
+	Issuer      string
 	OwnAudience string
 }
 
@@ -92,7 +92,7 @@ func (b *TokenController) GetConfig(ctx context.Context, storage logical.Storage
 	}
 
 	return &Config{
-		Issuer: conf["issuer"].(string),
+		Issuer:      conf["issuer"].(string),
 		OwnAudience: conf["own_audience"].(string),
 	}, nil
 }
