@@ -2,6 +2,7 @@ package authn
 
 import (
 	"context"
+
 	"github.com/hashicorp/vault/sdk/framework"
 )
 
@@ -11,9 +12,8 @@ type Result struct {
 	// empty is unknown
 	ModelType string
 
-
-	Metadata map[string]string
-	Policies []string
+	Metadata     map[string]string
+	Policies     []string
 	GroupAliases []string
 }
 

@@ -69,10 +69,10 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 	}
 
 	return &authn.Result{
-		UUID: alias.Name,
+		UUID:      alias.Name,
 		ModelType: "", // its unknown
 
-		Metadata: alias.Metadata,
+		Metadata:     alias.Metadata,
 		GroupAliases: groupAliases,
 	}, nil
 }

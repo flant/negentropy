@@ -3,12 +3,13 @@ package model
 import (
 	"crypto"
 	"fmt"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 const (

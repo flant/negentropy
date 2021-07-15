@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/multipass"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authz"
+
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/multipass"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authz"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 )
 
@@ -48,7 +49,6 @@ func pathLogin(b *flantIamAuthBackend) *framework.Path {
 				Description: "Requested roles",
 			},
 		},
-
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
@@ -142,9 +142,9 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 
 		authSource = model.GetMultipassSourceForLogin(jwtConf, keys)
 
-		authenticator = &multipass.Authenticator {
-			Logger:       logger.Named("AutheNticator"),
-			AuthSource:   authSource,
+		authenticator = &multipass.Authenticator{
+			Logger:        logger.Named("AutheNticator"),
+			AuthSource:    authSource,
 			MultipassRepo: iam.NewMultipassRepository(tnx),
 		}
 
@@ -176,14 +176,14 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	authorizator := authz.Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 
-		SaRepo: iam.NewServiceAccountRepository(tnx),
+		SaRepo:   iam.NewServiceAccountRepository(tnx),
 		UserRepo: iam.NewUserRepository(tnx),
 
-		EaRepo: model.NewEntityAliasRepo(tnx),
+		EaRepo:     model.NewEntityAliasRepo(tnx),
 		EntityRepo: model.NewEntityRepo(tnx),
 
 		MountAccessor: b.accessorGetter,
-		IdentityApi: api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),
+		IdentityApi:   api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),
 	}
 
 	logger.Debug("Start Authorize")

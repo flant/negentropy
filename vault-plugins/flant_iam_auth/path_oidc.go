@@ -340,11 +340,11 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 	}
 
 	auth := &logical.Auth{
-		Policies:     method.TokenPolicies,
-		DisplayName:  alias.Name,
-		Period:       method.TokenPeriod,
-		NumUses:      method.TokenNumUses,
-		Alias:        alias,
+		Policies:    method.TokenPolicies,
+		DisplayName: alias.Name,
+		Period:      method.TokenPeriod,
+		NumUses:     method.TokenNumUses,
+		Alias:       alias,
 		InternalData: map[string]interface{}{
 			"flantIamAuthMethod": methodName,
 		},

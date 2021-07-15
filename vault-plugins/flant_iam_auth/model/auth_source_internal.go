@@ -1,12 +1,15 @@
 package model
 
 import (
-	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/hashicorp/cap/jwt"
+
+	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
-const MultipassSourceUUID = "4554696c-e53b-11eb-bf72-a7d3a66da383"
-const MultipassSourceName = "_internal_multipass"
+const (
+	MultipassSourceUUID = "4554696c-e53b-11eb-bf72-a7d3a66da383"
+	MultipassSourceName = "_internal_multipass"
+)
 
 func GetMultipassSource() *AuthSource {
 	return &AuthSource{

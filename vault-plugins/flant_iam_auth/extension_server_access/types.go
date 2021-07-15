@@ -6,8 +6,8 @@ import (
 
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )

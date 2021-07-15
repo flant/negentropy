@@ -2,13 +2,15 @@ package authz
 
 import (
 	"fmt"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/logical"
+
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/logical"
 )
 
 type Authorizator struct {
@@ -17,7 +19,7 @@ type Authorizator struct {
 	EntityRepo *model.EntityRepo
 	EaRepo     *model.EntityAliasRepo
 
-	IdentityApi *api.IdentityAPI
+	IdentityApi   *api.IdentityAPI
 	MountAccessor *vault.MountAccessorGetter
 
 	Logger hclog.Logger
@@ -95,7 +97,7 @@ func (a *Authorizator) Authorize(authnResult *authn.Result, method *model.AuthMe
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for sa here
 	return &logical.Auth{
-		DisplayName: sa.FullIdentifier,
+		DisplayName:  sa.FullIdentifier,
 		InternalData: map[string]interface{}{},
 	}, nil
 }
@@ -121,9 +123,7 @@ func (a *Authorizator) populateAuthnData(authzRes *logical.Auth, authnResult *au
 	}
 
 	if len(authnResult.Policies) > 0 {
-		for _, p := range authnResult.Policies {
-			authzRes.Policies = append(authzRes.Policies, p)
-		}
+		authzRes.Policies = append(authzRes.Policies, authnResult.Policies...)
 	}
 
 	if len(authnResult.GroupAliases) > 0 {
@@ -185,8 +185,8 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 	a.Logger.Debug(fmt.Sprintf("Got entity alias id from db %s", uuid))
 
 	return &logical.Alias{
-		ID: eaId,
+		ID:            eaId,
 		MountAccessor: accessorId,
-		Name: ea.Name,
+		Name:          ea.Name,
 	}, entityId, nil
 }
