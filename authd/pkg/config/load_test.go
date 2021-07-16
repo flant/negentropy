@@ -27,9 +27,19 @@ func Test_LoadConfigFiles(t *testing.T) {
 		t.Fatalf("should be 3 authSocketConfig")
 	}
 
-	mode := authSocketConfig[0].GetMode()
+	socketConfigs := make(map[string]*AuthdSocketConfig)
+	for _, sock := range authSocketConfig {
+		socketConfigs[sock.GetPath()] = sock
+	}
+
+	mode := socketConfigs["/var/run/my.sock"].GetMode()
 	if mode != 0600 {
-		t.Fatalf("mode should be 0600. Got %v", mode)
+		t.Fatalf("mode should be 0600. Got %04o", mode)
+	}
+
+	mode = socketConfigs["/var/run/sock2.sock"].GetMode()
+	if mode != 0754 {
+		t.Fatalf("mode should be 0754. Got %04o", mode)
 	}
 }
 

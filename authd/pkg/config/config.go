@@ -96,10 +96,10 @@ user: root
 group: root
 mode: 0600
 allowedServerTypes: [RootSource, Auth]
-allowedPolicies:
-- policy: iam.view
-- policy: iam.edit
-- policy: server.ssh.*
+allowedRoles:
+- role: iam.view
+- role: iam.edit
+- role: server.ssh.*
 */
 type AuthdSocketConfig struct {
 	Metadata Metadata
@@ -142,24 +142,24 @@ func (a *AuthdSocketConfig) GetAllowedServerTypes() []string {
 	return nil
 }
 
-func (a *AuthdSocketConfig) GetAllowedPolicies() []AllowedPolicy {
+func (a *AuthdSocketConfig) GetAllowedRoles() []AllowedRole {
 	if a.Metadata.Version == "v1" {
-		return a.cfgV1.AllowedPolicies
+		return a.cfgV1.AllowedRoles
 	}
 	return nil
 }
 
-type AllowedPolicy struct {
-	Policy string `json:"policy"`
+type AllowedRole struct {
+	Role string `json:"role"`
 }
 
 type AuthdSocketConfigV1 struct {
-	Path               string          `json:"path"`
-	User               string          `json:"user"`
-	Group              string          `json:"group"`
-	Mode               int             `json:"mode"`
-	AllowedServerTypes []string        `json:"allowedServerTypes"`
-	AllowedPolicies    []AllowedPolicy `json:"allowedPolicy"`
+	Path               string        `json:"path"`
+	User               string        `json:"user"`
+	Group              string        `json:"group"`
+	Mode               int           `json:"mode"`
+	AllowedServerTypes []string      `json:"allowedServerTypes"`
+	AllowedRoles       []AllowedRole `json:"allowedRole"`
 }
 
 func (c *AuthdSocketConfig) Load(metadata Metadata, data []byte) error {
@@ -182,11 +182,5 @@ func (c *AuthdSocketConfig) LoadV1(data []byte) (*AuthdSocketConfigV1, error) {
 		return nil, err
 	}
 
-	//// Convert socket file mode.
-	//mode, err := strconv.ParseUint(cfgV1.Mode, 8, 32)
-	//if err != nil {
-	//	return err
-	//}
-	//c.Mode = uint32(mode)
 	return cfgV1, nil
 }

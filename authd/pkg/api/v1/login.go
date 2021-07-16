@@ -7,22 +7,24 @@ import (
 
 /**
 
-через дефолтный сервер
+LoginRequest examples:
+
+Login using the default server.
 {
-  policies:
-  - policy: iam.view
+  roles:
+  - role: iam.view
     claim: {...}
 }
 
-через конкретный сервер
+Login using the specific server.
 {
   server: auth.negentropy.flant.com
-  policies:
-  - policy: iam.view
+  roles:
+  - role: iam.view
     claim: {...}
 }
 
-продолжение инициированного логина
+Continue pending login.
 {
   server: auth.negentropy.flant.com
   pendingLoginUuid: dd8d95a5-db39-4543-846c-b564ee52293d
@@ -30,11 +32,11 @@ import (
 
 */
 type LoginRequest struct {
-	Server           string   `json:"server,omitempty"`
-	Policies         []Policy `json:"policies,omitempty"`
-	PendingLoginUuid string   `json:"pendingLoginUuid,omitempty"`
-	Type             string   `json:"-"`
-	ServerType       string   `json:"-"`
+	Server           string          `json:"server,omitempty"`
+	Roles            []RoleWithClaim `json:"roles,omitempty"`
+	PendingLoginUuid string          `json:"pendingLoginUuid,omitempty"`
+	Type             string          `json:"-"`
+	ServerType       string          `json:"-"`
 }
 
 const (
@@ -72,17 +74,17 @@ func (req *LoginRequest) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	if polVal, ok := m["policies"]; ok {
+	if polVal, ok := m["roles"]; ok {
 		// Transform
-		policiesBytes, _ := json.Marshal(polVal)
-		req.Policies = make([]Policy, 0)
-		err := json.Unmarshal(policiesBytes, &req.Policies)
+		rolesBytes, _ := json.Marshal(polVal)
+		req.Roles = make([]RoleWithClaim, 0)
+		err := json.Unmarshal(rolesBytes, &req.Roles)
 		if err != nil {
 			return fmt.Errorf("parse policies: %v", err)
 		}
 
-		if len(req.Policies) == 0 {
-			return fmt.Errorf("policies are required")
+		if len(req.Roles) == 0 {
+			return fmt.Errorf("roles are required")
 		}
 
 		if req.Server == "" {
@@ -96,9 +98,9 @@ func (req *LoginRequest) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("malformed login request")
 }
 
-type Policy struct {
-	Policy string
-	Claim  map[string]string
+type RoleWithClaim struct {
+	Role  string
+	Claim map[string]string
 }
 
 // Client helpers
@@ -111,8 +113,8 @@ func (l *LoginRequest) WithServer(server string) *LoginRequest {
 	return l
 }
 
-func (l *LoginRequest) WithPolicies(policies ...Policy) *LoginRequest {
-	l.Policies = policies
+func (l *LoginRequest) WithRoles(roles ...RoleWithClaim) *LoginRequest {
+	l.Roles = roles
 	return l
 }
 
@@ -126,10 +128,10 @@ func (l *LoginRequest) WithPendingLoginUuid(loginUuid string) *LoginRequest {
 	return l
 }
 
-func NewPolicy(policy string, claim map[string]string) Policy {
-	return Policy{
-		Policy: policy,
-		Claim:  claim,
+func NewRoleWithClaim(role string, claim map[string]string) RoleWithClaim {
+	return RoleWithClaim{
+		Role:  role,
+		Claim: claim,
 	}
 }
 
