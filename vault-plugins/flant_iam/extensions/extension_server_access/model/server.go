@@ -257,6 +257,10 @@ func NewUserServerAccessRepository(
 }
 
 func (r *UserServerAccessRepository) CreateExtension(user *model.User) error {
+	if user.Extensions == nil {
+		user.Extensions = map[model.ObjectOrigin]*model.Extension{}
+	}
+
 	if _, ok := user.Extensions[model.OriginServerAccess]; ok {
 		return nil
 	}
