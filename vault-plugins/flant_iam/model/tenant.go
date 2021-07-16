@@ -44,6 +44,7 @@ func TenantSchema() *memdb.DBSchema {
 		},
 	}
 }
+
 type Tenant struct {
 	UUID       TenantUUID `json:"uuid"` // PK
 	Version    string     `json:"resource_version"`

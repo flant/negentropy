@@ -26,6 +26,7 @@ func FeatureFlagSchema() *memdb.DBSchema {
 		},
 	}
 }
+
 type FeatureFlag struct {
 	Name FeatureFlagName `json:"name"` // PK
 }

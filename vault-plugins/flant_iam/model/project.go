@@ -49,6 +49,7 @@ func ProjectSchema() *memdb.DBSchema {
 		},
 	}
 }
+
 type Project struct {
 	UUID       ProjectUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID  `json:"tenant_uuid"`

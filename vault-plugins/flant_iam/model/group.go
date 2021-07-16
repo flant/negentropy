@@ -85,6 +85,7 @@ func GroupSchema() *memdb.DBSchema {
 		},
 	}
 }
+
 type Group struct {
 	UUID           GroupUUID  `json:"uuid"` // PK
 	TenantUUID     TenantUUID `json:"tenant_uuid"`

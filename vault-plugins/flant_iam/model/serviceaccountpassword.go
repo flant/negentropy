@@ -34,6 +34,7 @@ func ServiceAccountPasswordSchema() *memdb.DBSchema {
 		},
 	}
 }
+
 type ServiceAccountPassword struct {
 	UUID       ServiceAccountPasswordUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID                 `json:"tenant_uuid"`
