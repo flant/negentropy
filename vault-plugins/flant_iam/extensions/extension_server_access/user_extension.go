@@ -1,24 +1,60 @@
 package extension_server_access
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/hashicorp/vault/sdk/logical"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// FIXME: probably doesn't work
+func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest, memStore *io.MemoryStore) error {
+	storage := initRequest.Storage
 
-func RegisterServerAccessUserExtension(initialUID int,
-	expireSeedAfterRevealIn time.Duration, deleteExpiredPasswordSeedsAfter time.Duration,
-	storage *io.MemoryStore) error {
-	storage.RegisterHook(io.ObjectHook{
+	config, err := liveConfig.GetServerAccessConfig(ctx, storage)
+	if err != nil {
+		return err
+	}
+
+	if config != nil {
+		liveConfig.configured = true
+	}
+
+	go RegisterServerAccessUserExtension(ctx, storage, memStore)
+
+	return nil
+}
+
+func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.Storage, memStore *io.MemoryStore) {
+	var sac *ServerAccessConfig
+
+	_ = wait.PollImmediateInfinite(time.Minute, func() (done bool, err error) {
+		config, err := liveConfig.GetServerAccessConfig(ctx, vaultStore)
+		if err != nil {
+			log.Printf("can't get current config from Vault Storage: %s", err)
+			return false, err
+		}
+		if config == nil {
+			log.Print("server_access is not configured yet")
+			return false, nil
+		}
+
+		sac = config
+
+		return true, nil
+	})
+
+	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo := model2.NewUserServerAccessRepository(txn, initialUID, expireSeedAfterRevealIn, deleteExpiredPasswordSeedsAfter)
+			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
 
 			user := obj.(*model.User)
 
@@ -31,8 +67,8 @@ func RegisterServerAccessUserExtension(initialUID int,
 		},
 	})
 
-	// TODO: reconciliation?
-	storage.RegisterHook(io.ObjectHook{
+	// TODO: refactor this bullshit
+	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.ProjectType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
@@ -46,21 +82,36 @@ func RegisterServerAccessUserExtension(initialUID int,
 				return err
 			}
 
-			for _, group := range groups {
-				if !strings.HasPrefix(group.Identifier, "server/") {
-					continue
-				}
-
-				_, err := projectRepo.GetByID(group.UUID)
-				if err != nil {
-					// i dont know why it here. i fix lint only. i am not owner this code :-)
-					continue
-				}
+			projects, err := projectRepo.List(project.TenantUUID)
+			if err != nil {
+				return err
 			}
 
-			return nil
+			projectIDSet := make(map[string]struct{}, len(projects))
+			for _, project := range projects {
+				projectIDSet[project.Identifier] = struct{}{}
+			}
+
+			var groupToChange *model.Group
+			for _, group := range groups {
+				if !strings.HasPrefix(group.Identifier, "servers/") {
+					continue
+				}
+
+				splitGroupID := strings.Split(group.Identifier, "/")
+				projectID := splitGroupID[1]
+
+				if _, ok := projectIDSet[projectID]; !ok {
+					continue
+				}
+
+				groupToChange = group
+				groupToChange.Identifier = fmt.Sprintf("servers/%s", project.Identifier)
+
+				break
+			}
+
+			return groupRepo.Update(groupToChange)
 		},
 	})
-
-	return nil
 }

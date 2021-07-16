@@ -14,8 +14,7 @@ require (
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	k8s.io/apimachinery v0.21.2
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared

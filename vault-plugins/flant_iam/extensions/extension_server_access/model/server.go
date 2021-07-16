@@ -89,11 +89,12 @@ func ServerSchema() *memdb.DBSchema {
 }
 
 type Server struct {
-	UUID        string `json:"uuid"` // ID
-	TenantUUID  string `json:"tenant_uuid"`
-	ProjectUUID string `json:"project_uuid"`
-	Version     string `json:"resource_version"`
-	Identifier  string `json:"identifier"`
+	UUID          string `json:"uuid"` // ID
+	TenantUUID    string `json:"tenant_uuid"`
+	ProjectUUID   string `json:"project_uuid"`
+	Version       string `json:"resource_version"`
+	Identifier    string `json:"identifier"`
+	MultipassUUID string `json:"multipass_uuid"`
 
 	Fingerprint string            `json:"fingerprint"`
 	Labels      map[string]string `json:"labels"`
@@ -137,237 +138,20 @@ func (u *Server) AsMap() map[string]interface{} {
 }
 
 type ServerRepository struct {
-	db                 *io.MemoryStoreTxn
-	tenantRepo         *model.TenantRepository
-	projectRepo        *model.ProjectRepository
-	groupRepo          *model.GroupRepository
-	roleRepo           *model.RoleRepository
-	roleBindingRepo    *model.RoleBindingRepository
-	serviceAccountRepo *model.ServiceAccountRepository
-	multipassRepo      *model.MultipassRepository
+	db *io.MemoryStoreTxn
 }
 
 func NewServerRepository(tx *io.MemoryStoreTxn) *ServerRepository {
 	return &ServerRepository{
-		db:                 tx,
-		tenantRepo:         model.NewTenantRepository(tx),
-		projectRepo:        model.NewProjectRepository(tx),
-		groupRepo:          model.NewGroupRepository(tx),
-		roleRepo:           model.NewRoleRepository(tx),
-		roleBindingRepo:    model.NewRoleBindingRepository(tx),
-		serviceAccountRepo: model.NewServiceAccountRepository(tx),
-		multipassRepo:      model.NewMultipassRepository(tx),
+		db: tx,
 	}
 }
 
-func (r *ServerRepository) Create(server *Server, roles []string) error {
-	/*
-		var (
-			tenant         *model.Tenant
-			project        *model.Project
-			group          *model.Group
-			serviceAccount *model.ServiceAccount
-
-			tenantBoundRoles  []model.BoundRole
-			projectBoundRoles []model.BoundRole
-
-			err error
-		)
-
-		tenant, err = r.tenantRepo.GetByID(server.TenantUUID)
-		if err != nil {
-			return err
-		}
-
-		project, err = r.projectRepo.GetByID(server.ProjectUUID)
-		if err != nil {
-			return err
-		}
-
-		rawServer, err := r.db.First(ServerType, "identifier", tenant.UUID, project.UUID, server.Identifier)
-		if err != nil {
-			return err
-		}
-		if rawServer != nil {
-			return fmt.Errorf("server with identifier %q already exists in project %q", server.Identifier, project.Identifier)
-		}
-
-		group, getGroupErr := r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", project.Identifier), tenant.Identifier)
-		if getGroupErr != nil && !errors.Is(getGroupErr, model.ErrNotFound) {
-			return err
-		}
-
-		if group == nil {
-			newGroup := &model.Group{
-				UUID:       uuid.New(),
-				TenantUUID: tenant.ObjId(),
-				Origin:     model.OriginServerAccess,
-				Identifier: fmt.Sprintf("servers/%s", project.Identifier),
-			}
-			newGroup.FullIdentifier = model.CalcGroupFullIdentifier(newGroup.Identifier, tenant.Identifier)
-
-			group = newGroup
-		}
-
-		// create RoleBinding for each role
-		for _, roleName := range roles {
-			role, err := r.roleRepo.Get(roleName)
-			if err != nil {
-				return err
-			}
-
-			// FIXME: scope got removed after refactoring
-			switch role.Scope {
-			case model.RoleScopeTenant:
-				tenantBoundRoles = append(tenantBoundRoles, model.BoundRole{
-					Name: role.Name,
-				})
-			case model.RoleScopeProject:
-				projectBoundRoles = append(projectBoundRoles, model.BoundRole{
-					Name: role.Name,
-				})
-			}
-		}
-
-		// FIXME: remove duplication
-		if len(tenantBoundRoles) != 0 {
-			var (
-				roleBinding *model.RoleBinding
-				err         error
-			)
-
-			roleBinding, err = r.roleBindingRepo.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
-				return err
-			}
-
-			if roleBinding == nil {
-				newRoleBinding := &model.RoleBinding{
-					UUID:       uuid.New(),
-					TenantUUID: tenant.ObjId(),
-					Origin:     "server_access", // TODO: ?
-					Groups:     []model.GroupUUID{group.UUID},
-					Roles:      tenantBoundRoles,
-				}
-
-				err := r.roleBindingRepo.Create(newRoleBinding)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		if len(projectBoundRoles) != 0 {
-			var (
-				roleBinding *model.RoleBinding
-				err         error
-			)
-
-			roleBinding, err = r.roleBindingRepo.GetByIdentifier(fmt.Sprintf("servers/%s", server.Identifier), tenant.Identifier)
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
-				return err
-			}
-
-			if roleBinding == nil {
-				newRoleBinding := &model.RoleBinding{
-					UUID:       uuid.New(),
-					TenantUUID: tenant.ObjId(),
-					Origin:     model.OriginServerAccess,
-					Groups:     []model.GroupUUID{group.UUID},
-					Roles:      projectBoundRoles,
-				}
-
-				err := r.roleBindingRepo.Create(newRoleBinding)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		serviceAccount, err = r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier), tenant.Identifier)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			return err
-		}
-
-		if serviceAccount == nil {
-			newServiceAccount := &model.ServiceAccount{
-				UUID:       uuid.New(),
-				TenantUUID: tenant.ObjId(),
-				Origin:     model.OriginServerAccess,
-				Identifier: fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier),
-			}
-
-			err := r.serviceAccountRepo.Create(newServiceAccount)
-			if err != nil {
-				return err
-			}
-
-			serviceAccount = newServiceAccount
-		}
-
-		var isSAInGroup bool
-		for _, saInGroup := range group.ServiceAccounts {
-			if saInGroup == serviceAccount.UUID {
-				isSAInGroup = true
-			}
-		}
-
-		if !isSAInGroup {
-			group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
-		}
-
-		if errors.Is(getGroupErr, model.ErrNotFound) {
-			err := r.groupRepo.Create(group)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = r.groupRepo.Update(group)
-			if err != nil {
-				return err
-			}
-		}
-
-		server.Version = model.NewResourceVersion()
-		err = r.db.Insert(ServerType, server)
-		if err != nil {
-			return err
-		}
-
-		var multipassRoleNames []model.RoleName
-		for _, tenantRole := range tenantBoundRoles {
-			multipassRoleNames = append(multipassRoleNames, tenantRole.Name)
-		}
-		for _, projectRole := range projectBoundRoles {
-			multipassRoleNames = append(multipassRoleNames, projectRole.Name)
-		}
-
-		mp := &model.Multipass{
-			UUID:       uuid.New(),
-			TenantUUID: tenant.UUID,
-			OwnerUUID:  serviceAccount.UUID,
-			OwnerType:  model.ServiceAccountType,
-			TTL:        24 * time.Hour, // TODO: change placeholders
-			MaxTTL:     72 * time.Hour,
-			ValidTill:  time.Now().Add(144 * time.Hour).Unix(),
-			Roles:      multipassRoleNames,
-			Salt:       "", // TODO: should it be empty?
-			Origin:     model.OriginServerAccess,
-		}
-
-		err = r.multipassRepo.Create(mp)
-		if err != nil {
-			return err
-		}
-
-		// TODO: return signed multipass
-		return nil
-	*/
-
-	return nil
+func (r *ServerRepository) Create(server *Server) error {
+	return r.db.Insert(ServerType, server)
 }
 
-func (r *ServerRepository) GetById(id string) (*Server, error) {
+func (r *ServerRepository) GetByUUID(id string) (*Server, error) {
 	raw, err := r.db.First(ServerType, model.PK, id)
 	if err != nil {
 		return nil, err
@@ -380,156 +164,33 @@ func (r *ServerRepository) GetById(id string) (*Server, error) {
 	return server, nil
 }
 
-func (r *ServerRepository) Update(server *Server) error {
-	/*
-		stored, err := r.GetById(server.UUID)
-		if err != nil {
-			return err
-		}
+func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*Server, error) {
+	raw, err := r.db.First(ServerType, "identifier", tenant_uuid, project_uuid, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, model.ErrNotFound
+	}
 
-		if stored.TenantUUID != server.TenantUUID {
-			return model.ErrNotFound
-		}
-		server.Version = model.NewResourceVersion()
-
-		project, err := r.projectRepo.GetByID(server.ProjectUUID)
-		if err != nil {
-			return err
-		}
-
-		sa, err := r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, stored.Identifier), project.Identifier)
-		if err != nil {
-			return err
-		}
-
-		sa.Identifier = fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier)
-
-		err = r.serviceAccountRepo.Update(sa)
-		if err != nil {
-			return err
-		}
-
-		err = r.db.Insert(ServerType, server)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	*/
-
-	return nil
+	server := raw.(*Server)
+	return server, nil
 }
 
-func (r *ServerRepository) Delete(id string) error {
-	/*
-		server, err := r.GetById(id)
-		if err != nil {
-			return err
-		}
+func (r *ServerRepository) Update(server *Server) error {
+	_, err := r.GetByUUID(server.UUID)
+	if err != nil {
+		return err
+	}
+	return r.db.Insert(ServerType, server)
+}
 
-		tenant, err := r.tenantRepo.GetByID(server.TenantUUID)
-		if err != nil {
-			return err
-		}
-
-		project, err := r.projectRepo.GetByID(server.ProjectUUID)
-		if err != nil {
-			return err
-		}
-
-		sa, err := r.serviceAccountRepo.GetByIdentifier(fmt.Sprintf("server/%s/%s", project.Identifier, server.Identifier), tenant.UUID)
-		if err != nil {
-			return err
-		}
-
-		err = r.multipassRepo.Delete(&model.Multipass{
-			TenantUUID: tenant.UUID,
-			OwnerUUID:  sa.UUID,
-			OwnerType:  model.ServiceAccountType,
-		})
-		if err != nil {
-			return err
-		}
-
-		// TODO: delete SA from roles
-
-		err = r.serviceAccountRepo.Delete(model.OriginServerAccess, sa.UUID)
-		if err != nil {
-			return err
-		}
-
-		var (
-			serversPresentInTenant  bool
-			serversPresentInProject bool
-		)
-
-		serverList, err := r.List(tenant.UUID, "")
-		if err != nil {
-			return err
-		}
-
-		for _, server := range serverList {
-			if serversPresentInTenant && serversPresentInProject {
-				break
-			}
-
-			if server.TenantUUID == tenant.UUID {
-				serversPresentInTenant = true
-			}
-
-			if server.ProjectUUID == project.UUID {
-				serversPresentInProject = true
-			}
-		}
-
-		if !serversPresentInProject {
-			groupToDelete, err := r.groupRepo.GetByIDAndTenant(fmt.Sprintf("servers/%s", project.Identifier), tenant.UUID)
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
-				return err
-			}
-
-			if groupToDelete != nil {
-				err := r.groupRepo.Delete(groupToDelete.UUID)
-				if err != nil {
-					return err
-				}
-			}
-
-			// TODO: role scopes
-			rbsInProject, err := r.roleBindingRepo.List(tenant.UUID)
-			if err != nil {
-				return err
-			}
-			for _, rb := range rbsInProject {
-				if rb.Origin == model.OriginServerAccess {
-					err := r.roleBindingRepo.Delete(rb.UUID)
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		if !serversPresentInTenant {
-			// TODO: role scopes
-			rbsInProject, err := r.roleBindingRepo.List(tenant.UUID)
-			if err != nil {
-				return err
-			}
-			for _, rb := range rbsInProject {
-				if rb.Origin == model.OriginServerAccess {
-					err := r.roleBindingRepo.Delete(rb.UUID)
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		return r.db.Delete(ServerType, server)
-	*/
-
-	return nil
+func (r *ServerRepository) Delete(uuid string) error {
+	server, err := r.GetByUUID(uuid)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(ServerType, server)
 }
 
 func (r *ServerRepository) List(tenantID, projectID string) ([]*Server, error) {

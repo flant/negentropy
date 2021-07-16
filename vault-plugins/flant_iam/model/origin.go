@@ -8,7 +8,7 @@ const (
 )
 
 func ValidateOrigin(origin ObjectOrigin) error {
-	if origin == OriginIAM {
+	if origin == OriginIAM || origin == OriginServerAccess {
 		return nil
 	}
 	return ErrBadOrigin

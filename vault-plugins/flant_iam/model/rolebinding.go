@@ -17,11 +17,26 @@ const (
 	GroupInTenantRoleBindingIndex          = "group_in_tenant_role_binding"
 	ProjectInTenantRoleBindingIndex        = "project_in_tenant_role_binding"
 	RoleInTenantRoleBindingIndex           = "role_in_tenant_role_binding"
+	TenantUUIDRoleBindingIdIndex           = "tenant_uuid_role_binding_id"
 )
 
 type RoleBindingObjectType string
 
 func RoleBindingSchema() *memdb.DBSchema {
+	var tenantUUIDRoleBindingIdIndexer []memdb.Indexer
+
+	tenantUUIDIndexer := &memdb.StringFieldIndex{
+		Field:     "TenantUUID",
+		Lowercase: true,
+	}
+	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, tenantUUIDIndexer)
+
+	groupIdIndexer := &memdb.StringFieldIndex{
+		Field:     "Identifier",
+		Lowercase: true,
+	}
+	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, groupIdIndexer)
+
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
 			RoleBindingType: {
@@ -79,6 +94,10 @@ func RoleBindingSchema() *memdb.DBSchema {
 						AllowMissing: true,
 						Indexer:      &roleInTenantRoleBindingIndexer{},
 					},
+					TenantUUIDRoleBindingIdIndex: {
+						Name:    TenantUUIDRoleBindingIdIndex,
+						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
+					},
 				},
 			},
 		},
@@ -89,6 +108,8 @@ type RoleBinding struct {
 	UUID       RoleBindingUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID      `json:"tenant_uuid"`
 	Version    string          `json:"resource_version"`
+
+	Identifier string `json:"identifier"`
 
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
@@ -139,6 +160,18 @@ func (r *RoleBindingRepository) save(rb *RoleBinding) error {
 
 func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	roleBinding := raw.(*RoleBinding)
+	return roleBinding, nil
+}
+
+func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (*RoleBinding, error) {
+	raw, err := r.db.First(RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
 	if err != nil {
 		return nil, err
 	}

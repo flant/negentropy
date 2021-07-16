@@ -10,7 +10,9 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/usecase"
+
+	server_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -208,8 +210,6 @@ func (b *serverBackend) paths() []*framework.Path {
 
 func (b *serverBackend) handleRegister() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		id := uuid.New()
-
 		if !liveConfig.isConfigured() {
 			err := errors.New("backend not yet configured")
 			return logical.ErrorResponse(err.Error()), err
@@ -230,20 +230,13 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			annotations[k] = v.(string)
 		}
 
-		server := &model2.Server{
-			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			ProjectUUID: data.Get(model.ProjectForeignPK).(string),
-			Identifier:  data.Get("identifier").(string),
-			Labels:      labels,
-			Annotations: annotations,
-		}
-
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		service := usecase.NewServerService(tx)
 
-		if err := repo.Create(server, config.RolesForServers); err != nil {
+		jwt, err := service.Create(ctx, req.Storage, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
+			data.Get("identifier").(string), labels, annotations, config.RolesForServers)
+		if err != nil {
 			msg := "cannot create server"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), err
@@ -256,9 +249,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			return logical.ErrorResponse(msg), err
 		}
 
-		// TODO: token creation
-
-		resp := &logical.Response{Data: map[string]interface{}{"server": server}}
+		resp := &logical.Response{Data: map[string]interface{}{"multipassJWT": jwt}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
@@ -267,9 +258,9 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
-		server, err := repo.GetById(data.Get("server_uuid").(string))
+		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
@@ -299,9 +290,9 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
-		server, err := repo.GetById(data.Get("server_uuid").(string))
+		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
@@ -331,9 +322,9 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
-		server, err := repo.GetById(data.Get("server_uuid").(string))
+		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Debug("err", err.Error())
@@ -354,7 +345,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
 		var (
 			labels      = make(map[string]string)
@@ -367,7 +358,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 			annotations[k] = v.(string)
 		}
 
-		server := &model2.Server{
+		server := &server_model.Server{
 			UUID:        data.Get("server_uuid").(string),
 			TenantUUID:  data.Get(model.TenantForeignPK).(string),
 			ProjectUUID: data.Get(model.ProjectForeignPK).(string),
@@ -400,7 +391,7 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
 		err := repo.Delete(id)
 		if err != nil {
@@ -424,7 +415,7 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 		projectID := data.Get(model.ProjectForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 
 		list, err := repo.List(tenantID, projectID)
 		if err != nil {
@@ -445,13 +436,13 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model2.NewServerRepository(tx)
+		repo := server_model.NewServerRepository(tx)
 		serverUUID := data.Get("server_uuid").(string)
-		server, err := repo.GetById(serverUUID)
+		server, err := repo.GetByUUID(serverUUID)
 		if err != nil {
 			return responseErr(req, err)
 		}
-		connectionInfo := model2.ConnectionInfo{
+		connectionInfo := server_model.ConnectionInfo{
 			Hostname:     data.Get("hostname").(string),
 			Port:         data.Get("port").(string),
 			JumpHostname: data.Get("jump_hostname").(string),
