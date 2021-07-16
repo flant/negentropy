@@ -70,12 +70,12 @@ func NewServiceAccountPasswordRepository(tx *io.MemoryStoreTxn) *ServiceAccountP
 	return &ServiceAccountPasswordRepository{db: tx}
 }
 
-func (r *ServiceAccountPasswordRepository) save(service_account_password *ServiceAccountPassword) error {
-	return r.db.Insert(ServiceAccountPasswordType, service_account_password)
+func (r *ServiceAccountPasswordRepository) save(sap *ServiceAccountPassword) error {
+	return r.db.Insert(ServiceAccountPasswordType, sap)
 }
 
-func (r *ServiceAccountPasswordRepository) Create(service_account_password *ServiceAccountPassword) error {
-	return r.save(service_account_password)
+func (r *ServiceAccountPasswordRepository) Create(sap *ServiceAccountPassword) error {
+	return r.save(sap)
 }
 
 func (r *ServiceAccountPasswordRepository) GetRawByID(id ServiceAccountPasswordUUID) (interface{}, error) {
@@ -97,20 +97,20 @@ func (r *ServiceAccountPasswordRepository) GetByID(id ServiceAccountPasswordUUID
 	return raw.(*ServiceAccountPassword), err
 }
 
-func (r *ServiceAccountPasswordRepository) Update(service_account_password *ServiceAccountPassword) error {
-	_, err := r.GetByID(service_account_password.UUID)
+func (r *ServiceAccountPasswordRepository) Update(sap *ServiceAccountPassword) error {
+	_, err := r.GetByID(sap.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(service_account_password)
+	return r.save(sap)
 }
 
 func (r *ServiceAccountPasswordRepository) Delete(id ServiceAccountPasswordUUID) error {
-	service_account_password, err := r.GetByID(id)
+	sap, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountPasswordType, service_account_password)
+	return r.db.Delete(ServiceAccountPasswordType, sap)
 }
 
 func (r *ServiceAccountPasswordRepository) List(ownerUUID OwnerUUID) ([]*ServiceAccountPassword, error) {
@@ -173,11 +173,11 @@ func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error
 		return r.Delete(objID)
 	}
 
-	service_account_password := &ServiceAccountPassword{}
-	err := json.Unmarshal(data, service_account_password)
+	sap := &ServiceAccountPassword{}
+	err := json.Unmarshal(data, sap)
 	if err != nil {
 		return err
 	}
 
-	return r.save(service_account_password)
+	return r.save(sap)
 }

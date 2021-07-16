@@ -152,12 +152,12 @@ func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
 	return &RoleBindingRepository{db: tx}
 }
 
-func (r *RoleBindingRepository) save(role_binding *RoleBinding) error {
-	return r.db.Insert(RoleBindingType, role_binding)
+func (r *RoleBindingRepository) save(rb *RoleBinding) error {
+	return r.db.Insert(RoleBindingType, rb)
 }
 
-func (r *RoleBindingRepository) Create(role_binding *RoleBinding) error {
-	return r.save(role_binding)
+func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
+	return r.save(rb)
 }
 
 func (r *RoleBindingRepository) GetRawByID(id RoleBindingUUID) (interface{}, error) {
@@ -179,20 +179,20 @@ func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error
 	return raw.(*RoleBinding), err
 }
 
-func (r *RoleBindingRepository) Update(role_binding *RoleBinding) error {
-	_, err := r.GetByID(role_binding.UUID)
+func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
+	_, err := r.GetByID(rb.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(role_binding)
+	return r.save(rb)
 }
 
 func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
-	role_binding, err := r.GetByID(id)
+	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(RoleBindingType, role_binding)
+	return r.db.Delete(RoleBindingType, rb)
 }
 
 func (r *RoleBindingRepository) List(tenantUUID TenantUUID) ([]*RoleBinding, error) {
@@ -255,13 +255,13 @@ func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	role_binding := &RoleBinding{}
-	err := json.Unmarshal(data, role_binding)
+	rb := &RoleBinding{}
+	err := json.Unmarshal(data, rb)
 	if err != nil {
 		return err
 	}
 
-	return r.save(role_binding)
+	return r.save(rb)
 }
 
 func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (*RoleBinding, error) {

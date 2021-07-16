@@ -56,12 +56,12 @@ func NewFeatureFlagRepository(tx *io.MemoryStoreTxn) *FeatureFlagRepository {
 	return &FeatureFlagRepository{db: tx}
 }
 
-func (r *FeatureFlagRepository) save(feature_flag *FeatureFlag) error {
-	return r.db.Insert(FeatureFlagType, feature_flag)
+func (r *FeatureFlagRepository) save(ff *FeatureFlag) error {
+	return r.db.Insert(FeatureFlagType, ff)
 }
 
-func (r *FeatureFlagRepository) Create(feature_flag *FeatureFlag) error {
-	return r.save(feature_flag)
+func (r *FeatureFlagRepository) Create(ff *FeatureFlag) error {
+	return r.save(ff)
 }
 
 func (r *FeatureFlagRepository) GetRawByID(id FeatureFlagName) (interface{}, error) {
@@ -83,20 +83,20 @@ func (r *FeatureFlagRepository) GetByID(id FeatureFlagName) (*FeatureFlag, error
 	return raw.(*FeatureFlag), err
 }
 
-func (r *FeatureFlagRepository) Update(feature_flag *FeatureFlag) error {
-	_, err := r.GetByID(feature_flag.Name)
+func (r *FeatureFlagRepository) Update(ff *FeatureFlag) error {
+	_, err := r.GetByID(ff.Name)
 	if err != nil {
 		return err
 	}
-	return r.save(feature_flag)
+	return r.save(ff)
 }
 
 func (r *FeatureFlagRepository) Delete(id FeatureFlagName) error {
-	feature_flag, err := r.GetByID(id)
+	ff, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(FeatureFlagType, feature_flag)
+	return r.db.Delete(FeatureFlagType, ff)
 }
 
 func (r *FeatureFlagRepository) List() ([]*FeatureFlag, error) {
@@ -159,11 +159,11 @@ func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	feature_flag := &FeatureFlag{}
-	err := json.Unmarshal(data, feature_flag)
+	ff := &FeatureFlag{}
+	err := json.Unmarshal(data, ff)
 	if err != nil {
 		return err
 	}
 
-	return r.save(feature_flag)
+	return r.save(ff)
 }

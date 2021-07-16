@@ -200,6 +200,7 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 
 	return r.save(role)
 }
+
 func (r *RoleRepository) FindDirectIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {
 	iter, err := r.db.Get(RoleType, IncludedRolesIndex, role)
 	if err != nil {

@@ -102,12 +102,12 @@ func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepositor
 	return &ServiceAccountRepository{db: tx}
 }
 
-func (r *ServiceAccountRepository) save(service_account *ServiceAccount) error {
-	return r.db.Insert(ServiceAccountType, service_account)
+func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
+	return r.db.Insert(ServiceAccountType, sa)
 }
 
-func (r *ServiceAccountRepository) Create(service_account *ServiceAccount) error {
-	return r.save(service_account)
+func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
+	return r.save(sa)
 }
 
 func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{}, error) {
@@ -129,20 +129,20 @@ func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccou
 	return raw.(*ServiceAccount), err
 }
 
-func (r *ServiceAccountRepository) Update(service_account *ServiceAccount) error {
-	_, err := r.GetByID(service_account.UUID)
+func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
+	_, err := r.GetByID(sa.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(service_account)
+	return r.save(sa)
 }
 
 func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
-	service_account, err := r.GetByID(id)
+	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountType, service_account)
+	return r.db.Delete(ServiceAccountType, sa)
 }
 
 func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccount, error) {
@@ -205,13 +205,13 @@ func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	service_account := &ServiceAccount{}
-	err := json.Unmarshal(data, service_account)
+	sa := &ServiceAccount{}
+	err := json.Unmarshal(data, sa)
 	if err != nil {
 		return err
 	}
 
-	return r.save(service_account)
+	return r.save(sa)
 }
 
 func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string) (*ServiceAccount, error) {

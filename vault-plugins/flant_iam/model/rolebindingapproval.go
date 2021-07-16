@@ -76,12 +76,12 @@ func NewRoleBindingApprovalRepository(tx *io.MemoryStoreTxn) *RoleBindingApprova
 	return &RoleBindingApprovalRepository{db: tx}
 }
 
-func (r *RoleBindingApprovalRepository) save(role_binding_approval *RoleBindingApproval) error {
-	return r.db.Insert(RoleBindingApprovalType, role_binding_approval)
+func (r *RoleBindingApprovalRepository) save(appr *RoleBindingApproval) error {
+	return r.db.Insert(RoleBindingApprovalType, appr)
 }
 
-func (r *RoleBindingApprovalRepository) Create(role_binding_approval *RoleBindingApproval) error {
-	return r.save(role_binding_approval)
+func (r *RoleBindingApprovalRepository) Create(appr *RoleBindingApproval) error {
+	return r.save(appr)
 }
 
 func (r *RoleBindingApprovalRepository) GetRawByID(id RoleBindingApprovalUUID) (interface{}, error) {
@@ -103,24 +103,24 @@ func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*Ro
 	return raw.(*RoleBindingApproval), err
 }
 
-func (r *RoleBindingApprovalRepository) Update(role_binding_approval *RoleBindingApproval) error {
-	_, err := r.GetByID(role_binding_approval.UUID)
+func (r *RoleBindingApprovalRepository) Update(appr *RoleBindingApproval) error {
+	_, err := r.GetByID(appr.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(role_binding_approval)
+	return r.save(appr)
 }
 
 func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error {
-	role_binding_approval, err := r.GetByID(id)
+	appr, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(RoleBindingApprovalType, role_binding_approval)
+	return r.db.Delete(RoleBindingApprovalType, appr)
 }
 
-func (r *RoleBindingApprovalRepository) List(role_bindingUUID RoleBindingUUID) ([]*RoleBindingApproval, error) {
-	iter, err := r.db.Get(RoleBindingApprovalType, RoleBindingForeignPK, role_bindingUUID)
+func (r *RoleBindingApprovalRepository) List(rbUUID RoleBindingUUID) ([]*RoleBindingApproval, error) {
+	iter, err := r.db.Get(RoleBindingApprovalType, RoleBindingForeignPK, rbUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,8 @@ func (r *RoleBindingApprovalRepository) List(role_bindingUUID RoleBindingUUID) (
 	return list, nil
 }
 
-func (r *RoleBindingApprovalRepository) ListIDs(role_bindingID RoleBindingUUID) ([]RoleBindingApprovalUUID, error) {
-	objs, err := r.List(role_bindingID)
+func (r *RoleBindingApprovalRepository) ListIDs(rbID RoleBindingUUID) ([]RoleBindingApprovalUUID, error) {
+	objs, err := r.List(rbID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,13 +179,13 @@ func (r *RoleBindingApprovalRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	role_binding_approval := &RoleBindingApproval{}
-	err := json.Unmarshal(data, role_binding_approval)
+	appr := &RoleBindingApproval{}
+	err := json.Unmarshal(data, appr)
 	if err != nil {
 		return err
 	}
 
-	return r.save(role_binding_approval)
+	return r.save(appr)
 }
 
 func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *RoleBindingApproval) error {

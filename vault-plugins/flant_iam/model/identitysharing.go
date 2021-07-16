@@ -74,12 +74,12 @@ func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingReposit
 	return &IdentitySharingRepository{db: tx}
 }
 
-func (r *IdentitySharingRepository) save(identity_sharing *IdentitySharing) error {
-	return r.db.Insert(IdentitySharingType, identity_sharing)
+func (r *IdentitySharingRepository) save(sh *IdentitySharing) error {
+	return r.db.Insert(IdentitySharingType, sh)
 }
 
-func (r *IdentitySharingRepository) Create(identity_sharing *IdentitySharing) error {
-	return r.save(identity_sharing)
+func (r *IdentitySharingRepository) Create(sh *IdentitySharing) error {
+	return r.save(sh)
 }
 
 func (r *IdentitySharingRepository) GetRawByID(id IdentitySharingUUID) (interface{}, error) {
@@ -101,20 +101,20 @@ func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySh
 	return raw.(*IdentitySharing), err
 }
 
-func (r *IdentitySharingRepository) Update(identity_sharing *IdentitySharing) error {
-	_, err := r.GetByID(identity_sharing.UUID)
+func (r *IdentitySharingRepository) Update(sh *IdentitySharing) error {
+	_, err := r.GetByID(sh.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(identity_sharing)
+	return r.save(sh)
 }
 
 func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
-	identity_sharing, err := r.GetByID(id)
+	sh, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(IdentitySharingType, identity_sharing)
+	return r.db.Delete(IdentitySharingType, sh)
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentitySharing, error) {
@@ -177,13 +177,13 @@ func (r *IdentitySharingRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	identity_sharing := &IdentitySharing{}
-	err := json.Unmarshal(data, identity_sharing)
+	sh := &IdentitySharing{}
+	err := json.Unmarshal(data, sh)
 	if err != nil {
 		return err
 	}
 
-	return r.save(identity_sharing)
+	return r.save(sh)
 }
 
 func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID TenantUUID) ([]*IdentitySharing, error) {
