@@ -59,9 +59,5 @@ openapi:
 test:
 	go test -race ./...
 
-.PHONY: generate
-generate:
-	@go generate ./...
-
 .PHONY: precommit
 precommit: fmt build test openapi
