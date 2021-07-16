@@ -10,13 +10,28 @@ import (
 )
 
 const (
-	ServiceAccountType  = "service_account" // also, memdb schema name
-	fullIdentifierIndex = "full_identifier"
+	ServiceAccountType              = "service_account" // also, memdb schema name
+	fullIdentifierIndex             = "full_identifier"
+	TenantUUIDServiceAccountIdIndex = "tenant_uuid_service_account_id"
 )
 
 type ServiceAccountObjectType string
 
 func ServiceAccountSchema() *memdb.DBSchema {
+	var tenantUUIDServiceAccountIdIndexer []memdb.Indexer
+
+	tenantUUIDIndexer := &memdb.StringFieldIndex{
+		Field:     "TenantUUID",
+		Lowercase: true,
+	}
+	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, tenantUUIDIndexer)
+
+	groupIdIndexer := &memdb.StringFieldIndex{
+		Field:     "Identifier",
+		Lowercase: true,
+	}
+	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, groupIdIndexer)
+
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
 			ServiceAccountType: {
@@ -42,6 +57,10 @@ func ServiceAccountSchema() *memdb.DBSchema {
 							Field:     "FullIdentifier",
 							Lowercase: true,
 						},
+					},
+					TenantUUIDServiceAccountIdIndex: {
+						Name:    TenantUUIDServiceAccountIdIndex,
+						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
 					},
 				},
 			},
@@ -93,6 +112,17 @@ func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
 }
 
+func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string) (*ServiceAccount, error) {
+	raw, err := r.db.First(ServiceAccountType, TenantUUIDServiceAccountIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*ServiceAccount), err
+}
+
 func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
 	raw, err := r.GetRawByID(id)
 	if raw == nil {
@@ -110,21 +140,6 @@ func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{
 		return nil, ErrNotFound
 	}
 	return raw, nil
-}
-
-func (r *ServiceAccountRepository) GetByIdentifier(said, tid string) (*ServiceAccount, error) {
-	// TODO move the calculation to usecases, accept only prepared fullID
-	fullID := CalcServiceAccountFullIdentifier(said, tid)
-
-	raw, err := r.db.First(ServiceAccountType, fullIdentifierIndex, fullID)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	serviceAccount := raw.(*ServiceAccount)
-	return serviceAccount, nil
 }
 
 func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {

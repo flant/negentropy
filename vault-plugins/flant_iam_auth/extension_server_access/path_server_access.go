@@ -210,7 +210,7 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 		defer txn.Abort()
 
 		repo := model2.NewServerRepository(txn)
-		server, err := repo.GetById(serverID)
+		server, err := repo.GetByUUID(serverID)
 		if err != nil {
 			return nil, err
 		}

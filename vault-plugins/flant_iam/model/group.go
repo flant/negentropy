@@ -14,11 +14,26 @@ const (
 	UserInTenantGroupIndex           = "user_in_tenant_group_index"
 	ServiceAccountInTenantGroupIndex = "service_account_in_tenant_group_index"
 	GroupInTenantGroupIndex          = "group_in_tenant_group_index"
+	TenantUUIDGroupIdIndex           = "tenant_uuid_group_id"
 )
 
 type GroupObjectType string
 
 func GroupSchema() *memdb.DBSchema {
+	var tenantUUIDGroupIdIndexer []memdb.Indexer
+
+	tenantUUIDIndexer := &memdb.StringFieldIndex{
+		Field:     "TenantUUID",
+		Lowercase: true,
+	}
+	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, tenantUUIDIndexer)
+
+	groupIdIndexer := &memdb.StringFieldIndex{
+		Field:     "Identifier",
+		Lowercase: true,
+	}
+	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, groupIdIndexer)
+
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
 			GroupType: {
@@ -61,6 +76,10 @@ func GroupSchema() *memdb.DBSchema {
 						Indexer: &memberInTenantGroupIndexer{
 							memberFieldName: "Groups",
 						},
+					},
+					TenantUUIDGroupIdIndex: {
+						Name:    TenantUUIDGroupIdIndex,
+						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
 					},
 				},
 			},
@@ -117,6 +136,17 @@ func (r *GroupRepository) Update(group *Group) error {
 		return err
 	}
 	return r.save(group)
+}
+
+func (r *GroupRepository) GetByIdentifier(tenantUUID, identifier string) (*Group, error) {
+	raw, err := r.db.First(GroupType, TenantUUIDGroupIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*Group), err
 }
 
 func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {

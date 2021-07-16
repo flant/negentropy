@@ -38,30 +38,29 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func initExtensions(store *sharedio.MemoryStore) error {
-	extension_server_access.RegisterServerAccessUserExtension(store)
-}
+type ExtensionInitializationFunc func(ctx context.Context, initRequest *logical.InitializationRequest, storage *sharedio.MemoryStore) error
 
-func initializer(ctx context.Context, initRequest *logical.InitializationRequest) error {
-	initFuncs := []framework.InitializeFunc{
-		extension_server_access.InitializeExtensionServerAccess,
-	}
-
-	for _, f := range initFuncs {
-		err := f(ctx, initRequest)
-		if err != nil {
-			return err
+func initializer(storage *sharedio.MemoryStore) func(ctx context.Context, initRequest *logical.InitializationRequest) error {
+	return func(ctx context.Context, initRequest *logical.InitializationRequest) error {
+		initFuncs := []ExtensionInitializationFunc{
+			extension_server_access.InitializeExtensionServerAccess,
 		}
-	}
 
-	return nil
+		for _, f := range initFuncs {
+			err := f(ctx, initRequest, storage)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
 }
 
 func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
-		Help:           strings.TrimSpace(commonHelp),
-		BackendType:    logical.TypeLogical,
-		InitializeFunc: initializer,
+		Help:        strings.TrimSpace(commonHelp),
+		BackendType: logical.TypeLogical,
 	}
 
 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
@@ -111,6 +110,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 			log.Println("unknown replica type: ", replica.Name, replica.TopicType)
 		}
 	}
+
+	b.InitializeFunc = initializer(storage)
 
 	tokenController := sharedjwt.NewTokenController()
 
