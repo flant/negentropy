@@ -6,8 +6,7 @@ gcp_builder_service_account = "[BASE_IMAGE_BUILDER_SA_EMAIL]"
 gcp_image_bucket = "[TEMPORARY_BUCKET_NAME]"
 
 # Variables to determine where are builder instances will run.
-## Project will be also used for kafka CA request.
-## Project and region will be also used for vault conf gcpckms.
+## Project and region will be also used in vault `gcpckms` parameters.
 gcp_project = "[PROJECT]"
 gcp_region = "[REGION]"
 gcp_zone = "[ZONE]"
@@ -48,9 +47,9 @@ kafka_main_domain = "[KAFKA_INSTANCES_SUBDOMAIN]"
 kafka_server_key_pass = "[KAFKA_SERVER_KEY_PASSWORD]"
 ## Bucket to store cert update lockfile.
 kafka_bucket = "[KAFKA_FULL_BUCKET_NAME]"
-## Name of root CA for Kafka SSL.
-kafka_gcp_ca_name = "[KAFKA_GCP_CA_NAME]"
-## Root CA location (aka gcp region).
-kafka_gcp_ca_location = "[KAFKA_GCP_CA_LOCATION]"
+## GCP CA for Kafka SSL.
+kafka_ca_name = "[KAFKA_CA_NAME]"
+kafka_ca_pool="[KAFKA_CA_RESOURCE_POOL]"
+kafka_ca_location = "[KAFKA_CA_LOCATION]"
 ## How many replicas to configure in zookeeper and kafka configuration files.
 kafka_replicas = "1"

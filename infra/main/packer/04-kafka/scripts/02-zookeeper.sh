@@ -39,9 +39,10 @@ depend() {
 start_pre() {
 	checkpath -f -m 0644 -o "$command_user" "$logfile" \
     && /bin/update-hostname \
-    && /etc/kafka/scripts/mount-data-disk.sh \
+    && /etc/kafka/scripts/mount-data-disk.sh &> /var/log/kafka-mount-data-disk.log \
     && /etc/kafka/scripts/configure-zookeeper.sh \
-    && /etc/kafka/scripts/generate-keystores.sh
+    && /etc/kafka/scripts/boostrap-stores.sh &> /var/log/kafka-boostrap-stores.log \
+    && /etc/kafka/scripts/renew-certificate-schedule.sh
 }
 EOF
 

@@ -85,8 +85,8 @@ def main():
     os.environ['PKR_VAR_kafka_main_domain'] = "c.%s.internal" % google_project_id
     os.environ['PKR_VAR_kafka_server_key_pass'] = "Flant123"
     os.environ['PKR_VAR_kafka_bucket'] = "%s-kafka" % google_project_id
-    os.environ['PKR_VAR_kafka_gcp_ca_name'] = "kafka-root-ca"
-    os.environ['PKR_VAR_kafka_gcp_ca_location'] = "europe-west1"
+    os.environ['PKR_VAR_kafka_ca_name'] = "kafka-root-ca"
+    os.environ['PKR_VAR_kafka_ca_location'] = "europe-west1"
     os.environ['PKR_VAR_kafka_replicas'] = "3"
 
     write_file("/tmp/credentials", os.environ.get('GOOGLE_CREDENTIALS'))
@@ -119,9 +119,9 @@ kafka_server_key_pass = "{os.environ.get('PKR_VAR_kafka_server_key_pass')}"
 # Bucket to store cert update lockfile.
 kafka_bucket = "{os.environ.get('PKR_VAR_kafka_bucket')}"
 # Name of root CA for kafka SSL.
-kafka_gcp_ca_name = "{os.environ.get('PKR_VAR_kafka_gcp_ca_name')}"
+kafka_ca_name = "{os.environ.get('PKR_VAR_kafka_ca_name')}"
 # Root CA location (aka gcp region).
-kafka_gcp_ca_location = "{os.environ.get('PKR_VAR_kafka_gcp_ca_location')}"
+kafka_ca_location = "{os.environ.get('PKR_VAR_kafka_ca_location')}"
 # How many replicas to configure in zookeeper and kafka configuration files.
 kafka_replicas = "{os.environ.get('PKR_VAR_kafka_replicas')}"
 ###

@@ -19,10 +19,13 @@ variable "kafka_server_key_pass" {
   type    = string
   sensitive = true
 }
-variable "kafka_gcp_ca_name" {
+variable "kafka_ca_name" {
   type    = string
 }
-variable "kafka_gcp_ca_location" {
+variable "kafka_ca_pool" {
+  type    = string
+}
+variable "kafka_ca_location" {
   type    = string
   description = "for instance `europe-west1`"
 }
@@ -140,9 +143,9 @@ build {
       "KAFKA_BUCKET=${var.kafka_bucket}",
       "CERT_VALIDITY_DAYS=${var.cert_validity_days}",
       "CERT_EXPIRE_SECONDS=${var.cert_expire_seconds}",
-      "GCP_PROJECT=${var.gcp_project}",
-      "KAFKA_GCP_CA_NAME=${var.kafka_gcp_ca_name}",
-      "KAFKA_GCP_CA_LOCATION=${var.kafka_gcp_ca_location}",
+      "KAFKA_CA_NAME=${var.kafka_ca_name}",
+      "KAFKA_CA_POOL=${var.kafka_ca_pool}",
+      "KAFKA_CA_LOCATION=${var.kafka_ca_location}",
       "KAFKA_REPLICAS=${var.kafka_replicas}"
     ]
     inline = [
@@ -153,10 +156,8 @@ build {
   provisioner "shell" {
     execute_command = "/bin/sh -x '{{ .Path }}'"
     scripts         = [
-      "scripts/01-google-cloud-beta.sh",
-      "scripts/02-kafka.sh",
-      "scripts/03-zookeeper.sh",
-      "scripts/04-update-certificates-cronjob.sh",
+      "scripts/01-kafka.sh",
+      "scripts/02-zookeeper.sh",
       "../../../common/packer-scripts/03-vector-enable.sh",
       "../../../common/packer-scripts/80-read-only.sh",
       "../../../common/packer-scripts/90-cleanup.sh",
