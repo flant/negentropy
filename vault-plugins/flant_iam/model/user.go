@@ -130,7 +130,6 @@ func (r *UserRepository) Delete(id UserUUID) error {
 	if err != nil {
 		return err
 	}
-
 	return r.db.Delete(UserType, user)
 }
 
@@ -152,6 +151,18 @@ func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
 	return list, nil
 }
 
+func (r *UserRepository) ListIDs(tenantID TenantUUID) ([]UserUUID, error) {
+	ms, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]UserUUID, len(ms))
+	for i := range ms {
+		ids[i] = ms[i].ObjId()
+	}
+	return ids, nil
+}
+
 func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 	iter, err := r.db.Get(UserType, PK)
 	if err != nil {
@@ -163,8 +174,8 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 		if raw == nil {
 			break
 		}
-		t := raw.(*User)
-		next, err := action(t)
+		obj := raw.(*User)
+		next, err := action(obj)
 		if err != nil {
 			return err
 		}

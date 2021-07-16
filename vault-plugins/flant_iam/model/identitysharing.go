@@ -165,22 +165,3 @@ func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
 func (r *IdentitySharingRepository) Update(ra *IdentitySharing) error {
 	return r.save(ra)
 }
-
-func (r *IdentitySharingRepository) CleanChain(isid IdentitySharingUUID) error {
-	is, err := r.GetByID(isid)
-	if err != nil {
-		return err
-	}
-
-	grepo := NewGroupRepository(r.db)
-	for _, gid := range is.Groups {
-		if err := grepo.CleanChain(gid); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type chainCleaner interface {
-	CleanChain(string) error
-}

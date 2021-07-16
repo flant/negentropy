@@ -5,15 +5,15 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type ProjectsService struct {
+type ProjectService struct {
 	db *io.MemoryStoreTxn
 }
 
-func Projects(db *io.MemoryStoreTxn) *ProjectsService {
-	return &ProjectsService{db: db}
+func Projects(db *io.MemoryStoreTxn) *ProjectService {
+	return &ProjectService{db: db}
 }
 
-func (s *ProjectsService) Create(project *model.Project) error {
+func (s *ProjectService) Create(project *model.Project) error {
 	// Verify tenant exists
 	_, err := model.NewTenantRepository(s.db).GetByID(project.TenantUUID)
 	if err != nil {
@@ -25,7 +25,7 @@ func (s *ProjectsService) Create(project *model.Project) error {
 	return model.NewProjectRepository(s.db).Create(project)
 }
 
-func (s *ProjectsService) Update(project *model.Project) error {
+func (s *ProjectService) Update(project *model.Project) error {
 	repo := model.NewProjectRepository(s.db)
 
 	stored, err := repo.GetByID(project.UUID)
@@ -47,14 +47,14 @@ func (s *ProjectsService) Update(project *model.Project) error {
 	return repo.Update(project)
 }
 
-func (s *ProjectsService) Delete(id string) error {
+func (s *ProjectService) Delete(id string) error {
 	return model.NewProjectRepository(s.db).Delete(id)
 }
 
-func (s *ProjectsService) List(tid model.TenantUUID) ([]*model.Project, error) {
+func (s *ProjectService) List(tid model.TenantUUID) ([]*model.Project, error) {
 	return model.NewProjectRepository(s.db).List(tid)
 }
 
-func (s *ProjectsService) GetByID(pid model.ProjectUUID) (*model.Project, error) {
+func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) {
 	return model.NewProjectRepository(s.db).GetByID(pid)
 }
