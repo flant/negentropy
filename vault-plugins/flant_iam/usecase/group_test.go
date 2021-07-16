@@ -20,6 +20,7 @@ var (
 	group1 = model.Group{
 		UUID:            groupUUID1,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "group1",
 		Users:           []string{userUUID2, userUUID3},
 		Groups:          []string{groupUUID3},
 		ServiceAccounts: []string{serviceAccountUUID1},
@@ -28,12 +29,14 @@ var (
 	group2 = model.Group{
 		UUID:       groupUUID2,
 		TenantUUID: tenantUUID1,
+		Identifier: "group2",
 		Users:      []string{userUUID1, userUUID3},
 		Origin:     model.OriginIAM,
 	}
 	group3 = model.Group{
 		UUID:            groupUUID3,
 		TenantUUID:      tenantUUID2,
+		Identifier:      "group3",
 		Users:           []string{userUUID3, userUUID4},
 		ServiceAccounts: []string{serviceAccountUUID1},
 		Origin:          model.OriginIAM,
@@ -41,6 +44,7 @@ var (
 	group4 = model.Group{
 		UUID:            groupUUID4,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "group4",
 		Users:           []string{userUUID2, userUUID3},
 		Groups:          []string{groupUUID2, groupUUID3},
 		ServiceAccounts: []string{serviceAccountUUID2, serviceAccountUUID3},
@@ -49,6 +53,7 @@ var (
 	group5 = model.Group{
 		UUID:       groupUUID5,
 		TenantUUID: tenantUUID1,
+		Identifier: "group5",
 		Groups:     []string{groupUUID2, groupUUID1},
 		Origin:     model.OriginIAM,
 	}

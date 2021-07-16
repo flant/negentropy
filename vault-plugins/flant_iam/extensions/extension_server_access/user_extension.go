@@ -6,12 +6,13 @@ import (
 	"strings"
 	"time"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest, memStore *io.MemoryStore) error {

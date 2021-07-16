@@ -24,6 +24,13 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					RoleBindingForeignPK: {
+						Name: RoleBindingForeignPK,
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "RoleBindingUUID",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},

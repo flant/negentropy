@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	ServiceAccountType              = "service_account" // also, memdb schema name
 	fullIdentifierIndex             = "full_identifier"
 	TenantUUIDServiceAccountIdIndex = "tenant_uuid_service_account_id"
 )
@@ -91,13 +90,6 @@ func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string
 		return nil, ErrNotFound
 	}
 	return raw.(*ServiceAccount), err
-}
-
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
 }
 
 // TODO move to usecases

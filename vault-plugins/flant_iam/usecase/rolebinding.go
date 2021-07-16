@@ -72,6 +72,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}
+	rb.Identifier = stored.Identifier
 
 	// Store
 	return s.repo.Update(rb)
