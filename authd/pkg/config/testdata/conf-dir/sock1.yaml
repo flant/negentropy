@@ -4,7 +4,7 @@ path: /var/run/my.sock
 user: root
 group: root
 mode: 0600
-allowedPolicies:
-  - policy: iam.view
-  - policy: iam.edit
-  - policy: server.ssh.*
+allowedRoles:
+  - role: iam.view
+  - role: iam.edit
+  - role: server.ssh.*

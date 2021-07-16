@@ -15,7 +15,7 @@ func Test_Client_LoginAndUseTokenToReceiveOTPForSsh(t *testing.T) {
 
 	// "host" is a random claim.
 	req := v1.NewLoginRequest().
-		WithPolicies(v1.NewPolicy("ssh.creds", map[string]string{"host": "remote.example.com"})).
+		WithRoles(v1.NewRoleWithClaim("ssh.creds", map[string]string{"host": "remote.example.com"})).
 		WithServerType(v1.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)

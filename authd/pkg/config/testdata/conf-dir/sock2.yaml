@@ -3,8 +3,8 @@ kind: AuthdSocketConfig
 path: /var/run/sock2.sock
 user: root
 group: root
-mode: 0600
-allowedPolicies:
-  - policy: ssh.list
-  - policy: mysql.list
-  - policy: server.ssh.*
+mode: 0754
+allowedRoles:
+  - role: ssh.list
+  - role: mysql.list
+  - role: server.ssh.*

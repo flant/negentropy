@@ -4,5 +4,5 @@ path: /var/run/sock3.sock
 user: root
 group: root
 mode: 0600
-allowedPolicies:
-  - policy: server.*
+allowedRoles:
+  - role: server.*

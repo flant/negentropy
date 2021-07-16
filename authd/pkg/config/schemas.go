@@ -83,7 +83,7 @@ properties:
     type: string
   mode:
     type: number
-  allowedPolicies:
+  allowedRoles:
     type: array
     additionalItems: false
     minItems: 1
@@ -91,9 +91,9 @@ properties:
       type: object
       additionalProperties: false
       required:
-      - policy
+      - role
       properties:
-        policy:
+        role:
           type: string
 `,
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/flant/negentropy/authd/pkg/config"
-	utils "github.com/flant/negentropy/authd/pkg/util"
+	"github.com/flant/negentropy/authd/pkg/util"
 )
 
 type VaultProxy struct {
@@ -42,12 +42,12 @@ func (v *VaultProxy) Start() error {
 	sockCfg := v.AuthdSocketConfig
 	address := v.SocketPath
 
-	err := os.MkdirAll(path.Dir(address), os.FileMode(sockCfg.GetMode()))
+	err := os.MkdirAll(path.Dir(address), 0755)
 	if err != nil {
 		return fmt.Errorf("create directories for socket '%s': %v", address, err)
 	}
 
-	exists, err := utils.FileExists(address)
+	exists, err := util.FileExists(address)
 	if err != nil {
 		return fmt.Errorf("check socket '%s': %v", address, err)
 	}
@@ -62,6 +62,11 @@ func (v *VaultProxy) Start() error {
 	listener, err := net.Listen("unix", address)
 	if err != nil {
 		return fmt.Errorf("listen on '%s': %v", address, err)
+	}
+
+	err = util.ChangeFilePermissions(address, sockCfg.GetUser(), sockCfg.GetGroup(), sockCfg.GetMode())
+	if err != nil {
+		return fmt.Errorf("change permissions '%s': %v", address, err)
 	}
 
 	logrus.Infof("Listen on %s.", address)
