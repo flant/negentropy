@@ -70,12 +70,13 @@ func PasswordDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 func GroupDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
 		model.NewGroupRepository(tx),
+		// TODO clean group references from rolebindings and groups in other tenants
 	)
 }
 
 func RoleBindingApprovalDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewRoleBindingRepository(tx),
+		model.NewRoleBindingApprovalRepository(tx),
 	)
 }
 
@@ -95,6 +96,7 @@ func ProjectDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
 		model.NewIdentitySharingRepository(tx),
+		// TODO clean identity sharings where the tenant is the destination
 	)
 }
 
@@ -102,6 +104,7 @@ func UserDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
 		model.NewUserRepository(tx),
 		MultipassDeleter(tx),
+		// TODO clean user references from rolebindings and groups in other tenants
 	)
 }
 
@@ -110,5 +113,6 @@ func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 		model.NewServiceAccountRepository(tx),
 		MultipassDeleter(tx),
 		PasswordDeleter(tx),
+		// TODO clean SA references from rolebindings and groups in other tenants
 	)
 }
