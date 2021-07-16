@@ -24,40 +24,40 @@ func getCreationID(expectID bool, data *framework.FieldData) string {
 	return id
 }
 
-func parseSubjects(rawList interface{}) ([]model.SubjectNotation, error) {
-	subjects := make([]model.SubjectNotation, 0)
+func parseMembers(rawList interface{}) ([]model.MemberNotation, error) {
+	members := make([]model.MemberNotation, 0)
 
 	if rawList == nil {
-		return subjects, nil
+		return members, nil
 	}
 
-	rawSubjects, ok := rawList.([]interface{})
+	rawMembers, ok := rawList.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("cannot parse subjects list")
+		return nil, fmt.Errorf("cannot parse members list")
 	}
 
-	for _, raw := range rawSubjects {
+	for _, raw := range rawMembers {
 		s, ok := raw.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("cannot parse subject %v", raw)
+			return nil, fmt.Errorf("cannot parse member %v", raw)
 		}
 		typ, ok := s["type"].(string)
 		if !ok {
 			return nil, fmt.Errorf("cannot parse type in %v", raw)
 		}
-		id, ok := s["id"].(string)
+		id, ok := s["uuid"].(string)
 		if !ok {
-			return nil, fmt.Errorf("cannot parse id in %v", raw)
+			return nil, fmt.Errorf("cannot parse uuid in %v", raw)
 		}
 
-		subj := model.SubjectNotation{
+		subj := model.MemberNotation{
 			Type: typ,
-			ID:   id,
+			UUID: id,
 		}
-		subjects = append(subjects, subj)
+		members = append(members, subj)
 	}
 
-	return subjects, nil
+	return members, nil
 }
 
 func parseBoundRoles(rawList interface{}) ([]model.BoundRole, error) {

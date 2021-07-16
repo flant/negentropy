@@ -10,14 +10,14 @@ type RoleBindingService struct {
 	repo        *model.RoleBindingRepository
 	tenantsRepo *model.TenantRepository
 
-	subjectFetcher *SubjectsFetcher
+	memberFetcher *MembersFetcher
 }
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 	return &RoleBindingService{
-		repo:           model.NewRoleBindingRepository(db),
-		subjectFetcher: NewSubjectsFetcher(db),
-		tenantsRepo:    model.NewTenantRepository(db),
+		repo:          model.NewRoleBindingRepository(db),
+		memberFetcher: NewMembersFetcher(db),
+		tenantsRepo:   model.NewTenantRepository(db),
 	}
 }
 
@@ -32,7 +32,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	rb.Version = model.NewResourceVersion()
 
 	// Refill data
-	subj, err := s.subjectFetcher.Fetch(rb.Subjects)
+	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	}
 
 	// Refill data
-	subj, err := s.subjectFetcher.Fetch(rb.Subjects)
+	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
 		return err
 	}

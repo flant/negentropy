@@ -131,7 +131,7 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 	checkDeepEqual(t, expectedParams, gotParams)
 }
 
-func Test_FindSubjectsWithProjectScopedRole(t *testing.T) {
+func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
@@ -140,14 +140,14 @@ func Test_FindSubjectsWithProjectScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindSubjectsWithProjectScopedRole(roleName1, tenantUUID1, projectUUID3)
+	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(roleName1, tenantUUID1, projectUUID3)
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
 	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}}, stringSet(serviceAccounts))
 }
 
-func Test_FindSubjectsWithTenantScopedRole(t *testing.T) {
+func Test_FindMembersWithTenantScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
@@ -156,7 +156,7 @@ func Test_FindSubjectsWithTenantScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindSubjectsWithTenantScopedRole(roleName9, tenantUUID1)
+	users, serviceAccounts, err := rr.FindMembersWithTenantScopedRole(roleName9, tenantUUID1)
 
 	dieOnErr(t, err)
 	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))

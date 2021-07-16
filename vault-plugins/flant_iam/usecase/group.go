@@ -16,18 +16,18 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 type GroupsService struct {
 	tenantUUID model.TenantUUID
 
-	repo            *model.GroupRepository
-	tenantsRepo     *model.TenantRepository
-	subjectsFetcher *SubjectsFetcher
+	repo           *model.GroupRepository
+	tenantsRepo    *model.TenantRepository
+	membersFetcher *MembersFetcher
 }
 
 func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupsService {
 	return &GroupsService{
 		tenantUUID: tid,
 
-		repo:            model.NewGroupRepository(db),
-		tenantsRepo:     model.NewTenantRepository(db),
-		subjectsFetcher: NewSubjectsFetcher(db),
+		repo:           model.NewGroupRepository(db),
+		tenantsRepo:    model.NewTenantRepository(db),
+		membersFetcher: NewMembersFetcher(db),
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *GroupsService) Create(group *model.Group) error {
 	group.Version = model.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := s.subjectsFetcher.Fetch(group.Subjects)
+	subj, err := s.membersFetcher.Fetch(group.Members)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *GroupsService) Update(group *model.Group) error {
 	group.Version = model.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
-	subj, err := s.subjectsFetcher.Fetch(group.Subjects)
+	subj, err := s.membersFetcher.Fetch(group.Members)
 	if err != nil {
 		return err
 	}

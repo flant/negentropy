@@ -152,9 +152,9 @@ func createRoleBindings(t *testing.T, repo *model.RoleBindingRepository, rbs ...
 func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
 	rbs := []model.RoleBinding{rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8}
 	for i := range rbs {
-		rbs[i].Subjects = appendSubjects(makeSubjectNotations(model.UserType, rbs[i].Users),
-			makeSubjectNotations(model.ServiceAccountType, rbs[i].ServiceAccounts),
-			makeSubjectNotations(model.GroupType, rbs[i].Groups))
+		rbs[i].Members = appendMembers(makeMemberNotations(model.UserType, rbs[i].Users),
+			makeMemberNotations(model.ServiceAccountType, rbs[i].ServiceAccounts),
+			makeMemberNotations(model.GroupType, rbs[i].Groups))
 	}
 	tx := store.Txn(true)
 	repo := model.NewRoleBindingRepository(tx)

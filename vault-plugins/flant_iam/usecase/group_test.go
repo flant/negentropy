@@ -66,9 +66,9 @@ func createGroups(t *testing.T, repo *model.GroupRepository, groups ...model.Gro
 func groupFixture(t *testing.T, store *io.MemoryStore) {
 	gs := []model.Group{group2, group3, group4, group1, group5}
 	for i := range gs {
-		gs[i].Subjects = appendSubjects(makeSubjectNotations(model.UserType, gs[i].Users),
-			makeSubjectNotations(model.ServiceAccountType, gs[i].ServiceAccounts),
-			makeSubjectNotations(model.GroupType, gs[i].Groups))
+		gs[i].Members = appendMembers(makeMemberNotations(model.UserType, gs[i].Users),
+			makeMemberNotations(model.ServiceAccountType, gs[i].ServiceAccounts),
+			makeMemberNotations(model.GroupType, gs[i].Groups))
 	}
 	tx := store.Txn(true)
 	repo := model.NewGroupRepository(tx)
@@ -98,9 +98,9 @@ func Test_GetByID(t *testing.T) {
 	group, err := repo.GetByID(groupUUID1)
 
 	dieOnErr(t, err)
-	group1.Subjects = appendSubjects(makeSubjectNotations(model.UserType, group1.Users),
-		makeSubjectNotations(model.ServiceAccountType, group1.ServiceAccounts),
-		makeSubjectNotations(model.GroupType, group1.Groups))
+	group1.Members = appendMembers(makeMemberNotations(model.UserType, group1.Users),
+		makeMemberNotations(model.ServiceAccountType, group1.ServiceAccounts),
+		makeMemberNotations(model.GroupType, group1.Groups))
 	group.Version = group1.Version
 	group.FullIdentifier = group1.FullIdentifier
 	checkDeepEqual(t, &group1, group)

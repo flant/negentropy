@@ -8,7 +8,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-func TestSubjectsFetcher_Fetch(t *testing.T) {
+func TestMembersFetcher_Fetch(t *testing.T) {
 	type fields struct {
 		serviceAccountRepo RawGetter
 		userRepo           RawGetter
@@ -21,20 +21,20 @@ func TestSubjectsFetcher_Fetch(t *testing.T) {
 	}
 
 	type args struct {
-		subjects []model.SubjectNotation
+		members []model.MemberNotation
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *model.Subjects
+		want    *model.Members
 		wantErr bool
 	}{
 		{
 			name:   "nil input results in empty slices",
 			fields: alwaysExisting,
-			args:   args{subjects: nil},
-			want: &model.Subjects{
+			args:   args{members: nil},
+			want: &model.Members{
 				ServiceAccounts: []string{},
 				Users:           []string{},
 				Groups:          []string{},
@@ -44,24 +44,24 @@ func TestSubjectsFetcher_Fetch(t *testing.T) {
 		{
 			name:   "deduplicates and sorts",
 			fields: alwaysExisting,
-			args: args{subjects: []model.SubjectNotation{
-				{Type: model.ServiceAccountType, ID: "sa1"},
-				{Type: model.ServiceAccountType, ID: "sa2"},
-				{Type: model.ServiceAccountType, ID: "sa3"},
-				{Type: model.ServiceAccountType, ID: "sa2"},
-				{Type: model.ServiceAccountType, ID: "sa1"},
-				{Type: model.UserType, ID: "u1"},
-				{Type: model.UserType, ID: "u2"},
-				{Type: model.UserType, ID: "u3"},
-				{Type: model.UserType, ID: "u2"},
-				{Type: model.UserType, ID: "u1"},
-				{Type: model.GroupType, ID: "g1"},
-				{Type: model.GroupType, ID: "g2"},
-				{Type: model.GroupType, ID: "g3"},
-				{Type: model.GroupType, ID: "g2"},
-				{Type: model.GroupType, ID: "g1"},
+			args: args{members: []model.MemberNotation{
+				{Type: model.ServiceAccountType, UUID: "sa1"},
+				{Type: model.ServiceAccountType, UUID: "sa2"},
+				{Type: model.ServiceAccountType, UUID: "sa3"},
+				{Type: model.ServiceAccountType, UUID: "sa2"},
+				{Type: model.ServiceAccountType, UUID: "sa1"},
+				{Type: model.UserType, UUID: "u1"},
+				{Type: model.UserType, UUID: "u2"},
+				{Type: model.UserType, UUID: "u3"},
+				{Type: model.UserType, UUID: "u2"},
+				{Type: model.UserType, UUID: "u1"},
+				{Type: model.GroupType, UUID: "g1"},
+				{Type: model.GroupType, UUID: "g2"},
+				{Type: model.GroupType, UUID: "g3"},
+				{Type: model.GroupType, UUID: "g2"},
+				{Type: model.GroupType, UUID: "g1"},
 			}},
-			want: &model.Subjects{
+			want: &model.Members{
 				ServiceAccounts: []string{"sa1", "sa2", "sa3"},
 				Users:           []string{"u1", "u2", "u3"},
 				Groups:          []string{"g1", "g2", "g3"},
@@ -71,13 +71,13 @@ func TestSubjectsFetcher_Fetch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := &SubjectsFetcher{
+			f := &MembersFetcher{
 				serviceAccountRepo: tt.fields.serviceAccountRepo,
 				userRepo:           tt.fields.userRepo,
 				groupRepo:          tt.fields.groupRepo,
 			}
 
-			got, err := f.Fetch(tt.args.subjects)
+			got, err := f.Fetch(tt.args.members)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Fetch() error = %v, wantErr %v", err, tt.wantErr)

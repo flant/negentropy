@@ -1,12 +1,12 @@
 package model
 
-type Subjects struct {
+type Members struct {
 	ServiceAccounts []ServiceAccountUUID
 	Users           []UserUUID
 	Groups          []GroupUUID
 }
 
-type SubjectNotation struct {
+type MemberNotation struct {
 	Type string `json:"type"`
-	ID   string `json:"id"`
+	UUID string `json:"uuid"`
 }

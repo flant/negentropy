@@ -43,9 +43,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 			},
@@ -79,9 +79,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 			},
@@ -138,9 +138,9 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 			},
@@ -191,19 +191,19 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			id         = getCreationID(expectID, data)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
 		)
-		subjects, err := parseSubjects(data.Get("subjects"))
+		members, err := parseMembers(data.Get("members"))
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		if len(members) == 0 {
+			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
 			UUID:       id,
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
-			Subjects:   subjects,
+			Members:    members,
 			Origin:     model.OriginIAM,
 		}
 
@@ -231,12 +231,12 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
 		)
 
-		subjects, err := parseSubjects(data.Get("subjects"))
+		members, err := parseMembers(data.Get("members"))
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		if len(members) == 0 {
+			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -244,7 +244,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
-			Subjects:   subjects,
+			Members:    members,
 			Origin:     model.OriginIAM,
 		}
 

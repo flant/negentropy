@@ -801,10 +801,10 @@
                   }
                 },
                 "required": [
+                  "own_audience",
                   "rotation_period",
                   "preliminary_announce_period",
-                  "issuer",
-                  "own_audience"
+                  "issuer"
                 ]
               }
             }
@@ -1146,9 +1146,9 @@
                   }
                 },
                 "required": [
-                  "options_schema",
                   "description",
-                  "require_one_of_feature_flags"
+                  "require_one_of_feature_flags",
+                  "options_schema"
                 ]
               }
             }
@@ -1435,9 +1435,9 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
-                  "subjects": {
+                  "members": {
                     "type": "array",
-                    "description": "Subjects list",
+                    "description": "Members list",
                     "items": {
                       "type": "object"
                     }
@@ -1449,9 +1449,9 @@
                   }
                 },
                 "required": [
+                  "members",
                   "uuid",
-                  "identifier",
-                  "subjects"
+                  "identifier"
                 ]
               }
             }
@@ -1516,21 +1516,21 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
-                  "resource_version": {
-                    "type": "string",
-                    "description": "Resource version"
-                  },
-                  "subjects": {
+                  "members": {
                     "type": "array",
-                    "description": "Subjects list",
+                    "description": "Members list",
                     "items": {
                       "type": "object"
                     }
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
                   }
                 },
                 "required": [
                   "identifier",
-                  "subjects",
+                  "members",
                   "resource_version"
                 ]
               }
@@ -1786,8 +1786,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -1874,6 +1874,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "members": {
+                    "type": "array",
+                    "description": "Members list",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
                   "require_mfa": {
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
@@ -1881,13 +1888,6 @@
                   "roles": {
                     "type": "array",
                     "description": "Roles list",
-                    "items": {
-                      "type": "object"
-                    }
-                  },
-                  "subjects": {
-                    "type": "array",
-                    "description": "Subjects list",
                     "items": {
                       "type": "object"
                     }
@@ -1904,11 +1904,11 @@
                   }
                 },
                 "required": [
-                  "require_mfa",
                   "uuid",
-                  "subjects",
+                  "members",
                   "roles",
-                  "ttl"
+                  "ttl",
+                  "require_mfa"
                 ]
               }
             }
@@ -2087,6 +2087,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "members": {
+                    "type": "array",
+                    "description": "Members list",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
                   "require_mfa": {
                     "type": "boolean",
                     "description": "Requires multi-factor authentication"
@@ -2102,13 +2109,6 @@
                       "type": "object"
                     }
                   },
-                  "subjects": {
-                    "type": "array",
-                    "description": "Subjects list",
-                    "items": {
-                      "type": "object"
-                    }
-                  },
                   "ttl": {
                     "type": "integer",
                     "description": "TTL in seconds",
@@ -2116,11 +2116,11 @@
                   }
                 },
                 "required": [
+                  "resource_version",
+                  "members",
                   "roles",
                   "ttl",
-                  "require_mfa",
-                  "resource_version",
-                  "subjects"
+                  "require_mfa"
                 ]
               }
             }
@@ -2236,11 +2236,11 @@
                   }
                 },
                 "required": [
-                  "token_ttl",
-                  "token_max_ttl",
                   "uuid",
                   "identifier",
-                  "allowed_cidrs"
+                  "allowed_cidrs",
+                  "token_ttl",
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2673,15 +2673,15 @@
                   }
                 },
                 "required": [
-                  "first_name",
-                  "last_name",
                   "additional_emails",
                   "identifier",
-                  "display_name",
+                  "first_name",
+                  "last_name",
                   "mobile_phone",
-                  "additional_phones",
+                  "uuid",
+                  "display_name",
                   "email",
-                  "uuid"
+                  "additional_phones"
                 ]
               }
             }
@@ -2890,15 +2890,15 @@
                   }
                 },
                 "required": [
-                  "identifier",
                   "mobile_phone",
+                  "additional_emails",
+                  "identifier",
+                  "first_name",
                   "additional_phones",
                   "resource_version",
-                  "additional_emails",
+                  "last_name",
                   "display_name",
-                  "first_name",
-                  "email",
-                  "last_name"
+                  "email"
                 ]
               }
             }
