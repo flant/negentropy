@@ -801,10 +801,10 @@
                   }
                 },
                 "required": [
-                  "own_audience",
                   "rotation_period",
                   "preliminary_announce_period",
-                  "issuer"
+                  "issuer",
+                  "own_audience"
                 ]
               }
             }
@@ -1289,8 +1289,8 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier"
+                  "identifier",
+                  "uuid"
                 ]
               }
             }
@@ -1449,9 +1449,9 @@
                   }
                 },
                 "required": [
+                  "identifier",
                   "members",
-                  "uuid",
-                  "identifier"
+                  "uuid"
                 ]
               }
             }
@@ -1904,11 +1904,11 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "members",
                   "roles",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "uuid",
+                  "members"
                 ]
               }
             }
@@ -2116,11 +2116,11 @@
                   }
                 },
                 "required": [
-                  "resource_version",
                   "members",
                   "roles",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "resource_version"
                 ]
               }
             }
@@ -2236,11 +2236,11 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -2536,11 +2536,11 @@
                   }
                 },
                 "required": [
-                  "resource_version",
                   "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "resource_version"
                 ]
               }
             }
@@ -2673,15 +2673,15 @@
                   }
                 },
                 "required": [
-                  "additional_emails",
                   "identifier",
+                  "display_name",
+                  "additional_emails",
+                  "additional_phones",
+                  "email",
                   "first_name",
-                  "last_name",
                   "mobile_phone",
                   "uuid",
-                  "display_name",
-                  "email",
-                  "additional_phones"
+                  "last_name"
                 ]
               }
             }
@@ -2890,15 +2890,15 @@
                   }
                 },
                 "required": [
-                  "mobile_phone",
-                  "additional_emails",
+                  "resource_version",
                   "identifier",
                   "first_name",
-                  "additional_phones",
-                  "resource_version",
+                  "additional_emails",
                   "last_name",
-                  "display_name",
-                  "email"
+                  "additional_phones",
+                  "email",
+                  "mobile_phone",
+                  "display_name"
                 ]
               }
             }
@@ -2971,8 +2971,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
