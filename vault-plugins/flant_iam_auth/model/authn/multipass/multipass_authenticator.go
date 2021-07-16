@@ -3,70 +3,49 @@ package multipass
 import (
 	"context"
 	"fmt"
-	"time"
 
-	gojwt "github.com/golang-jwt/jwt"
+	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
+	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 )
 
 type Authenticator struct {
-	// todo use validator
-	// JwtValidator *jwt.Validator
-	AuthSource    *model.AuthSource
+	JwtValidator  *jwt.Validator
 	MultipassRepo *iam.MultipassRepository
 	Logger        hclog.Logger
+	AuthMethod    *model.AuthMethod
+	AuthSource    *model.AuthSource
 }
 
 func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn.Result, error) {
-	token := d.Get("jwt").(string)
-	if len(token) == 0 {
-		return nil, fmt.Errorf("missing token")
-	}
-
 	a.Logger.Debug("Start authn multipass")
 
-	gojwt.RegisterSigningMethod("EdDSA", func() gojwt.SigningMethod {
-		return &gojwt.SigningMethodECDSA{}
-	})
-
-	p := gojwt.Parser{
-		SkipClaimsValidation: true,
+	authenticator := &authnjwt.Authenticator{
+		AuthMethod:   a.AuthMethod,
+		Logger:       a.Logger.Named("JWT"),
+		AuthSource:   a.AuthSource,
+		JwtValidator: a.JwtValidator,
 	}
-	claims := gojwt.MapClaims{}
-	_, _, err := p.ParseUnverified(token, claims)
+
+	res, err := authenticator.Authenticate(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
-	a.Logger.Debug("Jwt multipass parsed")
-
-	if !claims.VerifyIssuer(a.AuthSource.BoundIssuer, true) {
-		return nil, fmt.Errorf("incorrect issuer")
+	a.Logger.Debug(fmt.Sprintf("Try to get jti from claims %s", res.UUID))
+	jtiFromTokenRaw := authnjwt.GetClaim(a.Logger, res.Claims, "jti")
+	if jtiFromTokenRaw == nil {
+		return nil, fmt.Errorf("not found jti from token")
 	}
 
-	a.Logger.Debug("Issuer verified")
+	a.Logger.Debug(fmt.Sprintf("Try to get multipass %s", res.UUID))
 
-	if !claims.VerifyExpiresAt(time.Now().Unix(), true) {
-		return nil, fmt.Errorf("incorrect expiration")
-	}
-
-	a.Logger.Debug("Expiration verified")
-
-	uuidMultipassRaw, ok := claims["sub"]
-	if !ok {
-		return nil, fmt.Errorf("not found multipass uuid in token")
-	}
-
-	uuidMultipass, ok := uuidMultipassRaw.(string)
-
-	a.Logger.Debug(fmt.Sprintf("Got multipass uuid from token %s", uuidMultipass))
-
-	multipass, err := a.MultipassRepo.GetByID(uuidMultipass)
+	multipass, err := a.MultipassRepo.GetByID(res.UUID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +53,31 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 	if multipass == nil {
 		return nil, fmt.Errorf("not found multipass")
 	}
+
+	// TODO got empty sailt always
+	// TODO token generation number
+
+	// jtiFromToken, ok := jtiFromTokenRaw.(string)
+	// if !ok {
+	//	return nil, fmt.Errorf("jti must be string")
+	// }
+
+	// if multipass.Salt == "" {
+	//	a.Logger.Debug("Get empty sailt")
+	//	return nil, fmt.Errorf("jti is not valid")
+	// }
+	//
+	// jti := usecase.TokenJTI{
+	//	Generation: 0,
+	//	SecretSalt: multipass.Salt,
+	// }.Hash()
+	//
+	// a.Logger.Debug(fmt.Sprintf("Verify jti %s", res.UUID))
+	//
+	// if jti != jtiFromToken {
+	//	a.Logger.Debug(fmt.Sprintf("Incorrect jti got=%s need=%s", jtiFromToken, jti))
+	//	return nil, fmt.Errorf("jti is not valid")
+	// }
 
 	a.Logger.Debug(fmt.Sprintf("Found multipass owner %s", multipass.OwnerUUID))
 

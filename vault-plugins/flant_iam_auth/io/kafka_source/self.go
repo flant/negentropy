@@ -14,6 +14,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -105,7 +106,9 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 
 	sks.logger.Debug("Restore - Message verified", "decrypted", decrypted)
 
-	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
+	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted, []self.RestoreFunc{
+		jwtkafka.SelfRestoreMessage,
+	})
 	if err != nil {
 		return err
 	}
@@ -164,7 +167,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 
 		err = sks.verifySign(signature, decrypted)
 		if err != nil {
-			sks.logger.Debug(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			sks.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}

@@ -186,9 +186,10 @@ var _ = BeforeSuite(func() {
 	configure.ConfigureVaultAccess(token, lib.IamAuthPluginPath, role)
 
 	var err error
-	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/enable", nil)
-	Expect(err).ToNot(HaveOccurred())
 	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/enable", nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/enable", nil)
 	Expect(err).ToNot(HaveOccurred())
 
 	sources = auth_source.GenerateSources()

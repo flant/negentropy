@@ -1,16 +1,14 @@
 package usecase
 
 import (
-	"context"
 	"fmt"
 	"time"
-
-	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 /*
@@ -111,7 +109,7 @@ func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []stri
 
 // CreateWithJWT saves a Multipass object and generate jwt.
 func (r *MultipassService) CreateWithJWT(
-	ctx context.Context, storage logical.Storage, // jwt
+	issueMultipass jwt.MultipassIssFn, // jwt
 	ttl, maxTTL time.Duration, cidrs, roles []string, description string, // multipass
 ) (string, *model.Multipass, error) {
 	mp, err := r.Create(ttl, maxTTL, cidrs, roles, description)
@@ -120,16 +118,16 @@ func (r *MultipassService) CreateWithJWT(
 	}
 
 	// Generate JWT
-	options := &jwt.PrimaryTokenOptions{
+	options := &jwttoken.PrimaryTokenOptions{
 		TTL:  mp.TTL,
 		UUID: mp.UUID,
-		JTI: jwt.TokenJTI{
+		JTI: jwttoken.TokenJTI{
 			Generation: 0,
 			SecretSalt: mp.Salt,
 		},
 	}
 
-	jwtString, err := jwt.NewPrimaryToken(ctx, storage, options)
+	jwtString, err := issueMultipass(options)
 	if err != nil {
 		return "", nil, err
 	}

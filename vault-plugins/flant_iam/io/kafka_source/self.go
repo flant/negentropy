@@ -17,15 +17,20 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
+type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)
+
 type SelfKafkaSource struct {
-	kf        *sharedkafka.MessageBroker
-	decryptor *sharedkafka.Encrypter
+	kf              *sharedkafka.MessageBroker
+	decryptor       *sharedkafka.Encrypter
+	restoreHandlers []RestoreFunc
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
+
+		restoreHandlers: restoreHandlers,
 	}
 }
 
@@ -67,6 +72,17 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	err = rsa.VerifyPKCS1v15(mks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
 	if err != nil {
 		return err
+	}
+
+	for _, r := range mks.restoreHandlers {
+		handled, err := r(txn, splitted[0], decrypted)
+		if err != nil {
+			return err
+		}
+
+		if handled {
+			return nil
+		}
 	}
 
 	// Fill here objects for unmarshalling

@@ -8,20 +8,23 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type JWKSKafkaDestination struct {
-	mb *kafka.MessageBroker
+	mb     *kafka.MessageBroker
+	logger hclog.Logger
 }
 
-func NewJWKSKafkaDestination(mb *kafka.MessageBroker) *JWKSKafkaDestination {
+func NewJWKSKafkaDestination(mb *kafka.MessageBroker, logger hclog.Logger) *JWKSKafkaDestination {
 	return &JWKSKafkaDestination{
-		mb: mb,
+		mb:     mb,
+		logger: logger,
 	}
 }
 
@@ -30,11 +33,11 @@ func (mkd *JWKSKafkaDestination) ReplicaName() string {
 }
 
 func (mkd *JWKSKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
-	if obj.ObjType() != jwt.JWKSType {
+	if obj.ObjType() != model.JWKSType {
 		return nil, nil
 	}
 
-	msg, err := mkd.sendObject(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey(), mkd.mb.EncryptionPublicKey())
+	msg, err := mkd.sendObject(topicName, obj, mkd.mb.EncryptionPrivateKey(), mkd.mb.EncryptionPublicKey())
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +46,11 @@ func (mkd *JWKSKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 }
 
 func (mkd *JWKSKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
-	if obj.ObjType() != jwt.JWKSType {
+	if obj.ObjType() != model.JWKSType {
 		return nil, nil
 	}
 
-	msg, err := mkd.sendObjectTombstone(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey())
+	msg, err := mkd.sendObjectTombstone(topicName, obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +66,7 @@ func (mkd *JWKSKafkaDestination) signData(data []byte, pk *rsa.PrivateKey) ([]by
 
 func (mkd *JWKSKafkaDestination) sendObject(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
+	mkd.logger.Debug(fmt.Sprintf("key to send %s", key))
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return kafka.Message{}, err

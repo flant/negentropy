@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 )
 
 const (
@@ -16,6 +16,11 @@ const (
 )
 
 func mergeSchema() (*memdb.DBSchema, error) {
+	jwtSchema, err := model.GetSchema(false)
+	if err != nil {
+		return nil, err
+	}
+
 	included := []*memdb.DBSchema{
 		TenantSchema(),
 		UserSchema(),
@@ -30,7 +35,8 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		MultipassSchema(),
 		ServiceAccountPasswordSchema(),
 		IdentitySharingSchema(),
-		jwt.JWKSSchema(),
+
+		jwtSchema,
 	}
 
 	schema := &memdb.DBSchema{
@@ -46,7 +52,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		}
 	}
 
-	err := schema.Validate()
+	err = schema.Validate()
 	if err != nil {
 		return nil, err
 	}

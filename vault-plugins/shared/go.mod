@@ -9,12 +9,14 @@ require (
 	github.com/go-openapi/spec v0.20.3
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/go-openapi/validate v0.20.2
+	github.com/go-test/deep v1.0.2 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
 	github.com/hashicorp/vault/sdk v0.2.0
+	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
