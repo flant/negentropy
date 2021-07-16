@@ -52,7 +52,6 @@ func RoleSchema() *memdb.DBSchema {
 	}
 }
 
-//go:generate go run gen_repository.go -type Role -IDsuffix Name
 type Role struct {
 	Name  RoleName  `json:"name"`
 	Scope RoleScope `json:"scope"`

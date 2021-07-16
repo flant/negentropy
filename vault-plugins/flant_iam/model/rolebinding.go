@@ -103,7 +103,6 @@ func RoleBindingSchema() *memdb.DBSchema {
 	}
 }
 
-//go:generate go run gen_repository.go -type RoleBinding -parentType Tenant
 type RoleBinding struct {
 	UUID       RoleBindingUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID      `json:"tenant_uuid"`

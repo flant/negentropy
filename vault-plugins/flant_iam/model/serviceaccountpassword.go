@@ -34,8 +34,6 @@ func ServiceAccountPasswordSchema() *memdb.DBSchema {
 		},
 	}
 }
-
-//go:generate go run gen_repository.go -type ServiceAccountPassword -parentType Owner
 type ServiceAccountPassword struct {
 	UUID       ServiceAccountPasswordUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID                 `json:"tenant_uuid"`

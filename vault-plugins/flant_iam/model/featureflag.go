@@ -26,8 +26,6 @@ func FeatureFlagSchema() *memdb.DBSchema {
 		},
 	}
 }
-
-//go:generate go run gen_repository.go -type FeatureFlag -IDsuffix Name
 type FeatureFlag struct {
 	Name FeatureFlagName `json:"name"` // PK
 }

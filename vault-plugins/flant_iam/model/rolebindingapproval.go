@@ -41,7 +41,6 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 	}
 }
 
-//go:generate go run gen_repository.go -type RoleBindingApproval -parentType RoleBinding
 type RoleBindingApproval struct {
 	UUID            RoleBindingApprovalUUID `json:"uuid"` // PK
 	TenantUUID      TenantUUID              `json:"tenant_uuid"`

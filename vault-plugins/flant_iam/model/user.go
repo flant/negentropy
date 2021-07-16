@@ -46,7 +46,6 @@ func UserSchema() *memdb.DBSchema {
 	}
 }
 
-//go:generate go run gen_repository.go -type User -parentType Tenant
 type User struct {
 	UUID       UserUUID   `json:"uuid"` // PK
 	TenantUUID TenantUUID `json:"tenant_uuid"`

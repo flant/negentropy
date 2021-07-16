@@ -44,7 +44,6 @@ func IdentitySharingSchema() *memdb.DBSchema {
 	}
 }
 
-//go:generate go run gen_repository.go -type IdentitySharing -parentType Tenant
 type IdentitySharing struct {
 	UUID                  IdentitySharingUUID `json:"uuid"` // PK
 	SourceTenantUUID      TenantUUID          `json:"source_tenant_uuid"`

@@ -85,8 +85,6 @@ func GroupSchema() *memdb.DBSchema {
 		},
 	}
 }
-
-//go:generate go run gen_repository.go -type Group -parentType Tenant
 type Group struct {
 	UUID           GroupUUID  `json:"uuid"` // PK
 	TenantUUID     TenantUUID `json:"tenant_uuid"`
