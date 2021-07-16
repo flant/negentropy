@@ -20,7 +20,7 @@ type mutexedConfig struct {
 }
 
 func (c *mutexedConfig) isConfigured() bool {
-	return c.isConfigured()
+	return c.configured
 }
 
 func (c *mutexedConfig) GetServerAccessConfig(ctx context.Context, storage logical.Storage) (*ServerAccessConfig, error) {
