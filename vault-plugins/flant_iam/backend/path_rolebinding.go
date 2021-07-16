@@ -44,9 +44,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 				"roles": {
@@ -90,9 +90,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 				"roles": {
@@ -158,9 +158,9 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
-				"subjects": {
+				"members": {
 					Type:        framework.TypeSlice,
-					Description: "Subjects list",
+					Description: "Members list",
 					Required:    true,
 				},
 				"roles": {
@@ -227,7 +227,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
-		subjects, err := parseSubjects(data.Get("subjects"))
+		members, err := parseMembers(data.Get("members"))
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			TenantUUID: data.Get(model.TenantForeignPK).(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
-			Subjects:   subjects,
+			Members:    members,
 			Roles:      roles,
 			Origin:     model.OriginIAM,
 		}
@@ -271,7 +271,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
-		subjects, err := parseSubjects(data.Get("subjects"))
+		members, err := parseMembers(data.Get("members"))
 		if err != nil {
 			return nil, err
 		}
@@ -280,8 +280,8 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		if len(subjects) == 0 {
-			return responseErrMessage(req, "subjects must not be empty", http.StatusBadRequest)
+		if len(members) == 0 {
+			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -290,7 +290,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
-			Subjects:   subjects,
+			Members:    members,
 			Roles:      roles,
 			Origin:     model.OriginIAM,
 		}

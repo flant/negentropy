@@ -33,40 +33,40 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 	return store
 }
 
-func toSubjectNotation(m Model) SubjectNotation {
-	return SubjectNotation{
+func toMemberNotation(m Model) MemberNotation {
+	return MemberNotation{
 		Type: m.ObjType(),
 		ID:   m.ObjId(),
 	}
 }
 
-func toSubjectNotations(ms ...Model) []SubjectNotation {
-	sns := make([]SubjectNotation, 0)
+func toMemberNotations(ms ...Model) []MemberNotation {
+	sns := make([]MemberNotation, 0)
 	for _, m := range ms {
-		sns = append(sns, toSubjectNotation(m))
+		sns = append(sns, toMemberNotation(m))
 	}
 	return sns
 }
 
-func makeSubjectNotations(subjectType string, uuids []string) []SubjectNotation {
+func makeMemberNotations(memberType string, uuids []string) []MemberNotation {
 	validTypes := map[string]struct{}{ServiceAccountType: {}, UserType: {}, GroupType: {}}
-	if _, valid := validTypes[subjectType]; !valid {
-		panic(fmt.Errorf("subject_type %s is invalid", subjectType))
+	if _, valid := validTypes[memberType]; !valid {
+		panic(fmt.Errorf("member_type %s is invalid", memberType))
 	}
-	result := make([]SubjectNotation, len(uuids))
+	result := make([]MemberNotation, len(uuids))
 	for i := range uuids {
-		result[i] = SubjectNotation{
-			Type: subjectType,
+		result[i] = MemberNotation{
+			Type: memberType,
 			ID:   uuids[i],
 		}
 	}
 	return result
 }
 
-func appendSubjects(subjectsGroups ...[]SubjectNotation) []SubjectNotation {
-	result := []SubjectNotation{}
-	for i := range subjectsGroups {
-		result = append(result, subjectsGroups[i]...)
+func appendMembers(membersGroups ...[]MemberNotation) []MemberNotation {
+	result := []MemberNotation{}
+	for i := range membersGroups {
+		result = append(result, membersGroups[i]...)
 	}
 	return result
 }

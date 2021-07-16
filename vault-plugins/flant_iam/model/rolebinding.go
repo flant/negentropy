@@ -45,32 +45,32 @@ func RoleBindingSchema() *memdb.DBSchema {
 						Name:         UserInTenantRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantRoleBindingIndexer{
-							subjectFieldName: "Users",
+						Indexer: &memberInTenantRoleBindingIndexer{
+							memberFieldName: "Users",
 						},
 					},
 					ServiceAccountInTenantRoleBindingIndex: {
 						Name:         ServiceAccountInTenantRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantRoleBindingIndexer{
-							subjectFieldName: "ServiceAccounts",
+						Indexer: &memberInTenantRoleBindingIndexer{
+							memberFieldName: "ServiceAccounts",
 						},
 					},
 					GroupInTenantRoleBindingIndex: {
 						Name:         GroupInTenantRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantRoleBindingIndexer{
-							subjectFieldName: "Groups",
+						Indexer: &memberInTenantRoleBindingIndexer{
+							memberFieldName: "Groups",
 						},
 					},
 					ProjectInTenantRoleBindingIndex: {
 						Name:         ProjectInTenantRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantRoleBindingIndexer{
-							subjectFieldName: "Projects",
+						Indexer: &memberInTenantRoleBindingIndexer{
+							memberFieldName: "Projects",
 						},
 					},
 					RoleInTenantRoleBindingIndex: {
@@ -96,7 +96,7 @@ type RoleBinding struct {
 	Users           []UserUUID           `json:"-"`
 	Groups          []GroupUUID          `json:"-"`
 	ServiceAccounts []ServiceAccountUUID `json:"-"`
-	Subjects        []SubjectNotation    `json:"subjects"`
+	Members         []MemberNotation     `json:"members"`
 
 	AnyProject bool          `json:"any_project"`
 	Projects   []ProjectUUID `json:"projects"`
@@ -202,11 +202,11 @@ func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 	return r.save(rb)
 }
 
-type subjectInTenantRoleBindingIndexer struct {
-	subjectFieldName string
+type memberInTenantRoleBindingIndexer struct {
+	memberFieldName string
 }
 
-func (_ subjectInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+func (_ memberInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, ErrNeedDoubleArgument
 	}
@@ -214,25 +214,25 @@ func (_ subjectInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte
 	if !ok {
 		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
 	}
-	subjectUUID, ok := args[1].(string)
+	memberUUID, ok := args[1].(string)
 	if !ok {
 		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
 	}
 	// Add the null character as a terminator
-	return []byte(tenantUUID + subjectUUID + "\x00"), nil
+	return []byte(tenantUUID + memberUUID + "\x00"), nil
 }
 
-func (s subjectInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
+func (s memberInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
 	usersLabel := "Users"
 	serviceAccountsLabel := "ServiceAccounts"
 	groupsLabel := "Groups"
 	projectLabel := "Projects"
-	validSubjectFieldNames := map[string]struct{}{
+	validMemberFieldNames := map[string]struct{}{
 		usersLabel: {}, serviceAccountsLabel: {},
 		groupsLabel: {}, projectLabel: {},
 	}
-	if _, valid := validSubjectFieldNames[s.subjectFieldName]; !valid {
-		return false, nil, fmt.Errorf("invalid subject_field_name: %s", s.subjectFieldName)
+	if _, valid := validMemberFieldNames[s.memberFieldName]; !valid {
+		return false, nil, fmt.Errorf("invalid member_field_name: %s", s.memberFieldName)
 	}
 	rb, ok := raw.(*RoleBinding)
 	if !ok {
@@ -240,7 +240,7 @@ func (s subjectInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, []
 	}
 	result := [][]byte{}
 	tenantUUID := rb.TenantUUID
-	switch s.subjectFieldName {
+	switch s.memberFieldName {
 	case usersLabel:
 		for i := range rb.Users {
 			result = append(result, []byte(tenantUUID+rb.Users[i]+"\x00"))

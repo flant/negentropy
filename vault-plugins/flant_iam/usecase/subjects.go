@@ -7,22 +7,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type SubjectsFetcher struct {
+type MembersFetcher struct {
 	serviceAccountRepo RawGetter
 	userRepo           RawGetter
 	groupRepo          RawGetter
 }
 
-func NewSubjectsFetcher(db *io.MemoryStoreTxn) *SubjectsFetcher {
-	return &SubjectsFetcher{
+func NewMembersFetcher(db *io.MemoryStoreTxn) *MembersFetcher {
+	return &MembersFetcher{
 		serviceAccountRepo: model.NewServiceAccountRepository(db),
 		userRepo:           model.NewUserRepository(db),
 		groupRepo:          model.NewGroupRepository(db),
 	}
 }
 
-func (f *SubjectsFetcher) Fetch(subjects []model.SubjectNotation) (*model.Subjects, error) {
-	result := &model.Subjects{
+func (f *MembersFetcher) Fetch(members []model.MemberNotation) (*model.Members, error) {
+	result := &model.Members{
 		ServiceAccounts: make([]model.ServiceAccountUUID, 0),
 		Users:           make([]model.UserUUID, 0),
 		Groups:          make([]model.GroupUUID, 0),
@@ -30,7 +30,7 @@ func (f *SubjectsFetcher) Fetch(subjects []model.SubjectNotation) (*model.Subjec
 
 	seen := map[string]struct{}{}
 
-	for _, subj := range subjects {
+	for _, subj := range members {
 		repo, err := f.chooseRepo(subj.Type)
 		if err != nil {
 			return nil, err
@@ -54,8 +54,8 @@ func (f *SubjectsFetcher) Fetch(subjects []model.SubjectNotation) (*model.Subjec
 	return result, nil
 }
 
-func (f *SubjectsFetcher) append(result *model.Subjects, subjectType, id string) {
-	switch subjectType {
+func (f *MembersFetcher) append(result *model.Members, memberType, id string) {
+	switch memberType {
 	case model.ServiceAccountType:
 		result.ServiceAccounts = append(result.ServiceAccounts, id)
 	case model.UserType:
@@ -65,10 +65,10 @@ func (f *SubjectsFetcher) append(result *model.Subjects, subjectType, id string)
 	}
 }
 
-func (f *SubjectsFetcher) chooseRepo(subjectType string) (RawGetter, error) {
+func (f *MembersFetcher) chooseRepo(memberType string) (RawGetter, error) {
 	var repo RawGetter
 
-	switch subjectType {
+	switch memberType {
 	case model.ServiceAccountType:
 		repo = f.serviceAccountRepo
 	case model.UserType:
@@ -76,7 +76,7 @@ func (f *SubjectsFetcher) chooseRepo(subjectType string) (RawGetter, error) {
 	case model.GroupType:
 		repo = f.groupRepo
 	default:
-		return nil, fmt.Errorf("unsupported subject type %q", subjectType)
+		return nil, fmt.Errorf("unsupported member type %q", memberType)
 	}
 
 	return repo, nil

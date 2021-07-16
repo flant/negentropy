@@ -42,24 +42,24 @@ func GroupSchema() *memdb.DBSchema {
 						Name:         UserInTenantGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantGroupIndexer{
-							subjectFieldName: "Users",
+						Indexer: &memberInTenantGroupIndexer{
+							memberFieldName: "Users",
 						},
 					},
 					ServiceAccountInTenantGroupIndex: {
 						Name:         ServiceAccountInTenantGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantGroupIndexer{
-							subjectFieldName: "ServiceAccounts",
+						Indexer: &memberInTenantGroupIndexer{
+							memberFieldName: "ServiceAccounts",
 						},
 					},
 					GroupInTenantGroupIndex: {
 						Name:         GroupInTenantGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &subjectInTenantGroupIndexer{
-							subjectFieldName: "Groups",
+						Indexer: &memberInTenantGroupIndexer{
+							memberFieldName: "Groups",
 						},
 					},
 				},
@@ -78,7 +78,7 @@ type Group struct {
 	Users           []UserUUID           `json:"-"`
 	Groups          []GroupUUID          `json:"-"`
 	ServiceAccounts []ServiceAccountUUID `json:"-"`
-	Subjects        []SubjectNotation    `json:"subjects"`
+	Members         []MemberNotation     `json:"members"`
 
 	Origin ObjectOrigin `json:"origin"`
 
@@ -247,7 +247,7 @@ func (r *GroupRepository) FindAllParentGroupsForGroupUUID(tenantUUID TenantUUID,
 	return r.FindAllParentGroupsForGroupUUIDs(tenantUUID, map[GroupUUID]struct{}{groupUUID: {}})
 }
 
-func (r *GroupRepository) FindAllSubjectsFor(tenantUUID TenantUUID, users []UserUUID, serviceAccounts []ServiceAccountUUID, groups []GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+func (r *GroupRepository) FindAllMembersFor(tenantUUID TenantUUID, users []UserUUID, serviceAccounts []ServiceAccountUUID, groups []GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
 	resultUsers := make(map[UserUUID]struct{})
 	resultSAs := make(map[ServiceAccountUUID]struct{})
 
@@ -259,7 +259,7 @@ func (r *GroupRepository) FindAllSubjectsFor(tenantUUID TenantUUID, users []User
 	}
 
 	for _, groupUUID := range groups {
-		groupsUsers, groupsSAs, err := r.FindAllSubjectsForGroupUUID(tenantUUID, groupUUID)
+		groupsUsers, groupsSAs, err := r.FindAllMembersForGroupUUID(tenantUUID, groupUUID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -274,16 +274,16 @@ func (r *GroupRepository) FindAllSubjectsFor(tenantUUID TenantUUID, users []User
 	return resultUsers, resultSAs, nil
 }
 
-func (r *GroupRepository) FindAllSubjectsForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+func (r *GroupRepository) FindAllMembersForGroupUUID(tenantUUID TenantUUID, groupUUID GroupUUID) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
 	group, err := r.GetByID(groupUUID)
 	if err != nil {
 		return nil, nil, err
 	}
-	return r.FindAllSubjectsForGroup(group)
+	return r.FindAllMembersForGroup(group)
 }
 
-func (r *GroupRepository) FindAllSubjectsForGroup(group *Group) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
-	return r.FindAllSubjectsFor(group.TenantUUID, group.Users, group.ServiceAccounts, group.Groups)
+func (r *GroupRepository) FindAllMembersForGroup(group *Group) (map[UserUUID]struct{}, map[ServiceAccountUUID]struct{}, error) {
+	return r.FindAllMembersFor(group.TenantUUID, group.Users, group.ServiceAccounts, group.Groups)
 }
 
 func extractGroupUUIDs(iter memdb.ResultIterator) (map[GroupUUID]struct{}, error) {
@@ -302,11 +302,11 @@ func extractGroupUUIDs(iter memdb.ResultIterator) (map[GroupUUID]struct{}, error
 	return ids, nil
 }
 
-type subjectInTenantGroupIndexer struct {
-	subjectFieldName string
+type memberInTenantGroupIndexer struct {
+	memberFieldName string
 }
 
-func (_ subjectInTenantGroupIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+func (_ memberInTenantGroupIndexer) FromArgs(args ...interface{}) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, ErrNeedDoubleArgument
 	}
@@ -314,21 +314,21 @@ func (_ subjectInTenantGroupIndexer) FromArgs(args ...interface{}) ([]byte, erro
 	if !ok {
 		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
 	}
-	subjectUUID, ok := args[1].(string)
+	memberUUID, ok := args[1].(string)
 	if !ok {
 		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
 	}
 	// Add the null character as a terminator
-	return []byte(tenantUUID + subjectUUID + "\x00"), nil
+	return []byte(tenantUUID + memberUUID + "\x00"), nil
 }
 
-func (s subjectInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
+func (s memberInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
 	usersLabel := "Users"
 	serviceAccountsLabel := "ServiceAccounts"
 	groupsLabel := "Groups"
-	validSubjectFieldNames := map[string]struct{}{usersLabel: {}, serviceAccountsLabel: {}, groupsLabel: {}}
-	if _, valid := validSubjectFieldNames[s.subjectFieldName]; !valid {
-		return false, nil, fmt.Errorf("invalid subject_field_name: %s", s.subjectFieldName)
+	validMemberFieldNames := map[string]struct{}{usersLabel: {}, serviceAccountsLabel: {}, groupsLabel: {}}
+	if _, valid := validMemberFieldNames[s.memberFieldName]; !valid {
+		return false, nil, fmt.Errorf("invalid member_field_name: %s", s.memberFieldName)
 	}
 	group, ok := raw.(*Group)
 	if !ok {
@@ -336,7 +336,7 @@ func (s subjectInTenantGroupIndexer) FromObject(raw interface{}) (bool, [][]byte
 	}
 	result := [][]byte{}
 	tenantUUID := group.TenantUUID
-	switch s.subjectFieldName {
+	switch s.memberFieldName {
 	case usersLabel:
 		for i := range group.Users {
 			result = append(result, []byte(tenantUUID+group.Users[i]+"\x00"))

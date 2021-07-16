@@ -14,8 +14,8 @@ type RoleResolver interface {
 	CheckServiceAccountForProjectScopedRole(model.ServiceAccountUUID, model.RoleName, model.TenantUUID, model.ProjectUUID) (bool, RoleBindingParams, error)
 	CheckServiceAccountForTenantScopedRole(model.ServiceAccountUUID, model.RoleName, model.TenantUUID) (bool, RoleBindingParams, error)
 
-	FindSubjectsWithProjectScopedRole(model.RoleName, model.TenantUUID, model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
-	FindSubjectsWithTenantScopedRole(model.RoleName, model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
+	FindMembersWithProjectScopedRole(model.RoleName, model.TenantUUID, model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
+	FindMembersWithTenantScopedRole(model.RoleName, model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
 
 	CheckGroupForRole(model.GroupUUID, model.RoleName) (bool, error)
 }
@@ -37,7 +37,7 @@ type GroupInformer interface {
 	FindAllParentGroupsForUserUUID(model.TenantUUID, model.UserUUID) (map[model.GroupUUID]struct{}, error)
 	FindAllParentGroupsForServiceAccountUUID(model.TenantUUID, model.ServiceAccountUUID) (map[model.GroupUUID]struct{}, error)
 	FindAllParentGroupsForGroupUUID(model.TenantUUID, model.GroupUUID) (map[model.GroupUUID]struct{}, error)
-	FindAllSubjectsFor(model.TenantUUID, []model.UserUUID, []model.ServiceAccountUUID, []model.GroupUUID) (
+	FindAllMembersFor(model.TenantUUID, []model.UserUUID, []model.ServiceAccountUUID, []model.GroupUUID) (
 		map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error)
 	GetByID(model.GroupUUID) (*model.Group, error)
 }
@@ -308,7 +308,7 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount mod
 	return roleExists, roleBindingParams, nil
 }
 
-func (r *roleResolver) FindSubjectsWithProjectScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID,
+func (r *roleResolver) FindMembersWithProjectScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID,
 	projectUUID model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error) {
 	_, roleBindings, err := r.collectAllRolesAndRoleBindings(tenantUUID, roleName)
 	if err != nil {
@@ -331,7 +331,7 @@ func (r *roleResolver) FindSubjectsWithProjectScopedRole(roleName model.RoleName
 			groups = mergeUUIDs(groups, rb.Groups)
 		}
 	}
-	users, serviceAccounts, err = r.gi.FindAllSubjectsFor(tenantUUID,
+	users, serviceAccounts, err = r.gi.FindAllMembersFor(tenantUUID,
 		stringSlice(users), stringSlice(serviceAccounts), stringSlice(groups))
 	if err != nil {
 		return nil, nil, err
@@ -346,7 +346,7 @@ func mergeUUIDs(originUUIDs map[string]struct{}, extraUUIDs []string) map[string
 	return originUUIDs
 }
 
-func (r *roleResolver) FindSubjectsWithTenantScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error) {
+func (r *roleResolver) FindMembersWithTenantScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error) {
 	role, err := r.ri.Get(roleName)
 	if err != nil {
 		return nil, nil, err
@@ -369,7 +369,7 @@ func (r *roleResolver) FindSubjectsWithTenantScopedRole(roleName model.RoleName,
 		serviceAccounts = mergeUUIDs(serviceAccounts, rb.ServiceAccounts)
 		groups = mergeUUIDs(groups, rb.Groups)
 	}
-	users, serviceAccounts, err = r.gi.FindAllSubjectsFor(tenantUUID,
+	users, serviceAccounts, err = r.gi.FindAllMembersFor(tenantUUID,
 		stringSlice(users), stringSlice(serviceAccounts), stringSlice(groups))
 	if err != nil {
 		return nil, nil, err

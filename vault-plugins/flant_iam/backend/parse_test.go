@@ -79,25 +79,25 @@ func Test_parseBoundRoles(t *testing.T) {
 	}
 }
 
-func Test_parseSubjects(t *testing.T) {
+func Test_parseMembers(t *testing.T) {
 	type args struct {
 		rawList interface{}
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    []model.SubjectNotation
+		want    []model.MemberNotation
 		wantErr bool
 	}{
 		{
 			name:    "nil",
-			want:    []model.SubjectNotation{},
+			want:    []model.MemberNotation{},
 			wantErr: false,
 		},
 		{
 			name:    "empty list",
 			args:    args{rawList: []interface{}{}},
-			want:    []model.SubjectNotation{},
+			want:    []model.MemberNotation{},
 			wantErr: false,
 		},
 		{
@@ -109,7 +109,7 @@ func Test_parseSubjects(t *testing.T) {
 					map[string]interface{}{"type": model.UserType, "id": "uid"},
 				},
 			},
-			want: []model.SubjectNotation{
+			want: []model.MemberNotation{
 				{Type: model.ServiceAccountType, ID: "said"},
 				{Type: model.GroupType, ID: "gid"},
 				{Type: model.UserType, ID: "uid"},
@@ -143,13 +143,13 @@ func Test_parseSubjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseSubjects(tt.args.rawList)
+			got, err := parseMembers(tt.args.rawList)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseSubjects() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("parseMembers() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseSubjects() got = %v, want %v", got, tt.want)
+				t.Errorf("parseMembers() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
