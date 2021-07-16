@@ -20,10 +20,10 @@ import (
 type serviceAccountBackend struct {
 	logical.Backend
 	storage         *io.MemoryStore
-	tokenController *jwt.TokenController
+	tokenController *jwt.Controller
 }
 
-func serviceAccountPaths(b logical.Backend, tokenController *jwt.TokenController, storage *io.MemoryStore) []*framework.Path {
+func serviceAccountPaths(b logical.Backend, tokenController *jwt.Controller, storage *io.MemoryStore) []*framework.Path {
 	bb := &serviceAccountBackend{
 		Backend:         b,
 		storage:         storage,
@@ -569,8 +569,11 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
 		// Check that the feature is available
-		if err := isJwtEnabled(ctx, req, b.tokenController); err != nil {
+		if err := isJwtEnabled(tx, b.tokenController); err != nil {
 			return responseErr(req, err)
 		}
 
@@ -585,12 +588,11 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			description = data.Get("description").(string)
 		)
 
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+		issueFn := jwt.CreateIssueMultipassFunc(b.tokenController, tx)
 
 		jwtString, multipass, err := usecase.
 			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).
-			CreateWithJWT(ctx, req.Storage, ttl, maxTTL, cidrs, roles, description)
+			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return responseErr(req, err)
 		}

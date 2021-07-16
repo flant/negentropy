@@ -106,7 +106,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 			return logical.ErrorResponse("not found auth method"), nil
 		}
 
-		jwtValidator, err := b.jwtValidator(methodName, authSource)
+		jwtValidator, err := b.jwtValidator(method.Name, authSource)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +121,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	case model.MethodTypeMultipass:
 		logger.Debug("It is multipass. Check jwt is enabled")
 
-		enabled, err := b.tokenController.IsEnabled(ctx, req)
+		enabled, err := b.jwtController.IsEnabled(tnx)
 		if err != nil {
 			return nil, err
 		}
@@ -130,10 +130,16 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 			return logical.ErrorResponse("jwt is not enabled. not use multipass login"), nil
 		}
 
-		logger.Debug("Jwt is enabled. Get jwt config")
+		logger.Debug("Jwt is enabled. Get jwt public keys")
 
-		keys := make([]string, 0)
-		jwtConf, err := b.tokenController.GetConfig(ctx, req.Storage)
+		keys, err := b.jwtController.JWKS(tnx)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Debug(fmt.Sprintf("Got jwt keys. %s Get jwt config", keys))
+
+		jwtConf, err := b.jwtController.GetConfig(tnx)
 		if err != nil {
 			return nil, err
 		}
@@ -141,10 +147,16 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		logger.Debug("Got jwt config")
 
 		authSource = model.GetMultipassSourceForLogin(jwtConf, keys)
+		jwtValidator, err := b.jwtValidator(methodName, authSource)
+		if err != nil {
+			return nil, err
+		}
 
 		authenticator = &multipass.Authenticator{
-			Logger:        logger.Named("AutheNticator"),
 			AuthSource:    authSource,
+			AuthMethod:    method,
+			JwtValidator:  jwtValidator,
+			Logger:        logger.Named("AutheNticator"),
 			MultipassRepo: iam.NewMultipassRepository(tnx),
 		}
 

@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -18,8 +17,8 @@ var (
 	errJwtControllerError = fmt.Errorf("JWT controller error")
 )
 
-func isJwtEnabled(ctx context.Context, req *logical.Request, controller *jwt.TokenController) error {
-	isEnabled, err := controller.IsEnabled(ctx, req)
+func isJwtEnabled(tx *io.MemoryStoreTxn, controller *jwt.Controller) error {
+	isEnabled, err := controller.IsEnabled(tx)
 	if err != nil {
 		return errJwtControllerError
 	}

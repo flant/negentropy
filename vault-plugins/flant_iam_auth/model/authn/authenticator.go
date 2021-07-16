@@ -15,6 +15,8 @@ type Result struct {
 	Metadata     map[string]string
 	Policies     []string
 	GroupAliases []string
+
+	Claims map[string]interface{}
 }
 
 type Authenticator interface {

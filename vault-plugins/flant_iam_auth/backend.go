@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -29,11 +31,11 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
-const loggerModule = "IamAuth"
+const loggerModule = "Auth"
 
 // Factory is used by framework
-func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
-	b, err := backend(c)
+func Factory(ctx context.Context, c *logical.BackendConfig, jwksIDGetter func() (string, error)) (logical.Backend, error) {
+	b, err := backend(c, jwksIDGetter)
 	if err != nil {
 		return nil, err
 	}
@@ -55,15 +57,17 @@ type flantIamAuthBackend struct {
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
 
-	tokenController       *njwt.TokenController
+	jwtController         *njwt.Controller
 	accessVaultController *client.VaultClientController
 
 	storage *sharedio.MemoryStore
 
 	accessorGetter *vault.MountAccessorGetter
+
+	jwksIdGetter func() (string, error)
 }
 
-func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
+func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
@@ -71,7 +75,6 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 
 	iamAuthLogger := conf.Logger.Named(loggerModule)
 
-	b.tokenController = njwt.NewTokenController()
 	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
 		return iamAuthLogger.Named("ApiClient")
 	})
@@ -119,18 +122,69 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	}
 
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb))
+	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, iamAuthLogger.Named("KafkaDestinationJWKS")))
+
+	if jwksIDGetter == nil {
+		jwksIDGetter = mb.GetEncryptionPublicKeyStrict
+	}
 
 	b.storage = storage
+	b.jwtController = njwt.NewJwtController(
+		storage,
+		jwksIDGetter,
+		iamAuthLogger.Named("Jwt"),
+		time.Now,
+	)
+
+	periodicLogger := iamAuthLogger.Named("PeriodicFunc")
+	periodicFunction := func(ctx context.Context, request *logical.Request) error {
+		periodicLogger.Debug("Run periodic function")
+		defer periodicLogger.Debug("Periodic function finished")
+
+		var allErrors *multierror.Error
+		run := func(controllerName string, action func() error) {
+			periodicLogger.Debug(fmt.Sprintf("Run %s OnPeriodical", controllerName))
+
+			err := action()
+			if err != nil {
+				allErrors = multierror.Append(allErrors, err)
+				periodicLogger.Error(fmt.Sprintf("Error while %s periodical function: %s", controllerName, err), "err", err)
+				return
+			}
+
+			periodicLogger.Debug(fmt.Sprintf("%s OnPeriodical was successful run", controllerName))
+		}
+
+		run("accessVaultController", func() error {
+			return b.accessVaultController.OnPeriodical(ctx, request)
+		})
+
+		run("jwtController", func() error {
+			tx := b.storage.Txn(true)
+			defer tx.Abort()
+
+			err := b.jwtController.OnPeriodical(tx)
+			if err != nil {
+				return err
+			}
+
+			if err := tx.Commit(); err != nil {
+				periodicLogger.Error(fmt.Sprintf("Can not commit memdb transaction: %s", err), "err", err)
+				return err
+			}
+
+			return nil
+		})
+
+		return allErrors
+	}
 
 	b.Backend = &framework.Backend{
-		AuthRenew:   b.pathLoginRenew,
-		BackendType: logical.TypeCredential,
-		Invalidate:  b.invalidate,
-		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
-			return b.accessVaultController.OnPeriodical(ctx, request)
-		},
-		Help: backendHelp,
+		AuthRenew:    b.pathLoginRenew,
+		BackendType:  logical.TypeCredential,
+		Invalidate:   b.invalidate,
+		PeriodicFunc: periodicFunction,
+		Help:         backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
@@ -158,21 +212,17 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
 			},
-			[]*framework.Path{
-				njwt.PathEnable(b.tokenController),
-				njwt.PathDisable(b.tokenController),
-				njwt.PathConfigure(b.tokenController),
-				njwt.PathJWKS(b.tokenController),
-				njwt.PathRotateKey(b.tokenController),
-			},
+
+			b.jwtController.ApiPaths(),
+
 			[]*framework.Path{
 				client.PathConfigure(b.accessVaultController),
 			},
 			pathOIDC(b),
-			kafkaPaths(b, storage),
+			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
 
 			// server_access_extension
-			extension_server_access.ServerAccessPaths(b, storage),
+			extension_server_access.ServerAccessPaths(b, storage, b.jwtController),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,
@@ -318,7 +368,11 @@ func (b *flantIamAuthBackend) jwtValidator(methodName string, config *model.Auth
 		return nil, fmt.Errorf("JWT validator configuration error: %w", err)
 	}
 
-	b.validators[methodName] = validator
+	// not cache multipass validator
+	// TODO flush cache when update JWKS
+	if config.UUID != model.MultipassSourceUUID {
+		b.validators[methodName] = validator
+	}
 
 	return validator, nil
 }

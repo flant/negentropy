@@ -2,27 +2,34 @@ package backend
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 type kafkaBackend struct {
 	logical.Backend
 	storage *io.MemoryStore
 	broker  *kafka.MessageBroker
+	logger  hclog.Logger
 }
 
-func kafkaPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+func kafkaPaths(b logical.Backend, storage *io.MemoryStore, logger hclog.Logger) []*framework.Path {
 	bb := kafkaBackend{
 		Backend: b,
 		storage: storage,
 		broker:  storage.GetKafkaBroker(),
+		logger:  logger,
 	}
 
 	configurePath := &framework.Path{
@@ -32,6 +39,11 @@ func kafkaPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
 				Type:        framework.TypeString,
 				Required:    true,
 				Description: "Kafka topic name for this plugin entities",
+			},
+
+			"peers_public_keys": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: "Vault public keys to check signature in JWKS topic",
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -64,6 +76,27 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	err := kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	var peerKeys []*rsa.PublicKey
+	peerKeysRaw, ok := data.GetOk("peers_public_keys")
+	if ok {
+		peerKeysStr := peerKeysRaw.([]string)
+		for _, pks := range peerKeysStr {
+			pksTrimmed := strings.ReplaceAll(strings.TrimSpace(pks), "\\n", "\n")
+			kb.logger.Debug(fmt.Sprintf("Peers pub keys %s", pksTrimmed))
+			pub, err := utils.ParsePubkey(pksTrimmed)
+			if err != nil {
+				return nil, err
+			}
+			peerKeys = append(peerKeys, pub)
+		}
+	} else {
+		kb.logger.Warn("Not pass one more peersKeys")
+	}
+
+	if len(peerKeys) > 0 {
+		kb.broker.PluginConfig.PeersPublicKeys = peerKeys
 	}
 
 	// Create JWKS topic

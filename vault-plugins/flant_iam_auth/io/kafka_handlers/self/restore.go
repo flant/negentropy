@@ -8,9 +8,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
-func HandleRestoreMessagesSelfSource(txn *memdb.Txn, objType string, data []byte) error {
+type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)
+
+func HandleRestoreMessagesSelfSource(txn *memdb.Txn, objType string, data []byte, restoreNadlers []RestoreFunc) error {
 	var inputObject interface{}
 	var table string
+
+	for _, r := range restoreNadlers {
+		handled, err := r(txn, objType, data)
+		if err != nil {
+			return err
+		}
+
+		if handled {
+			return nil
+		}
+	}
 
 	// only write to mem storage
 	switch objType {
