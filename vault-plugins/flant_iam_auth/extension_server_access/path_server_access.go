@@ -158,7 +158,7 @@ func (b *serverAccessBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.queryServer(),
 					Summary:  "Query servers in tenant by labels",
 				},
@@ -174,7 +174,7 @@ func (b *serverAccessBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.queryServer(),
 					Summary:  "Query servers by labels",
 				},
@@ -311,11 +311,14 @@ func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
 
+		sshRole := "ssh"
 		en, err := req.Storage.Get(ctx, serverAccessSSHRoleKey)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
-		sshRole := string(en.Value)
+		if en != nil {
+			sshRole = string(en.Value)
+		}
 
 		users, serviceAccounts, err := stubResolveUserAndSA(txn, sshRole, tenantID)
 		if err != nil {

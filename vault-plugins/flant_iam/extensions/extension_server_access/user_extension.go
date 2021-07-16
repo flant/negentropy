@@ -34,11 +34,11 @@ func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.I
 func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.Storage, memStore *io.MemoryStore) {
 	var sac *ServerAccessConfig
 
-	_ = wait.PollImmediateInfinite(time.Minute, func() (done bool, err error) {
+	_ = wait.PollImmediateInfinite(5*time.Second, func() (done bool, err error) {
 		config, err := liveConfig.GetServerAccessConfig(ctx, vaultStore)
 		if err != nil {
-			log.Printf("can't get current config from Vault Storage: %s", err)
-			return false, err
+			fmt.Printf("can't get current config from Vault Storage: %s", err)
+			return false, nil
 		}
 		if config == nil {
 			log.Print("server_access is not configured yet")
@@ -54,10 +54,6 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			// TODO: fix me
-			if sac == nil {
-				return nil
-			}
 			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
 
 			user := obj.(*model.User)

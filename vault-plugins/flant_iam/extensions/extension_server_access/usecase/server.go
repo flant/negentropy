@@ -40,10 +40,13 @@ func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 	}
 }
 
-func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage,
+func (s *ServerService) Create(
+	ctx context.Context,
+	vaultStorage logical.Storage,
 	tenantUUID, projectUUID, serverID string,
 	labels, annotations map[string]string,
-	roles []string) (string, error) {
+	roles []string,
+) (string, string, error) {
 
 	var (
 		tenantBoundRoles  []model.BoundRole
@@ -62,25 +65,25 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 
 	tenant, err := s.tenantService.GetByID(tenantUUID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	project, err := s.projectsService.GetByID(projectUUID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	rawServer, err := s.serverRepo.GetByID(tenantUUID, projectUUID, serverID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		return "", err
+		return "", "", err
 	}
 	if rawServer != nil {
-		return "", fmt.Errorf("server with identifier %q already exists in project %q", serverID, project.Identifier)
+		return "", "", fmt.Errorf("server with identifier %q already exists in project %q", serverID, project.Identifier)
 	}
 
 	group, getGroupErr := s.groupRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
 	if getGroupErr != nil && !errors.Is(getGroupErr, model.ErrNotFound) {
-		return "", err
+		return "", "", err
 	}
 	if group == nil {
 		group = &model.Group{
@@ -95,7 +98,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 	for _, roleName := range roles {
 		role, err := s.roleService.Get(roleName)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		switch role.Scope {
@@ -120,7 +123,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			return "", err
+			return "", "", err
 		}
 
 		if roleBinding == nil {
@@ -136,7 +139,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 
 			err := s.roleBindingRepo.Create(newRoleBinding)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 		}
 	}
@@ -150,7 +153,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			return "", err
+			return "", "", err
 		}
 
 		if roleBinding == nil {
@@ -166,14 +169,14 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 
 			err := s.roleBindingRepo.Create(newRoleBinding)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 		}
 	}
 
 	serviceAccount, err := s.serviceAccountRepo.GetByIdentifier(tenantUUID, nameForServerRelatedProjectLevelObjects(project.Identifier, serverID))
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		return "", err
+		return "", "", err
 	}
 
 	if serviceAccount == nil {
@@ -190,7 +193,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 
 		err := s.serviceAccountRepo.Create(newServiceAccount)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		serviceAccount = newServiceAccount
@@ -212,12 +215,12 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 	if errors.Is(getGroupErr, model.ErrNotFound) {
 		err := groupService.Create(group)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	} else {
 		err = groupService.Update(group)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
@@ -234,17 +237,17 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 	// TODO: are these valid?
 	multipassJWT, mp, err := multipassService.CreateWithJWT(context.TODO(), vaultStorage, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	server.Version = model.NewResourceVersion()
 	server.MultipassUUID = mp.UUID
 	err = s.tx.Insert(model2.ServerType, server)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return multipassJWT, nil
+	return server.UUID, multipassJWT, nil
 }
 
 func (s *ServerService) Update(server *model2.Server) error {

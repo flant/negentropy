@@ -128,7 +128,7 @@ func (b *serverBackend) paths() []*framework.Path {
 		},
 		{
 			Pattern: path.Join(
-				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "servers"),
+				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "servers/?"),
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -238,7 +238,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 		defer tx.Abort()
 		service := usecase.NewServerService(tx)
 
-		jwt, err := service.Create(ctx, req.Storage, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
+		serverUUID, jwt, err := service.Create(ctx, req.Storage, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
 			data.Get("identifier").(string), labels, annotations, config.RolesForServers)
 		if err != nil {
 			msg := "cannot create server"
@@ -253,7 +253,10 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			return logical.ErrorResponse(msg), err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"multipassJWT": jwt}}
+		resp := &logical.Response{Data: map[string]interface{}{
+			"multipassJWT": jwt,
+			"uuid":         serverUUID,
+		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
