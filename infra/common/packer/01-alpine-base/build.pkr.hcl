@@ -139,6 +139,7 @@ build {
       "../../packer-scripts/00-apk.sh",
       "../../packer-scripts/01-vector.sh",
       "../../packer-scripts/05-google-cloud-sdk.sh",
+      "../../packer-scripts/07-logrotate.sh",
       "scripts/90-setup.sh"
     ]
   }
