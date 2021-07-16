@@ -1,7 +1,6 @@
 // DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type RoleBindingApproval-parentType RoleBinding
-// When: 2021-07-16 14:19:26.228378 +0300 MSK m=+0.000189821
 // 
 
 package model

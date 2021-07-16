@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"text/template"
-	"time"
 )
 
 type data struct {
@@ -19,7 +18,6 @@ type data struct {
 	ID         string
 	IDType     string
 	TypeName   string
-	Now        time.Time
 }
 
 func main() {
@@ -29,7 +27,6 @@ func main() {
 	flag.StringVar(&d.IDsuffix, "IDsuffix", "UUID", "The suffix of the ID field, e.g Name")
 	flag.Parse()
 
-	d.Now = time.Now()
 	d.Var = strings.ToLower(d.Type)
 	d.ID = d.Var + d.IDsuffix
 	d.IDType = d.Type + d.IDsuffix
@@ -54,7 +51,6 @@ func main() {
 var repoTemplate = `// DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type {{.Type}} {{- if .ParentType }}-parentType {{.ParentType}}{{end}}
-// When: {{ .Now }}
 // 
 
 package model

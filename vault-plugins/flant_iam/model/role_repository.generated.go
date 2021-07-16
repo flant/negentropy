@@ -1,7 +1,6 @@
 // DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type Role
-// When: 2021-07-16 14:19:25.499922 +0300 MSK m=+0.000137644
 // 
 
 package model

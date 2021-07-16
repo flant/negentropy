@@ -1,7 +1,6 @@
 // DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type Group-parentType Tenant
-// When: 2021-07-16 14:19:24.03384 +0300 MSK m=+0.000133587
 // 
 
 package model

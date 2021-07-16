@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	SourceTenantUUIDIndex      = "source_tenant_uuid_index"
+	SourceTenantUUIDIndex      = TenantForeignPK // it is generated because tenant is the parent object for shares
 	DestinationTenantUUIDIndex = "destination_tenant_uuid_index"
 )
 

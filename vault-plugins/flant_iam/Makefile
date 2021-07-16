@@ -39,7 +39,7 @@ clean:
 	rm -f ./build/flant_iam
 
 .PHONY: fmt
-fmt: generate
+fmt:
 	-@$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
 
 .PHONY: deps

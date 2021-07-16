@@ -9,14 +9,19 @@ type TenantService struct {
 	repo *model.TenantRepository
 
 	// subtenants
-	subTenantDeleters []DeleterByParent
+	childrenDeleters []DeleterByParent
 }
 
 func Tenants(db *io.MemoryStoreTxn) *TenantService {
 	return &TenantService{
 		repo: model.NewTenantRepository(db),
-		subTenantDeleters: []DeleterByParent{
+		childrenDeleters: []DeleterByParent{
+			NewIdentitySharingDeleter(db),
 			UserDeleter(db),
+			ServiceAccountDeleter(db),
+			GroupDeleter(db),
+			RoleBindingDeleter(db),
+			ProjectDeleter(db),
 		},
 	}
 }
@@ -45,7 +50,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 }
 
 func (s *TenantService) Delete(id model.TenantUUID) error {
-	if err := deleteChildren(id, s.subTenantDeleters); err != nil {
+	if err := deleteChildren(id, s.childrenDeleters); err != nil {
 		return err
 	}
 	return s.repo.Delete(id)

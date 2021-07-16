@@ -11,6 +11,8 @@ type ServiceAccountService struct {
 
 	repo       *model.ServiceAccountRepository
 	tenantRepo *model.TenantRepository
+
+	childrenDeleters []DeleterByParent
 }
 
 func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID) *ServiceAccountService {
@@ -20,11 +22,16 @@ func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model
 
 		repo:       model.NewServiceAccountRepository(db),
 		tenantRepo: model.NewTenantRepository(db),
+
+		childrenDeleters: []DeleterByParent{
+			MultipassDeleter(db),
+			PasswordDeleter(db),
+		},
 	}
 }
 
-func (r *ServiceAccountService) Create(sa *model.ServiceAccount) error {
-	tenant, err := r.tenantRepo.GetByID(sa.TenantUUID)
+func (s *ServiceAccountService) Create(sa *model.ServiceAccount) error {
+	tenant, err := s.tenantRepo.GetByID(sa.TenantUUID)
 	if err != nil {
 		return err
 	}
@@ -37,11 +44,11 @@ func (r *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 	sa.Version = model.NewResourceVersion()
 	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
-	return r.repo.Create(sa)
+	return s.repo.Create(sa)
 }
 
-func (r *ServiceAccountService) GetByID(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
-	return r.repo.GetByID(id)
+func (s *ServiceAccountService) GetByID(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
+	return s.repo.GetByID(id)
 }
 
 /*
@@ -61,14 +68,14 @@ TODO Логика создания/обновления сервис аккау�
 	* если объекта нет, то:
 	* валидируем, что нам не передан resource_version
 */
-func (r *ServiceAccountService) Update(sa *model.ServiceAccount) error {
-	stored, err := r.repo.GetByID(sa.UUID)
+func (s *ServiceAccountService) Update(sa *model.ServiceAccount) error {
+	stored, err := s.repo.GetByID(sa.UUID)
 	if err != nil {
 		return err
 	}
 
 	// Validate
-	if stored.TenantUUID != r.tenantUUID {
+	if stored.TenantUUID != s.tenantUUID {
 		return model.ErrNotFound
 	}
 	if stored.Origin != sa.Origin {
@@ -78,13 +85,13 @@ func (r *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 		return model.ErrBadVersion
 	}
 
-	tenant, err := r.tenantRepo.GetByID(r.tenantUUID)
+	tenant, err := s.tenantRepo.GetByID(s.tenantUUID)
 	if err != nil {
 		return err
 	}
 
 	// Update
-	sa.TenantUUID = r.tenantUUID
+	sa.TenantUUID = s.tenantUUID
 	sa.Version = model.NewResourceVersion()
 	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
@@ -93,7 +100,7 @@ func (r *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 		sa.Extensions = stored.Extensions
 	}
 
-	return r.repo.Update(sa)
+	return s.repo.Update(sa)
 }
 
 /*
@@ -102,23 +109,27 @@ TODO
 	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
 
-func (r *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
-	sa, err := r.repo.GetByID(id)
+func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
+	sa, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if sa.Origin != r.origin {
+	if sa.Origin != s.origin {
 		return model.ErrBadOrigin
 	}
-	return r.repo.Delete(id)
+
+	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+		return err
+	}
+	return s.repo.Delete(id)
 }
 
-func (r *ServiceAccountService) List() ([]*model.ServiceAccount, error) {
-	return r.repo.List(r.tenantUUID)
+func (s *ServiceAccountService) List() ([]*model.ServiceAccount, error) {
+	return s.repo.List(s.tenantUUID)
 }
 
-func (r *ServiceAccountService) SetExtension(ext *model.Extension) error {
-	obj, err := r.GetByID(ext.OwnerUUID)
+func (s *ServiceAccountService) SetExtension(ext *model.Extension) error {
+	obj, err := s.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
@@ -126,11 +137,11 @@ func (r *ServiceAccountService) SetExtension(ext *model.Extension) error {
 		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	return r.Update(obj)
+	return s.Update(obj)
 }
 
-func (r *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid string) error {
-	obj, err := r.GetByID(uuid)
+func (s *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid string) error {
+	obj, err := s.GetByID(uuid)
 	if err != nil {
 		return err
 	}
@@ -138,5 +149,5 @@ func (r *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid s
 		return nil
 	}
 	delete(obj.Extensions, origin)
-	return r.Update(obj)
+	return s.Update(obj)
 }

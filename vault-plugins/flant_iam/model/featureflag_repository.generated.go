@@ -1,7 +1,6 @@
 // DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type FeatureFlag
-// When: 2021-07-16 14:19:23.67851 +0300 MSK m=+0.000143772
 // 
 
 package model

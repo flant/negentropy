@@ -1,7 +1,6 @@
 // DO NOT EDIT
 // This file was generated automatically with 
 // 		go run gen_repository.go -type IdentitySharing-parentType Tenant
-// When: 2021-07-16 14:19:24.399948 +0300 MSK m=+0.000132986
 // 
 
 package model
