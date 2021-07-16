@@ -1,12 +1,9 @@
 package model
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
@@ -68,6 +65,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type ServiceAccount -parentType Tenant
 type ServiceAccount struct {
 	UUID           ServiceAccountUUID `json:"uuid"` // PK
 	TenantUUID     TenantUUID         `json:"tenant_uuid"`
@@ -84,34 +82,6 @@ type ServiceAccount struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
-func (sa *ServiceAccount) ObjType() string {
-	return ServiceAccountType
-}
-
-func (sa *ServiceAccount) ObjId() string {
-	return sa.UUID
-}
-
-type ServiceAccountRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
-}
-
-func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
-	return &ServiceAccountRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
-}
-
-func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
-	return r.db.Insert(ServiceAccountType, sa)
-}
-
-func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
-	return r.save(sa)
-}
-
 func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string) (*ServiceAccount, error) {
 	raw, err := r.db.First(ServiceAccountType, TenantUUIDServiceAccountIdIndex, tenantUUID, identifier)
 	if err != nil {
@@ -123,97 +93,11 @@ func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string
 	return raw.(*ServiceAccount), err
 }
 
-func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
-	raw, err := r.GetRawByID(id)
-	if raw == nil {
-		return nil, err
-	}
-	return raw.(*ServiceAccount), err
-}
-
-func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{}, error) {
-	raw, err := r.db.First(ServiceAccountType, PK, id)
 	if err != nil {
 		return nil, err
 	}
 	if raw == nil {
 		return nil, ErrNotFound
-	}
-	return raw, nil
-}
-
-func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
-	_, err := r.GetByID(sa.UUID)
-	if err != nil {
-		return err
-	}
-
-	return r.save(sa)
-}
-
-func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
-	sa, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(ServiceAccountType, sa)
-}
-
-func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount, error) {
-	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	list := []*ServiceAccount{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		sa := raw.(*ServiceAccount)
-		list = append(list, sa)
-	}
-	return list, nil
-}
-
-func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bool, error)) error {
-	iter, err := r.db.Get(ServiceAccountType, PK)
-	if err != nil {
-		return err
-	}
-
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*ServiceAccount)
-		next, err := action(t)
-		if err != nil {
-			return err
-		}
-
-		if !next {
-			break
-		}
-	}
-
-	return nil
-}
-
-func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
-	sa := &ServiceAccount{}
-	err := json.Unmarshal(data, sa)
-	if err != nil {
-		return err
-	}
-
-	return r.save(sa)
 }
 
 // TODO move to usecases

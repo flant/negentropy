@@ -1,16 +1,12 @@
 package model
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
-	MultipassType  = "multipass" // also, memdb schema name
 	OwnerForeignPK = "owner_uuid"
 )
 
@@ -54,6 +50,7 @@ const (
 	MultipassOwnerUser           MultipassOwnerType = "user"
 )
 
+//go:generate go run gen_repository.go -type Multipass -parentType Owner
 type Multipass struct {
 	UUID       MultipassUUID      `json:"uuid"` // PK
 	TenantUUID TenantUUID         `json:"tenant_uuid"`
@@ -72,87 +69,4 @@ type Multipass struct {
 	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
-}
-
-func (t *Multipass) ObjType() string {
-	return MultipassType
-}
-
-func (t *Multipass) ObjId() string {
-	return t.UUID
-}
-
-type MultipassRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-}
-
-func NewMultipassRepository(tx *io.MemoryStoreTxn) *MultipassRepository {
-	return &MultipassRepository{db: tx}
-}
-
-func (r *MultipassRepository) save(mp *Multipass) error {
-	return r.db.Insert(MultipassType, mp)
-}
-
-func (r *MultipassRepository) Delete(id string) error {
-	mp, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(MultipassType, mp)
-}
-
-func (r *MultipassRepository) Create(mp *Multipass) error {
-	return r.save(mp)
-}
-
-func (r *MultipassRepository) Update(mp *Multipass) error {
-	if _, err := r.GetByID(mp.UUID); err != nil {
-		return err
-	}
-	return r.save(mp)
-}
-
-func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
-	raw, err := r.db.First(MultipassType, PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	multipass := raw.(*Multipass)
-	return multipass, nil
-}
-
-func (r *MultipassRepository) List(oid OwnerUUID) ([]*Multipass, error) {
-	iter, err := r.db.Get(MultipassType, OwnerForeignPK, oid)
-	if err != nil {
-		return nil, err
-	}
-
-	list := []*Multipass{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		mp := raw.(*Multipass)
-		list = append(list, mp)
-	}
-	return list, nil
-}
-
-func (r *MultipassRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
-	mp := &Multipass{}
-	err := json.Unmarshal(data, mp)
-	if err != nil {
-		return err
-	}
-
-	return r.save(mp)
 }

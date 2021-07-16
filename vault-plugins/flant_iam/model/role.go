@@ -1,16 +1,12 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
-	RoleType           = "role" // also, memdb schema name
 	IncludedRolesIndex = "IncludedRolesIndex"
 	RoleScopeIndex     = "scope"
 )
@@ -53,6 +49,7 @@ func RoleSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type Role -IDsuffix Name
 type Role struct {
 	Name  RoleName  `json:"name"`
 	Scope RoleScope `json:"scope"`
@@ -69,117 +66,6 @@ type Role struct {
 type IncludedRole struct {
 	Name            RoleName `json:"name"`
 	OptionsTemplate string   `json:"options_template"`
-}
-
-func (t *Role) ObjType() string {
-	return RoleType
-}
-
-func (t *Role) ObjId() string {
-	return t.Name
-}
-
-type RoleRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-}
-
-func NewRoleRepository(tx *io.MemoryStoreTxn) *RoleRepository {
-	return &RoleRepository{
-		db: tx,
-	}
-}
-
-func (r *RoleRepository) save(role *Role) error {
-	// TODO Validate exising name
-	return r.db.Insert(RoleType, role)
-}
-
-func (r *RoleRepository) Create(role *Role) error {
-	return r.save(role)
-}
-
-func (r *RoleRepository) Get(name RoleName) (*Role, error) {
-	raw, err := r.db.First(RoleType, PK, name)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*Role), nil
-}
-
-func (r *RoleRepository) Update(role *Role) error {
-	_, err := r.Get(role.Name)
-	if err != nil {
-		return err
-	}
-	return r.save(role)
-}
-
-func (r *RoleRepository) Delete(name RoleName) error {
-	role, err := r.Get(name)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(RoleType, role)
-}
-
-func (r *RoleRepository) List() ([]*Role, error) {
-	iter, err := r.db.Get(RoleType, PK)
-	if err != nil {
-		return nil, err
-	}
-
-	list := []*Role{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		role := raw.(*Role)
-		list = append(list, role)
-	}
-	return list, nil
-}
-
-func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
-	iter, err := r.db.Get(RoleType, PK)
-	if err != nil {
-		return err
-	}
-
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*Role)
-		next, err := action(t)
-		if err != nil {
-			return err
-		}
-
-		if !next {
-			break
-		}
-	}
-
-	return nil
-}
-
-func (r *RoleRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
-	role := &Role{}
-	err := json.Unmarshal(data, role)
-	if err != nil {
-		return err
-	}
-
-	return r.save(role)
 }
 
 func (r *RoleRepository) FindDirectIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {

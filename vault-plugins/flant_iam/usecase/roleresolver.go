@@ -29,7 +29,7 @@ type RoleBindingParams struct {
 }
 
 type RoleInformer interface {
-	Get(model.RoleName) (*model.Role, error)
+	GetByID(model.RoleName) (*model.Role, error)
 	FindAllIncludingRoles(model.RoleName) (map[model.RoleName]struct{}, error)
 }
 
@@ -212,7 +212,7 @@ func mergeRoleBindingParams(origin RoleBindingParams, roleBinding *model.RoleBin
 
 func (r *roleResolver) CheckUserForTenantScopedRole(userUUID model.UserUUID, roleName model.RoleName,
 	tenantUUID model.TenantUUID) (bool, RoleBindingParams, error) {
-	role, err := r.ri.Get(roleName)
+	role, err := r.ri.GetByID(roleName)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
@@ -277,7 +277,7 @@ func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUI
 
 func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount model.ServiceAccountUUID, roleName model.RoleName,
 	tenantUUID model.TenantUUID) (bool, RoleBindingParams, error) {
-	role, err := r.ri.Get(roleName)
+	role, err := r.ri.GetByID(roleName)
 	if err != nil {
 		return false, emptyRoleBindingParams, err
 	}
@@ -347,7 +347,7 @@ func mergeUUIDs(originUUIDs map[string]struct{}, extraUUIDs []string) map[string
 }
 
 func (r *roleResolver) FindMembersWithTenantScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error) {
-	role, err := r.ri.Get(roleName)
+	role, err := r.ri.GetByID(roleName)
 	if err != nil {
 		return nil, nil, err
 	}

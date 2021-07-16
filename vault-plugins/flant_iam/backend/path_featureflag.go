@@ -88,7 +88,7 @@ func (b *featureFlagBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		repo := model.NewFeatureFlagRepository(tx)
 
-		flag, err := repo.Get(name)
+		flag, err := repo.GetByID(name)
 		if err != nil {
 			return false, err
 		}

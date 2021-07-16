@@ -27,7 +27,6 @@ func (s *TenantService) Create(t *model.Tenant) error {
 }
 
 func (s *TenantService) Update(updated *model.Tenant) error {
-
 	stored, err := s.repo.GetByID(updated.UUID)
 	if err != nil {
 		return err

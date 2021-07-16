@@ -39,7 +39,7 @@ clean:
 	rm -f ./build/flant_iam
 
 .PHONY: fmt
-fmt:
+fmt: generate
 	-@$$(go env GOPATH)/bin/golangci-lint run ./... --config ../.golangci.yaml --fix
 
 .PHONY: deps
@@ -58,6 +58,10 @@ openapi:
 .PHONY: test
 test:
 	go test -race ./...
+
+.PHONY: generate
+generate:
+	@go generate ./...
 
 .PHONY: precommit
 precommit: fmt build test openapi

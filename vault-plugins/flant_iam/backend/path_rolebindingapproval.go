@@ -203,13 +203,13 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 
 func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		// tenantID := data.Get(model.TenantForeignPK).(string)
 		rbID := data.Get(model.RoleBindingForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingApprovalRepository(tx)
 
-		rolebindings, err := repo.List(tenantID, rbID)
+		rolebindings, err := repo.List(rbID) // TODO usecase should check for tenant correctnes
 		if err != nil {
 			return nil, err
 		}

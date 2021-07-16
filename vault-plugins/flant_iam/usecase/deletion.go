@@ -1,7 +1,5 @@
 package usecase
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
 type DeleterByParent interface {
 	DeleteByParent(string) error
 }
@@ -45,7 +43,6 @@ func (d *ChildrenDeleter) DeleteByParent(parentID string) error {
 		if err := deleteChildren(id, d.deleters); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
