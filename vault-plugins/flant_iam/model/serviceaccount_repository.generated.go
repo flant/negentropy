@@ -1,16 +1,17 @@
 // DO NOT EDIT
-// This file was generated automatically with 
+// This file was generated automatically with
 // 		go run gen_repository.go -type ServiceAccount-parentType Tenant
-// 
+//
 
 package model
 
 import (
 	"encoding/json"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type ServiceAccountUUID = string 
+type ServiceAccountUUID = string
 
 const ServiceAccountType = "serviceaccount" // also, memdb schema name
 
@@ -74,9 +75,7 @@ func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
 }
 
 func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccount, error) {
-	
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantUUID)
-	
 	if err != nil {
 		return nil, err
 	}

@@ -602,7 +602,7 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).List()
+		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList()
 		if err != nil {
 			return responseErr(req, err)
 		}

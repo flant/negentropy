@@ -1,16 +1,17 @@
 // DO NOT EDIT
-// This file was generated automatically with 
+// This file was generated automatically with
 // 		go run gen_repository.go -type FeatureFlag
-// 
+//
 
 package model
 
 import (
 	"encoding/json"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type FeatureFlagName = string 
+type FeatureFlagName = string
 
 const FeatureFlagType = "featureflag" // also, memdb schema name
 
@@ -74,9 +75,7 @@ func (r *FeatureFlagRepository) Delete(id FeatureFlagName) error {
 }
 
 func (r *FeatureFlagRepository) List() ([]*FeatureFlag, error) {
-	
 	iter, err := r.db.Get(FeatureFlagType, PK)
-	
 	if err != nil {
 		return nil, err
 	}

@@ -1,16 +1,17 @@
 // DO NOT EDIT
-// This file was generated automatically with 
+// This file was generated automatically with
 // 		go run gen_repository.go -type RoleBindingApproval-parentType RoleBinding
-// 
+//
 
 package model
 
 import (
 	"encoding/json"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type RoleBindingApprovalUUID = string 
+type RoleBindingApprovalUUID = string
 
 const RoleBindingApprovalType = "rolebindingapproval" // also, memdb schema name
 
@@ -74,9 +75,7 @@ func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error
 }
 
 func (r *RoleBindingApprovalRepository) List(rolebindingUUID RoleBindingUUID) ([]*RoleBindingApproval, error) {
-	
 	iter, err := r.db.Get(RoleBindingApprovalType, RoleBindingForeignPK, rolebindingUUID)
-	
 	if err != nil {
 		return nil, err
 	}

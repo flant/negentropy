@@ -1,16 +1,17 @@
 // DO NOT EDIT
-// This file was generated automatically with 
+// This file was generated automatically with
 // 		go run gen_repository.go -type Role
-// 
+//
 
 package model
 
 import (
 	"encoding/json"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type RoleName = string 
+type RoleName = string
 
 const RoleType = "role" // also, memdb schema name
 
@@ -74,9 +75,7 @@ func (r *RoleRepository) Delete(id RoleName) error {
 }
 
 func (r *RoleRepository) List() ([]*Role, error) {
-	
 	iter, err := r.db.Get(RoleType, PK)
-	
 	if err != nil {
 		return nil, err
 	}

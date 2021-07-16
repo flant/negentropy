@@ -111,7 +111,7 @@ func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []stri
 
 // CreateWithJWT saves a Multipass object and generate jwt.
 func (r *MultipassService) CreateWithJWT(
-	ctx context.Context, storage logical.Storage, // jwt
+	ctx context.Context, storage logical.Storage,                         // jwt
 	ttl, maxTTL time.Duration, cidrs, roles []string, description string, // multipass
 ) (string, *model.Multipass, error) {
 	mp, err := r.Create(ttl, maxTTL, cidrs, roles, description)
@@ -161,7 +161,8 @@ func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, er
 	if mp.OwnerType != r.ownerType {
 		return nil, model.ErrNotFound
 	}
-	return mp, nil
+	safeMp := model.OmitSensitive(mp).(model.Multipass)
+	return &safeMp, nil
 }
 
 // TODO add listing by origin
@@ -171,6 +172,21 @@ func (r *MultipassService) List() ([]*model.Multipass, error) {
 		return nil, err
 	}
 	return r.repo.List(r.ownerUUID)
+}
+
+func (r *MultipassService) PublicList() ([]*model.Multipass, error) {
+	mps, err := r.List()
+	if err != nil {
+		return nil, err
+	}
+
+	safeMps := make([]*model.Multipass, len(mps))
+	for i := range mps {
+		safe := model.OmitSensitive(mps[i]).(model.Multipass)
+		safeMps[i] = &safe
+	}
+
+	return safeMps, nil
 }
 
 func (r *MultipassService) validateContext() error {

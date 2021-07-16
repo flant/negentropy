@@ -588,7 +588,9 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		multipass, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Create(ttl, maxTTL, cidrs, roles, description)
+		jwtString, multipass, err := usecase.
+			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).
+			CreateWithJWT(ctx, req.Storage, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -597,7 +599,10 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"multipass": multipass}}
+		resp := &logical.Response{Data: map[string]interface{}{
+			"multipass": multipass,
+			"token":     jwtString,
+		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
@@ -651,7 +656,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).List()
+		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).PublicList()
 		if err != nil {
 			return responseErr(req, err)
 		}

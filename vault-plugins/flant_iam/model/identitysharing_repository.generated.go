@@ -1,16 +1,17 @@
 // DO NOT EDIT
-// This file was generated automatically with 
+// This file was generated automatically with
 // 		go run gen_repository.go -type IdentitySharing-parentType Tenant
-// 
+//
 
 package model
 
 import (
 	"encoding/json"
+
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type IdentitySharingUUID = string 
+type IdentitySharingUUID = string
 
 const IdentitySharingType = "identitysharing" // also, memdb schema name
 
@@ -74,9 +75,7 @@ func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentitySharing, error) {
-	
 	iter, err := r.db.Get(IdentitySharingType, TenantForeignPK, tenantUUID)
-	
 	if err != nil {
 		return nil, err
 	}
