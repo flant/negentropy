@@ -87,7 +87,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				return err
 			}
 
-			var projectIDSet = make(map[string]struct{}, len(projects))
+			projectIDSet := make(map[string]struct{}, len(projects))
 			for _, project := range projects {
 				projectIDSet[project.Identifier] = struct{}{}
 			}

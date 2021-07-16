@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/vault/sdk/logical"
+
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/hashicorp/vault/sdk/logical"
 )
 
 type ServerService struct {
@@ -49,7 +50,7 @@ func (s *ServerService) Create(ctx context.Context, vaultStorage logical.Storage
 		projectBoundRoles []model.BoundRole
 	)
 
-	var server = &model2.Server{
+	server := &model2.Server{
 		UUID:        uuid.New(),
 		TenantUUID:  tenantUUID,
 		ProjectUUID: projectUUID,

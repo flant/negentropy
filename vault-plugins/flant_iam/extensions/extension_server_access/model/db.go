@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 func GetSchema() (*memdb.DBSchema, error) {
