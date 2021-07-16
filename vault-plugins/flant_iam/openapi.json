@@ -1504,9 +1504,9 @@
                   }
                 },
                 "required": [
+                  "members",
                   "uuid",
-                  "identifier",
-                  "members"
+                  "identifier"
                 ]
               }
             }
@@ -1583,9 +1583,9 @@
                   }
                 },
                 "required": [
+                  "resource_version",
                   "identifier",
-                  "members",
-                  "resource_version"
+                  "members"
                 ]
               }
             }
@@ -2252,7 +2252,7 @@
                 "properties": {
                   "identifier": {
                     "type": "string",
-                    "description": "Rolebinding identifier",
+                    "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "members": {
@@ -2285,12 +2285,12 @@
                   }
                 },
                 "required": [
-                  "ttl",
-                  "require_mfa",
-                  "uuid",
                   "identifier",
                   "members",
-                  "roles"
+                  "roles",
+                  "ttl",
+                  "require_mfa",
+                  "uuid"
                 ]
               }
             }
@@ -2498,11 +2498,11 @@
                   }
                 },
                 "required": [
+                  "ttl",
                   "require_mfa",
                   "resource_version",
                   "members",
-                  "roles",
-                  "ttl"
+                  "roles"
                 ]
               }
             }
@@ -2918,11 +2918,11 @@
                   }
                 },
                 "required": [
+                  "token_ttl",
                   "token_max_ttl",
                   "resource_version",
                   "identifier",
-                  "allowed_cidrs",
-                  "token_ttl"
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -3055,15 +3055,15 @@
                   }
                 },
                 "required": [
-                  "email",
-                  "mobile_phone",
-                  "additional_emails",
-                  "additional_phones",
-                  "uuid",
-                  "identifier",
-                  "last_name",
+                  "first_name",
                   "display_name",
-                  "first_name"
+                  "email",
+                  "additional_phones",
+                  "identifier",
+                  "mobile_phone",
+                  "uuid",
+                  "last_name",
+                  "additional_emails"
                 ]
               }
             }
@@ -3272,15 +3272,15 @@
                   }
                 },
                 "required": [
-                  "first_name",
+                  "additional_phones",
+                  "last_name",
                   "display_name",
-                  "resource_version",
                   "mobile_phone",
                   "additional_emails",
-                  "additional_phones",
+                  "email",
+                  "resource_version",
                   "identifier",
-                  "last_name",
-                  "email"
+                  "first_name"
                 ]
               }
             }
