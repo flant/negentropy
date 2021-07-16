@@ -149,6 +149,6 @@ func (s *PathConfigureCallbacksSuite) Test_Delete_HasConfig() {
 	assert.Nil(cfg)
 }
 
-func TestGitCredentials(t *testing.T) {
+func TestPathConfigure(t *testing.T) {
 	suite.Run(t, new(PathConfigureCallbacksSuite))
 }
