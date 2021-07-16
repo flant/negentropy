@@ -32,6 +32,8 @@ function connect_plugins() {
 }
 
 function initalize() {
+    docker-exec "vault write flant_iam/configure_extension/server_access roles_for_servers=servers role_for_ssh_access=ssh name=ssh delete_expired_password_seeds_after=1000000 expire_password_seed_after_reveal_in=1000000 last_allocated_uid=100000 --format=json"
+
     docker-exec "vault write -force flant_iam/jwt/enable" >/dev/null 2>&1
     docker-exec "vault write -force auth/flant_iam_auth/jwt/enable" >/dev/null 2>&1
 
@@ -70,6 +72,9 @@ EOF
 function fill_test_data() {
   tenantName="1tv"
   projectName="main"
+
+
+
   # create tenant
   tenantResp=$(docker-exec "vault write flant_iam/tenant identifier=$tenantName --format=json")
   tenantID=$(jq -r '.data.tenant.uuid' <<< "$tenantResp")
@@ -83,16 +88,29 @@ function fill_test_data() {
   userResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/user identifier=vasya first_name=Vasily last_name=Petrov email=vasya@mail.com --format=json")
   userID=$(jq -r '.data.user.uuid' <<< "$userResp")
 
+  # create group
+  cat <<EOF | docker-compose exec -T vault sh -
+  echo '{ "identifier": "servers/$tenantName", "members": [{"type": "user", "uuid": "$userID"}] }' > /tmp/sdata.json
+EOF
+  groupResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/group @/tmp/sdata.json --format=json")
+
 
   # create role
   roleResp=$(docker-exec "vault write flant_iam/role name=ssh scope=project --format=json")
 
   # create role binding
   cat <<EOF | docker-compose exec -T vault sh -
-  echo '{"subjects":[{"type": "user", "id": "$userID"}], "roles": [], "ttl": 100000 }' > /tmp/data.json
+  echo '{"identifier": "test", "subjects":[{"type": "user", "id": "$userID"}], "roles": [], "ttl": 100000 }' > /tmp/rbdata.json
 EOF
-  roleBindingResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/role_binding @/tmp/data.json --format=json")
+  roleBindingResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/role_binding @/tmp/rbdata.json --format=json")
   roleBindingID=$(jq -r '.data.role_binding.uuid' <<< "$roleBindingResp")
+
+
+  # create servers
+  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-client --format=json"
+  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-server --format=json"
+
+#  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/server/$serverClientID/connection_info --format=json"
 
 
   # create multipass

@@ -69,6 +69,10 @@ func (b *serverBackend) paths() []*framework.Path {
 					Callback: b.handleRegister(),
 					Summary:  "Register server",
 				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleRegister(),
+					Summary:  "Register server",
+				},
 			},
 		},
 		{

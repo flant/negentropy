@@ -54,6 +54,10 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
+			// TODO: fix me
+			if sac == nil {
+				return nil
+			}
 			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
 
 			user := obj.(*model.User)
@@ -109,6 +113,10 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				groupToChange.Identifier = fmt.Sprintf("servers/%s", project.Identifier)
 
 				break
+			}
+
+			if groupToChange == nil {
+				return nil
 			}
 
 			return groupRepo.Update(groupToChange)

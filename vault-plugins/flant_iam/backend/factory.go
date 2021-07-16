@@ -141,6 +141,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		},
 
 		extension_server_access.ServerPaths(b, storage),
+		extension_server_access.ServerConfigurePaths(b, storage),
 	)
 
 	return b, nil

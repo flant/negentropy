@@ -39,7 +39,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"identifier": {
-					Type:        framework.TypeNameString,
+					Type:        framework.TypeString,
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
@@ -75,7 +75,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"identifier": {
-					Type:        framework.TypeNameString,
+					Type:        framework.TypeString,
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
@@ -134,7 +134,7 @@ func (b groupBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"identifier": {
-					Type:        framework.TypeNameString,
+					Type:        framework.TypeString,
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
