@@ -736,6 +736,132 @@
         }
       }
     },
+    "/flant_iam/jwks": {
+      "description": "Endpoint to expose public keys to check authority of issued tokens.",
+      "get": {
+        "summary": "Endpoint to expose public keys to check authority of issued tokens.",
+        "operationId": "getFlant_iamJwks",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/jwt/configure": {
+      "description": "Configure JWT options.",
+      "get": {
+        "summary": "Read JWT issuing status and configuration.",
+        "operationId": "getFlant_iamJwtConfigure",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Configure JWT options.",
+        "operationId": "postFlant_iamJwtConfigure",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issuer": {
+                    "type": "string",
+                    "description": "Issuer URL to be used in the iss claim of the token. The issuer is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components, but no query or fragment components.",
+                    "default": "https://auth.negentropy.flant.com/"
+                  },
+                  "own_audience": {
+                    "type": "string",
+                    "description": "Value of the audience claim.",
+                    "default": "limbo"
+                  },
+                  "preliminary_announce_period": {
+                    "type": "integer",
+                    "description": "Publish the key in advance after specified amount of time.",
+                    "format": "seconds",
+                    "default": "1d"
+                  },
+                  "rotation_period": {
+                    "type": "integer",
+                    "description": "Force rotate public/private key pair.",
+                    "format": "seconds",
+                    "default": "1d"
+                  }
+                },
+                "required": [
+                  "rotation_period",
+                  "preliminary_announce_period",
+                  "issuer",
+                  "own_audience"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/jwt/disable": {
+      "description": "Disable JWT issuing.",
+      "post": {
+        "summary": "Disable JWT issuing.",
+        "operationId": "postFlant_iamJwtDisable",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/jwt/enable": {
+      "description": "Enable JWT issuing.",
+      "post": {
+        "summary": "Enable JWT issuing.",
+        "operationId": "postFlant_iamJwtEnable",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/jwt/rotate_key": {
+      "description": "Force key rotation. Calling this endpoint will rotate keys immediately.",
+      "post": {
+        "summary": "Force key rotation. Calling this endpoint will rotate keys immediately.",
+        "operationId": "postFlant_iamJwtRotate_key",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/kafka/configure": {
       "x-vault-createSupported": true,
       "post": {
@@ -1020,9 +1146,9 @@
                   }
                 },
                 "required": [
-                  "require_one_of_feature_flags",
                   "options_schema",
-                  "description"
+                  "description",
+                  "require_one_of_feature_flags"
                 ]
               }
             }
@@ -1403,9 +1529,9 @@
                   }
                 },
                 "required": [
-                  "resource_version",
                   "identifier",
-                  "subjects"
+                  "subjects",
+                  "resource_version"
                 ]
               }
             }
@@ -1660,8 +1786,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -1778,11 +1904,11 @@
                   }
                 },
                 "required": [
+                  "require_mfa",
                   "uuid",
                   "subjects",
                   "roles",
-                  "ttl",
-                  "require_mfa"
+                  "ttl"
                 ]
               }
             }
@@ -2110,11 +2236,11 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "uuid"
+                  "uuid",
+                  "identifier",
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -2547,15 +2673,15 @@
                   }
                 },
                 "required": [
-                  "uuid",
-                  "identifier",
                   "first_name",
-                  "additional_emails",
-                  "additional_phones",
-                  "mobile_phone",
-                  "display_name",
                   "last_name",
-                  "email"
+                  "additional_emails",
+                  "identifier",
+                  "display_name",
+                  "mobile_phone",
+                  "additional_phones",
+                  "email",
+                  "uuid"
                 ]
               }
             }
@@ -2764,15 +2890,15 @@
                   }
                 },
                 "required": [
-                  "first_name",
-                  "display_name",
-                  "email",
-                  "resource_version",
-                  "last_name",
+                  "identifier",
                   "mobile_phone",
                   "additional_phones",
-                  "identifier",
-                  "additional_emails"
+                  "resource_version",
+                  "additional_emails",
+                  "display_name",
+                  "first_name",
+                  "email",
+                  "last_name"
                 ]
               }
             }
@@ -2845,8 +2971,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "resource_version"
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
