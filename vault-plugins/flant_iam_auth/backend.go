@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	backend2 "github.com/flant/negentropy/vault-plugins/shared/jwt/backend"
 	"sync"
 
 	"github.com/hashicorp/cap/jwt"
@@ -55,7 +56,7 @@ type flantIamAuthBackend struct {
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
 
-	tokenController       *njwt.TokenController
+	tokenController       *backend2.Backend
 	accessVaultController *client.VaultClientController
 
 	storage *sharedio.MemoryStore
@@ -71,7 +72,7 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 
 	iamAuthLogger := conf.Logger.Named(loggerModule)
 
-	b.tokenController = njwt.NewTokenController()
+	b.tokenController = backend2.NewTokenController()
 	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
 		return iamAuthLogger.Named("ApiClient")
 	})
@@ -161,9 +162,9 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 			[]*framework.Path{
 				njwt.PathEnable(b.tokenController),
 				njwt.PathDisable(b.tokenController),
-				njwt.PathConfigure(b.tokenController),
-				njwt.PathJWKS(b.tokenController),
-				njwt.PathRotateKey(b.tokenController),
+				backend2.PathConfigure(b.tokenController),
+				backend2.PathJWKS(b.tokenController),
+				backend2.PathRotateKey(b.tokenController),
 			},
 			[]*framework.Path{
 				client.PathConfigure(b.accessVaultController),

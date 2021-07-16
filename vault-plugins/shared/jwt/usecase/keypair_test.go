@@ -1,53 +1,16 @@
-package jwt
+package usecase
 
 import (
 	"context"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
 	"testing"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2"
 )
-
-func getBackend(t *testing.T) (*jwtAuthBackend, logical.Storage) {
-	defaultLeaseTTLVal := time.Hour * 12
-	maxLeaseTTLVal := time.Hour * 24
-
-	config := &logical.BackendConfig{
-		Logger: logging.NewVaultLogger(log.Trace),
-
-		System: &logical.StaticSystemView{
-			DefaultLeaseTTLVal: defaultLeaseTTLVal,
-			MaxLeaseTTLVal:     maxLeaseTTLVal,
-		},
-		StorageView: &logical.InmemStorage{},
-	}
-	b, err := Factory(context.Background(), config)
-	require.NoError(t, err)
-
-	jwtBackend := b.(*jwtAuthBackend)
-	return jwtBackend, config.StorageView
-}
-
-func enableJWT(t *testing.T, b logical.Backend, storage logical.Storage) {
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "jwt/enable",
-		Storage:   storage,
-		Data:      nil,
-	}
-	resp, err := b.HandleRequest(context.Background(), req)
-	requireValidResponse(t, resp, err)
-}
-
-func requireValidResponse(t *testing.T, resp *logical.Response, err error) {
-	require.NoError(t, err, "error on request")
-	require.NotNil(t, resp, "empty response")
-	require.False(t, resp.IsError(), "error response")
-}
 
 func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jose.JSONWebKey {
 	req := &logical.Request{
@@ -57,7 +20,7 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	requireValidResponse(t, resp, err)
+	test.RequireValidResponse(t, resp, err)
 
 	keys := resp.Data["keys"].([]jose.JSONWebKey)
 	require.NoError(t, err, "error on keys unmarshall")
@@ -66,22 +29,29 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 }
 
 func TestJWKS(t *testing.T) {
-	b, storage := getBackend(t)
-	enableJWT(t, b, storage)
+	b, storage, memstore := test.GetBackend(t, time.Now)
+	test.EnableJWT(t, b, storage)
 
 	// #1 First run
 	firstRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, 1, len(firstRunKeys))
 
+	tnx := memstore.Txn(true)
+	defer tnx.Abort()
+	stateRepo := model.NewStateRepo(tnx, model.NewJWKSRepo(tnx, "id"))
+	s := NewKeyPairService(stateRepo, model.DefaultConfig(), time.Now)
+
 	// #2 Second run (do not rotate first key
-	err := generateOrRotateKeys(context.TODO(), storage)
+
+	err := s.GenerateOrRotateKeys()
 	require.NoError(t, err)
+
 	secondRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, 2, len(secondRunKeys))
 	require.Equal(t, secondRunKeys[0], firstRunKeys[0])
 
 	// #3 Third run (delete first keys, add new key to the end)
-	err = generateOrRotateKeys(context.TODO(), storage)
+	err = s.GenerateOrRotateKeys()
 	require.NoError(t, err)
 	thisRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, 2, len(thisRunKeys))
@@ -95,42 +65,49 @@ func TestJWKS(t *testing.T) {
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	requireValidResponse(t, resp, err)
+	test.RequireValidResponse(t, resp, err)
 	keysAfterRotation := runJWKSTest(t, b, storage)
 	require.Equal(t, len(keysAfterRotation), 1)
 }
 
 func TestJWKSRotation(t *testing.T) {
-	b, storage := getBackend(t)
-	enableJWT(t, b, storage)
+	b, storage, memstore := test.GetBackend(t, time.Now)
+	test.EnableJWT(t, b, storage)
 
 	// #1 First run
 	firstRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, len(firstRunKeys), 1)
 
+	tnx := memstore.Txn(true)
+	defer tnx.Abort()
+	stateRepo := model.NewStateRepo(tnx, model.NewJWKSRepo(tnx, "id"))
+	s := NewKeyPairService(stateRepo, model.DefaultConfig(), time.Now)
+
 	// #2 Nothing to do
-	err := b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	err := s.RunPeriodicalRotateKeys()
 	require.NoError(t, err)
 
 	secondRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, firstRunKeys, secondRunKeys)
 
-	// #3 Publish time
-	b.tokenController.now = func() time.Time {
+	s = NewKeyPairService(stateRepo, model.DefaultConfig(), func() time.Time {
 		return time.Now().Add(time.Hour * 330)
-	}
-	err = b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	})
+
+	err = s.RunPeriodicalRotateKeys()
 	require.NoError(t, err)
 
 	thirdRunKeys := runJWKSTest(t, b, storage)
 	require.Equal(t, 2, len(thirdRunKeys))
 	require.Equal(t, thirdRunKeys[0], firstRunKeys[0])
 
-	// #4 Rotation time
-	b.tokenController.now = func() time.Time {
+
+	s = NewKeyPairService(stateRepo, model.DefaultConfig(), func() time.Time {
 		return time.Now().Add(time.Hour * 1000)
-	}
-	err = b.tokenController.rotateKeys(context.TODO(), &logical.Request{Storage: storage})
+	})
+
+	// #4 Rotation time
+	err = s.RunPeriodicalRotateKeys()
 	require.NoError(t, err)
 
 	forthRunKeys := runJWKSTest(t, b, storage)

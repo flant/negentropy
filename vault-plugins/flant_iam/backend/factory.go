@@ -119,7 +119,13 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	b.InitializeFunc = initializer(storage)
 
-	tokenController := sharedjwt.NewTokenController()
+	// todo add JWKS queue
+
+	tokenController := sharedjwt.NewTokenController(
+		storage,
+		mb.GetEncryptionPublicKeyStrict,
+		b.Logger().Named("Iam.JWT.Controller"),
+	)
 
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
@@ -137,16 +143,11 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		replicasPaths(b, storage),
 		kafkaPaths(b, storage),
 		identitySharingPaths(b, storage),
-		[]*framework.Path{
-			sharedjwt.PathEnable(tokenController),
-			sharedjwt.PathDisable(tokenController),
-			sharedjwt.PathConfigure(tokenController),
-			sharedjwt.PathJWKS(tokenController),
-			sharedjwt.PathRotateKey(tokenController),
-		},
 
 		extension_server_access.ServerPaths(b, storage),
 		extension_server_access.ServerConfigurePaths(b, storage),
+
+		tokenController.ApiPaths(),
 	)
 
 	return b, nil

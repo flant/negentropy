@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"net/http"
 	"time"
 
@@ -14,16 +15,15 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 type serviceAccountBackend struct {
 	logical.Backend
 	storage         *io.MemoryStore
-	tokenController *jwt.TokenController
+	tokenController *jwt.Controller
 }
 
-func serviceAccountPaths(b logical.Backend, tokenController *jwt.TokenController, storage *io.MemoryStore) []*framework.Path {
+func serviceAccountPaths(b logical.Backend, tokenController *jwt.Controller, storage *io.MemoryStore) []*framework.Path {
 	bb := &serviceAccountBackend{
 		Backend:         b,
 		storage:         storage,
@@ -569,8 +569,11 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
 		// Check that the feature is available
-		if err := isJwtEnabled(ctx, req, b.tokenController); err != nil {
+		if err := isJwtEnabled(tx, b.tokenController); err != nil {
 			return responseErr(req, err)
 		}
 
@@ -584,9 +587,6 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			roles       = data.Get("allowed_roles").([]string)
 			description = data.Get("description").(string)
 		)
-
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
 
 		jwtString, multipass, err := usecase.
 			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).

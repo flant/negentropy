@@ -1,20 +1,16 @@
-package jwt
+package backend
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/mitchellh/mapstructure"
 )
 
-type Config struct {
-	Issuer      string
-	OwnAudience string
-}
-
-func PathConfigure(b *TokenController) *framework.Path {
+func PathConfigure(b *Backend) *framework.Path {
 	return &framework.Path{
 		Pattern: `jwt/configure`,
 
@@ -27,7 +23,7 @@ host, and optionally, port number and path components, but no query or fragment 
 				Default:  "https://auth.negentropy.flant.com/",
 				Required: true,
 			},
-			"own_audience": {
+			"multipass_audience": {
 				Type:        framework.TypeString,
 				Description: "Value of the audience claim.",
 				Default:     "limbo",
@@ -62,51 +58,33 @@ host, and optionally, port number and path components, but no query or fragment 
 	}
 }
 
-func getConfig(ctx context.Context, storage logical.Storage) (map[string]interface{}, error) {
-	entry, err := storage.Get(ctx, "jwt/configuration")
+func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	tnx := b.memStorage.Txn(false)
+	defer tnx.Abort()
+
+	conf, err := b.deps.ConfigRepo(tnx).Get()
 	if err != nil {
 		return nil, err
 	}
 
-	data := make(map[string]interface{})
-	if entry != nil {
-		if err := json.Unmarshal(entry.Value, &data); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("possible bug: no configuration found in storage")
-	}
-
-	return data, nil
-}
-
-func (b *TokenController) GetConfig(ctx context.Context, storage logical.Storage) (*Config, error) {
-	// todo return already object
-	conf, err := getConfig(ctx, storage)
+	s, err := json.Marshal(conf)
 	if err != nil {
 		return nil, err
 	}
 
-	if conf == nil {
-		return nil, nil
-	}
-
-	return &Config{
-		Issuer:      conf["issuer"].(string),
-		OwnAudience: conf["own_audience"].(string),
-	}, nil
-}
-
-func (b *TokenController) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	data, err := getConfig(ctx, req.Storage)
+	d := map[string]interface{}{}
+	err = json.Unmarshal(s, &d)
 	if err != nil {
 		return nil, err
 	}
 
-	return &logical.Response{Data: data}, nil
+	return &logical.Response{Data: d}, nil
 }
 
-func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	tnx := b.memStorage.Txn(true)
+	defer tnx.Abort()
+
 	fields.Raw = req.Data
 	err := fields.Validate()
 	if err != nil {
@@ -117,12 +95,14 @@ func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *lo
 		return nil, fmt.Errorf("cannot update configuration because values were not provided")
 	}
 
-	entry, err := logical.StorageEntryJSON("jwt/configuration", fields.Raw)
+	c := model.Config{}
+	err = mapstructure.Decode(fields.Raw, &c)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := req.Storage.Put(ctx, entry); err != nil {
+	err = b.deps.ConfigRepo(tnx).Put(&c)
+	if err != nil {
 		return nil, err
 	}
 

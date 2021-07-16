@@ -1,7 +1,9 @@
-package jwt
+package usecase
 
 import (
 	"context"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
 	"testing"
 	"time"
 
@@ -23,9 +25,9 @@ func verifyAndGetTokensTest(t *testing.T, keys []jose.JSONWebKey, token string) 
 	return dest
 }
 
-func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf map[string]interface{}, o *TokenOptions) {
+func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *model.Config, o *TokenOptions) {
 	require.Contains(t, data, "iss")
-	require.Equal(t, data["iss"], conf["issuer"].(string))
+	require.Equal(t, data["iss"], conf.Issuer)
 
 	now := o.now().Unix()
 	ttl := int64(o.TTL.Seconds())
@@ -38,8 +40,8 @@ func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf m
 }
 
 func Test_NewToken(t *testing.T) {
-	b, storage := getBackend(t)
-	enableJWT(t, b, storage)
+	b, storage, memstore := test.GetBackend(t, time.Now)
+	test.EnableJWT(t, b, storage)
 	req := &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "jwks",
@@ -47,7 +49,7 @@ func Test_NewToken(t *testing.T) {
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	requireValidResponse(t, resp, err)
+	test.RequireValidResponse(t, resp, err)
 
 	keys := resp.Data["keys"].([]jose.JSONWebKey)
 
@@ -62,7 +64,10 @@ func Test_NewToken(t *testing.T) {
 			},
 		}
 
-		conf, err := getConfig(context.TODO(), storage)
+		tnx := memstore.Txn(false)
+		defer tnx.Abort()
+		issuer, err := b.TokenController.Issuer(tnx)
+		conf, err := b.TokenController.GetConfig(tnx)
 		require.NoError(t, err)
 
 		t.Run("signs payload successfully", func(t *testing.T) {
@@ -73,7 +78,7 @@ func Test_NewToken(t *testing.T) {
 					"b": float64(1),
 				},
 			}
-			token, err := NewJwtToken(context.TODO(), storage, payload, tokenOpt)
+			token, err := issuer.Token(payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)
@@ -97,7 +102,7 @@ func Test_NewToken(t *testing.T) {
 				"iat": 20,
 				"exp": 100500,
 			}
-			token, err := NewJwtToken(context.TODO(), storage, payload, tokenOpt)
+			token, err := issuer.Token(payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)

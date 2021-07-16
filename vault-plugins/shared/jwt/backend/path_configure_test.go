@@ -1,4 +1,4 @@
-package jwt
+package backend
 
 import (
 	"context"
@@ -12,11 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ed25519"
 	"gopkg.in/square/go-jose.v2"
+
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 func TestJWTConfigure(t *testing.T) {
-	b, storage := getBackend(t)
-	enableJWT(t, b, storage)
+	now := func() time.Time { return time.Unix(1619592212, 0) }
+	b, storage, memStorage := test.GetBackend(t, now)
+	test.EnableJWT(t, b, storage)
 
 	const jwtConfigurePath = "jwt/configure"
 
@@ -30,7 +34,7 @@ func TestJWTConfigure(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
-		requireValidResponse(t, resp, err)
+		test.RequireValidResponse(t, resp, err)
 
 		require.Equal(t, map[string]interface{}{
 			"issuer":                      "https://auth.negentropy.flant.com/",
@@ -55,7 +59,7 @@ func TestJWTConfigure(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
-		requireValidResponse(t, resp, err)
+		test.RequireValidResponse(t, resp, err)
 	}
 
 	// #3 Check again
@@ -68,7 +72,7 @@ func TestJWTConfigure(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
-		requireValidResponse(t, resp, err)
+		test.RequireValidResponse(t, resp, err)
 
 		require.Equal(t, map[string]interface{}{
 			"issuer":                      "https://test",
@@ -80,16 +84,21 @@ func TestJWTConfigure(t *testing.T) {
 
 	// #4 Generate and verify token
 	{
-		options := PrimaryTokenOptions{
+		options := usecase.PrimaryTokenOptions{
 			TTL:  10 * time.Minute,
 			UUID: "test",
-			JTI: TokenJTI{
+			JTI: usecase.TokenJTI {
 				Generation: 0,
 				SecretSalt: "test",
 			},
 		}
-		options.now = func() time.Time { return time.Unix(1619592212, 0) }
-		token, err := NewPrimaryToken(context.TODO(), storage, &options)
+
+
+		tnx := memStorage.Txn(false)
+		defer tnx.Abort()
+		issuer, err := b.TokenController.Issuer(tnx)
+		require.NoError(t, err)
+		token, err := issuer.PrimaryToken(&options)
 		require.NoError(t, err)
 
 		req := &logical.Request{
@@ -99,7 +108,7 @@ func TestJWTConfigure(t *testing.T) {
 			Data:      nil,
 		}
 		resp, err := b.HandleRequest(context.Background(), req)
-		requireValidResponse(t, resp, err)
+		test.RequireValidResponse(t, resp, err)
 
 		keys := resp.Data["keys"].([]jose.JSONWebKey)
 		require.NoError(t, err, "error on keys unmarshall")
@@ -115,12 +124,12 @@ func TestJWTConfigure(t *testing.T) {
 		decodedPayload, err := base64.StdEncoding.DecodeString(payload + "=")
 		require.NoError(t, err)
 
-		var issuedToken PrimaryTokenClaims
+		var issuedToken usecase.PrimaryTokenClaims
 		err = json.Unmarshal(decodedPayload, &issuedToken)
 		require.NoError(t, err)
 
-		require.Equal(t, PrimaryTokenClaims{
-			TokenClaims: TokenClaims{
+		require.Equal(t, usecase.PrimaryTokenClaims{
+			TokenClaims: usecase.TokenClaims{
 				IssuedAt: 1619592212,
 				Expiry:   1619592812,
 				Issuer:   "https://test",

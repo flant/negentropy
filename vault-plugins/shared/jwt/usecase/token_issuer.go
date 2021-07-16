@@ -1,14 +1,14 @@
-package jwt
+package usecase
 
 import (
-	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2"
+
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 type TokenClaims struct {
@@ -30,7 +30,7 @@ type TokenJTI struct {
 }
 
 func (j TokenJTI) Hash() string {
-	return shaEncode(fmt.Sprintf("%d %s", j.Generation, j.SecretSalt))
+	return utils.ShaEncode(fmt.Sprintf("%d %s", j.Generation, j.SecretSalt))
 }
 
 type PrimaryTokenOptions struct {
@@ -38,14 +38,6 @@ type PrimaryTokenOptions struct {
 	UUID string
 	JTI  TokenJTI
 
-	now func() time.Time
-}
-
-func (o *PrimaryTokenOptions) getCurrentTime() time.Time {
-	if o.now == nil {
-		o.now = time.Now
-	}
-	return o.now()
 }
 
 type TokenOptions struct {
@@ -53,89 +45,40 @@ type TokenOptions struct {
 	now func() time.Time
 }
 
-func (o *TokenOptions) getCurrentTime() time.Time {
-	if o.now == nil {
-		o.now = time.Now
-	}
-	return o.now()
+type TokenIssuer struct {
+	config     *model.Config
+	privateKey *jose.JSONWebKey
+	now        func() time.Time
 }
 
-// NewPrimaryToken is tokens issuing function
-func NewPrimaryToken(ctx context.Context, storage logical.Storage, options *PrimaryTokenOptions) (string, error) {
-	data, err := getConfig(ctx, storage)
-	if err != nil {
-		return "", err
+func NewTokenIssuer(config *model.Config, privateKey *jose.JSONWebKey, now func() time.Time) *TokenIssuer{
+	return &TokenIssuer{
+		config:     config,
+		privateKey: privateKey,
+		now:        now,
 	}
+}
 
-	issuer := data["issuer"].(string)
-	audience := data["own_audience"].(string)
-
-	entryPrivs, err := storage.Get(ctx, "jwt/private_keys")
-	if err != nil {
-		return "", err
-	}
-
-	keysSet := jose.JSONWebKeySet{}
-	if len(entryPrivs.Value) > 0 {
-		if err := json.Unmarshal(entryPrivs.Value, &keysSet); err != nil {
-			return "", err
-		}
-	} else {
-		return "", fmt.Errorf("possible bug, keys not found in the storage")
-	}
-
-	issuedAt := options.getCurrentTime()
+func (s *TokenIssuer) PrimaryToken(options *PrimaryTokenOptions) (string, error) {
+	issuedAt := s.now()
 	expiry := issuedAt.Add(options.TTL)
 
 	claims := PrimaryTokenClaims{
 		TokenClaims: TokenClaims{
-			Issuer:   issuer,
+			Issuer:   s.config.Issuer,
 			IssuedAt: issuedAt.Unix(),
 			Expiry:   expiry.Unix(),
 		},
-		Audience: audience,
+		Audience: s.config.OwnAudience,
 		Subject:  options.UUID,
 		JTI:      options.JTI.Hash(),
 	}
 
-	payload, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
-	}
-
-	firstKey := keysSet.Keys[0]
-
-	// Hardcode alg here because we only support ed25519 keys
-	token, err := signPayload(&firstKey, jose.EdDSA, payload)
-	if err != nil {
-		return "", err
-	}
-	return token, nil
+	return s.issue(claims)
 }
 
-func NewJwtToken(ctx context.Context, storage logical.Storage, payload map[string]interface{}, options *TokenOptions) (string, error) {
-	data, err := getConfig(ctx, storage)
-	if err != nil {
-		return "", err
-	}
-
-	issuer := data["issuer"].(string)
-
-	entryPrivs, err := storage.Get(ctx, "jwt/private_keys")
-	if err != nil {
-		return "", err
-	}
-
-	keysSet := jose.JSONWebKeySet{}
-	if len(entryPrivs.Value) > 0 {
-		if err := json.Unmarshal(entryPrivs.Value, &keysSet); err != nil {
-			return "", err
-		}
-	} else {
-		return "", fmt.Errorf("possible bug, keys not found in the storage")
-	}
-
-	issuedAt := options.getCurrentTime()
+func (s *TokenIssuer) Token(payload map[string]interface{}, options *TokenOptions) (string, error) {
+	issuedAt := s.now()
 	expiry := issuedAt.Add(options.TTL)
 
 	claims, err := deepCopyMap(payload)
@@ -144,7 +87,7 @@ func NewJwtToken(ctx context.Context, storage logical.Storage, payload map[strin
 	}
 
 	tokenClaims := TokenClaims{
-		Issuer:   issuer,
+		Issuer:   s.config.Issuer,
 		IssuedAt: issuedAt.Unix(),
 		Expiry:   expiry.Unix(),
 	}
@@ -154,15 +97,17 @@ func NewJwtToken(ctx context.Context, storage logical.Storage, payload map[strin
 		return "", err
 	}
 
-	payloadJson, err := json.Marshal(claims)
+	return s.issue(claims)
+}
+
+func (s *TokenIssuer) issue (payload interface{}) (string, error) {
+	payloadJson, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
 
-	firstKey := keysSet.Keys[0]
-
 	// Hardcode alg here because we only support ed25519 keys
-	token, err := signPayload(&firstKey, jose.EdDSA, payloadJson)
+	token, err := signPayload(s.privateKey, jose.EdDSA, payloadJson)
 	if err != nil {
 		return "", err
 	}
@@ -182,14 +127,6 @@ func signPayload(key *jose.JSONWebKey, alg jose.SignatureAlgorithm, payload []by
 		return "", fmt.Errorf("signing payload: %v", err)
 	}
 	return signature.CompactSerialize()
-}
-
-func shaEncode(input string) string {
-	// TODO: declare hasher once
-	hasher := sha256.New()
-
-	hasher.Write([]byte(input))
-	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 func deepCopyMap(obj map[string]interface{}) (map[string]interface{}, error) {

@@ -7,11 +7,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -30,7 +30,7 @@ func (mkd *JWKSKafkaDestination) ReplicaName() string {
 }
 
 func (mkd *JWKSKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
-	if obj.ObjType() != jwt.JWKSType {
+	if obj.ObjType() != model.JWKSType {
 		return nil, nil
 	}
 
@@ -43,7 +43,7 @@ func (mkd *JWKSKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 }
 
 func (mkd *JWKSKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
-	if obj.ObjType() != jwt.JWKSType {
+	if obj.ObjType() != model.JWKSType {
 		return nil, nil
 	}
 

@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -205,6 +206,15 @@ func (mb *MessageBroker) GetEndpoints() []string {
 
 func (mb *MessageBroker) EncryptionPublicKey() *rsa.PublicKey {
 	return mb.config.EncryptionPublicKey
+}
+
+func (mb *MessageBroker) GetEncryptionPublicKeyStrict() (string, error) {
+	k := mb.config.EncryptionPublicKey
+	if k == nil {
+		return "", fmt.Errorf("cannot getting kafka public key. may be kafka is not configure")
+	}
+
+	return utils.DecodePemKey(k), nil
 }
 
 func (mb *MessageBroker) GetKafkaProducer() *kafka.Producer {
