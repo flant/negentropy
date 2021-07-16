@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 type data struct {
@@ -27,13 +28,13 @@ func main() {
 	flag.StringVar(&d.IDsuffix, "IDsuffix", "UUID", "The suffix of the ID field, e.g Name")
 	flag.Parse()
 
-	d.Var = strings.ToLower(d.Type)
+	d.Var = ToSnakeCase(d.Type)
 	d.ID = d.Var + d.IDsuffix
 	d.IDType = d.Type + d.IDsuffix
 	d.TypeName = d.Type + "Type"
 
 	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
+		"ToLower": ToSnakeCase,
 	}
 
 	t := template.Must(template.New("repo").Funcs(funcMap).Parse(repoTemplate))
@@ -46,6 +47,27 @@ func main() {
 	defer out.Close()
 
 	t.Execute(out, d)
+}
+
+func ToSnakeCase(s string) string {
+	var res = make([]rune, 0, len(s))
+	var p = '_'
+	for i, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			res = append(res, '_')
+		} else if unicode.IsUpper(r) && i > 0 {
+			if unicode.IsLetter(p) && !unicode.IsUpper(p) || unicode.IsDigit(p) {
+				res = append(res, '_', unicode.ToLower(r))
+			} else {
+				res = append(res, unicode.ToLower(r))
+			}
+		} else {
+			res = append(res, unicode.ToLower(r))
+		}
+
+		p = r
+	}
+	return string(res)
 }
 
 var repoTemplate = `// DO NOT EDIT

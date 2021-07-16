@@ -1,19 +1,18 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type ServiceAccount-parentType Tenant
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type ServiceAccountUUID = string
+type ServiceAccountUUID = string 
 
-const ServiceAccountType = "serviceaccount" // also, memdb schema name
+const ServiceAccountType = "service_account" // also, memdb schema name
 
 func (u *ServiceAccount) ObjType() string {
 	return ServiceAccountType
@@ -31,12 +30,12 @@ func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepositor
 	return &ServiceAccountRepository{db: tx}
 }
 
-func (r *ServiceAccountRepository) save(serviceaccount *ServiceAccount) error {
-	return r.db.Insert(ServiceAccountType, serviceaccount)
+func (r *ServiceAccountRepository) save(service_account *ServiceAccount) error {
+	return r.db.Insert(ServiceAccountType, service_account)
 }
 
-func (r *ServiceAccountRepository) Create(serviceaccount *ServiceAccount) error {
-	return r.save(serviceaccount)
+func (r *ServiceAccountRepository) Create(service_account *ServiceAccount) error {
+	return r.save(service_account)
 }
 
 func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{}, error) {
@@ -58,24 +57,26 @@ func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccou
 	return raw.(*ServiceAccount), err
 }
 
-func (r *ServiceAccountRepository) Update(serviceaccount *ServiceAccount) error {
-	_, err := r.GetByID(serviceaccount.UUID)
+func (r *ServiceAccountRepository) Update(service_account *ServiceAccount) error {
+	_, err := r.GetByID(service_account.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(serviceaccount)
+	return r.save(service_account)
 }
 
 func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
-	serviceaccount, err := r.GetByID(id)
+	service_account, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountType, serviceaccount)
+	return r.db.Delete(ServiceAccountType, service_account)
 }
 
 func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccount, error) {
+	
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantUUID)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +135,11 @@ func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	serviceaccount := &ServiceAccount{}
-	err := json.Unmarshal(data, serviceaccount)
+	service_account := &ServiceAccount{}
+	err := json.Unmarshal(data, service_account)
 	if err != nil {
 		return err
 	}
 
-	return r.save(serviceaccount)
+	return r.save(service_account)
 }

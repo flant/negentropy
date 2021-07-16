@@ -1,17 +1,16 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type Tenant
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type TenantUUID = string
+type TenantUUID = string 
 
 const TenantType = "tenant" // also, memdb schema name
 
@@ -75,7 +74,9 @@ func (r *TenantRepository) Delete(id TenantUUID) error {
 }
 
 func (r *TenantRepository) List() ([]*Tenant, error) {
+	
 	iter, err := r.db.Get(TenantType, PK)
+	
 	if err != nil {
 		return nil, err
 	}

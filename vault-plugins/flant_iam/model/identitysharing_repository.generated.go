@@ -1,19 +1,18 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type IdentitySharing-parentType Tenant
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type IdentitySharingUUID = string
+type IdentitySharingUUID = string 
 
-const IdentitySharingType = "identitysharing" // also, memdb schema name
+const IdentitySharingType = "identity_sharing" // also, memdb schema name
 
 func (u *IdentitySharing) ObjType() string {
 	return IdentitySharingType
@@ -31,12 +30,12 @@ func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingReposit
 	return &IdentitySharingRepository{db: tx}
 }
 
-func (r *IdentitySharingRepository) save(identitysharing *IdentitySharing) error {
-	return r.db.Insert(IdentitySharingType, identitysharing)
+func (r *IdentitySharingRepository) save(identity_sharing *IdentitySharing) error {
+	return r.db.Insert(IdentitySharingType, identity_sharing)
 }
 
-func (r *IdentitySharingRepository) Create(identitysharing *IdentitySharing) error {
-	return r.save(identitysharing)
+func (r *IdentitySharingRepository) Create(identity_sharing *IdentitySharing) error {
+	return r.save(identity_sharing)
 }
 
 func (r *IdentitySharingRepository) GetRawByID(id IdentitySharingUUID) (interface{}, error) {
@@ -58,24 +57,26 @@ func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySh
 	return raw.(*IdentitySharing), err
 }
 
-func (r *IdentitySharingRepository) Update(identitysharing *IdentitySharing) error {
-	_, err := r.GetByID(identitysharing.UUID)
+func (r *IdentitySharingRepository) Update(identity_sharing *IdentitySharing) error {
+	_, err := r.GetByID(identity_sharing.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(identitysharing)
+	return r.save(identity_sharing)
 }
 
 func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
-	identitysharing, err := r.GetByID(id)
+	identity_sharing, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(IdentitySharingType, identitysharing)
+	return r.db.Delete(IdentitySharingType, identity_sharing)
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentitySharing, error) {
+	
 	iter, err := r.db.Get(IdentitySharingType, TenantForeignPK, tenantUUID)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +135,11 @@ func (r *IdentitySharingRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	identitysharing := &IdentitySharing{}
-	err := json.Unmarshal(data, identitysharing)
+	identity_sharing := &IdentitySharing{}
+	err := json.Unmarshal(data, identity_sharing)
 	if err != nil {
 		return err
 	}
 
-	return r.save(identitysharing)
+	return r.save(identity_sharing)
 }

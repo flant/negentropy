@@ -1,19 +1,18 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type FeatureFlag
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type FeatureFlagName = string
+type FeatureFlagName = string 
 
-const FeatureFlagType = "featureflag" // also, memdb schema name
+const FeatureFlagType = "feature_flag" // also, memdb schema name
 
 func (u *FeatureFlag) ObjType() string {
 	return FeatureFlagType
@@ -31,12 +30,12 @@ func NewFeatureFlagRepository(tx *io.MemoryStoreTxn) *FeatureFlagRepository {
 	return &FeatureFlagRepository{db: tx}
 }
 
-func (r *FeatureFlagRepository) save(featureflag *FeatureFlag) error {
-	return r.db.Insert(FeatureFlagType, featureflag)
+func (r *FeatureFlagRepository) save(feature_flag *FeatureFlag) error {
+	return r.db.Insert(FeatureFlagType, feature_flag)
 }
 
-func (r *FeatureFlagRepository) Create(featureflag *FeatureFlag) error {
-	return r.save(featureflag)
+func (r *FeatureFlagRepository) Create(feature_flag *FeatureFlag) error {
+	return r.save(feature_flag)
 }
 
 func (r *FeatureFlagRepository) GetRawByID(id FeatureFlagName) (interface{}, error) {
@@ -58,24 +57,26 @@ func (r *FeatureFlagRepository) GetByID(id FeatureFlagName) (*FeatureFlag, error
 	return raw.(*FeatureFlag), err
 }
 
-func (r *FeatureFlagRepository) Update(featureflag *FeatureFlag) error {
-	_, err := r.GetByID(featureflag.Name)
+func (r *FeatureFlagRepository) Update(feature_flag *FeatureFlag) error {
+	_, err := r.GetByID(feature_flag.Name)
 	if err != nil {
 		return err
 	}
-	return r.save(featureflag)
+	return r.save(feature_flag)
 }
 
 func (r *FeatureFlagRepository) Delete(id FeatureFlagName) error {
-	featureflag, err := r.GetByID(id)
+	feature_flag, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(FeatureFlagType, featureflag)
+	return r.db.Delete(FeatureFlagType, feature_flag)
 }
 
 func (r *FeatureFlagRepository) List() ([]*FeatureFlag, error) {
+	
 	iter, err := r.db.Get(FeatureFlagType, PK)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +135,11 @@ func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	featureflag := &FeatureFlag{}
-	err := json.Unmarshal(data, featureflag)
+	feature_flag := &FeatureFlag{}
+	err := json.Unmarshal(data, feature_flag)
 	if err != nil {
 		return err
 	}
 
-	return r.save(featureflag)
+	return r.save(feature_flag)
 }

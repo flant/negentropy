@@ -1,19 +1,18 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type ServiceAccountPassword-parentType Owner
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type ServiceAccountPasswordUUID = string
+type ServiceAccountPasswordUUID = string 
 
-const ServiceAccountPasswordType = "serviceaccountpassword" // also, memdb schema name
+const ServiceAccountPasswordType = "service_account_password" // also, memdb schema name
 
 func (u *ServiceAccountPassword) ObjType() string {
 	return ServiceAccountPasswordType
@@ -31,12 +30,12 @@ func NewServiceAccountPasswordRepository(tx *io.MemoryStoreTxn) *ServiceAccountP
 	return &ServiceAccountPasswordRepository{db: tx}
 }
 
-func (r *ServiceAccountPasswordRepository) save(serviceaccountpassword *ServiceAccountPassword) error {
-	return r.db.Insert(ServiceAccountPasswordType, serviceaccountpassword)
+func (r *ServiceAccountPasswordRepository) save(service_account_password *ServiceAccountPassword) error {
+	return r.db.Insert(ServiceAccountPasswordType, service_account_password)
 }
 
-func (r *ServiceAccountPasswordRepository) Create(serviceaccountpassword *ServiceAccountPassword) error {
-	return r.save(serviceaccountpassword)
+func (r *ServiceAccountPasswordRepository) Create(service_account_password *ServiceAccountPassword) error {
+	return r.save(service_account_password)
 }
 
 func (r *ServiceAccountPasswordRepository) GetRawByID(id ServiceAccountPasswordUUID) (interface{}, error) {
@@ -58,24 +57,26 @@ func (r *ServiceAccountPasswordRepository) GetByID(id ServiceAccountPasswordUUID
 	return raw.(*ServiceAccountPassword), err
 }
 
-func (r *ServiceAccountPasswordRepository) Update(serviceaccountpassword *ServiceAccountPassword) error {
-	_, err := r.GetByID(serviceaccountpassword.UUID)
+func (r *ServiceAccountPasswordRepository) Update(service_account_password *ServiceAccountPassword) error {
+	_, err := r.GetByID(service_account_password.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(serviceaccountpassword)
+	return r.save(service_account_password)
 }
 
 func (r *ServiceAccountPasswordRepository) Delete(id ServiceAccountPasswordUUID) error {
-	serviceaccountpassword, err := r.GetByID(id)
+	service_account_password, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountPasswordType, serviceaccountpassword)
+	return r.db.Delete(ServiceAccountPasswordType, service_account_password)
 }
 
 func (r *ServiceAccountPasswordRepository) List(ownerUUID OwnerUUID) ([]*ServiceAccountPassword, error) {
+	
 	iter, err := r.db.Get(ServiceAccountPasswordType, OwnerForeignPK, ownerUUID)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +135,11 @@ func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error
 		return r.Delete(objID)
 	}
 
-	serviceaccountpassword := &ServiceAccountPassword{}
-	err := json.Unmarshal(data, serviceaccountpassword)
+	service_account_password := &ServiceAccountPassword{}
+	err := json.Unmarshal(data, service_account_password)
 	if err != nil {
 		return err
 	}
 
-	return r.save(serviceaccountpassword)
+	return r.save(service_account_password)
 }

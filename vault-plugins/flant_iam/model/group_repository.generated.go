@@ -1,17 +1,16 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type Group-parentType Tenant
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type GroupUUID = string
+type GroupUUID = string 
 
 const GroupType = "group" // also, memdb schema name
 
@@ -75,7 +74,9 @@ func (r *GroupRepository) Delete(id GroupUUID) error {
 }
 
 func (r *GroupRepository) List(tenantUUID TenantUUID) ([]*Group, error) {
+	
 	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantUUID)
+	
 	if err != nil {
 		return nil, err
 	}

@@ -111,7 +111,7 @@ func (r *MultipassService) Create(ttl, maxTTL time.Duration, cidrs, roles []stri
 
 // CreateWithJWT saves a Multipass object and generate jwt.
 func (r *MultipassService) CreateWithJWT(
-	ctx context.Context, storage logical.Storage,                         // jwt
+	ctx context.Context, storage logical.Storage, // jwt
 	ttl, maxTTL time.Duration, cidrs, roles []string, description string, // multipass
 ) (string, *model.Multipass, error) {
 	mp, err := r.Create(ttl, maxTTL, cidrs, roles, description)

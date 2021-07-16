@@ -1,17 +1,16 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type Multipass-parentType Owner
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type MultipassUUID = string
+type MultipassUUID = string 
 
 const MultipassType = "multipass" // also, memdb schema name
 
@@ -75,7 +74,9 @@ func (r *MultipassRepository) Delete(id MultipassUUID) error {
 }
 
 func (r *MultipassRepository) List(ownerUUID OwnerUUID) ([]*Multipass, error) {
+	
 	iter, err := r.db.Get(MultipassType, OwnerForeignPK, ownerUUID)
+	
 	if err != nil {
 		return nil, err
 	}

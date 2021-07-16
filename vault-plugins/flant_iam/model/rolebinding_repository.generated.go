@@ -1,19 +1,18 @@
 // DO NOT EDIT
-// This file was generated automatically with
+// This file was generated automatically with 
 // 		go run gen_repository.go -type RoleBinding-parentType Tenant
-//
+// 
 
 package model
 
 import (
 	"encoding/json"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-type RoleBindingUUID = string
+type RoleBindingUUID = string 
 
-const RoleBindingType = "rolebinding" // also, memdb schema name
+const RoleBindingType = "role_binding" // also, memdb schema name
 
 func (u *RoleBinding) ObjType() string {
 	return RoleBindingType
@@ -31,12 +30,12 @@ func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
 	return &RoleBindingRepository{db: tx}
 }
 
-func (r *RoleBindingRepository) save(rolebinding *RoleBinding) error {
-	return r.db.Insert(RoleBindingType, rolebinding)
+func (r *RoleBindingRepository) save(role_binding *RoleBinding) error {
+	return r.db.Insert(RoleBindingType, role_binding)
 }
 
-func (r *RoleBindingRepository) Create(rolebinding *RoleBinding) error {
-	return r.save(rolebinding)
+func (r *RoleBindingRepository) Create(role_binding *RoleBinding) error {
+	return r.save(role_binding)
 }
 
 func (r *RoleBindingRepository) GetRawByID(id RoleBindingUUID) (interface{}, error) {
@@ -58,24 +57,26 @@ func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error
 	return raw.(*RoleBinding), err
 }
 
-func (r *RoleBindingRepository) Update(rolebinding *RoleBinding) error {
-	_, err := r.GetByID(rolebinding.UUID)
+func (r *RoleBindingRepository) Update(role_binding *RoleBinding) error {
+	_, err := r.GetByID(role_binding.UUID)
 	if err != nil {
 		return err
 	}
-	return r.save(rolebinding)
+	return r.save(role_binding)
 }
 
 func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
-	rolebinding, err := r.GetByID(id)
+	role_binding, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(RoleBindingType, rolebinding)
+	return r.db.Delete(RoleBindingType, role_binding)
 }
 
 func (r *RoleBindingRepository) List(tenantUUID TenantUUID) ([]*RoleBinding, error) {
+	
 	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantUUID)
+	
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +135,11 @@ func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	rolebinding := &RoleBinding{}
-	err := json.Unmarshal(data, rolebinding)
+	role_binding := &RoleBinding{}
+	err := json.Unmarshal(data, role_binding)
 	if err != nil {
 		return err
 	}
 
-	return r.save(rolebinding)
+	return r.save(role_binding)
 }
