@@ -6,9 +6,10 @@ import (
 	"log"
 	"strings"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
@@ -138,6 +139,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 			sharedjwt.PathJWKS(tokenController),
 			sharedjwt.PathRotateKey(tokenController),
 		},
+
+		extension_server_access.ServerPaths(b, storage),
 	)
 
 	return b, nil
