@@ -116,7 +116,7 @@ EOF
   mpResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/user/$userID/multipass ttl=100000 max_ttl=1000000 description=test allowed_roles=ssh --format=json")
   jq -r '.' <<< "$mpResp"
 
-  docker-exec "vault write ssh/config/ca generate_signing_key=true"
+  docker-exec "vault write ssh/config/ca generate_signing_key=true"  >/dev/null 2>&1
   docker-exec 'vault write ssh/roles/signer -<<"EOH"
 {
   "allow_user_certificates": true,
@@ -131,8 +131,7 @@ EOF
   "key_type": "ca",
   "ttl": "2m0s"
 }
-EOH"'
-
+EOH"'  >/dev/null 2>&1
 }
 
 function activate_plugin() {

@@ -3,11 +3,12 @@ package extension_server_access
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
+	log "github.com/hashicorp/go-hclog"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -75,6 +76,12 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	if !ok {
 		return posixUser{}, fmt.Errorf("UID not found in server_access extension for %s", fullIdentifier)
 	}
+
+	fuid, ok := uid.(float64)
+	if !ok {
+		return posixUser{}, fmt.Errorf("UID is not float64 in server_access extension for %s", fullIdentifier)
+	}
+
 	principalHash := sha256.New()
 	principalHash.Write([]byte(pb.serverID))
 	principalHash.Write([]byte(objectID))
@@ -97,23 +104,38 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	homeDir := "/home/" + homeDirRelPath
 
 	passwordsRaw, ok := ext.Attributes["passwords"]
+	log.L().Info("password raw", "type", reflect.TypeOf(passwordsRaw)) // TODO: remove
 	if !ok {
 		return posixUser{}, fmt.Errorf("passwords field not found in server_access extension for %q", fullIdentifier)
 	}
-	passwords, ok := passwordsRaw.([]model.UserServerPassword)
-	if !ok {
-		return posixUser{}, fmt.Errorf("passwords field type mismatch in server_access extension for %q", fullIdentifier)
-	}
-	if len(passwords) == 0 {
+
+	passwordArray := passwordsRaw.([]interface{})
+	if len(passwordArray) == 0 {
 		return posixUser{}, fmt.Errorf("no passwords found in server_access extension for %q", fullIdentifier)
 	}
-	lastPass := passwords[len(passwords)-1]
+
+	lastPassRaw := passwordArray[len(passwordArray)-1]
+
+	lastPassMap, ok := lastPassRaw.(map[string]interface{})
+	if !ok {
+		return posixUser{}, fmt.Errorf("passwords field type mismatch (expected: UserServerPassword, got: %s) in server_access extension for %q", reflect.TypeOf(lastPassRaw), fullIdentifier)
+	}
+
+	salt, ok := lastPassMap["salt"]
+	if !ok {
+		return posixUser{}, fmt.Errorf("salt not found in password: %#v for server acess extension for %q", lastPassMap, fullIdentifier)
+	}
+
+	saltStr, ok := salt.(string)
+	if !ok {
+		return posixUser{}, fmt.Errorf("salt is not a string for server acess extension for %q", fullIdentifier)
+	}
 
 	crypter := crypt.SHA512.New()
-	pass, err := crypter.Generate([]byte(pb.serverID), []byte("$6$"+string(lastPass.Salt)))
+	pass, err := crypter.Generate([]byte(pb.serverID), []byte("$6$"+saltStr))
 	if err != nil {
 		return posixUser{}, fmt.Errorf("password crypt failed (%s) for %q", err, fullIdentifier)
 	}
 
-	return pb.newPosixUser(uid.(int), principal, name, homeDir, pass), nil
+	return pb.newPosixUser(int(fuid), principal, name, homeDir, pass), nil
 }
