@@ -245,6 +245,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			Members:    members,
 			Roles:      roles,
 			Origin:     model.OriginIAM,
+			Identifier: data.Get("identifier").(string),
 		}
 
 		tx := b.storage.Txn(true)

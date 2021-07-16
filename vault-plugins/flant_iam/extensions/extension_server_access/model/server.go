@@ -263,12 +263,12 @@ func (r *UserServerAccessRepository) CreateExtension(user *model.User) error {
 
 	randomSeed, err := generateRandomBytes(64) // TODO: proper value
 	if err != nil {
-		return err
+		return nil
 	}
 
 	randomSalt, err := generateRandomBytes(64) // TODO: proper value
 	if err != nil {
-		return err
+		return nil
 	}
 
 	user.Extensions[model.OriginServerAccess] = &model.Extension{
@@ -286,10 +286,6 @@ func (r *UserServerAccessRepository) CreateExtension(user *model.User) error {
 			},
 		},
 		SensitiveAttributes: nil, // TODO: ?
-	}
-
-	if err = r.userRepo.Update(user); err != nil {
-		return err
 	}
 
 	r.currentUID++

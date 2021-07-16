@@ -33,6 +33,7 @@ function connect_plugins() {
 
 function initalize() {
     docker-exec "vault write flant_iam/configure_extension/server_access roles_for_servers=servers role_for_ssh_access=ssh name=ssh delete_expired_password_seeds_after=1000000 expire_password_seed_after_reveal_in=1000000 last_allocated_uid=100000 --format=json"
+    docker-exec "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
 
     docker-exec "vault write -force flant_iam/jwt/enable" >/dev/null 2>&1
     docker-exec "vault write -force auth/flant_iam_auth/jwt/enable" >/dev/null 2>&1
@@ -97,6 +98,7 @@ EOF
 
   # create role
   roleResp=$(docker-exec "vault write flant_iam/role name=ssh scope=project --format=json")
+  docker-exec "vault write flant_iam/role name=servers scope=tenant --format=json" >/dev/null 2>&1
 
   # create role binding
   cat <<EOF | docker-compose exec -T vault sh -
@@ -107,11 +109,11 @@ EOF
 
 
   # create servers
-  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-client --format=json"
-  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-server --format=json"
+  serverClientID=$(docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-client --format=json" | jq -r '.data.uuid')
+  serverServerID=$(docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/register_server identifier=test-server --format=json" | jq -r '.data.uuid')
 
-#  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/server/$serverClientID/connection_info --format=json"
-
+  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/server/$serverClientID/connection_info hostname=test-client --format=json" >/dev/null 2>&1
+  docker-exec "vault write flant_iam/tenant/$tenantID/project/$projectID/server/$serverServerID/connection_info hostname=test-server --format=json" >/dev/null 2>&1
 
   # create multipass
   mpResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/user/$userID/multipass ttl=100000 max_ttl=1000000 description=test allowed_roles=ssh --format=json")
