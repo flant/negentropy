@@ -151,13 +151,10 @@ func (b *backend) pathConfigureVaultRequestRead(ctx context.Context, req *logica
 		return logical.ErrorResponse("Unable to get %q Vault request configuration: %s", vaultRequestName, err), nil
 	}
 	if vaultRequest == nil {
-		return logical.ErrorResponse("Vault request %q not found", vaultRequestName), nil
+		return nil, nil
 	}
 
-	data := structs.Map(vaultRequest)
-	data[fieldNameVaultRequestWrapTTL] = vaultRequest.WrapTTL.Seconds()
-
-	return &logical.Response{Data: data}, nil
+	return &logical.Response{Data: vaultRequestStructToMap(vaultRequest)}, nil
 }
 
 func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
@@ -171,12 +168,12 @@ func (b *backend) pathConfigureVaultRequestList(ctx context.Context, req *logica
 		return logical.ErrorResponse("Unable to get all Vault requests configurations: %s", err), nil
 	}
 	if len(allVaultRequests) == 0 {
-		return logical.ListResponseWithInfo(keys, keysInfo), nil
+		return nil, nil
 	}
 
 	for _, vaultRequest := range allVaultRequests {
 		keys = append(keys, vaultRequest.Name)
-		keysInfo[vaultRequest.Name] = structs.Map(vaultRequest)
+		keysInfo[vaultRequest.Name] = vaultRequestStructToMap(vaultRequest)
 	}
 
 	return logical.ListResponseWithInfo(keys, keysInfo), nil
@@ -254,6 +251,13 @@ func deleteVaultRequest(ctx context.Context, storage logical.Storage, vaultReque
 
 func getAbsStoragePathToVaultRequest(vaultRequestName string) string {
 	return path.Join(storageKeyVaultRequestPrefix, vaultRequestName)
+}
+
+func vaultRequestStructToMap(vaultRequest *vaultRequest) map[string]interface{} {
+	data := structs.Map(vaultRequest)
+	data[fieldNameVaultRequestWrapTTL] = vaultRequest.WrapTTL.Seconds()
+
+	return data
 }
 
 const (

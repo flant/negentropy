@@ -16,14 +16,13 @@ type PathConfigureCallbacksSuite struct {
 	suite.Suite
 	ctx     context.Context
 	backend *backend
-	storage logical.Storage
-	req     *logical.Request
+	request *logical.Request
 }
 
 var fullValidConfiguration = &configuration{
 	GitRepoUrl:    "https://github.com/werf/vault-plugin-secrets-trdl.git",
 	GitBranch:     "master",
-	GitPollPeriod: time.Duration(1) * time.Second,
+	GitPollPeriod: time.Duration(60) * time.Second,
 	RequiredNumberOfVerifiedSignaturesOnCommit: 0,
 	InitialLastSuccessfulCommit:                "",
 	DockerImage:                                "ubuntu:18.04@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8",
@@ -44,7 +43,7 @@ func (s *PathConfigureCallbacksSuite) SetupTest() {
 	err := b.Setup(ctx, config)
 	assert.Nil(s.T(), err)
 
-	req := &logical.Request{
+	request := &logical.Request{
 		Path:    "configure",
 		Storage: storage,
 		Data:    map[string]interface{}{},
@@ -52,18 +51,17 @@ func (s *PathConfigureCallbacksSuite) SetupTest() {
 
 	s.ctx = ctx
 	s.backend = b
-	s.storage = storage
-	s.req = req
+	s.request = request
 }
 
 func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_NoGitRepoURL() {
 	assert := assert.New(s.T())
 
-	s.req.Operation = logical.CreateOperation
-	s.req.Data = configurationStructToMap(fullValidConfiguration)
-	s.req.Data[fieldNameGitRepoUrl] = ""
+	s.request.Operation = logical.CreateOperation
+	s.request.Data = configurationStructToMap(fullValidConfiguration)
+	s.request.Data[fieldNameGitRepoUrl] = ""
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Equal(logical.ErrorResponse("%q field value should not be empty", fieldNameGitRepoUrl), resp)
 }
@@ -71,11 +69,11 @@ func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_NoGitRepoURL() {
 func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_InvalidImageName() {
 	assert := assert.New(s.T())
 
-	s.req.Operation = logical.CreateOperation
-	s.req.Data = configurationStructToMap(fullValidConfiguration)
-	s.req.Data[fieldNameDockerImage] = "alpine"
+	s.request.Operation = logical.CreateOperation
+	s.request.Data = configurationStructToMap(fullValidConfiguration)
+	s.request.Data[fieldNameDockerImage] = "alpine"
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Equal(logical.ErrorResponse("%q field is invalid: %s", fieldNameDockerImage, docker.ErrImageNameWithoutRequiredDigest), resp)
 }
@@ -83,14 +81,14 @@ func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_InvalidImageName() {
 func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_FullValidConfig() {
 	assert := assert.New(s.T())
 
-	s.req.Operation = logical.CreateOperation
-	s.req.Data = configurationStructToMap(fullValidConfiguration)
+	s.request.Operation = logical.CreateOperation
+	s.request.Data = configurationStructToMap(fullValidConfiguration)
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Nil(resp)
 
-	cfg, err := getConfiguration(s.ctx, s.storage)
+	cfg, err := getConfiguration(s.ctx, s.request.Storage)
 	assert.Nil(err)
 	assert.Equal(fullValidConfiguration, cfg)
 }
@@ -98,9 +96,9 @@ func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_FullValidConfig() {
 func (s *PathConfigureCallbacksSuite) Test_Read_NoConfig() {
 	assert := assert.New(s.T())
 
-	s.req.Operation = logical.ReadOperation
+	s.request.Operation = logical.ReadOperation
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Nil(resp)
 }
@@ -108,16 +106,16 @@ func (s *PathConfigureCallbacksSuite) Test_Read_NoConfig() {
 func (s *PathConfigureCallbacksSuite) Test_Read_HasConfig() {
 	assert := assert.New(s.T())
 
-	err := putConfiguration(s.ctx, s.storage, *fullValidConfiguration)
+	err := putConfiguration(s.ctx, s.request.Storage, *fullValidConfiguration)
 	assert.Nil(err)
 
-	s.req.Operation = logical.ReadOperation
+	s.request.Operation = logical.ReadOperation
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Equal(&logical.Response{Data: configurationStructToMap(fullValidConfiguration)}, resp)
 
-	cfg, err := getConfiguration(s.ctx, s.storage)
+	cfg, err := getConfiguration(s.ctx, s.request.Storage)
 	assert.Nil(err)
 	assert.Equal(fullValidConfiguration, cfg)
 }
@@ -125,9 +123,9 @@ func (s *PathConfigureCallbacksSuite) Test_Read_HasConfig() {
 func (s *PathConfigureCallbacksSuite) Test_Delete_NoConfig() {
 	assert := assert.New(s.T())
 
-	s.req.Operation = logical.DeleteOperation
+	s.request.Operation = logical.DeleteOperation
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Nil(resp)
 }
@@ -135,16 +133,16 @@ func (s *PathConfigureCallbacksSuite) Test_Delete_NoConfig() {
 func (s *PathConfigureCallbacksSuite) Test_Delete_HasConfig() {
 	assert := assert.New(s.T())
 
-	err := putConfiguration(s.ctx, s.storage, *fullValidConfiguration)
+	err := putConfiguration(s.ctx, s.request.Storage, *fullValidConfiguration)
 	assert.Nil(err)
 
-	s.req.Operation = logical.DeleteOperation
+	s.request.Operation = logical.DeleteOperation
 
-	resp, err := s.backend.HandleRequest(s.ctx, s.req)
+	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
 	assert.Nil(resp)
 
-	cfg, err := getConfiguration(s.ctx, s.storage)
+	cfg, err := getConfiguration(s.ctx, s.request.Storage)
 	assert.Nil(err)
 	assert.Nil(cfg)
 }
