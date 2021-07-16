@@ -10,9 +10,9 @@ import (
 )
 
 type AuthdSettings struct {
-	Server     string `json:"server"`
-	ServerType string `json:"serverType"`
-	SocketPath string `json:"socketPath"`
+	Server     string `json:"vaultServerAddr"`
+	ServerType string `json:"vaultServerType"`
+	SocketPath string `json:"authdSocketPath"`
 }
 
 const (
