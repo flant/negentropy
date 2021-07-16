@@ -1,18 +1,28 @@
 package model
 
 import (
-	"github.com/hashicorp/go-memdb"
+	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/hashicorp/go-memdb"
 )
 
-func GetSchema() (*memdb.DBSchema, error) {
-	iamSchema, err := model.GetSchema()
+func MergeSchema(iamSchema *memdb.DBSchema) (*memdb.DBSchema, error) {
+	included := []*memdb.DBSchema{
+		ServerSchema(),
+	}
+
+	for _, s := range included {
+		for name, table := range s.Tables {
+			if _, ok := iamSchema.Tables[name]; ok {
+				return nil, fmt.Errorf("table %q already there", name)
+			}
+			iamSchema.Tables[name] = table
+		}
+	}
+
+	err := iamSchema.Validate()
 	if err != nil {
 		return nil, err
 	}
-
-	iamSchema.Tables[ServerType] = ServerSchema().Tables[ServerType]
-
 	return iamSchema, nil
 }
