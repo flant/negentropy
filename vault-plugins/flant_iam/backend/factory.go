@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
@@ -70,6 +72,11 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 
 	schema, err := model.GetSchema()
+	if err != nil {
+		return nil, err
+	}
+
+	schema, err = model2.MergeSchema(schema)
 	if err != nil {
 		return nil, err
 	}
