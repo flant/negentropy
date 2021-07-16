@@ -29,7 +29,7 @@ func PathDisable(b *Backend) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleJWTDisableCreate),
+				Callback: b.handleJWTDisableCreate,
 				Summary:  pathJWTDisableSynopsis,
 			},
 		},
@@ -58,7 +58,11 @@ func (b *Backend) handleJWTEnableCreate(_ context.Context, _ *logical.Request, _
 		return nil, err
 	}
 
-	return nil, nil
+	resp := &logical.Response{
+		Data: map[string]interface{}{"enabled": true},
+	}
+
+	return resp, nil
 }
 
 func (b *Backend) handleJWTDisableCreate(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {

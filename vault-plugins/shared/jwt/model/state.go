@@ -51,7 +51,7 @@ func StateSchema() *memdb.DBSchema {
 					idKey: {
 						Name:   idKey,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &memdb.StringFieldIndex{
 							Field: "ID",
 						},
 					},

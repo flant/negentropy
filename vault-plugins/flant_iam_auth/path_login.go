@@ -121,7 +121,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	case model.MethodTypeMultipass:
 		logger.Debug("It is multipass. Check jwt is enabled")
 
-		enabled, err := b.tokenController.IsEnabled(ctx, req)
+		enabled, err := b.jwtController.IsEnabled(tnx)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +133,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		logger.Debug("Jwt is enabled. Get jwt config")
 
 		keys := make([]string, 0)
-		jwtConf, err := b.tokenController.GetConfig(ctx, req.Storage)
+		jwtConf, err := b.jwtController.GetConfig(tnx)
 		if err != nil {
 			return nil, err
 		}

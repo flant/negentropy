@@ -1,12 +1,10 @@
 package usecase
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"time"
-
-	"github.com/hashicorp/vault/sdk/logical"
 
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -41,8 +39,7 @@ func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 }
 
 func (s *ServerService) Create(
-	ctx context.Context,
-	vaultStorage logical.Storage,
+	multipassIssue jwt.MultipassIssFn,
 	tenantUUID, projectUUID, serverID string,
 	labels, annotations map[string]string,
 	roles []string,
@@ -234,7 +231,7 @@ func (s *ServerService) Create(
 	multipassService := usecase.Multipasses(s.tx, model.OriginServerAccess, model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
 
 	// TODO: are these valid?
-	multipassJWT, mp, err := multipassService.CreateWithJWT(context.TODO(), vaultStorage, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
+	multipassJWT, mp, err := multipassService.CreateWithJWT(multipassIssue, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
 	if err != nil {
 		return "", "", err
 	}

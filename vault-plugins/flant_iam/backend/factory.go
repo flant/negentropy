@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -121,10 +122,11 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	// todo add JWKS queue
 
-	tokenController := sharedjwt.NewTokenController(
+	tokenController := sharedjwt.NewJwtController(
 		storage,
 		mb.GetEncryptionPublicKeyStrict,
 		b.Logger().Named("Iam.JWT.Controller"),
+		time.Now,
 	)
 
 	b.Paths = framework.PathAppend(
@@ -144,7 +146,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		kafkaPaths(b, storage),
 		identitySharingPaths(b, storage),
 
-		extension_server_access.ServerPaths(b, storage),
+		extension_server_access.ServerPaths(b, storage, tokenController),
 		extension_server_access.ServerConfigurePaths(b, storage),
 
 		tokenController.ApiPaths(),

@@ -116,6 +116,11 @@ func (s *KeyPairService) modifyKeys(modify func(*model.JSONWebKeySet, *model.JSO
 	if keyPair != nil {
 		publicKeySet = *keyPair.PublicKeys
 		privateSet = *keyPair.PrivateKeys
+	} else {
+		keyPair = &model.KeyPair{
+			PublicKeys: &model.JSONWebKeySet{},
+			PrivateKeys: &model.JSONWebKeySet{},
+		}
 	}
 
 	err = modify(&privateSet, &publicKeySet)

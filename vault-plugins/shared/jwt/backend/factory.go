@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
@@ -16,4 +17,22 @@ func NewBackend(storage *sharedio.MemoryStore, deps *usecase.Depends) *Backend {
 		memStorage: storage,
 		deps: deps,
 	}
+}
+
+func (b *Backend) mustEnabled(tnx *sharedio.MemoryStoreTxn) error {
+	r, err := b.deps.StateRepo(tnx)
+	if err != nil {
+		return err
+	}
+
+	enabled, err := r.IsEnabled()
+	if err != nil {
+		return err
+	}
+
+	if !enabled {
+		return fmt.Errorf("jwt is not enabled")
+	}
+
+	return nil
 }

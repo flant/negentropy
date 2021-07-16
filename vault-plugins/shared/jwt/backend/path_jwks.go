@@ -14,7 +14,7 @@ func PathJWKS(b *Backend) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleJWKSRead),
+				Callback: b.handleJWKSRead,
 				Summary:  pathJWTJWKSSynopsis,
 			},
 		},
@@ -29,7 +29,7 @@ func PathRotateKey(b *Backend) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleRotateKeysUpdate),
+				Callback: b.handleRotateKeysUpdate,
 				Summary:  pathJWTRotateKeySynopsis,
 			},
 		},
@@ -41,6 +41,11 @@ func PathRotateKey(b *Backend) *framework.Path {
 func (b *Backend) handleJWKSRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	tnx := b.memStorage.Txn(false)
 	defer tnx.Abort()
+
+	err := b.mustEnabled(tnx)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
 
 	repo, err := b.deps.JwksRepo(tnx)
 	if err != nil {
@@ -70,6 +75,11 @@ func (b *Backend) handleJWKSRead(_ context.Context, _ *logical.Request, _ *frame
 func (b *Backend) handleRotateKeysUpdate(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	tnx := b.memStorage.Txn(true)
 	defer tnx.Abort()
+
+	err := b.mustEnabled(tnx)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
 
 	keyPairService, err := b.deps.KeyPairsService(tnx)
 	if err != nil {

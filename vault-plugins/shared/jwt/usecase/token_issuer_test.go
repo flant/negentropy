@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
+	jwt2 "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
 	"testing"
 	"time"
 
@@ -25,11 +25,11 @@ func verifyAndGetTokensTest(t *testing.T, keys []jose.JSONWebKey, token string) 
 	return dest
 }
 
-func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *model.Config, o *TokenOptions) {
+func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *model.Config, o *TokenOptions, nowF func() time.Time) {
 	require.Contains(t, data, "iss")
 	require.Equal(t, data["iss"], conf.Issuer)
 
-	now := o.now().Unix()
+	now := nowF().Unix()
 	ttl := int64(o.TTL.Seconds())
 
 	require.Contains(t, data, "iat")
@@ -40,8 +40,11 @@ func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *
 }
 
 func Test_NewToken(t *testing.T) {
-	b, storage, memstore := test.GetBackend(t, time.Now)
-	test.EnableJWT(t, b, storage)
+	now := func() time.Time {
+		return time.Now()
+	}
+	b, storage, memstore := jwt2.GetBackend(t, now)
+	jwt2.EnableJWT(t, b, storage)
 	req := &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "jwks",
@@ -49,24 +52,19 @@ func Test_NewToken(t *testing.T) {
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	test.RequireValidResponse(t, resp, err)
+	jwt2.RequireValidResponse(t, resp, err)
 
 	keys := resp.Data["keys"].([]jose.JSONWebKey)
 
 	t.Run("signing payload", func(t *testing.T) {
 		const ttl = 5
-		const now = 1
 
 		tokenOpt := &TokenOptions{
 			TTL: time.Duration(ttl) * time.Second,
-			now: func() time.Time {
-				return time.Unix(now, 0)
-			},
 		}
 
 		tnx := memstore.Txn(false)
 		defer tnx.Abort()
-		issuer, err := b.TokenController.Issuer(tnx)
 		conf, err := b.TokenController.GetConfig(tnx)
 		require.NoError(t, err)
 
@@ -78,7 +76,7 @@ func Test_NewToken(t *testing.T) {
 					"b": float64(1),
 				},
 			}
-			token, err := issuer.Token(payload, tokenOpt)
+			token, err := b.TokenController.IssuePayloadAsJwt(tnx, payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)
@@ -88,7 +86,7 @@ func Test_NewToken(t *testing.T) {
 				require.Equal(t, data[k], v)
 			}
 
-			assertRequiredTokenFields(t, data, conf, tokenOpt)
+			assertRequiredTokenFields(t, data, conf, tokenOpt, now)
 		})
 
 		t.Run("signs does not override issuer expiration time and issue time", func(t *testing.T) {
@@ -102,12 +100,12 @@ func Test_NewToken(t *testing.T) {
 				"iat": 20,
 				"exp": 100500,
 			}
-			token, err := issuer.Token(payload, tokenOpt)
+			token, err := b.TokenController.IssuePayloadAsJwt(tnx, payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)
 
-			assertRequiredTokenFields(t, data, conf, tokenOpt)
+			assertRequiredTokenFields(t, data, conf, tokenOpt, now)
 		})
 	})
 }

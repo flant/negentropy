@@ -3,13 +3,13 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 const HttpPathIssue = "issue"
@@ -47,7 +47,10 @@ func pathIssueJwtType(b *flantIamAuthBackend) *framework.Path {
 // pathJwtTypeCreateUpdate registers a new JwtTypeConfig with the backend or updates the options
 // of an existing JwtTypeConfig
 func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	isEnabled, err := b.tokenController.IsEnabled(ctx, req)
+	tnx := b.storage.Txn(false)
+	defer tnx.Abort()
+
+	isEnabled, err := b.jwtController.IsEnabled(tnx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +73,6 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 	if !ok {
 		return nil, fmt.Errorf("cannot cast 'options' to map[string]interface{}")
 	}
-
-	tnx := b.storage.Txn(false)
-	defer tnx.Abort()
 
 	repo := repos.NewJWTIssueTypeRepo(tnx)
 	jwtType, err := repo.Get(name)
@@ -103,7 +103,7 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("cannot cast 'optionsWithDefaults' to map[string]interface{}")
 	}
 
-	signedJwt, err := jwt.NewJwtToken(ctx, req.Storage, mapOptions, &jwt.TokenOptions{
+	signedJwt, err := b.jwtController.IssuePayloadAsJwt(tnx, mapOptions, &jwt.TokenOptions{
 		TTL: jwtType.TTL,
 	})
 	if err != nil {

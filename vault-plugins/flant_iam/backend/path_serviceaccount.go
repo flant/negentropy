@@ -588,9 +588,11 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			description = data.Get("description").(string)
 		)
 
+		issueFn := jwt.CreateIssueMultipassFunc(b.tokenController, tx)
+
 		jwtString, multipass, err := usecase.
 			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).
-			CreateWithJWT(ctx, req.Storage, ttl, maxTTL, cidrs, roles, description)
+			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return responseErr(req, err)
 		}

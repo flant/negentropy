@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/hashicorp/cap/jwt"
 
-	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
+	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 )
 
 const (

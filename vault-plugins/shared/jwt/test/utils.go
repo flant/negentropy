@@ -2,28 +2,28 @@ package test
 
 import (
 	"context"
-	"testing"
-	"time"
-
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
-
-	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/backend"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"testing"
+	"time"
 )
 
-// Simple backend for test purposes (treat it like an example)
-type jwtAuthBackend struct {
-	*framework.Backend
-	TokenController * backend.Backend
+func GetStorage(t *testing.T, config *logical.BackendConfig) *sharedio.MemoryStore{
+	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView)
+	require.NoError(t, err)
+	schema, err := model.GetSchema(false)
+	require.NoError(t, err)
+	storage, err := sharedio.NewMemoryStore(schema, mb)
+
+	return storage
 }
 
-func GetBackend(t *testing.T, now func() time.Time) (*jwtAuthBackend, logical.Storage, *sharedio.MemoryStore) {
+func PrepareBackend(t *testing.T) *logical.BackendConfig {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 
@@ -37,38 +37,7 @@ func GetBackend(t *testing.T, now func() time.Time) (*jwtAuthBackend, logical.St
 		StorageView: &logical.InmemStorage{},
 	}
 
-	b := new(jwtAuthBackend)
-
-	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView)
-	require.NoError(t, err)
-	schema, err := model.GetSchema(false)
-	require.NoError(t, err)
-	storage, err := sharedio.NewMemoryStore(schema, mb)
-
-	b.TokenController = backend.NewBackend(storage, func() (string, error) {
-		return "id", nil
-	}, log.NewNullLogger(), now)
-
-	b.Backend = &framework.Backend{
-		BackendType:  logical.TypeCredential,
-		PathsSpecial: &logical.Paths{},
-		Paths: framework.PathAppend(
-			[]*framework.Path{
-				backend.PathEnable(b.TokenController),
-				backend.PathDisable(b.TokenController),
-				backend.PathConfigure(b.TokenController),
-				backend.PathJWKS(b.TokenController),
-				backend.PathRotateKey(b.TokenController),
-			},
-		),
-		PeriodicFunc: b.TokenController.OnPeriodic,
-	}
-
-
-	err = b.Setup(context.Background(), config)
-	require.NoError(t, err)
-
-	return b, config.StorageView, storage
+	return config
 }
 
 func EnableJWT(t *testing.T, b logical.Backend, storage logical.Storage) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	backend2 "github.com/flant/negentropy/vault-plugins/shared/jwt/backend"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
@@ -56,7 +56,7 @@ type flantIamAuthBackend struct {
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
 
-	tokenController       *backend2.Backend
+	jwtController         *njwt.Controller
 	accessVaultController *client.VaultClientController
 
 	storage *sharedio.MemoryStore
@@ -72,7 +72,6 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 
 	iamAuthLogger := conf.Logger.Named(loggerModule)
 
-	b.tokenController = backend2.NewTokenController()
 	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
 		return iamAuthLogger.Named("ApiClient")
 	})
@@ -123,6 +122,13 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb))
 
 	b.storage = storage
+	b.jwtController = njwt.NewJwtController(
+		storage,
+		mb.GetEncryptionPublicKeyStrict,
+		iamAuthLogger.Named("Jwt"),
+		time.Now,
+	)
+
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
@@ -159,13 +165,9 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),
 			},
-			[]*framework.Path{
-				njwt.PathEnable(b.tokenController),
-				njwt.PathDisable(b.tokenController),
-				backend2.PathConfigure(b.tokenController),
-				backend2.PathJWKS(b.tokenController),
-				backend2.PathRotateKey(b.tokenController),
-			},
+
+			b.jwtController.ApiPaths(),
+
 			[]*framework.Path{
 				client.PathConfigure(b.accessVaultController),
 			},
@@ -173,7 +175,7 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 			kafkaPaths(b, storage),
 
 			// server_access_extension
-			extension_server_access.ServerAccessPaths(b, storage),
+			extension_server_access.ServerAccessPaths(b, storage, b.jwtController),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,

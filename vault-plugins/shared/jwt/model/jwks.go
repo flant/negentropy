@@ -47,8 +47,8 @@ func JWKSSchema() *memdb.DBSchema {
 					idKey: {
 						Name:   idKey,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
+						Indexer: &memdb.StringFieldIndex{
+							Field: "ID",
 						},
 					},
 				},

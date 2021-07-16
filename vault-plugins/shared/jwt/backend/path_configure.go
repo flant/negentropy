@@ -45,11 +45,11 @@ host, and optionally, port number and path components, but no query or fragment 
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleConfigurationRead),
+				Callback: b.handleConfigurationRead,
 				Summary:  pathJWTStatusSynopsis,
 			},
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleConfigurationUpdate),
+				Callback: b.handleConfigurationUpdate,
 				Summary:  pathJWTConfigureSynopsis,
 			},
 		},
@@ -61,6 +61,11 @@ host, and optionally, port number and path components, but no query or fragment 
 func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	tnx := b.memStorage.Txn(false)
 	defer tnx.Abort()
+
+	err := b.mustEnabled(tnx)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
 
 	conf, err := b.deps.ConfigRepo(tnx).Get()
 	if err != nil {
@@ -85,8 +90,13 @@ func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Re
 	tnx := b.memStorage.Txn(true)
 	defer tnx.Abort()
 
+	err := b.mustEnabled(tnx)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
 	fields.Raw = req.Data
-	err := fields.Validate()
+	err = fields.Validate()
 	if err != nil {
 		return nil, err
 	}

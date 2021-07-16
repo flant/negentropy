@@ -51,7 +51,7 @@ func ConfigSchema() *memdb.DBSchema {
 					idKey: {
 						Name:   idKey,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &memdb.StringFieldIndex{
 							Field: "ID",
 						},
 					},
@@ -93,7 +93,9 @@ func (s *ConfigRepo) Get() (*Config, error) {
 		return def, nil
 	}
 
-	return entryRaw.(*Config), nil
+	entry := entryRaw.(*configPairTableEntity)
+
+	return entry.Config, nil
 }
 
 func (s *ConfigRepo) Restore(o interface{}) error {

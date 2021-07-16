@@ -42,7 +42,6 @@ type PrimaryTokenOptions struct {
 
 type TokenOptions struct {
 	TTL time.Duration
-	now func() time.Time
 }
 
 type TokenIssuer struct {

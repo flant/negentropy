@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"strings"
 	"time"
 
@@ -265,13 +266,14 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return errResponse, nil
 	}
 
-	methodType, errResponse, err := verifyAuthMethodType(b, data, ctx, req)
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	methodType, errResponse, err := verifyAuthMethodType(b, data, tnx)
 	if errResponse != nil || err != nil {
 		return errResponse, err
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
 	repo := repos.NewAuthMethodRepo(tnx)
 
 	// get or create method obj
@@ -547,7 +549,7 @@ func fillOIDCParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldD
 	return nil, nil
 }
 
-func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, ctx context.Context, req *logical.Request) (string, *logical.Response, error) {
+func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, tnx *io.MemoryStoreTxn) (string, *logical.Response, error) {
 	// verify method type
 	methodTypeRaw, ok := data.GetOk("method_type")
 	if !ok {
@@ -576,7 +578,7 @@ func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, ctx
 	}
 
 	if methodType == model.MethodTypeMultipass {
-		jwtEnabled, err := b.tokenController.IsEnabled(ctx, req)
+		jwtEnabled, err := b.jwtController.IsEnabled(tnx)
 		if err != nil {
 			return "", nil, err
 		}

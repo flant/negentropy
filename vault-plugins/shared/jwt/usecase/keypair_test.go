@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
 	"testing"
 	"time"
 
@@ -20,7 +20,7 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	test.RequireValidResponse(t, resp, err)
+	jwt.RequireValidResponse(t, resp, err)
 
 	keys := resp.Data["keys"].([]jose.JSONWebKey)
 	require.NoError(t, err, "error on keys unmarshall")
@@ -29,8 +29,8 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 }
 
 func TestJWKS(t *testing.T) {
-	b, storage, memstore := test.GetBackend(t, time.Now)
-	test.EnableJWT(t, b, storage)
+	b, storage, memstore := jwt.GetBackend(t, time.Now)
+	jwt.EnableJWT(t, b, storage)
 
 	// #1 First run
 	firstRunKeys := runJWKSTest(t, b, storage)
@@ -65,14 +65,14 @@ func TestJWKS(t *testing.T) {
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	test.RequireValidResponse(t, resp, err)
+	jwt.RequireValidResponse(t, resp, err)
 	keysAfterRotation := runJWKSTest(t, b, storage)
 	require.Equal(t, len(keysAfterRotation), 1)
 }
 
 func TestJWKSRotation(t *testing.T) {
-	b, storage, memstore := test.GetBackend(t, time.Now)
-	test.EnableJWT(t, b, storage)
+	b, storage, memstore := jwt.GetBackend(t, time.Now)
+	jwt.EnableJWT(t, b, storage)
 
 	// #1 First run
 	firstRunKeys := runJWKSTest(t, b, storage)
