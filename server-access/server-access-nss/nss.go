@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/flant/server-access/flant-server-accessd/db"
-	"github.com/flant/server-access/flant-server-accessd/db/sqlite"
-	"github.com/flant/server-access/flant-server-accessd/types"
 	nss "github.com/protosam/go-libnss"
 	"github.com/protosam/go-libnss/structs"
+
+	dberrors "github.com/flant/server-access/flant-server-accessd/db/errors"
+	"github.com/flant/server-access/flant-server-accessd/db/sqlite"
+	"github.com/flant/server-access/flant-server-accessd/types"
 )
 
 type UserDatabase interface {
@@ -74,7 +75,7 @@ func (p Provider) PasswdByName(name string) (nss.Status, structs.Passwd) {
 	defer cancel()
 
 	user, err := userDB.GetUserByName(ctx, name)
-	if db.IsEntryNotFound(err) {
+	if dberrors.IsEntryNotFound(err) {
 		return nss.StatusNotfound, structs.Passwd{}
 	} else if err != nil {
 		return nss.StatusUnavail, structs.Passwd{}
@@ -100,7 +101,7 @@ func (p Provider) PasswdByUid(uid uint) (nss.Status, structs.Passwd) {
 	defer cancel()
 
 	user, err := userDB.GetUserByUID(ctx, uid)
-	if db.IsEntryNotFound(err) {
+	if dberrors.IsEntryNotFound(err) {
 		return nss.StatusNotfound, structs.Passwd{}
 	} else if err != nil {
 		return nss.StatusUnavail, structs.Passwd{}
@@ -152,7 +153,7 @@ func (p Provider) GroupByName(name string) (nss.Status, structs.Group) {
 	defer cancel()
 
 	grp, err := userDB.GetGroupByName(ctx, name)
-	if db.IsEntryNotFound(err) {
+	if dberrors.IsEntryNotFound(err) {
 		return nss.StatusNotfound, structs.Group{}
 	} else if err != nil {
 		return nss.StatusUnavail, structs.Group{}
@@ -174,7 +175,7 @@ func (p Provider) GroupByGid(gid uint) (nss.Status, structs.Group) {
 	defer cancel()
 
 	grp, err := userDB.GetGroupByGID(ctx, gid)
-	if db.IsEntryNotFound(err) {
+	if dberrors.IsEntryNotFound(err) {
 		return nss.StatusNotfound, structs.Group{}
 	} else if err != nil {
 		return nss.StatusUnavail, structs.Group{}
@@ -228,7 +229,7 @@ func (p Provider) ShadowByName(name string) (nss.Status, structs.Shadow) {
 	defer cancel()
 
 	user, err := userDB.GetUserByName(ctx, name)
-	if db.IsEntryNotFound(err) {
+	if dberrors.IsEntryNotFound(err) {
 		return nss.StatusNotfound, structs.Shadow{}
 	} else if err != nil {
 		return nss.StatusUnavail, structs.Shadow{}

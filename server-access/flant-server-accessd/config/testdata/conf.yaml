@@ -1,0 +1,4 @@
+tenant: 123-123-123
+project: 123-123-123
+server: 123-123-123
+database: ./server-accessd.db

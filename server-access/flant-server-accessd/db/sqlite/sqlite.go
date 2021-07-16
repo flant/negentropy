@@ -12,15 +12,16 @@ import (
 	"errors"
 	"fmt"
 
-	db2 "github.com/flant/server-access/flant-server-accessd/db"
-	"github.com/flant/server-access/flant-server-accessd/db/sqlite/migrations"
-	"github.com/flant/server-access/flant-server-accessd/types"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/go_bindata"
 	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+
+	dberrors "github.com/flant/server-access/flant-server-accessd/db/errors"
+	"github.com/flant/server-access/flant-server-accessd/db/sqlite/migrations"
+	"github.com/flant/server-access/flant-server-accessd/types"
 )
 
 const (
@@ -231,7 +232,7 @@ func (db *UserDatabase) GetUserByName(ctx context.Context, name string) (types.U
 
 	err := row.StructScan(&user)
 	if errors.Is(err, sql.ErrNoRows) {
-		return types.User{}, db2.NewEntryNotFound(fmt.Sprintf("no entries for User name %q", name))
+		return types.User{}, dberrors.NewEntryNotFound(fmt.Sprintf("no entries for User name %q", name))
 	} else if err != nil {
 		return types.User{}, err
 	}
@@ -249,7 +250,7 @@ func (db *UserDatabase) GetUserByUID(ctx context.Context, uid uint) (types.User,
 
 	err := row.StructScan(&user)
 	if errors.Is(err, sql.ErrNoRows) {
-		return types.User{}, db2.NewEntryNotFound(fmt.Sprintf("no entries for User UID %q", uid))
+		return types.User{}, dberrors.NewEntryNotFound(fmt.Sprintf("no entries for User UID %q", uid))
 	} else if err != nil {
 		return types.User{}, err
 	}
@@ -277,7 +278,7 @@ func (db *UserDatabase) GetGroupByName(ctx context.Context, name string) (types.
 
 	err := row.StructScan(&group)
 	if errors.Is(err, sql.ErrNoRows) {
-		return types.Group{}, db2.NewEntryNotFound(fmt.Sprintf("no entries for Group name %q", name))
+		return types.Group{}, dberrors.NewEntryNotFound(fmt.Sprintf("no entries for Group name %q", name))
 	} else if err != nil {
 		return types.Group{}, err
 	}
@@ -295,7 +296,7 @@ func (db *UserDatabase) GetGroupByGID(ctx context.Context, gid uint) (types.Grou
 
 	err := row.StructScan(&group)
 	if errors.Is(err, sql.ErrNoRows) {
-		return types.Group{}, db2.NewEntryNotFound(fmt.Sprintf("no entries for Group GID %q", gid))
+		return types.Group{}, dberrors.NewEntryNotFound(fmt.Sprintf("no entries for Group GID %q", gid))
 	} else if err != nil {
 		return types.Group{}, err
 	}

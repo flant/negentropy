@@ -13,18 +13,30 @@ import (
 )
 
 type Interface interface {
+	// Create home directory for new user
 	CreateHomeDir(dir string, uid, gid int) error
+	// Recursively delete home directory if exists.
 	DeleteHomeDir(dir string) error
-	BootUser(username string) error
+	// Kill all user processes.
+	PurgeUserLegacy(username string) error
 }
 
-type SystemOperator struct{}
+type SystemOperator struct {
+	dryRun bool
+}
 
 func NewSystemOperator() *SystemOperator {
-	return &SystemOperator{}
+	dryRun := os.Getenv("USER_DRY_RUN")
+	return &SystemOperator{
+		dryRun: dryRun == "yes",
+	}
 }
 
-func (*SystemOperator) CreateHomeDir(dir string, uid, gid int) error {
+func (s *SystemOperator) CreateHomeDir(dir string, uid, gid int) error {
+	if s.dryRun {
+		fmt.Printf("Create dir '%s' for %d:%d\n", dir, uid, gid)
+		return nil
+	}
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
 		err := copier.Copy("/etc/skel", dir)
@@ -48,11 +60,21 @@ func (*SystemOperator) CreateHomeDir(dir string, uid, gid int) error {
 	return nil
 }
 
-func (*SystemOperator) DeleteHomeDir(dir string) error {
+func (s *SystemOperator) DeleteHomeDir(dir string) error {
+	if s.dryRun {
+		fmt.Printf("Delete dir '%s'\n", dir)
+		return nil
+	}
+
 	return os.RemoveAll(dir)
 }
 
-func (*SystemOperator) BootUser(username string) error {
+func (s *SystemOperator) PurgeUserLegacy(username string) error {
+	if s.dryRun {
+		fmt.Printf("Purge user legacy for '%s'\n", username)
+		return nil
+	}
+
 	// we can't parse /var/run/utmp directly, since its serialization format is platform-dependent
 	cmd := exec.Command("who", "-u")
 	out, err := cmd.Output()
