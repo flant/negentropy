@@ -17,7 +17,7 @@ import (
 
 type ServerService struct {
 	tenantService      *usecase.TenantService
-	projectsService    *usecase.ProjectsService
+	projectsService    *usecase.ProjectService
 	groupRepo          *model.GroupRepository
 	serviceAccountRepo *model.ServiceAccountRepository
 	roleService        *usecase.RoleService
@@ -47,7 +47,6 @@ func (s *ServerService) Create(
 	labels, annotations map[string]string,
 	roles []string,
 ) (string, string, error) {
-
 	var (
 		tenantBoundRoles  []model.BoundRole
 		projectBoundRoles []model.BoundRole

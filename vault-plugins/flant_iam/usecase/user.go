@@ -10,6 +10,8 @@ type UserService struct {
 
 	tenantRepo *model.TenantRepository
 	usersRepo  *model.UserRepository
+
+	childrenDeleters []DeleterByParent
 }
 
 func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
@@ -18,6 +20,10 @@ func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
 
 		tenantRepo: model.NewTenantRepository(db),
 		usersRepo:  model.NewUserRepository(db),
+
+		childrenDeleters: []DeleterByParent{
+			MultipassDeleter(db),
+		},
 	}
 }
 
@@ -85,6 +91,11 @@ func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error
 	if user.Origin != origin {
 		return model.ErrBadOrigin
 	}
+
+	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+		return err
+	}
+
 	return s.usersRepo.Delete(id)
 }
 

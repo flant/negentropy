@@ -10,9 +10,9 @@ type (
 	RoleName                   = string
 	FeatureFlagName            = string
 	MultipassUUID              = string
-	OwnerUUID                  = string
 	RoleBindingUUID            = string
 	RoleBindingApprovalUUID    = string
 	IdentitySharingUUID        = string
 	ReplicaName                = string
+	OwnerUUID                  = string
 )

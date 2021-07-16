@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	MultipassType  = "multipass" // also, memdb schema name
 	OwnerForeignPK = "owner_uuid"
 )
 
@@ -54,6 +53,7 @@ const (
 	MultipassOwnerUser           MultipassOwnerType = "user"
 )
 
+//go:generate go run gen_repository.go -type Multipass -parentType Owner
 type Multipass struct {
 	UUID       MultipassUUID      `json:"uuid"` // PK
 	TenantUUID TenantUUID         `json:"tenant_uuid"`
@@ -74,12 +74,14 @@ type Multipass struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
-func (t *Multipass) ObjType() string {
+const MultipassType = "multipass" // also, memdb schema name
+
+func (u *Multipass) ObjType() string {
 	return MultipassType
 }
 
-func (t *Multipass) ObjId() string {
-	return t.UUID
+func (u *Multipass) ObjId() string {
+	return u.UUID
 }
 
 type MultipassRepository struct {
@@ -90,30 +92,15 @@ func NewMultipassRepository(tx *io.MemoryStoreTxn) *MultipassRepository {
 	return &MultipassRepository{db: tx}
 }
 
-func (r *MultipassRepository) save(mp *Multipass) error {
-	return r.db.Insert(MultipassType, mp)
+func (r *MultipassRepository) save(multipass *Multipass) error {
+	return r.db.Insert(MultipassType, multipass)
 }
 
-func (r *MultipassRepository) Delete(id string) error {
-	mp, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(MultipassType, mp)
+func (r *MultipassRepository) Create(multipass *Multipass) error {
+	return r.save(multipass)
 }
 
-func (r *MultipassRepository) Create(mp *Multipass) error {
-	return r.save(mp)
-}
-
-func (r *MultipassRepository) Update(mp *Multipass) error {
-	if _, err := r.GetByID(mp.UUID); err != nil {
-		return err
-	}
-	return r.save(mp)
-}
-
-func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
+func (r *MultipassRepository) GetRawByID(id MultipassUUID) (interface{}, error) {
 	raw, err := r.db.First(MultipassType, PK, id)
 	if err != nil {
 		return nil, err
@@ -121,12 +108,35 @@ func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	multipass := raw.(*Multipass)
-	return multipass, nil
+	return raw, nil
 }
 
-func (r *MultipassRepository) List(oid OwnerUUID) ([]*Multipass, error) {
-	iter, err := r.db.Get(MultipassType, OwnerForeignPK, oid)
+func (r *MultipassRepository) GetByID(id MultipassUUID) (*Multipass, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*Multipass), err
+}
+
+func (r *MultipassRepository) Update(multipass *Multipass) error {
+	_, err := r.GetByID(multipass.UUID)
+	if err != nil {
+		return err
+	}
+	return r.save(multipass)
+}
+
+func (r *MultipassRepository) Delete(id MultipassUUID) error {
+	multipass, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(MultipassType, multipass)
+}
+
+func (r *MultipassRepository) List(ownerUUID OwnerUUID) ([]*Multipass, error) {
+	iter, err := r.db.Get(MultipassType, OwnerForeignPK, ownerUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +147,47 @@ func (r *MultipassRepository) List(oid OwnerUUID) ([]*Multipass, error) {
 		if raw == nil {
 			break
 		}
-		mp := raw.(*Multipass)
-		list = append(list, mp)
+		obj := raw.(*Multipass)
+		list = append(list, obj)
 	}
 	return list, nil
+}
+
+func (r *MultipassRepository) ListIDs(ownerID OwnerUUID) ([]MultipassUUID, error) {
+	objs, err := r.List(ownerID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]MultipassUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *MultipassRepository) Iter(action func(*Multipass) (bool, error)) error {
+	iter, err := r.db.Get(MultipassType, PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*Multipass)
+		next, err := action(obj)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (r *MultipassRepository) Sync(objID string, data []byte) error {
@@ -148,11 +195,11 @@ func (r *MultipassRepository) Sync(objID string, data []byte) error {
 		return r.Delete(objID)
 	}
 
-	mp := &Multipass{}
-	err := json.Unmarshal(data, mp)
+	multipass := &Multipass{}
+	err := json.Unmarshal(data, multipass)
 	if err != nil {
 		return err
 	}
 
-	return r.save(mp)
+	return r.save(multipass)
 }

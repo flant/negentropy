@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	ServiceAccountType              = "service_account" // also, memdb schema name
 	fullIdentifierIndex             = "full_identifier"
 	TenantUUIDServiceAccountIdIndex = "tenant_uuid_service_account_id"
 )
@@ -68,6 +67,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type ServiceAccount -parentType Tenant
 type ServiceAccount struct {
 	UUID           ServiceAccountUUID `json:"uuid"` // PK
 	TenantUUID     TenantUUID         `json:"tenant_uuid"`
@@ -84,24 +84,22 @@ type ServiceAccount struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
-func (sa *ServiceAccount) ObjType() string {
+const ServiceAccountType = "service_account" // also, memdb schema name
+
+func (u *ServiceAccount) ObjType() string {
 	return ServiceAccountType
 }
 
-func (sa *ServiceAccount) ObjId() string {
-	return sa.UUID
+func (u *ServiceAccount) ObjId() string {
+	return u.UUID
 }
 
 type ServiceAccountRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
 func NewServiceAccountRepository(tx *io.MemoryStoreTxn) *ServiceAccountRepository {
-	return &ServiceAccountRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
+	return &ServiceAccountRepository{db: tx}
 }
 
 func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
@@ -110,25 +108,6 @@ func (r *ServiceAccountRepository) save(sa *ServiceAccount) error {
 
 func (r *ServiceAccountRepository) Create(sa *ServiceAccount) error {
 	return r.save(sa)
-}
-
-func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string) (*ServiceAccount, error) {
-	raw, err := r.db.First(ServiceAccountType, TenantUUIDServiceAccountIdIndex, tenantUUID, identifier)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*ServiceAccount), err
-}
-
-func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
-	raw, err := r.GetRawByID(id)
-	if raw == nil {
-		return nil, err
-	}
-	return raw.(*ServiceAccount), err
 }
 
 func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{}, error) {
@@ -142,12 +121,19 @@ func (r *ServiceAccountRepository) GetRawByID(id ServiceAccountUUID) (interface{
 	return raw, nil
 }
 
+func (r *ServiceAccountRepository) GetByID(id ServiceAccountUUID) (*ServiceAccount, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*ServiceAccount), err
+}
+
 func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 	_, err := r.GetByID(sa.UUID)
 	if err != nil {
 		return err
 	}
-
 	return r.save(sa)
 }
 
@@ -159,8 +145,8 @@ func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
 	return r.db.Delete(ServiceAccountType, sa)
 }
 
-func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount, error) {
-	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantID)
+func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccount, error) {
+	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -171,13 +157,25 @@ func (r *ServiceAccountRepository) List(tenantID TenantUUID) ([]*ServiceAccount,
 		if raw == nil {
 			break
 		}
-		sa := raw.(*ServiceAccount)
-		list = append(list, sa)
+		obj := raw.(*ServiceAccount)
+		list = append(list, obj)
 	}
 	return list, nil
 }
 
-func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bool, error)) error {
+func (r *ServiceAccountRepository) ListIDs(tenantID TenantUUID) ([]ServiceAccountUUID, error) {
+	objs, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]ServiceAccountUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *ServiceAccountRepository) Iter(action func(*ServiceAccount) (bool, error)) error {
 	iter, err := r.db.Get(ServiceAccountType, PK)
 	if err != nil {
 		return err
@@ -188,8 +186,8 @@ func (r *ServiceAccountRepository) Iter(action func(account *ServiceAccount) (bo
 		if raw == nil {
 			break
 		}
-		t := raw.(*ServiceAccount)
-		next, err := action(t)
+		obj := raw.(*ServiceAccount)
+		next, err := action(obj)
 		if err != nil {
 			return err
 		}
@@ -214,6 +212,17 @@ func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(sa)
+}
+
+func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string) (*ServiceAccount, error) {
+	raw, err := r.db.First(ServiceAccountType, TenantUUIDServiceAccountIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*ServiceAccount), err
 }
 
 // TODO move to usecases

@@ -23,6 +23,7 @@ var (
 	rb1 = model.RoleBinding{
 		UUID:            rbUUID1,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "rb1",
 		ValidTill:       100,
 		RequireMFA:      false,
 		Users:           []string{userUUID1, userUUID2},
@@ -39,6 +40,7 @@ var (
 	rb2 = model.RoleBinding{
 		UUID:       rbUUID2,
 		TenantUUID: tenantUUID2,
+		Identifier: "rb2",
 		ValidTill:  110,
 		RequireMFA: false,
 		Users:      []string{userUUID1, userUUID2},
@@ -53,6 +55,7 @@ var (
 	rb3 = model.RoleBinding{
 		UUID:            rbUUID3,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "rb3",
 		ValidTill:       120,
 		RequireMFA:      false,
 		Users:           []string{userUUID2},
@@ -72,6 +75,7 @@ var (
 	rb4 = model.RoleBinding{
 		UUID:       rbUUID4,
 		TenantUUID: tenantUUID1,
+		Identifier: "rb4",
 		ValidTill:  150,
 		RequireMFA: false,
 		Users:      []string{userUUID1},
@@ -86,6 +90,7 @@ var (
 	rb5 = model.RoleBinding{
 		UUID:            rbUUID5,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "rb5",
 		ValidTill:       160,
 		RequireMFA:      false,
 		ServiceAccounts: []string{serviceAccountUUID1},
@@ -100,6 +105,7 @@ var (
 	rb6 = model.RoleBinding{
 		UUID:            rbUUID6,
 		TenantUUID:      tenantUUID1,
+		Identifier:      "rb6",
 		ValidTill:       170,
 		RequireMFA:      false,
 		ServiceAccounts: []string{serviceAccountUUID2},
@@ -114,6 +120,7 @@ var (
 	rb7 = model.RoleBinding{
 		UUID:       rbUUID7,
 		TenantUUID: tenantUUID1,
+		Identifier: "rb7",
 		ValidTill:  180,
 		RequireMFA: false,
 		Groups:     []model.GroupUUID{groupUUID4},
@@ -128,6 +135,7 @@ var (
 	rb8 = model.RoleBinding{
 		UUID:       rbUUID8,
 		TenantUUID: tenantUUID1,
+		Identifier: "rb8",
 		ValidTill:  190,
 		RequireMFA: false,
 		Users:      []model.UserUUID{userUUID2},

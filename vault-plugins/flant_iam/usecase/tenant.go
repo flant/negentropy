@@ -6,22 +6,33 @@ import (
 )
 
 type TenantService struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	repo *model.TenantRepository
+
+	// subtenants
+	childrenDeleters []DeleterByParent
 }
 
 func Tenants(db *io.MemoryStoreTxn) *TenantService {
-	return &TenantService{db: db}
+	return &TenantService{
+		repo: model.NewTenantRepository(db),
+		childrenDeleters: []DeleterByParent{
+			NewIdentitySharingDeleter(db),
+			UserDeleter(db),
+			ServiceAccountDeleter(db),
+			GroupDeleter(db),
+			RoleBindingDeleter(db),
+			ProjectDeleter(db),
+		},
+	}
 }
 
 func (s *TenantService) Create(t *model.Tenant) error {
 	t.Version = model.NewResourceVersion()
-	return model.NewTenantRepository(s.db).Create(t)
+	return s.repo.Create(t)
 }
 
 func (s *TenantService) Update(updated *model.Tenant) error {
-	repo := model.NewTenantRepository(s.db)
-
-	stored, err := repo.GetByID(updated.UUID)
+	stored, err := s.repo.GetByID(updated.UUID)
 	if err != nil {
 		return err
 	}
@@ -35,17 +46,20 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 
 	// Update
 
-	return repo.Create(updated)
+	return s.repo.Create(updated)
 }
 
 func (s *TenantService) Delete(id model.TenantUUID) error {
-	return model.NewTenantRepository(s.db).Delete(id)
+	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+		return err
+	}
+	return s.repo.Delete(id)
 }
 
 func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {
-	return model.NewTenantRepository(s.db).GetByID(id)
+	return s.repo.GetByID(id)
 }
 
 func (s *TenantService) List() ([]*model.Tenant, error) {
-	return model.NewTenantRepository(s.db).List()
+	return s.repo.List()
 }

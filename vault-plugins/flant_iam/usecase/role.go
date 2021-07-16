@@ -18,7 +18,7 @@ func (s *RoleService) Create(role *model.Role) error {
 }
 
 func (s *RoleService) Get(name string) (*model.Role, error) {
-	return model.NewRoleRepository(s.db).Get(name)
+	return model.NewRoleRepository(s.db).GetByID(name)
 }
 
 func (s *RoleService) List() ([]*model.Role, error) {
@@ -28,7 +28,7 @@ func (s *RoleService) List() ([]*model.Role, error) {
 func (s *RoleService) Update(updated *model.Role) error {
 	repo := model.NewRoleRepository(s.db)
 
-	stored, err := repo.Get(updated.Name)
+	stored, err := repo.GetByID(updated.Name)
 	if err != nil {
 		return err
 	}
@@ -54,13 +54,13 @@ func (s *RoleService) Include(name model.RoleName, subRole *model.IncludedRole) 
 	repo := model.NewRoleRepository(s.db)
 
 	// validate target exists
-	role, err := repo.Get(name)
+	role, err := repo.GetByID(name)
 	if err != nil {
 		return err
 	}
 
 	// validate source exists
-	if _, err := repo.Get(subRole.Name); err != nil {
+	if _, err := repo.GetByID(subRole.Name); err != nil {
 		return err
 	}
 
@@ -74,7 +74,7 @@ func (s *RoleService) Include(name model.RoleName, subRole *model.IncludedRole) 
 func (s *RoleService) Exclude(name, exclName model.RoleName) error {
 	repo := model.NewRoleRepository(s.db)
 
-	role, err := repo.Get(name)
+	role, err := repo.GetByID(name)
 	if err != nil {
 		return err
 	}

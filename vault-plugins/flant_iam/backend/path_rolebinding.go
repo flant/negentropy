@@ -90,6 +90,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
 				"members": {
 					Type:        framework.TypeSlice,
 					Description: "Members list",

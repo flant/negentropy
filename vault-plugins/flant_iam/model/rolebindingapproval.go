@@ -1,13 +1,11 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-)
-
-const (
-	RoleBindingApprovalType = "role_binding_approval"
 )
 
 func RoleBindingApprovalSchema() *memdb.DBSchema {
@@ -30,12 +28,20 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					RoleBindingForeignPK: {
+						Name: RoleBindingForeignPK,
+						Indexer: &memdb.StringFieldIndex{
+							Field:     "RoleBindingUUID",
+							Lowercase: true,
+						},
+					},
 				},
 			},
 		},
 	}
 }
 
+//go:generate go run gen_repository.go -type RoleBindingApproval -parentType RoleBinding
 type RoleBindingApproval struct {
 	UUID            RoleBindingApprovalUUID `json:"uuid"` // PK
 	TenantUUID      TenantUUID              `json:"tenant_uuid"`
@@ -52,40 +58,33 @@ type RoleBindingApproval struct {
 	RequireUniqueApprover bool `json:"require_unique_approver"`
 }
 
-func (t *RoleBindingApproval) ObjType() string {
+const RoleBindingApprovalType = "role_binding_approval" // also, memdb schema name
+
+func (u *RoleBindingApproval) ObjType() string {
 	return RoleBindingApprovalType
 }
 
-func (t *RoleBindingApproval) ObjId() string {
-	return t.UUID
+func (u *RoleBindingApproval) ObjId() string {
+	return u.UUID
 }
 
 type RoleBindingApprovalRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
 func NewRoleBindingApprovalRepository(tx *io.MemoryStoreTxn) *RoleBindingApprovalRepository {
-	return &RoleBindingApprovalRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
+	return &RoleBindingApprovalRepository{db: tx}
 }
 
-func (r *RoleBindingApprovalRepository) save(ra *RoleBindingApproval) error {
-	return r.db.Insert(RoleBindingApprovalType, ra)
+func (r *RoleBindingApprovalRepository) save(appr *RoleBindingApproval) error {
+	return r.db.Insert(RoleBindingApprovalType, appr)
 }
 
-func (r *RoleBindingApprovalRepository) delete(id RoleBindingApprovalUUID) error {
-	ra, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-
-	return r.db.Delete(RoleBindingApprovalType, ra)
+func (r *RoleBindingApprovalRepository) Create(appr *RoleBindingApproval) error {
+	return r.save(appr)
 }
 
-func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*RoleBindingApproval, error) {
+func (r *RoleBindingApprovalRepository) GetRawByID(id RoleBindingApprovalUUID) (interface{}, error) {
 	raw, err := r.db.First(RoleBindingApprovalType, PK, id)
 	if err != nil {
 		return nil, err
@@ -93,8 +92,100 @@ func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*Ro
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	ra := raw.(*RoleBindingApproval)
-	return ra, nil
+	return raw, nil
+}
+
+func (r *RoleBindingApprovalRepository) GetByID(id RoleBindingApprovalUUID) (*RoleBindingApproval, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*RoleBindingApproval), err
+}
+
+func (r *RoleBindingApprovalRepository) Update(appr *RoleBindingApproval) error {
+	_, err := r.GetByID(appr.UUID)
+	if err != nil {
+		return err
+	}
+	return r.save(appr)
+}
+
+func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error {
+	appr, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(RoleBindingApprovalType, appr)
+}
+
+func (r *RoleBindingApprovalRepository) List(rbUUID RoleBindingUUID) ([]*RoleBindingApproval, error) {
+	iter, err := r.db.Get(RoleBindingApprovalType, RoleBindingForeignPK, rbUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*RoleBindingApproval{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*RoleBindingApproval)
+		list = append(list, obj)
+	}
+	return list, nil
+}
+
+func (r *RoleBindingApprovalRepository) ListIDs(rbID RoleBindingUUID) ([]RoleBindingApprovalUUID, error) {
+	objs, err := r.List(rbID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]RoleBindingApprovalUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *RoleBindingApprovalRepository) Iter(action func(*RoleBindingApproval) (bool, error)) error {
+	iter, err := r.db.Get(RoleBindingApprovalType, PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*RoleBindingApproval)
+		next, err := action(obj)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (r *RoleBindingApprovalRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.Delete(objID)
+	}
+
+	appr := &RoleBindingApproval{}
+	err := json.Unmarshal(data, appr)
+	if err != nil {
+		return err
+	}
+
+	return r.save(appr)
 }
 
 func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *RoleBindingApproval) error {
@@ -116,58 +207,6 @@ func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *RoleBindingApproval) 
 
 	// Update
 	return r.save(ra)
-}
-
-func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error {
-	return r.delete(id)
-}
-
-func (r *RoleBindingApprovalRepository) List(tenantID, roleBindingID string) ([]*RoleBindingApproval, error) {
-	iter, err := r.db.Get(RoleBindingApprovalType, TenantForeignPK, tenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]*RoleBindingApproval, 0)
-
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*RoleBindingApproval)
-		if t.RoleBindingUUID != roleBindingID {
-			continue
-		}
-		result = append(result, t)
-	}
-
-	return result, nil
-}
-
-func (r *RoleBindingApprovalRepository) Iter(action func(approval *RoleBindingApproval) (bool, error)) error {
-	iter, err := r.db.Get(RoleBindingApprovalType, PK)
-	if err != nil {
-		return err
-	}
-
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		t := raw.(*RoleBindingApproval)
-		next, err := action(t)
-		if err != nil {
-			return err
-		}
-
-		if !next {
-			break
-		}
-	}
-
-	return nil
 }
 
 func (r *RoleBindingApprovalRepository) validate(stored, newRa *RoleBindingApproval) error {

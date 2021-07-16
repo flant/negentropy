@@ -13,7 +13,7 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 	return name + "@" + domain
 }
 
-type GroupsService struct {
+type GroupService struct {
 	tenantUUID model.TenantUUID
 
 	repo           *model.GroupRepository
@@ -21,8 +21,8 @@ type GroupsService struct {
 	membersFetcher *MembersFetcher
 }
 
-func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupsService {
-	return &GroupsService{
+func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupService {
+	return &GroupService{
 		tenantUUID: tid,
 
 		repo:           model.NewGroupRepository(db),
@@ -31,7 +31,7 @@ func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupsService {
 	}
 }
 
-func (s *GroupsService) Create(group *model.Group) error {
+func (s *GroupService) Create(group *model.Group) error {
 	tenant, err := s.tenantsRepo.GetByID(s.tenantUUID)
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (s *GroupsService) Create(group *model.Group) error {
 	return s.repo.Create(group)
 }
 
-func (s *GroupsService) Update(group *model.Group) error {
+func (s *GroupService) Update(group *model.Group) error {
 	stored, err := s.repo.GetByID(group.UUID)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ TODO Clean from everywhere:
 	* approvals
 	* identity_sharings
 */
-func (s *GroupsService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
+func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
 	group, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (s *GroupsService) Delete(origin model.ObjectOrigin, id model.GroupUUID) er
 	return s.repo.Delete(id)
 }
 
-func (s *GroupsService) SetExtension(ext *model.Extension) error {
+func (s *GroupService) SetExtension(ext *model.Extension) error {
 	obj, err := s.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *GroupsService) SetExtension(ext *model.Extension) error {
 	return s.repo.Update(obj)
 }
 
-func (s *GroupsService) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID) error {
+func (s *GroupService) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID) error {
 	obj, err := s.repo.GetByID(uuid)
 	if err != nil {
 		return err
@@ -141,6 +141,6 @@ func (s *GroupsService) UnsetExtension(origin model.ObjectOrigin, uuid model.Gro
 	return s.repo.Update(obj)
 }
 
-func (s *GroupsService) List(tid model.TenantUUID) ([]*model.Group, error) {
+func (s *GroupService) List(tid model.TenantUUID) ([]*model.Group, error) {
 	return s.repo.List(tid)
 }

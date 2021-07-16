@@ -43,7 +43,7 @@ var (
 	}
 )
 
-func createProjects(t *testing.T, repo *ProjectsService, projects ...model.Project) {
+func createProjects(t *testing.T, repo *ProjectService, projects ...model.Project) {
 	for _, project := range projects {
 		tmp := project
 		err := repo.Create(&tmp)

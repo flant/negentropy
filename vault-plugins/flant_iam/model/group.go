@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	GroupType                        = "group" // also, memdb schema name
 	UserInTenantGroupIndex           = "user_in_tenant_group_index"
 	ServiceAccountInTenantGroupIndex = "service_account_in_tenant_group_index"
 	GroupInTenantGroupIndex          = "group_in_tenant_group_index"
@@ -87,6 +86,7 @@ func GroupSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type Group -parentType Tenant
 type Group struct {
 	UUID           GroupUUID  `json:"uuid"` // PK
 	TenantUUID     TenantUUID `json:"tenant_uuid"`
@@ -104,6 +104,8 @@ type Group struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
+const GroupType = "group" // also, memdb schema name
+
 func (u *Group) ObjType() string {
 	return GroupType
 }
@@ -113,8 +115,7 @@ func (u *Group) ObjId() string {
 }
 
 type GroupRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
 func NewGroupRepository(tx *io.MemoryStoreTxn) *GroupRepository {
@@ -126,35 +127,7 @@ func (r *GroupRepository) save(group *Group) error {
 }
 
 func (r *GroupRepository) Create(group *Group) error {
-	// TODO check name collision?
 	return r.save(group)
-}
-
-func (r *GroupRepository) Update(group *Group) error {
-	_, err := r.GetByID(group.UUID)
-	if err != nil {
-		return err
-	}
-	return r.save(group)
-}
-
-func (r *GroupRepository) GetByIdentifier(tenantUUID, identifier string) (*Group, error) {
-	raw, err := r.db.First(GroupType, TenantUUIDGroupIdIndex, tenantUUID, identifier)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	return raw.(*Group), err
-}
-
-func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
-	raw, err := r.GetRawByID(id)
-	if raw == nil {
-		return nil, err
-	}
-	return raw.(*Group), err
 }
 
 func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
@@ -168,17 +141,32 @@ func (r *GroupRepository) GetRawByID(id GroupUUID) (interface{}, error) {
 	return raw, nil
 }
 
+func (r *GroupRepository) GetByID(id GroupUUID) (*Group, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*Group), err
+}
+
+func (r *GroupRepository) Update(group *Group) error {
+	_, err := r.GetByID(group.UUID)
+	if err != nil {
+		return err
+	}
+	return r.save(group)
+}
+
 func (r *GroupRepository) Delete(id GroupUUID) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-
 	return r.db.Delete(GroupType, group)
 }
 
-func (r *GroupRepository) List(tenantID TenantUUID) ([]*Group, error) {
-	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantID)
+func (r *GroupRepository) List(tenantUUID TenantUUID) ([]*Group, error) {
+	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,25 +177,72 @@ func (r *GroupRepository) List(tenantID TenantUUID) ([]*Group, error) {
 		if raw == nil {
 			break
 		}
-		g := raw.(*Group)
-		list = append(list, g)
+		obj := raw.(*Group)
+		list = append(list, obj)
 	}
 	return list, nil
 }
 
-// Sync applies changes received from Kafka
+func (r *GroupRepository) ListIDs(tenantID TenantUUID) ([]GroupUUID, error) {
+	objs, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]GroupUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *GroupRepository) Iter(action func(*Group) (bool, error)) error {
+	iter, err := r.db.Get(GroupType, PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*Group)
+		next, err := action(obj)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (r *GroupRepository) Sync(objID string, data []byte) error {
 	if data == nil {
 		return r.Delete(objID)
 	}
 
-	gr := &Group{}
-	err := json.Unmarshal(data, gr)
+	group := &Group{}
+	err := json.Unmarshal(data, group)
 	if err != nil {
 		return err
 	}
 
-	return r.save(gr)
+	return r.save(group)
+}
+
+func (r *GroupRepository) GetByIdentifier(tenantUUID, identifier string) (*Group, error) {
+	raw, err := r.db.First(GroupType, TenantUUIDGroupIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw.(*Group), err
 }
 
 func (r *GroupRepository) FindDirectParentGroupsByUserUUID(tenantUUID TenantUUID, userUUID UserUUID) (map[GroupUUID]struct{}, error) {

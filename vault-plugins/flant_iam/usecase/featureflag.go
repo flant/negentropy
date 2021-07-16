@@ -66,7 +66,7 @@ func (s *TenantFeatureFlagService) AvailableRoles() ([]*model.Role, error) {
 }
 
 func (s *TenantFeatureFlagService) Add(featureFlag model.TenantFeatureFlag) (*model.Tenant, error) {
-	_, err := s.ffRepo.Get(featureFlag.Name)
+	_, err := s.ffRepo.GetByID(featureFlag.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *TenantFeatureFlagService) Add(featureFlag model.TenantFeatureFlag) (*mo
 }
 
 func (s *TenantFeatureFlagService) Delete(featureFlagName string) (*model.Tenant, error) {
-	ff, err := s.ffRepo.Get(featureFlagName)
+	ff, err := s.ffRepo.GetByID(featureFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func ProjectFeatureFlags(tx *io.MemoryStoreTxn, tenantID model.TenantUUID, proje
 }
 
 func (s *ProjectFeatureFlagService) Add(featureFlag model.FeatureFlag) (*model.Project, error) {
-	_, err := s.ffRepo.Get(featureFlag.Name)
+	_, err := s.ffRepo.GetByID(featureFlag.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s *ProjectFeatureFlagService) Add(featureFlag model.FeatureFlag) (*model.P
 }
 
 func (s *ProjectFeatureFlagService) Delete(featureFlagName string) (*model.Project, error) {
-	ff, err := s.ffRepo.Get(featureFlagName)
+	ff, err := s.ffRepo.GetByID(featureFlagName)
 	if err != nil {
 		return nil, err
 	}

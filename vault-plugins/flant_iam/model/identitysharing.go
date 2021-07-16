@@ -1,14 +1,15 @@
 package model
 
 import (
+	"encoding/json"
+
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const (
-	IdentitySharingType        = "identity_sharing"
-	SourceTenantUUIDIndex      = "source_tenant_uuid_index"
+	SourceTenantUUIDIndex      = TenantForeignPK // it is generated because tenant is the parent object for shares
 	DestinationTenantUUIDIndex = "destination_tenant_uuid_index"
 )
 
@@ -43,6 +44,7 @@ func IdentitySharingSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type IdentitySharing -parentType Tenant
 type IdentitySharing struct {
 	UUID                  IdentitySharingUUID `json:"uuid"` // PK
 	SourceTenantUUID      TenantUUID          `json:"source_tenant_uuid"`
@@ -54,12 +56,14 @@ type IdentitySharing struct {
 	Groups []GroupUUID `json:"groups"`
 }
 
-func (t *IdentitySharing) ObjType() string {
+const IdentitySharingType = "identity_sharing" // also, memdb schema name
+
+func (u *IdentitySharing) ObjType() string {
 	return IdentitySharingType
 }
 
-func (t *IdentitySharing) ObjId() string {
-	return t.UUID
+func (u *IdentitySharing) ObjId() string {
+	return u.UUID
 }
 
 type IdentitySharingRepository struct {
@@ -67,25 +71,83 @@ type IdentitySharingRepository struct {
 }
 
 func NewIdentitySharingRepository(tx *io.MemoryStoreTxn) *IdentitySharingRepository {
-	return &IdentitySharingRepository{
-		db: tx,
+	return &IdentitySharingRepository{db: tx}
+}
+
+func (r *IdentitySharingRepository) save(sh *IdentitySharing) error {
+	return r.db.Insert(IdentitySharingType, sh)
+}
+
+func (r *IdentitySharingRepository) Create(sh *IdentitySharing) error {
+	return r.save(sh)
+}
+
+func (r *IdentitySharingRepository) GetRawByID(id IdentitySharingUUID) (interface{}, error) {
+	raw, err := r.db.First(IdentitySharingType, PK, id)
+	if err != nil {
+		return nil, err
 	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	return raw, nil
 }
 
-func (r *IdentitySharingRepository) save(ra *IdentitySharing) error {
-	return r.db.Insert(IdentitySharingType, ra)
+func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySharing, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*IdentitySharing), err
 }
 
-func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
-	ra, err := r.GetByID(id)
+func (r *IdentitySharingRepository) Update(sh *IdentitySharing) error {
+	_, err := r.GetByID(sh.UUID)
 	if err != nil {
 		return err
 	}
-
-	return r.db.Delete(IdentitySharingType, ra)
+	return r.save(sh)
 }
 
-func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool, error)) error {
+func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
+	sh, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(IdentitySharingType, sh)
+}
+
+func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentitySharing, error) {
+	iter, err := r.db.Get(IdentitySharingType, TenantForeignPK, tenantUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*IdentitySharing{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*IdentitySharing)
+		list = append(list, obj)
+	}
+	return list, nil
+}
+
+func (r *IdentitySharingRepository) ListIDs(tenantID TenantUUID) ([]IdentitySharingUUID, error) {
+	objs, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]IdentitySharingUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *IdentitySharingRepository) Iter(action func(*IdentitySharing) (bool, error)) error {
 	iter, err := r.db.Get(IdentitySharingType, PK)
 	if err != nil {
 		return err
@@ -96,8 +158,8 @@ func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool,
 		if raw == nil {
 			break
 		}
-		t := raw.(*IdentitySharing)
-		next, err := action(t)
+		obj := raw.(*IdentitySharing)
+		next, err := action(obj)
 		if err != nil {
 			return err
 		}
@@ -110,22 +172,18 @@ func (r *IdentitySharingRepository) Iter(action func(is *IdentitySharing) (bool,
 	return nil
 }
 
-func (r *IdentitySharingRepository) List(tenantID TenantUUID) ([]*IdentitySharing, error) {
-	iter, err := r.db.Get(IdentitySharingType, SourceTenantUUIDIndex, tenantID)
-	if err != nil {
-		return nil, err
+func (r *IdentitySharingRepository) Sync(objID string, data []byte) error {
+	if data == nil {
+		return r.Delete(objID)
 	}
 
-	res := make([]*IdentitySharing, 0)
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		u := raw.(*IdentitySharing)
-		res = append(res, u)
+	sh := &IdentitySharing{}
+	err := json.Unmarshal(data, sh)
+	if err != nil {
+		return err
 	}
-	return res, nil
+
+	return r.save(sh)
 }
 
 func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID TenantUUID) ([]*IdentitySharing, error) {
@@ -144,24 +202,4 @@ func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID TenantUUID
 		res = append(res, u)
 	}
 	return res, nil
-}
-
-func (r *IdentitySharingRepository) GetByID(id IdentitySharingUUID) (*IdentitySharing, error) {
-	raw, err := r.db.First(IdentitySharingType, PK, id)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, ErrNotFound
-	}
-	ra := raw.(*IdentitySharing)
-	return ra, nil
-}
-
-func (r *IdentitySharingRepository) Create(is *IdentitySharing) error {
-	return r.save(is)
-}
-
-func (r *IdentitySharingRepository) Update(ra *IdentitySharing) error {
-	return r.save(ra)
 }

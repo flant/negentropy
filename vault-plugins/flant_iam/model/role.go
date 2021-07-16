@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	RoleType           = "role" // also, memdb schema name
 	IncludedRolesIndex = "IncludedRolesIndex"
 	RoleScopeIndex     = "scope"
 )
@@ -53,6 +52,7 @@ func RoleSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type Role -IDsuffix Name
 type Role struct {
 	Name  RoleName  `json:"name"`
 	Scope RoleScope `json:"scope"`
@@ -71,12 +71,14 @@ type IncludedRole struct {
 	OptionsTemplate string   `json:"options_template"`
 }
 
-func (t *Role) ObjType() string {
+const RoleType = "role" // also, memdb schema name
+
+func (u *Role) ObjType() string {
 	return RoleType
 }
 
-func (t *Role) ObjId() string {
-	return t.Name
+func (u *Role) ObjId() string {
+	return u.Name
 }
 
 type RoleRepository struct {
@@ -84,13 +86,10 @@ type RoleRepository struct {
 }
 
 func NewRoleRepository(tx *io.MemoryStoreTxn) *RoleRepository {
-	return &RoleRepository{
-		db: tx,
-	}
+	return &RoleRepository{db: tx}
 }
 
 func (r *RoleRepository) save(role *Role) error {
-	// TODO Validate exising name
 	return r.db.Insert(RoleType, role)
 }
 
@@ -98,27 +97,35 @@ func (r *RoleRepository) Create(role *Role) error {
 	return r.save(role)
 }
 
-func (r *RoleRepository) Get(name RoleName) (*Role, error) {
-	raw, err := r.db.First(RoleType, PK, name)
+func (r *RoleRepository) GetRawByID(id RoleName) (interface{}, error) {
+	raw, err := r.db.First(RoleType, PK, id)
 	if err != nil {
 		return nil, err
 	}
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	return raw.(*Role), nil
+	return raw, nil
+}
+
+func (r *RoleRepository) GetByID(id RoleName) (*Role, error) {
+	raw, err := r.GetRawByID(id)
+	if raw == nil {
+		return nil, err
+	}
+	return raw.(*Role), err
 }
 
 func (r *RoleRepository) Update(role *Role) error {
-	_, err := r.Get(role.Name)
+	_, err := r.GetByID(role.Name)
 	if err != nil {
 		return err
 	}
 	return r.save(role)
 }
 
-func (r *RoleRepository) Delete(name RoleName) error {
-	role, err := r.Get(name)
+func (r *RoleRepository) Delete(id RoleName) error {
+	role, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -137,10 +144,22 @@ func (r *RoleRepository) List() ([]*Role, error) {
 		if raw == nil {
 			break
 		}
-		role := raw.(*Role)
-		list = append(list, role)
+		obj := raw.(*Role)
+		list = append(list, obj)
 	}
 	return list, nil
+}
+
+func (r *RoleRepository) ListIDs() ([]RoleName, error) {
+	objs, err := r.List()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]RoleName, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
 }
 
 func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
@@ -154,8 +173,8 @@ func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
 		if raw == nil {
 			break
 		}
-		t := raw.(*Role)
-		next, err := action(t)
+		obj := raw.(*Role)
+		next, err := action(obj)
 		if err != nil {
 			return err
 		}

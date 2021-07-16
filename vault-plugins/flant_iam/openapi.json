@@ -686,6 +686,62 @@
         }
       }
     },
+    "/flant_iam/configure_extension/server_access": {
+      "post": {
+        "summary": "Register server",
+        "operationId": "postFlant_iamConfigure_extensionServer_access",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "delete_expired_password_seeds_after": {
+                    "type": "integer",
+                    "description": "Duration after which expired password seed will be garbage collected",
+                    "format": "seconds"
+                  },
+                  "expire_password_seed_after_reveal_in": {
+                    "type": "integer",
+                    "description": "Duration after password reveal after which password seeds will be expired",
+                    "format": "seconds"
+                  },
+                  "last_allocated_uid": {
+                    "type": "integer",
+                    "description": "Last allocated POSIX UID"
+                  },
+                  "role_for_ssh_access": {
+                    "type": "string",
+                    "description": "Role to use for SSH access"
+                  },
+                  "roles_for_servers": {
+                    "type": "array",
+                    "description": "List of roles assigned to newly created server Groups",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "roles_for_servers",
+                  "role_for_ssh_access",
+                  "delete_expired_password_seeds_after",
+                  "expire_password_seed_after_reveal_in"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/feature_flag": {
       "get": {
         "summary": "Lists all feature flags.",
@@ -1432,8 +1488,7 @@
                 "properties": {
                   "identifier": {
                     "type": "string",
-                    "description": "Identifier for humans and machines",
-                    "pattern": "\\w([\\w-.]*\\w)?"
+                    "description": "Identifier for humans and machines"
                   },
                   "members": {
                     "type": "array",
@@ -1513,8 +1568,7 @@
                 "properties": {
                   "identifier": {
                     "type": "string",
-                    "description": "Identifier for humans and machines",
-                    "pattern": "\\w([\\w-.]*\\w)?"
+                    "description": "Identifier for humans and machines"
                   },
                   "members": {
                     "type": "array",
@@ -1529,9 +1583,9 @@
                   }
                 },
                 "required": [
+                  "resource_version",
                   "identifier",
-                  "members",
-                  "resource_version"
+                  "members"
                 ]
               }
             }
@@ -1714,13 +1768,335 @@
                   }
                 },
                 "required": [
-                  "uuid",
+                  "identifier",
+                  "uuid"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/register_server": {
+      "parameters": [
+        {
+          "name": "project_uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Register server",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidRegister_server",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "annotations": {
+                    "type": "object",
+                    "description": "Map of annotations",
+                    "format": "map"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "labels": {
+                    "type": "object",
+                    "description": "Map of labels",
+                    "format": "map"
+                  }
+                },
+                "required": [
                   "identifier"
                 ]
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}": {
+      "parameters": [
+        {
+          "name": "project_uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "server_uuid",
+          "description": "ID of a server",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Read a server",
+        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a server",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "annotations": {
+                    "type": "object",
+                    "description": "Map of annotations",
+                    "format": "map"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "labels": {
+                    "type": "object",
+                    "description": "Map of labels",
+                    "format": "map"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a server",
+        "operationId": "deleteFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/connection_info": {
+      "parameters": [
+        {
+          "name": "server_uuid",
+          "description": "ID of a server",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Update a server's connection_info",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidConnection_info",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hostname": {
+                    "type": "string",
+                    "description": "IP or a hostname"
+                  },
+                  "jump_hostname": {
+                    "type": "string",
+                    "description": "IP or a hostname, optional"
+                  },
+                  "jump_port": {
+                    "type": "string",
+                    "description": "Port, optional, 22 by default if jump_hostname is defined"
+                  },
+                  "port": {
+                    "type": "string",
+                    "description": "Port, optional, 22 by default"
+                  }
+                },
+                "required": [
+                  "hostname"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/fingerprint": {
+      "parameters": [
+        {
+          "name": "server_uuid",
+          "description": "ID of a server",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Read a server's fingerprint",
+        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update a server's fingerprint",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fingerprint": {
+                    "type": "string",
+                    "description": "Fingerprint of a server",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/servers": {
+      "parameters": [
+        {
+          "name": "project_uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List servers",
+        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServers",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1874,6 +2250,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "members": {
                     "type": "array",
                     "description": "Members list",
@@ -1904,11 +2285,12 @@
                   }
                 },
                 "required": [
-                  "uuid",
+                  "identifier",
                   "members",
                   "roles",
                   "ttl",
-                  "require_mfa"
+                  "require_mfa",
+                  "uuid"
                 ]
               }
             }
@@ -2116,11 +2498,11 @@
                   }
                 },
                 "required": [
+                  "ttl",
+                  "require_mfa",
                   "resource_version",
                   "members",
-                  "roles",
-                  "ttl",
-                  "require_mfa"
+                  "roles"
                 ]
               }
             }
@@ -2236,11 +2618,11 @@
                   }
                 },
                 "required": [
+                  "token_max_ttl",
                   "uuid",
                   "identifier",
                   "allowed_cidrs",
-                  "token_ttl",
-                  "token_max_ttl"
+                  "token_ttl"
                 ]
               }
             }
@@ -2536,11 +2918,11 @@
                   }
                 },
                 "required": [
+                  "token_ttl",
+                  "token_max_ttl",
                   "resource_version",
                   "identifier",
-                  "allowed_cidrs",
-                  "token_ttl",
-                  "token_max_ttl"
+                  "allowed_cidrs"
                 ]
               }
             }
@@ -2673,15 +3055,15 @@
                   }
                 },
                 "required": [
-                  "additional_emails",
-                  "identifier",
                   "first_name",
-                  "last_name",
-                  "mobile_phone",
-                  "uuid",
                   "display_name",
                   "email",
-                  "additional_phones"
+                  "additional_phones",
+                  "identifier",
+                  "mobile_phone",
+                  "uuid",
+                  "last_name",
+                  "additional_emails"
                 ]
               }
             }
@@ -2890,15 +3272,15 @@
                   }
                 },
                 "required": [
-                  "mobile_phone",
-                  "additional_emails",
-                  "identifier",
-                  "first_name",
                   "additional_phones",
-                  "resource_version",
                   "last_name",
                   "display_name",
-                  "email"
+                  "mobile_phone",
+                  "additional_emails",
+                  "email",
+                  "resource_version",
+                  "identifier",
+                  "first_name"
                 ]
               }
             }

@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	RoleBindingType                        = "role_binding" // also, memdb schema name
 	RoleBindingForeignPK                   = "role_binding_uuid"
 	UserInTenantRoleBindingIndex           = "user_in_tenant_role_binding"
 	ServiceAccountInTenantRoleBindingIndex = "service_account_in_tenant_role_binding"
@@ -104,6 +103,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type RoleBinding -parentType Tenant
 type RoleBinding struct {
 	UUID       RoleBindingUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID      `json:"tenant_uuid"`
@@ -129,6 +129,13 @@ type RoleBinding struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
+type BoundRole struct {
+	Name    RoleName               `json:"name"`
+	Options map[string]interface{} `json:"options"`
+}
+
+const RoleBindingType = "role_binding" // also, memdb schema name
+
 func (u *RoleBinding) ObjType() string {
 	return RoleBindingType
 }
@@ -137,28 +144,23 @@ func (u *RoleBinding) ObjId() string {
 	return u.UUID
 }
 
-type BoundRole struct {
-	Name    RoleName               `json:"name"`
-	Options map[string]interface{} `json:"options"`
-}
-
 type RoleBindingRepository struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	tenantRepo *TenantRepository
+	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
 func NewRoleBindingRepository(tx *io.MemoryStoreTxn) *RoleBindingRepository {
-	return &RoleBindingRepository{
-		db:         tx,
-		tenantRepo: NewTenantRepository(tx),
-	}
+	return &RoleBindingRepository{db: tx}
 }
 
 func (r *RoleBindingRepository) save(rb *RoleBinding) error {
 	return r.db.Insert(RoleBindingType, rb)
 }
 
-func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
+func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
+	return r.save(rb)
+}
+
+func (r *RoleBindingRepository) GetRawByID(id RoleBindingUUID) (interface{}, error) {
 	raw, err := r.db.First(RoleBindingType, PK, id)
 	if err != nil {
 		return nil, err
@@ -166,50 +168,15 @@ func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error
 	if raw == nil {
 		return nil, ErrNotFound
 	}
-	roleBinding := raw.(*RoleBinding)
-	return roleBinding, nil
+	return raw, nil
 }
 
-func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (*RoleBinding, error) {
-	raw, err := r.db.First(RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
-	if err != nil {
-		return nil, err
-	}
+func (r *RoleBindingRepository) GetByID(id RoleBindingUUID) (*RoleBinding, error) {
+	raw, err := r.GetRawByID(id)
 	if raw == nil {
-		return nil, ErrNotFound
-	}
-	roleBinding := raw.(*RoleBinding)
-	return roleBinding, nil
-}
-
-func (r *RoleBindingRepository) List(tid TenantUUID) ([]*RoleBinding, error) {
-	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tid)
-	if err != nil {
 		return nil, err
 	}
-
-	list := []*RoleBinding{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		rb := raw.(*RoleBinding)
-		list = append(list, rb)
-	}
-	return list, nil
-}
-
-func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
-	rb, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(RoleBindingType, rb)
-}
-
-func (r *RoleBindingRepository) Create(rb *RoleBinding) error {
-	return r.save(rb)
+	return raw.(*RoleBinding), err
 }
 
 func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
@@ -220,7 +187,69 @@ func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
 	return r.save(rb)
 }
 
-// Sync saves aplies changes from Kafka
+func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
+	rb, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(RoleBindingType, rb)
+}
+
+func (r *RoleBindingRepository) List(tenantUUID TenantUUID) ([]*RoleBinding, error) {
+	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*RoleBinding{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*RoleBinding)
+		list = append(list, obj)
+	}
+	return list, nil
+}
+
+func (r *RoleBindingRepository) ListIDs(tenantID TenantUUID) ([]RoleBindingUUID, error) {
+	objs, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]RoleBindingUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
+}
+
+func (r *RoleBindingRepository) Iter(action func(*RoleBinding) (bool, error)) error {
+	iter, err := r.db.Get(RoleBindingType, PK)
+	if err != nil {
+		return err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*RoleBinding)
+		next, err := action(obj)
+		if err != nil {
+			return err
+		}
+
+		if !next {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 	if data == nil {
 		return r.Delete(objID)
@@ -233,6 +262,18 @@ func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(rb)
+}
+
+func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (*RoleBinding, error) {
+	raw, err := r.db.First(RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotFound
+	}
+	roleBinding := raw.(*RoleBinding)
+	return roleBinding, nil
 }
 
 type memberInTenantRoleBindingIndexer struct {

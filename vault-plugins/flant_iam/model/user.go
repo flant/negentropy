@@ -8,11 +8,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-const (
-	UserType = "user" // also, memdb schema name
-
-)
-
 func UserSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
@@ -51,6 +46,7 @@ func UserSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type User -parentType Tenant
 type User struct {
 	UUID       UserUUID   `json:"uuid"` // PK
 	TenantUUID TenantUUID `json:"tenant_uuid"`
@@ -73,6 +69,8 @@ type User struct {
 	MobilePhone      string   `json:"mobile_phone"`
 	AdditionalPhones []string `json:"additional_phones"`
 }
+
+const UserType = "user" // also, memdb schema name
 
 func (u *User) ObjType() string {
 	return UserType
@@ -130,12 +128,11 @@ func (r *UserRepository) Delete(id UserUUID) error {
 	if err != nil {
 		return err
 	}
-
 	return r.db.Delete(UserType, user)
 }
 
-func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
-	iter, err := r.db.Get(UserType, TenantForeignPK, tenantID)
+func (r *UserRepository) List(tenantUUID TenantUUID) ([]*User, error) {
+	iter, err := r.db.Get(UserType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -146,10 +143,22 @@ func (r *UserRepository) List(tenantID TenantUUID) ([]*User, error) {
 		if raw == nil {
 			break
 		}
-		u := raw.(*User)
-		list = append(list, u)
+		obj := raw.(*User)
+		list = append(list, obj)
 	}
 	return list, nil
+}
+
+func (r *UserRepository) ListIDs(tenantID TenantUUID) ([]UserUUID, error) {
+	objs, err := r.List(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]UserUUID, len(objs))
+	for i := range objs {
+		ids[i] = objs[i].ObjId()
+	}
+	return ids, nil
 }
 
 func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
@@ -163,8 +172,8 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 		if raw == nil {
 			break
 		}
-		t := raw.(*User)
-		next, err := action(t)
+		obj := raw.(*User)
+		next, err := action(obj)
 		if err != nil {
 			return err
 		}
