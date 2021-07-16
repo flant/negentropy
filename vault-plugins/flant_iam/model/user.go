@@ -58,7 +58,7 @@ type User struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
 
 	Identifier     string `json:"identifier"`
 	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>
