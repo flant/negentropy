@@ -1,5 +1,7 @@
 package io
 
+import log "github.com/hashicorp/go-hclog"
+
 type HookEvent int
 
 const (
@@ -16,6 +18,7 @@ type ObjectHook struct {
 }
 
 func (ms *MemoryStore) RegisterHook(hookConfig ObjectHook) {
+	log.L().Info("register hook", "hook", hookConfig)
 	if len(hookConfig.Events) == 0 {
 		return
 	}

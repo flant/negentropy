@@ -74,12 +74,9 @@ function fill_test_data() {
   tenantName="1tv"
   projectName="main"
 
-
-
   # create tenant
   tenantResp=$(docker-exec "vault write flant_iam/tenant identifier=$tenantName --format=json")
   tenantID=$(jq -r '.data.tenant.uuid' <<< "$tenantResp")
-
 
   # create project
   projectResp=$(docker-exec "vault write flant_iam/tenant/$tenantID/project identifier=$projectName --format=json")

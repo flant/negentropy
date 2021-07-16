@@ -3,9 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -115,7 +115,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		case kafka_destination.MetadataTopicType:
 			storage.AddKafkaDestination(kafka_destination.NewMetadataKafkaDestination(mb, *replica))
 		default:
-			log.Println("unknown replica type: ", replica.Name, replica.TopicType)
+			log.L().Warn("unknown replica type: ", replica.Name, replica.TopicType)
 		}
 	}
 

@@ -3,22 +3,24 @@ package extension_server_access
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest, memStore *io.MemoryStore) error {
 	storage := initRequest.Storage
+	log.L().Debug("init server-access")
 
 	config, err := liveConfig.GetServerAccessConfig(ctx, storage)
 	if err != nil {
+		log.L().Error("error get  server-access config", "err", err)
 		return err
 	}
 
@@ -26,7 +28,7 @@ func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.I
 		liveConfig.configured = true
 	}
 
-	go RegisterServerAccessUserExtension(ctx, storage, memStore)
+	go RegisterServerAccessUserExtension(context.Background(), storage, memStore)
 
 	return nil
 }
@@ -37,15 +39,17 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	_ = wait.PollImmediateInfinite(5*time.Second, func() (done bool, err error) {
 		config, err := liveConfig.GetServerAccessConfig(ctx, vaultStore)
 		if err != nil {
-			fmt.Printf("can't get current config from Vault Storage: %s", err)
+			log.L().Error("can't get current config from Vault Storage", "err", err)
 			return false, nil
 		}
 		if config == nil {
-			log.Print("server_access is not configured yet")
+			log.L().Info("server_access is not configured yet")
+
 			return false, nil
 		}
 
 		sac = config
+		log.L().Info("found server-access config", "config", config)
 
 		return true, nil
 	})
@@ -62,6 +66,8 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 			if err != nil {
 				return err
 			}
+
+			log.L().Error("finished user hook", "new", obj)
 
 			return nil
 		},
