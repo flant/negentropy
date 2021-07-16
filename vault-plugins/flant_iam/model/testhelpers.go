@@ -36,7 +36,7 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 func toMemberNotation(m Model) MemberNotation {
 	return MemberNotation{
 		Type: m.ObjType(),
-		ID:   m.ObjId(),
+		UUID: m.ObjId(),
 	}
 }
 
@@ -57,7 +57,7 @@ func makeMemberNotations(memberType string, uuids []string) []MemberNotation {
 	for i := range uuids {
 		result[i] = MemberNotation{
 			Type: memberType,
-			ID:   uuids[i],
+			UUID: uuids[i],
 		}
 	}
 	return result

@@ -45,14 +45,14 @@ func parseMembers(rawList interface{}) ([]model.MemberNotation, error) {
 		if !ok {
 			return nil, fmt.Errorf("cannot parse type in %v", raw)
 		}
-		id, ok := s["id"].(string)
+		id, ok := s["uuid"].(string)
 		if !ok {
-			return nil, fmt.Errorf("cannot parse id in %v", raw)
+			return nil, fmt.Errorf("cannot parse uuid in %v", raw)
 		}
 
 		subj := model.MemberNotation{
 			Type: typ,
-			ID:   id,
+			UUID: id,
 		}
 		members = append(members, subj)
 	}

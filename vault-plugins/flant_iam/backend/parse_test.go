@@ -104,15 +104,15 @@ func Test_parseMembers(t *testing.T) {
 			name: "valid values",
 			args: args{
 				rawList: []interface{}{
-					map[string]interface{}{"type": model.ServiceAccountType, "id": "said"},
-					map[string]interface{}{"type": model.GroupType, "id": "gid"},
-					map[string]interface{}{"type": model.UserType, "id": "uid"},
+					map[string]interface{}{"type": model.ServiceAccountType, "uuid": "said"},
+					map[string]interface{}{"type": model.GroupType, "uuid": "gid"},
+					map[string]interface{}{"type": model.UserType, "uuid": "uid"},
 				},
 			},
 			want: []model.MemberNotation{
-				{Type: model.ServiceAccountType, ID: "said"},
-				{Type: model.GroupType, ID: "gid"},
-				{Type: model.UserType, ID: "uid"},
+				{Type: model.ServiceAccountType, UUID: "said"},
+				{Type: model.GroupType, UUID: "gid"},
+				{Type: model.UserType, UUID: "uid"},
 			},
 			wantErr: false,
 		},
@@ -120,9 +120,9 @@ func Test_parseMembers(t *testing.T) {
 			name: "error on absent type",
 			args: args{
 				rawList: []interface{}{
-					map[string]interface{}{"type": model.ServiceAccountType, "id": "said"},
-					map[string]interface{}{"___": model.GroupType, "id": "gid"},
-					map[string]interface{}{"type": model.UserType, "id": "uid"},
+					map[string]interface{}{"type": model.ServiceAccountType, "uuid": "said"},
+					map[string]interface{}{"___": model.GroupType, "uuid": "gid"},
+					map[string]interface{}{"type": model.UserType, "uuid": "uid"},
 				},
 			},
 			want:    nil,
@@ -132,9 +132,9 @@ func Test_parseMembers(t *testing.T) {
 			name: "error on absent id",
 			args: args{
 				rawList: []interface{}{
-					map[string]interface{}{"type": model.ServiceAccountType, "id": "said"},
+					map[string]interface{}{"type": model.ServiceAccountType, "uuid": "said"},
 					map[string]interface{}{"type": model.GroupType, "___": "gid"},
-					map[string]interface{}{"type": model.UserType, "id": "uid"},
+					map[string]interface{}{"type": model.UserType, "uuid": "uid"},
 				},
 			},
 			want:    nil,

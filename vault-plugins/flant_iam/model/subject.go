@@ -8,5 +8,5 @@ type Members struct {
 
 type MemberNotation struct {
 	Type string `json:"type"`
-	ID   string `json:"id"`
+	UUID string `json:"uuid"`
 }

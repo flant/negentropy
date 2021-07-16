@@ -36,7 +36,7 @@ func (f *MembersFetcher) Fetch(members []model.MemberNotation) (*model.Members, 
 			return nil, err
 		}
 
-		raw, err := repo.GetRawByID(subj.ID)
+		raw, err := repo.GetRawByID(subj.UUID)
 		if err != nil {
 			return nil, err
 		}
