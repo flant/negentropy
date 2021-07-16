@@ -3,9 +3,10 @@ package usecase
 import (
 	"testing"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
