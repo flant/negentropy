@@ -107,6 +107,19 @@ func (r *JWKSRepo) GetOwn() (*JWKS, error){
 	return jwks, nil
 }
 
+func (r *JWKSRepo) GetSet() ([]jose.JSONWebKey, error) {
+	keys := make([]jose.JSONWebKey, 0)
+	err := r.Iter(func(j *JWKS) (bool, error) {
+		for _, k := range j.KeySet.Keys {
+			keys = append(keys, k.JSONWebKey)
+		}
+
+		return true, nil
+	})
+
+	return keys, err
+}
+
 func (r *JWKSRepo) Iter(action func(*JWKS) (bool, error)) error {
 	iter, err := r.db.Get(r.tableName, idKey)
 	if err != nil {

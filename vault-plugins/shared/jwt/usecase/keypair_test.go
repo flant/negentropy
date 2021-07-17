@@ -2,8 +2,11 @@ package usecase
 
 import (
 	"context"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
+	"github.com/go-test/deep"
 	"testing"
 	"time"
 
@@ -20,7 +23,7 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 		Data:      nil,
 	}
 	resp, err := b.HandleRequest(context.Background(), req)
-	jwt.RequireValidResponse(t, resp, err)
+	test.RequireValidResponse(t, resp, err)
 
 	keys := resp.Data["keys"].([]jose.JSONWebKey)
 	require.NoError(t, err, "error on keys unmarshall")
@@ -28,89 +31,244 @@ func runJWKSTest(t *testing.T, b logical.Backend, storage logical.Storage) []jos
 	return keys
 }
 
-func TestJWKS(t *testing.T) {
-	b, storage, memstore := jwt.GetBackend(t, time.Now)
-	jwt.EnableJWT(t, b, storage)
-
-	// #1 First run
-	firstRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, 1, len(firstRunKeys))
-
-	tnx := memstore.Txn(true)
-	defer tnx.Abort()
-	stateRepo := model.NewStateRepo(tnx, model.NewJWKSRepo(tnx, "id"))
-	s := NewKeyPairService(stateRepo, model.DefaultConfig(), time.Now)
-
-	// #2 Second run (do not rotate first key
-
-	err := s.GenerateOrRotateKeys()
-	require.NoError(t, err)
-
-	secondRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, 2, len(secondRunKeys))
-	require.Equal(t, secondRunKeys[0], firstRunKeys[0])
-
-	// #3 Third run (delete first keys, add new key to the end)
-	err = s.GenerateOrRotateKeys()
-	require.NoError(t, err)
-	thisRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, 2, len(thisRunKeys))
-	require.Equal(t, thisRunKeys[0], secondRunKeys[1])
-
-	// #4 Force rotate keys
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "jwt/rotate_key",
-		Storage:   storage,
-		Data:      nil,
+func getTestService(t *testing.T) (*KeyPairService, *io.MemoryStoreTxn) {
+	config := &logical.BackendConfig{
+		StorageView: &logical.InmemStorage{},
 	}
-	resp, err := b.HandleRequest(context.Background(), req)
-	jwt.RequireValidResponse(t, resp, err)
-	keysAfterRotation := runJWKSTest(t, b, storage)
-	require.Equal(t, len(keysAfterRotation), 1)
+	storage := test.GetStorage(t, config)
+
+	tx := storage.Txn(true)
+	state := model.NewStateRepo(tx)
+	jwks := model.NewJWKSRepo(tx, "id")
+	cnf := model.DefaultConfig()
+
+	return NewKeyPairService(state, jwks, cnf, time.Now), tx
+}
+
+func Test_CheckRotation(t *testing.T) {
+	s, tx := getTestService(t)
+	defer tx.Abort()
+
+	s.config.RotationPeriod = 10 * time.Second
+	s.config.PreliminaryAnnouncePeriod = 2 * time.Second
+
+	err := s.stateRepo.SetLastRotationTime(time.Unix(1, 0))
+	require.NoError(t, err)
+
+	t.Run("should not rotate and should not generate new", func(t *testing.T) {
+		for _, st := range []int64{2, 8} {
+			s.now = test.GetNowFn(st)
+			shouldRotate, shouldGenNew, err := s.shouldRotateOrGenNew()
+
+			require.NoError(t, err)
+			require.False(t, shouldRotate)
+			require.False(t, shouldGenNew)
+		}
+	})
+
+	t.Run("should generate new but should not rotate", func(t *testing.T) {
+		for _, st := range []int64{9, 10} {
+			s.now = test.GetNowFn(st)
+			shouldRotate, shouldGenNew, err := s.shouldRotateOrGenNew()
+
+			require.NoError(t, err)
+			require.True(t, shouldGenNew)
+			require.False(t, shouldRotate)
+		}
+	})
+
+	t.Run("should rotate but should not generate new", func(t *testing.T) {
+		s.now = test.GetNowFn(11)
+		shouldRotate, shouldGenNew, err := s.shouldRotateOrGenNew()
+
+		require.NoError(t, err)
+		require.False(t, shouldGenNew)
+		require.True(t, shouldRotate)
+	})
 }
 
 func TestJWKSRotation(t *testing.T) {
-	b, storage, memstore := jwt.GetBackend(t, time.Now)
-	jwt.EnableJWT(t, b, storage)
+	s, tx := getTestService(t)
+	defer tx.Abort()
 
-	// #1 First run
-	firstRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, len(firstRunKeys), 1)
+	creteIntervals := func(rotateTime int64) (afterRotation, genNew, afterGenNew, nextRotation, afterNextRotation int64) {
+		rotPeriod := int64(s.config.RotationPeriod.Seconds())
+		annPeriod := int64(s.config.PreliminaryAnnouncePeriod.Seconds())
 
-	tnx := memstore.Txn(true)
-	defer tnx.Abort()
-	stateRepo := model.NewStateRepo(tnx, model.NewJWKSRepo(tnx, "id"))
-	s := NewKeyPairService(stateRepo, model.DefaultConfig(), time.Now)
+		afterRotation = rotateTime + 1
+		genNew = rotateTime + (rotPeriod - annPeriod) + 1
+		afterGenNew = genNew + 1
+		nextRotation = rotateTime + rotPeriod + 1
+		afterNextRotation = nextRotation + 1
 
-	// #2 Nothing to do
-	err := s.RunPeriodicalRotateKeys()
+		return afterRotation, genNew, afterGenNew, nextRotation, afterNextRotation
+	}
+
+	const initTimeRotation = 1
+
+	s.config.RotationPeriod = 12 * time.Second
+	s.config.PreliminaryAnnouncePeriod = 3 * time.Second
+	err := s.stateRepo.SetLastRotationTime(time.Unix(initTimeRotation, 0))
+
+	err = s.EnableJwt()
 	require.NoError(t, err)
 
-	secondRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, firstRunKeys, secondRunKeys)
+	getJWKS := func() []jose.JSONWebKey {
+		k, err := s.jwksRepo.GetSet()
+		require.NoError(t, err)
 
-	s = NewKeyPairService(stateRepo, model.DefaultConfig(), func() time.Time {
-		return time.Now().Add(time.Hour * 330)
+		return k
+	}
+
+	runPeriodicalRotate := func(time int64) {
+		s.now = test.GetNowFn(time)
+		err = s.RunPeriodicalRotateKeys()
+		require.NoError(t, err)
+	}
+
+	getPrivateKeys := func() []*model.JSONWebKey {
+		pair, err := s.stateRepo.GetKeyPair()
+		require.NoError(t, err)
+		return pair.PrivateKeys.Keys
+	}
+
+	assertLenPublicAndPrivateKeys := func(pubLen, privLen int) ([]jose.JSONWebKey, []*model.JSONWebKey) {
+		currentKeys := getJWKS()
+		require.Len(t, currentKeys, pubLen)
+
+		privKeys := getPrivateKeys()
+		require.Len(t, privKeys, privLen)
+
+		return currentKeys, privKeys
+	}
+
+	assertEqualsKeysAfterRotate := func(pub []jose.JSONWebKey, priv []*model.JSONWebKey) {
+		keys := getJWKS()
+		diff := deep.Equal(pub, keys)
+		require.Nil(t, diff)
+
+		privKeysNow := getPrivateKeys()
+		diff = deep.Equal(priv, privKeysNow)
+		require.Nil(t, diff)
+	}
+
+	curRotationTime := int64(0)
+
+	t.Run("first rotation cycle after enable", func(t *testing.T) {
+		afterRotation, genNew, afterGenNew, nextRotation, afterNextRotation := creteIntervals(initTimeRotation)
+		curRotationTime = nextRotation
+
+		t.Run("should not rotate keys after already now enable jwt", func(t *testing.T) {
+			pubKeys, privKeys := assertLenPublicAndPrivateKeys(1, 1)
+
+			runPeriodicalRotate(afterRotation)
+
+			assertEqualsKeysAfterRotate(pubKeys, privKeys)
+		})
+
+		t.Run("should generate keys on gen time", func(t *testing.T) {
+			pub, priv := assertLenPublicAndPrivateKeys(1, 1)
+
+			runPeriodicalRotate(genNew)
+
+			nowPub, nowPriv := assertLenPublicAndPrivateKeys(2, 2)
+
+			diff := deep.Equal(pub[0], nowPub[0])
+			require.Nil(t, diff)
+
+			diff = deep.Equal(priv[0], nowPriv[0])
+			require.Nil(t, diff)
+		})
+
+		t.Run("should not rotate keys after generation", func(t *testing.T) {
+			pubKeys, privKeys := assertLenPublicAndPrivateKeys(2, 2)
+
+			runPeriodicalRotate(afterGenNew)
+
+			assertEqualsKeysAfterRotate(pubKeys, privKeys)
+		})
+
+		t.Run("should rotate private keys but stay public keys", func(t *testing.T) {
+			pubKeys, _ := assertLenPublicAndPrivateKeys(2, 2)
+
+			runPeriodicalRotate(nextRotation)
+
+			keys := getJWKS()
+			diff := deep.Equal(pubKeys, keys)
+			require.Nil(t, diff)
+
+			privKeysNow := getPrivateKeys()
+			require.Len(t, privKeysNow, 1)
+
+		})
+
+		t.Run("should stay as is after rotation now", func(t *testing.T) {
+			pubKeys, privKeys := assertLenPublicAndPrivateKeys(2, 1)
+
+			runPeriodicalRotate(afterNextRotation)
+
+			assertEqualsKeysAfterRotate(pubKeys, privKeys)
+
+		})
 	})
 
-	err = s.RunPeriodicalRotateKeys()
-	require.NoError(t, err)
+	// first generation after enabling is special
+	// but second and next rotation as will same result
+	// check it next times
 
-	thirdRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, 2, len(thirdRunKeys))
-	require.Equal(t, thirdRunKeys[0], firstRunKeys[0])
+	for j := 1; j <= 3; j++ {
+		t.Run(fmt.Sprintf("next cycles after first rotation: iter %v", j), func(t *testing.T) {
+			_, genNew, afterGenNew, nextRotation, afterNextRotation := creteIntervals(curRotationTime)
+			curRotationTime = nextRotation
 
+			t.Run("should generate new keys and not delete public key on gen time", func(t *testing.T) {
+				pub, priv := assertLenPublicAndPrivateKeys(2, 1)
 
-	s = NewKeyPairService(stateRepo, model.DefaultConfig(), func() time.Time {
-		return time.Now().Add(time.Hour * 1000)
-	})
+				runPeriodicalRotate(genNew)
 
-	// #4 Rotation time
-	err = s.RunPeriodicalRotateKeys()
-	require.NoError(t, err)
+				nowPub, nowPriv := assertLenPublicAndPrivateKeys(3, 2)
 
-	forthRunKeys := runJWKSTest(t, b, storage)
-	require.Equal(t, 1, len(forthRunKeys))
-	require.Equal(t, forthRunKeys[0], thirdRunKeys[1])
+				for i := 0; i < 2; i++ {
+					diff := deep.Equal(pub[i], nowPub[i])
+					require.Nil(t, diff)
+				}
+
+				diff := deep.Equal(priv[0], nowPriv[0])
+				require.Nil(t, diff)
+			})
+
+			t.Run("should stay as is after gen time", func(t *testing.T) {
+				pub, priv := assertLenPublicAndPrivateKeys(3, 2)
+
+				runPeriodicalRotate(afterGenNew)
+
+				assertEqualsKeysAfterRotate(pub, priv)
+			})
+
+			t.Run("should remove priv key and old pub key on next rotation time", func(t *testing.T) {
+				pub, priv := assertLenPublicAndPrivateKeys(3, 2)
+
+				runPeriodicalRotate(nextRotation)
+
+				nowPub, nowPriv := assertLenPublicAndPrivateKeys(2, 1)
+
+				for i := 0; i < 2; i++ {
+					diff := deep.Equal(pub[i+1], nowPub[i])
+					require.Nil(t, diff)
+				}
+
+				diff := deep.Equal(priv[0], nowPriv[0])
+				require.Nil(t, diff)
+			})
+
+			t.Run("should stay as is after rotation time", func(t *testing.T) {
+				pub, priv := assertLenPublicAndPrivateKeys(2, 1)
+
+				runPeriodicalRotate(afterNextRotation)
+
+				assertEqualsKeysAfterRotate(pub, priv)
+			})
+		})
+	}
+
 }

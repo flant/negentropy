@@ -94,7 +94,7 @@ func (s *KeyPairService) ForceRotateKeys() error {
 }
 
 func (s *KeyPairService) RunPeriodicalRotateKeys() error {
-	shouldRotate, shouldPublish, err := s.shouldRotateOrPublish()
+	shouldRotate, shouldPublish, err := s.shouldRotateOrGenNew()
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (s *KeyPairService) removeFirstKey() error {
 	return err
 }
 
-func (s *KeyPairService) shouldRotateOrPublish() (bool, bool, error) {
+func (s *KeyPairService) shouldRotateOrGenNew() (bool, bool, error) {
 	lastRotation, err := s.stateRepo.GetLastRotationTime()
 	if err != nil {
 		return false, false, err

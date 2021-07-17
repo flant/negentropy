@@ -2,10 +2,8 @@ package backend
 
 import (
 	"context"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/square/go-jose.v2"
 )
 
 func PathJWKS(b *Backend) *framework.Path {
@@ -52,15 +50,7 @@ func (b *Backend) handleJWKSRead(_ context.Context, _ *logical.Request, _ *frame
 		return nil, err
 	}
 
-	keys := make([]jose.JSONWebKey, 0)
-	err = repo.Iter(func(j *model.JWKS) (bool, error) {
-		for _, k := range j.KeySet.Keys {
-			keys = append(keys, k.JSONWebKey)
-		}
-
-		return true, nil
-	})
-
+	keys, err := repo.GetSet()
 	if err != nil {
 		return nil, err
 	}

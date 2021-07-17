@@ -62,3 +62,9 @@ func RequireValidResponse(t *testing.T, resp *logical.Response, err error) {
 	require.False(t, resp.IsError(), "error response")
 }
 
+func GetNowFn(sec int64) func() time.Time {
+	return func() time.Time {
+		return time.Unix(sec, 0)
+	}
+}
+

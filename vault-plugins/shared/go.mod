@@ -9,6 +9,7 @@ require (
 	github.com/go-openapi/spec v0.20.3
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/go-openapi/validate v0.20.2
+	github.com/go-test/deep v1.0.2 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
