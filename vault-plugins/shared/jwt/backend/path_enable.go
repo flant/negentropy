@@ -83,7 +83,11 @@ func (b *Backend) handleJWTDisableCreate(_ context.Context, _ *logical.Request, 
 		return nil, err
 	}
 
-	return nil, nil
+	resp := &logical.Response{
+		Data: map[string]interface{}{"enabled": false},
+	}
+
+	return resp, nil
 }
 
 const (

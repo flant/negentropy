@@ -52,7 +52,7 @@ func getBackend(t *testing.T, now func() time.Time) (*jwtAuthBackend, logical.St
 func TestJWTConfigure(t *testing.T) {
 	now := func() time.Time { return time.Unix(1619592212, 0) }
 	b, storage, _ := getBackend(t, now)
-	test.EnableJWT(t, b, storage)
+	test.EnableJWT(t, b, storage, true)
 
 	const jwtConfigurePath = "jwt/configure"
 
@@ -70,9 +70,9 @@ func TestJWTConfigure(t *testing.T) {
 
 		require.Equal(t, map[string]interface{}{
 			"issuer":                      "https://auth.negentropy.flant.com/",
-			"own_audience":                "",
-			"preliminary_announce_period": "24h",
-			"rotation_period":             "336h",
+			"multipass_audience":                "",
+			"preliminary_announce_period": "24h0m0s",
+			"rotation_period":             "336h0m0s",
 		}, resp.Data)
 	}
 
@@ -84,7 +84,7 @@ func TestJWTConfigure(t *testing.T) {
 			Storage:   storage,
 			Data: map[string]interface{}{
 				"issuer":                      "https://test",
-				"own_audience":                "test",
+				"multipass_audience":          "test",
 				"preliminary_announce_period": "1h",
 				"rotation_period":             "1h",
 			},
@@ -108,9 +108,9 @@ func TestJWTConfigure(t *testing.T) {
 
 		require.Equal(t, map[string]interface{}{
 			"issuer":                      "https://test",
-			"own_audience":                "test",
-			"preliminary_announce_period": "1h",
-			"rotation_period":             "1h",
+			"multipass_audience":          "test",
+			"preliminary_announce_period": "1h0m0s",
+			"rotation_period":             "1h0m0s",
 		}, resp.Data)
 	}
 }

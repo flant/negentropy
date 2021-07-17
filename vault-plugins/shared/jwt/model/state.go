@@ -38,7 +38,6 @@ func (p *state) ObjId() string {
 type StateRepo struct {
 	db *io.MemoryStoreTxn
 	// using mem store for announce new public key/pair
-	jwksRepo *JWKSRepo
 	storeKey string
 }
 
@@ -61,10 +60,9 @@ func StateSchema() *memdb.DBSchema {
 	}
 }
 
-func NewStateRepo(db *io.MemoryStoreTxn, pubKeyStore *JWKSRepo) *StateRepo {
+func NewStateRepo(db *io.MemoryStoreTxn) *StateRepo {
 	return &StateRepo{
 		db:       db,
-		jwksRepo: pubKeyStore,
 		storeKey: jwtStateStoreKey,
 	}
 }
@@ -77,12 +75,7 @@ func (s *StateRepo) SetKeyPair(pair *KeyPair) error {
 
 	st.Pair = pair
 
-	err = s.put(st)
-	if err != nil {
-		return err
-	}
-
-	return s.jwksRepo.UpdateOwn(pair.PublicKeys)
+	return  s.put(st)
 }
 
 func (s *StateRepo) GetKeyPair() (*KeyPair, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 
@@ -129,14 +130,55 @@ func backend(conf *logical.BackendConfig) (*flantIamAuthBackend, error) {
 		time.Now,
 	)
 
+	periodicLogger := iamAuthLogger.Named("PeriodicFunc")
+	periodicFunction := func(ctx context.Context, request *logical.Request) error {
+		periodicLogger.Debug("Run periodic function")
+		defer periodicLogger.Debug("Periodic function finished")
+
+		var allErrors *multierror.Error
+		run := func(controllerName string, action func() error) {
+			periodicLogger.Debug(fmt.Sprintf("Run %s OnPeriodical", controllerName))
+
+			err := action()
+
+			if err != nil {
+				allErrors = multierror.Append(allErrors, err)
+				periodicLogger.Error(fmt.Sprintf("Error while %s periodical function: %s", controllerName, err), "err", err)
+				return
+			}
+
+			periodicLogger.Debug(fmt.Sprintf("%s OnPeriodical was successful run", controllerName))
+		}
+
+		run("accessVaultController", func() error {
+			return b.accessVaultController.OnPeriodical(ctx, request)
+		})
+
+		run("jwtController", func() error {
+			tx := b.storage.Txn(true)
+			defer tx.Abort()
+
+			err := b.jwtController.OnPeriodical(tx)
+			if err != nil {
+				return err
+			}
+
+			if err := tx.Commit(); err != nil {
+				periodicLogger.Error(fmt.Sprintf("Can not commit memdb transaction: %s", err), "err", err)
+				return err
+			}
+
+			return nil
+		})
+
+		return allErrors
+	}
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
 		BackendType: logical.TypeCredential,
 		Invalidate:  b.invalidate,
-		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
-			return b.accessVaultController.OnPeriodical(ctx, request)
-		},
+		PeriodicFunc: periodicFunction,
 		Help: backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{

@@ -39,14 +39,15 @@ func (b *Depends) JwksRepo(db *sharedio.MemoryStoreTxn) (*model.JWKSRepo, error)
 }
 
 func (b *Depends) StateRepo(db *sharedio.MemoryStoreTxn) (*model.StateRepo, error) {
+	return model.NewStateRepo(db), nil
+}
+
+func (b *Depends) KeyPairsService(db *sharedio.MemoryStoreTxn) (*KeyPairService, error) {
 	jwksRepo, err := b.JwksRepo(db)
 	if err != nil {
 		return nil, err
 	}
-	return model.NewStateRepo(db, jwksRepo), nil
-}
 
-func (b *Depends) KeyPairsService(db *sharedio.MemoryStoreTxn) (*KeyPairService, error) {
 	c, err := b.ConfigRepo(db).Get()
 	if err != nil {
 		return nil, err
@@ -57,5 +58,5 @@ func (b *Depends) KeyPairsService(db *sharedio.MemoryStoreTxn) (*KeyPairService,
 		return nil, err
 	}
 
-	return NewKeyPairService(stateRepo, c, b.Now), nil
+	return NewKeyPairService(stateRepo, jwksRepo, c, b.Now), nil
 }

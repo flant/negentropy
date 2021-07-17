@@ -15,15 +15,17 @@ import (
 
 type KeyPairService struct {
 	stateRepo *model.StateRepo
+	jwksRepo  *model.JWKSRepo
 	config    *model.Config
 	now       func() time.Time
 }
 
-func NewKeyPairService(stateRepo *model.StateRepo, config *model.Config, now func() time.Time) *KeyPairService {
+func NewKeyPairService(stateRepo *model.StateRepo, jwks *model.JWKSRepo, config *model.Config, now func() time.Time) *KeyPairService {
 	return &KeyPairService{
 		config: config,
 		stateRepo: stateRepo,
 		now: now,
+		jwksRepo: jwks,
 	}
 }
 
@@ -38,8 +40,16 @@ func (s *KeyPairService) EnableJwt() error {
 		return err
 	}
 
+	var pubKeys *model.JSONWebKeySet
 	if kp == nil {
-		err := s.GenerateOrRotateKeys()
+		pubKeys, err = s.GenerateOrRotateKeys()
+		if err != nil {
+			return err
+		}
+	}
+
+	if pubKeys != nil {
+		err = s.jwksRepo.UpdateOwn(pubKeys)
 		if err != nil {
 			return err
 		}
@@ -95,7 +105,7 @@ func (s *KeyPairService) RunPeriodicalRotateKeys() error {
 			return err
 		}
 	} else if shouldPublish {
-		err := s.GenerateOrRotateKeys()
+		_, err := s.GenerateOrRotateKeys()
 		if err != nil {
 			return err
 		}
@@ -104,10 +114,10 @@ func (s *KeyPairService) RunPeriodicalRotateKeys() error {
 	return nil
 }
 
-func (s *KeyPairService) modifyKeys(modify func(*model.JSONWebKeySet, *model.JSONWebKeySet) error) error {
+func (s *KeyPairService) modifyKeys(modify func(*model.JSONWebKeySet, *model.JSONWebKeySet) error) (pubKey *model.JSONWebKeySet, err error) {
 	keyPair, err := s.stateRepo.GetKeyPair()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	publicKeySet := model.JSONWebKeySet{}
@@ -125,18 +135,18 @@ func (s *KeyPairService) modifyKeys(modify func(*model.JSONWebKeySet, *model.JSO
 
 	err = modify(&privateSet, &publicKeySet)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	keyPair.PrivateKeys = &privateSet
 	keyPair.PublicKeys = &publicKeySet
 
-	return s.stateRepo.SetKeyPair(keyPair)
+	return keyPair.PublicKeys, s.stateRepo.SetKeyPair(keyPair)
 }
 
 // GenerateOrRotateKeys generates a new keypair and adds it to keys in the storage
-func (s *KeyPairService) GenerateOrRotateKeys() error {
-	err := s.modifyKeys(func(privateSet, pubicKeySet *model.JSONWebKeySet) error {
+func (s *KeyPairService) GenerateOrRotateKeys() (pubKey *model.JSONWebKeySet, err error) {
+	pubKey, err = s.modifyKeys(func(privateSet, pubicKeySet *model.JSONWebKeySet) error {
 		priv, pub, err := generateKeys(s.config)
 		if err != nil {
 			return err
@@ -146,6 +156,7 @@ func (s *KeyPairService) GenerateOrRotateKeys() error {
 		if len(privateSet.Keys) > 2 {
 			privateSet.Keys = privateSet.Keys[1:len(privateSet.Keys)]
 		}
+
 		pubicKeySet.Keys = append(pubicKeySet.Keys, pub)
 		if len(pubicKeySet.Keys) > 2 {
 			pubicKeySet.Keys = pubicKeySet.Keys[1:len(pubicKeySet.Keys)]
@@ -155,15 +166,15 @@ func (s *KeyPairService) GenerateOrRotateKeys() error {
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return s.stateRepo.SetLastRotationTime(s.now())
+	return pubKey, s.stateRepo.SetLastRotationTime(s.now())
 }
 
 // removeFirstKey remove the key if there are more than one
 func (s *KeyPairService) removeFirstKey() error {
-	return s.modifyKeys(func(privateSet, pubicKeySet *model.JSONWebKeySet) error {
+	_, err := s.modifyKeys(func(privateSet, pubicKeySet *model.JSONWebKeySet) error {
 		if len(privateSet.Keys) == 2 {
 			privateSet.Keys = privateSet.Keys[1:]
 		}
@@ -172,6 +183,8 @@ func (s *KeyPairService) removeFirstKey() error {
 		}
 		return nil
 	})
+
+	return err
 }
 
 func (s *KeyPairService) shouldRotateOrPublish() (bool, bool, error) {

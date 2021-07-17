@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/test"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 	log "github.com/hashicorp/go-hclog"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 	"strings"
 	"testing"
 	"time"
@@ -48,22 +50,80 @@ func getBackend(t *testing.T, now func() time.Time) (*jwtAuthBackend, logical.St
 	return b, conf.StorageView, storage
 }
 
-func TestIssue(t *testing.T){
-	b, storage, memStore := getBackend(t, func() time.Time {
+func verifyAndGetTokensTest(t *testing.T, keys []jose.JSONWebKey, token string) map[string]interface{} {
+	parsed, err := jwt.ParseSigned(token)
+	require.NoError(t, err)
+
+	dest := map[string]interface{}{}
+	err = parsed.Claims(keys[0], &dest)
+
+	require.NoError(t, err)
+
+	return dest
+}
+
+func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *model.Config, o *usecase.TokenOptions, nowF func() time.Time) {
+	require.Contains(t, data, "iss")
+	require.Equal(t, data["iss"], conf.Issuer)
+
+	now := nowF().Unix()
+	ttl := int64(o.TTL.Seconds())
+
+	require.Contains(t, data, "iat")
+	require.Equal(t, data["iat"], float64(now))
+
+	require.Contains(t, data, "exp")
+	require.Equal(t, data["exp"], float64(now+ttl))
+}
+
+func TestIssueMultipass(t *testing.T){
+	options := usecase.PrimaryTokenOptions{
+		TTL:  10 * time.Minute,
+		UUID: "test",
+		JTI: usecase.TokenJTI{
+			Generation: 0,
+			SecretSalt: "test",
+		},
+	}
+
+	now := func() time.Time {
 		return time.Unix(1619592212, 0)
+	}
+
+	t.Run("does not issue multipass if jwt is disabled", func(t *testing.T) {
+		b, _, memStore := getBackend(t, now)
+		tnx := memStore.Txn(false)
+		defer tnx.Abort()
+
+		token, err := b.controller.IssueMultipass(tnx, &options)
+
+		require.Error(t, err)
+		require.Empty(t, token)
 	})
 
-	test.EnableJWT(t, b, storage)
+	t.Run("does not issue multipass after disable jwt", func(t *testing.T) {
+		b, storage, memStore := getBackend(t, now)
 
-	{
-		options := usecase.PrimaryTokenOptions{
-			TTL:  10 * time.Minute,
-			UUID: "test",
-			JTI: usecase.TokenJTI {
-				Generation: 0,
-				SecretSalt: "test",
-			},
-		}
+		test.EnableJWT(t, b, storage, true)
+
+		tnx := memStore.Txn(false)
+		defer tnx.Abort()
+
+		token, err := b.controller.IssueMultipass(tnx, &options)
+		require.NoError(t, err)
+		require.NotEmpty(t, token)
+
+		test.EnableJWT(t, b, storage, false)
+
+		token, err = b.controller.IssueMultipass(tnx, &options)
+		require.Error(t, err)
+		require.Empty(t, token)
+	})
+
+
+	t.Run("issues correct multipass if jwt is enbled", func(t *testing.T) {
+		b, storage, memStore := getBackend(t, now)
+		test.EnableJWT(t, b, storage, true)
 
 		tnx := memStore.Txn(false)
 		defer tnx.Abort()
@@ -108,5 +168,76 @@ func TestIssue(t *testing.T){
 			JTI:      "8dea54dbe241bb7c6e9da12c6df39fbab2b76b6ad04c70f889d14f516df49a26", // "0 test"
 
 		}, issuedToken)
+	})
+}
+
+func Test_NewToken(t *testing.T) {
+	now := func() time.Time {
+		return time.Now()
 	}
+	b, storage, memstore := getBackend(t, now)
+	test.EnableJWT(t, b, storage, true)
+	req := &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "jwks",
+		Storage:   storage,
+		Data:      nil,
+	}
+	resp, err := b.HandleRequest(context.Background(), req)
+	test.RequireValidResponse(t, resp, err)
+
+	keys := resp.Data["keys"].([]jose.JSONWebKey)
+
+	t.Run("signing payload", func(t *testing.T) {
+		const ttl = 5
+
+		tokenOpt := &usecase.TokenOptions{
+			TTL: time.Duration(ttl) * time.Second,
+		}
+
+		tnx := memstore.Txn(false)
+		defer tnx.Abort()
+		conf, err := b.controller.GetConfig(tnx)
+		require.NoError(t, err)
+
+		t.Run("signs payload successfully", func(t *testing.T) {
+			payload := map[string]interface{}{
+				"aud": "Aud",
+				"payload_map": map[string]interface{}{
+					"a": "a_val",
+					"b": float64(1),
+				},
+			}
+			token, err := b.controller.IssuePayloadAsJwt(tnx, payload, tokenOpt)
+			require.NoError(t, err)
+
+			data := verifyAndGetTokensTest(t, keys, token)
+
+			for k, v := range payload {
+				require.Contains(t, data, k)
+				require.Equal(t, data[k], v)
+			}
+
+			assertRequiredTokenFields(t, data, conf, tokenOpt, now)
+		})
+
+		t.Run("signs does not override issuer expiration time and issue time", func(t *testing.T) {
+			payload := map[string]interface{}{
+				"aud": "Aud",
+				"payload_map": map[string]interface{}{
+					"a": "a_val",
+					"b": float64(1),
+				},
+				"iss": "pirate issuer",
+				"iat": 20,
+				"exp": 100500,
+			}
+			token, err := b.controller.IssuePayloadAsJwt(tnx, payload, tokenOpt)
+			require.NoError(t, err)
+
+			data := verifyAndGetTokensTest(t, keys, token)
+
+			assertRequiredTokenFields(t, data, conf, tokenOpt, now)
+		})
+	})
 }

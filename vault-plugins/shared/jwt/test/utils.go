@@ -40,10 +40,15 @@ func PrepareBackend(t *testing.T) *logical.BackendConfig {
 	return config
 }
 
-func EnableJWT(t *testing.T, b logical.Backend, storage logical.Storage) {
+func EnableJWT(t *testing.T, b logical.Backend, storage logical.Storage, isEnable bool) {
+	u := "jwt/enable"
+	if !isEnable {
+		u = "jwt/disable"
+	}
+
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Path:      "jwt/enable",
+		Path:      u,
 		Storage:   storage,
 		Data:      nil,
 	}

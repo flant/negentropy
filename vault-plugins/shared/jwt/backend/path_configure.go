@@ -2,12 +2,11 @@ package backend
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/mitchellh/mapstructure"
+	"time"
 )
 
 func PathConfigure(b *Backend) *framework.Path {
@@ -72,16 +71,13 @@ func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Requ
 		return nil, err
 	}
 
-	s, err := json.Marshal(conf)
-	if err != nil {
-		return nil, err
+	d := map[string]interface{}{
+		"issuer": conf.Issuer,
+		"multipass_audience": conf.OwnAudience,
+		"rotation_period":  conf.RotationPeriod.String(),
+		"preliminary_announce_period": conf.PreliminaryAnnouncePeriod.String(),
 	}
 
-	d := map[string]interface{}{}
-	err = json.Unmarshal(s, &d)
-	if err != nil {
-		return nil, err
-	}
 
 	return &logical.Response{Data: d}, nil
 }
@@ -106,10 +102,21 @@ func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Re
 	}
 
 	c := model.Config{}
-	err = mapstructure.Decode(fields.Raw, &c)
+
+	rotate, err := time.ParseDuration(fields.Raw["rotation_period"].(string))
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse("incorrect rotation_period", err), nil
 	}
+
+	announce, err := time.ParseDuration(fields.Raw["preliminary_announce_period"].(string))
+	if err != nil {
+		return logical.ErrorResponse("incorrect preliminary_announce_period", err), nil
+	}
+
+	c.RotationPeriod = rotate
+	c.PreliminaryAnnouncePeriod = announce
+	c.Issuer = fields.Raw["issuer"].(string)
+	c.OwnAudience = fields.Raw["multipass_audience"].(string)
 
 	err = b.deps.ConfigRepo(tnx).Put(&c)
 	if err != nil {
@@ -118,6 +125,10 @@ func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Re
 
 	resp := &logical.Response{
 		Data: req.Data,
+	}
+
+	if err := tnx.Commit(); err != nil {
+		return nil, err
 	}
 
 	return resp, nil

@@ -29,7 +29,7 @@ func NewJwtController(storage *sharedio.MemoryStore, idGetter func() (string, er
 func (c *Controller) IssueMultipass(tnx *sharedio.MemoryStoreTxn, options *usecase.PrimaryTokenOptions) (string, error) {
 	iss, err := c.issuer(tnx)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return iss.PrimaryToken(options)
 }
@@ -37,7 +37,7 @@ func (c *Controller) IssueMultipass(tnx *sharedio.MemoryStoreTxn, options *useca
 func (c *Controller) IssuePayloadAsJwt(tnx *sharedio.MemoryStoreTxn, payload map[string]interface{}, options *usecase.TokenOptions) (string, error) {
 	iss, err := c.issuer(tnx)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	return iss.Token(payload, options)
@@ -57,7 +57,7 @@ func (c *Controller) IsEnabled(db *sharedio.MemoryStoreTxn) (bool, error) {
 	return enabled, nil
 }
 
-func (c *Controller) OnPeriodic(tnx *sharedio.MemoryStoreTxn) error {
+func (c *Controller) OnPeriodical(tnx *sharedio.MemoryStoreTxn) error {
 	enabled, err := c.IsEnabled(tnx)
 	if err != nil {
 		return err
