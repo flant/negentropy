@@ -35,7 +35,15 @@ func ApplyChanges(ctx context.Context, db db.UserDatabase, uwg types.UsersWithGr
 			return err
 		}
 
-		// update authorized keys here?
+		err = sysOp.CreateAuthorizedKeysFile(newUser.HomeDir, newUser.Principal)
+		if err != nil {
+			return err
+		}
+
+		err = sysOp.FixChown(newUser.HomeDir, int(newUser.Uid), int(newUser.Gid))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

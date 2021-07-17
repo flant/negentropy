@@ -13,6 +13,14 @@ import (
 	"github.com/flant/server-access/util"
 )
 
+type PosixUsersData struct {
+	Data PosixUsers `json:"data"`
+}
+
+type PosixUsers struct {
+	Users []PosixUser `json:"posix_users"`
+}
+
 type PosixUser struct {
 	UID       int    `json:"uid"`
 	Principal string `json:"principal"`
@@ -77,11 +85,11 @@ func ParsePosixUsers(r io.Reader) ([]PosixUser, error) {
 		return nil, nil
 	}
 
-	var users []PosixUser
+	var users PosixUsersData
 	err = json.Unmarshal(buf.Bytes(), &users)
 	if err != nil {
 		return nil, err
 	}
 
-	return users, nil
+	return users.Data.Users, nil
 }

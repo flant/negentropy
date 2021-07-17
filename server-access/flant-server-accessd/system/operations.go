@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,6 +17,8 @@ import (
 type Interface interface {
 	// Create home directory for new user
 	CreateHomeDir(dir string, uid, gid int) error
+	CreateAuthorizedKeysFile(homeDir string, principal string) error
+	FixChown(homeDir string, uid, gid int) error
 	// Recursively delete home directory if exists.
 	DeleteHomeDir(dir string) error
 	// Kill all user processes.
@@ -110,4 +114,44 @@ func (s *SystemOperator) PurgeUserLegacy(username string) error {
 	}
 
 	return nil
+}
+
+func (s *SystemOperator) CreateAuthorizedKeysFile(homeDir string, principal string) error {
+	content := GenerateAuthorizedKeysFile(principal, "")
+	sshDir := filepath.Join(homeDir, ".ssh")
+	filePath := filepath.Join(sshDir, "authorized_keys")
+	err := CreateAuthorizedKeysFile(filePath, content)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(sshDir, 0700)
+	if err != nil {
+		return fmt.Errorf("create .ssh dir: %v")
+	}
+
+	err = os.Chmod(filePath, 0600)
+	if err != nil {
+		return fmt.Errorf("change .ssh/authorized_keys mode: %v")
+	}
+
+	return nil
+}
+
+func (s *SystemOperator) FixChown(homeDir string, uid, gid int) error {
+	err := os.Chown(homeDir, uid, gid)
+	if err != nil {
+		return err
+	}
+
+	err = filepath.Walk(homeDir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			// prevent panic by handling failure accessing a path
+			return err
+		}
+
+		return os.Chown(path, uid, gid)
+	})
+
+	return err
 }

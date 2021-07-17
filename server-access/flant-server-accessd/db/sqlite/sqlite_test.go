@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	db2 "github.com/flant/server-access/flant-server-accessd/db"
+	dberrors "github.com/flant/server-access/flant-server-accessd/db/errors"
 	"github.com/flant/server-access/flant-server-accessd/types"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
@@ -396,7 +396,7 @@ func TestUserDatabase_GetGroupByGID(t *testing.T) {
 
 			group, err := db.GetGroupByGID(ctx, tt.gid)
 			if tt.wantEntryNotFoundErr {
-				require.True(t, db2.IsEntryNotFound(err))
+				require.True(t, dberrors.IsEntryNotFound(err))
 			} else {
 				require.Nil(t, err)
 			}
@@ -467,7 +467,7 @@ func TestUserDatabase_GetGroupByName(t *testing.T) {
 
 			group, err := db.GetGroupByName(ctx, tt.groupName)
 			if tt.wantEntryNotFoundErr {
-				require.True(t, db2.IsEntryNotFound(err))
+				require.True(t, dberrors.IsEntryNotFound(err))
 			} else {
 				require.Nil(t, err)
 			}
@@ -607,7 +607,7 @@ func TestUserDatabase_GetUserByName(t *testing.T) {
 
 			user, err := db.GetUserByName(ctx, tt.userName)
 			if tt.wantEntryNotFoundErr {
-				require.True(t, db2.IsEntryNotFound(err))
+				require.True(t, dberrors.IsEntryNotFound(err))
 			} else {
 				require.Nil(t, err)
 			}
@@ -678,7 +678,7 @@ func TestUserDatabase_GetUserByUID(t *testing.T) {
 
 			user, err := db.GetUserByUID(ctx, tt.uid)
 			if tt.wantEntryNotFoundErr {
-				require.True(t, db2.IsEntryNotFound(err))
+				require.True(t, dberrors.IsEntryNotFound(err))
 			} else {
 				require.Nil(t, err)
 			}

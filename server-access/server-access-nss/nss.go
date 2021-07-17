@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	nss "github.com/protosam/go-libnss"
@@ -13,6 +15,7 @@ import (
 )
 
 type UserDatabase interface {
+	Close()
 	GetUserByName(ctx context.Context, name string) (types.User, error)
 	GetUserByUID(ctx context.Context, uid uint) (types.User, error)
 	GetUsers(ctx context.Context) ([]types.User, error)
@@ -21,27 +24,32 @@ type UserDatabase interface {
 	GetGroups(ctx context.Context) ([]types.Group, error)
 }
 
-var userDB UserDatabase
-
 func main() {}
 
 func init() {
-	database, err := sqlite.NewUserDatabase("/home/zuzzas/sqlite_tests/server_access.db", true)
-	if err == nil {
-		userDB = database
-	}
-
 	nss.SetImpl(Provider{})
+}
+
+var UserDatabasePath = "/opt/negentropy/server-access.db"
+
+func OpenUserDatabase() (UserDatabase, error) {
+	return sqlite.NewUserDatabase(UserDatabasePath, true)
 }
 
 type Provider struct{ nss.LIBNSS }
 
 func (p Provider) PasswdAll() (nss.Status, []structs.Passwd) {
+	log := NewNssLogger()
+	defer log.Close()
+	log.Debugf("PasswdAll\n")
+
 	var passwds []structs.Passwd
 
-	if !isDBValid() {
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, passwds
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -67,17 +75,27 @@ func (p Provider) PasswdAll() (nss.Status, []structs.Passwd) {
 }
 
 func (p Provider) PasswdByName(name string) (nss.Status, structs.Passwd) {
-	if !isDBValid() {
+	log := NewNssLogger()
+	defer log.Close()
+	log.Debugf("PasswdByName %s\n", name)
+
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, structs.Passwd{}
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
 
+	log.Debugf("PasswdByName get user by name\n")
+
 	user, err := userDB.GetUserByName(ctx, name)
 	if dberrors.IsEntryNotFound(err) {
+		log.Debugf("PasswdByName not found\n")
 		return nss.StatusNotfound, structs.Passwd{}
 	} else if err != nil {
+		log.Debugf("PasswdByName err: %v\n", err)
 		return nss.StatusUnavail, structs.Passwd{}
 	}
 
@@ -93,9 +111,16 @@ func (p Provider) PasswdByName(name string) (nss.Status, structs.Passwd) {
 }
 
 func (p Provider) PasswdByUid(uid uint) (nss.Status, structs.Passwd) {
-	if !isDBValid() {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("PasswdByUid %d\n", uid)
+
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, structs.Passwd{}
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -119,11 +144,18 @@ func (p Provider) PasswdByUid(uid uint) (nss.Status, structs.Passwd) {
 }
 
 func (p Provider) GroupAll() (nss.Status, []structs.Group) {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("GroupAll\n")
+
 	var groups []structs.Group
 
-	if !isDBValid() {
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, groups
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -145,9 +177,16 @@ func (p Provider) GroupAll() (nss.Status, []structs.Group) {
 }
 
 func (p Provider) GroupByName(name string) (nss.Status, structs.Group) {
-	if !isDBValid() {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("GroupByName %d\n", name)
+
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, structs.Group{}
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -167,17 +206,26 @@ func (p Provider) GroupByName(name string) (nss.Status, structs.Group) {
 }
 
 func (p Provider) GroupByGid(gid uint) (nss.Status, structs.Group) {
-	if !isDBValid() {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("GroupByGid %d\n", gid)
+
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, structs.Group{}
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
 
 	grp, err := userDB.GetGroupByGID(ctx, gid)
 	if dberrors.IsEntryNotFound(err) {
+		log.Debugf("GroupByGid not found: %v\n", err)
 		return nss.StatusNotfound, structs.Group{}
 	} else if err != nil {
+		log.Debugf("GroupByGid err: %v\n", err)
 		return nss.StatusUnavail, structs.Group{}
 	}
 
@@ -189,11 +237,18 @@ func (p Provider) GroupByGid(gid uint) (nss.Status, structs.Group) {
 }
 
 func (p Provider) ShadowAll() (nss.Status, []structs.Shadow) {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("ShadowAll\n")
+
 	var shadows []structs.Shadow
 
-	if !isDBValid() {
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, shadows
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -221,9 +276,16 @@ func (p Provider) ShadowAll() (nss.Status, []structs.Shadow) {
 }
 
 func (p Provider) ShadowByName(name string) (nss.Status, structs.Shadow) {
-	if !isDBValid() {
+	log := NewNssLogger()
+	defer log.Close()
+
+	log.Debugf("ShadowByName %s\n", name)
+
+	userDB, err := OpenUserDatabase()
+	if err != nil {
 		return nss.StatusUnavail, structs.Shadow{}
 	}
+	defer userDB.Close()
 
 	ctx, cancel := defaultContext()
 	defer cancel()
@@ -252,6 +314,39 @@ func defaultContext() (context.Context, func()) {
 	return context.WithTimeout(context.Background(), 5*time.Second)
 }
 
-func isDBValid() bool {
-	return userDB != nil
+const DefaultLoggerFile = "./libnss-flantauth.log"
+
+type NssLogger struct {
+	enabled bool
+	f       *os.File
+}
+
+func NewNssLogger() *NssLogger {
+	l := &NssLogger{}
+	if os.Getenv("FLANTAUTH_DEBUG") == "yes" {
+		l.enabled = true
+		f, err := os.Create(DefaultLoggerFile)
+		if err != nil {
+			l.enabled = false
+		} else {
+			l.f = f
+		}
+	}
+	return l
+}
+
+func (l *NssLogger) Close() {
+	if l.f != nil {
+		l.f.Close()
+	}
+}
+
+func (l *NssLogger) Printf(format string, a ...interface{}) {
+	if l.enabled {
+		_, _ = fmt.Fprintf(l.f, format, a...)
+	}
+}
+
+func (l *NssLogger) Debugf(format string, a ...interface{}) {
+	l.Printf(format, a...)
 }

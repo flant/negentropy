@@ -85,6 +85,7 @@ func ConvertPOSIXUsers(posixUsers []vault.PosixUser) (types.UsersWithGroups, err
 				HomeDir:    posixUser.HomeDir,
 				Shell:      posixUser.Shell,
 				HashedPass: posixUser.Password,
+				Principal:  posixUser.Principal,
 			}
 		}
 

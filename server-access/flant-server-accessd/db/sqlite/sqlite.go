@@ -80,6 +80,12 @@ func NewUserDatabase(path string, ro ...bool) (*UserDatabase, error) {
 	return &UserDatabase{db: database}, nil
 }
 
+func (db *UserDatabase) Close() {
+	if db.db != nil {
+		db.db.Close()
+	}
+}
+
 func (db *UserDatabase) Migrate() error {
 	s := bindata.Resource(migrations.AssetNames(),
 		func(name string) ([]byte, error) {

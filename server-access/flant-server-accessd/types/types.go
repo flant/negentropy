@@ -8,6 +8,7 @@ type User struct {
 	HomeDir    string `json:"home_dir,omitempty" db:"homedir"`
 	Shell      string `json:"shell,omitempty" db:"shell"`
 	HashedPass string `json:"hashed_pass,omitempty" db:"hashed_pass"`
+	Principal  string `json:"principal"`
 }
 
 type Group struct {

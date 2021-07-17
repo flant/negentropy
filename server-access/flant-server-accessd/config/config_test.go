@@ -15,5 +15,5 @@ func Test_LoadConfig(t *testing.T) {
 	require.Equal(t, "123-123-123", cfg.ServerAccessSettings.TenantUUID)
 	require.Equal(t, "123-123-123", cfg.ServerAccessSettings.ProjectUUID)
 	require.Equal(t, "123-123-123", cfg.ServerAccessSettings.ServerUUID)
-	require.Equal(t, cfg.DatabasePath, "./server-accessd.db")
+	require.Equal(t, "./server-accessd.db", cfg.DatabasePath)
 }
