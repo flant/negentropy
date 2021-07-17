@@ -18,6 +18,7 @@ const (
 type JSONWebKey struct {
 	jose.JSONWebKey
 	GenerateTime time.Time `json:"generate_time"`
+	StartTime    time.Time `json:"start_time"`
 	EndLifeTime  time.Time `json:"end_life_time"`
 }
 

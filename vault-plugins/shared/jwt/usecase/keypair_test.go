@@ -108,9 +108,9 @@ func TestJWKSRotation(t *testing.T) {
 
 	s.config.RotationPeriod = 12 * time.Second
 	s.config.PreliminaryAnnouncePeriod = 3 * time.Second
-	err := s.stateRepo.SetLastRotationTime(time.Unix(initTimeRotation, 0))
+	s.now = test.GetNowFn(initTimeRotation)
 
-	err = s.EnableJwt()
+	err := s.EnableJwt()
 	require.NoError(t, err)
 
 	getJWKS := func() []jose.JSONWebKey {
