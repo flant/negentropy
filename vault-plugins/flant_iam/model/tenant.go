@@ -45,6 +45,7 @@ func TenantSchema() *memdb.DBSchema {
 	}
 }
 
+//go:generate go run gen_repository.go -type Tenant
 type Tenant struct {
 	UUID       TenantUUID `json:"uuid"` // PK
 	Version    string     `json:"resource_version"`

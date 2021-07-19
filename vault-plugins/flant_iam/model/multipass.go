@@ -53,6 +53,7 @@ const (
 	MultipassOwnerUser           MultipassOwnerType = "user"
 )
 
+//go:generate go run gen_repository.go -type Multipass -parentType Owner
 type Multipass struct {
 	UUID       MultipassUUID      `json:"uuid"` // PK
 	TenantUUID TenantUUID         `json:"tenant_uuid"`
