@@ -8,11 +8,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -36,6 +37,9 @@ type Message struct {
 type SourceInputMessage struct {
 	TopicPartition   []kafka.TopicPartition
 	ConsumerMetadata *kafka.ConsumerGroupMetadata
+
+	// IgnoreBody send only offset, ignoring body payload
+	IgnoreBody bool
 }
 
 func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceInputMessage, error) {
@@ -268,6 +272,10 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
+	if sourceInput != nil && sourceInput.IgnoreBody {
+		return mb.sendOffset(sourceInput)
+	}
+
 	if len(msgs) == 0 {
 		return nil
 	}
@@ -277,6 +285,28 @@ func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMe
 	}
 
 	return mb.sendMessages(msgs, sourceInput)
+}
+
+func (mb *MessageBroker) sendOffset(sourceInput *SourceInputMessage) error {
+	if sourceInput == nil {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	p := mb.GetKafkaTransactionalProducer()
+	err := p.BeginTransaction()
+	if err != nil {
+		return err
+	}
+
+	err = p.SendOffsetsToTransaction(ctx, sourceInput.TopicPartition, sourceInput.ConsumerMetadata)
+	if err != nil {
+		_ = p.AbortTransaction(ctx)
+		return err
+	}
+
+	return p.CommitTransaction(ctx)
 }
 
 func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage) error {

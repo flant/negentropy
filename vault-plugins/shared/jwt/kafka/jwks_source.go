@@ -6,8 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"strings"
+
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 
 	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -174,6 +175,8 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 	defer tx.Abort()
 
 	rk.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
+
+	source.IgnoreBody = true
 
 	if msg.IsDeleted() {
 		obj, err := tx.First(model.JWKSType, "id", msg.ID)
