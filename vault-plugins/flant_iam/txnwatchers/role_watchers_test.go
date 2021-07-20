@@ -1,4 +1,4 @@
-package role_resolver
+package txnwatchers
 
 import (
 	"testing"
@@ -181,6 +181,7 @@ func Test_FindAffectedUsersAndSAs_OnGroupChange_ModifiedSubjects(t *testing.T) {
 		TenantUUID: tenantUUID,
 		UUID:       roleBindingUUID1,
 		Groups:     []string{groupUUID5},
+		Identifier: "test_role_binding1",
 		Roles: []model.BoundRole{
 			{
 				Name: "test",

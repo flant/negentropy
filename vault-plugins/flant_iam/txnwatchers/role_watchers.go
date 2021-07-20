@@ -1,4 +1,4 @@
-package role_resolver
+package txnwatchers
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 	// Return all members of the new RoleBinding if role was not granted
 	// by the old RoleBinding and become granted by the new RoleBinding.
 	if !oldRoleBindingGrantsRole && newRoleBindingGrantsRole {
-		return groupRepo.FindAllSubjectsFor(newRoleBinding.TenantUUID, newRoleBinding.Users, newRoleBinding.ServiceAccounts, newRoleBinding.Groups)
+		return groupRepo.FindAllMembersFor(newRoleBinding.TenantUUID, newRoleBinding.Users, newRoleBinding.ServiceAccounts, newRoleBinding.Groups)
 	}
 
 	// Return added subjects if role is not changed.
@@ -45,7 +45,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 		return nil, nil, nil
 	}
 
-	return groupRepo.FindAllSubjectsFor(newRoleBinding.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
+	return groupRepo.FindAllMembersFor(newRoleBinding.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
 }
 
 // FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange
@@ -98,7 +98,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStor
 	}
 
 	// Return subjects for added users.
-	return groupRepo.FindAllSubjectsFor(newGroup.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
+	return groupRepo.FindAllMembersFor(newGroup.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
 }
 
 // FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange
@@ -166,8 +166,8 @@ func CheckRoleBindingGrantsRole(txn *io.MemoryStoreTxn, roleBinding *model.RoleB
 	return granted, nil
 }
 
-func CheckRoleIncludeRole(txn *io.MemoryStoreTxn, role string, includedRole string) (bool, error) {
-	if role == includedRole {
+func CheckRoleIncludeRole(txn *io.MemoryStoreTxn, role string, roleOfConcern string) (bool, error) {
+	if role == roleOfConcern {
 		return true, nil
 	}
 
@@ -178,32 +178,31 @@ func CheckRoleIncludeRole(txn *io.MemoryStoreTxn, role string, includedRole stri
 	}
 
 	for roleName := range roles {
-		if roleName == includedRole {
+		if roleName == roleOfConcern {
 			return true, nil
 		}
 	}
-
 	return false, nil
 }
 
-func CheckRoleObjectIncludeRole(txn *io.MemoryStoreTxn, role *model.Role, includedRole string) (bool, error) {
-	if includedRole == role.Name {
+func CheckRoleObjectIncludeRole(txn *io.MemoryStoreTxn, role *model.Role, roleOfConcern string) (bool, error) {
+	if roleOfConcern == role.Name {
 		return true, nil
 	}
 
 	repo := model.NewRoleRepository(txn)
 	for _, included := range role.IncludedRoles {
+		if included.Name == roleOfConcern {
+			return true, nil
+		}
 		roles, err := repo.FindAllIncludingRoles(included.Name)
 		if err != nil {
 			return false, err
 		}
-		for roleName := range roles {
-			if roleName == includedRole {
-				return true, nil
-			}
+		if _, isIncluded := roles[roleOfConcern]; isIncluded {
+			return true, nil
 		}
 	}
-
 	return false, nil
 }
 
@@ -240,7 +239,7 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 		if err != nil {
 			return nil, nil, err
 		}
-		rbUsers, rbSAs, err := groupRepo.FindAllSubjectsFor(rb.TenantUUID, rb.Users, rb.ServiceAccounts, rb.Groups)
+		rbUsers, rbSAs, err := groupRepo.FindAllMembersFor(rb.TenantUUID, rb.Users, rb.ServiceAccounts, rb.Groups)
 		for uuid := range rbUsers {
 			users[uuid] = struct{}{}
 		}
@@ -313,7 +312,7 @@ func GetParentRolesForRole(txn *io.MemoryStoreTxn, role model.RoleName) ([]model
 	for {
 		visitedNow := make(map[model.RoleName]struct{})
 		for _, roleName := range searchRoles {
-			iter, err := txn.Get(model.RoleType, "included_roles", roleName)
+			iter, err := txn.Get(model.RoleType, model.IncludedRolesIndex, roleName)
 			if err != nil {
 				return nil, err
 			}

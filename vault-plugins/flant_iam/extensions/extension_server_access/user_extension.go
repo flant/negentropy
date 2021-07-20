@@ -10,9 +10,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -58,18 +57,18 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: iam_model.UserType,
+		ObjType: model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo := repo.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
+			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
 
-			user := obj.(*iam_model.User)
+			user := obj.(*model.User)
 
 			err := repo.CreateExtension(user)
 			if err != nil {
 				return err
 			}
 
-			log.L().Info("finished user hook", "new", obj)
+			log.L().Error("finished user hook", "new", obj)
 
 			return nil
 		},
@@ -78,19 +77,19 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// TODO: refactor this bullshit
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: iam_model.ProjectType,
+		ObjType: model.ProjectType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			groupRepo := iam_repo.NewGroupRepository(txn)
-			projectRepo := iam_repo.NewProjectRepository(txn)
+			groupRepo := model.NewGroupRepository(txn)
+			projectRepo := model.NewProjectRepository(txn)
 
-			project := obj.(*iam_model.Project)
+			project := obj.(*model.Project)
 
-			groups, err := groupRepo.List(project.TenantUUID, false)
+			groups, err := groupRepo.List(project.TenantUUID)
 			if err != nil {
 				return err
 			}
 
-			projects, err := projectRepo.List(project.TenantUUID, false)
+			projects, err := projectRepo.List(project.TenantUUID)
 			if err != nil {
 				return err
 			}
@@ -100,7 +99,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				projectIDSet[project.Identifier] = struct{}{}
 			}
 
-			var groupToChange *iam_model.Group
+			var groupToChange *model.Group
 			for _, group := range groups {
 				if !strings.HasPrefix(group.Identifier, "servers/") {
 					continue
@@ -126,4 +125,139 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 			return groupRepo.Update(groupToChange)
 		},
 	})
+
+	// update group hook
+	memStore.RegisterHook(io.ObjectHook{
+		Events:  []io.HookEvent{io.HookEventInsert},
+		ObjType: model.GroupType,
+		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
+			newGroup, ok := obj.(*model.Group)
+			if !ok {
+				return fmt.Errorf("need Group type, actually passed %T", obj)
+			}
+			repo := model.NewGroupRepository(txn)
+			oldGroup, err := repo.GetByID(newGroup.UUID)
+			if err == model.ErrNotFound {
+				err = nil
+				oldGroup = &model.Group{}
+			}
+			if err != nil {
+				return fmt.Errorf("getting old group value: %w", err)
+			}
+			users, serverAccounts, err := txnwatchers.FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn,
+				oldGroup, newGroup, sac.RoleForSSHAccess)
+			if err != nil {
+				return fmt.Errorf("check group transaction: %w", err)
+			}
+			err = checkAndCreateUserExtension(txn, sac, users, vaultStore)
+			if err != nil {
+				return fmt.Errorf("check and create user_extension: %w", err)
+			}
+			err = checkAndCreateServiceAccountExtension(txn, sac, serverAccounts)
+			if err != nil {
+				return fmt.Errorf("check and create servece_account_extension: %w", err)
+			}
+			return nil
+		},
+	})
+	// update roleBinding hook
+	memStore.RegisterHook(io.ObjectHook{
+		Events:  []io.HookEvent{io.HookEventInsert},
+		ObjType: model.RoleBindingType,
+		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
+			newRoleBinding, ok := obj.(*model.RoleBinding)
+			if !ok {
+				return fmt.Errorf("need RoleBinding type, actually passed %T", obj)
+			}
+			repo := model.NewRoleBindingRepository(txn)
+			oldRoleBinding, err := repo.GetByID(newRoleBinding.UUID)
+			if err == model.ErrNotFound {
+				err = nil
+				oldRoleBinding = &model.RoleBinding{}
+			}
+			if err != nil {
+				return fmt.Errorf("getting old roleBinding value: %w", err)
+			}
+			users, serverAccounts, err := txnwatchers.FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn,
+				oldRoleBinding, newRoleBinding, sac.RoleForSSHAccess)
+			if err != nil {
+				return fmt.Errorf("check role_binding transaction: %w", err)
+			}
+			err = checkAndCreateUserExtension(txn, sac, users, vaultStore)
+			if err != nil {
+				return fmt.Errorf("check and create user_extension: %w", err)
+			}
+			err = checkAndCreateServiceAccountExtension(txn, sac, serverAccounts)
+			if err != nil {
+				return fmt.Errorf("check and create servece_account_extension: %w", err)
+			}
+			return nil
+		},
+	})
+
+	// update role hook
+	memStore.RegisterHook(io.ObjectHook{
+		Events:  []io.HookEvent{io.HookEventInsert},
+		ObjType: model.RoleType,
+		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
+			newRole, ok := obj.(*model.Role)
+			if !ok {
+				return fmt.Errorf("need Role type, actually passed %T", obj)
+			}
+			repo := model.NewRoleRepository(txn)
+			oldRole, err := repo.GetByID(newRole.Name)
+			if err == model.ErrNotFound {
+				err = nil
+				oldRole = &model.Role{}
+			}
+			if err != nil {
+				return fmt.Errorf("getting old roleBinding value: %w", err)
+			}
+			users, serverAccounts, err := txnwatchers.FindSubjectsAffectedByPossibleRoleAddingOnRoleChange(txn,
+				oldRole, newRole, sac.RoleForSSHAccess)
+			if err != nil {
+				return fmt.Errorf("check role transaction: %w", err)
+			}
+			err = checkAndCreateUserExtension(txn, sac, users, vaultStore)
+			if err != nil {
+				return fmt.Errorf("check and create user_extension: %w", err)
+			}
+			err = checkAndCreateServiceAccountExtension(txn, sac, serverAccounts)
+			if err != nil {
+				return fmt.Errorf("check and create servece_account_extension: %w", err)
+			}
+			return nil
+		},
+	})
+}
+
+func checkAndCreateServiceAccountExtension(txn *io.MemoryStoreTxn,
+	sac *ServerAccessConfig, accounts map[model.ServiceAccountUUID]struct{}) error {
+	// TODO implement for serviceAccounts
+	return nil
+}
+
+func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig, users map[model.UserUUID]struct{}, vaultStore logical.Storage) error {
+	repoUserExtension, err := ext_model.NewUserServerAccessRepository(txn,
+		sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
+	if err != nil {
+		return err
+	}
+	repoUser := model.NewUserRepository(txn)
+
+	for userUUID := range users {
+		user, err := repoUser.GetByID(userUUID)
+		if err != nil {
+			return fmt.Errorf("get user by id: %w", err)
+		}
+		if len(user.Extensions) >= 0 {
+			if _, isSet := user.Extensions[model.OriginServerAccess]; !isSet {
+				err = repoUserExtension.CreateExtension(user)
+				if err != nil {
+					return fmt.Errorf("creating user extension: %w", err)
+				}
+			}
+		}
+	}
+	return nil
 }
