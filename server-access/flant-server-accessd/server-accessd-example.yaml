@@ -1,0 +1,13 @@
+tenant: 62a5ab06-e631-11eb-bb82-3f219c2723e5
+project: 69615d14-e631-11eb-b2f1-cb8ca9702550
+server: 6802f64e-e631-11eb-a6c9-7f9330215506
+
+database: ./server-accessd.db
+
+# These are optional! Authd specific settings.
+# Socket to connect to authd.
+#authdSocketPath: /run/authd/server-accessd.sock
+# Authd determines an auth server for you. This parameter overrides this behaviour.
+#vaultServerAddr: https://auth.vault.example.com
+# Authd will choose vault server with specified type.
+#vaultServerType: auth

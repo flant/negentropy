@@ -1,0 +1,1 @@
+This integration tests are not finished, use ../example/run.sh for testing purposes
