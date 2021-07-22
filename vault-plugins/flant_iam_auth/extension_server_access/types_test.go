@@ -1,6 +1,7 @@
 package extension_server_access
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,30 +16,50 @@ func TestUserToPosix(t *testing.T) {
 	tenant1 := uuid.New()
 	tenant2ID := uuid.New()
 
+	attrUser1 := map[string]interface{}{
+		"UID": 42,
+		"passwords": []model.UserServerPassword{
+			{
+				Seed: []byte("1"),
+				Salt: []byte("1"),
+			},
+			{
+				Seed: []byte("2"),
+				Salt: []byte("2"),
+			},
+		},
+	}
+	attrs1, err := marshallUnmarshal(attrUser1)
+	assert.NoError(t, err)
+
 	user1 := &iam.User{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant1,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
 		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			"server_access": {
-				Origin: "server_access",
-				Attributes: map[string]interface{}{
-					"UID": 42,
-					"passwords": []model.UserServerPassword{
-						{
-							Seed: []byte("1"),
-							Salt: []byte("1"),
-						},
-						{
-							Seed: []byte("2"),
-							Salt: []byte("2"),
-						},
-					},
-				},
+			iam.OriginServerAccess: {
+				Origin:     iam.OriginServerAccess,
+				Attributes: attrs1,
 			},
 		},
 	}
+
+	attrUser2 := map[string]interface{}{
+		"UID": 56,
+		"passwords": []model.UserServerPassword{
+			{
+				Seed: []byte("3"),
+				Salt: []byte("3"),
+			},
+			{
+				Seed: []byte("4"),
+				Salt: []byte("4"),
+			},
+		},
+	}
+	attrs2, err := marshallUnmarshal(attrUser2)
+	assert.NoError(t, err)
 
 	user2 := &iam.User{
 		UUID:           uuid.New(),
@@ -46,21 +67,9 @@ func TestUserToPosix(t *testing.T) {
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant2",
 		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			"server_access": {
-				Origin: "server_access",
-				Attributes: map[string]interface{}{
-					"UID": 56,
-					"passwords": []model.UserServerPassword{
-						{
-							Seed: []byte("3"),
-							Salt: []byte("3"),
-						},
-						{
-							Seed: []byte("4"),
-							Salt: []byte("4"),
-						},
-					},
-				},
+			iam.OriginServerAccess: {
+				Origin:     iam.OriginServerAccess,
+				Attributes: attrs2,
 			},
 		},
 	}
@@ -89,4 +98,18 @@ func TestUserToPosix(t *testing.T) {
 	assert.Equal(t, 56, posix2.UID)
 	assert.Equal(t, "/home/tenant2/vasya", posix2.HomeDir)
 	assert.Contains(t, posix2.Password, "$6$")
+}
+
+// emulates pipeline flant_iam -> kafka -> flant_iam_auth
+func marshallUnmarshal(in map[string]interface{}) (map[string]interface{}, error) {
+	tmp, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]interface{}
+	err = json.Unmarshal(tmp, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
