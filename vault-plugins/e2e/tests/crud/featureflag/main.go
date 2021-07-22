@@ -64,8 +64,6 @@ var _ = Describe("Feature Flag", func() {
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
 				Expect(data.Map()).To(HaveKey("names"))
-				//names_data := data.Map()["data"]
-				//Expect(names_data.Map()).To(HaveKey("names"))
 				expectedName := gjson.Parse(fmt.Sprintf("{\"name\":\"%s\"}", createPayload.Name))
 				Expect(data.Get("names").Array()).To(ContainElement(expectedName))
 			},
