@@ -87,7 +87,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	t.Run("tenant and project are set", func(t *testing.T) {
 		t.Run("by name", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "project", project, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"names": "db-1"},
@@ -105,7 +105,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("by name with warnings", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "project", project, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"names": "db-1,db-3"},
@@ -126,7 +126,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("by labels", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "project", project, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"labelSelector": "foo=bar"},
@@ -144,7 +144,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("by IN labels", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "project", project, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"labelSelector": "foo in (bar)"},
@@ -162,7 +162,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("names and labelSelector at once are forbidden", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "project", project, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"labelSelector": "foo in (bar)", "names": "db-1"},
@@ -177,7 +177,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	t.Run("only tenant pass is set", func(t *testing.T) {
 		t.Run("by name is not working here(return all servers)", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"names": "db-1"},
@@ -194,7 +194,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("by labels", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("tenant", tenant, "query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"labelSelector": "foo=bar"},
@@ -214,7 +214,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	t.Run("no tenant is set", func(t *testing.T) {
 		t.Run("by name is not working here(return all servers)", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"names": "db-1"},
@@ -231,7 +231,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 
 		t.Run("by labels", func(t *testing.T) {
 			req := &logical.Request{
-				Operation: logical.ListOperation,
+				Operation: logical.ReadOperation,
 				Path:      path.Join("query_server"),
 				Storage:   storage,
 				Data:      map[string]interface{}{"labelSelector": "foo=bar"},
@@ -365,6 +365,24 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 }
 
 func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
+	userAttr := map[string]interface{}{
+		"UID": 42,
+		"passwords": []model.UserServerPassword{
+			{
+				Seed: []byte("1"),
+				Salt: []byte("1"),
+			},
+			{
+				Seed: []byte("2"),
+				Salt: []byte("2"),
+			},
+		},
+	}
+	attrs, err := marshallUnmarshal(userAttr)
+	if err != nil {
+		return err
+	}
+
 	user := &iam.User{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant,
@@ -372,23 +390,29 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 		FullIdentifier: "vasya@tenant1",
 		Version:        uuid.New(),
 		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			"server_access": {
-				Origin: "server_access",
-				Attributes: map[string]interface{}{
-					"UID": 42,
-					"passwords": []model.UserServerPassword{
-						{
-							Seed: []byte("1"),
-							Salt: []byte("1"),
-						},
-						{
-							Seed: []byte("2"),
-							Salt: []byte("2"),
-						},
-					},
-				},
+			iam.OriginServerAccess: {
+				Origin:     iam.OriginServerAccess,
+				Attributes: attrs,
 			},
 		},
+	}
+
+	saAttr := map[string]interface{}{
+		"UID": 42,
+		"passwords": []model.UserServerPassword{
+			{
+				Seed: []byte("3"),
+				Salt: []byte("3"),
+			},
+			{
+				Seed: []byte("4"),
+				Salt: []byte("4"),
+			},
+		},
+	}
+	attrs, err = marshallUnmarshal(saAttr)
+	if err != nil {
+		return err
 	}
 	sa := &iam.ServiceAccount{
 		UUID:           uuid.New(),
@@ -397,26 +421,14 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 		FullIdentifier: "serviceacc@tenant1",
 		Version:        uuid.New(),
 		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			"server_access": {
-				Origin: "server_access",
-				Attributes: map[string]interface{}{
-					"UID": 56,
-					"passwords": []model.UserServerPassword{
-						{
-							Seed: []byte("3"),
-							Salt: []byte("3"),
-						},
-						{
-							Seed: []byte("4"),
-							Salt: []byte("4"),
-						},
-					},
-				},
+			iam.OriginServerAccess: {
+				Origin:     iam.OriginServerAccess,
+				Attributes: attrs,
 			},
 		},
 	}
 
-	err := tx.Insert(iam.UserType, user)
+	err = tx.Insert(iam.UserType, user)
 	if err != nil {
 		return err
 	}
@@ -424,4 +436,18 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 	err = tx.Insert(iam.ServiceAccountType, sa)
 
 	return err
+}
+
+// emulates pipeline flant_iam -> kafka -> flant_iam_auth
+func marshallUnmarshal(in map[string]interface{}) (map[string]interface{}, error) {
+	tmp, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]interface{}
+	err = json.Unmarshal(tmp, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
