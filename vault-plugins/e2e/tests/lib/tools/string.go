@@ -3,6 +3,7 @@ package tools
 import (
 	"encoding/hex"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -16,4 +17,8 @@ func RandomStr() string {
 	}
 
 	return hex.EncodeToString(entityName)
+}
+
+func TimeStr() string {
+	return strconv.Itoa(int(time.Now().UnixNano()))
 }
