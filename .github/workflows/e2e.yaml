@@ -36,10 +36,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Build
-        run: bash dev-build.sh flant_iam
+        run: bash dev-build.sh
 
       - name: Setup Vault
-        run: bash dev-start.sh flant_iam
+        run: bash dev-start.sh
 
       - name: Tests
         run: |

@@ -194,6 +194,8 @@ sleep 3
 
 plugins=(flant_iam flant_iam_auth ssh)
 
+docker-compose exec -T vault sh -c "vault token create -orphan -policy=root -field=token > /vault/testdata/token"
+
 if [ -n "$specified_plugin" ]; then
   	activate_plugin "$specified_plugin"
   	exit 0;
