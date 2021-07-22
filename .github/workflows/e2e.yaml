@@ -36,14 +36,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Build
-        run: bash dev-build.sh
+        run: bash build.sh
 
       - name: Setup Vault
-        run: bash dev-start.sh
+        run: bash start.sh
 
       - name: Tests
         run: |
-          export TEST_VAULT_SECOND_TOKEN=$(cat ./data/token)
+          export TEST_VAULT_SECOND_TOKEN=$(cat /tmp/root_token)
           go mod download
           go run github.com/onsi/ginkgo/ginkgo run ./...
         working-directory: vault-plugins/e2e
