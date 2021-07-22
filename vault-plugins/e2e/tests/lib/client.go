@@ -38,19 +38,27 @@ const (
 	baseURL           = "http://127.0.0.1:8200/v1/"
 	IamPluginPath     = "flant_iam"
 	IamAuthPluginPath = "auth/flant_iam_auth"
-
-	RootToken = "root"
 )
 
-func GetIamVaultClient(token string) *http.Client {
-	return GetVaultClient(token, IamPluginPath)
+func NewIamVaultClient(token string) *http.Client {
+	return NewVaultClient(token, IamPluginPath)
 }
 
-func GetIamAuthVaultClient(token string) *http.Client {
-	return GetVaultClient(token, IamAuthPluginPath)
+func NewConfiguredIamVaultClient() *http.Client {
+	token := GetSecondRootToken()
+	return NewVaultClient(token, IamPluginPath)
 }
 
-func GetVaultClient(token string, pluginPath string) *http.Client {
+func NewIamAuthVaultClient(token string) *http.Client {
+	return NewVaultClient(token, IamAuthPluginPath)
+}
+
+func NewConfiguredIamAuthVaultClient() *http.Client {
+	token := GetSecondRootToken()
+	return NewIamAuthVaultClient(token)
+}
+
+func NewVaultClient(token string, pluginPath string) *http.Client {
 	pluginURL, err := url.Parse(baseURL + pluginPath)
 	if err != nil {
 		panic(err)
@@ -88,5 +96,9 @@ func GetVaultClient(token string, pluginPath string) *http.Client {
 }
 
 func GetSecondRootToken() string {
-	return os.Getenv("TEST_VAULT_SECOND_TOKEN")
+	token := os.Getenv("TEST_VAULT_SECOND_TOKEN")
+	if token == "" {
+		panic("TEST_VAULT_SECOND_TOKEN is empty, need valid token to access vault")
+	}
+	return token
 }

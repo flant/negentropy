@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("Role binding approval", func() {
-	rootClient := lib.GetIamVaultClient(lib.RootToken)
+	rootClient := lib.NewConfiguredIamVaultClient()
 	tenantsAPI := lib.NewTenantAPI(rootClient)
 	roleBindingAPI := lib.NewRoleBindingAPI(rootClient)
 	roleBindingApprovalAPI := lib.NewRoleBindingApprovalAPI(rootClient)

@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("Tenant", func() {
-	rootClient := lib.GetIamVaultClient(lib.RootToken)
+	rootClient := lib.NewConfiguredIamVaultClient()
 	tenantsAPI := lib.NewTenantAPI(rootClient)
 
 	Describe("payload", func() {

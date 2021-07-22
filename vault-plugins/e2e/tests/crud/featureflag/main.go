@@ -17,7 +17,7 @@ import (
 )
 
 var _ = Describe("Feature Flag", func() {
-	rootClient := lib.GetIamVaultClient(lib.RootToken)
+	rootClient := lib.NewConfiguredIamVaultClient()
 	flagsAPI := lib.NewFeatureFlagAPI(rootClient)
 
 	Describe("payload", func() {
@@ -64,8 +64,9 @@ var _ = Describe("Feature Flag", func() {
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
 				Expect(data.Map()).To(HaveKey("names"))
-
-				expectedName := gjson.Parse(fmt.Sprintf("%q", createPayload.Name))
+				//names_data := data.Map()["data"]
+				//Expect(names_data.Map()).To(HaveKey("names"))
+				expectedName := gjson.Parse(fmt.Sprintf("{\"name\":\"%s\"}", createPayload.Name))
 				Expect(data.Get("names").Array()).To(ContainElement(expectedName))
 			},
 		}
@@ -142,11 +143,11 @@ var _ = Describe("Feature Flag", func() {
 		}
 
 		Describe("when unauthenticated", func() {
-			runWithClient(lib.GetIamVaultClient(""), tools.ExpectExactStatus(400))
+			runWithClient(lib.NewIamVaultClient(""), tools.ExpectExactStatus(400))
 		})
 
 		Describe("when unauthorized", func() {
-			runWithClient(lib.GetIamVaultClient("xxx"), tools.ExpectExactStatus(403))
+			runWithClient(lib.NewIamVaultClient("xxx"), tools.ExpectExactStatus(403))
 		})
 	})
 })

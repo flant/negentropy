@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("Identity sharing", func() {
-	rootClient := lib.GetIamVaultClient(lib.RootToken)
+	rootClient := lib.NewConfiguredIamVaultClient()
 	tenantsAPI := lib.NewTenantAPI(rootClient)
 	identitySharingAPI := lib.NewIdentitySharingAPI(rootClient)
 
