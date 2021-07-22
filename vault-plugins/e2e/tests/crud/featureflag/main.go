@@ -66,7 +66,7 @@ var _ = Describe("Feature Flag", func() {
 				Expect(data.Map()).To(HaveKey("names"))
 				//names_data := data.Map()["data"]
 				//Expect(names_data.Map()).To(HaveKey("names"))
-				expectedName := gjson.Parse(fmt.Sprintf("%q", createPayload.Name))
+				expectedName := gjson.Parse(fmt.Sprintf("{\"name\":\"%s\"}", createPayload.Name))
 				Expect(data.Get("names").Array()).To(ContainElement(expectedName))
 			},
 		}
