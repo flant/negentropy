@@ -78,7 +78,7 @@ var _ = Describe("Login", func() {
 			_, jwtData = createUserMultipass(user)
 		})
 
-		It("successful log in", func() {
+		FIt("successful log in", func() {
 			auth := login(map[string]interface{}{
 				"method": multipassMethodName,
 				"jwt":    jwtData,
