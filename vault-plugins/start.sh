@@ -21,6 +21,28 @@ function activate-plugin() {
   fi
 }
 
+function connect_plugins() {
+  # prepare flant_iam
+  docker-exec "vault write -force flant_iam/kafka/generate_csr" >/dev/null 2>&1
+  docker-exec "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
+  root_pubkey=$(docker-exec "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+
+  # prepare flant_iam_auth
+  docker-exec "vault write -force auth/flant_iam_auth/kafka/generate_csr" >/dev/null 2>&1
+  docker-exec "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
+  auth_pubkey=$(docker-exec "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+
+  # configure flant_iam
+  docker-exec "vault write flant_iam/kafka/configure self_topic_name=root_source"
+
+  # configure flant_iam_auth
+  docker-exec \
+    "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
+
+  # create replica
+  docker-exec "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$auth_pubkey\""
+}
+
 function initialize() {
   docker-exec "vault write flant_iam/configure_extension/server_access roles_for_servers=servers role_for_ssh_access=ssh name=ssh delete_expired_password_seeds_after=1000000 expire_password_seed_after_reveal_in=1000000 last_allocated_uid=10000 --format=json"
   docker-exec "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
@@ -72,5 +94,7 @@ for i in "${plugins[@]}"
 do
   activate-plugin "$i"
 done
+
+connect_plugins
 
 initialize
