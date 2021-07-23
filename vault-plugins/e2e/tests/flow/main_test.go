@@ -26,7 +26,6 @@ import (
 )
 
 func Test(t *testing.T) {
-	t.Skip("no configure in ci")
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Vault entities")
 }
