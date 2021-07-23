@@ -113,7 +113,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 
 		authenticator = &jwt.Authenticator{
 			AuthMethod:   method,
-			Logger:       logger.Named("AutheNticator"),
+			Logger:       logger.Named("JWTAutheNticator"),
 			AuthSource:   authSource,
 			JwtValidator: jwtValidator,
 		}
@@ -153,11 +153,12 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		}
 
 		authenticator = &multipass.Authenticator{
-			AuthSource:    authSource,
-			AuthMethod:    method,
-			JwtValidator:  jwtValidator,
-			Logger:        logger.Named("AutheNticator"),
-			MultipassRepo: iam.NewMultipassRepository(tnx),
+			AuthSource:       authSource,
+			AuthMethod:       method,
+			JwtValidator:     jwtValidator,
+			Logger:           logger.Named("MultipassAutheNticator"),
+			MultipassRepo:    iam.NewMultipassRepository(tnx),
+			GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
 		}
 
 	default:

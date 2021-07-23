@@ -115,6 +115,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, iamAuthLogger.Named("KafkaSourceSelf")))
 	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, iamAuthLogger.Named("KafkaSourceRoot")))
 	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, iamAuthLogger.Named("KafkaSourceJWKS")))
+	storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, iamAuthLogger.Named("KafkaSourceMultipassGen")))
 
 	err = storage.Restore()
 	if err != nil {
@@ -123,6 +124,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
 	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, iamAuthLogger.Named("KafkaDestinationJWKS")))
+	storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, iamAuthLogger.Named("KafkaDestinationMultipassGen")))
 
 	if jwksIDGetter == nil {
 		jwksIDGetter = mb.GetEncryptionPublicKeyStrict

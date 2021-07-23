@@ -8,23 +8,25 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 type kafkaBackend struct {
 	logical.Backend
-	storage *io.MemoryStore
+	storage *sharedio.MemoryStore
 	broker  *kafka.MessageBroker
 	logger  hclog.Logger
 }
 
-func kafkaPaths(b logical.Backend, storage *io.MemoryStore, logger hclog.Logger) []*framework.Path {
+func kafkaPaths(b logical.Backend, storage *sharedio.MemoryStore, logger hclog.Logger) []*framework.Path {
 	bb := kafkaBackend{
 		Backend: b,
 		storage: storage,
@@ -141,6 +143,16 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	kb.broker.PluginConfig.PublishQuotaUsage = data.Get("publish_quota_usage").(bool)
 
 	err = kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create multipass generation number topic
+	multipassGenNumberConfig := map[string]string{
+		"cleanup.policy": "compact, delete",
+		"retention.ms":   "2678400000", // 31 days
+	}
+	err = kb.broker.CreateTopic(ctx, io.MultipassNumberGenerationTopic, multipassGenNumberConfig)
 	if err != nil {
 		return nil, err
 	}
