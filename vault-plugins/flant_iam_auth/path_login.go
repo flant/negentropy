@@ -18,6 +18,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/multipass"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authz"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
+
 )
 
 func pathLogin(b *flantIamAuthBackend) *framework.Path {
@@ -152,13 +154,20 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 			return nil, err
 		}
 
+		loggerForAuth := logger.Named("MultipassAutheNticator")
+
 		authenticator = &multipass.Authenticator{
 			AuthSource:       authSource,
 			AuthMethod:       method,
 			JwtValidator:     jwtValidator,
-			Logger:           logger.Named("MultipassAutheNticator"),
-			MultipassRepo:    iam.NewMultipassRepository(tnx),
-			GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+			Logger:           loggerForAuth,
+			MultipassService: &usecase.Multipass{
+				JwtController:    b.jwtController,
+				MultipassRepo:    iam.NewMultipassRepository(tnx),
+				GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+				Logger: loggerForAuth,
+			},
+
 		}
 
 	default:

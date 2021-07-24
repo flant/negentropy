@@ -210,6 +210,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 				pathJwtType(b),
 				pathJwtTypeList(b),
 				pathIssueJwtType(b),
+				pathIssueMultipassJwt(b),
 
 				// Uncomment to mount simple UI handler for local development
 				// pathUI(b),

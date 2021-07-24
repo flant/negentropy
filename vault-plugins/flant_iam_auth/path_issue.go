@@ -3,6 +3,9 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -38,6 +41,30 @@ func pathIssueJwtType(b *flantIamAuthBackend) *framework.Path {
 			},
 		},
 		HelpSynopsis:    "Issue options as jwt token",
+		HelpDescription: "",
+	}
+
+	return p
+}
+
+func pathIssueMultipassJwt(b *flantIamAuthBackend) *framework.Path {
+	p := &framework.Path{
+		Pattern: fmt.Sprintf("%s/multipass_jwt/", HttpPathIssue) + framework.GenericNameRegex("uuid"),
+		Fields: map[string]*framework.FieldSchema{
+			"uuid": {
+				Type:        framework.TypeString,
+				Description: "Name of the jwt type",
+				Required:    true,
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathIssueMultipassJwt,
+				Summary:  "Update an existing jwt type",
+			},
+		},
+		HelpSynopsis:    "Issue multipass jwt token with new generation number",
 		HelpDescription: "",
 	}
 
@@ -112,7 +139,48 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"jwt": signedJwt,
+			"token": signedJwt,
+		},
+	}
+
+	return resp, nil
+}
+
+// pathJwtTypeCreateUpdate registers a new JwtTypeConfig with the backend or updates the options
+// of an existing JwtTypeConfig
+func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	multipassUUID, errResp := backendutils.NotEmptyStringParam(data, "uuid")
+	if errResp != nil {
+		return errResp, nil
+	}
+
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	isEnabled, err := b.jwtController.IsEnabled(tnx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isEnabled {
+		return logical.ErrorResponse("jwt is not enabled"), nil
+	}
+
+	multipassService := &usecase.Multipass{
+		JwtController:    b.jwtController,
+		MultipassRepo:    iam.NewMultipassRepository(tnx),
+		GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+		Logger:           b.NamedLogger("MultipassNewGen"),
+	}
+
+	token, err := multipassService.IssueNewMultipassGeneration(tnx, multipassUUID)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"token": token,
 		},
 	}
 

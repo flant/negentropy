@@ -5,10 +5,18 @@ import (
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/configure"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"time"
 )
+
+func assertVaultUser(user *iam.User, auth *api.SecretAuth) {
+	entityID, err := identityApi.EntityApi().GetID(user.FullIdentifier)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(auth.EntityID).To(BeEquivalentTo(entityID))
+	Expect(auth.Policies).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
+}
 
 var _ = Describe("Login", func() {
 	Context("with jwt method", func() {
@@ -31,11 +39,7 @@ var _ = Describe("Login", func() {
 
 			Expect(auth.ClientToken).ToNot(BeEmpty())
 
-			entityID, err := identityApi.EntityApi().GetID(user.FullIdentifier)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(auth.EntityID).To(BeEquivalentTo(entityID))
-			Expect(auth.Policies).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
-
+			assertVaultUser(user, auth)
 		})
 
 		Context("accessible", func() {
@@ -74,7 +78,7 @@ var _ = Describe("Login", func() {
 		var user *iam.User
 		var multipass *iam.Multipass
 
-		JustBeforeEach(func() {
+		BeforeEach(func() {
 			user = createUser()
 			multipass, jwtData = createUserMultipass(user)
 		})
@@ -87,11 +91,7 @@ var _ = Describe("Login", func() {
 
 			Expect(auth.ClientToken).ToNot(BeEmpty())
 
-			entityID, err := identityApi.EntityApi().GetID(user.FullIdentifier)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(auth.EntityID).To(BeEquivalentTo(entityID))
-			Expect(auth.Policies).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
-
+			assertVaultUser(user, auth)
 		})
 
 		Context("accessible", func() {
@@ -143,6 +143,42 @@ var _ = Describe("Login", func() {
 			})
 		})
 
+		Context("multipass prolongation", func() {
+			var prolongClient *api.Client
 
+			BeforeEach(func() {
+				auth := login(true, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    jwtData,
+				})
+				Expect(auth.ClientToken).ToNot(BeEmpty())
+
+				prolongClient = configure.GetClient(auth.ClientToken)
+			})
+
+			It("successful log in after prolong multipass", func() {
+				token := prolongUserMultipass(true, multipass.UUID, prolongClient)
+
+				auth := login(true, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    token,
+				})
+
+				Expect(auth.ClientToken).ToNot(BeEmpty())
+
+				assertVaultUser(user, auth)
+			})
+
+			It("does not log in with old multipass", func() {
+				prolongUserMultipass(true, multipass.UUID, prolongClient)
+
+				auth := login(false, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    jwtData,
+				})
+
+				Expect(auth).To(BeNil())
+			})
+		})
 	})
 })

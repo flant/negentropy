@@ -4,23 +4,21 @@ import (
 	"context"
 	"fmt"
 
-
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
 	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
+	auth_usecase "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 type Authenticator struct {
 	JwtValidator *jwt.Validator
 
-	MultipassRepo    *iam.MultipassRepository
-	GenMultipassRepo *model.MultipassGenerationNumberRepository
+	MultipassService *auth_usecase.Multipass
 
 	AuthMethod *model.AuthMethod
 	AuthSource *model.AuthSource
@@ -49,31 +47,15 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		return nil, fmt.Errorf("not found jti from token")
 	}
 
-	a.Logger.Debug(fmt.Sprintf("Try to get multipass %s", res.UUID))
-
-	multipass, err := a.MultipassRepo.GetByID(res.UUID)
-	if err != nil {
-		return nil, err
-	}
-
-	if multipass == nil {
-		return nil, fmt.Errorf("not found multipass")
-	}
-
-	a.Logger.Debug(fmt.Sprintf("Try to get multipass generation number %s", res.UUID))
-	multipassGen, err := a.GenMultipassRepo.GetByID(multipass.UUID)
-	if err != nil {
-		return nil, err
-	}
-
-	if multipassGen == nil {
-		a.Logger.Error(fmt.Sprintf("Not found multipass generation number %s", res.UUID))
-		return nil, fmt.Errorf("not jti is not valid")
-	}
-
 	jtiFromToken, ok := jtiFromTokenRaw.(string)
 	if !ok {
 		return nil, fmt.Errorf("jti must be string")
+	}
+
+	a.Logger.Debug(fmt.Sprintf("Try to get multipass with its gen %s", res.UUID))
+	multipass, multipassGen, err := a.MultipassService.GetWithGeneration(res.UUID)
+	if err != nil {
+		return nil, err
 	}
 
 	if multipass.Salt == "" {

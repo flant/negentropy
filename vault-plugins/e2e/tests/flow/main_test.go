@@ -2,6 +2,7 @@ package flow
 
 import (
 	"encoding/json"
+	"gopkg.in/square/go-jose.v2"
 	"testing"
 	"time"
 
@@ -35,6 +36,10 @@ const methodReaderOnlyPolicy = `
 path "auth/flant_iam_auth/auth_method/*" {
   capabilities = ["read"]
 }
+
+path "auth/flant_iam_auth/issue/multipass_jwt/*" {
+  capabilities = ["update"]
+}
 `
 
 var (
@@ -45,7 +50,7 @@ var (
 	mountAccessorId     string
 	jwtMethodName       string
 	multipassMethodName string
-	tokenTTl            = 5 * time.Second
+	tokenTTl            = 20 * time.Second
 )
 
 func uuidFromResp(resp *api.Secret, entityKey, key string) string {
@@ -82,6 +87,32 @@ func deleteUserMultipass(user *iam.User, multipass *iam.Multipass) {
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(2 * time.Second)
+}
+
+func prolongUserMultipass(positiveCase bool, uuid string, client *api.Client) string {
+	maRaw, err := client.Logical().Write(lib.IamAuthPluginPath+"/issue/multipass_jwt/" + uuid, nil)
+	if positiveCase {
+		Expect(err).ToNot(HaveOccurred())
+		return maRaw.Data["token"].(string)
+	}
+
+	Expect(err).To(HaveOccurred())
+
+	return ""
+}
+
+func getJwks() *jose.JSONWebKeySet {
+	jwksRaw, err := iamClient.Logical().Read(lib.IamAuthPluginPath+"/jwks/")
+	Expect(err).ToNot(HaveOccurred())
+
+	jwksStr, err := json.Marshal(jwksRaw.Data)
+	Expect(err).ToNot(HaveOccurred())
+
+	keySet := jose.JSONWebKeySet{}
+	err = json.Unmarshal(jwksStr, &keySet)
+	Expect(err).ToNot(HaveOccurred())
+
+	return &keySet
 }
 
 func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
@@ -184,6 +215,21 @@ func login(positiveCase bool, params map[string]interface{}) *api.SecretAuth {
 	return nil
 }
 
+func switchJwt(enable bool) {
+	method := "enable"
+	if !enable {
+		method = "disable"
+	}
+	var err error
+	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/" + method, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/" + method, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(3 * time.Second)
+}
+
 var _ = BeforeSuite(func() {
 	token := lib.GetSecondRootToken()
 	iamAuthClient = configure.GetClient(token)
@@ -199,11 +245,7 @@ var _ = BeforeSuite(func() {
 	configure.ConfigureVaultAccess(token, lib.IamAuthPluginPath, role)
 
 	var err error
-	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/enable", nil)
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/enable", nil)
-	Expect(err).ToNot(HaveOccurred())
+	switchJwt(true)
 
 	sources = auth_source.GenerateSources()
 
