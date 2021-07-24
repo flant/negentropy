@@ -18,7 +18,8 @@ type subject struct {
 }
 
 func GetPayload() Payload {
-	return Payload{Subjects: []subject{{Type: "test", ID: uuid.New()}},
+	return Payload{
+		Subjects:   []subject{{Type: "test", ID: uuid.New()}},
 		RequireMFA: false,
 		TTL:        30,
 		Identifier: "rb_" + tools.TimeStr(),

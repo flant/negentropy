@@ -3,7 +3,6 @@ package flow
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -80,7 +79,6 @@ var _ = Describe("Token issuing", func() {
 					Issuer: "https://auth.negentropy.flant.com/",
 				})
 				Expect(err).ToNot(HaveOccurred())
-
 			})
 
 			It("generates new JTI", func() {

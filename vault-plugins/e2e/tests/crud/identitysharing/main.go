@@ -84,5 +84,4 @@ var _ = Describe("Identity sharing", func() {
 			"expectStatus": tools.ExpectExactStatus(404),
 		}, nil)
 	})
-
 })

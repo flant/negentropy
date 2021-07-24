@@ -2,7 +2,6 @@ package flow
 
 import (
 	"github.com/hashicorp/vault/api"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -54,6 +53,5 @@ var _ = Describe("Renewing token", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
-
 	})
 })

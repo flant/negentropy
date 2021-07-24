@@ -15,7 +15,7 @@ path "*" {
 
 const (
 	goodPolicyName = "good"
-	goodRoleName = goodPolicyName
+	goodRoleName   = goodPolicyName
 )
 
 type GoodAppRole struct {

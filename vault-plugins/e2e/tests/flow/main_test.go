@@ -2,15 +2,14 @@ package flow
 
 import (
 	"encoding/json"
-	"gopkg.in/square/go-jose.v2"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
@@ -31,8 +30,9 @@ func Test(t *testing.T) {
 	RunSpecs(t, "Vault entities")
 }
 
-const methodReaderOnlyPolicyName = "method_reader"
-const methodReaderOnlyPolicy = `
+const (
+	methodReaderOnlyPolicyName = "method_reader"
+	methodReaderOnlyPolicy     = `
 path "auth/flant_iam_auth/auth_method/*" {
   capabilities = ["read"]
 }
@@ -45,6 +45,7 @@ path "auth/token/renew" {
   capabilities = ["update"]
 }
 `
+)
 
 var (
 	iamAuthClient       *api.Client
@@ -87,14 +88,14 @@ func createUser() *iam.User {
 }
 
 func deleteUserMultipass(user *iam.User, multipass *iam.Multipass) {
-	_, err := iamClient.Logical().Delete(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass/"+multipass.UUID)
+	_, err := iamClient.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID + "/multipass/" + multipass.UUID)
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(2 * time.Second)
 }
 
 func prolongUserMultipass(positiveCase bool, uuid string, client *api.Client) string {
-	maRaw, err := client.Logical().Write(lib.IamAuthPluginPath+"/issue/multipass_jwt/" + uuid, nil)
+	maRaw, err := client.Logical().Write(lib.IamAuthPluginPath+"/issue/multipass_jwt/"+uuid, nil)
 	if positiveCase {
 		Expect(err).ToNot(HaveOccurred())
 		return maRaw.Data["token"].(string)
@@ -106,7 +107,7 @@ func prolongUserMultipass(positiveCase bool, uuid string, client *api.Client) st
 }
 
 func getJwks() *jose.JSONWebKeySet {
-	jwksRaw, err := iamClient.Logical().Read(lib.IamAuthPluginPath+"/jwks/")
+	jwksRaw, err := iamClient.Logical().Read(lib.IamAuthPluginPath + "/jwks/")
 	Expect(err).ToNot(HaveOccurred())
 
 	jwksStr, err := json.Marshal(jwksRaw.Data)
@@ -225,10 +226,10 @@ func switchJwt(enable bool) {
 		method = "disable"
 	}
 	var err error
-	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/" + method, nil)
+	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/"+method, nil)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/" + method, nil)
+	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/"+method, nil)
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(3 * time.Second)
