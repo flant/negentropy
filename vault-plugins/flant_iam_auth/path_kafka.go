@@ -8,12 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"

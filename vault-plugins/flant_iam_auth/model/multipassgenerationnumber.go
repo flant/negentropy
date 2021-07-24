@@ -3,7 +3,6 @@ package model
 import (
 	"encoding/json"
 
-
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"

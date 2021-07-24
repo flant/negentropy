@@ -100,7 +100,6 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 		l.Debug(fmt.Sprintf("empty value for %s/%s. It is tombstone. Skip decrypt", splitted[0], splitted[1]))
 	}
 
-
 	l.Debug("Restore - Message decrypted", "decrypted", decrypted)
 
 	if len(signature) == 0 {

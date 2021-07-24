@@ -3,14 +3,14 @@ package jwtauth
 import (
 	"context"
 	"fmt"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )

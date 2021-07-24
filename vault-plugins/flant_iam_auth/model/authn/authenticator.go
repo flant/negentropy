@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 type Result struct {
@@ -12,7 +13,11 @@ type Result struct {
 	// empty is unknown
 	ModelType string
 
-	Metadata     map[string]string
+	// for audit log
+	Metadata map[string]string
+	// for renew
+	InternalData map[string]interface{}
+
 	Policies     []string
 	GroupAliases []string
 
@@ -21,4 +26,5 @@ type Result struct {
 
 type Authenticator interface {
 	Authenticate(ctx context.Context, d *framework.FieldData) (*Result, error)
+	CanRenew(vaultAuth *logical.Auth) (bool, error)
 }

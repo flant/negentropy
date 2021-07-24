@@ -163,7 +163,6 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 			l.Debug(fmt.Sprintf("empty value for %s/%s. It is tombstone. Skip decrypt", objType, objId))
 		}
 
-
 		if len(signature) == 0 {
 			l.Error(fmt.Sprintf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))

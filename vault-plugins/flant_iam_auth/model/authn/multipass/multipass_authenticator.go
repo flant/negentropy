@@ -7,7 +7,9 @@ import (
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
 	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
@@ -24,6 +26,11 @@ type Authenticator struct {
 	AuthSource *model.AuthSource
 
 	Logger hclog.Logger
+}
+
+type authInternalData struct {
+	JTI         string `json:"jti"`
+	MultipassId string `json:"multipass_id"`
 }
 
 func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn.Result, error) {
@@ -52,27 +59,9 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		return nil, fmt.Errorf("jti must be string")
 	}
 
-	a.Logger.Debug(fmt.Sprintf("Try to get multipass with its gen %s", res.UUID))
-	multipass, multipassGen, err := a.MultipassService.GetWithGeneration(res.UUID)
+	multipass, err := a.verifyMultipass(res.UUID, jtiFromToken)
 	if err != nil {
 		return nil, err
-	}
-
-	if multipass.Salt == "" {
-		a.Logger.Error(fmt.Sprintf("Got empty salt %s", res.UUID))
-		return nil, fmt.Errorf("jti is not valid")
-	}
-
-	jti := usecase.TokenJTI{
-		Generation: multipassGen.GenerationNumber,
-		SecretSalt: multipass.Salt,
-	}.Hash()
-
-	a.Logger.Debug(fmt.Sprintf("Verify jti %s", res.UUID))
-
-	if jti != jtiFromToken {
-		a.Logger.Error(fmt.Sprintf("Incorrect jti got=%s need=%s", jtiFromToken, jti))
-		return nil, fmt.Errorf("jti is not valid")
 	}
 
 	a.Logger.Debug(fmt.Sprintf("Found multipass owner %s", multipass.OwnerUUID))
@@ -81,5 +70,57 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		UUID:         multipass.OwnerUUID,
 		Metadata:     map[string]string{},
 		GroupAliases: make([]string, 0),
+		InternalData: map[string]interface{}{
+			"multipass": authInternalData{
+				MultipassId: multipass.UUID,
+				JTI:         jtiFromToken,
+			},
+		},
 	}, nil
+}
+
+func (a *Authenticator) CanRenew(vaultAuth *logical.Auth) (bool, error) {
+	rawMpAuth, ok := vaultAuth.InternalData["multipass"]
+	if !ok {
+		return false, fmt.Errorf("not found multipass data")
+	}
+
+	mpAuth, ok := rawMpAuth.(authInternalData)
+	if !ok {
+		return false, fmt.Errorf("not cast multipass data")
+	}
+
+	_, err := a.verifyMultipass(mpAuth.MultipassId, mpAuth.JTI)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (a *Authenticator) verifyMultipass(uuid, jtiExpected string) (*iam.Multipass, error) {
+	a.Logger.Debug(fmt.Sprintf("Try to get multipass with its gen %s", uuid))
+	multipass, multipassGen, err := a.MultipassService.GetWithGeneration(uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	if multipass.Salt == "" {
+		a.Logger.Error(fmt.Sprintf("Got empty salt %s", uuid))
+		return nil, fmt.Errorf("jti is not valid")
+	}
+
+	jti := usecase.TokenJTI{
+		Generation: multipassGen.GenerationNumber,
+		SecretSalt: multipass.Salt,
+	}.Hash()
+
+	a.Logger.Debug(fmt.Sprintf("Verify jti %s", uuid))
+
+	if jti != jtiExpected {
+		a.Logger.Error(fmt.Sprintf("Incorrect jti got=%s need=%s", jtiExpected, jti))
+		return nil, fmt.Errorf("jti is not valid")
+	}
+
+	return multipass, nil
 }

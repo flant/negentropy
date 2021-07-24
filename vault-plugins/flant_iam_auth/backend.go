@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
@@ -23,6 +22,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/factory"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -48,10 +48,11 @@ func Factory(ctx context.Context, c *logical.BackendConfig, jwksIDGetter func() 
 type flantIamAuthBackend struct {
 	*framework.Backend
 
-	l                  sync.RWMutex
-	provider           *oidc.Provider
-	validators         map[string]*jwt.Validator
-	oidcRequests       *cache.Cache
+	l            sync.RWMutex
+	provider     *oidc.Provider
+	oidcRequests *cache.Cache
+	authnFactoty *factory.AuthenticatorFactory
+
 	jwtTypesValidators map[string]openapi.Validator
 
 	providerCtx       context.Context
@@ -181,6 +182,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return allErrors
 	}
 
+	b.authnFactoty = factory.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
+
 	b.Backend = &framework.Backend{
 		AuthRenew:    b.pathLoginRenew,
 		BackendType:  logical.TypeCredential,
@@ -278,7 +281,7 @@ func (b *flantIamAuthBackend) reset() {
 		b.provider.Done()
 	}
 	b.provider = nil
-	b.validators = make(map[string]*jwt.Validator)
+	b.authnFactoty.Reset()
 	b.l.Unlock()
 }
 
@@ -336,48 +339,6 @@ func (b *flantIamAuthBackend) setJWTTypeValidator(jwtType *model.JWTIssueType, v
 	defer b.l.Unlock()
 
 	b.jwtTypesValidators[jwtType.Name] = validator
-}
-
-// jwtValidator returns a new JWT validator based on the provided config.
-func (b *flantIamAuthBackend) jwtValidator(methodName string, config *model.AuthSource) (*jwt.Validator, error) {
-	b.l.Lock()
-	defer b.l.Unlock()
-
-	if v, ok := b.validators[methodName]; ok {
-		return v, nil
-	}
-
-	var err error
-	var keySet jwt.KeySet
-
-	// Configure the key set for the validator
-	switch config.AuthType() {
-	case model.AuthSourceJWKS:
-		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
-	case model.AuthSourceStaticKeys:
-		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
-	case model.AuthSourceOIDCDiscovery:
-		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
-	default:
-		return nil, errors.New("unsupported config type")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("keyset configuration error: %w", err)
-	}
-
-	validator, err := jwt.NewValidator(keySet)
-	if err != nil {
-		return nil, fmt.Errorf("JWT validator configuration error: %w", err)
-	}
-
-	// not cache multipass validator
-	// TODO flush cache when update JWKS
-	if config.UUID != model.MultipassSourceUUID {
-		b.validators[methodName] = validator
-	}
-
-	return validator, nil
 }
 
 const (

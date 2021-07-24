@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 

@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/cap/jwt"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
@@ -83,4 +84,9 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 
 		Claims: allClaims,
 	}, nil
+}
+
+func (a *Authenticator) CanRenew(vaultAuth *logical.Auth) (bool, error) {
+	// TODO may be add logiс?
+	return true, nil
 }

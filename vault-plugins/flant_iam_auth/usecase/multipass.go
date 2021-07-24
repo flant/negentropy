@@ -2,15 +2,14 @@ package usecase
 
 import (
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
-	jwt_usecases "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 
 	"github.com/hashicorp/go-hclog"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
-
+	jwt_usecases "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 type Multipass struct {
@@ -54,14 +53,13 @@ func (m *Multipass) IssueNewMultipassGeneration(tnx *io.MemoryStoreTxn, uuid str
 	nextGen := gen.GenerationNumber + 1
 
 	tokenStr, err := m.JwtController.IssueMultipass(tnx, &jwt_usecases.PrimaryTokenOptions{
-		TTL: mp.TTL,
+		TTL:  mp.TTL,
 		UUID: mp.UUID,
 		JTI: jwt_usecases.TokenJTI{
 			Generation: nextGen,
 			SecretSalt: mp.Salt,
 		},
 	})
-
 	if err != nil {
 		return "", err
 	}

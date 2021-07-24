@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-
 	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
