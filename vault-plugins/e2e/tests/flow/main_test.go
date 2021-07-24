@@ -40,6 +40,10 @@ path "auth/flant_iam_auth/auth_method/*" {
 path "auth/flant_iam_auth/issue/multipass_jwt/*" {
   capabilities = ["update"]
 }
+
+path "auth/token/renew" {
+  capabilities = ["update"]
+}
 `
 
 var (

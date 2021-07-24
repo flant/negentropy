@@ -28,11 +28,6 @@ type Authenticator struct {
 	Logger hclog.Logger
 }
 
-type authInternalData struct {
-	JTI         string `json:"jti"`
-	MultipassId string `json:"multipass_id"`
-}
-
 func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn.Result, error) {
 	a.Logger.Debug("Start authn multipass")
 
@@ -71,9 +66,9 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		Metadata:     map[string]string{},
 		GroupAliases: make([]string, 0),
 		InternalData: map[string]interface{}{
-			"multipass": authInternalData{
-				MultipassId: multipass.UUID,
-				JTI:         jtiFromToken,
+			"multipass": map[string]interface{}{
+				"multipass_id": multipass.UUID,
+				"jti":          jtiFromToken,
 			},
 		},
 	}, nil
@@ -85,12 +80,12 @@ func (a *Authenticator) CanRenew(vaultAuth *logical.Auth) (bool, error) {
 		return false, fmt.Errorf("not found multipass data")
 	}
 
-	mpAuth, ok := rawMpAuth.(authInternalData)
+	mpAuth, ok := rawMpAuth.(map[string]interface{})
 	if !ok {
 		return false, fmt.Errorf("not cast multipass data")
 	}
 
-	_, err := a.verifyMultipass(mpAuth.MultipassId, mpAuth.JTI)
+	_, err := a.verifyMultipass(mpAuth["multipass_id"].(string), mpAuth["jti"].(string))
 	if err != nil {
 		return false, err
 	}

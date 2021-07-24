@@ -18,6 +18,14 @@ func assertVaultUser(user *iam.User, auth *api.SecretAuth) {
 	Expect(auth.Policies).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
 }
 
+func assertHasAccess(token string){
+	cl := configure.GetClient(token)
+	method, err := cl.Logical().Read(lib.IamAuthPluginPath+"/auth_method/"+ jwtMethodName)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(method.Data["name"].(string)).To(BeEquivalentTo(jwtMethodName))
+}
+
 var _ = Describe("Login", func() {
 	Context("with jwt method", func() {
 		var jwtData string
@@ -102,11 +110,7 @@ var _ = Describe("Login", func() {
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
 
-				cl := configure.GetClient(auth.ClientToken)
-				method, err := cl.Logical().Read(lib.IamAuthPluginPath+"/auth_method/"+ jwtMethodName)
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(method.Data["name"].(string)).To(BeEquivalentTo(jwtMethodName))
+				assertHasAccess(auth.ClientToken)
 			})
 
 			It("does not access to not allowed method", func() {

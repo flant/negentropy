@@ -64,9 +64,16 @@ var _ = Describe("Token issuing", func() {
 
 				jwks := getJwks()
 
-				// correct signs
-				data := map[string]interface{}{}
-				err := parsed.Claims(jwks.Keys[0], &data)
+				var err error
+				for _, k := range jwks.Keys {
+					// correct signs
+					data := map[string]interface{}{}
+					err = parsed.Claims(k, &data)
+					if err == nil {
+						break
+					}
+				}
+
 				Expect(err).ToNot(HaveOccurred())
 
 				err = claims.Validate(jwt.Expected{
