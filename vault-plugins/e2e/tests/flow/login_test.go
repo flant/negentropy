@@ -24,7 +24,7 @@ var _ = Describe("Login", func() {
 		})
 
 		It("successful log in", func() {
-			auth := login(map[string]interface{}{
+			auth := login(true, map[string]interface{}{
 				"method": jwtMethodName,
 				"jwt":    jwtData,
 			})
@@ -40,7 +40,7 @@ var _ = Describe("Login", func() {
 
 		Context("accessible", func() {
 			It("does access to allowed method", func() {
-				auth := login(map[string]interface{}{
+				auth := login(true, map[string]interface{}{
 					"method": jwtMethodName,
 					"jwt":    jwtData,
 				})
@@ -54,7 +54,7 @@ var _ = Describe("Login", func() {
 			})
 
 			It("does not access to not allowed method", func() {
-				auth := login(map[string]interface{}{
+				auth := login(true, map[string]interface{}{
 					"method": jwtMethodName,
 					"jwt":    jwtData,
 				})
@@ -72,14 +72,15 @@ var _ = Describe("Login", func() {
 	Context("with multipass", func() {
 		var jwtData string
 		var user *iam.User
+		var multipass *iam.Multipass
 
 		JustBeforeEach(func() {
 			user = createUser()
-			_, jwtData = createUserMultipass(user)
+			multipass, jwtData = createUserMultipass(user)
 		})
 
-		FIt("successful log in", func() {
-			auth := login(map[string]interface{}{
+		It("successful log in", func() {
+			auth := login(true, map[string]interface{}{
 				"method": multipassMethodName,
 				"jwt":    jwtData,
 			})
@@ -95,7 +96,7 @@ var _ = Describe("Login", func() {
 
 		Context("accessible", func() {
 			It("does access to allowed method", func() {
-				auth := login(map[string]interface{}{
+				auth := login(true, map[string]interface{}{
 					"method": multipassMethodName,
 					"jwt":    jwtData,
 				})
@@ -109,7 +110,7 @@ var _ = Describe("Login", func() {
 			})
 
 			It("does not access to not allowed method", func() {
-				auth := login(map[string]interface{}{
+				auth := login(true, map[string]interface{}{
 					"method": multipassMethodName,
 					"jwt":    jwtData,
 				})
@@ -121,5 +122,27 @@ var _ = Describe("Login", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
+
+		Context("fail login", func() {
+			It("does not log in after delete multipass", func() {
+				auth := login(true, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    jwtData,
+				})
+
+				Expect(auth.ClientToken).ToNot(BeEmpty())
+
+				deleteUserMultipass(user, multipass)
+
+				auth = login(false, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    jwtData,
+				})
+
+				Expect(auth).To(BeNil())
+			})
+		})
+
+
 	})
 })

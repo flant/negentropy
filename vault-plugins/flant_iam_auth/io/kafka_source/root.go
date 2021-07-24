@@ -129,6 +129,7 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 
 func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
+		l := rk.logger
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
 			// return fmt.Debugf("key has wong format: %s", string(msg.Key))
@@ -136,7 +137,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		}
 		objType, objId := splitted[0], splitted[1]
 
-		rk.logger.Debug("Got message", objType, objId)
+		l.Debug("Got message", objType, objId)
 		var signature []byte
 		var chunked bool
 		for _, header := range msg.Headers {
@@ -149,29 +150,36 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 			}
 		}
 
-		decrypted, err := rk.decryptData(msg.Value, chunked)
-		if err != nil {
-			log.Printf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
-			return
+		var decrypted []byte
+		if len(msg.Value) > 0 {
+			var err error
+			decrypted, err = rk.decryptData(msg.Value, chunked)
+			if err != nil {
+				l.Error(fmt.Sprintf("can't decrypt message: %v. Skipping: %s in topic: %s at offset %d\n",
+					err, msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
+				return
+			}
+		} else {
+			l.Debug(fmt.Sprintf("empty value for %s/%s. It is tombstone. Skip decrypt", objType, objId))
 		}
+
 
 		if len(signature) == 0 {
-			log.Printf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+			l.Error(fmt.Sprintf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
+				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
 
-		err = rk.verifySign(signature, decrypted)
+		err := rk.verifySign(signature, decrypted)
 		if err != nil {
-			log.Printf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+			l.Error(fmt.Sprintf("wrong signature: %v. Skipping message: %s in topic: %s at offset %d\n",
+				err, msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
 
 		source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 		if err != nil {
-			log.Println("build source message failed", err)
+			l.Error(fmt.Sprintf("build source message failed: %s", err))
 			return
 		}
 

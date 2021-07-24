@@ -77,6 +77,13 @@ func createUser() *iam.User {
 	return &userObj
 }
 
+func deleteUserMultipass(user *iam.User, multipass *iam.Multipass) {
+	_, err := iamClient.Logical().Delete(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass/"+multipass.UUID)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(2 * time.Second)
+}
+
 func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
 	maRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass", tools.ToMap(multipass.GetPayload()))
 	Expect(err).ToNot(HaveOccurred())
@@ -162,13 +169,19 @@ func createMultipassAuthMethod(methodName string, payloadRewrite map[string]inte
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func login(params map[string]interface{}) *api.SecretAuth {
+func login(positiveCase bool, params map[string]interface{}) *api.SecretAuth {
 	secret, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/login", params)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(secret).ToNot(BeNil())
-	Expect(secret.Auth).ToNot(BeNil())
+	if positiveCase {
+		Expect(err).ToNot(HaveOccurred())
+		Expect(secret).ToNot(BeNil())
+		Expect(secret.Auth).ToNot(BeNil())
 
-	return secret.Auth
+		return secret.Auth
+	} else {
+		Expect(err).To(HaveOccurred())
+	}
+
+	return nil
 }
 
 var _ = BeforeSuite(func() {
