@@ -1,6 +1,9 @@
+# TODO: add common/build to calculate checksums
+
 # Calculates cumulative checksum for all used in image's configuration file common scripts.
 # $1 - image path
-function used_common_scripts_checksum() {
+function used_common_scripts_checksum()
+{
   target_path="$1"
 
   common_scripts_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -8,7 +11,7 @@ function used_common_scripts_checksum() {
   common_scripts_path="$common_scripts_path/packer-scripts/"
 
   checksums=()
-  for common_script_path in $(cat $target_path/build.pkr.hcl | grep "packer-scripts" | tr -d '", '); do
+  for common_script_path in $(cat $target_path/build.pkr.hcl | grep "common/packer-scripts" | tr -d '", '); do
     common_script=${common_script_path##*/}
     common_script_checksum="$( cd "$common_scripts_path"; git ls-tree @ -- "$common_script" | awk '{print $3}' )"
     checksums+=("$common_script_checksum")
@@ -19,12 +22,13 @@ function used_common_scripts_checksum() {
   echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}')
 }
 
-# Calculates cumulative checksum for base image.
+# Calculates cumulative checksum for the base image.
 function base_image_sources_checksum()
 {
   path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
   path=$(dirname "$path")
-  path="$path/packer/01-alpine-base"
+  path=$(dirname "$path")
+  path="$path/base/packer/01-alpine-base"
   dir_name=${path##*/}
   checksums=("$( cd "$path"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )")
   checksums+=("$(used_common_scripts_checksum "$path")")
@@ -45,14 +49,27 @@ function vault_plugins_checksum()
   echo "$( cd "$path"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )"
 }
 
-# Calculates cumulative checksum for current image.
+# Outputs checksum of the current image directory.
+function current_image_directory_checksum()
+{
+  echo "$( cd "$SCRIPT_PATH"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )"
+}
+
+# Outputs checksum for variables values used to build the current image.
+function packer_variables_checksum()
+{
+  echo "$(packer inspect -var-file="$SCRIPT_PATH"/../../../variables.pkrvars.hcl -var 'image_sources_checksum=checksum' "$SCRIPT_PATH"/build.pkr.hcl | grep -E '^(var|local)' | sort | sha1sum | awk '{print $1}')"
+}
+
+# Calculates cumulative checksum for the current image.
 function image_sources_checksum()
 {
   dir_name=${SCRIPT_PATH##*/}
-  checksums=("$( cd "$SCRIPT_PATH"; cd ..; git ls-tree @ -- "$dir_name" | awk '{print $3}' )")
-  # If we building outside of common directory we need to add base image sources checksum
+  checksums=("$(current_image_directory_checksum)")
+  checksums+=("$(packer_variables_checksum)")
+  # If we building outside of base directory we need to add base image sources checksum
   # to rebuilt image if base image changed.
-  if [[ "$SCRIPT_PATH" != *"infra/common/packer"* ]]; then
+  if [[ "$SCRIPT_PATH" != *"infra/base/packer"* ]]; then
     checksums+=("$(base_image_sources_checksum)")
   fi
   # Add summarised checksum of all used common-scripts.
@@ -65,13 +82,13 @@ function image_sources_checksum()
   IFS=$'\n' sorted_checksums=($(sort <<<"${checksums[*]}")); unset IFS
   # Join all checksums and output single checksum of all checksums.
   joined_checksums="$(printf "%s" "${sorted_checksums[@]}")"
-  echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}')
+  echo $(echo -n "$joined_checksums" | sha1sum | awk '{print $1}' | head -c8)
 }
 
-# Outputs resulting image name for current image.
+# Outputs resulting image name for the current image.
 function image_name()
 {
-    echo "$(packer inspect -var 'image_sources_checksum='"$(image_sources_checksum)"'' "$SCRIPT_PATH"/build.pkr.hcl | grep local.image_name | awk -F' ' '{ print $2 }' | tr -d '"')"
+    echo "$(packer inspect -var-file="$SCRIPT_PATH"/../../../variables.pkrvars.hcl -var 'image_sources_checksum='"$(image_sources_checksum)"'' "$SCRIPT_PATH"/build.pkr.hcl | grep local.image_name | awk -F' ' '{ print $2 }' | tr -d '"')"
 }
 
 # Checks if resulting image already exists in the cloud.

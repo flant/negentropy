@@ -16,6 +16,7 @@ addgroup vector && \
 adduser -S -G vector vector
 setcap cap_dac_override=+eip /bin/vector
 
+# TODO: add sources for nginx when it's installed
 cat <<'EOF' > /etc/vector.toml.tpl
 [sources.syslog]
 type = "file"
@@ -51,7 +52,7 @@ cat <<'EOF' > /etc/vector-config.sh
 export GCE_PROJECT_ID="$(curl -s "http://metadata.google.internal/computeMetadata/v1/project/project-id" -H "Metadata-Flavor: Google" 2>/dev/null)"
 export GCE_ZONE="$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2>/dev/null | cut -d/ -f4)"
 export GCE_INSTANCE_ID="$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2>/dev/null)"
-envsubst < /etc/vector.toml.tpl > /tmp/vector.toml
+envsubst < /etc/vector.toml.tpl > /etc/vector.toml
 EOF
 
 chmod +x /etc/vector-config.sh
@@ -66,7 +67,7 @@ description_reload="Reload configuration"
 extra_started_commands="reload"
 
 command="/bin/vector"
-command_args="-c /tmp/vector.toml"
+command_args="-c /etc/vector.toml"
 command_user="vector:vector"
 
 supervisor=supervise-daemon

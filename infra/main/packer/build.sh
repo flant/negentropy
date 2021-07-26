@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
+source ../../common/build/build.sh
 
-for d in */ ; do
-  echo "Building image from directory $d"
-  output=$(cd "$d"; ./build.sh)
-  if [ $? -eq 0 ]; then
-    echo "Succeed"
-  else
-    echo "Error occurred:"
-    echo "$output"
-  fi
-done
+SKIP_VAULT_BUILD="true"
+
+build_images "$@"

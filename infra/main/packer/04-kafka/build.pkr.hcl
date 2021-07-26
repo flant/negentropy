@@ -2,54 +2,62 @@ variable "root_password" {
   type =  string
   sensitive = true
 }
+
 variable "gcp_project" {
   type =  string
 }
+
+variable "gcp_region" {
+  type =  string
+}
+
 variable "gcp_zone" {
   type =  string
 }
+
 variable "image_sources_checksum" {
   type    = string
 }
 
-variable "kafka_main_domain" {
+variable "kafka_ca_name" {
+  type =  string
+}
+
+variable "kafka_ca_pool" {
+  type =  string
+}
+
+variable "kafka_ca_location" {
+  type =  string
+}
+
+variable "kafka_domain" {
   type    = string
 }
+
 variable "kafka_server_key_pass" {
   type    = string
   sensitive = true
 }
-variable "kafka_gcp_ca_name" {
-  type    = string
-}
-variable "kafka_gcp_ca_location" {
-  type    = string
-  description = "for instance `europe-west1`"
-}
+
 variable "kafka_bucket" {
   type    = string
 }
+
 variable "kafka_replicas" {
   type    = string
   default = "3"
   description = "kafka and zookeeper will be configured to this number of replicas $(hostname-[1..n])"
 }
+
 variable "kafka_heap_opts" {
   type    = string
   default = "-Xmx2G -Xms2G"
 }
+
 variable "zookeeper_heap_opts" {
   type    = string
   default = "-Xmx1G -Xms1G"
-}
-variable "cert_validity_days" {
-  type    = string
-  default = "7"
-}
-variable "cert_expire_seconds" {
-  type    = string
-  default = "172800"
-  description = "default (172800) is 2 day"
 }
 
 variable "source_image_family" {
@@ -69,7 +77,7 @@ variable "version" {
 
 variable "disk_size" {
   type    = string
-  default = "2"
+  default = "5"
 }
 
 variable "machine_type" {
@@ -82,13 +90,20 @@ variable "ssh_wait_timeout" {
   default = "90s"
 }
 
+variable "env" {
+  type    = string
+  default = ""
+}
+
 locals {
   version_dashed = regex_replace(var.version, "[.]", "-")
-  image_name = "${var.name}-${var.image_sources_checksum}"
+  image_family = "${var.name}${var.env}"
+  image_name = "${local.image_family}-${var.image_sources_checksum}"
+  source_image_family = "${var.source_image_family}${var.env}"
 }
 
 source "googlecompute" "kafka" {
-  source_image_family = var.source_image_family
+  source_image_family = local.source_image_family
 
   machine_type        = var.machine_type
 
@@ -97,7 +112,7 @@ source "googlecompute" "kafka" {
 
   disk_size         = var.disk_size
   image_description = "Kafka ${var.version} based on Alpine Linux x86_64 Virtual"
-  image_family      = var.name
+  image_family      = local.image_family
   image_labels = {
     image_sources_checksum = var.image_sources_checksum,
     version = local.version_dashed
@@ -113,17 +128,7 @@ build {
   sources = ["source.googlecompute.kafka"]
 
   provisioner "shell" {
-    execute_command = "/bin/sh -x '{{ .Path }}'"
-    scripts         = [
-      "scripts/00-google-cloud-sdk.sh",
-      "scripts/01-zookeeper.sh",
-      "scripts/02-kafka.sh",
-      "scripts/03-update-certificates-cronjob.sh",
-      "../../../common/packer-scripts/03-vector-enable.sh",
-      "../../../common/packer-scripts/80-read-only.sh",
-      "../../../common/packer-scripts/90-cleanup.sh",
-      "../../../common/packer-scripts/91-minimize.sh"
-    ]
+    inline = ["mkdir -p /etc/kafka"]
   }
 
   provisioner "file" {
@@ -131,20 +136,36 @@ build {
     destination = "/etc/kafka/"
   }
 
+  provisioner "file" {
+    source      = "../../../common/config/scripts/kafka-variables.sh"
+    destination = "/etc/kafka-variables.sh"
+  }
+
   provisioner "shell" {
     environment_vars = [
-      "MAIN_DOMAIN=${var.kafka_main_domain}",
+      "KAFKA_DOMAIN=${var.kafka_domain}",
       "SERVER_KEY_PASS=${var.kafka_server_key_pass}",
       "KAFKA_BUCKET=${var.kafka_bucket}",
-      "CERT_VALIDITY_DAYS=${var.cert_validity_days}",
-      "CERT_EXPIRE_SECONDS=${var.cert_expire_seconds}",
-      "GCP_PROJECT=${var.gcp_project}",
-      "KAFKA_GCP_CA_NAME=${var.kafka_gcp_ca_name}",
-      "KAFKA_GCP_CA_LOCATION=${var.kafka_gcp_ca_location}",
+      "KAFKA_CA_NAME=${var.kafka_ca_name}",
+      "KAFKA_CA_POOL=${var.kafka_ca_pool}",
+      "KAFKA_CA_LOCATION=${var.kafka_ca_location}",
       "KAFKA_REPLICAS=${var.kafka_replicas}"
     ]
     inline = [
-      "tmp=$(mktemp); envsubst < /etc/kafka/scripts/variables.sh > $tmp && cat $tmp > /etc/kafka/scripts/variables.sh"
+      "tmp=$(mktemp); envsubst < /etc/kafka-variables.sh > $tmp && cat $tmp > /etc/kafka-variables.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    execute_command = "/bin/sh -x '{{ .Path }}'"
+    scripts         = [
+      "../../../common/packer-scripts/03-vector-enable.sh",
+      "../../../common/packer-scripts/80-read-only.sh",
+      "../../../common/packer-scripts/90-cleanup.sh",
+      "../../../common/packer-scripts/91-minimize.sh",
+      "../../../common/packer-scripts/99-sshd.sh",
+      "packer-scripts/01-kafka.sh",
+      "packer-scripts/02-zookeeper.sh"
     ]
   }
 
@@ -156,13 +177,6 @@ build {
     inline = [
       "tmp=$(mktemp); envsubst '$KAFKA_HEAP_OPTS' < /etc/init.d/kafka > $tmp && cat $tmp > /etc/init.d/kafka",
       "tmp=$(mktemp); envsubst '$ZOOKEEPER_HEAP_OPTS' < /etc/init.d/zookeeper > $tmp && cat $tmp > /etc/init.d/zookeeper"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "/bin/sh -x '{{ .Path }}'"
-    scripts         = [
-      "../../../common/packer-scripts/99-sshd.sh"
     ]
   }
 }
