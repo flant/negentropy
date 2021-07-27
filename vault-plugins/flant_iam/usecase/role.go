@@ -17,12 +17,12 @@ func (s *RoleService) Create(role *model.Role) error {
 	return model.NewRoleRepository(s.db).Create(role)
 }
 
-func (s *RoleService) Get(name string) (*model.Role, error) {
-	return model.NewRoleRepository(s.db).GetByID(name)
+func (s *RoleService) Get(roleID model.RoleName) (*model.Role, error) {
+	return model.NewRoleRepository(s.db).GetByID(roleID)
 }
 
-func (s *RoleService) List() ([]*model.Role, error) {
-	return model.NewRoleRepository(s.db).List()
+func (s *RoleService) List(archived bool) ([]*model.Role, error) {
+	return model.NewRoleRepository(s.db).List(archived)
 }
 
 func (s *RoleService) Update(updated *model.Role) error {
@@ -41,20 +41,34 @@ func (s *RoleService) Update(updated *model.Role) error {
 	return repo.Update(updated)
 }
 
-func (s *RoleService) Delete(name model.RoleName) error {
+func (s *RoleService) Delete(roleID model.RoleName, archivedAt model.UnixTime, archivigHash int64) error {
 	// TODO before the deletion, check it is not used in
 	//      * role_biondings,
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
-	return model.NewRoleRepository(s.db).Delete(name)
+	// TODO REMOVE FROM archived
+	//      * role_biondings,
+	//      * approvals,
+	//      * tokens,
+	//      * service account passwords
+	role, err := s.Get(roleID)
+	if err != nil {
+		return err
+	}
+	if role.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
+	role.ArchivingTimestamp = archivedAt
+	role.ArchivingHash = archivigHash
+	return model.NewRoleRepository(s.db).Update(role)
 }
 
-func (s *RoleService) Include(name model.RoleName, subRole *model.IncludedRole) error {
+func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole) error {
 	repo := model.NewRoleRepository(s.db)
 
 	// validate target exists
-	role, err := repo.GetByID(name)
+	role, err := repo.GetByID(roleID)
 	if err != nil {
 		return err
 	}
@@ -71,15 +85,15 @@ func (s *RoleService) Include(name model.RoleName, subRole *model.IncludedRole) 
 	return repo.Update(role)
 }
 
-func (s *RoleService) Exclude(name, exclName model.RoleName) error {
+func (s *RoleService) Exclude(roleID, exclRoleID model.RoleName) error {
 	repo := model.NewRoleRepository(s.db)
 
-	role, err := repo.GetByID(name)
+	role, err := repo.GetByID(roleID)
 	if err != nil {
 		return err
 	}
 
-	excludeRole(role, exclName)
+	excludeRole(role, exclRoleID)
 
 	return repo.Update(role)
 }
@@ -95,13 +109,13 @@ func includeRole(role *model.Role, subRole *model.IncludedRole) {
 	role.IncludedRoles = append(role.IncludedRoles, *subRole)
 }
 
-func excludeRole(role *model.Role, exclName model.RoleName) {
+func excludeRole(role *model.Role, exclRoleID model.RoleName) {
 	var i int
 	var ir model.IncludedRole
 	var found bool
 
 	for i, ir = range role.IncludedRoles {
-		found = ir.Name == exclName
+		found = ir.Name == exclRoleID
 		if found {
 			break
 		}
