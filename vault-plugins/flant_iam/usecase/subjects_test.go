@@ -3,7 +3,7 @@ package usecase
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
@@ -83,7 +83,7 @@ func TestMembersFetcher_Fetch(t *testing.T) {
 				t.Errorf("Fetch() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

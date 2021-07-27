@@ -4,104 +4,47 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-)
-
-const (
-	roleName1  = "roleName1"
-	roleName2  = "roleName2"
-	roleName3  = "roleName3"
-	roleName4  = "roleName4"
-	roleName5  = "roleName5"
-	roleName6  = "roleName6"
-	roleName7  = "roleName7"
-	roleName8  = "roleName8"
-	roleName9  = "roleName9"
-	roleName10 = "roleName10"
 )
 
 func createRoles(t *testing.T, repo *model.RoleRepository, roles ...model.Role) {
 	for _, role := range roles {
 		tmp := role
 		err := repo.Create(&tmp)
-		dieOnErr(t, err)
+		require.NoError(t, err)
 	}
 }
 
 func roleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	repo := model.NewRoleRepository(tx)
-	createRoles(t, repo, model.Role{
-		Name:          roleName1,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: nil,
-	},
-		model.Role{
-			Name:          roleName2,
-			Scope:         model.RoleScopeProject,
-			IncludedRoles: nil,
-		},
-		model.Role{
-			Name:          roleName3,
-			Scope:         model.RoleScopeProject,
-			IncludedRoles: []model.IncludedRole{{Name: roleName1}},
-		},
-		model.Role{
-			Name:          roleName4,
-			Scope:         model.RoleScopeProject,
-			IncludedRoles: []model.IncludedRole{{Name: roleName1}, {Name: roleName2}},
-		},
-		model.Role{
-			Name:          roleName5,
-			Scope:         model.RoleScopeProject,
-			IncludedRoles: []model.IncludedRole{{Name: roleName2}, {Name: roleName3}},
-		},
-		model.Role{
-			Name:  roleName6,
-			Scope: model.RoleScopeProject,
-		},
-		model.Role{
-			Name:  roleName7,
-			Scope: model.RoleScopeProject,
-		},
-		model.Role{
-			Name:  roleName8,
-			Scope: model.RoleScopeTenant,
-		},
-		model.Role{
-			Name:  roleName9,
-			Scope: model.RoleScopeTenant,
-		},
-		model.Role{
-			Name:          roleName10,
-			Scope:         model.RoleScopeTenant,
-			IncludedRoles: []model.IncludedRole{{Name: roleName9}},
-		})
+	createRoles(t, repo, fixtures.Roles()...)
 	err := tx.Commit()
-	dieOnErr(t, err)
+	require.NoError(t, err)
 }
 
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
 	repo := model.NewRoleRepository(tx)
 
-	roles, err := repo.FindDirectIncludingRoles(roleName1)
+	roles, err := repo.FindDirectIncludingRoles(fixtures.RoleName1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{roleName3: {}, roleName4: {}}, roles)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.RoleName3, fixtures.RoleName4}, stringSlice(roles))
 }
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
 	repo := model.NewRoleRepository(tx)
 
-	roles, err := repo.FindAllIncludingRoles(roleName1)
+	roles, err := repo.FindAllIncludingRoles(fixtures.RoleName1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{roleName3: {}, roleName4: {}, roleName5: {}}, roles)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.RoleName3, fixtures.RoleName4, fixtures.RoleName5}, stringSlice(roles))
 }
 
 func Test_includeRole(t *testing.T) {
@@ -111,7 +54,7 @@ func Test_includeRole(t *testing.T) {
 
 		includeRole(r, sub)
 
-		assert.Contains(t, r.IncludedRoles, *sub)
+		require.Contains(t, r.IncludedRoles, *sub)
 	})
 
 	t.Run("does not duplicate sub-roles", func(t *testing.T) {
@@ -121,8 +64,8 @@ func Test_includeRole(t *testing.T) {
 		includeRole(r, sub)
 		includeRole(r, sub)
 
-		assert.Contains(t, r.IncludedRoles, *sub)
-		assert.Len(t, r.IncludedRoles, 1)
+		require.Contains(t, r.IncludedRoles, *sub)
+		require.Len(t, r.IncludedRoles, 1)
 	})
 
 	t.Run("does not duplicate sub-roles based by name", func(t *testing.T) {
@@ -137,13 +80,13 @@ func Test_includeRole(t *testing.T) {
 		includeRole(r, sub3)
 		includeRole(r, sub11)
 
-		assert.Contains(t, r.IncludedRoles, *sub1)
-		assert.Contains(t, r.IncludedRoles, *sub2)
-		assert.Contains(t, r.IncludedRoles, *sub3)
-		assert.Len(t, r.IncludedRoles, 3)
-		assert.Equal(t, "one", r.IncludedRoles[0].Name)
-		assert.Equal(t, "two", r.IncludedRoles[1].Name)
-		assert.Equal(t, "three", r.IncludedRoles[2].Name)
+		require.Contains(t, r.IncludedRoles, *sub1)
+		require.Contains(t, r.IncludedRoles, *sub2)
+		require.Contains(t, r.IncludedRoles, *sub3)
+		require.Len(t, r.IncludedRoles, 3)
+		require.Equal(t, "one", r.IncludedRoles[0].Name)
+		require.Equal(t, "two", r.IncludedRoles[1].Name)
+		require.Equal(t, "three", r.IncludedRoles[2].Name)
 	})
 
 	t.Run("updates options for the met name same", func(t *testing.T) {
@@ -154,11 +97,11 @@ func Test_includeRole(t *testing.T) {
 		includeRole(r, sub1)
 		includeRole(r, sub2)
 
-		assert.NotContains(t, r.IncludedRoles, *sub1)
-		assert.Contains(t, r.IncludedRoles, *sub2)
-		assert.Len(t, r.IncludedRoles, 1)
-		assert.Equal(t, "one", r.IncludedRoles[0].Name)
-		assert.Equal(t, "new", r.IncludedRoles[0].OptionsTemplate)
+		require.NotContains(t, r.IncludedRoles, *sub1)
+		require.Contains(t, r.IncludedRoles, *sub2)
+		require.Len(t, r.IncludedRoles, 1)
+		require.Equal(t, "one", r.IncludedRoles[0].Name)
+		require.Equal(t, "new", r.IncludedRoles[0].OptionsTemplate)
 	})
 }
 
@@ -177,7 +120,7 @@ func Test_excludeRole(t *testing.T) {
 
 		excludeRole(r, "zz")
 
-		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+		require.Equal(t, r.IncludedRoles, expectedSubRoles)
 	})
 
 	t.Run("name match removes sub-role from the start", func(t *testing.T) {
@@ -192,7 +135,7 @@ func Test_excludeRole(t *testing.T) {
 
 		excludeRole(r, "one")
 
-		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+		require.Equal(t, r.IncludedRoles, expectedSubRoles)
 	})
 
 	t.Run("name match removes sub-role from the end", func(t *testing.T) {
@@ -207,7 +150,7 @@ func Test_excludeRole(t *testing.T) {
 
 		excludeRole(r, "three")
 
-		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+		require.Equal(t, r.IncludedRoles, expectedSubRoles)
 	})
 
 	t.Run("name match removes sub-role from the middle", func(t *testing.T) {
@@ -222,17 +165,17 @@ func Test_excludeRole(t *testing.T) {
 
 		excludeRole(r, "two")
 
-		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
+		require.Equal(t, r.IncludedRoles, expectedSubRoles)
 	})
 }
 
 func Test_Role_IsArchived(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
-	err := (&RoleService{tx}).Delete(roleName1, time.Now().Unix(), 1)
-	dieOnErr(t, err)
+	err := (&RoleService{tx}).Delete(fixtures.RoleName1, time.Now().Unix(), 1)
+	require.NoError(t, err)
 
-	role, err := (&RoleService{tx}).Get(roleName1)
-	dieOnErr(t, err)
-	assert.NotNil(t, role)
-	assert.Greater(t, role.ArchivingTimestamp, int64(0))
+	role, err := (&RoleService{tx}).Get(fixtures.RoleName1)
+	require.NoError(t, err)
+	require.NotNil(t, role)
+	require.Greater(t, role.ArchivingTimestamp, int64(0))
 }
