@@ -15,4 +15,5 @@ type (
 	IdentitySharingUUID        = string
 	ReplicaName                = string
 	OwnerUUID                  = string
+	UnixTime                   = int64
 )

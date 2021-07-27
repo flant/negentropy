@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -75,8 +77,15 @@ func (b roleBackend) paths() []*framework.Path {
 		// List
 		{
 			Pattern: "role/?",
+			Fields: map[string]*framework.FieldSchema{
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived roles",
+					Required:    false,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all roles IDs",
 				},
@@ -225,7 +234,9 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Roles(tx).Delete(name)
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
+		err := usecase.Roles(tx).Delete(name, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -258,11 +269,16 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 func (b *roleBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("listing roles", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived, ok = rawShowArchived.(bool)
+		}
 
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleRepository(tx)
 
-		list, err := repo.List()
+		list, err := repo.List(showArchived)
 		if err != nil {
 			return nil, err
 		}

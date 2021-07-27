@@ -12,6 +12,7 @@ import (
 const (
 	IncludedRolesIndex = "IncludedRolesIndex"
 	RoleScopeIndex     = "scope"
+	ArchivedAtIndex    = "archived_at_index"
 )
 
 type RoleScope string
@@ -46,6 +47,14 @@ func RoleSchema() *memdb.DBSchema {
 						Unique:       false,
 						Indexer:      includedRolesIndexer{},
 					},
+					ArchivedAtIndex: {
+						Name:         ArchivedAtIndex,
+						AllowMissing: false,
+						Unique:       false,
+						Indexer: &memdb.IntFieldIndex{
+							Field: "ArchivingTimestamp",
+						},
+					},
 				},
 			},
 		},
@@ -62,6 +71,8 @@ type Role struct {
 	RequireOneOfFeatureFlags []FeatureFlagName `json:"require_one_of_feature_flags"`
 	IncludedRoles            []IncludedRole    `json:"included_roles"`
 
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 	// FIXME add version?
 }
 
@@ -96,8 +107,8 @@ func (r *RoleRepository) Create(role *Role) error {
 	return r.save(role)
 }
 
-func (r *RoleRepository) GetRawByID(id RoleName) (interface{}, error) {
-	raw, err := r.db.First(RoleType, PK, id)
+func (r *RoleRepository) GetRawByID(roleID RoleName) (interface{}, error) {
+	raw, err := r.db.First(RoleType, PK, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +118,8 @@ func (r *RoleRepository) GetRawByID(id RoleName) (interface{}, error) {
 	return raw, nil
 }
 
-func (r *RoleRepository) GetByID(id RoleName) (*Role, error) {
-	raw, err := r.GetRawByID(id)
+func (r *RoleRepository) GetByID(roleID RoleName) (*Role, error) {
+	raw, err := r.GetRawByID(roleID)
 	if raw == nil {
 		return nil, err
 	}
@@ -123,15 +134,7 @@ func (r *RoleRepository) Update(role *Role) error {
 	return r.save(role)
 }
 
-func (r *RoleRepository) Delete(id RoleName) error {
-	role, err := r.GetByID(id)
-	if err != nil {
-		return err
-	}
-	return r.db.Delete(RoleType, role)
-}
-
-func (r *RoleRepository) List() ([]*Role, error) {
+func (r *RoleRepository) List(showArchived bool) ([]*Role, error) {
 	iter, err := r.db.Get(RoleType, PK)
 	if err != nil {
 		return nil, err
@@ -144,13 +147,15 @@ func (r *RoleRepository) List() ([]*Role, error) {
 			break
 		}
 		obj := raw.(*Role)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *RoleRepository) ListIDs() ([]RoleName, error) {
-	objs, err := r.List()
+func (r *RoleRepository) ListIDs(archived bool) ([]RoleName, error) {
+	objs, err := r.List(archived)
 	if err != nil {
 		return nil, err
 	}
@@ -187,10 +192,6 @@ func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
 }
 
 func (r *RoleRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
 	role := &Role{}
 	err := json.Unmarshal(data, role)
 	if err != nil {
@@ -200,8 +201,8 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 	return r.save(role)
 }
 
-func (r *RoleRepository) FindDirectIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {
-	iter, err := r.db.Get(RoleType, IncludedRolesIndex, role)
+func (r *RoleRepository) FindDirectIncludingRoles(roleID RoleName) (map[RoleName]struct{}, error) {
+	iter, err := r.db.Get(RoleType, IncludedRolesIndex, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -212,14 +213,23 @@ func (r *RoleRepository) FindDirectIncludingRoles(role RoleName) (map[RoleName]s
 			break
 		}
 		role := raw.(*Role)
-		ids[role.Name] = struct{}{}
+		if role.ArchivingTimestamp == 0 {
+			ids[role.Name] = struct{}{}
+		}
 	}
 	return ids, nil
 }
 
-func (r *RoleRepository) FindAllIncludingRoles(role RoleName) (map[RoleName]struct{}, error) {
+func (r *RoleRepository) FindAllIncludingRoles(roleID RoleName) (map[RoleName]struct{}, error) {
 	result := map[RoleName]struct{}{} // empty map
-	currentSet := map[RoleName]struct{}{role: {}}
+	role, err := r.GetByID(roleID)
+	if err != nil {
+		return nil, err
+	}
+	if role.ArchivingTimestamp != 0 {
+		return result, nil
+	}
+	currentSet := map[RoleName]struct{}{roleID: {}}
 	for len(currentSet) != 0 {
 		nextSet := map[RoleName]struct{}{}
 		for currentRole := range currentSet {
@@ -228,7 +238,7 @@ func (r *RoleRepository) FindAllIncludingRoles(role RoleName) (map[RoleName]stru
 				return nil, err
 			}
 			for candidate := range candidates {
-				if _, found := result[candidate]; !found && candidate != role {
+				if _, found := result[candidate]; !found && candidate != roleID {
 					result[candidate] = struct{}{}
 					nextSet[candidate] = struct{}{}
 				}

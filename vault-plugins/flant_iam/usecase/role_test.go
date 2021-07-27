@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -22,55 +23,6 @@ const (
 	roleName10 = "roleName10"
 )
 
-var (
-	role1 = model.Role{
-		Name:          roleName1,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: nil,
-	}
-	role2 = model.Role{
-		Name:          roleName2,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: nil,
-	}
-	role3 = model.Role{
-		Name:          roleName3,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: []model.IncludedRole{{Name: roleName1}},
-	}
-	role4 = model.Role{
-		Name:          roleName4,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: []model.IncludedRole{{Name: roleName1}, {Name: roleName2}},
-	}
-	role5 = model.Role{
-		Name:          roleName5,
-		Scope:         model.RoleScopeProject,
-		IncludedRoles: []model.IncludedRole{{Name: roleName2}, {Name: roleName3}},
-	}
-	role6 = model.Role{
-		Name:  roleName6,
-		Scope: model.RoleScopeProject,
-	}
-	role7 = model.Role{
-		Name:  roleName7,
-		Scope: model.RoleScopeProject,
-	}
-	role8 = model.Role{
-		Name:  roleName8,
-		Scope: model.RoleScopeTenant,
-	}
-	role9 = model.Role{
-		Name:  roleName9,
-		Scope: model.RoleScopeTenant,
-	}
-	role10 = model.Role{
-		Name:          roleName10,
-		Scope:         model.RoleScopeTenant,
-		IncludedRoles: []model.IncludedRole{{Name: roleName9}},
-	}
-)
-
 func createRoles(t *testing.T, repo *model.RoleRepository, roles ...model.Role) {
 	for _, role := range roles {
 		tmp := role
@@ -82,7 +34,52 @@ func createRoles(t *testing.T, repo *model.RoleRepository, roles ...model.Role) 
 func roleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	repo := model.NewRoleRepository(tx)
-	createRoles(t, repo, []model.Role{role1, role2, role3, role4, role5, role6, role7, role8, role9, role10}...)
+	createRoles(t, repo, model.Role{
+		Name:          roleName1,
+		Scope:         model.RoleScopeProject,
+		IncludedRoles: nil,
+	},
+		model.Role{
+			Name:          roleName2,
+			Scope:         model.RoleScopeProject,
+			IncludedRoles: nil,
+		},
+		model.Role{
+			Name:          roleName3,
+			Scope:         model.RoleScopeProject,
+			IncludedRoles: []model.IncludedRole{{Name: roleName1}},
+		},
+		model.Role{
+			Name:          roleName4,
+			Scope:         model.RoleScopeProject,
+			IncludedRoles: []model.IncludedRole{{Name: roleName1}, {Name: roleName2}},
+		},
+		model.Role{
+			Name:          roleName5,
+			Scope:         model.RoleScopeProject,
+			IncludedRoles: []model.IncludedRole{{Name: roleName2}, {Name: roleName3}},
+		},
+		model.Role{
+			Name:  roleName6,
+			Scope: model.RoleScopeProject,
+		},
+		model.Role{
+			Name:  roleName7,
+			Scope: model.RoleScopeProject,
+		},
+		model.Role{
+			Name:  roleName8,
+			Scope: model.RoleScopeTenant,
+		},
+		model.Role{
+			Name:  roleName9,
+			Scope: model.RoleScopeTenant,
+		},
+		model.Role{
+			Name:          roleName10,
+			Scope:         model.RoleScopeTenant,
+			IncludedRoles: []model.IncludedRole{{Name: roleName9}},
+		})
 	err := tx.Commit()
 	dieOnErr(t, err)
 }
@@ -227,4 +224,15 @@ func Test_excludeRole(t *testing.T) {
 
 		assert.Equal(t, r.IncludedRoles, expectedSubRoles)
 	})
+}
+
+func Test_Role_IsArchived(t *testing.T) {
+	tx := runFixtures(t, roleFixture).Txn(true)
+	err := (&RoleService{tx}).Delete(roleName1, time.Now().Unix(), 1)
+	dieOnErr(t, err)
+
+	role, err := (&RoleService{tx}).Get(roleName1)
+	dieOnErr(t, err)
+	assert.NotNil(t, role)
+	assert.Greater(t, role.ArchivingTimestamp, int64(0))
 }
