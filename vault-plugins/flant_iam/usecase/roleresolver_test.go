@@ -3,6 +3,9 @@ package usecase
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
@@ -15,15 +18,13 @@ func Test_collectAllRolesAndRoleBindings(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(tenantUUID1, roleName1)
+	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(fixtures.TenantUUID1, fixtures.RoleName1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{roleName1: {}, roleName3: {}, roleName4: {}, roleName5: {}}, roles)
-	checkDeepEqual(t, map[string]struct{}{
-		rbUUID1: {},
-		rbUUID3: {},
-		rbUUID5: {},
-	}, roleBindingsUUIDsFromMap(roleBindings))
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.RoleName1, fixtures.RoleName3, fixtures.RoleName4, fixtures.RoleName5},
+		stringSlice(roles))
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5},
+		roleBindingsUUIDsFromMap(roleBindings))
 }
 
 func Test_collectAllRoleBindingsForUser(t *testing.T) {
@@ -35,11 +36,11 @@ func Test_collectAllRoleBindingsForUser(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	roleBindings, err := rr.collectAllRoleBindingsForUser(tenantUUID1, userUUID1)
+	roleBindings, err := rr.collectAllRoleBindingsForUser(fixtures.TenantUUID1, fixtures.UserUUID1)
 
-	dieOnErr(t, err)
-	rbUUIDS := roleBindingsUUIDsFromMap(roleBindings)
-	checkDeepEqual(t, map[string]struct{}{rbUUID1: {}, rbUUID3: {}, rbUUID4: {}, rbUUID7: {}}, rbUUIDS)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID7},
+		roleBindingsUUIDsFromMap(roleBindings))
 }
 
 func Test_CheckUserForProjectScopedRole(t *testing.T) {
@@ -51,12 +52,13 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, gotParams, err := rr.CheckUserForProjectScopedRole(userUUID1, roleName1, tenantUUID1, projectUUID1)
+	hasRole, gotParams, err := rr.CheckUserForProjectScopedRole(fixtures.UserUUID1, fixtures.RoleName1,
+		fixtures.TenantUUID1, fixtures.ProjectUUID1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, true, hasRole)
+	require.NoError(t, err)
+	require.True(t, hasRole)
 	expectedParams := RoleBindingParams{ValidTill: 120, RequireMFA: false, Options: map[string]interface{}{"o1": "data3"}}
-	checkDeepEqual(t, expectedParams, gotParams)
+	require.Equal(t, expectedParams, gotParams)
 }
 
 func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
@@ -68,15 +70,11 @@ func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	roleBindings, err := rr.collectAllRoleBindingsForServiceAccount(tenantUUID1, serviceAccountUUID1)
+	roleBindings, err := rr.collectAllRoleBindingsForServiceAccount(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
 
-	dieOnErr(t, err)
-	rbUUIDS := roleBindingsUUIDsFromMap(roleBindings)
-	checkDeepEqual(t, map[string]struct{}{
-		rbUUID1: {},
-		rbUUID3: {},
-		rbUUID5: {},
-	}, rbUUIDS)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5},
+		roleBindingsUUIDsFromMap(roleBindings))
 }
 
 func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
@@ -88,13 +86,13 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, gotParams, err := rr.CheckServiceAccountForProjectScopedRole(serviceAccountUUID1, roleName1,
-		tenantUUID1, projectUUID1)
+	hasRole, gotParams, err := rr.CheckServiceAccountForProjectScopedRole(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
+		fixtures.TenantUUID1, fixtures.ProjectUUID1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, true, hasRole)
+	require.NoError(t, err)
+	require.True(t, hasRole)
 	expectedParams := RoleBindingParams{ValidTill: 160, RequireMFA: false, Options: map[string]interface{}{"o1": "data6"}}
-	checkDeepEqual(t, expectedParams, gotParams)
+	require.Equal(t, expectedParams, gotParams)
 }
 
 func Test_CheckUserForTenantScopedRole(t *testing.T) {
@@ -106,12 +104,13 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, gotParams, err := rr.CheckUserForTenantScopedRole(userUUID2, roleName9, tenantUUID1)
+	hasRole, gotParams, err := rr.CheckUserForTenantScopedRole(fixtures.UserUUID2, fixtures.RoleName9,
+		fixtures.TenantUUID1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, true, hasRole)
+	require.NoError(t, err)
+	require.True(t, hasRole)
 	expectedParams := RoleBindingParams{ValidTill: 190, RequireMFA: false, Options: map[string]interface{}{"o1": "data9"}}
-	checkDeepEqual(t, expectedParams, gotParams)
+	require.Equal(t, expectedParams, gotParams)
 }
 
 func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
@@ -123,12 +122,13 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, gotParams, err := rr.CheckServiceAccountForTenantScopedRole(serviceAccountUUID2, roleName9, tenantUUID1)
+	hasRole, gotParams, err := rr.CheckServiceAccountForTenantScopedRole(fixtures.ServiceAccountUUID2,
+		fixtures.RoleName9, fixtures.TenantUUID1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, true, hasRole)
+	require.NoError(t, err)
+	require.True(t, hasRole)
 	expectedParams := RoleBindingParams{ValidTill: 180, RequireMFA: false, Options: map[string]interface{}{"o1": "data8"}}
-	checkDeepEqual(t, expectedParams, gotParams)
+	require.Equal(t, expectedParams, gotParams)
 }
 
 func Test_FindMembersWithProjectScopedRole(t *testing.T) {
@@ -140,11 +140,13 @@ func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(roleName1, tenantUUID1, projectUUID3)
+	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.TenantUUID1,
+		fixtures.ProjectUUID3)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
-	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}}, stringSet(serviceAccounts))
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.UserUUID1, fixtures.UserUUID2, fixtures.UserUUID3, fixtures.UserUUID4},
+		users)
+	require.ElementsMatch(t, []string{fixtures.ServiceAccountUUID1, fixtures.ServiceAccountUUID2}, serviceAccounts)
 }
 
 func Test_FindMembersWithTenantScopedRole(t *testing.T) {
@@ -156,9 +158,12 @@ func Test_FindMembersWithTenantScopedRole(t *testing.T) {
 		rbi: model.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindMembersWithTenantScopedRole(roleName9, tenantUUID1)
+	users, serviceAccounts, err := rr.FindMembersWithTenantScopedRole(fixtures.RoleName9, fixtures.TenantUUID1)
 
-	dieOnErr(t, err)
-	checkDeepEqual(t, map[string]struct{}{userUUID1: {}, userUUID2: {}, userUUID3: {}, userUUID4: {}}, stringSet(users))
-	checkDeepEqual(t, map[string]struct{}{serviceAccountUUID1: {}, serviceAccountUUID2: {}, serviceAccountUUID3: {}}, stringSet(serviceAccounts))
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{fixtures.UserUUID1, fixtures.UserUUID2, fixtures.UserUUID3, fixtures.UserUUID4},
+		users)
+	require.ElementsMatch(t, []string{
+		fixtures.ServiceAccountUUID1, fixtures.ServiceAccountUUID2, fixtures.ServiceAccountUUID3,
+	}, serviceAccounts)
 }
