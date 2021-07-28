@@ -144,6 +144,9 @@ func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID,
 	if err != nil {
 		return err
 	}
+	if sa.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
 	sa.ArchivingTimestamp = archivingTimestamp
 	sa.ArchivingHash = archivingHash
 	return r.Update(sa)

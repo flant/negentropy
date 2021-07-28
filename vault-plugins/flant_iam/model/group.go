@@ -164,6 +164,9 @@ func (r *GroupRepository) Delete(id GroupUUID, archivingTimestamp UnixTime, arch
 	if err != nil {
 		return err
 	}
+	if group.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
 	group.ArchivingTimestamp = archivingTimestamp
 	group.ArchivingHash = archivingHash
 	return r.Update(group)

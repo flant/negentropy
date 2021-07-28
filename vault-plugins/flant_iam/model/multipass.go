@@ -134,6 +134,9 @@ func (r *MultipassRepository) Delete(id MultipassUUID, archivingTimestamp UnixTi
 	if err != nil {
 		return err
 	}
+	if multipass.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
 	multipass.ArchivingTimestamp = archivingTimestamp
 	multipass.ArchivingHash = archivingHash
 	return r.Update(multipass)

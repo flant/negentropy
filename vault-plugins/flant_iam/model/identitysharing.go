@@ -117,6 +117,9 @@ func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID,
 	if err != nil {
 		return err
 	}
+	if sh.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
 	sh.ArchivingTimestamp = archivingTimestamp
 	sh.ArchivingHash = archivingHash
 	return r.Update(sh)
