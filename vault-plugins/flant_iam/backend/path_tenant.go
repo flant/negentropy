@@ -151,7 +151,7 @@ func (b tenantBackend) paths() []*framework.Path {
 		},
 		// Restore
 		{
-			Pattern: "tenant/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("uuid") + "/restore" + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
