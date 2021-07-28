@@ -11,7 +11,7 @@
   docker-compose down && \
   ../dev-start.sh up && \
   ../dev-start.sh connect_plugins && \
-  echo "Permanen root token:" && \
+  echo "Permanent root token:" && \
   cat /tmp/token_root && \
   echo ""
 ```
@@ -35,7 +35,7 @@ VAULT_ADDR=http://127.0.0.1:8200 go test -v ./...
 TEST_VAULT_SECOND_TOKEN=$(cat /tmp/token_root) go test -v ./...
 ```
 
-it is is slow because we sleep for kafka sync
+It is slow because we sleep for kafka sync
 
 # logs
 
