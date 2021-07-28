@@ -21,8 +21,8 @@ func deleteChildren(parentID string, deleters []DeleterByParent, archivingTimest
 
 // ListerDeleter is the interface for repos to comply with the deletion case
 type ListerDeleter interface {
-	ListIDs(parentID string) ([]string, error)
-	Delete(id string) error
+	ListIDs(parentID string, showArchived bool) ([]string, error)
+	Delete(id string, archivingTimestamp model.UnixTime, archivingHash int64) error
 }
 
 func NewChildrenDeleter(repo ListerDeleter, deleters ...DeleterByParent) *ChildrenDeleter {
@@ -40,7 +40,7 @@ type ChildrenDeleter struct {
 
 // DeleteByParent deletes children objects and then the parent one
 func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp model.UnixTime, archivingHash int64) error {
-	ids, err := d.childrenDeleter.ListIDs(parentID)
+	ids, err := d.childrenDeleter.ListIDs(parentID, false)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp mod
 		if err := deleteChildren(childID, d.grandChildrenDeleters, archivingTimestamp, archivingHash); err != nil {
 			return err
 		}
-		if err := d.childrenDeleter.Delete(childID); err != nil {
+		if err := d.childrenDeleter.Delete(childID, archivingTimestamp, archivingHash); err != nil {
 			return err
 		}
 	}
