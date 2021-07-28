@@ -57,6 +57,9 @@ type Project struct {
 	Identifier string      `json:"identifier"`
 
 	FeatureFlags []FeatureFlag `json:"feature_flags"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const ProjectType = "project" // also, memdb schema name
@@ -112,15 +115,20 @@ func (r *ProjectRepository) Update(project *Project) error {
 	return r.save(project)
 }
 
-func (r *ProjectRepository) Delete(id ProjectUUID) error {
+func (r *ProjectRepository) Delete(id ProjectUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	project, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ProjectType, project)
+	if project.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
+	project.ArchivingTimestamp = archivingTimestamp
+	project.ArchivingHash = archivingHash
+	return r.Update(project)
 }
 
-func (r *ProjectRepository) List(tenantUUID TenantUUID) ([]*Project, error) {
+func (r *ProjectRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*Project, error) {
 	iter, err := r.db.Get(ProjectType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -133,13 +141,15 @@ func (r *ProjectRepository) List(tenantUUID TenantUUID) ([]*Project, error) {
 			break
 		}
 		obj := raw.(*Project)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *ProjectRepository) ListIDs(tenantID TenantUUID) ([]ProjectUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *ProjectRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]ProjectUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -176,10 +186,6 @@ func (r *ProjectRepository) Iter(action func(*Project) (bool, error)) error {
 }
 
 func (r *ProjectRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
 	project := &Project{}
 	err := json.Unmarshal(data, project)
 	if err != nil {
@@ -187,4 +193,21 @@ func (r *ProjectRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(project)
+}
+
+func (r *ProjectRepository) Restore(id ProjectUUID) (*Project, error) {
+	project, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if project.ArchivingTimestamp == 0 {
+		return nil, ErrIsNotArchived
+	}
+	project.ArchivingTimestamp = 0
+	project.ArchivingHash = 0
+	err = r.Update(project)
+	if err != nil {
+		return nil, err
+	}
+	return project, nil
 }

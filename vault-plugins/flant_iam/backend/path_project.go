@@ -3,7 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -86,7 +88,7 @@ func (b projectBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// List
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -95,9 +97,14 @@ func (b projectBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived tenants",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all projects IDs.",
 				},
@@ -105,7 +112,6 @@ func (b projectBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by uuid
 		{
-
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
@@ -145,6 +151,29 @@ func (b projectBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Restore
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/project/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a user",
+					Required:    true,
+				},
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleRestore(),
+					Summary:  "Restore the project by ID.",
+				},
+			},
+		},
 	}
 }
 
@@ -171,6 +200,8 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create project", "path", req.Path)
+
 		id := getCreationID(expectID, data)
 		project := &model.Project{
 			UUID:       id,
@@ -198,6 +229,8 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *projectBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update project", "path", req.Path)
+
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
@@ -225,12 +258,16 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 func (b *projectBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete project", "path", req.Path)
+
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.Projects(tx).Delete(id)
+		err := usecase.Projects(tx).Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -244,6 +281,8 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 func (b *projectBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read project", "path", req.Path)
+
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
@@ -260,11 +299,17 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 func (b *projectBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list projects", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		projects, err := usecase.Projects(tx).List(tenantID)
+		projects, err := usecase.Projects(tx).List(tenantID, showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -275,5 +320,29 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 			},
 		}
 		return resp, nil
+	}
+}
+
+func (b *projectBackend) handleRestore() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("restore project", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		id := data.Get("uuid").(string)
+
+		project, err := usecase.Projects(tx).Restore(id)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{
+			"project": project,
+		}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

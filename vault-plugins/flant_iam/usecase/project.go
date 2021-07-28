@@ -47,14 +47,18 @@ func (s *ProjectService) Update(project *model.Project) error {
 	return repo.Update(project)
 }
 
-func (s *ProjectService) Delete(id string) error {
-	return model.NewProjectRepository(s.db).Delete(id)
+func (s *ProjectService) Delete(id model.ProjectUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+	return model.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }
 
-func (s *ProjectService) List(tid model.TenantUUID) ([]*model.Project, error) {
-	return model.NewProjectRepository(s.db).List(tid)
+func (s *ProjectService) List(tid model.TenantUUID, showArchived bool) ([]*model.Project, error) {
+	return model.NewProjectRepository(s.db).List(tid, showArchived)
 }
 
 func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) {
 	return model.NewProjectRepository(s.db).GetByID(pid)
+}
+
+func (s *ProjectService) Restore(id model.ProjectUUID) (*model.Project, error) {
+	return model.NewProjectRepository(s.db).Restore(id)
 }
