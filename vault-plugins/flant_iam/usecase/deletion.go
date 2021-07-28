@@ -6,12 +6,12 @@ import (
 )
 
 type DeleterByParent interface {
-	DeleteByParent(string) error
+	DeleteByParent(string, model.UnixTime, int64) error
 }
 
-func deleteChildren(parentID string, deleters []DeleterByParent) error {
+func deleteChildren(parentID string, deleters []DeleterByParent, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	for _, d := range deleters {
-		err := d.DeleteByParent(parentID)
+		err := d.DeleteByParent(parentID, archivingTimestamp, archivingHash)
 		if err != nil {
 			return err
 		}
@@ -39,13 +39,13 @@ type ChildrenDeleter struct {
 }
 
 // DeleteByParent deletes children objects and then the parent one
-func (d *ChildrenDeleter) DeleteByParent(parentID string) error {
+func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	ids, err := d.childrenDeleter.ListIDs(parentID)
 	if err != nil {
 		return err
 	}
 	for _, childID := range ids {
-		if err := deleteChildren(childID, d.grandChildrenDeleters); err != nil {
+		if err := deleteChildren(childID, d.grandChildrenDeleters, archivingTimestamp, archivingHash); err != nil {
 			return err
 		}
 		if err := d.childrenDeleter.Delete(childID); err != nil {
