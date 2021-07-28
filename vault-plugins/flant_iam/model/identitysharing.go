@@ -53,6 +53,9 @@ type IdentitySharing struct {
 
 	// Groups which to share with target tenant
 	Groups []GroupUUID `json:"groups"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const IdentitySharingType = "identity_sharing" // also, memdb schema name
@@ -108,15 +111,18 @@ func (r *IdentitySharingRepository) Update(sh *IdentitySharing) error {
 	return r.save(sh)
 }
 
-func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID) error {
+func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID,
+	archivingTimestamp UnixTime, archivingHash int64) error {
 	sh, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(IdentitySharingType, sh)
+	sh.ArchivingTimestamp = archivingTimestamp
+	sh.ArchivingHash = archivingHash
+	return r.Update(sh)
 }
 
-func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentitySharing, error) {
+func (r *IdentitySharingRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*IdentitySharing, error) {
 	iter, err := r.db.Get(IdentitySharingType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -129,13 +135,15 @@ func (r *IdentitySharingRepository) List(tenantUUID TenantUUID) ([]*IdentityShar
 			break
 		}
 		obj := raw.(*IdentitySharing)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *IdentitySharingRepository) ListIDs(tenantID TenantUUID) ([]IdentitySharingUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *IdentitySharingRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]IdentitySharingUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +179,7 @@ func (r *IdentitySharingRepository) Iter(action func(*IdentitySharing) (bool, er
 	return nil
 }
 
-func (r *IdentitySharingRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *IdentitySharingRepository) Sync(_ string, data []byte) error {
 	sh := &IdentitySharing{}
 	err := json.Unmarshal(data, sh)
 	if err != nil {
