@@ -55,6 +55,9 @@ type RoleBindingApproval struct {
 	RequireMFA    bool `json:"require_mfa"`
 
 	RequireUniqueApprover bool `json:"require_unique_approver"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const RoleBindingApprovalType = "role_binding_approval" // also, memdb schema name
@@ -110,15 +113,22 @@ func (r *RoleBindingApprovalRepository) Update(appr *RoleBindingApproval) error 
 	return r.save(appr)
 }
 
-func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID) error {
+func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID,
+	archivingTimestamp UnixTime, archivingHash int64) error {
 	appr, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(RoleBindingApprovalType, appr)
+	if appr.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
+	appr.ArchivingTimestamp = archivingTimestamp
+	appr.ArchivingHash = archivingHash
+	return r.Update(appr)
 }
 
-func (r *RoleBindingApprovalRepository) List(rbUUID RoleBindingUUID) ([]*RoleBindingApproval, error) {
+func (r *RoleBindingApprovalRepository) List(rbUUID RoleBindingUUID,
+	showArchived bool) ([]*RoleBindingApproval, error) {
 	iter, err := r.db.Get(RoleBindingApprovalType, RoleBindingForeignPK, rbUUID)
 	if err != nil {
 		return nil, err
@@ -131,13 +141,16 @@ func (r *RoleBindingApprovalRepository) List(rbUUID RoleBindingUUID) ([]*RoleBin
 			break
 		}
 		obj := raw.(*RoleBindingApproval)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *RoleBindingApprovalRepository) ListIDs(rbID RoleBindingUUID) ([]RoleBindingApprovalUUID, error) {
-	objs, err := r.List(rbID)
+func (r *RoleBindingApprovalRepository) ListIDs(rbID RoleBindingUUID,
+	showArchived bool) ([]RoleBindingApprovalUUID, error) {
+	objs, err := r.List(rbID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -173,11 +186,7 @@ func (r *RoleBindingApprovalRepository) Iter(action func(*RoleBindingApproval) (
 	return nil
 }
 
-func (r *RoleBindingApprovalRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *RoleBindingApprovalRepository) Sync(_ string, data []byte) error {
 	appr := &RoleBindingApproval{}
 	err := json.Unmarshal(data, appr)
 	if err != nil {

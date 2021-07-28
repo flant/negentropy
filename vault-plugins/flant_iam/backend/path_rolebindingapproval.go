@@ -3,7 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -93,6 +95,33 @@ func (b roleBindingApprovalBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// List
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/" + uuid.Pattern("role_binding_uuid") + "/approval?",
+			Fields: map[string]*framework.FieldSchema{
+				"role_binding_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a roleBinding",
+					Required:    true,
+				},
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived approvals",
+					Required:    false,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleList(),
+					Summary:  "Lists all approvals for role_binding",
+				},
+			},
+		},
 	}
 }
 
@@ -120,6 +149,7 @@ func (b *roleBindingApprovalBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update role_binding_approval", "path", req.Path)
 		id := data.Get("uuid").(string)
 		if id == "" {
 			id = uuid.New()
@@ -166,13 +196,16 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 
 func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete role_binding_approval", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 		repo := model.NewRoleBindingApprovalRepository(tx)
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := repo.Delete(id)
+		err := repo.Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -186,6 +219,7 @@ func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 
 func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read role_binding_approval", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
@@ -203,20 +237,25 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 
 func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// tenantID := data.Get(model.TenantForeignPK).(string)
+		b.Logger().Debug("list role_binding_approval", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		rbID := data.Get(model.RoleBindingForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 		repo := model.NewRoleBindingApprovalRepository(tx)
 
-		rolebindings, err := repo.List(rbID) // TODO usecase should check for tenant correctnes
+		rolebindingApprovals, err := repo.List(rbID, showArchived)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"role_bindings": rolebindings,
+				"role_binding_approvals": rolebindingApprovals,
 			},
 		}
 		return resp, nil
