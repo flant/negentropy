@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -50,8 +52,15 @@ func (b featureFlagBackend) paths() []*framework.Path {
 		// List
 		{
 			Pattern: "feature_flag/?",
+			Fields: map[string]*framework.FieldSchema{
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived feature flags",
+					Required:    false,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all feature flags.",
 				},
@@ -98,6 +107,7 @@ func (b *featureFlagBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create feature_flag", "path", req.Path)
 		featureFlag := &model.FeatureFlag{
 			Name: data.Get("name").(string),
 		}
@@ -122,12 +132,15 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 
 func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete feature_flag", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 		repo := model.NewFeatureFlagRepository(tx)
 
 		name := data.Get("name").(string)
-		err := repo.Delete(name)
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
+		err := repo.Delete(name, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -142,10 +155,17 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 
 func (b *featureFlagBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list feature_flags", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
+
 		tx := b.storage.Txn(false)
 		repo := model.NewFeatureFlagRepository(tx)
 
-		list, err := repo.List()
+		list, err := repo.List(showArchived)
 		if err != nil {
 			return nil, err
 		}
