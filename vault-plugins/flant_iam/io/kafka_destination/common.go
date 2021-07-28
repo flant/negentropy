@@ -38,7 +38,6 @@ func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObje
 	var public interface{} = obj
 	if !includeSensitive {
 		public = model.OmitSensitive(obj)
-
 	}
 	data, err := json.Marshal(public)
 	if err != nil {
