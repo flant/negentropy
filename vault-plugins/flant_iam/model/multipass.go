@@ -71,6 +71,9 @@ type Multipass struct {
 	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const MultipassType = "multipass" // also, memdb schema name
@@ -126,15 +129,17 @@ func (r *MultipassRepository) Update(multipass *Multipass) error {
 	return r.save(multipass)
 }
 
-func (r *MultipassRepository) Delete(id MultipassUUID) error {
+func (r *MultipassRepository) Delete(id MultipassUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	multipass, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(MultipassType, multipass)
+	multipass.ArchivingTimestamp = archivingTimestamp
+	multipass.ArchivingHash = archivingHash
+	return r.Update(multipass)
 }
 
-func (r *MultipassRepository) List(ownerUUID OwnerUUID) ([]*Multipass, error) {
+func (r *MultipassRepository) List(ownerUUID OwnerUUID, showArchived bool) ([]*Multipass, error) {
 	iter, err := r.db.Get(MultipassType, OwnerForeignPK, ownerUUID)
 	if err != nil {
 		return nil, err
@@ -147,13 +152,15 @@ func (r *MultipassRepository) List(ownerUUID OwnerUUID) ([]*Multipass, error) {
 			break
 		}
 		obj := raw.(*Multipass)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *MultipassRepository) ListIDs(ownerID OwnerUUID) ([]MultipassUUID, error) {
-	objs, err := r.List(ownerID)
+func (r *MultipassRepository) ListIDs(ownerID OwnerUUID, showArchived bool) ([]MultipassUUID, error) {
+	objs, err := r.List(ownerID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -189,11 +196,7 @@ func (r *MultipassRepository) Iter(action func(*Multipass) (bool, error)) error 
 	return nil
 }
 
-func (r *MultipassRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *MultipassRepository) Sync(_ string, data []byte) error {
 	multipass := &Multipass{}
 	err := json.Unmarshal(data, multipass)
 	if err != nil {

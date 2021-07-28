@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -280,7 +281,6 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/" + uuid.Pattern("owner_uuid") + "/multipass/?",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -291,9 +291,14 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "ID of the tenant service account",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived groups",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleMultipassList(),
 					Summary:  "List multipass IDs",
 				},
@@ -430,6 +435,7 @@ func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create service_account", "path", req.Path)
 		var (
 			id         = getCreationID(expectID, data)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -468,6 +474,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 
 func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -506,6 +513,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -528,6 +536,7 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -547,6 +556,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list service_accounts", "path", req.Path)
 		tenantUUID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
@@ -569,6 +579,7 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create service_account multipass", "path", req.Path)
 		// Check that the feature is available
 		if err := isJwtEnabled(ctx, req, b.tokenController); err != nil {
 			return responseErr(req, err)
@@ -609,6 +620,7 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 
 func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete service_account multipass", "path", req.Path)
 		var (
 			id   = data.Get("uuid").(string)
 			tid  = data.Get("tenant_uuid").(string)
@@ -617,8 +629,10 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id)
+		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -632,6 +646,7 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 
 func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read service_account multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -651,12 +666,18 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list service_account multipasses", "path", req.Path)
 		tid := data.Get("tenant_uuid").(string)
 		uid := data.Get("owner_uuid").(string)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).PublicList()
+		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -675,6 +696,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create service_account multipass", "path", req.Path)
 		var (
 			ttl       = time.Duration(data.Get("ttl").(int)) * time.Second
 			validTill = time.Now().Add(ttl).Unix()
@@ -725,6 +747,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete service_account multipass", "path", req.Path)
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)
@@ -748,6 +771,7 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read service_account multipass", "path", req.Path)
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)
@@ -768,6 +792,7 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list service_account passwords", "path", req.Path)
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)

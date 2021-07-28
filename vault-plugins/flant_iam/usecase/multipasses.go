@@ -138,13 +138,14 @@ func (r *MultipassService) CreateWithJWT(
 	return jwtString, &safeMp, nil
 }
 
-func (r *MultipassService) Delete(id model.MultipassUUID) error {
+func (r *MultipassService) Delete(id model.MultipassUUID,
+	archivingTimestamp model.UnixTime, archivingHash int64) error {
 	err := r.validateContext()
 	if err != nil {
 		return err
 	}
 
-	return r.repo.Delete(id)
+	return r.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, error) {
@@ -166,16 +167,16 @@ func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, er
 }
 
 // TODO add listing by origin
-func (r *MultipassService) List() ([]*model.Multipass, error) {
+func (r *MultipassService) List(showArchived bool) ([]*model.Multipass, error) {
 	err := r.validateContext()
 	if err != nil {
 		return nil, err
 	}
-	return r.repo.List(r.ownerUUID)
+	return r.repo.List(r.ownerUUID, showArchived)
 }
 
-func (r *MultipassService) PublicList() ([]*model.Multipass, error) {
-	mps, err := r.List()
+func (r *MultipassService) PublicList(showArchived bool) ([]*model.Multipass, error) {
+	mps, err := r.List(showArchived)
 	if err != nil {
 		return nil, err
 	}

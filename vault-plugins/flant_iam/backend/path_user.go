@@ -368,7 +368,6 @@ func (b userBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/?",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -379,9 +378,14 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of the tenant user",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived user multipass",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleMultipassList(),
 					Summary:  "List multipass IDs",
 				},
@@ -582,7 +586,7 @@ func (b *userBackend) handleRestore() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("create multipass", "path", req.Path)
+		b.Logger().Debug("create user multipass", "path", req.Path)
 		// Check that the feature is available
 		if err := isJwtEnabled(ctx, req, b.tokenController); err != nil {
 			return responseErr(req, err)
@@ -623,7 +627,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete multipass", "path", req.Path)
+		b.Logger().Debug("delete user multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -632,8 +636,10 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
+		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -647,7 +653,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read multipass", "path", req.Path)
+		b.Logger().Debug("read user multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -666,13 +672,18 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list multipasses", "path", req.Path)
+		b.Logger().Debug("list user multipasses", "path", req.Path)
 		tid := data.Get("tenant_uuid").(string)
 		uid := data.Get("owner_uuid").(string)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList()
+		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
 			return responseErr(req, err)
 		}
