@@ -162,7 +162,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// List
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -170,6 +170,11 @@ func (b userBackend) paths() []*framework.Path {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
 					Required:    true,
+				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived users",
+					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -258,7 +263,7 @@ func (b userBackend) paths() []*framework.Path {
 		},
 		// Restore
 		{
-			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "$",
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "/restore" + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
@@ -275,7 +280,7 @@ func (b userBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRestore(),
-					Summary:  "Restore the tenant by ID.",
+					Summary:  "Restore the user by ID.",
 				},
 			},
 		},
