@@ -109,7 +109,7 @@ func (b groupBackend) paths() []*framework.Path {
 				},
 				"show_archived": {
 					Type:        framework.TypeBool,
-					Description: "Option to list archived users",
+					Description: "Option to list archived groups",
 					Required:    false,
 				},
 			},
