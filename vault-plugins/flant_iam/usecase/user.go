@@ -45,8 +45,8 @@ func (s *UserService) GetByID(id model.UserUUID) (*model.User, error) {
 	return s.usersRepo.GetByID(id)
 }
 
-func (s *UserService) List() ([]*model.User, error) {
-	return s.usersRepo.List(s.tenantUUID)
+func (s *UserService) List(showArchived bool) ([]*model.User, error) {
+	return s.usersRepo.List(s.tenantUUID, showArchived)
 }
 
 func (s *UserService) Update(user *model.User) error {
@@ -83,7 +83,8 @@ func (s *UserService) Update(user *model.User) error {
 	return s.usersRepo.Update(user)
 }
 
-func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error {
+func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID,
+	archivingTimestamp model.UnixTime, archivingHash int64) error {
 	user, err := s.usersRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -92,11 +93,11 @@ func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error
 		return model.ErrBadOrigin
 	}
 
-	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
 		return err
 	}
 
-	return s.usersRepo.Delete(id)
+	return s.usersRepo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *UserService) SetExtension(ext *model.Extension) error {
@@ -121,4 +122,8 @@ func (s *UserService) UnsetExtension(origin model.ObjectOrigin, uuid model.UserU
 	}
 	delete(obj.Extensions, origin)
 	return s.Update(obj)
+}
+
+func (s *UserService) Restore(id model.UserUUID) (*model.User, error) {
+	return s.usersRepo.Restore(id)
 }

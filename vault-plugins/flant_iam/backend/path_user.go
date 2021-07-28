@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -172,7 +173,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all users IDs.",
 				},
@@ -252,6 +253,29 @@ func (b userBackend) paths() []*framework.Path {
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
 					Summary:  "Deletes the user by ID",
+				},
+			},
+		},
+		// Restore
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a user",
+					Required:    true,
+				},
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleRestore(),
+					Summary:  "Restore the tenant by ID.",
 				},
 			},
 		},
@@ -389,6 +413,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create user", "path", req.Path)
 		id := getCreationID(expectID, data)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 		user := &model.User{
@@ -424,6 +449,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *userBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 		tx := b.storage.Txn(true)
@@ -459,13 +485,16 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 
 func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
+		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -479,6 +508,7 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
@@ -496,11 +526,17 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 func (b *userBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list users", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		users, err := usecase.Users(tx, tenantID).List()
+		users, err := usecase.Users(tx, tenantID).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -514,8 +550,34 @@ func (b *userBackend) handleList() framework.OperationFunc {
 	}
 }
 
+func (b *userBackend) handleRestore() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("restore user", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
+
+		user, err := usecase.Users(tx, tenantID).Restore(id)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{
+			"user": user,
+		}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	}
+}
+
 func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create multipass", "path", req.Path)
 		// Check that the feature is available
 		if err := isJwtEnabled(ctx, req, b.tokenController); err != nil {
 			return responseErr(req, err)
@@ -556,6 +618,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -579,6 +642,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -597,6 +661,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list multipasses", "path", req.Path)
 		tid := data.Get("tenant_uuid").(string)
 		uid := data.Get("owner_uuid").(string)
 
