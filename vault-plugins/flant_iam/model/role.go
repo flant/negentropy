@@ -154,8 +154,8 @@ func (r *RoleRepository) List(showArchived bool) ([]*Role, error) {
 	return list, nil
 }
 
-func (r *RoleRepository) ListIDs(archived bool) ([]RoleName, error) {
-	objs, err := r.List(archived)
+func (r *RoleRepository) ListIDs(showArchived bool) ([]RoleName, error) {
+	objs, err := r.List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +164,19 @@ func (r *RoleRepository) ListIDs(archived bool) ([]RoleName, error) {
 		ids[i] = objs[i].ObjId()
 	}
 	return ids, nil
+}
+
+func (r *RoleRepository) Delete(roleID RoleName, archivingTimestamp UnixTime, archivingHash int64) error {
+	role, err := r.GetByID(roleID)
+	if err != nil {
+		return err
+	}
+	if role.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
+	role.ArchivingTimestamp = archivingTimestamp
+	role.ArchivingHash = archivingHash
+	return r.Update(role)
 }
 
 func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {

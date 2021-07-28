@@ -272,7 +272,7 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
-			showArchived, ok = rawShowArchived.(bool)
+			showArchived = rawShowArchived.(bool)
 		}
 
 		tx := b.storage.Txn(false)

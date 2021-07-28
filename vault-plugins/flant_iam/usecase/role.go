@@ -21,8 +21,8 @@ func (s *RoleService) Get(roleID model.RoleName) (*model.Role, error) {
 	return model.NewRoleRepository(s.db).GetByID(roleID)
 }
 
-func (s *RoleService) List(archived bool) ([]*model.Role, error) {
-	return model.NewRoleRepository(s.db).List(archived)
+func (s *RoleService) List(showArchived bool) ([]*model.Role, error) {
+	return model.NewRoleRepository(s.db).List(showArchived)
 }
 
 func (s *RoleService) Update(updated *model.Role) error {
@@ -41,7 +41,7 @@ func (s *RoleService) Update(updated *model.Role) error {
 	return repo.Update(updated)
 }
 
-func (s *RoleService) Delete(roleID model.RoleName, archivedAt model.UnixTime, archivigHash int64) error {
+func (s *RoleService) Delete(roleID model.RoleName, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	// TODO before the deletion, check it is not used in
 	//      * role_biondings,
 	//      * approvals,
@@ -52,16 +52,7 @@ func (s *RoleService) Delete(roleID model.RoleName, archivedAt model.UnixTime, a
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
-	role, err := s.Get(roleID)
-	if err != nil {
-		return err
-	}
-	if role.ArchivingTimestamp != 0 {
-		return ErrIsArchived
-	}
-	role.ArchivingTimestamp = archivedAt
-	role.ArchivingHash = archivigHash
-	return model.NewRoleRepository(s.db).Update(role)
+	return model.NewRoleRepository(s.db).Delete(roleID, archivingTimestamp, archivingHash)
 }
 
 func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole) error {

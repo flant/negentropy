@@ -10,4 +10,5 @@ var (
 	ErrNeedSingleArgument  = fmt.Errorf("must provide only a single argument")
 	ErrNeedDoubleArgument  = fmt.Errorf("must provide two arguments")
 	ErrBadProjectScopeRole = fmt.Errorf("project_scoped_role is not allowed")
+	ErrIsArchived          = fmt.Errorf("entity is archived")
 )
