@@ -109,7 +109,8 @@ TODO
 	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
 */
 
-func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
+func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID,
+	archivingTimestamp model.UnixTime, archivingHash int64) error {
 	sa, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -118,14 +119,14 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 		return model.ErrBadOrigin
 	}
 
-	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
 		return err
 	}
-	return s.repo.Delete(id)
+	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
-func (s *ServiceAccountService) List() ([]*model.ServiceAccount, error) {
-	return s.repo.List(s.tenantUUID)
+func (s *ServiceAccountService) List(showArchived bool) ([]*model.ServiceAccount, error) {
+	return s.repo.List(s.tenantUUID, showArchived)
 }
 
 func (s *ServiceAccountService) SetExtension(ext *model.Extension) error {

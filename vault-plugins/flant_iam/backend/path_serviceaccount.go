@@ -122,7 +122,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Service account listing
+		// Service account list
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/service_account/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -131,9 +131,14 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived groups",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all serviceAccounts IDs.",
 				},
@@ -521,8 +526,10 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id)
+		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -557,11 +564,16 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("list service_accounts", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantUUID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		serviceAccounts, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).List()
+		serviceAccounts, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
