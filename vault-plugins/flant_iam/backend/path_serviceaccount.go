@@ -398,9 +398,14 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "ID of the tenant service account",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived passwords",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handlePasswordList(),
 					Summary:  "List password IDs",
 				},
@@ -765,11 +770,13 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 			ownerUUID  = data.Get("owner_uuid").(string)
 			id         = data.Get("uuid").(string)
 		)
+		archivingTime := time.Now().Unix()
+		archivingHash := rand.Int63n(archivingTime)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id)
+		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id, archivingTime, archivingHash)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -805,6 +812,11 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("list service_account passwords", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)
@@ -812,7 +824,7 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		passwords, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).List()
+		passwords, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).List(showArchived)
 		if err != nil {
 			return responseErr(req, err)
 		}

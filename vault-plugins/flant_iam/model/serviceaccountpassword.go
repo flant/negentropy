@@ -49,6 +49,9 @@ type ServiceAccountPassword struct {
 	ValidTill int64         `json:"valid_till"` // calculates from TTL on creation
 
 	Secret string `json:"secret,omitempty" sensitive:""` // generates on creation
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const ServiceAccountPasswordType = "service_account_password" // also, memdb schema name
@@ -104,15 +107,22 @@ func (r *ServiceAccountPasswordRepository) Update(sap *ServiceAccountPassword) e
 	return r.save(sap)
 }
 
-func (r *ServiceAccountPasswordRepository) Delete(id ServiceAccountPasswordUUID) error {
+func (r *ServiceAccountPasswordRepository) Delete(id ServiceAccountPasswordUUID,
+	archivingTimestamp UnixTime, archivingHash int64) error {
 	sap, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountPasswordType, sap)
+	if sap.ArchivingTimestamp != 0 {
+		return ErrIsArchived
+	}
+	sap.ArchivingTimestamp = archivingTimestamp
+	sap.ArchivingHash = archivingHash
+	return r.Update(sap)
 }
 
-func (r *ServiceAccountPasswordRepository) List(ownerUUID OwnerUUID) ([]*ServiceAccountPassword, error) {
+func (r *ServiceAccountPasswordRepository) List(ownerUUID OwnerUUID,
+	showArchived bool) ([]*ServiceAccountPassword, error) {
 	iter, err := r.db.Get(ServiceAccountPasswordType, OwnerForeignPK, ownerUUID)
 	if err != nil {
 		return nil, err
@@ -125,13 +135,16 @@ func (r *ServiceAccountPasswordRepository) List(ownerUUID OwnerUUID) ([]*Service
 			break
 		}
 		obj := raw.(*ServiceAccountPassword)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *ServiceAccountPasswordRepository) ListIDs(ownerID OwnerUUID) ([]ServiceAccountPasswordUUID, error) {
-	objs, err := r.List(ownerID)
+func (r *ServiceAccountPasswordRepository) ListIDs(ownerID OwnerUUID,
+	showArchived bool) ([]ServiceAccountPasswordUUID, error) {
+	objs, err := r.List(ownerID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -167,11 +180,7 @@ func (r *ServiceAccountPasswordRepository) Iter(action func(*ServiceAccountPassw
 	return nil
 }
 
-func (r *ServiceAccountPasswordRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *ServiceAccountPasswordRepository) Sync(_ string, data []byte) error {
 	sap := &ServiceAccountPassword{}
 	err := json.Unmarshal(data, sap)
 	if err != nil {
