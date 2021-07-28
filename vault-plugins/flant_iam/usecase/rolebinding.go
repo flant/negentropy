@@ -78,7 +78,8 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	return s.repo.Update(rb)
 }
 
-func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBindingUUID) error {
+func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBindingUUID,
+	archivingTimestamp model.UnixTime, archivingHash int64) error {
 	roleBinding, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -86,7 +87,7 @@ func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBind
 	if roleBinding.Origin != origin {
 		return model.ErrBadOrigin
 	}
-	return s.repo.Delete(id)
+	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
