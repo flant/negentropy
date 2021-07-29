@@ -76,12 +76,12 @@ var _ = Describe("Role binding approval", func() {
 			"role_binding_uuid": roleBindingID,
 		}, nil)
 
-		roleBindingApprovalAPI.Read(tools.Params{
+		deletedRBData := roleBindingApprovalAPI.Read(tools.Params{
 			"uuid":              createdRB.Get("uuid").String(),
 			"tenant_uuid":       tenantID,
 			"role_binding_uuid": roleBindingID,
-			"expectStatus":      tools.ExpectExactStatus(404),
+			"expectStatus":      tools.ExpectExactStatus(200),
 		}, nil)
+		Expect(deletedRBData.Get("role_binding_approval.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
-
 })

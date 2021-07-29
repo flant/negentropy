@@ -50,7 +50,6 @@ var _ = Describe("Tenant", func() {
 
 				Expect(data.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(data.Get("resource_version").String()).ToNot(HaveLen(10))
-
 			},
 		}
 		tenantsAPI.Create(params, url.Values{}, payload)
@@ -70,7 +69,7 @@ var _ = Describe("Tenant", func() {
 			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
-				Expect(createdData).To(Equal(data))
+				isSubsetExceptKeys(createdData, data, "full_restore")
 			},
 		}, nil)
 	})
@@ -104,7 +103,7 @@ var _ = Describe("Tenant", func() {
 			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
-				Expect(updateData).To(Equal(data))
+				isSubsetExceptKeys(updateData, data, "full_restore")
 			},
 		}, nil)
 	})
@@ -123,10 +122,11 @@ var _ = Describe("Tenant", func() {
 			"tenant": createdData.Get("tenant.uuid").String(),
 		}, nil)
 
-		tenantsAPI.Read(tools.Params{
+		deletedTenantData := tenantsAPI.Read(tools.Params{
 			"tenant":       createdData.Get("tenant.uuid").String(),
-			"expectStatus": tools.ExpectExactStatus(404),
+			"expectStatus": tools.ExpectExactStatus(200),
 		}, nil)
+		Expect(deletedTenantData.Get("tenant.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
 	It("can be listed", func() {
@@ -135,3 +135,12 @@ var _ = Describe("Tenant", func() {
 		tenantsAPI.List(tools.Params{}, url.Values{})
 	})
 })
+
+func isSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
+	setMap := set.Map()
+	subsetMap := subset.Map()
+	for _, key := range keys {
+		subsetMap[key] = setMap[key]
+	}
+	Expect(setMap).To(Equal(subsetMap))
+}

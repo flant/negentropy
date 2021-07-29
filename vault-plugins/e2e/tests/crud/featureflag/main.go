@@ -64,8 +64,8 @@ var _ = Describe("Feature Flag", func() {
 			"expectPayload": func(b []byte) {
 				data := tools.UnmarshalVaultResponse(b)
 				Expect(data.Map()).To(HaveKey("names"))
-				expectedName := gjson.Parse(fmt.Sprintf("{\"name\":\"%s\"}", createPayload.Name))
-				Expect(data.Get("names").Array()).To(ContainElement(expectedName))
+				expectedFF := gjson.Parse(fmt.Sprintf("{\"archiving_hash\":0,\"archiving_timestamp\":0,\"name\":\"%s\"}", createPayload.Name))
+				Expect(data.Get("names").Array()).To(ContainElement(expectedFF))
 			},
 		}
 		flagsAPI.List(params, url.Values{})
