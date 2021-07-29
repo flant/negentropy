@@ -364,7 +364,7 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*mode
 	resUsers := make([]*model.User, 0)
 	resSa := make([]*model.ServiceAccount, 0)
 
-	uList, err := userRepo.List(tenantID)
+	uList, err := userRepo.List(tenantID, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -375,7 +375,7 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*mode
 		}
 	}
 
-	saList, err := saRepo.List(tenantID)
+	saList, err := saRepo.List(tenantID, false)
 	if err != nil {
 		return nil, nil, err
 	}

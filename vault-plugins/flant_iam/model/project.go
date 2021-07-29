@@ -64,6 +64,10 @@ type Project struct {
 
 const ProjectType = "project" // also, memdb schema name
 
+func (p *Project) isDeleted() bool {
+	return p.ArchivingTimestamp != 0
+}
+
 func (u *Project) ObjType() string {
 	return ProjectType
 }
@@ -120,7 +124,7 @@ func (r *ProjectRepository) Delete(id ProjectUUID, archivingTimestamp UnixTime, 
 	if err != nil {
 		return err
 	}
-	if project.ArchivingTimestamp != 0 {
+	if project.isDeleted() {
 		return ErrIsArchived
 	}
 	project.ArchivingTimestamp = archivingTimestamp

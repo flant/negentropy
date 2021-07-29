@@ -84,12 +84,12 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 
 			project := obj.(*model.Project)
 
-			groups, err := groupRepo.List(project.TenantUUID)
+			groups, err := groupRepo.List(project.TenantUUID, false)
 			if err != nil {
 				return err
 			}
 
-			projects, err := projectRepo.List(project.TenantUUID)
+			projects, err := projectRepo.List(project.TenantUUID, false)
 			if err != nil {
 				return err
 			}
