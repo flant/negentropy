@@ -3,14 +3,13 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -135,9 +134,8 @@ func (b *roleBindingApprovalBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
 
-		rb, err := repo.GetByID(roleBindingID)
+		rb, err := usecase.RoleBindings(tx).GetByID(roleBindingID)
 		if err != nil {
 			return false, err
 		}
@@ -180,8 +178,7 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		repo := model.NewRoleBindingApprovalRepository(tx)
-		err := repo.UpdateOrCreate(roleBindingApproval)
+		err := usecase.RoleBindingApprovals(tx).Update(roleBindingApproval)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -201,11 +198,8 @@ func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewRoleBindingApprovalRepository(tx)
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := repo.Delete(id, archivingTime, archivingHash)
+		err := usecase.RoleBindingApprovals(tx).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -223,9 +217,8 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingApprovalRepository(tx)
 
-		roleBindingApproval, err := repo.GetByID(id)
+		roleBindingApproval, err := usecase.RoleBindingApprovals(tx).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -246,9 +239,8 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 		rbID := data.Get(model.RoleBindingForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingApprovalRepository(tx)
 
-		rolebindingApprovals, err := repo.List(rbID, showArchived)
+		rolebindingApprovals, err := usecase.RoleBindingApprovals(tx).List(rbID, showArchived)
 		if err != nil {
 			return nil, err
 		}

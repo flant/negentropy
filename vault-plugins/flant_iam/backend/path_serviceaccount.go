@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -531,10 +530,8 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id, archivingTime, archivingHash)
+		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -646,10 +643,8 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id, archivingTime, archivingHash)
+		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -770,13 +765,11 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 			ownerUUID  = data.Get("owner_uuid").(string)
 			id         = data.Get("uuid").(string)
 		)
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id, archivingTime, archivingHash)
+		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

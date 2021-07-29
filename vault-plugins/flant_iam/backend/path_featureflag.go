@@ -2,14 +2,13 @@ package backend
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -28,7 +27,7 @@ func featureFlagPaths(b logical.Backend, storage *io.MemoryStore) []*framework.P
 
 func (b featureFlagBackend) paths() []*framework.Path {
 	return []*framework.Path{
-		// Creation
+		// Create, update
 		{
 			Pattern: "feature_flag",
 			Fields: map[string]*framework.FieldSchema{
@@ -49,7 +48,6 @@ func (b featureFlagBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// List
 		{
 			Pattern: "feature_flag/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -68,7 +66,6 @@ func (b featureFlagBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by name
 		{
-
 			Pattern: "feature_flag/" + framework.GenericNameRegex("name") + "$",
 			Fields: map[string]*framework.FieldSchema{
 
@@ -114,9 +111,8 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewFeatureFlagRepository(tx)
 
-		if err := repo.Create(featureFlag); err != nil {
+		if err := usecase.Featureflags(tx).Create(featureFlag); err != nil {
 			msg := "cannot create feature flag"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -135,12 +131,10 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 		b.Logger().Debug("delete feature_flag", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := model.NewFeatureFlagRepository(tx)
 
 		name := data.Get("name").(string)
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
-		err := repo.Delete(name, archivingTime, archivingHash)
+
+		err := usecase.Featureflags(tx).Delete(name)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -161,11 +155,9 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-
 		tx := b.storage.Txn(false)
-		repo := model.NewFeatureFlagRepository(tx)
 
-		list, err := repo.List(showArchived)
+		list, err := usecase.Featureflags(tx).List(showArchived)
 		if err != nil {
 			return nil, err
 		}

@@ -3,9 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -264,10 +262,8 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.Projects(tx).Delete(id, archivingTime, archivingHash)
+		err := usecase.Projects(tx).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

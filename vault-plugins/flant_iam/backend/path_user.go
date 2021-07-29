@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -500,10 +499,8 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id, archivingTime, archivingHash)
+		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -636,10 +633,8 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id, archivingTime, archivingHash)
+		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

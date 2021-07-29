@@ -3,14 +3,13 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -108,7 +107,7 @@ func (b identitySharingBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList,
 					Summary:  "Lists all tenant identity sharing IDs.",
 				},
@@ -126,7 +125,6 @@ func (b *identitySharingBackend) handleCreate(ctx context.Context, req *logical.
 
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
-	repo := model.NewIdentitySharingRepository(tx)
 
 	is := &model.IdentitySharing{
 		UUID:                  uuid.New(),
@@ -135,7 +133,7 @@ func (b *identitySharingBackend) handleCreate(ctx context.Context, req *logical.
 		Groups:                groups,
 	}
 
-	if err := repo.Create(is); err != nil {
+	if err := usecase.IdentityShares(tx).Create(is); err != nil {
 		msg := "cannot create identity sharing"
 		b.Logger().Debug(msg, "err", err.Error())
 		return logical.ErrorResponse(msg), nil
@@ -162,9 +160,7 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 	tx := b.storage.Txn(false)
 	defer tx.Abort()
 
-	repo := model.NewIdentitySharingRepository(tx)
-
-	list, err := repo.List(sourceTenant, showArchived)
+	list, err := usecase.IdentityShares(tx).List(sourceTenant, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -187,9 +183,7 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 	tx := b.storage.Txn(false)
 	defer tx.Abort()
 
-	repo := model.NewIdentitySharingRepository(tx)
-
-	identitySharing, err := repo.GetByID(id)
+	identitySharing, err := usecase.IdentityShares(tx).GetByID(id)
 	if err != nil {
 		return responseErr(req, err)
 	}
@@ -206,12 +200,8 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
-	archivingTime := time.Now().Unix()
-	archivingHash := rand.Int63n(archivingTime)
 
-	repo := model.NewIdentitySharingRepository(tx)
-
-	err := repo.Delete(id, archivingTime, archivingHash)
+	err := usecase.IdentityShares(tx).Delete(id)
 	if err != nil {
 		return responseErr(req, err)
 	}

@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -332,10 +331,8 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
 
-		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id, archivingTime, archivingHash)
+		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -353,9 +350,8 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
 
-		roleBinding, err := repo.GetByID(id)
+		roleBinding, err := usecase.RoleBindings(tx).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -376,9 +372,8 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
 
-		roleBindings, err := repo.List(tenantID, showArchived)
+		roleBindings, err := usecase.RoleBindings(tx).List(tenantID, showArchived)
 		if err != nil {
 			return nil, err
 		}
