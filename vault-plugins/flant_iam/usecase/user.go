@@ -83,8 +83,7 @@ func (s *UserService) Update(user *model.User) error {
 	return s.usersRepo.Update(user)
 }
 
-func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error {
 	user, err := s.usersRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -92,6 +91,7 @@ func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID,
 	if user.Origin != origin {
 		return model.ErrBadOrigin
 	}
+	archivingTimestamp, archivingHash := ArchivingLabel()
 
 	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
 		return err

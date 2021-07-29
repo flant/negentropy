@@ -106,8 +106,7 @@ TODO Clean from everywhere:
 	* approvals
 	* identity_sharings
 */
-func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
 	group, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -115,6 +114,8 @@ func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID,
 	if group.Origin != origin {
 		return model.ErrBadOrigin
 	}
+	archivingTimestamp, archivingHash := ArchivingLabel()
+
 	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 

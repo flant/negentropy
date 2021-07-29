@@ -33,12 +33,12 @@ func (r *ServiceAccountPasswordsService) Create(p *model.ServiceAccountPassword)
 	return r.repo.Create(p)
 }
 
-func (r *ServiceAccountPasswordsService) Delete(id model.ServiceAccountPasswordUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *ServiceAccountPasswordsService) Delete(id model.ServiceAccountPasswordUUID) error {
 	err := r.validateContext()
 	if err != nil {
 		return err
 	}
+	archivingTimestamp, archivingHash := ArchivingLabel()
 	return r.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 

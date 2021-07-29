@@ -5,7 +5,31 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-// TenantFeatureFlagService manages feature flags for tenants
+// FeatureFlagService manages global list of feature_flags
+type FeatureFlagService struct {
+	db *io.MemoryStoreTxn
+}
+
+func Featureflags(db *io.MemoryStoreTxn) *FeatureFlagService {
+	return &FeatureFlagService{db: db}
+}
+
+func (s *FeatureFlagService) Create(featureFlag *model.FeatureFlag) error {
+	return model.NewFeatureFlagRepository(s.db).Create(featureFlag)
+}
+
+func (s *FeatureFlagService) List(showArchived bool) ([]*model.FeatureFlag, error) {
+	return model.NewFeatureFlagRepository(s.db).List(showArchived)
+}
+
+func (s *FeatureFlagService) Delete(id model.FeatureFlagName) error {
+	// TODO before the deletion, check
+	// TODO REMOVE FROM archived
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return model.NewFeatureFlagRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
+}
+
+// TenantFeatureFlagService manages feature_flags for tenants
 type TenantFeatureFlagService struct {
 	tenantUUID model.TenantUUID
 	ffRepo     *model.FeatureFlagRepository

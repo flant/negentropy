@@ -47,7 +47,8 @@ func (s *ProjectService) Update(project *model.Project) error {
 	return repo.Update(project)
 }
 
-func (s *ProjectService) Delete(id model.ProjectUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (s *ProjectService) Delete(id model.ProjectUUID) error {
+	archivingTimestamp, archivingHash := ArchivingLabel()
 	return model.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }
 

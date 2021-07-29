@@ -41,7 +41,7 @@ func (s *RoleService) Update(updated *model.Role) error {
 	return repo.Update(updated)
 }
 
-func (s *RoleService) Delete(roleID model.RoleName, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (s *RoleService) Delete(roleID model.RoleName) error {
 	// TODO before the deletion, check it is not used in
 	//      * role_biondings,
 	//      * approvals,
@@ -52,6 +52,7 @@ func (s *RoleService) Delete(roleID model.RoleName, archivingTimestamp model.Uni
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
+	archivingTimestamp, archivingHash := ArchivingLabel()
 	return model.NewRoleRepository(s.db).Delete(roleID, archivingTimestamp, archivingHash)
 }
 

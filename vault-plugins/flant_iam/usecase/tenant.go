@@ -49,7 +49,8 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	return s.repo.Create(updated)
 }
 
-func (s *TenantService) Delete(id model.TenantUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (s *TenantService) Delete(id model.TenantUUID) error {
+	archivingTimestamp, archivingHash := ArchivingLabel()
 	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
 		return err
 	}

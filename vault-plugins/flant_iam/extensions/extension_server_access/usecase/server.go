@@ -313,7 +313,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = multipassService.Delete(mp.UUID, archivingTime, archivingHash)
+	err = multipassService.CascadeDelete(mp.UUID, archivingTime, archivingHash)
 	if err != nil {
 		return err
 	}

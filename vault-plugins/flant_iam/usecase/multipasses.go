@@ -138,14 +138,14 @@ func (r *MultipassService) CreateWithJWT(
 	return jwtString, &safeMp, nil
 }
 
-func (r *MultipassService) Delete(id model.MultipassUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *MultipassService) Delete(id model.MultipassUUID) error {
 	err := r.validateContext()
 	if err != nil {
 		return err
 	}
+	archivingTimestamp, archivingHash := ArchivingLabel()
 
-	return r.repo.Delete(id, archivingTimestamp, archivingHash)
+	return r.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
 
 func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, error) {
@@ -247,4 +247,14 @@ func (r *MultipassService) UnsetExtension(origin model.ObjectOrigin, uuid model.
 	}
 	delete(obj.Extensions, origin)
 	return r.repo.Update(obj)
+}
+
+func (r *MultipassService) CascadeDelete(id model.MultipassUUID,
+	archivingTimestamp model.UnixTime, archivingHash int64) error {
+	err := r.validateContext()
+	if err != nil {
+		return err
+	}
+
+	return r.repo.Delete(id, archivingTimestamp, archivingHash)
 }
