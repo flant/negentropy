@@ -3,11 +3,12 @@ package lib
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,6 +33,7 @@ type TestAPI interface {
 }
 
 type URLBuilder interface {
+	OneCreate(tools.Params, url.Values) string
 	One(tools.Params, url.Values) string
 	Collection(tools.Params, url.Values) string
 	Privileged(tools.Params, url.Values) string
@@ -88,7 +90,7 @@ func (b *BuilderBasedAPI) request(method, url string, params tools.Params, paylo
 
 func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) gjson.Result {
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.Collection(params, query), params, payload)
+	return b.request(http.MethodPost, b.url.OneCreate(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) gjson.Result {
@@ -112,7 +114,7 @@ func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
 }
 
 func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Result {
-	query.Set("list", "true")
+	// query.Set("list", "true")
 	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
 	return b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
 }

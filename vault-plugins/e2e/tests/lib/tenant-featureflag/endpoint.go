@@ -9,14 +9,18 @@ import (
 
 type EndpointBuilder struct{}
 
+func (b *EndpointBuilder) OneCreate(params tools.Params, query url.Values) string {
+	return path.Join("/tenant", params["tenant_uuid"].(string), "feature_flag", params["feature_flag_name"].(string)) + "?" + query.Encode()
+}
+
 func (b *EndpointBuilder) One(params tools.Params, query url.Values) string {
 	return path.Join("/tenant", params["tenant_uuid"].(string), "feature_flag", params["feature_flag_name"].(string)) + "?" + query.Encode()
 }
 
 func (b *EndpointBuilder) Collection(params tools.Params, query url.Values) string {
-	return path.Join("/tenant", params["tenant_uuid"].(string), "feature_flag", params["feature_flag_name"].(string)) + "?" + query.Encode()
+	panic("this path is not allowed")
 }
 
 func (b *EndpointBuilder) Privileged(_ tools.Params, query url.Values) string {
-	return ""
+	panic("this path is not allowed")
 }
