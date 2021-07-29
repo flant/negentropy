@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -115,4 +118,10 @@ func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 		PasswordDeleter(tx),
 		// TODO clean SA references from rolebindings and groups in other tenants
 	)
+}
+
+func ArchivingLabel() (model.UnixTime, int64) {
+	archivingTime := time.Now().Unix()
+	archivingHash := rand.Int63n(archivingTime)
+	return archivingTime, archivingHash
 }
