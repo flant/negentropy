@@ -42,12 +42,16 @@ type TenantFeatureFlag struct {
 
 const FeatureFlagType = "feature_flag" // also, memdb schema name
 
-func (u *FeatureFlag) ObjType() string {
+func (f *FeatureFlag) isDeleted() bool {
+	return f.ArchivingTimestamp != 0
+}
+
+func (f *FeatureFlag) ObjType() string {
 	return FeatureFlagType
 }
 
-func (u *FeatureFlag) ObjId() string {
-	return u.Name
+func (f *FeatureFlag) ObjId() string {
+	return f.Name
 }
 
 type FeatureFlagRepository struct {
@@ -98,7 +102,7 @@ func (r *FeatureFlagRepository) Delete(id FeatureFlagName, archivingTimestamp Un
 	if err != nil {
 		return err
 	}
-	if ff.ArchivingTimestamp != 0 {
+	if ff.isDeleted() {
 		return ErrIsArchived
 	}
 	ff.ArchivingTimestamp = archivingTimestamp

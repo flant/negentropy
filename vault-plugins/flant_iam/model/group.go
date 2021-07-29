@@ -108,12 +108,16 @@ type Group struct {
 
 const GroupType = "group" // also, memdb schema name
 
-func (u *Group) ObjType() string {
+func (g *Group) isDeleted() bool {
+	return g.ArchivingTimestamp != 0
+}
+
+func (g *Group) ObjType() string {
 	return GroupType
 }
 
-func (u *Group) ObjId() string {
-	return u.UUID
+func (g *Group) ObjId() string {
+	return g.UUID
 }
 
 type GroupRepository struct {
@@ -164,7 +168,7 @@ func (r *GroupRepository) Delete(id GroupUUID, archivingTimestamp UnixTime, arch
 	if err != nil {
 		return err
 	}
-	if group.ArchivingTimestamp != 0 {
+	if group.isDeleted() {
 		return ErrIsArchived
 	}
 	group.ArchivingTimestamp = archivingTimestamp

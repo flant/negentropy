@@ -78,12 +78,16 @@ type Multipass struct {
 
 const MultipassType = "multipass" // also, memdb schema name
 
-func (u *Multipass) ObjType() string {
+func (m *Multipass) isDeleted() bool {
+	return m.ArchivingTimestamp != 0
+}
+
+func (m *Multipass) ObjType() string {
 	return MultipassType
 }
 
-func (u *Multipass) ObjId() string {
-	return u.UUID
+func (m *Multipass) ObjId() string {
+	return m.UUID
 }
 
 type MultipassRepository struct {
@@ -134,7 +138,7 @@ func (r *MultipassRepository) Delete(id MultipassUUID, archivingTimestamp UnixTi
 	if err != nil {
 		return err
 	}
-	if multipass.ArchivingTimestamp != 0 {
+	if multipass.isDeleted() {
 		return ErrIsArchived
 	}
 	multipass.ArchivingTimestamp = archivingTimestamp

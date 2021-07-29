@@ -74,6 +74,10 @@ type User struct {
 
 const UserType = "user" // also, memdb schema name
 
+func (u *User) isDeleted() bool {
+	return u.ArchivingTimestamp != 0
+}
+
 func (u *User) ObjType() string {
 	return UserType
 }
@@ -130,7 +134,7 @@ func (r *UserRepository) Delete(id UserUUID, archivingTimestamp UnixTime, archiv
 	if err != nil {
 		return err
 	}
-	if user.ArchivingTimestamp != 0 {
+	if user.isDeleted() {
 		return ErrIsArchived
 	}
 	user.ArchivingTimestamp = archivingTimestamp

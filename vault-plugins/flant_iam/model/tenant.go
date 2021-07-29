@@ -58,12 +58,16 @@ type Tenant struct {
 
 const TenantType = "tenant" // also, memdb schema name
 
-func (u *Tenant) ObjType() string {
+func (t *Tenant) isDeleted() bool {
+	return t.ArchivingTimestamp != 0
+}
+
+func (t *Tenant) ObjType() string {
 	return TenantType
 }
 
-func (u *Tenant) ObjId() string {
-	return u.UUID
+func (t *Tenant) ObjId() string {
+	return t.UUID
 }
 
 type TenantRepository struct {
@@ -114,7 +118,7 @@ func (r *TenantRepository) Delete(id TenantUUID, archivingTimestamp UnixTime, ar
 	if err != nil {
 		return err
 	}
-	if tenant.ArchivingTimestamp != 0 {
+	if tenant.isDeleted() {
 		return ErrIsArchived
 	}
 	tenant.ArchivingTimestamp = archivingTimestamp

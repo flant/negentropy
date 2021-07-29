@@ -138,12 +138,16 @@ type BoundRole struct {
 
 const RoleBindingType = "role_binding" // also, memdb schema name
 
-func (u *RoleBinding) ObjType() string {
+func (r *RoleBinding) isDeleted() bool {
+	return r.ArchivingTimestamp != 0
+}
+
+func (r *RoleBinding) ObjType() string {
 	return RoleBindingType
 }
 
-func (u *RoleBinding) ObjId() string {
-	return u.UUID
+func (r *RoleBinding) ObjId() string {
+	return r.UUID
 }
 
 type RoleBindingRepository struct {
@@ -194,7 +198,7 @@ func (r *RoleBindingRepository) Delete(id RoleBindingUUID, archivingTimestamp Un
 	if err != nil {
 		return err
 	}
-	if rb.ArchivingTimestamp != 0 {
+	if rb.isDeleted() {
 		return ErrIsArchived
 	}
 	rb.ArchivingTimestamp = archivingTimestamp

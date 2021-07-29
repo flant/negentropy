@@ -87,12 +87,16 @@ type ServiceAccount struct {
 
 const ServiceAccountType = "service_account" // also, memdb schema name
 
-func (u *ServiceAccount) ObjType() string {
+func (s *ServiceAccount) isDeleted() bool {
+	return s.ArchivingTimestamp != 0
+}
+
+func (s *ServiceAccount) ObjType() string {
 	return ServiceAccountType
 }
 
-func (u *ServiceAccount) ObjId() string {
-	return u.UUID
+func (s *ServiceAccount) ObjId() string {
+	return s.UUID
 }
 
 type ServiceAccountRepository struct {
@@ -144,7 +148,7 @@ func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID,
 	if err != nil {
 		return err
 	}
-	if sa.ArchivingTimestamp != 0 {
+	if sa.isDeleted() {
 		return ErrIsArchived
 	}
 	sa.ArchivingTimestamp = archivingTimestamp

@@ -62,12 +62,16 @@ type RoleBindingApproval struct {
 
 const RoleBindingApprovalType = "role_binding_approval" // also, memdb schema name
 
-func (u *RoleBindingApproval) ObjType() string {
+func (r *RoleBindingApproval) isDeleted() bool {
+	return r.ArchivingTimestamp != 0
+}
+
+func (r *RoleBindingApproval) ObjType() string {
 	return RoleBindingApprovalType
 }
 
-func (u *RoleBindingApproval) ObjId() string {
-	return u.UUID
+func (r *RoleBindingApproval) ObjId() string {
+	return r.UUID
 }
 
 type RoleBindingApprovalRepository struct {
@@ -119,7 +123,7 @@ func (r *RoleBindingApprovalRepository) Delete(id RoleBindingApprovalUUID,
 	if err != nil {
 		return err
 	}
-	if appr.ArchivingTimestamp != 0 {
+	if appr.isDeleted() {
 		return ErrIsArchived
 	}
 	appr.ArchivingTimestamp = archivingTimestamp

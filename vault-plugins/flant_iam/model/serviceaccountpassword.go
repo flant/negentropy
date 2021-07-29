@@ -56,12 +56,16 @@ type ServiceAccountPassword struct {
 
 const ServiceAccountPasswordType = "service_account_password" // also, memdb schema name
 
-func (u *ServiceAccountPassword) ObjType() string {
+func (s *ServiceAccountPassword) isDeleted() bool {
+	return s.ArchivingTimestamp != 0
+}
+
+func (s *ServiceAccountPassword) ObjType() string {
 	return ServiceAccountPasswordType
 }
 
-func (u *ServiceAccountPassword) ObjId() string {
-	return u.UUID
+func (s *ServiceAccountPassword) ObjId() string {
+	return s.UUID
 }
 
 type ServiceAccountPasswordRepository struct {
@@ -113,7 +117,7 @@ func (r *ServiceAccountPasswordRepository) Delete(id ServiceAccountPasswordUUID,
 	if err != nil {
 		return err
 	}
-	if sap.ArchivingTimestamp != 0 {
+	if sap.isDeleted() {
 		return ErrIsArchived
 	}
 	sap.ArchivingTimestamp = archivingTimestamp

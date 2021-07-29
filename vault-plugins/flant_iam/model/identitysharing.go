@@ -60,12 +60,16 @@ type IdentitySharing struct {
 
 const IdentitySharingType = "identity_sharing" // also, memdb schema name
 
-func (u *IdentitySharing) ObjType() string {
+func (i *IdentitySharing) isDeleted() bool {
+	return i.ArchivingTimestamp != 0
+}
+
+func (i *IdentitySharing) ObjType() string {
 	return IdentitySharingType
 }
 
-func (u *IdentitySharing) ObjId() string {
-	return u.UUID
+func (i *IdentitySharing) ObjId() string {
+	return i.UUID
 }
 
 type IdentitySharingRepository struct {
@@ -117,7 +121,7 @@ func (r *IdentitySharingRepository) Delete(id IdentitySharingUUID,
 	if err != nil {
 		return err
 	}
-	if sh.ArchivingTimestamp != 0 {
+	if sh.isDeleted() {
 		return ErrIsArchived
 	}
 	sh.ArchivingTimestamp = archivingTimestamp
