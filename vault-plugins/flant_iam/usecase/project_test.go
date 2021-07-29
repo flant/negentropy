@@ -29,7 +29,7 @@ func projectFixture(t *testing.T, store *io.MemoryStore) {
 func Test_ProjectList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, projectFixture).Txn(true)
 
-	projects, err := Projects(tx).List(fixtures.TenantUUID1)
+	projects, err := Projects(tx).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

@@ -53,7 +53,7 @@ func Test_RoleBindingList(t *testing.T) {
 		roleBindingFixture).Txn(true)
 	repo := model.NewRoleBindingRepository(tx)
 
-	rbs, err := repo.List(fixtures.TenantUUID1)
+	rbs, err := repo.List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{

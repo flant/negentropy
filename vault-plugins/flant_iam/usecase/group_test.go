@@ -38,7 +38,7 @@ func Test_ListGroups(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repo := model.NewGroupRepository(tx)
 
-	groups, err := repo.List(fixtures.TenantUUID1)
+	groups, err := repo.List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

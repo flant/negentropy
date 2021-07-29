@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -171,7 +170,7 @@ func Test_excludeRole(t *testing.T) {
 
 func Test_Role_IsArchived(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
-	err := (&RoleService{tx}).Delete(fixtures.RoleName1, time.Now().Unix(), 1)
+	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
 	require.NoError(t, err)
 
 	role, err := (&RoleService{tx}).Get(fixtures.RoleName1)

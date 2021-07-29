@@ -33,7 +33,7 @@ func Test_UserList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
 	repo := model.NewUserRepository(tx)
 
-	users, err := repo.List(fixtures.TenantUUID1)
+	users, err := repo.List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

@@ -38,7 +38,7 @@ func Test_ListIdentitySharing(t *testing.T) {
 		identitySharingFixture).Txn(true)
 	repo := model.NewIdentitySharingRepository(tx)
 
-	shares, err := repo.List(fixtures.TenantUUID1)
+	shares, err := repo.List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)
