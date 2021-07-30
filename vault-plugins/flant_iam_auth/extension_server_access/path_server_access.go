@@ -17,6 +17,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 const (
@@ -25,13 +26,15 @@ const (
 
 type serverAccessBackend struct {
 	logical.Backend
-	storage *io.MemoryStore
+	storage       *io.MemoryStore
+	jwtController *jwt.Controller
 }
 
-func ServerAccessPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+func ServerAccessPaths(b logical.Backend, storage *io.MemoryStore, jwtController *jwt.Controller) []*framework.Path {
 	bb := &serverAccessBackend{
-		Backend: b,
-		storage: storage,
+		Backend:       b,
+		storage:       storage,
+		jwtController: jwtController,
 	}
 
 	return bb.paths()
@@ -219,7 +222,7 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 			return nil, model.ErrNotFound
 		}
 
-		token, err := jwt.NewJwtToken(ctx, req.Storage, server.AsMap(), &jwt.TokenOptions{})
+		token, err := b.jwtController.IssuePayloadAsJwt(txn, server.AsMap(), &jwttoken.TokenOptions{})
 		if err != nil {
 			return nil, err
 		}

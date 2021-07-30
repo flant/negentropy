@@ -1,6 +1,8 @@
 package root
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/go-hclog"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -10,19 +12,21 @@ import (
 )
 
 type ObjectHandler struct {
-	entityRepo     *model.EntityRepo
-	eaRepo         *model.EntityAliasRepo
-	authSourceRepo *repo.AuthSourceRepo
+	entityRepo       *model.EntityRepo
+	eaRepo           *model.EntityAliasRepo
+	authSourceRepo   *repo.AuthSourceRepo
+	multipassGenRepo *model.MultipassGenerationNumberRepository
 
 	logger hclog.Logger
 }
 
 func NewObjectHandler(txn *io.MemoryStoreTxn, logger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
-		entityRepo:     model.NewEntityRepo(txn),
-		eaRepo:         model.NewEntityAliasRepo(txn),
-		authSourceRepo: repo.NewAuthSourceRepo(txn),
-		logger:         logger,
+		entityRepo:       model.NewEntityRepo(txn),
+		eaRepo:           model.NewEntityAliasRepo(txn),
+		authSourceRepo:   repo.NewAuthSourceRepo(txn),
+		multipassGenRepo: model.NewMultipassGenerationNumberRepository(txn),
+		logger:           logger,
 	}
 }
 
@@ -78,6 +82,34 @@ func (h *ObjectHandler) HandleDeleteUser(uuid string) error {
 
 func (h *ObjectHandler) HandleDeleteServiceAccount(uuid string) error {
 	return h.deleteEntityWithAliases(uuid)
+}
+
+func (h *ObjectHandler) HandleMultipass(mp *iam.Multipass) error {
+	l := h.logger
+
+	l.Debug(fmt.Sprintf("Handle multipass %s", mp.UUID))
+	genNum, err := h.multipassGenRepo.GetByID(mp.UUID)
+	if err != nil {
+		return err
+	}
+
+	if genNum != nil {
+		l.Debug(fmt.Sprintf("Found multipass generation number %s. Skip create", mp.UUID))
+		return nil
+	}
+
+	genNum = &model.MultipassGenerationNumber{
+		UUID:             mp.UUID,
+		GenerationNumber: 0,
+	}
+
+	l.Debug(fmt.Sprintf("Try to create generation number for multipass %s", mp.UUID))
+	return h.multipassGenRepo.Create(genNum)
+}
+
+func (h *ObjectHandler) HandleDeleteMultipass(uuid string) error {
+	h.logger.Debug(fmt.Sprintf("Handle delete multipass multipass %s. Try to delete multipass gen number", uuid))
+	return h.multipassGenRepo.Delete(uuid)
 }
 
 func (h *ObjectHandler) deleteEntityWithAliases(uuid string) error {

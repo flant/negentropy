@@ -44,7 +44,7 @@ func TestInitial(t *testing.T) {
 	err = mb.CreateTopic(context.TODO(), "root_source", nil)
 	require.NoError(t, err)
 
-	ss := NewSelfKafkaSource(mb)
+	ss := NewSelfKafkaSource(mb, []RestoreFunc{})
 	err = ss.Restore(nil)
 	require.NoError(t, err)
 }

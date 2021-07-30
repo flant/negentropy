@@ -1,8 +1,9 @@
 package user
 
 import (
-	"fmt"
 	
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )

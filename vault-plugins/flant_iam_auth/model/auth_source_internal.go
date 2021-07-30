@@ -1,9 +1,11 @@
 package model
 
 import (
+	"crypto"
+
 	"github.com/hashicorp/cap/jwt"
 
-	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
+	flantjwt "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 )
 
 const (
@@ -21,9 +23,9 @@ func GetMultipassSource() *AuthSource {
 	}
 }
 
-func GetMultipassSourceForLogin(jwtConf *flantjwt.Config, keys []string) *AuthSource {
+func GetMultipassSourceForLogin(jwtConf *flantjwt.Config, keys []crypto.PublicKey) *AuthSource {
 	source := GetMultipassSource()
-	source.JWTValidationPubKeys = keys
+	source.ParsedJWTPubKeys = keys
 	source.BoundIssuer = jwtConf.Issuer
 
 	return source

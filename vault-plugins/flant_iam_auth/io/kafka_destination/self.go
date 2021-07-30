@@ -5,6 +5,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -49,6 +50,10 @@ func (mkd *SelfKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memdb
 
 // only models from this plugin
 func (mkd *SelfKafkaDestination) isValidObjectType(objType string) bool {
+	if jwtkafka.WriteInSelfQueue(objType) {
+		return true
+	}
+
 	switch objType {
 	case model.EntityType,
 		model.AuthSourceType,

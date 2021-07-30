@@ -83,5 +83,4 @@ var _ = Describe("Role binding approval", func() {
 			"expectStatus":      tools.ExpectExactStatus(404),
 		}, nil)
 	})
-
 })

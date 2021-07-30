@@ -7,7 +7,6 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-
 	"gopkg.in/square/go-jose.v2"
 	sqjwt "gopkg.in/square/go-jose.v2/jwt"
 )
