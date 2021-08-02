@@ -3,8 +3,9 @@ package backend
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/physical/inmem"
@@ -49,8 +50,12 @@ func Test_RoleActiveList(t *testing.T) {
 	resp := createRole(t, roleName, b)
 
 	resp = listRoles(t, false, b)
-	assert.Contains(t, resp.Data, "names")
-	assert.Len(t, resp.Data["names"], 1)
+
+	assert.Contains(t, resp.Data, "http_raw_body")
+	data := gjson.Parse(resp.Data["http_raw_body"].(string))
+	assert.Contains(t, data.Map(), "data")
+	assert.Contains(t, data.Get("data").Map(), "names")
+	assert.Len(t, data.Get("data.names").Array(), 1)
 }
 
 func Test_RoleArchivedList(t *testing.T) {
@@ -58,23 +63,30 @@ func Test_RoleArchivedList(t *testing.T) {
 	roleName := "ssh"
 	resp := createRole(t, roleName, b)
 	resp = listRoles(t, false, b)
-	assert.Contains(t, resp.Data, "names")
-	assert.Len(t, resp.Data["names"], 1)
+	assert.Contains(t, resp.Data, "http_raw_body")
+	data := gjson.Parse(resp.Data["http_raw_body"].(string))
+	assert.Contains(t, data.Map(), "data")
+	assert.Contains(t, data.Get("data").Map(), "names")
+	assert.Len(t, data.Get("data.names").Array(), 1)
 	resp = deleteRole(t, roleName, b)
 	assert.Contains(t, resp.Data, "http_status_code")
 	status, ok := (resp.Data["http_status_code"]).(int)
 	assert.True(t, ok)
 	assert.Equal(t, status, 204)
 	resp = listRoles(t, false, b)
-	assert.Contains(t, resp.Data, "names")
-	assert.Len(t, resp.Data["names"], 0)
+	assert.Contains(t, resp.Data, "http_raw_body")
+	data = gjson.Parse(resp.Data["http_raw_body"].(string))
+	assert.Contains(t, data.Map(), "data")
+	assert.Contains(t, data.Get("data").Map(), "names")
+	assert.Len(t, data.Get("data.names").Array(), 0)
 
 	resp = listRoles(t, true, b)
 
-	assert.Contains(t, resp.Data, "names")
-	q := resp.Data["names"]
-	fmt.Printf("%#v\n", q)
-	assert.Len(t, resp.Data["names"], 1)
+	assert.Contains(t, resp.Data, "http_raw_body")
+	data = gjson.Parse(resp.Data["http_raw_body"].(string))
+	assert.Contains(t, data.Map(), "data")
+	assert.Contains(t, data.Get("data").Map(), "names")
+	assert.Len(t, data.Get("data.names").Array(), 1)
 }
 
 func listRoles(t *testing.T, showArchived bool, b logical.Backend) *logical.Response {

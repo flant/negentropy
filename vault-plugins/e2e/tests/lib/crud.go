@@ -12,11 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
-	tenant_featureflag "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant-featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
 )
 
@@ -42,9 +38,9 @@ var (
 	_ URLBuilder = (*url2.TenantEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.FeatureFlagEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.IdentitySharingEndpointBuilder)(nil)
-	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
-	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
-	_ URLBuilder = (*tenant_featureflag.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleBindingApprovalEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.TenantFeatureFlagEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.RoleEndpointBuilder)(nil)
 )
 
@@ -132,19 +128,19 @@ func NewIdentitySharingAPI(client *http.Client) TestAPI {
 }
 
 func NewRoleBindingAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &rolebinding.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.RoleBindingEndpointBuilder{}}
 }
 
 func NewRoleBindingApprovalAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &rolebindingapproval.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.RoleBindingApprovalEndpointBuilder{}}
 }
 
 func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &tenant_featureflag.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.TenantFeatureFlagEndpointBuilder{}}
 }
 
 func NewClientAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &user.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.UserEndpointBuilder{}}
 }
 
 func NewRoleAPI(client *http.Client) TestAPI {

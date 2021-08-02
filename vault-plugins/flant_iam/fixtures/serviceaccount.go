@@ -1,6 +1,12 @@
 package fixtures
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	"encoding/json"
+	"math/rand"
+	"time"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+)
 
 const (
 	ServiceAccountUUID1 = "00000000-0000-0000-0000-000000000011"
@@ -17,6 +23,10 @@ func ServiceAccounts() []model.ServiceAccount {
 			Identifier:     "sa1",
 			FullIdentifier: "sa1@test",
 			Origin:         "test",
+			Version:        RandomStr(),
+			CIDRs:          []string{"0.0.0.0/0"},
+			TokenTTL:       100 * time.Second,
+			TokenMaxTTL:    1000 * time.Second,
 		},
 		{
 			UUID:           ServiceAccountUUID2,
@@ -24,6 +34,10 @@ func ServiceAccounts() []model.ServiceAccount {
 			Identifier:     "sa2",
 			FullIdentifier: "sa2@test",
 			Origin:         "test",
+			Version:        RandomStr(),
+			CIDRs:          []string{"0.0.0.0/0"},
+			TokenTTL:       100 * time.Second,
+			TokenMaxTTL:    1000 * time.Second,
 		},
 		{
 			UUID:           ServiceAccountUUID3,
@@ -31,6 +45,10 @@ func ServiceAccounts() []model.ServiceAccount {
 			Identifier:     "sa3",
 			FullIdentifier: "sa3@test",
 			Origin:         "test",
+			Version:        RandomStr(),
+			CIDRs:          []string{"0.0.0.0/0"},
+			TokenTTL:       100 * time.Second,
+			TokenMaxTTL:    1000 * time.Second,
 		},
 		{
 			UUID:           ServiceAccountUUID4,
@@ -38,6 +56,23 @@ func ServiceAccounts() []model.ServiceAccount {
 			Identifier:     "sa4",
 			FullIdentifier: "sa4@test",
 			Origin:         "test",
+			Version:        RandomStr(),
+			CIDRs:          []string{"0.0.0.0/0"},
+			TokenTTL:       100 * time.Second,
+			TokenMaxTTL:    1000 * time.Second,
 		},
 	}
+}
+
+func RandomServiceAccountCreatePayload() map[string]interface{} {
+	saSet := ServiceAccounts()
+	rand.Seed(time.Now().UnixNano())
+	sample := saSet[rand.Intn(len(saSet))]
+
+	sample.Identifier = "Identifier_" + RandomStr()
+
+	bytes, _ := json.Marshal(sample)
+	var payload map[string]interface{}
+	json.Unmarshal(bytes, &payload)
+	return payload
 }

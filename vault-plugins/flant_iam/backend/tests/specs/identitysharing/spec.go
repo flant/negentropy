@@ -1,4 +1,4 @@
-package tenant
+package identitysharing
 
 import (
 	"net/url"
@@ -7,36 +7,35 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-var _ = Describe("Identity sharing", func() {
-	rootClient := lib.NewConfiguredIamVaultClient()
-	tenantsAPI := lib.NewTenantAPI(rootClient)
-	identitySharingAPI := lib.NewIdentitySharingAPI(rootClient)
+var (
+	TestTenantsAPI         api.TestAPI
+	TestIdentitySharingAPI api.TestAPI
+)
 
+var _ = Describe("Identity sharing", func() {
 	var sourceTenantID, targetTenantID string
 
 	BeforeSuite(func() {
-		t1 := tenant.GetPayload()
-		res := tenantsAPI.Create(nil, url.Values{}, t1)
+		t1 := fixtures.RandomTenantCreatePayload()
+		res := TestTenantsAPI.Create(nil, url.Values{}, t1)
 		sourceTenantID = res.Get("tenant.uuid").String()
 
-		t2 := tenant.GetPayload()
-		res = tenantsAPI.Create(nil, url.Values{}, t2)
+		t2 := fixtures.RandomTenantCreatePayload()
+		res = TestTenantsAPI.Create(nil, url.Values{}, t2)
 		targetTenantID = res.Get("tenant.uuid").String()
 	})
 
 	var createdData gjson.Result
 
 	It("can be created", func() {
-		params := tools.Params{
-			"expectPayload": func(b []byte) {
-				data := tools.UnmarshalVaultResponse(b)
-				is := data.Get("identity_sharing")
+		params := api.Params{
+			"expectPayload": func(json gjson.Result) {
+				is := json.Get("identity_sharing")
 
 				Expect(is.Map()).To(HaveKey("uuid"))
 				Expect(is.Map()).To(HaveKey("source_tenant_uuid"))
@@ -50,22 +49,21 @@ var _ = Describe("Identity sharing", func() {
 			"destination_tenant_uuid": targetTenantID,
 			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
 		}
-		createdData = identitySharingAPI.Create(params, url.Values{}, data)
+		createdData = TestIdentitySharingAPI.Create(params, url.Values{}, data)
 	})
 
 	It("can be read", func() {
-		identitySharingAPI.Read(tools.Params{
+		TestIdentitySharingAPI.Read(api.Params{
 			"uuid":        createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid": sourceTenantID,
-			"expectPayload": func(b []byte) {
-				data := tools.UnmarshalVaultResponse(b)
-				Expect(createdData).To(Equal(data))
+			"expectPayload": func(json gjson.Result) {
+				Expect(createdData).To(Equal(json))
 			},
 		}, nil)
 	})
 
 	It("can be listed", func() {
-		list := identitySharingAPI.List(tools.Params{
+		list := TestIdentitySharingAPI.List(api.Params{
 			"tenant_uuid": sourceTenantID,
 		}, url.Values{})
 		Expect(list.Get("identity_sharings").Array()).To(HaveLen(1))
@@ -73,15 +71,15 @@ var _ = Describe("Identity sharing", func() {
 	})
 
 	It("can be deleted", func() {
-		identitySharingAPI.Delete(tools.Params{
+		TestIdentitySharingAPI.Delete(api.Params{
 			"uuid":        createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid": sourceTenantID,
 		}, nil)
 
-		deletedISData := identitySharingAPI.Read(tools.Params{
+		deletedISData := TestIdentitySharingAPI.Read(api.Params{
 			"uuid":         createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid":  sourceTenantID,
-			"expectStatus": tools.ExpectExactStatus(200),
+			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedISData.Get("identity_sharing.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})

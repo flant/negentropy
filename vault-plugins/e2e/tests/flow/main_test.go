@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -15,10 +14,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/multipass"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/service_account"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	flant_vault_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
@@ -30,12 +27,14 @@ func Test(t *testing.T) {
 	RunSpecs(t, "Vault entities")
 }
 
-const methodReaderOnlyPolicyName = "method_reader"
-const methodReaderOnlyPolicy = `
+const (
+	methodReaderOnlyPolicyName = "method_reader"
+	methodReaderOnlyPolicy     = `
 path "auth/flant_iam_auth/auth_method/*" {
   capabilities = ["read"]
 }
 `
+)
 
 var (
 	iamAuthClient       *api.Client
@@ -53,11 +52,11 @@ func uuidFromResp(resp *api.Secret, entityKey, key string) string {
 }
 
 func createUser() *iam.User {
-	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", tools.ToMap(tenant.GetPayload()))
+	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	tenantUUID := uuidFromResp(tenantRaw, "tenant", "uuid")
 
-	userUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/user/", tools.ToMap(user.GetPayload()))
+	userUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/user/", fixtures.RandomUserCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	userUUID := uuidFromResp(userUUIDResp, "user", "uuid")
 
@@ -99,11 +98,11 @@ func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
 }
 
 func createServiceAccount() *iam.ServiceAccount {
-	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", tools.ToMap(tenant.GetPayload()))
+	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	tenantUUID := uuidFromResp(tenantRaw, "tenant", "uuid")
 
-	saUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/service_account/", tools.ToMap(service_account.GetPayload()))
+	saUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/service_account/", fixtures.RandomServiceAccountCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	saUUID := uuidFromResp(saUUIDResp, "service_account", "uuid")
 

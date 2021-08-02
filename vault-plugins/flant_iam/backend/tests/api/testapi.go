@@ -142,6 +142,22 @@ func NewTenantAPI(b *logical.Backend) TestAPI {
 	return &BuilderBasedAPI{backend: b, url: &url2.TenantEndpointBuilder{}}
 }
 
+func NewIdentitySharingAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.IdentitySharingEndpointBuilder{}}
+}
+
+func NewRoleBindingAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.RoleBindingEndpointBuilder{}}
+}
+
+func NewRoleBindingApprovalAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.RoleBindingApprovalEndpointBuilder{}}
+}
+
+func NewTenantFeatureFlagAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.TenantFeatureFlagEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

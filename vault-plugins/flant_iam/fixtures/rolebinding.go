@@ -1,6 +1,12 @@
 package fixtures
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	"encoding/json"
+	"math/rand"
+	"time"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+)
 
 const (
 	RbUUID1 = "00000000-0000-0001-0000-000000000000"
@@ -144,4 +150,15 @@ func RoleBindings() []model.RoleBinding {
 			Origin: model.OriginIAM,
 		},
 	}
+}
+
+func RandomRoleBindingCreatePayload() map[string]interface{} {
+	rbSet := RoleBindings()
+	rand.Seed(time.Now().UnixNano())
+	sample := rbSet[rand.Intn(len(rbSet))]
+	sample.Identifier = "Identifier_" + RandomStr()
+	bytes, _ := json.Marshal(sample)
+	var payload map[string]interface{}
+	json.Unmarshal(bytes, &payload)
+	return payload
 }
