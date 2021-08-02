@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
+
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/physical/inmem"
 	. "github.com/onsi/ginkgo"
@@ -79,7 +81,7 @@ func (b *BuilderBasedAPI) request(operation logical.Operation, url string, param
 		body, ok := rawBody.(string)
 		Expect(ok).To(Equal(true), "http_raw_body should be string")
 
-		json = gjson.Parse(body)
+		json = gjson.Parse(body).Get("data")
 	}
 
 	By(fmt.Sprintf("%d | Payload: %v", statusCodeInt, payload),
@@ -127,7 +129,7 @@ func (b *BuilderBasedAPI) List(params Params, query url.Values) gjson.Result {
 }
 
 func NewRoleAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &RoleEndpointBuilder{}}
+	return &BuilderBasedAPI{backend: b, url: &url2.RoleEndpointBuilder{}}
 }
 
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {

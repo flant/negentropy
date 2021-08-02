@@ -4,21 +4,20 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"net/http"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func ExpectExactStatus(status int) func(response *http.Response) {
-	return func(resp *http.Response) {
-		Expect(resp.StatusCode).To(Equal(status))
+func ExpectExactStatus(expectedStatus int) func(int) {
+	return func(statusCode int) {
+		Expect(statusCode).To(Equal(expectedStatus))
 	}
 }
 
-func ExpectStatus(condition string) func(response *http.Response) {
-	return func(resp *http.Response) {
-		formula := fmt.Sprintf(condition, resp.StatusCode)
+func ExpectStatus(condition string) func(int) {
+	return func(statusCode int) {
+		formula := fmt.Sprintf(condition, statusCode)
 		By("Status code check "+formula, func() {
 			fs := token.NewFileSet()
 

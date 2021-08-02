@@ -43,7 +43,7 @@ var _ = Describe("Role", func() {
 		params := api.Params{
 			"expectPayload": func(json gjson.Result) {
 				// d := tools.UnmarshalVaultResponse(b)
-				data := json.Get("data.role")
+				data := json.Get("role")
 
 				Expect(data.Map()).To(HaveKey("name"))
 				Expect(data.Map()).To(HaveKey("scope"))
@@ -64,14 +64,14 @@ var _ = Describe("Role", func() {
 		var createdData gjson.Result
 		RoleAPI.Create(api.Params{
 			"expectPayload": func(json gjson.Result) {
-				createdData = json.Get("data")
+				createdData = json
 			},
 		}, nil, createPayload)
 
 		RoleAPI.Read(api.Params{
 			"name": createdData.Get("role.name").String(),
 			"expectPayload": func(json gjson.Result) {
-				Expect(createdData).To(Equal(json.Get("data")))
+				Expect(createdData).To(Equal(json))
 			},
 		}, nil)
 	})
@@ -82,7 +82,7 @@ var _ = Describe("Role", func() {
 		var createdData gjson.Result
 		RoleAPI.Create(api.Params{
 			"expectPayload": func(json gjson.Result) {
-				createdData = json.Get("data")
+				createdData = json
 			},
 		}, nil, createPayload)
 
@@ -103,15 +103,14 @@ var _ = Describe("Role", func() {
 		RoleAPI.Update(api.Params{
 			"name": createdData.Get("role.name").String(),
 			"expectPayload": func(json gjson.Result) {
-				updateData = json.Get("data")
+				updateData = json
 			},
 		}, nil, updatePayload)
 
 		RoleAPI.Read(api.Params{
 			"name": createdData.Get("role.name").String(),
 			"expectPayload": func(json gjson.Result) {
-				data := json.Get("data")
-				Expect(updateData).To(Equal(data))
+				Expect(updateData).To(Equal(json))
 			},
 		}, nil)
 	})
@@ -121,7 +120,7 @@ var _ = Describe("Role", func() {
 		var createdData gjson.Result
 		RoleAPI.Create(api.Params{
 			"expectPayload": func(json gjson.Result) {
-				createdData = json.Get("data")
+				createdData = json
 			},
 		}, nil, createPayload)
 
@@ -133,8 +132,7 @@ var _ = Describe("Role", func() {
 			"name":         createdData.Get("role.name").String(),
 			"expectStatus": api.ExpectExactStatus(200),
 			"expectPayload": func(json gjson.Result) {
-				getData := json.Get("data")
-				Expect(getData.Get("role.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+				Expect(json.Get("role.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 			},
 		}, nil)
 	})

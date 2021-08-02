@@ -1,15 +1,9 @@
-package api
+package url
 
 import (
 	"net/url"
 	"path"
-
-	"github.com/hashicorp/vault/sdk/logical"
 )
-
-type RoleAPI struct {
-	b logical.Backend
-}
 
 type RoleEndpointBuilder struct{}
 

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
+
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 
 	. "github.com/onsi/ginkgo"
@@ -48,6 +50,7 @@ var (
 	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
 	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
 	_ URLBuilder = (*tenant_featureflag.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleEndpointBuilder)(nil)
 )
 
 type BuilderBasedAPI struct {
@@ -75,48 +78,50 @@ func (b *BuilderBasedAPI) request(method, url string, params tools.Params, paylo
 	data, err := ioutil.ReadAll(resp.Body)
 	Expect(err).ToNot(HaveOccurred())
 
+	json := tools.UnmarshalVaultResponse(data)
+
 	By(resp.Status+" | Payload: "+string(data), func() {
 		if expectStatus, ok := params["expectStatus"]; ok {
-			expectStatus.(func(response *http.Response))(resp)
+			expectStatus.(func(statusCode int))(resp.StatusCode)
 		}
 
 		if expectPayload, ok := params["expectPayload"]; ok {
-			expectPayload.(func([]byte))(data)
+			expectPayload.(func(result gjson.Result))(json)
 		}
 	})
 
-	return tools.UnmarshalVaultResponse(data)
+	return json
 }
 
 func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.OneCreate(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(201))
+	return b.request(http.MethodPost, "/"+b.url.OneCreate(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(201))
+	return b.request(http.MethodPost, "/"+b.url.Privileged(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Read(params tools.Params, query url.Values) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodGet, b.url.One(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodGet, "/"+b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) Update(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodPost, b.url.One(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodPost, "/"+b.url.One(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(204))
-	b.request(http.MethodDelete, b.url.One(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(204))
+	b.request(http.MethodDelete, "/"+b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Result {
 	// query.Set("list", "true")
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodGet, "/"+b.url.Collection(params, query), params, nil)
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
@@ -145,4 +150,8 @@ func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
 
 func NewClientAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &user.EndpointBuilder{}}
+}
+
+func NewRoleAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.RoleEndpointBuilder{}}
 }
