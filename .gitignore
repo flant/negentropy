@@ -18,8 +18,6 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-authd/dev/secret/authd.jwt
-
 infra/**/packer_cache
 infra/**/output
 variables.pkrvars.hcl
@@ -30,6 +28,20 @@ vault-plugins/shared/kafka/example_plugin/build
 vault-plugins/flant_iam/tests/data/*
 vault-plugins/tests/data/*
 
+# authd
+authd/build/
+authd/dev/secret/authd.jwt
+
+# cli
+cli/build/
+
+# server-access
+server-access/flant-server-accessd/build/
+
+# nss
+server-access/server-access-nss/build/
+server-access/server-access-nss/target/
+
 # e2e
-vault-plugins/e2e/data/*
-vault-plugins/e2e/tools/*
+e2e/data/*
+e2e/tools/*
