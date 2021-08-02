@@ -10,9 +10,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func Test(t *testing.T) {
+func Test_roleCRUD(t *testing.T) {
 	RegisterFailHandler(Fail)
 	backend := api.TestBackend()
-	specs.RoleAPI = api.NewRoleAPI(&backend)
+	specs.RoleCrudSpec(api.NewRoleAPI(&backend))
 	RunSpecs(t, "CRUD: Role")
+}
+
+func Test_featureFlagCRUD(t *testing.T) {
+	RegisterFailHandler(Fail)
+	backend := api.TestBackend()
+	specs.FeatureFlagCrudSpec(api.NewFeatureFlagAPI(&backend))
+	RunSpecs(t, "CRUD: Feature Flag")
 }

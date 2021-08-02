@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"net/http"
 	"net/url"
+	"strings"
 
 	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
 
@@ -45,10 +45,12 @@ type BuilderBasedAPI struct {
 
 func (b *BuilderBasedAPI) request(operation logical.Operation, url string, params Params, payload interface{}) gjson.Result {
 	p, ok := payload.(map[string]interface{})
-	if !(operation == logical.ReadOperation || operation == logical.DeleteOperation) {
+	if !(operation == logical.ReadOperation || operation == logical.DeleteOperation || operation == logical.ListOperation) {
 		Expect(ok).To(Equal(true), "definitely need map[string]interface{}")
 	}
-
+	if strings.HasSuffix(url, "?") {
+		url = url[:len(url)-1]
+	}
 	resp, requestErr := (*b.backend).HandleRequest(context.Background(), &logical.Request{
 		Operation: operation,
 		Path:      url,
@@ -105,7 +107,7 @@ func (b *BuilderBasedAPI) Create(params Params, query url.Values, payload interf
 
 func (b *BuilderBasedAPI) CreatePrivileged(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
+	return b.request(logical.CreateOperation, b.url.Privileged(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Read(params Params, query url.Values) gjson.Result {
@@ -125,11 +127,15 @@ func (b *BuilderBasedAPI) Delete(params Params, query url.Values) {
 
 func (b *BuilderBasedAPI) List(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
-	return b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
+	return b.request(logical.ReadOperation, b.url.Collection(params, query), params, nil)
 }
 
 func NewRoleAPI(b *logical.Backend) TestAPI {
 	return &BuilderBasedAPI{backend: b, url: &url2.RoleEndpointBuilder{}}
+}
+
+func NewFeatureFlagAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {

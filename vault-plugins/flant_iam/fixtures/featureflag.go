@@ -1,6 +1,7 @@
 package fixtures
 
-const (
-	FeatureFlag1 = "FeatureFlag1"
-	FeatureFlag2 = "FeatureFlag2"
-)
+func RandomFeatureFlagCreatePayload() map[string]interface{} {
+	return map[string]interface{}{
+		"name": "name_" + RandomStr(),
+	}
+}

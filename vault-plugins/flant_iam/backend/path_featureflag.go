@@ -167,6 +167,6 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 				"names": list,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

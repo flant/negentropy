@@ -11,10 +11,16 @@ import (
 	apispecs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 )
 
-func Test(t *testing.T) {
+func Test_RoleCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
-	apispecs.RoleAPI = lib.NewRoleAPI(rootClient)
-
+	apispecs.RoleCrudSpec(lib.NewRoleAPI(rootClient))
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Role")
+}
+
+func Test_FeatureFlagCRUD(t *testing.T) {
+	rootClient := lib.NewConfiguredIamVaultClient()
+	apispecs.FeatureFlagCrudSpec(lib.NewFeatureFlagAPI(rootClient))
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "CRUD: FeatureFlag")
 }

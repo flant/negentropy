@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/identitysharing"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
@@ -45,7 +44,7 @@ var (
 	_ TestAPI = (*BuilderBasedAPI)(nil)
 
 	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
-	_ URLBuilder = (*featureflag.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.FeatureFlagEndpointBuilder)(nil)
 	_ URLBuilder = (*identitysharing.EndpointBuilder)(nil)
 	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
 	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
@@ -129,7 +128,7 @@ func NewTenantAPI(client *http.Client) TestAPI {
 }
 
 func NewFeatureFlagAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &featureflag.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
 func NewIdentitySharingAPI(client *http.Client) TestAPI {
