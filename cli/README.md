@@ -5,7 +5,7 @@ flant CLI utility
 ## Build
 
 - git clone git@github.com:flant/negentropy.git
-- cd cli
+- cd negentropy/cli
 - GO111MODULE=on go build -o /OPT/cli main.go
 
 ## Deployment
