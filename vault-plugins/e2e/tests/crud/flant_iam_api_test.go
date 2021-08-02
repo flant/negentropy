@@ -24,3 +24,10 @@ func Test_FeatureFlagCRUD(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: FeatureFlag")
 }
+
+func Test_TenantCRUD(t *testing.T) {
+	rootClient := lib.NewConfiguredIamVaultClient()
+	apispecs.TenantCrudSpec(lib.NewTenantAPI(rootClient))
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "CRUD: Tenant")
+}

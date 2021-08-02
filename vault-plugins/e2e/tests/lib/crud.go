@@ -8,20 +8,16 @@ import (
 	"net/http"
 	"net/url"
 
-	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
-
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/identitysharing"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	tenant_featureflag "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant-featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
 )
 
 type TestAPI interface {
@@ -43,9 +39,9 @@ type URLBuilder interface {
 var (
 	_ TestAPI = (*BuilderBasedAPI)(nil)
 
-	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.TenantEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.FeatureFlagEndpointBuilder)(nil)
-	_ URLBuilder = (*identitysharing.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.IdentitySharingEndpointBuilder)(nil)
 	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
 	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
 	_ URLBuilder = (*tenant_featureflag.EndpointBuilder)(nil)
@@ -124,7 +120,7 @@ func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Resu
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &tenant.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.TenantEndpointBuilder{}}
 }
 
 func NewFeatureFlagAPI(client *http.Client) TestAPI {
@@ -132,7 +128,7 @@ func NewFeatureFlagAPI(client *http.Client) TestAPI {
 }
 
 func NewIdentitySharingAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &identitysharing.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.IdentitySharingEndpointBuilder{}}
 }
 
 func NewRoleBindingAPI(client *http.Client) TestAPI {

@@ -138,6 +138,10 @@ func NewFeatureFlagAPI(b *logical.Backend) TestAPI {
 	return &BuilderBasedAPI{backend: b, url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
+func NewTenantAPI(b *logical.Backend) TestAPI {
+	return &BuilderBasedAPI{backend: b, url: &url2.TenantEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

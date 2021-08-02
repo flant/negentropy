@@ -346,7 +346,7 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 				"tenants": tenants,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

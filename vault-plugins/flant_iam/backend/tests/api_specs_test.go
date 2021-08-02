@@ -23,3 +23,10 @@ func Test_featureFlagCRUD(t *testing.T) {
 	specs.FeatureFlagCrudSpec(api.NewFeatureFlagAPI(&backend))
 	RunSpecs(t, "CRUD: Feature Flag")
 }
+
+func Test_tenantCRUD(t *testing.T) {
+	RegisterFailHandler(Fail)
+	backend := api.TestBackend()
+	specs.TenantCrudSpec(api.NewTenantAPI(&backend))
+	RunSpecs(t, "CRUD: Tenant")
+}
