@@ -8,11 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 var _ = Describe("Tenant", func() {

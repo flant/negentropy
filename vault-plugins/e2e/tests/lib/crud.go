@@ -21,6 +21,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
 	tenant_featureflag "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant-featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
 )
 
 type TestAPI interface {

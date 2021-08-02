@@ -7,9 +7,12 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 const HttpPathIssue = "issue"
@@ -44,10 +47,37 @@ func pathIssueJwtType(b *flantIamAuthBackend) *framework.Path {
 	return p
 }
 
+func pathIssueMultipassJwt(b *flantIamAuthBackend) *framework.Path {
+	p := &framework.Path{
+		Pattern: fmt.Sprintf("%s/multipass_jwt/", HttpPathIssue) + framework.GenericNameRegex("uuid"),
+		Fields: map[string]*framework.FieldSchema{
+			"uuid": {
+				Type:        framework.TypeString,
+				Description: "Name of the jwt type",
+				Required:    true,
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathIssueMultipassJwt,
+				Summary:  "Update an existing jwt type",
+			},
+		},
+		HelpSynopsis:    "Issue multipass jwt token with new generation number",
+		HelpDescription: "",
+	}
+
+	return p
+}
+
 // pathJwtTypeCreateUpdate registers a new JwtTypeConfig with the backend or updates the options
 // of an existing JwtTypeConfig
 func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	isEnabled, err := b.tokenController.IsEnabled(ctx, req)
+	tnx := b.storage.Txn(false)
+	defer tnx.Abort()
+
+	isEnabled, err := b.jwtController.IsEnabled(tnx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +100,6 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 	if !ok {
 		return nil, fmt.Errorf("cannot cast 'options' to map[string]interface{}")
 	}
-
-	tnx := b.storage.Txn(false)
-	defer tnx.Abort()
 
 	repo := repos.NewJWTIssueTypeRepo(tnx)
 	jwtType, err := repo.Get(name)
@@ -103,7 +130,7 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("cannot cast 'optionsWithDefaults' to map[string]interface{}")
 	}
 
-	signedJwt, err := jwt.NewJwtToken(ctx, req.Storage, mapOptions, &jwt.TokenOptions{
+	signedJwt, err := b.jwtController.IssuePayloadAsJwt(tnx, mapOptions, &jwt.TokenOptions{
 		TTL: jwtType.TTL,
 	})
 	if err != nil {
@@ -112,7 +139,48 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"jwt": signedJwt,
+			"token": signedJwt,
+		},
+	}
+
+	return resp, nil
+}
+
+// pathJwtTypeCreateUpdate registers a new JwtTypeConfig with the backend or updates the options
+// of an existing JwtTypeConfig
+func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	multipassUUID, errResp := backendutils.NotEmptyStringParam(data, "uuid")
+	if errResp != nil {
+		return errResp, nil
+	}
+
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	isEnabled, err := b.jwtController.IsEnabled(tnx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isEnabled {
+		return logical.ErrorResponse("jwt is not enabled"), nil
+	}
+
+	multipassService := &usecase.Multipass{
+		JwtController:    b.jwtController,
+		MultipassRepo:    iam.NewMultipassRepository(tnx),
+		GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+		Logger:           b.NamedLogger("MultipassNewGen"),
+	}
+
+	token, err := multipassService.IssueNewMultipassGeneration(tnx, multipassUUID)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"token": token,
 		},
 	}
 

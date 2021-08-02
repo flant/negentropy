@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -85,7 +87,13 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 	storage.SetLogger(conf.Logger)
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb))
+	restoreHandlers := []kafka_source.RestoreFunc{
+		jwtkafka.SelfRestoreMessage,
+	}
+
+	logger := conf.Logger.Named("IAM")
+
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers))
 	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger.Named("KafkaSourceJWKS")))
 
 	err = storage.Restore()
@@ -95,7 +103,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb))
+	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, logger.Named("KafkaSourceJWKS")))
 	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, model.PK)
 	if err != nil {
 		return nil, err
@@ -119,7 +127,51 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	b.InitializeFunc = initializer(storage)
 
-	tokenController := sharedjwt.NewTokenController()
+	tokenController := sharedjwt.NewJwtController(
+		storage,
+		mb.GetEncryptionPublicKeyStrict,
+		logger.Named("JWT.Controller"),
+		time.Now,
+	)
+
+	periodicLogger := logger.Named("Periodic")
+	b.PeriodicFunc = func(ctx context.Context, request *logical.Request) error {
+		periodicLogger.Debug("Run periodic function")
+		defer periodicLogger.Debug("Periodic function finished")
+
+		var allErrors *multierror.Error
+		run := func(controllerName string, action func() error) {
+			periodicLogger.Debug(fmt.Sprintf("Run %s OnPeriodical", controllerName))
+
+			err := action()
+			if err != nil {
+				allErrors = multierror.Append(allErrors, err)
+				periodicLogger.Error(fmt.Sprintf("Error while %s periodical function: %s", controllerName, err), "err", err)
+				return
+			}
+
+			periodicLogger.Debug(fmt.Sprintf("%s OnPeriodical was successful run", controllerName))
+		}
+
+		run("jwtController", func() error {
+			tx := storage.Txn(true)
+			defer tx.Abort()
+
+			err := tokenController.OnPeriodical(tx)
+			if err != nil {
+				return err
+			}
+
+			if err := tx.Commit(); err != nil {
+				periodicLogger.Error(fmt.Sprintf("Can not commit memdb transaction: %s", err), "err", err)
+				return err
+			}
+
+			return nil
+		})
+
+		return allErrors
+	}
 
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
@@ -135,18 +187,13 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
-		kafkaPaths(b, storage),
+		kafkaPaths(b, storage, logger.Named("KafkaPath")),
 		identitySharingPaths(b, storage),
-		[]*framework.Path{
-			sharedjwt.PathEnable(tokenController),
-			sharedjwt.PathDisable(tokenController),
-			sharedjwt.PathConfigure(tokenController),
-			sharedjwt.PathJWKS(tokenController),
-			sharedjwt.PathRotateKey(tokenController),
-		},
 
-		extension_server_access.ServerPaths(b, storage),
+		extension_server_access.ServerPaths(b, storage, tokenController),
 		extension_server_access.ServerConfigurePaths(b, storage),
+
+		tokenController.ApiPaths(),
 	)
 
 	return b, nil

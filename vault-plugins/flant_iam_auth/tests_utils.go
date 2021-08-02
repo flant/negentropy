@@ -31,7 +31,10 @@ func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	b, err := Factory(context.Background(), config)
+	b, err := Factory(context.Background(), config, func() (string, error) {
+		return "test", nil
+	})
+
 	fb := b.(*flantIamAuthBackend)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)

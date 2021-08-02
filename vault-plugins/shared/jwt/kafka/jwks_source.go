@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -69,7 +69,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return nil
 	}
 
-	if objType != jwt.JWKSType {
+	if objType != model.JWKSType {
 		return nil
 	}
 
@@ -89,7 +89,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	var jwks *jwt.JWKS
+	var jwks *model.JWKS
 
 	err = json.Unmarshal(msg.Value, jwks)
 	if err != nil {
@@ -123,15 +123,15 @@ func (rk *JWKSKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		}
 
 		if len(signature) == 0 {
-			rk.logger.Warn("no signature found. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+			rk.logger.Warn(fmt.Sprintf("no signature found. Skipping message: %s in topic: %s at offset %d\n",
+				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
 
 		err := rk.verifySign(signature, msg.Value)
 		if err != nil {
-			rk.logger.Warn("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+			rk.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
 
@@ -175,12 +175,14 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 
 	rk.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
 
+	source.IgnoreBody = true
+
 	if msg.IsDeleted() {
-		obj, err := tx.First(jwt.JWKSType, "id", msg.ID)
+		obj, err := tx.First(model.JWKSType, "id", msg.ID)
 		if err != nil {
 			return err
 		}
-		err = tx.Delete(jwt.JWKSType, obj)
+		err = tx.Delete(model.JWKSType, obj)
 		if err != nil {
 			return err
 		}
@@ -190,14 +192,14 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 
 	// creation
 
-	var jwks *jwt.JWKS
+	jwks := &model.JWKS{}
 
 	err := json.Unmarshal(msg.Data, jwks)
 	if err != nil {
 		return backoff.Permanent(err)
 	}
 
-	err = tx.Insert(jwt.JWKSType, jwks)
+	err = tx.Insert(model.JWKSType, jwks)
 	if err != nil {
 		return err
 	}

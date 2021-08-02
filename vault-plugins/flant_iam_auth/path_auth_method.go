@@ -17,6 +17,7 @@ import (
 	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
@@ -265,13 +266,14 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return errResponse, nil
 	}
 
-	methodType, errResponse, err := verifyAuthMethodType(b, data, ctx, req)
+	tnx := b.storage.Txn(true)
+	defer tnx.Abort()
+
+	methodType, errResponse, err := verifyAuthMethodType(b, data, tnx)
 	if errResponse != nil || err != nil {
 		return errResponse, err
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
 	repo := repos.NewAuthMethodRepo(tnx)
 
 	// get or create method obj
@@ -350,6 +352,8 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		if errResponse != nil || err != nil {
 			return errResponse, err
 		}
+	} else if model.IsAuthMethod(methodType, model.MethodTypeMultipass) {
+		method.UserClaim = "sub"
 	}
 
 	errResponse, err = fillJwtLeewayParamsToAuthMethod(method, data)
@@ -547,7 +551,7 @@ func fillOIDCParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldD
 	return nil, nil
 }
 
-func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, ctx context.Context, req *logical.Request) (string, *logical.Response, error) {
+func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, tnx *io.MemoryStoreTxn) (string, *logical.Response, error) {
 	// verify method type
 	methodTypeRaw, ok := data.GetOk("method_type")
 	if !ok {
@@ -576,7 +580,7 @@ func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, ctx
 	}
 
 	if methodType == model.MethodTypeMultipass {
-		jwtEnabled, err := b.tokenController.IsEnabled(ctx, req)
+		jwtEnabled, err := b.jwtController.IsEnabled(tnx)
 		if err != nil {
 			return "", nil, err
 		}

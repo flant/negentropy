@@ -15,19 +15,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
 
 // TODO: changed group identifier once project indentifier changes in the flant_iam
 
 type serverBackend struct {
 	logical.Backend
-	storage *io.MemoryStore
+	storage       *io.MemoryStore
+	jwtController *jwt.Controller
 }
 
-func ServerPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+func ServerPaths(b logical.Backend, storage *io.MemoryStore, jwtController *jwt.Controller) []*framework.Path {
 	bb := &serverBackend{
-		Backend: b,
-		storage: storage,
+		Backend:       b,
+		storage:       storage,
+		jwtController: jwtController,
 	}
 
 	return bb.paths()
@@ -237,7 +240,9 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 		defer tx.Abort()
 		service := usecase.NewServerService(tx)
 
-		serverUUID, jwt, err := service.Create(ctx, req.Storage, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
+		issueFn := jwt.CreateIssueMultipassFunc(b.jwtController, tx)
+
+		serverUUID, jwtToken, err := service.Create(issueFn, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
 			data.Get("identifier").(string), labels, annotations, config.RolesForServers)
 		if err != nil {
 			msg := "cannot create server"
@@ -253,7 +258,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"multipassJWT": jwt,
+			"multipassJWT": jwtToken,
 			"uuid":         serverUUID,
 		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)

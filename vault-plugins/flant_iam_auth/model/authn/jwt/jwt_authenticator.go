@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/cap/jwt"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
@@ -25,6 +26,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		return nil, fmt.Errorf("missing token")
 	}
 
+	a.Logger.Debug("Start validate jwt")
 	// Validate JWT supported algorithms if they've been provided. Otherwise,
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := ToAlg(a.AuthSource.JWTSupportedAlgs)
@@ -34,6 +36,8 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 			jwt.ES512, jwt.PS256, jwt.PS384, jwt.PS512, jwt.EdDSA,
 		}
 	}
+
+	a.Logger.Debug("Got jwt supported algs")
 
 	// Set expected claims values to assert on the JWT
 	expected := jwt.Expected{
@@ -46,11 +50,14 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		ClockSkewLeeway:   a.AuthMethod.ClockSkewLeeway,
 	}
 
+	a.Logger.Debug("Start validate signature")
 	// Validate the JWT by verifying its signature and asserting expected claims values
 	allClaims, err := a.JwtValidator.Validate(ctx, token, expected)
 	if err != nil {
 		return nil, fmt.Errorf("error validating token: %s", err.Error())
 	}
+
+	a.Logger.Debug("Get claims")
 
 	// If there are no bound audiences for the authMethodConfig, then the existence of any audience
 	// in the audience claim should result in an error.
@@ -74,5 +81,12 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 
 		Metadata:     alias.Metadata,
 		GroupAliases: groupAliases,
+
+		Claims: allClaims,
 	}, nil
+}
+
+func (a *Authenticator) CanRenew(vaultAuth *logical.Auth) (bool, error) {
+	// TODO may be add logiс?
+	return true, nil
 }

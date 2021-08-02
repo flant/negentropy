@@ -11,9 +11,12 @@ import (
 
 type ModelHandler interface {
 	HandleUser(user *iam.User) error
-	HandleServiceAccount(sa *iam.ServiceAccount) error
-
 	HandleDeleteUser(uuid string) error
+
+	HandleMultipass(mp *iam.Multipass) error
+	HandleDeleteMultipass(uuid string) error
+
+	HandleServiceAccount(sa *iam.ServiceAccount) error
 	HandleDeleteServiceAccount(uuid string) error
 }
 
@@ -100,10 +103,19 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		table = iam.RoleBindingApprovalType
 
 	case iam.MultipassType:
-		t := &iam.Multipass{}
-		t.UUID = objID
-		inputObject = t
+		mp := &iam.Multipass{}
+		mp.UUID = objID
+		inputObject = mp
 		table = iam.MultipassType
+		if isDelete {
+			entityHandler = func() error {
+				return handler.HandleDeleteMultipass(objID)
+			}
+		} else {
+			entityHandler = func() error {
+				return handler.HandleMultipass(mp)
+			}
+		}
 
 	case iam.ServiceAccountPasswordType:
 		t := &iam.ServiceAccountPassword{}

@@ -75,10 +75,10 @@ func issuePathJWT(t *testing.T) {
 
 		// has jwt key in response
 		data := extractResponseData(t, resp)
-		assert.Contains(t, data, "jwt")
+		assert.Contains(t, data, "token")
 
 		// correct parse jwt
-		token := data["jwt"].(string)
+		token := data["token"].(string)
 		parsed, err := jwt.ParseSigned(token)
 		assert.NoError(t, err)
 

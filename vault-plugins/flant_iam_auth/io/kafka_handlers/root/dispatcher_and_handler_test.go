@@ -270,7 +270,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 }
 
 func TestRootMessageDispatcherCreate(t *testing.T) {
-	t.Skip("sometime fixe it")
 	onlySaveCases := []struct {
 		title string
 		obj   io.MemoryStorableObject
@@ -393,7 +392,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			require.Equal(t, e.Name, c.fullId(user), "must name same af full_id")
 
 			aliases, _ := getAllAliases(t, tx, uuid)
-			require.Len(t, aliases, 0, "should does not create aliases")
+			require.Len(t, aliases, 1, "should does create one aliase for internal multipass source")
 
 			t.Run("creates entity aliases for all auth sources", func(t *testing.T) {
 				user := c.obj

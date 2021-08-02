@@ -43,7 +43,7 @@ func MultipassGenerationNumberSchema() *memdb.DBSchema {
 // This entity is a 1-to-1 relation with Multipass.
 type MultipassGenerationNumber struct {
 	UUID             MultipassGenerationNumberUUID `json:"uuid"` // PK == multipass uuid.
-	GenerationNumber int                           `json:"generation_number"`
+	GenerationNumber int64                         `json:"generation_number"`
 }
 
 func (t *MultipassGenerationNumber) ObjType() string {
@@ -77,16 +77,22 @@ func (r *MultipassGenerationNumberRepository) GetByID(id MultipassGenerationNumb
 	if err != nil {
 		return nil, err
 	}
+
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, nil
 	}
+
 	return raw.(*MultipassGenerationNumber), nil
 }
 
 func (r *MultipassGenerationNumberRepository) Update(updated *MultipassGenerationNumber) error {
-	_, err := r.GetByID(updated.UUID)
+	raw, err := r.GetByID(updated.UUID)
 	if err != nil {
 		return err
+	}
+
+	if raw == nil {
+		return model.ErrNotFound
 	}
 
 	// Update
@@ -99,12 +105,16 @@ func (r *MultipassGenerationNumberRepository) Delete(id MultipassGenerationNumbe
 }
 
 func (r *MultipassGenerationNumberRepository) delete(id string) error {
-	tenant, err := r.GetByID(id)
+	mp, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	return r.db.Delete(MultipassGenerationNumberType, tenant)
+	if mp == nil {
+		return model.ErrNotFound
+	}
+
+	return r.db.Delete(MultipassGenerationNumberType, mp)
 }
 
 func (r *MultipassGenerationNumberRepository) List() ([]*MultipassGenerationNumber, error) {

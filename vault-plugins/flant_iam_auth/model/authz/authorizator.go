@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	hcapi "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -11,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type Authorizator struct {
@@ -23,6 +25,21 @@ type Authorizator struct {
 	MountAccessor *vault.MountAccessorGetter
 
 	Logger hclog.Logger
+}
+
+func NewAutorizator(tnx *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
+	return &Authorizator{
+		Logger: logger.Named("AuthoriZator"),
+
+		SaRepo:   iam.NewServiceAccountRepository(tnx),
+		UserRepo: iam.NewUserRepository(tnx),
+
+		EaRepo:     model.NewEntityAliasRepo(tnx),
+		EntityRepo: model.NewEntityRepo(tnx),
+
+		MountAccessor: aGetter,
+		IdentityApi:   api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),
+	}
 }
 
 func (a *Authorizator) Authorize(authnResult *authn.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
@@ -119,6 +136,17 @@ func (a *Authorizator) populateAuthnData(authzRes *logical.Auth, authnResult *au
 			}
 
 			authzRes.Metadata[k] = v
+		}
+	}
+
+	if len(authnResult.InternalData) > 0 {
+		for k, v := range authnResult.InternalData {
+			if _, ok := authzRes.Metadata[k]; ok {
+				a.Logger.Warn(fmt.Sprintf("Key %s already exists in authz internal data. Skip", k))
+				continue
+			}
+
+			authzRes.InternalData[k] = v
 		}
 	}
 
