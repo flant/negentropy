@@ -6,8 +6,8 @@ server-access plugin to get users and their certificates.
 ## build
 
 - git clone git@github.com:flant/negentropy.git
-- cd server-access/flant-server-accessd
-- GO111MODULE=on go build -o server-accessd ./cmd/main.go
+- cd negentropy/server-access
+- GO111MODULE=on go build -o server-accessd .flant-server-accessd/cmd/main.go
 
 ## deploy & config
 
