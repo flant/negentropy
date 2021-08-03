@@ -31,7 +31,7 @@ ExecStart=/opt/authd/bin/authd
 WantedBy=multi-user.target
 ```
 
-- binary needs configs at /etc/flant/negentropy/authd-conf.d (it is a folder)  
+- binary needs configs in /etc/flant/negentropy/authd-conf.d directory
   examples of yaml configs are in authd/dev/conf  
   main.yaml provide connection to vault  
   sock1.yaml etc - are configs for connections to authd
