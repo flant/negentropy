@@ -3,31 +3,29 @@ package identitysharing
 import (
 	"net/url"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 var (
-	TestTenantsAPI         api.TestAPI
-	TestIdentitySharingAPI api.TestAPI
+	TenantAPI api.TestAPI
+	TestAPI   api.TestAPI
 )
 
 var _ = Describe("Identity sharing", func() {
 	var sourceTenantID, targetTenantID string
 
 	BeforeSuite(func() {
-		t1 := fixtures.RandomTenantCreatePayload()
-		res := TestTenantsAPI.Create(nil, url.Values{}, t1)
-		sourceTenantID = res.Get("tenant.uuid").String()
-
-		t2 := fixtures.RandomTenantCreatePayload()
-		res = TestTenantsAPI.Create(nil, url.Values{}, t2)
-		targetTenantID = res.Get("tenant.uuid").String()
+		t1 := specs.CreateRandomTenant(TenantAPI)
+		sourceTenantID = t1.UUID
+		t2 := specs.CreateRandomTenant(TenantAPI)
+		targetTenantID = t2.UUID
 	})
 
 	var createdData gjson.Result
@@ -49,11 +47,11 @@ var _ = Describe("Identity sharing", func() {
 			"destination_tenant_uuid": targetTenantID,
 			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
 		}
-		createdData = TestIdentitySharingAPI.Create(params, url.Values{}, data)
+		createdData = TestAPI.Create(params, url.Values{}, data)
 	})
 
 	It("can be read", func() {
-		TestIdentitySharingAPI.Read(api.Params{
+		TestAPI.Read(api.Params{
 			"uuid":        createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid": sourceTenantID,
 			"expectPayload": func(json gjson.Result) {
@@ -63,7 +61,7 @@ var _ = Describe("Identity sharing", func() {
 	})
 
 	It("can be listed", func() {
-		list := TestIdentitySharingAPI.List(api.Params{
+		list := TestAPI.List(api.Params{
 			"tenant_uuid": sourceTenantID,
 		}, url.Values{})
 		Expect(list.Get("identity_sharings").Array()).To(HaveLen(1))
@@ -71,12 +69,12 @@ var _ = Describe("Identity sharing", func() {
 	})
 
 	It("can be deleted", func() {
-		TestIdentitySharingAPI.Delete(api.Params{
+		TestAPI.Delete(api.Params{
 			"uuid":        createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid": sourceTenantID,
 		}, nil)
 
-		deletedISData := TestIdentitySharingAPI.Read(api.Params{
+		deletedISData := TestAPI.Read(api.Params{
 			"uuid":         createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid":  sourceTenantID,
 			"expectStatus": api.ExpectExactStatus(200),

@@ -9,7 +9,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 )
 
-func Test(t *testing.T) {
+func Test_rolebindingApprovalCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TestTenantAPI = api.NewTenantAPI(&backend)
 	TestRoleBindingAPI = api.NewRoleBindingAPI(&backend)

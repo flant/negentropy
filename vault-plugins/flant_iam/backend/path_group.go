@@ -335,6 +335,6 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 				"groups": groups,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

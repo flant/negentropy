@@ -139,10 +139,18 @@ func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.TenantFeatureFlagEndpointBuilder{}}
 }
 
-func NewClientAPI(client *http.Client) TestAPI {
+func NewUserAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.UserEndpointBuilder{}}
 }
 
 func NewRoleAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.RoleEndpointBuilder{}}
+}
+
+func NewGroupAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.GroupEndpointBuilder{}}
+}
+
+func NewUserMultipassAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.UserMultipassEndpointBuilder{}}
 }

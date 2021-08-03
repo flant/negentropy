@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func Test(t *testing.T) {
+func Test_rolebindingApprovalCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	rolebindingapproval.TestTenantAPI = lib.NewTenantAPI(rootClient)
 	rolebindingapproval.TestRoleBindingAPI = lib.NewRoleBindingAPI(rootClient)

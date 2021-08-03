@@ -1,4 +1,4 @@
-package identitysharing
+package user
 
 import (
 	"testing"
@@ -9,10 +9,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 )
 
-func Test_identitySharingCRUD(t *testing.T) {
-	RegisterFailHandler(Fail)
+func Test_userCRUD(t *testing.T) {
 	backend := api.TestBackend()
+	TestAPI = api.NewUserAPI(&backend)
 	TenantAPI = api.NewTenantAPI(&backend)
-	TestAPI = api.NewIdentitySharingAPI(&backend)
-	RunSpecs(t, "CRUD: IdentitySharing")
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "CRUD: User")
 }
