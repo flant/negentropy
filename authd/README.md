@@ -7,7 +7,7 @@ clients.
 
 - git clone git@github.com:flant/negentropy.git
 - cd negentropy/authd
-- GO111MODULE=on go build -o /OPT/authd/bin/authd cmd/authd/main.go
+- GO111MODULE=on go build -o /opt/authd/bin/authd cmd/authd/main.go
 
 ## deploy & config
 
