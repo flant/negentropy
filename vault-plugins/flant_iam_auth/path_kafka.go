@@ -3,31 +3,34 @@ package jwtauth
 import (
 	"context"
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
-	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 type kafkaBackend struct {
 	logical.Backend
-	storage *io.MemoryStore
+	storage *sharedio.MemoryStore
 	broker  *kafka.MessageBroker
+	logger  hclog.Logger
 }
 
-func kafkaPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path {
+func kafkaPaths(b logical.Backend, storage *sharedio.MemoryStore, logger hclog.Logger) []*framework.Path {
 	bb := kafkaBackend{
 		Backend: b,
 		storage: storage,
 		broker:  storage.GetKafkaBroker(),
+		logger:  logger,
 	}
 
 	configurePath := &framework.Path{
@@ -101,8 +104,9 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 
 	rootPublicKey := strings.ReplaceAll(strings.TrimSpace(rootPublicKeyRaw.(string)), "\\n", "\n")
+	kb.logger.Debug(fmt.Sprintf("Root pub key pub key %s", rootPublicKey))
 
-	pubkey, err := parsePubkey(rootPublicKey)
+	pubkey, err := utils.ParsePubkey(rootPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +115,17 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	peerKeysRaw, ok := data.GetOk("peers_public_keys")
 	if ok {
 		peerKeysStr := peerKeysRaw.([]string)
-
 		for _, pks := range peerKeysStr {
-			pub, err := parsePubkey(strings.TrimSpace(pks))
+			pksTrimmed := strings.ReplaceAll(strings.TrimSpace(pks), "\\n", "\n")
+			kb.logger.Debug(fmt.Sprintf("Peers pub keys %s", pksTrimmed))
+			pub, err := utils.ParsePubkey(pksTrimmed)
 			if err != nil {
 				return nil, err
 			}
 			peerKeys = append(peerKeys, pub)
 		}
+	} else {
+		kb.logger.Warn("Not pass one more peersKeys")
 	}
 
 	if len(kb.broker.GetEndpoints()) == 0 {
@@ -139,6 +146,16 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 		return nil, err
 	}
 
+	// Create multipass generation number topic
+	multipassGenNumberConfig := map[string]string{
+		"cleanup.policy": "compact, delete",
+		"retention.ms":   "2678400000", // 31 days
+	}
+	err = kb.broker.CreateTopic(ctx, io.MultipassNumberGenerationTopic, multipassGenNumberConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	d, err := json.Marshal(kb.broker.PluginConfig)
 	if err != nil {
 		return nil, err
@@ -153,17 +170,4 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	kb.storage.ReinitializeKafka()
 
 	return &logical.Response{}, nil
-}
-
-func parsePubkey(data string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(data))
-	if block == nil {
-		return nil, errors.New("key can not be parsed")
-	}
-	pubkey, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return pubkey, nil
 }

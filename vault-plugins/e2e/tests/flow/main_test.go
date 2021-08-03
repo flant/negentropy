@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/auth_source"
@@ -33,6 +34,14 @@ const (
 path "auth/flant_iam_auth/auth_method/*" {
   capabilities = ["read"]
 }
+
+path "auth/flant_iam_auth/issue/multipass_jwt/*" {
+  capabilities = ["update"]
+}
+
+path "auth/token/renew" {
+  capabilities = ["update"]
+}
 `
 )
 
@@ -44,7 +53,7 @@ var (
 	mountAccessorId     string
 	jwtMethodName       string
 	multipassMethodName string
-	tokenTTl            = 5 * time.Second
+	tokenTTl            = 20 * time.Second
 )
 
 func uuidFromResp(resp *api.Secret, entityKey, key string) string {
@@ -74,6 +83,39 @@ func createUser() *iam.User {
 	time.Sleep(5 * time.Second)
 
 	return &userObj
+}
+
+func deleteUserMultipass(user *iam.User, multipass *iam.Multipass) {
+	_, err := iamClient.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID + "/multipass/" + multipass.UUID)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(2 * time.Second)
+}
+
+func prolongUserMultipass(positiveCase bool, uuid string, client *api.Client) string {
+	maRaw, err := client.Logical().Write(lib.IamAuthPluginPath+"/issue/multipass_jwt/"+uuid, nil)
+	if positiveCase {
+		Expect(err).ToNot(HaveOccurred())
+		return maRaw.Data["token"].(string)
+	}
+
+	Expect(err).To(HaveOccurred())
+
+	return ""
+}
+
+func getJwks() *jose.JSONWebKeySet {
+	jwksRaw, err := iamClient.Logical().Read(lib.IamAuthPluginPath + "/jwks/")
+	Expect(err).ToNot(HaveOccurred())
+
+	jwksStr, err := json.Marshal(jwksRaw.Data)
+	Expect(err).ToNot(HaveOccurred())
+
+	keySet := jose.JSONWebKeySet{}
+	err = json.Unmarshal(jwksStr, &keySet)
+	Expect(err).ToNot(HaveOccurred())
+
+	return &keySet
 }
 
 func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
@@ -161,13 +203,34 @@ func createMultipassAuthMethod(methodName string, payloadRewrite map[string]inte
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func login(params map[string]interface{}) *api.SecretAuth {
+func login(positiveCase bool, params map[string]interface{}) *api.SecretAuth {
 	secret, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/login", params)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(secret).ToNot(BeNil())
-	Expect(secret.Auth).ToNot(BeNil())
+	if positiveCase {
+		Expect(err).ToNot(HaveOccurred())
+		Expect(secret).ToNot(BeNil())
+		Expect(secret.Auth).ToNot(BeNil())
 
-	return secret.Auth
+		return secret.Auth
+	} else {
+		Expect(err).To(HaveOccurred())
+	}
+
+	return nil
+}
+
+func switchJwt(enable bool) {
+	method := "enable"
+	if !enable {
+		method = "disable"
+	}
+	var err error
+	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/"+method, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/"+method, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(3 * time.Second)
 }
 
 var _ = BeforeSuite(func() {
@@ -185,10 +248,7 @@ var _ = BeforeSuite(func() {
 	configure.ConfigureVaultAccess(token, lib.IamAuthPluginPath, role)
 
 	var err error
-	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/enable", nil)
-	Expect(err).ToNot(HaveOccurred())
-	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/enable", nil)
-	Expect(err).ToNot(HaveOccurred())
+	switchJwt(true)
 
 	sources = auth_source.GenerateSources()
 

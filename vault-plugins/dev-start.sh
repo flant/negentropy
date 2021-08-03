@@ -18,16 +18,17 @@ function connect_plugins() {
   sleep 1
 
   # configure flant_iam
-  docker-exec "vault write flant_iam/kafka/configure self_topic_name=root_source"
+  docker-exec "vault write flant_iam/kafka/configure self_topic_name=root_source peers_public_keys=\"$auth_pubkey\""
 
   # configure flant_iam_auth
   docker-exec \
-    "vault write auth/flant_iam_auth/kafka/configure self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
+    "vault write auth/flant_iam_auth/kafka/configure peers_public_keys=\"$root_pubkey\" self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
 
 
   # create replica
   docker-exec "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$auth_pubkey\""
 
+  docker-exec "vault token create -orphan -policy=root -field=token" > /tmp/token_root
   echo "Connected"
 }
 

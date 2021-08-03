@@ -1,20 +1,17 @@
-package jwt
+package backend
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 )
 
-type Config struct {
-	Issuer      string
-	OwnAudience string
-}
-
-func PathConfigure(b *TokenController) *framework.Path {
+func PathConfigure(b *Backend) *framework.Path {
 	return &framework.Path{
 		Pattern: `jwt/configure`,
 
@@ -27,7 +24,7 @@ host, and optionally, port number and path components, but no query or fragment 
 				Default:  "https://auth.negentropy.flant.com/",
 				Required: true,
 			},
-			"own_audience": {
+			"multipass_audience": {
 				Type:        framework.TypeString,
 				Description: "Value of the audience claim.",
 				Default:     "limbo",
@@ -49,11 +46,11 @@ host, and optionally, port number and path components, but no query or fragment 
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleConfigurationRead),
+				Callback: b.handleConfigurationRead,
 				Summary:  pathJWTStatusSynopsis,
 			},
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: protectNonEnabled(b.handleConfigurationUpdate),
+				Callback: b.handleConfigurationUpdate,
 				Summary:  pathJWTConfigureSynopsis,
 			},
 		},
@@ -62,53 +59,40 @@ host, and optionally, port number and path components, but no query or fragment 
 	}
 }
 
-func getConfig(ctx context.Context, storage logical.Storage) (map[string]interface{}, error) {
-	entry, err := storage.Get(ctx, "jwt/configuration")
+func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	tnx := b.memStorage.Txn(false)
+	defer tnx.Abort()
+
+	err := b.mustEnabled(tnx)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	conf, err := b.deps.ConfigRepo(tnx).Get()
 	if err != nil {
 		return nil, err
 	}
 
-	data := make(map[string]interface{})
-	if entry != nil {
-		if err := json.Unmarshal(entry.Value, &data); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("possible bug: no configuration found in storage")
+	d := map[string]interface{}{
+		"issuer":                      conf.Issuer,
+		"multipass_audience":          conf.OwnAudience,
+		"rotation_period":             conf.RotationPeriod.String(),
+		"preliminary_announce_period": conf.PreliminaryAnnouncePeriod.String(),
 	}
-
-	return data, nil
+	return &logical.Response{Data: d}, nil
 }
 
-func (b *TokenController) GetConfig(ctx context.Context, storage logical.Storage) (*Config, error) {
-	// todo return already object
-	conf, err := getConfig(ctx, storage)
+func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
+	tnx := b.memStorage.Txn(true)
+	defer tnx.Abort()
+
+	err := b.mustEnabled(tnx)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	if conf == nil {
-		return nil, nil
-	}
-
-	return &Config{
-		Issuer:      conf["issuer"].(string),
-		OwnAudience: conf["own_audience"].(string),
-	}, nil
-}
-
-func (b *TokenController) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	data, err := getConfig(ctx, req.Storage)
-	if err != nil {
-		return nil, err
-	}
-
-	return &logical.Response{Data: data}, nil
-}
-
-func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	fields.Raw = req.Data
-	err := fields.Validate()
+	err = fields.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -117,17 +101,34 @@ func (b *TokenController) handleConfigurationUpdate(ctx context.Context, req *lo
 		return nil, fmt.Errorf("cannot update configuration because values were not provided")
 	}
 
-	entry, err := logical.StorageEntryJSON("jwt/configuration", fields.Raw)
+	c := model.Config{}
+
+	rotate, err := time.ParseDuration(fields.Raw["rotation_period"].(string))
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse("incorrect rotation_period", err), nil
 	}
 
-	if err := req.Storage.Put(ctx, entry); err != nil {
+	announce, err := time.ParseDuration(fields.Raw["preliminary_announce_period"].(string))
+	if err != nil {
+		return logical.ErrorResponse("incorrect preliminary_announce_period", err), nil
+	}
+
+	c.RotationPeriod = rotate
+	c.PreliminaryAnnouncePeriod = announce
+	c.Issuer = fields.Raw["issuer"].(string)
+	c.OwnAudience = fields.Raw["multipass_audience"].(string)
+
+	err = b.deps.ConfigRepo(tnx).Put(&c)
+	if err != nil {
 		return nil, err
 	}
 
 	resp := &logical.Response{
 		Data: req.Data,
+	}
+
+	if err := tnx.Commit(); err != nil {
+		return nil, err
 	}
 
 	return resp, nil

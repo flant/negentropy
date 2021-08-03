@@ -167,7 +167,6 @@ var (
 			return ""
 		},
 	}
-
 )
 
 func GenerateSources() []SourceForTest {

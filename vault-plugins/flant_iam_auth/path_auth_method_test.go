@@ -1068,6 +1068,7 @@ func TestAuthMethod_CreateUpdate(t *testing.T) {
 			expected: expectedWithTokenParams(model.AuthMethod{
 				MethodType: model.MethodTypeMultipass,
 				Name:       model.MethodTypeMultipass,
+				UserClaim:  "sub",
 			}),
 
 			updateBody: map[string]interface{}{
@@ -1079,6 +1080,7 @@ func TestAuthMethod_CreateUpdate(t *testing.T) {
 			updateExpected: func(m model.AuthMethod) model.AuthMethod {
 				m.TokenPeriod = 10 * time.Second
 				m.ExpirationLeeway = 6 * time.Second
+				m.UserClaim = "sub"
 
 				return m
 			}(expectedWithTokenParams(model.AuthMethod{

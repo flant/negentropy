@@ -14,6 +14,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -64,6 +65,7 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 }
 
 func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message) error {
+	l := sks.logger
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		return fmt.Errorf("key has wong format: %s", string(msg.Key))
@@ -74,9 +76,9 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 	var signature []byte
 	var chunked bool
 
-	sks.logger.Debug("Restore - Start parse header")
+	l.Debug("Restore - Start parse header")
 	for _, header := range msg.Headers {
-		sks.logger.Debug("Restore - Switch header", "header", header)
+		l.Debug("Restore - Switch header", "header", header)
 		switch header.Key {
 		case "signature":
 			signature = header.Value
@@ -86,26 +88,34 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message)
 		}
 	}
 
-	sks.logger.Debug("Restore - Start decrypt message", "msg", msg.Value)
-	decrypted, err := sks.decryptData(msg.Value, chunked)
-	if err != nil {
-		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+	l.Debug("Restore - Start decrypt message", "msg", msg.Value)
+	var decrypted []byte
+	if len(msg.Value) > 0 {
+		var err error
+		decrypted, err = sks.decryptData(msg.Value, chunked)
+		if err != nil {
+			return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		}
+	} else {
+		l.Debug(fmt.Sprintf("empty value for %s/%s. It is tombstone. Skip decrypt", splitted[0], splitted[1]))
 	}
 
-	sks.logger.Debug("Restore - Message decrypted", "decrypted", decrypted)
+	l.Debug("Restore - Message decrypted", "decrypted", decrypted)
 
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	err = sks.verifySign(signature, decrypted)
+	err := sks.verifySign(signature, decrypted)
 	if err != nil {
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	sks.logger.Debug("Restore - Message verified", "decrypted", decrypted)
+	l.Debug("Restore - Message verified", "decrypted", decrypted)
 
-	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted)
+	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted, []self.RestoreFunc{
+		jwtkafka.SelfRestoreMessage,
+	})
 	if err != nil {
 		return err
 	}
@@ -164,7 +174,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 
 		err = sks.verifySign(signature, decrypted)
 		if err != nil {
-			sks.logger.Debug(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			sks.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
 				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
 			return
 		}
