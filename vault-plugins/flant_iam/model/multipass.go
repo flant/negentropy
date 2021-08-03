@@ -78,7 +78,7 @@ type Multipass struct {
 
 const MultipassType = "multipass" // also, memdb schema name
 
-func (m *Multipass) isDeleted() bool {
+func (m *Multipass) IsDeleted() bool {
 	return m.ArchivingTimestamp != 0
 }
 
@@ -138,7 +138,7 @@ func (r *MultipassRepository) Delete(id MultipassUUID, archivingTimestamp UnixTi
 	if err != nil {
 		return err
 	}
-	if multipass.isDeleted() {
+	if multipass.IsDeleted() {
 		return ErrIsArchived
 	}
 	multipass.ArchivingTimestamp = archivingTimestamp
