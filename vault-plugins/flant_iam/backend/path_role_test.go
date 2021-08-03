@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tidwall/gjson"
-
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/physical/inmem"
 	"github.com/stretchr/testify/assert"
+	"github.com/tidwall/gjson"
 )
 
 func Test_RolePathCreate(t *testing.T) {

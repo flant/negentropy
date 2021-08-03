@@ -159,6 +159,6 @@ func RandomRoleBindingCreatePayload() map[string]interface{} {
 	sample.Identifier = "Identifier_" + RandomStr()
 	bytes, _ := json.Marshal(sample)
 	var payload map[string]interface{}
-	json.Unmarshal(bytes, &payload)
+	json.Unmarshal(bytes, &payload) //nolint:errcheck
 	return payload
 }

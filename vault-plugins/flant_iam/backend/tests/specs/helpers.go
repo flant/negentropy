@@ -3,13 +3,12 @@ package specs
 import (
 	"encoding/json"
 
+	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
-	. "github.com/onsi/gomega"
 )
 
 func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
@@ -42,7 +41,7 @@ func CreateRandomTenant(tenantsAPI api.TestAPI) model.Tenant {
 	rawTenant := createdData.Get("tenant")
 	data := []byte(rawTenant.String())
 	var tenant model.Tenant
-	err := json.Unmarshal(data, tenant)
+	err := json.Unmarshal(data, &tenant) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
 	return tenant
 }

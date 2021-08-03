@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
-
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/physical/inmem"
 	. "github.com/onsi/ginkgo"
@@ -18,6 +16,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
 )
 
 type Params = map[string]interface{}
@@ -48,9 +47,7 @@ func (b *BuilderBasedAPI) request(operation logical.Operation, url string, param
 	if !(operation == logical.ReadOperation || operation == logical.DeleteOperation || operation == logical.ListOperation) {
 		Expect(ok).To(Equal(true), "definitely need map[string]interface{}")
 	}
-	if strings.HasSuffix(url, "?") {
-		url = url[:len(url)-1]
-	}
+	url = strings.TrimSuffix(url, "?")
 	resp, requestErr := (*b.backend).HandleRequest(context.Background(), &logical.Request{
 		Operation: operation,
 		Path:      url,
