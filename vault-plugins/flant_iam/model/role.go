@@ -83,12 +83,16 @@ type IncludedRole struct {
 
 const RoleType = "role" // also, memdb schema name
 
-func (u *Role) ObjType() string {
+func (r *Role) isDeleted() bool {
+	return r.ArchivingTimestamp != 0
+}
+
+func (r *Role) ObjType() string {
 	return RoleType
 }
 
-func (u *Role) ObjId() string {
-	return u.Name
+func (r *Role) ObjId() string {
+	return r.Name
 }
 
 type RoleRepository struct {
@@ -154,8 +158,8 @@ func (r *RoleRepository) List(showArchived bool) ([]*Role, error) {
 	return list, nil
 }
 
-func (r *RoleRepository) ListIDs(archived bool) ([]RoleName, error) {
-	objs, err := r.List(archived)
+func (r *RoleRepository) ListIDs(showArchived bool) ([]RoleName, error) {
+	objs, err := r.List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +168,19 @@ func (r *RoleRepository) ListIDs(archived bool) ([]RoleName, error) {
 		ids[i] = objs[i].ObjId()
 	}
 	return ids, nil
+}
+
+func (r *RoleRepository) Delete(roleID RoleName, archivingTimestamp UnixTime, archivingHash int64) error {
+	role, err := r.GetByID(roleID)
+	if err != nil {
+		return err
+	}
+	if role.isDeleted() {
+		return ErrIsArchived
+	}
+	role.ArchivingTimestamp = archivingTimestamp
+	role.ArchivingHash = archivingHash
+	return r.Update(role)
 }
 
 func (r *RoleRepository) Iter(action func(*Role) (bool, error)) error {
@@ -226,7 +243,7 @@ func (r *RoleRepository) FindAllIncludingRoles(roleID RoleName) (map[RoleName]st
 	if err != nil {
 		return nil, err
 	}
-	if role.ArchivingTimestamp != 0 {
+	if role.isDeleted() {
 		return result, nil
 	}
 	currentSet := map[RoleName]struct{}{roleID: {}}

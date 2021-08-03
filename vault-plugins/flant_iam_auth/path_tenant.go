@@ -56,7 +56,7 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	repo := model.NewTenantRepository(txn)
 
-	tenants, err := repo.List()
+	tenants, err := repo.List(false)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 
 	repo := model.NewProjectRepository(txn)
 
-	projects, err := repo.List(tenantID)
+	projects, err := repo.List(tenantID, false)
 	if err != nil {
 		return nil, err
 	}

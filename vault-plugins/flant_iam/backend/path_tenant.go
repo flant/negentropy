@@ -79,8 +79,15 @@ func (b tenantBackend) paths() []*framework.Path {
 		// List
 		{
 			Pattern: "tenant/?",
+			Fields: map[string]*framework.FieldSchema{
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived tenants",
+					Required:    false,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all tenants IDs.",
 				},
@@ -137,6 +144,29 @@ func (b tenantBackend) paths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleListAvailableRoles(),
 					Summary:  "Retrieve the tenant roles.",
+				},
+			},
+		},
+		// Restore
+		{
+			Pattern: "tenant/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"full_restore": {
+					Type:        framework.TypeBool,
+					Description: "Option to restore full tenant data",
+					Required:    false,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleRestore(),
+					Summary:  "Restore the tenant by ID.",
 				},
 			},
 		},
@@ -206,6 +236,7 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create tenant", "path", req.Path)
 		id := getCreationID(expectID, data)
 		tenant := &model.Tenant{
 			UUID:       id,
@@ -231,8 +262,8 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update tenant", "path", req.Path)
 		id := data.Get("uuid").(string)
-
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
@@ -257,10 +288,12 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 
 func (b *tenantBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete tenant", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		id := data.Get("uuid").(string)
+
 		err := usecase.Tenants(tx).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
@@ -275,6 +308,7 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 
 func (b *tenantBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read tenant", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
@@ -284,16 +318,25 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
+		resp := &logical.Response{Data: map[string]interface{}{
+			"tenant":       tenant,
+			"full_restore": false, // TODO check if full restore available
+		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
 func (b *tenantBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tx := b.storage.Txn(false)
+		b.Logger().Debug("listing tenants", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 
-		tenants, err := usecase.Tenants(tx).List()
+		tx := b.storage.Txn(false)
+		tenants, err := usecase.Tenants(tx).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -304,5 +347,34 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 			},
 		}
 		return resp, nil
+	}
+}
+
+func (b *tenantBackend) handleRestore() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("restore tenant", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		id := data.Get("uuid").(string)
+		var fullRestore bool
+		rawFullRestore, ok := data.GetOk("show_archived")
+		if ok {
+			fullRestore = rawFullRestore.(bool)
+		}
+
+		tenant, err := usecase.Tenants(tx).Restore(id, fullRestore)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{
+			"tenant": tenant,
+		}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

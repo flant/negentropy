@@ -67,9 +67,16 @@ type User struct {
 
 	MobilePhone      string   `json:"mobile_phone"`
 	AdditionalPhones []string `json:"additional_phones"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const UserType = "user" // also, memdb schema name
+
+func (u *User) isDeleted() bool {
+	return u.ArchivingTimestamp != 0
+}
 
 func (u *User) ObjType() string {
 	return UserType
@@ -122,15 +129,20 @@ func (r *UserRepository) Update(user *User) error {
 	return r.save(user)
 }
 
-func (r *UserRepository) Delete(id UserUUID) error {
+func (r *UserRepository) Delete(id UserUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	user, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(UserType, user)
+	if user.isDeleted() {
+		return ErrIsArchived
+	}
+	user.ArchivingTimestamp = archivingTimestamp
+	user.ArchivingHash = archivingHash
+	return r.Update(user)
 }
 
-func (r *UserRepository) List(tenantUUID TenantUUID) ([]*User, error) {
+func (r *UserRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*User, error) {
 	iter, err := r.db.Get(UserType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -143,13 +155,15 @@ func (r *UserRepository) List(tenantUUID TenantUUID) ([]*User, error) {
 			break
 		}
 		obj := raw.(*User)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *UserRepository) ListIDs(tenantID TenantUUID) ([]UserUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *UserRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]UserUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -185,11 +199,7 @@ func (r *UserRepository) Iter(action func(*User) (bool, error)) error {
 	return nil
 }
 
-func (r *UserRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *UserRepository) Sync(_ string, data []byte) error {
 	user := &User{}
 	err := json.Unmarshal(data, user)
 	if err != nil {
@@ -197,4 +207,21 @@ func (r *UserRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(user)
+}
+
+func (r *UserRepository) Restore(id UserUUID) (*User, error) {
+	user, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if user.ArchivingTimestamp == 0 {
+		return nil, ErrIsNotArchived
+	}
+	user.ArchivingTimestamp = 0
+	user.ArchivingHash = 0
+	err = r.Update(user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }

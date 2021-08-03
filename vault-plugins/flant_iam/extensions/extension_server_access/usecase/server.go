@@ -3,6 +3,7 @@ package usecase
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
@@ -284,6 +285,9 @@ func (s *ServerService) Update(server *model2.Server) error {
 }
 
 func (s *ServerService) Delete(serverUUID string) error {
+	archivingTime := time.Now().Unix()
+	archivingHash := rand.Int63n(archivingTime)
+
 	server, err := s.serverRepo.GetByUUID(serverUUID)
 	if err != nil {
 		return err
@@ -306,7 +310,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = multipassService.Delete(mp.UUID)
+	err = multipassService.CascadeDelete(mp.UUID, archivingTime, archivingHash)
 	if err != nil {
 		return err
 	}
@@ -321,7 +325,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = s.serviceAccountRepo.Delete(sa.UUID)
+	err = s.serviceAccountRepo.Delete(sa.UUID, archivingTime, archivingHash)
 	if err != nil {
 		return err
 	}
@@ -352,20 +356,20 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 
 		if groupToDelete != nil {
-			err := s.groupRepo.Delete(groupToDelete.UUID)
+			err := s.groupRepo.Delete(groupToDelete.UUID, archivingTime, archivingHash)
 			if err != nil {
 				return err
 			}
 		}
 
 		// TODO: role scopes
-		rbsInProject, err := s.roleBindingRepo.List(tenant.UUID)
+		rbsInProject, err := s.roleBindingRepo.List(tenant.UUID, false)
 		if err != nil {
 			return err
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == model.OriginServerAccess {
-				err := s.roleBindingRepo.Delete(rb.UUID)
+				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err
 				}
@@ -375,13 +379,13 @@ func (s *ServerService) Delete(serverUUID string) error {
 
 	if !serversPresentInTenant {
 		// TODO: role scopes
-		rbsInProject, err := s.roleBindingRepo.List(tenant.UUID)
+		rbsInProject, err := s.roleBindingRepo.List(tenant.UUID, false)
 		if err != nil {
 			return err
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == model.OriginServerAccess {
-				err := s.roleBindingRepo.Delete(rb.UUID)
+				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err
 				}

@@ -101,16 +101,23 @@ type Group struct {
 	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const GroupType = "group" // also, memdb schema name
 
-func (u *Group) ObjType() string {
+func (g *Group) isDeleted() bool {
+	return g.ArchivingTimestamp != 0
+}
+
+func (g *Group) ObjType() string {
 	return GroupType
 }
 
-func (u *Group) ObjId() string {
-	return u.UUID
+func (g *Group) ObjId() string {
+	return g.UUID
 }
 
 type GroupRepository struct {
@@ -156,15 +163,20 @@ func (r *GroupRepository) Update(group *Group) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) Delete(id GroupUUID) error {
+func (r *GroupRepository) Delete(id GroupUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(GroupType, group)
+	if group.isDeleted() {
+		return ErrIsArchived
+	}
+	group.ArchivingTimestamp = archivingTimestamp
+	group.ArchivingHash = archivingHash
+	return r.Update(group)
 }
 
-func (r *GroupRepository) List(tenantUUID TenantUUID) ([]*Group, error) {
+func (r *GroupRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*Group, error) {
 	iter, err := r.db.Get(GroupType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -177,13 +189,15 @@ func (r *GroupRepository) List(tenantUUID TenantUUID) ([]*Group, error) {
 			break
 		}
 		obj := raw.(*Group)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *GroupRepository) ListIDs(tenantID TenantUUID) ([]GroupUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *GroupRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]GroupUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -220,10 +234,6 @@ func (r *GroupRepository) Iter(action func(*Group) (bool, error)) error {
 }
 
 func (r *GroupRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
 	group := &Group{}
 	err := json.Unmarshal(data, group)
 	if err != nil {

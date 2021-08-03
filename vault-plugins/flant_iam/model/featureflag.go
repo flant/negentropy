@@ -29,6 +29,9 @@ func FeatureFlagSchema() *memdb.DBSchema {
 
 type FeatureFlag struct {
 	Name FeatureFlagName `json:"name"` // PK
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 type TenantFeatureFlag struct {
@@ -39,12 +42,16 @@ type TenantFeatureFlag struct {
 
 const FeatureFlagType = "feature_flag" // also, memdb schema name
 
-func (u *FeatureFlag) ObjType() string {
+func (f *FeatureFlag) isDeleted() bool {
+	return f.ArchivingTimestamp != 0
+}
+
+func (f *FeatureFlag) ObjType() string {
 	return FeatureFlagType
 }
 
-func (u *FeatureFlag) ObjId() string {
-	return u.Name
+func (f *FeatureFlag) ObjId() string {
+	return f.Name
 }
 
 type FeatureFlagRepository struct {
@@ -90,15 +97,20 @@ func (r *FeatureFlagRepository) Update(ff *FeatureFlag) error {
 	return r.save(ff)
 }
 
-func (r *FeatureFlagRepository) Delete(id FeatureFlagName) error {
+func (r *FeatureFlagRepository) Delete(id FeatureFlagName, archivingTimestamp UnixTime, archivingHash int64) error {
 	ff, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(FeatureFlagType, ff)
+	if ff.isDeleted() {
+		return ErrIsArchived
+	}
+	ff.ArchivingTimestamp = archivingTimestamp
+	ff.ArchivingHash = archivingHash
+	return r.Update(ff)
 }
 
-func (r *FeatureFlagRepository) List() ([]*FeatureFlag, error) {
+func (r *FeatureFlagRepository) List(showArchived bool) ([]*FeatureFlag, error) {
 	iter, err := r.db.Get(FeatureFlagType, PK)
 	if err != nil {
 		return nil, err
@@ -111,13 +123,15 @@ func (r *FeatureFlagRepository) List() ([]*FeatureFlag, error) {
 			break
 		}
 		obj := raw.(*FeatureFlag)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *FeatureFlagRepository) ListIDs() ([]FeatureFlagName, error) {
-	objs, err := r.List()
+func (r *FeatureFlagRepository) ListIDs(showArchived bool) ([]FeatureFlagName, error) {
+	objs, err := r.List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -154,10 +168,6 @@ func (r *FeatureFlagRepository) Iter(action func(*FeatureFlag) (bool, error)) er
 }
 
 func (r *FeatureFlagRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
 	ff := &FeatureFlag{}
 	err := json.Unmarshal(data, ff)
 	if err != nil {

@@ -2,9 +2,7 @@ package backend
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -234,9 +232,7 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		archivingTime := time.Now().Unix()
-		archivingHash := rand.Int63n(archivingTime)
-		err := usecase.Roles(tx).Delete(name, archivingTime, archivingHash)
+		err := usecase.Roles(tx).Delete(name)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -272,7 +268,7 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
-			showArchived, ok = rawShowArchived.(bool)
+			showArchived = rawShowArchived.(bool)
 		}
 
 		tx := b.storage.Txn(false)

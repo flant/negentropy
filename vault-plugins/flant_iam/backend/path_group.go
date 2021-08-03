@@ -1,5 +1,6 @@
 package backend
 
+//goland:noinspection GoUnsortedImport
 import (
 	"context"
 	"fmt"
@@ -96,7 +97,7 @@ func (b groupBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// List
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/group/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -105,9 +106,14 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived groups",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all groups IDs.",
 				},
@@ -187,6 +193,7 @@ func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create group", "path", req.Path)
 		var (
 			id         = getCreationID(expectID, data)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -226,6 +233,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *groupBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update group", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -266,6 +274,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 func (b *groupBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete groups", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
 			tenantUUID = data.Get(model.TenantForeignPK).(string)
@@ -288,6 +297,7 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 func (b *groupBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read group", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
@@ -304,12 +314,18 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 
 func (b *groupBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list groups", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 		repo := model.NewGroupRepository(tx)
 
-		groups, err := repo.List(tenantID)
+		groups, err := repo.List(tenantID, showArchived)
 		if err != nil {
 			return nil, err
 		}

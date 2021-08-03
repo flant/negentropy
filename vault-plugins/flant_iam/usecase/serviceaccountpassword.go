@@ -38,7 +38,8 @@ func (r *ServiceAccountPasswordsService) Delete(id model.ServiceAccountPasswordU
 	if err != nil {
 		return err
 	}
-	return r.repo.Delete(id)
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return r.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (r *ServiceAccountPasswordsService) GetByID(id model.ServiceAccountPasswordUUID) (*model.ServiceAccountPassword, error) {
@@ -49,12 +50,12 @@ func (r *ServiceAccountPasswordsService) GetByID(id model.ServiceAccountPassword
 	return r.repo.GetByID(id)
 }
 
-func (r *ServiceAccountPasswordsService) List() ([]*model.ServiceAccountPassword, error) {
+func (r *ServiceAccountPasswordsService) List(showArchived bool) ([]*model.ServiceAccountPassword, error) {
 	err := r.validateContext()
 	if err != nil {
 		return nil, err
 	}
-	return r.repo.List(r.ownerUUID)
+	return r.repo.List(r.ownerUUID, showArchived)
 }
 
 func (r *ServiceAccountPasswordsService) validateContext() error {

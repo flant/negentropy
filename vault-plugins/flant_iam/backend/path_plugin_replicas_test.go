@@ -82,7 +82,7 @@ func TestReplicas(t *testing.T) {
 		req := &logical.Request{
 			Storage:   storage,
 			Path:      "replica",
-			Operation: logical.ListOperation,
+			Operation: logical.ReadOperation,
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)

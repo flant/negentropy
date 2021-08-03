@@ -30,7 +30,7 @@ func Test_TenantList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
 	repo := model.NewTenantRepository(tx)
 
-	tenants, err := repo.List()
+	tenants, err := repo.List(false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

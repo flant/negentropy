@@ -9,12 +9,16 @@ import (
 
 type EndpointBuilder struct{}
 
+func (b *EndpointBuilder) OneCreate(_ tools.Params, query url.Values) string {
+	return path.Join("/feature_flag") + "?" + query.Encode()
+}
+
 func (b *EndpointBuilder) One(params tools.Params, query url.Values) string {
 	return path.Join("/feature_flag", params["name"].(string)) + "?" + query.Encode()
 }
 
 func (b *EndpointBuilder) Collection(_ tools.Params, query url.Values) string {
-	return path.Join("/feature_flag") + "?" + query.Encode()
+	return path.Join("/feature_flag") + "/?" + query.Encode()
 }
 
 func (b *EndpointBuilder) Privileged(_ tools.Params, _ url.Values) string {

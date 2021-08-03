@@ -78,10 +78,11 @@ var _ = Describe("Identity sharing", func() {
 			"tenant_uuid": sourceTenantID,
 		}, nil)
 
-		identitySharingAPI.Read(tools.Params{
+		deletedISData := identitySharingAPI.Read(tools.Params{
 			"uuid":         createdData.Get("identity_sharing.uuid").String(),
 			"tenant_uuid":  sourceTenantID,
-			"expectStatus": tools.ExpectExactStatus(404),
+			"expectStatus": tools.ExpectExactStatus(200),
 		}, nil)
+		Expect(deletedISData.Get("identity_sharing.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 })

@@ -80,17 +80,23 @@ type ServiceAccount struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions         map[ObjectOrigin]*Extension `json:"-"`
+	ArchivingTimestamp UnixTime                    `json:"archiving_timestamp"`
+	ArchivingHash      int64                       `json:"archiving_hash"`
 }
 
 const ServiceAccountType = "service_account" // also, memdb schema name
 
-func (u *ServiceAccount) ObjType() string {
+func (s *ServiceAccount) isDeleted() bool {
+	return s.ArchivingTimestamp != 0
+}
+
+func (s *ServiceAccount) ObjType() string {
 	return ServiceAccountType
 }
 
-func (u *ServiceAccount) ObjId() string {
-	return u.UUID
+func (s *ServiceAccount) ObjId() string {
+	return s.UUID
 }
 
 type ServiceAccountRepository struct {
@@ -136,15 +142,21 @@ func (r *ServiceAccountRepository) Update(sa *ServiceAccount) error {
 	return r.save(sa)
 }
 
-func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID) error {
+func (r *ServiceAccountRepository) Delete(id ServiceAccountUUID,
+	archivingTimestamp UnixTime, archivingHash int64) error {
 	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ServiceAccountType, sa)
+	if sa.isDeleted() {
+		return ErrIsArchived
+	}
+	sa.ArchivingTimestamp = archivingTimestamp
+	sa.ArchivingHash = archivingHash
+	return r.Update(sa)
 }
 
-func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccount, error) {
+func (r *ServiceAccountRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*ServiceAccount, error) {
 	iter, err := r.db.Get(ServiceAccountType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -157,13 +169,15 @@ func (r *ServiceAccountRepository) List(tenantUUID TenantUUID) ([]*ServiceAccoun
 			break
 		}
 		obj := raw.(*ServiceAccount)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *ServiceAccountRepository) ListIDs(tenantID TenantUUID) ([]ServiceAccountUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *ServiceAccountRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]ServiceAccountUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +213,7 @@ func (r *ServiceAccountRepository) Iter(action func(*ServiceAccount) (bool, erro
 	return nil
 }
 
-func (r *ServiceAccountRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *ServiceAccountRepository) Sync(_ string, data []byte) error {
 	sa := &ServiceAccount{}
 	err := json.Unmarshal(data, sa)
 	if err != nil {

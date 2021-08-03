@@ -32,7 +32,7 @@ func Test_ServiceAccountList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, serviceAccountFixture).Txn(true)
 	repo := model.NewServiceAccountRepository(tx)
 
-	serviceAccounts, err := repo.List(fixtures.TenantUUID1)
+	serviceAccounts, err := repo.List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

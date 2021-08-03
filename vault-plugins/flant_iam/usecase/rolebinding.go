@@ -86,7 +86,8 @@ func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBind
 	if roleBinding.Origin != origin {
 		return model.ErrBadOrigin
 	}
-	return s.repo.Delete(id)
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
@@ -101,8 +102,8 @@ func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
 	return s.repo.Update(obj)
 }
 
-func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, rbid model.RoleBindingUUID) error {
-	obj, err := s.repo.GetByID(rbid)
+func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, id model.RoleBindingUUID) error {
+	obj, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -111,4 +112,12 @@ func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, rbid mode
 	}
 	delete(obj.Extensions, origin)
 	return s.repo.Update(obj)
+}
+
+func (s *RoleBindingService) List(tid model.TenantUUID, showArchived bool) ([]*model.RoleBinding, error) {
+	return s.repo.List(tid, showArchived)
+}
+
+func (s *RoleBindingService) GetByID(id model.RoleBindingUUID) (*model.RoleBinding, error) {
+	return s.repo.GetByID(id)
 }

@@ -117,15 +117,15 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 	if sa.Origin != s.origin {
 		return model.ErrBadOrigin
 	}
-
-	if err := deleteChildren(id, s.childrenDeleters); err != nil {
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
 		return err
 	}
-	return s.repo.Delete(id)
+	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
-func (s *ServiceAccountService) List() ([]*model.ServiceAccount, error) {
-	return s.repo.List(s.tenantUUID)
+func (s *ServiceAccountService) List(showArchived bool) ([]*model.ServiceAccount, error) {
+	return s.repo.List(s.tenantUUID, showArchived)
 }
 
 func (s *ServiceAccountService) SetExtension(ext *model.Extension) error {

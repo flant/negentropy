@@ -126,6 +126,9 @@ type RoleBinding struct {
 	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 type BoundRole struct {
@@ -135,12 +138,16 @@ type BoundRole struct {
 
 const RoleBindingType = "role_binding" // also, memdb schema name
 
-func (u *RoleBinding) ObjType() string {
+func (r *RoleBinding) isDeleted() bool {
+	return r.ArchivingTimestamp != 0
+}
+
+func (r *RoleBinding) ObjType() string {
 	return RoleBindingType
 }
 
-func (u *RoleBinding) ObjId() string {
-	return u.UUID
+func (r *RoleBinding) ObjId() string {
+	return r.UUID
 }
 
 type RoleBindingRepository struct {
@@ -186,15 +193,20 @@ func (r *RoleBindingRepository) Update(rb *RoleBinding) error {
 	return r.save(rb)
 }
 
-func (r *RoleBindingRepository) Delete(id RoleBindingUUID) error {
+func (r *RoleBindingRepository) Delete(id RoleBindingUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(RoleBindingType, rb)
+	if rb.isDeleted() {
+		return ErrIsArchived
+	}
+	rb.ArchivingTimestamp = archivingTimestamp
+	rb.ArchivingHash = archivingHash
+	return r.Update(rb)
 }
 
-func (r *RoleBindingRepository) List(tenantUUID TenantUUID) ([]*RoleBinding, error) {
+func (r *RoleBindingRepository) List(tenantUUID TenantUUID, showArchived bool) ([]*RoleBinding, error) {
 	iter, err := r.db.Get(RoleBindingType, TenantForeignPK, tenantUUID)
 	if err != nil {
 		return nil, err
@@ -207,13 +219,15 @@ func (r *RoleBindingRepository) List(tenantUUID TenantUUID) ([]*RoleBinding, err
 			break
 		}
 		obj := raw.(*RoleBinding)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *RoleBindingRepository) ListIDs(tenantID TenantUUID) ([]RoleBindingUUID, error) {
-	objs, err := r.List(tenantID)
+func (r *RoleBindingRepository) ListIDs(tenantID TenantUUID, showArchived bool) ([]RoleBindingUUID, error) {
+	objs, err := r.List(tenantID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -249,11 +263,7 @@ func (r *RoleBindingRepository) Iter(action func(*RoleBinding) (bool, error)) er
 	return nil
 }
 
-func (r *RoleBindingRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *RoleBindingRepository) Sync(_ string, data []byte) error {
 	rb := &RoleBinding{}
 	err := json.Unmarshal(data, rb)
 	if err != nil {

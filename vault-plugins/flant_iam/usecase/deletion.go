@@ -1,17 +1,20 @@
 package usecase
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type DeleterByParent interface {
-	DeleteByParent(string) error
+	DeleteByParent(string, model.UnixTime, int64) error
 }
 
-func deleteChildren(parentID string, deleters []DeleterByParent) error {
+func deleteChildren(parentID string, deleters []DeleterByParent, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	for _, d := range deleters {
-		err := d.DeleteByParent(parentID)
+		err := d.DeleteByParent(parentID, archivingTimestamp, archivingHash)
 		if err != nil {
 			return err
 		}
@@ -21,8 +24,8 @@ func deleteChildren(parentID string, deleters []DeleterByParent) error {
 
 // ListerDeleter is the interface for repos to comply with the deletion case
 type ListerDeleter interface {
-	ListIDs(parentID string) ([]string, error)
-	Delete(id string) error
+	ListIDs(parentID string, showArchived bool) ([]string, error)
+	Delete(id string, archivingTimestamp model.UnixTime, archivingHash int64) error
 }
 
 func NewChildrenDeleter(repo ListerDeleter, deleters ...DeleterByParent) *ChildrenDeleter {
@@ -39,16 +42,16 @@ type ChildrenDeleter struct {
 }
 
 // DeleteByParent deletes children objects and then the parent one
-func (d *ChildrenDeleter) DeleteByParent(parentID string) error {
-	ids, err := d.childrenDeleter.ListIDs(parentID)
+func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp model.UnixTime, archivingHash int64) error {
+	ids, err := d.childrenDeleter.ListIDs(parentID, false)
 	if err != nil {
 		return err
 	}
 	for _, childID := range ids {
-		if err := deleteChildren(childID, d.grandChildrenDeleters); err != nil {
+		if err := deleteChildren(childID, d.grandChildrenDeleters, archivingTimestamp, archivingHash); err != nil {
 			return err
 		}
-		if err := d.childrenDeleter.Delete(childID); err != nil {
+		if err := d.childrenDeleter.Delete(childID, archivingTimestamp, archivingHash); err != nil {
 			return err
 		}
 	}
@@ -115,4 +118,10 @@ func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 		PasswordDeleter(tx),
 		// TODO clean SA references from rolebindings and groups in other tenants
 	)
+}
+
+func ArchivingLabel() (model.UnixTime, int64) {
+	archivingTime := time.Now().Unix()
+	archivingHash := rand.Int63n(archivingTime)
+	return archivingTime, archivingHash
 }

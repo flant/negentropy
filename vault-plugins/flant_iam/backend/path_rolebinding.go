@@ -127,7 +127,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// List
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -136,9 +136,14 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived role_bindings",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all roleBindings IDs.",
 				},
@@ -227,6 +232,7 @@ func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create role_binding", "path", req.Path)
 		id := getCreationID(expectID, data)
 
 		ttl := data.Get("ttl").(int)
@@ -272,6 +278,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 
 func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update role_binding", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		ttl := data.Get("ttl").(int)
@@ -319,6 +326,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete role_binding", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true)
@@ -338,12 +346,12 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read role_binding", "path", req.Path)
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
 
-		roleBinding, err := repo.GetByID(id)
+		roleBinding, err := usecase.RoleBindings(tx).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -355,12 +363,17 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 
 func (b *roleBindingBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list role_bindings", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
 
-		roleBindings, err := repo.List(tenantID)
+		roleBindings, err := usecase.RoleBindings(tx).List(tenantID, showArchived)
 		if err != nil {
 			return nil, err
 		}

@@ -161,7 +161,7 @@ func (b userBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Listing
+		// List
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/?",
 			Fields: map[string]*framework.FieldSchema{
@@ -170,9 +170,14 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived users",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "Lists all users IDs.",
 				},
@@ -252,6 +257,29 @@ func (b userBackend) paths() []*framework.Path {
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
 					Summary:  "Deletes the user by ID",
+				},
+			},
+		},
+		// Restore
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a user",
+					Required:    true,
+				},
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleRestore(),
+					Summary:  "Restore the user by ID.",
 				},
 			},
 		},
@@ -339,7 +367,6 @@ func (b userBackend) paths() []*framework.Path {
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("owner_uuid") + "/multipass/?",
 			Fields: map[string]*framework.FieldSchema{
-
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a tenant",
@@ -350,9 +377,14 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "ID of the tenant user",
 					Required:    true,
 				},
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived user multipass",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleMultipassList(),
 					Summary:  "List multipass IDs",
 				},
@@ -389,6 +421,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create user", "path", req.Path)
 		id := getCreationID(expectID, data)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 		user := &model.User{
@@ -424,6 +457,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 func (b *userBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("update user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 		tx := b.storage.Txn(true)
@@ -459,6 +493,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 
 func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
@@ -479,6 +514,7 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read user", "path", req.Path)
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
@@ -496,11 +532,17 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 func (b *userBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list users", "path", req.Path)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 		tenantID := data.Get(model.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		users, err := usecase.Users(tx, tenantID).List()
+		users, err := usecase.Users(tx, tenantID).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -514,8 +556,34 @@ func (b *userBackend) handleList() framework.OperationFunc {
 	}
 }
 
+func (b *userBackend) handleRestore() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("restore user", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		id := data.Get("uuid").(string)
+		tenantID := data.Get(model.TenantForeignPK).(string)
+
+		user, err := usecase.Users(tx, tenantID).Restore(id)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{
+			"user": user,
+		}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	}
+}
+
 func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create user multipass", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
@@ -557,6 +625,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("delete user multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -580,6 +649,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("read user multipass", "path", req.Path)
 		var (
 			id  = data.Get("uuid").(string)
 			tid = data.Get("tenant_uuid").(string)
@@ -598,12 +668,18 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 func (b *userBackend) handleMultipassList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("list user multipasses", "path", req.Path)
 		tid := data.Get("tenant_uuid").(string)
 		uid := data.Get("owner_uuid").(string)
+		var showArchived bool
+		rawShowArchived, ok := data.GetOk("show_archived")
+		if ok {
+			showArchived = rawShowArchived.(bool)
+		}
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList()
+		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
 			return responseErr(req, err)
 		}

@@ -51,16 +51,23 @@ type Tenant struct {
 	Identifier string     `json:"identifier"`
 
 	FeatureFlags []TenantFeatureFlag `json:"feature_flags"`
+
+	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
+	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 const TenantType = "tenant" // also, memdb schema name
 
-func (u *Tenant) ObjType() string {
+func (t *Tenant) isDeleted() bool {
+	return t.ArchivingTimestamp != 0
+}
+
+func (t *Tenant) ObjType() string {
 	return TenantType
 }
 
-func (u *Tenant) ObjId() string {
-	return u.UUID
+func (t *Tenant) ObjId() string {
+	return t.UUID
 }
 
 type TenantRepository struct {
@@ -106,15 +113,20 @@ func (r *TenantRepository) Update(tenant *Tenant) error {
 	return r.save(tenant)
 }
 
-func (r *TenantRepository) Delete(id TenantUUID) error {
+func (r *TenantRepository) Delete(id TenantUUID, archivingTimestamp UnixTime, archivingHash int64) error {
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(TenantType, tenant)
+	if tenant.isDeleted() {
+		return ErrIsArchived
+	}
+	tenant.ArchivingTimestamp = archivingTimestamp
+	tenant.ArchivingHash = archivingHash
+	return r.Update(tenant)
 }
 
-func (r *TenantRepository) List() ([]*Tenant, error) {
+func (r *TenantRepository) List(showArchived bool) ([]*Tenant, error) {
 	iter, err := r.db.Get(TenantType, PK)
 	if err != nil {
 		return nil, err
@@ -127,13 +139,15 @@ func (r *TenantRepository) List() ([]*Tenant, error) {
 			break
 		}
 		obj := raw.(*Tenant)
-		list = append(list, obj)
+		if showArchived || obj.ArchivingTimestamp == 0 {
+			list = append(list, obj)
+		}
 	}
 	return list, nil
 }
 
-func (r *TenantRepository) ListIDs() ([]TenantUUID, error) {
-	objs, err := r.List()
+func (r *TenantRepository) ListIDs(showArchived bool) ([]TenantUUID, error) {
+	objs, err := r.List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -165,15 +179,10 @@ func (r *TenantRepository) Iter(action func(*Tenant) (bool, error)) error {
 			break
 		}
 	}
-
 	return nil
 }
 
-func (r *TenantRepository) Sync(objID string, data []byte) error {
-	if data == nil {
-		return r.Delete(objID)
-	}
-
+func (r *TenantRepository) Sync(_ string, data []byte) error {
 	tenant := &Tenant{}
 	err := json.Unmarshal(data, tenant)
 	if err != nil {
@@ -181,4 +190,21 @@ func (r *TenantRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(tenant)
+}
+
+func (r *TenantRepository) Restore(id TenantUUID) (*Tenant, error) {
+	tenant, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if tenant.ArchivingTimestamp == 0 {
+		return nil, ErrIsNotArchived
+	}
+	tenant.ArchivingTimestamp = 0
+	tenant.ArchivingHash = 0
+	err = r.Update(tenant)
+	if err != nil {
+		return nil, err
+	}
+	return tenant, nil
 }

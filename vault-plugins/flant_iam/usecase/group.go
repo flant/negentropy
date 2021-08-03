@@ -114,7 +114,9 @@ func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) err
 	if group.Origin != origin {
 		return model.ErrBadOrigin
 	}
-	return s.repo.Delete(id)
+	archivingTimestamp, archivingHash := ArchivingLabel()
+
+	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *GroupService) SetExtension(ext *model.Extension) error {
@@ -141,6 +143,6 @@ func (s *GroupService) UnsetExtension(origin model.ObjectOrigin, uuid model.Grou
 	return s.repo.Update(obj)
 }
 
-func (s *GroupService) List(tid model.TenantUUID) ([]*model.Group, error) {
-	return s.repo.List(tid)
+func (s *GroupService) List(tid model.TenantUUID, showArchived bool) ([]*model.Group, error) {
+	return s.repo.List(tid, showArchived)
 }

@@ -44,3 +44,12 @@ func (s *IdentitySharingService) Update(is *model.IdentitySharing) error {
 	// Update
 	return s.sharesRepo.Update(is)
 }
+
+func (s *IdentitySharingService) Delete(id model.IdentitySharingUUID) error {
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return s.sharesRepo.Delete(id, archivingTimestamp, archivingHash)
+}
+
+func (s *IdentitySharingService) List(tid model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
+	return s.sharesRepo.List(tid, showArchived)
+}

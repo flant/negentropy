@@ -35,7 +35,7 @@ func (b replicaBackend) paths() []*framework.Path {
 		{
 			Pattern: "replica/?",
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleReplicaList,
 					Summary:  "Lists all flant_iam replication backends",
 				},
