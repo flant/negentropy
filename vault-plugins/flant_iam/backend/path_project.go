@@ -315,7 +315,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 				"projects": projects,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

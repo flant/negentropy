@@ -122,5 +122,5 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	kb.broker.CheckConfig()
 	kb.storage.ReinitializeKafka()
 
-	return &logical.Response{}, nil
+	return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusOK)
 }

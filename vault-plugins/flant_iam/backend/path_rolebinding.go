@@ -383,6 +383,6 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 				"role_bindings": roleBindings,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
