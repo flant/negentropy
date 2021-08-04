@@ -3,8 +3,6 @@ package tenant
 import (
 	"net/url"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -13,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 var TestAPI api.TestAPI

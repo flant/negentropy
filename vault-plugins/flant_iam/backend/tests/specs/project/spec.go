@@ -4,10 +4,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
@@ -15,6 +11,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 var (

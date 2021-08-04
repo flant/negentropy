@@ -133,14 +133,14 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 	return role
 }
 
-func CreateRandomProject(ProjectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
+func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
 	createPayload := fixtures.RandomGroupCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
 
 	params := api.Params{
 		"tenant": tenantID,
 	}
-	createData := ProjectAPI.Create(params, url.Values{}, createPayload)
+	createData := projectAPI.Create(params, url.Values{}, createPayload)
 
 	rawProject := createData.Get("project")
 	data := []byte(rawProject.String())
