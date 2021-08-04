@@ -54,9 +54,10 @@ WantedBy=multi-user.target
 1. OpenAPI validation for config. Validator is done, it needs to be added to authd daemon.
 2. Session token refresher for client library.
 3. ~~URL and arguments in configuration for Vault requests (auth/myjwt/login is hardcoded).~~
-4. ~~Rename policy to role~~, do checks in LoginHandler.
+4. ~~Rename policy to role~~, do role checks in LoginHandler.
 5. In-memory Vault instance for testing.
-6. Apply socket file permissions.
+6. ~~Apply socket file permissions.~~
+7. Support for penging login.
 
 
 ## Links
