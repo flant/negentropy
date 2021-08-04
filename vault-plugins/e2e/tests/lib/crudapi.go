@@ -151,6 +151,10 @@ func NewGroupAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.GroupEndpointBuilder{}}
 }
 
+func NewProjectAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ProjectEndpointBuilder{}}
+}
+
 func NewUserMultipassAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.UserMultipassEndpointBuilder{}}
 }

@@ -132,3 +132,20 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 	Expect(err).ToNot(HaveOccurred())
 	return role
 }
+
+func CreateRandomProject(ProjectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
+	createPayload := fixtures.RandomGroupCreatePayload()
+	createPayload["tenant_uuid"] = tenantID
+
+	params := api.Params{
+		"tenant": tenantID,
+	}
+	createData := ProjectAPI.Create(params, url.Values{}, createPayload)
+
+	rawProject := createData.Get("project")
+	data := []byte(rawProject.String())
+	var project model.Project
+	err := json.Unmarshal(data, &project) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return project
+}

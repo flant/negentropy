@@ -167,6 +167,10 @@ func NewUserMultipassAPI(b *logical.Backend) TestAPI {
 	return &BackendBasedAPI{backend: b, url: &url2.UserMultipassEndpointBuilder{}}
 }
 
+func NewProjectAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ProjectEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))
