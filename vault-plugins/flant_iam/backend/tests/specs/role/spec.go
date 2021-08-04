@@ -1,7 +1,10 @@
 package role
 
 import (
+	"net/http"
 	"net/url"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -20,8 +23,7 @@ var _ = Describe("Role", func() {
 	Describe("payload", func() {
 		DescribeTable("name",
 			func(name interface{}, statusCodeCondition string) {
-				role := fixtures.Roles()[0]
-				createPayload := fixtures.RoleCreatePayload(role)
+				createPayload := fixtures.RandomRoleCreatePayload()
 				createPayload["name"] = name
 
 				params := api.Params{"expectStatus": api.ExpectStatus(statusCodeCondition)}
@@ -58,78 +60,58 @@ var _ = Describe("Role", func() {
 	})
 
 	It("can be read", func() {
-		createPayload := fixtures.RandomRoleCreatePayload()
-
-		var createdData gjson.Result
-		TestAPI.Create(api.Params{
-			"expectPayload": func(json gjson.Result) {
-				createdData = json
-			},
-		}, nil, createPayload)
+		role := specs.CreateRandomRole(TestAPI)
+		createdData := specs.ConvertToGJSON(role)
 
 		TestAPI.Read(api.Params{
-			"name": createdData.Get("role.name").String(),
+			"name": role.Name,
 			"expectPayload": func(json gjson.Result) {
-				Expect(createdData).To(Equal(json))
+				specs.IsSubsetExceptKeys(createdData, json.Get("role"))
 			},
 		}, nil)
 	})
 
 	It("can be updated", func() {
-		createPayload := fixtures.RandomRoleCreatePayload()
-
-		var createdData gjson.Result
-		TestAPI.Create(api.Params{
-			"expectPayload": func(json gjson.Result) {
-				createdData = json
-			},
-		}, nil, createPayload)
+		role := specs.CreateRandomRole(TestAPI)
 
 		updatedRole := model.Role{
-			Name:                     createdData.Get("role.name").String(),
-			Scope:                    model.RoleScope(createdData.Get("role.scope").String()),
+			Name:                     role.Name,
+			Scope:                    role.Scope,
 			Description:              uuid.New(),
-			OptionsSchema:            createdData.Get("role.option_schema").String(),
-			RequireOneOfFeatureFlags: []string{},
-			IncludedRoles:            []model.IncludedRole{},
-			ArchivingTimestamp:       createdData.Get("role.archiving_timestamp").Int(),
-			ArchivingHash:            createdData.Get("role.archiving_hash").Int(),
+			OptionsSchema:            role.OptionsSchema,
+			RequireOneOfFeatureFlags: role.RequireOneOfFeatureFlags,
+			IncludedRoles:            role.IncludedRoles,
 		}
 
 		updatePayload := fixtures.RoleCreatePayload(updatedRole)
 
 		var updateData gjson.Result
 		TestAPI.Update(api.Params{
-			"name": createdData.Get("role.name").String(),
+			"name": role.Name,
 			"expectPayload": func(json gjson.Result) {
-				updateData = json
+				updateData = json.Get("role")
 			},
 		}, nil, updatePayload)
 
 		TestAPI.Read(api.Params{
-			"name": createdData.Get("role.name").String(),
+			"name": role.Name,
 			"expectPayload": func(json gjson.Result) {
-				Expect(updateData).To(Equal(json))
+				specs.IsSubsetExceptKeys(updateData, json.Get("role"))
 			},
 		}, nil)
 	})
 
 	It("can be deleted", func() {
-		createPayload := fixtures.RandomRoleCreatePayload()
-		var createdData gjson.Result
-		TestAPI.Create(api.Params{
-			"expectPayload": func(json gjson.Result) {
-				createdData = json
-			},
-		}, nil, createPayload)
+		role := specs.CreateRandomRole(TestAPI)
 
 		TestAPI.Delete(api.Params{
-			"name": createdData.Get("role.name").String(),
+			"name":         role.Name,
+			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
 		}, nil)
 
 		TestAPI.Read(api.Params{
-			"name":         createdData.Get("role.name").String(),
-			"expectStatus": api.ExpectExactStatus(200),
+			"name":         role.Name,
+			"expectStatus": api.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				Expect(json.Get("role.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 			},

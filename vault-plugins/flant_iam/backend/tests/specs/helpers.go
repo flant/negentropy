@@ -101,3 +101,34 @@ func CreateRandomGroup(groupAPI api.TestAPI, tenantID model.TenantUUID, userID m
 	Expect(err).ToNot(HaveOccurred())
 	return group
 }
+
+func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, tenantID model.TenantUUID, userID model.UserUUID) model.Multipass {
+	createPayload := fixtures.RandomUserMultipassCreatePayload()
+	createPayload["tenant_uuid"] = tenantID
+	createPayload["owner_uuid"] = userID
+
+	params := api.Params{
+		"tenant": tenantID,
+		"user":   userID,
+	}
+	createData := userMultipassAPI.Create(params, url.Values{}, createPayload)
+	rawMultipass := createData.Get("multipass")
+	data := []byte(rawMultipass.String())
+	var multipass model.Multipass
+	err := json.Unmarshal(data, &multipass) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return multipass
+}
+
+func CreateRandomRole(roleAPI api.TestAPI) model.Role {
+	createPayload := fixtures.RandomRoleCreatePayload()
+
+	params := api.Params{}
+	createData := roleAPI.Create(params, url.Values{}, createPayload)
+	rawRole := createData.Get("role")
+	data := []byte(rawRole.String())
+	var role model.Role
+	err := json.Unmarshal(data, &role) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return role
+}
