@@ -84,6 +84,10 @@ func (b roleBindingApprovalBackend) paths() []*framework.Path {
 					Callback: b.handleUpdate(),
 					Summary:  "Update the role binding approval by ID.",
 				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleUpdate(),
+					Summary:  "Create the role binding approval by ID.",
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
 					Summary:  "Retrieve the role binding approval by ID.",

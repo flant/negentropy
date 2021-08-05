@@ -1,6 +1,9 @@
 package fixtures
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
@@ -65,5 +68,28 @@ func Roles() []model.Role {
 			Scope:         model.RoleScopeTenant,
 			IncludedRoles: []model.IncludedRole{{Name: RoleName9}},
 		},
+	}
+}
+
+func RoleCreatePayload(role model.Role) map[string]interface{} {
+	return map[string]interface{}{
+		"name":                         role.Name,
+		"description":                  role.Description,
+		"scope":                        role.Scope,
+		"options_schema":               role.OptionsSchema,
+		"require_one_of_feature_flags": role.RequireOneOfFeatureFlags,
+	}
+}
+
+func RandomRoleCreatePayload() map[string]interface{} {
+	rolesSet := Roles()
+	rand.Seed(time.Now().UnixNano())
+	sample := rolesSet[rand.Intn(len(rolesSet))]
+	return map[string]interface{}{
+		"name":                         "name_" + RandomStr(),
+		"description":                  "description_" + RandomStr(),
+		"scope":                        sample.Scope,
+		"options_schema":               sample.OptionsSchema,
+		"require_one_of_feature_flags": sample.RequireOneOfFeatureFlags,
 	}
 }

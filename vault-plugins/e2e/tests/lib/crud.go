@@ -12,14 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/featureflag"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/identitysharing"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebinding"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/rolebindingapproval"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant"
-	tenant_featureflag "github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tenant-featureflag"
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/tools"
-	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib/user"
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
 )
 
 type TestAPI interface {
@@ -41,12 +35,13 @@ type URLBuilder interface {
 var (
 	_ TestAPI = (*BuilderBasedAPI)(nil)
 
-	_ URLBuilder = (*tenant.EndpointBuilder)(nil)
-	_ URLBuilder = (*featureflag.EndpointBuilder)(nil)
-	_ URLBuilder = (*identitysharing.EndpointBuilder)(nil)
-	_ URLBuilder = (*rolebinding.EndpointBuilder)(nil)
-	_ URLBuilder = (*rolebindingapproval.EndpointBuilder)(nil)
-	_ URLBuilder = (*tenant_featureflag.EndpointBuilder)(nil)
+	_ URLBuilder = (*url2.TenantEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.FeatureFlagEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.IdentitySharingEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleBindingApprovalEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.TenantFeatureFlagEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.RoleEndpointBuilder)(nil)
 )
 
 type BuilderBasedAPI struct {
@@ -74,74 +69,80 @@ func (b *BuilderBasedAPI) request(method, url string, params tools.Params, paylo
 	data, err := ioutil.ReadAll(resp.Body)
 	Expect(err).ToNot(HaveOccurred())
 
+	json := tools.UnmarshalVaultResponse(data)
+
 	By(resp.Status+" | Payload: "+string(data), func() {
 		if expectStatus, ok := params["expectStatus"]; ok {
-			expectStatus.(func(response *http.Response))(resp)
+			expectStatus.(func(statusCode int))(resp.StatusCode)
 		}
 
 		if expectPayload, ok := params["expectPayload"]; ok {
-			expectPayload.(func([]byte))(data)
+			expectPayload.(func(result gjson.Result))(json)
 		}
 	})
 
-	return tools.UnmarshalVaultResponse(data)
+	return json
 }
 
 func (b *BuilderBasedAPI) Create(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.OneCreate(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(201))
+	return b.request(http.MethodPost, "/"+b.url.OneCreate(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) CreatePrivileged(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(201))
-	return b.request(http.MethodPost, b.url.Privileged(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(201))
+	return b.request(http.MethodPost, "/"+b.url.Privileged(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Read(params tools.Params, query url.Values) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodGet, b.url.One(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodGet, "/"+b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) Update(params tools.Params, query url.Values, payload interface{}) gjson.Result {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodPost, b.url.One(params, query), params, payload)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodPost, "/"+b.url.One(params, query), params, payload)
 }
 
 func (b *BuilderBasedAPI) Delete(params tools.Params, query url.Values) {
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(204))
-	b.request(http.MethodDelete, b.url.One(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(204))
+	b.request(http.MethodDelete, "/"+b.url.One(params, query), params, nil)
 }
 
 func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Result {
 	// query.Set("list", "true")
-	params.AddIfNotExists("expectStatus", tools.ExpectExactStatus(200))
-	return b.request(http.MethodGet, b.url.Collection(params, query), params, nil)
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	return b.request(http.MethodGet, "/"+b.url.Collection(params, query), params, nil)
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &tenant.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.TenantEndpointBuilder{}}
 }
 
 func NewFeatureFlagAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &featureflag.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
 func NewIdentitySharingAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &identitysharing.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.IdentitySharingEndpointBuilder{}}
 }
 
 func NewRoleBindingAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &rolebinding.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.RoleBindingEndpointBuilder{}}
 }
 
 func NewRoleBindingApprovalAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &rolebindingapproval.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.RoleBindingApprovalEndpointBuilder{}}
 }
 
 func NewTenantFeatureFlagAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &tenant_featureflag.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.TenantFeatureFlagEndpointBuilder{}}
 }
 
 func NewClientAPI(client *http.Client) TestAPI {
-	return &BuilderBasedAPI{client: client, url: &user.EndpointBuilder{}}
+	return &BuilderBasedAPI{client: client, url: &url2.UserEndpointBuilder{}}
+}
+
+func NewRoleAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.RoleEndpointBuilder{}}
 }

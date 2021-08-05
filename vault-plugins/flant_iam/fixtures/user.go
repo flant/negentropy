@@ -1,6 +1,14 @@
 package fixtures
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"time"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+)
 
 const (
 	UserUUID1 = "00000000-0000-0000-0000-000000000001"
@@ -53,4 +61,18 @@ func Users() []model.User {
 			Origin:         "test",
 		},
 	}
+}
+
+func RandomUserCreatePayload() map[string]interface{} {
+	userSet := Users()
+	rand.Seed(time.Now().UnixNano())
+	sample := userSet[rand.Intn(len(userSet))]
+
+	sample.Identifier = uuid.New()
+	sample.Email = fmt.Sprintf("%s@ex.com", RandomStr())
+
+	bytes, _ := json.Marshal(sample)
+	var payload map[string]interface{}
+	json.Unmarshal(bytes, &payload) //nolint:errcheck
+	return payload
 }

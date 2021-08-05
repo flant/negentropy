@@ -172,7 +172,7 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 			"identity_sharings": list,
 		},
 	}
-	return resp, nil
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
 func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Request,
