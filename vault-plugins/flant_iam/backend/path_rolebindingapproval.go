@@ -254,6 +254,6 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 				"role_binding_approvals": rolebindingApprovals,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
