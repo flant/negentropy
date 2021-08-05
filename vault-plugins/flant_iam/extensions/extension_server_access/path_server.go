@@ -144,7 +144,7 @@ func (b *serverBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "List servers",
 				},

@@ -158,3 +158,7 @@ func NewProjectAPI(client *http.Client) TestAPI {
 func NewUserMultipassAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.UserMultipassEndpointBuilder{}}
 }
+
+func NewServerAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ServerEndpointBuilder{}}
+}

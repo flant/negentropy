@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
@@ -152,10 +153,32 @@ func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.R
 	var createPayload map[string]interface{}
 	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
 	createData := rolebindingAPI.Create(params, url.Values{}, createPayload)
-	rawRoleBinding := createData.Get("rolebinding")
+	rawRoleBinding := createData.Get("role_binding")
 	data := []byte(rawRoleBinding.String())
 	var roleBinding model.RoleBinding
 	err := json.Unmarshal(data, &roleBinding) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
 	return roleBinding
+}
+
+type ServerRegistrationResult struct {
+	MultipassJWT string `json:"multipassJWT"`
+	ServerUUID   string `json:"uuid"`
+}
+
+func RegisterServer(serverAPI api.TestAPI, server model2.Server) ServerRegistrationResult {
+	params := api.Params{
+		"tenant":       server.TenantUUID,
+		"project":      server.ProjectUUID,
+		"expectStatus": api.ExpectExactStatus(200),
+	}
+	bytes, _ := json.Marshal(server)
+	var createPayload map[string]interface{}
+	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
+	createData := serverAPI.Create(params, url.Values{}, createPayload)
+	data := []byte(createData.String())
+	var createdServer ServerRegistrationResult
+	err := json.Unmarshal(data, &createdServer) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return createdServer
 }
