@@ -18,7 +18,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: vault-plugins/
 
     steps:
       - name: Set up Go
@@ -46,7 +45,7 @@ jobs:
           export TEST_VAULT_SECOND_TOKEN=$(cat /tmp/root_token)
           go mod download
           go run github.com/onsi/ginkgo/ginkgo run ./...
-        working-directory: vault-plugins/e2e
+        working-directory: e2e
 
   remove-label:
     name: Remove Label
