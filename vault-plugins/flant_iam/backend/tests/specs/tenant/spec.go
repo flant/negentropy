@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 var TestAPI api.TestAPI
@@ -123,5 +124,20 @@ var _ = Describe("Tenant", func() {
 		createPayload := fixtures.RandomTenantCreatePayload()
 		TestAPI.Create(api.Params{}, url.Values{}, createPayload)
 		TestAPI.List(api.Params{}, url.Values{})
+	})
+
+	It("can be created with priveleged", func() {
+		createPayload := fixtures.RandomTenantCreatePayload()
+		originalUUID := uuid.New()
+		createPayload["uuid"] = originalUUID
+
+		params := api.Params{
+			"expectPayload": func(json gjson.Result) {
+				tenantData := json.Get("tenant")
+				Expect(tenantData.Map()).To(HaveKey("uuid"))
+				Expect(tenantData.Map()["uuid"].String()).To(Equal(originalUUID))
+			},
+		}
+		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
 })
