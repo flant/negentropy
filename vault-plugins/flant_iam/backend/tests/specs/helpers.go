@@ -53,7 +53,6 @@ func ConvertToGJSON(object interface{}) gjson.Result {
 
 func CreateRandomTenant(tenantsAPI api.TestAPI) model.Tenant {
 	createPayload := fixtures.RandomTenantCreatePayload()
-
 	var createdData gjson.Result
 	tenantsAPI.Create(api.Params{
 		"expectPayload": func(json gjson.Result) {
@@ -82,14 +81,13 @@ func CreateRandomUser(userAPI api.TestAPI, tenantID model.TenantUUID) model.User
 	return user
 }
 
-func CreateRandomGroup(groupAPI api.TestAPI, tenantID model.TenantUUID, userID model.UserUUID) model.Group {
+func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, userID model.UserUUID) model.Group {
 	createPayload := fixtures.RandomGroupCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
 	createPayload["members"] = map[string]interface{}{
 		"type": "user",
 		"uuid": userID,
 	}
-
 	params := api.Params{
 		"tenant": tenantID,
 	}
@@ -106,7 +104,6 @@ func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, tenantID model.Tena
 	createPayload := fixtures.RandomUserMultipassCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
 	createPayload["owner_uuid"] = userID
-
 	params := api.Params{
 		"tenant": tenantID,
 		"user":   userID,
@@ -122,7 +119,6 @@ func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, tenantID model.Tena
 
 func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 	createPayload := fixtures.RandomRoleCreatePayload()
-
 	params := api.Params{}
 	createData := roleAPI.Create(params, url.Values{}, createPayload)
 	rawRole := createData.Get("role")
@@ -136,16 +132,30 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
 	createPayload := fixtures.RandomGroupCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
-
 	params := api.Params{
 		"tenant": tenantID,
 	}
 	createData := projectAPI.Create(params, url.Values{}, createPayload)
-
 	rawProject := createData.Get("project")
 	data := []byte(rawProject.String())
 	var project model.Project
 	err := json.Unmarshal(data, &project) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
 	return project
+}
+
+func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.RoleBinding {
+	params := api.Params{
+		"tenant": rb.TenantUUID,
+	}
+	bytes, _ := json.Marshal(rb)
+	var createPayload map[string]interface{}
+	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
+	createData := rolebindingAPI.Create(params, url.Values{}, createPayload)
+	rawRoleBinding := createData.Get("rolebinding")
+	data := []byte(rawRoleBinding.String())
+	var roleBinding model.RoleBinding
+	err := json.Unmarshal(data, &roleBinding) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return roleBinding
 }
