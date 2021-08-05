@@ -1,6 +1,13 @@
 package fixtures
 
-import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	"encoding/json"
+	"math/rand"
+	"time"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+)
 
 const (
 	ProjectUUID1 = "00000000-0100-0000-0000-000000000000"
@@ -38,4 +45,18 @@ func Projects() []model.Project {
 			Identifier: "pr5",
 		},
 	}
+}
+
+func RandomprojectCreatePayload() map[string]interface{} {
+	projectSet := Projects()
+	rand.Seed(time.Now().UnixNano())
+	sample := projectSet[rand.Intn(len(projectSet))]
+
+	sample.Identifier = uuid.New()
+	sample.UUID = ""
+
+	bytes, _ := json.Marshal(sample)
+	var payload map[string]interface{}
+	json.Unmarshal(bytes, &payload) //nolint:errcheck
+	return payload
 }

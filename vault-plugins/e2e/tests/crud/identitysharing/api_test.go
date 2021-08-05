@@ -12,8 +12,8 @@ import (
 
 func Test_identitySharingCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
-	identitysharing.TestTenantsAPI = lib.NewTenantAPI(rootClient)
-	identitysharing.TestIdentitySharingAPI = lib.NewIdentitySharingAPI(rootClient)
+	identitysharing.TenantAPI = lib.NewTenantAPI(rootClient)
+	identitysharing.TestAPI = lib.NewIdentitySharingAPI(rootClient)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: IdentitySharing")

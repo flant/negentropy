@@ -37,12 +37,12 @@ type PathBuilder interface {
 	Privileged(Params, url.Values) string
 }
 
-type BuilderBasedAPI struct {
+type BackendBasedAPI struct {
 	url     PathBuilder
 	backend *logical.Backend
 }
 
-func (b *BuilderBasedAPI) request(operation logical.Operation, url string, params Params, payload interface{}) gjson.Result {
+func (b *BackendBasedAPI) request(operation logical.Operation, url string, params Params, payload interface{}) gjson.Result {
 	p, ok := payload.(map[string]interface{})
 	if !(operation == logical.ReadOperation || operation == logical.DeleteOperation || operation == logical.ListOperation) {
 		Expect(ok).To(Equal(true), "definitely need map[string]interface{}")
@@ -97,62 +97,78 @@ func (b *BuilderBasedAPI) request(operation logical.Operation, url string, param
 	return json
 }
 
-func (b *BuilderBasedAPI) Create(params Params, query url.Values, payload interface{}) gjson.Result {
+func (b *BackendBasedAPI) Create(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(201))
 	return b.request(logical.CreateOperation, b.url.OneCreate(params, query), params, payload)
 }
 
-func (b *BuilderBasedAPI) CreatePrivileged(params Params, query url.Values, payload interface{}) gjson.Result {
+func (b *BackendBasedAPI) CreatePrivileged(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(201))
 	return b.request(logical.CreateOperation, b.url.Privileged(params, query), params, payload)
 }
 
-func (b *BuilderBasedAPI) Read(params Params, query url.Values) gjson.Result {
+func (b *BackendBasedAPI) Read(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
 	return b.request(logical.ReadOperation, b.url.One(params, query), params, nil)
 }
 
-func (b *BuilderBasedAPI) Update(params Params, query url.Values, payload interface{}) gjson.Result {
+func (b *BackendBasedAPI) Update(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
 	return b.request(logical.UpdateOperation, b.url.One(params, query), params, payload)
 }
 
-func (b *BuilderBasedAPI) Delete(params Params, query url.Values) {
+func (b *BackendBasedAPI) Delete(params Params, query url.Values) {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(204))
 	b.request(logical.DeleteOperation, b.url.One(params, query), params, nil)
 }
 
-func (b *BuilderBasedAPI) List(params Params, query url.Values) gjson.Result {
+func (b *BackendBasedAPI) List(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
 	return b.request(logical.ReadOperation, b.url.Collection(params, query), params, nil)
 }
 
 func NewRoleAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.RoleEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.RoleEndpointBuilder{}}
 }
 
 func NewFeatureFlagAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.FeatureFlagEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
 func NewTenantAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.TenantEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.TenantEndpointBuilder{}}
 }
 
 func NewIdentitySharingAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.IdentitySharingEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.IdentitySharingEndpointBuilder{}}
 }
 
 func NewRoleBindingAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.RoleBindingEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.RoleBindingEndpointBuilder{}}
 }
 
 func NewRoleBindingApprovalAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.RoleBindingApprovalEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.RoleBindingApprovalEndpointBuilder{}}
 }
 
 func NewTenantFeatureFlagAPI(b *logical.Backend) TestAPI {
-	return &BuilderBasedAPI{backend: b, url: &url2.TenantFeatureFlagEndpointBuilder{}}
+	return &BackendBasedAPI{backend: b, url: &url2.TenantFeatureFlagEndpointBuilder{}}
+}
+
+func NewUserAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.UserEndpointBuilder{}}
+}
+
+func NewGroupAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.GroupEndpointBuilder{}}
+}
+
+func NewUserMultipassAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.UserMultipassEndpointBuilder{}}
+}
+
+func NewProjectAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ProjectEndpointBuilder{}}
 }
 
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
@@ -206,4 +222,12 @@ func TestBackend() logical.Backend {
 	config.StorageView = logical.NewStorageView(logical.NewLogicalStorage(testPhisicalBackend), "")
 	b, _ := backend.Factory(context.Background(), config)
 	return b
+}
+
+func TestBackendWithStorage() (logical.Backend, logical.Storage) {
+	config := logical.TestBackendConfig()
+	testPhisicalBackend, _ := inmem.NewInmemHA(map[string]string{}, config.Logger)
+	config.StorageView = logical.NewStorageView(logical.NewLogicalStorage(testPhisicalBackend), "")
+	b, _ := backend.Factory(context.Background(), config)
+	return b, config.StorageView
 }

@@ -552,7 +552,7 @@ func (b *userBackend) handleList() framework.OperationFunc {
 				"users": users,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -643,7 +643,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return logical.RespondWithStatusCode(nil, nil, http.StatusNoContent)
 	}
 }
 
@@ -690,6 +690,6 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 			},
 		}
 
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

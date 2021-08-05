@@ -585,7 +585,7 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 				"service_accounts": serviceAccounts,
 			},
 		}
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -654,7 +654,7 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
 	}
 }
 
@@ -702,7 +702,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 			},
 		}
 
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
@@ -779,7 +779,7 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
 	}
 }
 
@@ -830,7 +830,7 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 			},
 		}
 
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

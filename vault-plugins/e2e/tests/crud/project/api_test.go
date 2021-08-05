@@ -1,4 +1,4 @@
-package tenant
+package project
 
 import (
 	"testing"
@@ -7,12 +7,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/vault-plugins/e2e/tests/lib"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs/tenant"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs/project"
 )
 
 func Test_tenantCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
-	tenant.TestAPI = lib.NewTenantAPI(rootClient)
+	project.TenantAPI = lib.NewTenantAPI(rootClient)
+	project.TestAPI = lib.NewProjectAPI(rootClient)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Tenant")
+	RunSpecs(t, "CRUD: Project")
 }
