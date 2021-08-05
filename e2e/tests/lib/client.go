@@ -35,22 +35,22 @@ func (t *customHeadersTransport) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 const (
-	baseURL           = "http://127.0.0.1:8200/v1/"
+	defaultBaseURL    = "http://127.0.0.1:8200/v1/"
 	IamPluginPath     = "flant_iam"
 	IamAuthPluginPath = "auth/flant_iam_auth"
 )
 
 func NewIamVaultClient(token string) *http.Client {
-	return NewVaultClient(token, IamPluginPath)
+	return NewVaultClient(GetRootVaultBaseUrl(), token, IamPluginPath)
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
 	token := GetSecondRootToken()
-	return NewVaultClient(token, IamPluginPath)
+	return NewVaultClient(GetRootVaultBaseUrl(), token, IamPluginPath)
 }
 
 func NewIamAuthVaultClient(token string) *http.Client {
-	return NewVaultClient(token, IamAuthPluginPath)
+	return NewVaultClient(GetAuthVaultBaseUrl(), token, IamAuthPluginPath)
 }
 
 func NewConfiguredIamAuthVaultClient() *http.Client {
@@ -58,7 +58,7 @@ func NewConfiguredIamAuthVaultClient() *http.Client {
 	return NewIamAuthVaultClient(token)
 }
 
-func NewVaultClient(token string, pluginPath string) *http.Client {
+func NewVaultClient(baseURL string, token string, pluginPath string) *http.Client {
 	pluginURL, err := url.Parse(baseURL + pluginPath)
 	if err != nil {
 		panic(err)
@@ -101,4 +101,20 @@ func GetSecondRootToken() string {
 		panic("TEST_VAULT_SECOND_TOKEN is empty, need valid token to access vault")
 	}
 	return token
+}
+
+func GetRootVaultBaseUrl() string {
+	u := os.Getenv("ROOT_VAULT_BASE_URL")
+	if u == "" {
+		return defaultBaseURL
+	}
+	return u
+}
+
+func GetAuthVaultBaseUrl() string {
+	u := os.Getenv("AUTH_VAULT_BASE_URL")
+	if u == "" {
+		return defaultBaseURL
+	}
+	return u
 }
