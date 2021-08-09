@@ -162,3 +162,11 @@ func NewUserMultipassAPI(client *http.Client) TestAPI {
 func NewServerAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.ServerEndpointBuilder{}}
 }
+
+func NewConnectionInfoAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ConnectionInfoEndpointBuilder{}}
+}
+
+func NewServiceAccountMultipassAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ServiceAccountMultipassEndpointBuilder{}}
+}

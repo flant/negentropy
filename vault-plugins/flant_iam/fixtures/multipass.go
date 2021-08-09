@@ -10,10 +10,6 @@ import (
 
 func RandomUserMultipassCreatePayload() map[string]interface{} {
 	multipass := model.Multipass{
-		// UUID:               "",
-		// TenantUUID:         "",
-		// OwnerUUID:          "",
-		// OwnerType:          "",
 		Description: "desc - " + uuid.New(),
 		TTL:         100 * time.Second,
 		MaxTTL:      1000 * time.Second,

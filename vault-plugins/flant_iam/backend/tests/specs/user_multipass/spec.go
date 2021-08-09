@@ -66,7 +66,7 @@ var _ = Describe("User Multipass", func() {
 	})
 
 	It("can be read", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, tenant.UUID, user.UUID)
+		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
 		createdData := specs.ConvertToGJSON(multipass)
 
 		TestAPI.Read(api.Params{
@@ -80,7 +80,7 @@ var _ = Describe("User Multipass", func() {
 	})
 
 	It("can be deleted", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, tenant.UUID, user.UUID)
+		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
 
 		TestAPI.Delete(api.Params{
 			"tenant":    multipass.TenantUUID,
@@ -98,7 +98,7 @@ var _ = Describe("User Multipass", func() {
 	})
 
 	It("can be listed", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, tenant.UUID, user.UUID)
+		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
 
 		TestAPI.List(api.Params{
 			"tenant": multipass.TenantUUID,

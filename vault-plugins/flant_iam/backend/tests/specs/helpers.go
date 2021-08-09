@@ -3,6 +3,9 @@ package specs
 import (
 	"encoding/json"
 	"net/url"
+	"time"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
@@ -100,14 +103,30 @@ func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, 
 	Expect(err).ToNot(HaveOccurred())
 	return group
 }
+func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, user model.User) model.Multipass {
+	multipass, _ := CreateUserMultipass(userMultipassAPI, user,
+		"desc - "+uuid.New(),
+		100*time.Second,
+		1000*time.Second,
+		[]string{"ssh"})
+	return multipass
+}
 
-func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, tenantID model.TenantUUID, userID model.UserUUID) model.Multipass {
-	createPayload := fixtures.RandomUserMultipassCreatePayload()
-	createPayload["tenant_uuid"] = tenantID
-	createPayload["owner_uuid"] = userID
+// return Mutipass model and JWT
+func CreateUserMultipass(userMultipassAPI api.TestAPI, user model.User, description string,
+	ttl time.Duration, maxTTL time.Duration, roles []model.RoleName) (model.Multipass, string) {
+	createPayload := map[string]interface{}{
+		"tenant_uuid":   user.TenantUUID,
+		"owner_uuid":    user.UUID,
+		"owner_type":    model.UserType,
+		"description":   description,
+		"ttl":           ttl,
+		"max_ttl":       maxTTL,
+		"allowed_roles": roles,
+	}
 	params := api.Params{
-		"tenant": tenantID,
-		"user":   userID,
+		"tenant": user.TenantUUID,
+		"user":   user.UUID,
 	}
 	createData := userMultipassAPI.Create(params, url.Values{}, createPayload)
 	rawMultipass := createData.Get("multipass")
@@ -115,7 +134,7 @@ func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, tenantID model.Tena
 	var multipass model.Multipass
 	err := json.Unmarshal(data, &multipass) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
-	return multipass
+	return multipass, createData.Get("token").String()
 }
 
 func CreateRandomRole(roleAPI api.TestAPI) model.Role {
@@ -181,4 +200,48 @@ func RegisterServer(serverAPI api.TestAPI, server model2.Server) ServerRegistrat
 	err := json.Unmarshal(data, &createdServer) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
 	return createdServer
+}
+
+func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server model2.Server, info model2.ConnectionInfo) model2.Server {
+	params := api.Params{
+		"tenant":       server.TenantUUID,
+		"project":      server.ProjectUUID,
+		"server":       server.UUID,
+		"expectStatus": api.ExpectExactStatus(200),
+	}
+	bytes, _ := json.Marshal(info)
+	var createPayload map[string]interface{}
+	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
+	createData := connectionInfoAPI.Update(params, url.Values{}, createPayload)
+	data := []byte(createData.Get("server").String())
+	var resultServer model2.Server
+	err := json.Unmarshal(data, &resultServer) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return resultServer
+
+}
+
+// return Mutipass model and JWT
+func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, serviceAccount model.ServiceAccount, description string,
+	ttl time.Duration, maxTTL time.Duration, roles []model.RoleName) (model.Multipass, string) {
+	createPayload := map[string]interface{}{
+		"tenant_uuid":   serviceAccount.TenantUUID,
+		"owner_uuid":    serviceAccount.UUID,
+		"owner_type":    model.ServiceAccountType,
+		"description":   description,
+		"ttl":           ttl,
+		"max_ttl":       maxTTL,
+		"allowed_roles": roles,
+	}
+	params := api.Params{
+		"tenant": serviceAccount.TenantUUID,
+		"user":   serviceAccount.UUID,
+	}
+	createData := serviceAccountMultipassAPI.Create(params, url.Values{}, createPayload)
+	rawMultipass := createData.Get("multipass")
+	data := []byte(rawMultipass.String())
+	var multipass model.Multipass
+	err := json.Unmarshal(data, &multipass) //nolint:errcheck
+	Expect(err).ToNot(HaveOccurred())
+	return multipass, createData.Get("token").String()
 }
