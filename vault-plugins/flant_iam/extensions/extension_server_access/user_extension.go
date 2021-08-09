@@ -68,7 +68,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				return err
 			}
 
-			log.L().Error("finished user hook", "new", obj)
+			log.L().Info("finished user hook", "new", obj)
 
 			return nil
 		},
