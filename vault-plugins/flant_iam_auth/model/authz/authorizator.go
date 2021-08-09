@@ -53,7 +53,7 @@ func (a *Authorizator) Authorize(authnResult *authn.Result, method *model.AuthMe
 	var fullId string
 
 	user, err := a.UserRepo.GetByID(uuid)
-	if err != nil && errors.Is(err, iam.ErrNotFound) {
+	if err != nil && !errors.Is(err, iam.ErrNotFound) {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (a *Authorizator) Authorize(authnResult *authn.Result, method *model.AuthMe
 		a.Logger.Debug(fmt.Sprintf("Not found user for %s uuid. Try find service account", uuid))
 		var sa *iam.ServiceAccount
 		sa, err = a.SaRepo.GetByID(uuid)
-		if errors.Is(err, iam.ErrNotFound) {
+		if err!=nil && errors.Is(err, iam.ErrNotFound) {
 			return nil, fmt.Errorf("not found iam entity %s", uuid)
 		}
 		if err != nil {
