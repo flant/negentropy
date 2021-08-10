@@ -10,9 +10,7 @@ import (
 
 type Encrypter struct{}
 
-var (
-	separator = strconv.QuoteRuneToASCII('☺')
-)
+var separator = strconv.QuoteRuneToASCII('☺')
 
 func NewEncrypter() *Encrypter {
 	return &Encrypter{}
