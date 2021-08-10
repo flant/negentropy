@@ -8,16 +8,12 @@ import (
 	"strconv"
 )
 
-type Encrypter struct {
-	buf       *bytes.Buffer
-	separator string
-}
+type Encrypter struct{}
+
+var separator = strconv.QuoteRuneToASCII('☺')
 
 func NewEncrypter() *Encrypter {
-	return &Encrypter{
-		buf:       bytes.NewBuffer(nil),
-		separator: strconv.QuoteRuneToASCII('☺'),
-	}
+	return &Encrypter{}
 }
 
 const (
@@ -34,7 +30,7 @@ func (c *Encrypter) Encrypt(data []byte, pub *rsa.PublicKey) (env []byte, chunke
 		return
 	}
 
-	defer c.buf.Reset()
+	buf := bytes.NewBuffer(nil)
 
 	chunked = true
 	parts := dataLen / maxSize
@@ -51,22 +47,22 @@ func (c *Encrypter) Encrypt(data []byte, pub *rsa.PublicKey) (env []byte, chunke
 		if err != nil {
 			return nil, chunked, err
 		}
-		c.buf.Write(eChunk)
+		buf.Write(eChunk)
 		if i != parts {
-			c.buf.WriteString(c.separator)
+			buf.WriteString(separator)
 		}
 	}
 
-	return c.buf.Bytes(), chunked, nil
+	return buf.Bytes(), chunked, nil
 }
 
 func (c *Encrypter) Decrypt(data []byte, priv *rsa.PrivateKey, chunked bool) ([]byte, error) {
 	if !chunked {
 		return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, data, nil)
 	}
-	defer c.buf.Reset()
+	buf := bytes.NewBuffer(nil)
 
-	chunks := bytes.Split(data, []byte(c.separator))
+	chunks := bytes.Split(data, []byte(separator))
 
 	for _, chunk := range chunks {
 
@@ -75,8 +71,8 @@ func (c *Encrypter) Decrypt(data []byte, priv *rsa.PrivateKey, chunked bool) ([]
 			return nil, err
 		}
 
-		c.buf.Write(dec)
+		buf.Write(dec)
 	}
 
-	return c.buf.Bytes(), nil
+	return buf.Bytes(), nil
 }
