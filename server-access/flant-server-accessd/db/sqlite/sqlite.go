@@ -35,10 +35,11 @@ CREATE TEMPORARY TABLE temp_users
     gecos       TEXT,
     homedir     TEXT                NOT NULL,
     shell       TEXT                NOT NULL,
-    hashed_pass TEXT                NOT NULL
+    hashed_pass TEXT                NOT NULL,
+	principal  TEXT                NOT NULL
 );`
 	oldUsersStatementv1 = `
-SELECT name, uid, gid, gecos, homedir, shell, hashed_pass FROM users
+SELECT name, uid, gid, gecos, homedir, shell, hashed_pass, principal FROM users
 WHERE (name, uid, gid, homedir) IN 
 (
 	SELECT name, uid, gid, homedir FROM users
@@ -47,7 +48,7 @@ WHERE (name, uid, gid, homedir) IN
 );
 `
 	newUsersStatementv1 = `
-SELECT name, uid, gid, gecos, homedir, shell, hashed_pass FROM temp.temp_users
+SELECT name, uid, gid, gecos, homedir, shell, hashed_pass, principal FROM temp.temp_users
 WHERE (name, uid, gid, homedir) IN 
 (
 	SELECT name, uid, gid, homedir FROM temp.temp_users
@@ -137,8 +138,8 @@ func (db *UserDatabase) Sync(ctx context.Context, uwg types.UsersWithGroups) err
 	}
 
 	preparedInsertUsers, err := tx.PrepareNamed(`
-INSERT INTO users (name, uid, gid, gecos, homedir, shell, hashed_pass) 
-VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass);`)
+INSERT INTO users (name, uid, gid, gecos, homedir, shell, hashed_pass, principal) 
+VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass, :principal);`)
 	if err != nil {
 		return err
 	}
@@ -192,8 +193,8 @@ func (db *UserDatabase) GetChanges(ctx context.Context, uwg types.UsersWithGroup
 	}
 
 	preparedInsert, err := tx.PrepareNamed(`
-INSERT INTO temp.temp_users (name, uid, gid, gecos, homedir, shell, hashed_pass) 
-VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass);`)
+INSERT INTO temp.temp_users (name, uid, gid, gecos, homedir, shell, hashed_pass, principal) 
+VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass, :principal);`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,6 +226,7 @@ VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass);`)
 		return nil, nil, err
 	}
 
+	fmt.Printf("new users =%#v\n old users =%#v\n", newUsers, oldUsers)
 	return newUsers, oldUsers, nil
 }
 
