@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: AuthdConfig
+jwtPath: "/opt/authd/server-jwt"
+defaultSocketDirectory: "/run"
+servers:
+  - domain: http://vault:8200
+    default: true
+  - domain: http://vault:8200
+    type: auth

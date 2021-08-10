@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/cenkalti/backoff"
@@ -71,7 +70,7 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 	rk.logger.Debug("Restore - handler run")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
-		log.Printf("wrong object Key format: %s\n", msg.Key)
+		rk.logger.Debug("wrong object key format", "key", msg.Key)
 		return fmt.Errorf("key has wong format: %s", msg.Key)
 	}
 
@@ -96,7 +95,7 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	rk.logger.Debug("Restore - decrypted msg", "msg", decrypted)
+	rk.logger.Debug("Restore - decryption", "decrypted msg", decrypted)
 
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
@@ -107,7 +106,7 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message)
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	rk.logger.Debug("Restore - signature verified", decrypted)
+	rk.logger.Debug("Restore - signature verified", "decripted", decrypted)
 
 	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
 }
@@ -132,7 +131,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		l := rk.logger
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
-			// return fmt.Debugf("key has wong format: %s", string(msg.Key))
+			// return fmt.Debugf("key has wrong format: %s", string(msg.Key))
 			return
 		}
 		objType, objId := splitted[0], splitted[1]
