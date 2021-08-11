@@ -120,17 +120,17 @@ func (s *SystemOperator) CreateAuthorizedKeysFile(homeDir string, principal stri
 	content := GenerateAuthorizedKeysFile(principal, "")
 	sshDir := filepath.Join(homeDir, ".ssh")
 	filePath := filepath.Join(sshDir, "authorized_keys")
-	err := CreateAuthorizedKeysFile(filePath, content)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(sshDir, 0700)
+	err := os.MkdirAll(sshDir, 0o700)
 	if err != nil {
 		return fmt.Errorf("create .ssh dir: %v")
 	}
 
-	err = os.Chmod(filePath, 0600)
+	err = CreateAuthorizedKeysFile(filePath, content)
+	if err != nil {
+		return fmt.Errorf("create .ssh/authorized_keys file: %v")
+	}
+
+	err = os.Chmod(filePath, 0o600)
 	if err != nil {
 		return fmt.Errorf("change .ssh/authorized_keys mode: %v")
 	}
