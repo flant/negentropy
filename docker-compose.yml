@@ -60,43 +60,25 @@ services:
       - kafka
 
   test_client:
-    image: golang:1.16 # replace after ci/cd
+    image: ubuntu:20.04
     depends_on:
       - vault
     volumes:
-#  /opt/authd/bin/authd
       - "./authd/build:/opt/authd/bin"
-#  /opt/cli/bin/cli
       - "./cli/build:/opt/cli/bin"
-    command:
-      - /bin/bash
-      - -c
-      - |
-        echo "sleep for infinity"
-        sleep infinity
+    command: ["sleep", "infinity"]
 
   test_server:
-    image: golang:1.16 # replace after ci/cd
+    image: ubuntu:20.04
     volumes:
-      #  /opt/authd/bin/authd
       - "./authd/build:/opt/authd/bin"
-      #  /opt/server-access/bin/server-accessd
       - "./server-access/flant-server-accessd/build:/opt/server-access/bin"
-      # server-access/server-access-nss/build/libnss_flantauth.so.2
-      # to be copied at /lib/x86_64-linux-gnu
-      - "./server-access/server-access-nss/build:/opt/server-access-nss/bin"
+      - "./server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:
       - vault
-    command:
-      - /bin/bash
-      - -c
-      - |
-        cp /opt/server-access-nss/bin/libnss_flantauth.so.2 /lib/x86_64-linux-gnu/
-        cp /opt/server-access-nss/bin/libnss_flantauth.so.2 /lib/aarch64-linux-gnu/
-        echo "sleep for infinity"
-        sleep infinity
+    command: ["sleep", "infinity"]
 
 #volumes:
 #  zookeeper_data:

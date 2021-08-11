@@ -23,12 +23,12 @@ function activate-plugin() {
 
 function connect_plugins() {
   # prepare flant_iam
-  docker-exec "vault write -force flant_iam/kafka/generate_csr" >/dev/null 2>&1
+  docker-exec "vault write -force flant_iam/kafka/generate_csr" > /dev/null 2>&1
   docker-exec "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
   root_pubkey=$(docker-exec "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
   # prepare flant_iam_auth
-  docker-exec "vault write -force auth/flant_iam_auth/kafka/generate_csr" >/dev/null 2>&1
+  docker-exec "vault write -force auth/flant_iam_auth/kafka/generate_csr" > /dev/null 2>&1
   docker-exec "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
   auth_pubkey=$(docker-exec "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
@@ -47,8 +47,8 @@ function initialize() {
   docker-exec "vault write flant_iam/configure_extension/server_access roles_for_servers=servers role_for_ssh_access=ssh name=ssh delete_expired_password_seeds_after=1000000 expire_password_seed_after_reveal_in=1000000 last_allocated_uid=10000 --format=json"
   docker-exec "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
 
-  docker-exec "vault write -force flant_iam/jwt/enable" >/dev/null 2>&1
-  docker-exec "vault write -force auth/flant_iam_auth/jwt/enable" >/dev/null 2>&1
+  docker-exec "vault write -force flant_iam/jwt/enable" > /dev/null 2>&1
+  docker-exec "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
 
   # TODO: why?
   docker-exec "vault token create -orphan -policy=root -field=token" > /tmp/root_token
@@ -113,9 +113,9 @@ Vo7ERDeNEGUYrtkC/NH2mi82LyXS5pxHeD6QvUzF8oN9/EjMUJ8l/KgRdW7gDLdz
 C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
 -----END RSA PRIVATE KEY-----" \
           public_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDT8bXBWcX25++KjVbVcEAPnURTpQ/6nSi0xV+lqn/sOCTJljRYTMk0UbGZHbvVV2edYYpgCkDKOWF9eF5hpjmPasyYoskVMJz9fae1+cl+pmycnGTZLspg0r59Nr/77ryja2KkllY4CXc7zlmu/R+316VgzpWPyR4007lIZl28BAahbdfKJ/jNppkVZL413rSFZ5gTBlMIVmZq1pUvOBtahMrH2KDvWdg0UJWh5qjyHxifC+Lv3vHWlKqwLrgJFQ859V4sbfTqht41Xwt80nkKSA7yOL4FnxFwxJq5DSJb5yGTYntv3TYlwmlZmL3Jg14S3aQzW80IbVuRwnDfwv0l"
-	  '
+'
 
-  docker-exec 'vault write ssh/roles/signer -<<"EOH"
+  docker-exec 'vault write ssh/roles/signer - <<"EOF"
 {
   "allow_user_certificates": true,
   "allowed_users": "*",
@@ -129,7 +129,7 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
   "key_type": "ca",
   "ttl": "2m0s"
 }
-EOH"'  >/dev/null 2>&1
+EOF"' > /dev/null 2>&1
 }
 
 docker-compose up -d
