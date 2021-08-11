@@ -57,8 +57,8 @@ func addTestUsersAndGroups(t *testing.T, ctx context.Context, userDB *UserDataba
 	}(tx)
 
 	insertUsers, err := tx.PrepareNamed(`
-INSERT INTO users (name, uid, gid, gecos, homedir, shell, hashed_pass) 
-VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass);`)
+INSERT INTO users (name, uid, gid, gecos, homedir, shell, hashed_pass, principal) 
+VALUES (:name, :uid, :gid, :gecos, :homedir, :shell, :hashed_pass, :principal);`)
 	require.Nil(t, err, "failed to prepare users SQL query")
 
 	insertGroups, err := tx.PrepareNamed(`
@@ -103,6 +103,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -112,6 +113,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user2",
 						Shell:      "/bin/bash",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -124,6 +126,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user",
 					Shell:      "/bin/bash",
 					HashedPass: "test",
+					Principal:  "principal1",
 				},
 				{
 					Name:       "test2",
@@ -133,6 +136,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user2",
 					Shell:      "/bin/bash",
 					HashedPass: "test2",
+					Principal:  "principal2",
 				},
 			},
 		},
@@ -148,6 +152,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -157,6 +162,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user2",
 						Shell:      "/bin/bash",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -170,6 +176,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/zsh",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -179,6 +186,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user2",
 						Shell:      "/bin/zsh",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -195,6 +203,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -204,6 +213,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user-2",
 						Shell:      "/bin/bash",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -217,6 +227,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user-3",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -226,6 +237,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user-4",
 						Shell:      "/bin/bash",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -238,6 +250,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user-3",
 					Shell:      "/bin/bash",
 					HashedPass: "test",
+					Principal:  "principal1",
 				},
 				{
 					Name:       "test2",
@@ -247,6 +260,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user-4",
 					Shell:      "/bin/bash",
 					HashedPass: "test2",
+					Principal:  "principal2",
 				},
 			},
 			wantOldUsers: []types.User{
@@ -258,6 +272,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user",
 					Shell:      "/bin/bash",
 					HashedPass: "test",
+					Principal:  "principal1",
 				},
 				{
 					Name:       "test2",
@@ -267,6 +282,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user-2",
 					Shell:      "/bin/bash",
 					HashedPass: "test2",
+					Principal:  "principal2",
 				},
 			},
 		},
@@ -282,6 +298,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 					{
 						Name:       "test2",
@@ -291,6 +308,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user-2",
 						Shell:      "/bin/bash",
 						HashedPass: "test2",
+						Principal:  "principal2",
 					},
 				},
 			},
@@ -304,6 +322,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 						HomeDir:    "/home/test-user",
 						Shell:      "/bin/bash",
 						HashedPass: "test",
+						Principal:  "principal1",
 					},
 				},
 			},
@@ -316,6 +335,7 @@ func TestUserDatabase_GetChanges(t *testing.T) {
 					HomeDir:    "/home/test-user-2",
 					Shell:      "/bin/bash",
 					HashedPass: "test2",
+					Principal:  "principal2",
 				},
 			},
 		},

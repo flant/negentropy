@@ -12,7 +12,8 @@ CREATE TABLE users
     gecos       TEXT,
     homedir     TEXT             NOT NULL,
     shell       TEXT             NOT NULL,
-    hashed_pass TEXT             NOT NULL
+    hashed_pass TEXT             NOT NULL,
+    principal   TEXT             NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS "users_uid" ON users(uid);
