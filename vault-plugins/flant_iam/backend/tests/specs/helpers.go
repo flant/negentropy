@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
@@ -14,6 +12,7 @@ import (
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
@@ -103,6 +102,7 @@ func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, 
 	Expect(err).ToNot(HaveOccurred())
 	return group
 }
+
 func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, user model.User) model.Multipass {
 	multipass, _ := CreateUserMultipass(userMultipassAPI, user,
 		"desc - "+uuid.New(),
@@ -218,7 +218,6 @@ func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server model2.Server, i
 	err := json.Unmarshal(data, &resultServer) //nolint:errcheck
 	Expect(err).ToNot(HaveOccurred())
 	return resultServer
-
 }
 
 // return Mutipass model and JWT
