@@ -2,37 +2,31 @@ package user_got_ssh_access
 
 import (
 	"context"
+	"crypto/sha256"
 	_ "embed"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-
-	"github.com/tidwall/gjson"
-
-	"github.com/flant/negentropy/e2e/tests/lib/tools"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
-
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/docker/docker/api/types"
+	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 //go:embed client_sock1.yaml
@@ -66,7 +60,7 @@ var (
 
 var iamVaultClient *http.Client
 
-// var iamAuthVaulyClient *http.Client
+// var iamAuthVaultClient *http.Client
 
 var _ = BeforeSuite(func() {
 	// TODO read vars from envs!
@@ -329,9 +323,13 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/opt/authd/client-jwt", userJWToken)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = executeCommandAtContainer(dockerCli, testClientContainer,
+			executeCommandAtContainer(dockerCli, testClientContainer,
 				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"})
-			Expect(err).ToNot(HaveOccurred())
+
+			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
+			runDaemonAtContainer(dockerCli, testClientContainer, authdPath)
+			pidAuthd := firstProcessPIDAtContainer(dockerCli, testClientContainer, authdPath)
+			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
 	})
 
@@ -363,15 +361,19 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/opt/authd/server-jwt", testServer.MultipassJWT)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = executeCommandAtContainer(dockerCli, testServerContainer,
+			executeCommandAtContainer(dockerCli, testServerContainer,
 				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"})
-			Expect(err).ToNot(HaveOccurred())
+
+			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, authdPath)
+			runDaemonAtContainer(dockerCli, testServerContainer, authdPath)
+			pidAuthd := firstProcessPIDAtContainer(dockerCli, testServerContainer, authdPath)
+			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
 		It("Test_server nsswitch is configured properly", func() {
 			// TODO check content /etc/nsswitch.conf
 		})
 
-		It("Test_server server_accessd can be cunfigured and run", func() {
+		It("Test_server server_accessd can be configured and run", func() {
 			err := createIfNotExistsDirectoryAtContainer(dockerCli, testServerContainer,
 				"/opt/serveraccessd")
 			Expect(err).ToNot(HaveOccurred())
@@ -385,9 +387,32 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			err = writeFileToContainer(dockerCli, testServerContainer,
 				"/opt/server-access/config.yaml", acccesdCFG)
 			Expect(err).ToNot(HaveOccurred())
+
+			out := executeCommandAtContainer(dockerCli, testServerContainer, []string{"/bin/bash", "-c", "whoami"})
+			fmt.Printf("whoami: %#v \n", out)
+
+			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, serverAccessdPath)
+			runDaemonAtContainer(dockerCli, testServerContainer, serverAccessdPath)
+			pidServerAccessd := firstProcessPIDAtContainer(dockerCli, testServerContainer, serverAccessdPath)
+			Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
+
+			authKeysFilePath := filepath.Join("/home", user.Identifier, ".ssh", "authorized_keys")
+			contentAuthKeysFile := executeCommandAtContainer(dockerCli, testServerContainer,
+				[]string{"/bin/bash", "-c", "cat " + authKeysFilePath})
+			Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
+			principal := calculatePrincipal(testServer.ServerUUID, user.UUID)
+			Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\"" + principal + "\" ssh-rsa.{373}"))
 		})
 	})
 })
+
+func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
+	principalHash := sha256.New()
+	principalHash.Write([]byte(serverUUID))
+	principalHash.Write([]byte(userUUID))
+	principalSum := principalHash.Sum(nil)
+	return fmt.Sprintf("%x", principalSum)
+}
 
 func createRoleIfNotExist(roleName string) {
 	roleAPI := lib.NewRoleAPI(iamVaultClient)
@@ -486,7 +511,7 @@ func createIfNotExistsDirectoryAtContainer(cli *client.Client, container *types.
 		return nil
 	}
 	Expect(err).ToNot(HaveOccurred(), "error response reading at container")
-	if strings.HasSuffix(text, "File exists\n") {
+	if strings.Contains(text, "File exists") {
 		fmt.Printf("Directory %s at container %s exists\n", path, container.Names)
 		return nil
 	}
@@ -518,7 +543,7 @@ func writeFileToContainer(cli *client.Client, container *types.Container, path s
 	return fmt.Errorf("unexpected output creating directory: %s", text)
 }
 
-func executeCommandAtContainer(cli *client.Client, container *types.Container, cmd []string) error {
+func executeCommandAtContainer(cli *client.Client, container *types.Container, cmd []string) []string {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -534,13 +559,21 @@ func executeCommandAtContainer(cli *client.Client, container *types.Container, c
 	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
 
-	text, err := resp.Reader.ReadString('\n')
+	output := []string{}
+	var text string
+	for err == nil {
+		text, err = resp.Reader.ReadString('\n')
+		if text != "" {
+			output = append(output, text)
+		}
+	}
+
 	if err != nil && err.Error() == "EOF" {
 		fmt.Printf("command: \n %s \n ==> has been succeseed at  at container  %s \n", cmd, container.Names)
-		return nil
+		return output
 	}
 	Expect(err).ToNot(HaveOccurred(), "error response reading at container")
-	return fmt.Errorf("unexpected output creating directory: %s", text)
+	return nil
 }
 
 func runDaemonAtContainer(cli *client.Client, container *types.Container, daemonPath string) {
@@ -556,30 +589,17 @@ func runDaemonAtContainer(cli *client.Client, container *types.Container, daemon
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	//defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
-
-	go func() {
-		text, err := resp.Reader.ReadString('\n')
-		for err == nil {
-			fmt.Println("daemon log: ", text)
-			text, err = resp.Reader.ReadString('\n')
-		}
-		if err != nil && err.Error() == "EOF" {
-			fmt.Printf("daemon %s exited  at container  %s \n", daemonPath, container.Names)
-		} else {
-			fmt.Printf("daemon %s  error %s   at container  %s \n", daemonPath, err, container.Names)
-		}
-	}()
+	defer resp.Close()
 }
 
-func checkProcessIsRunAtContainer(cli *client.Client, container *types.Container, path string) error {
+func firstProcessPIDAtContainer(cli *client.Client, container *types.Container, processPath string) int {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
 		AttachStderr: true,
 		AttachStdout: true,
-		Cmd:          []string{"/bin/bash", "-c", "ps -h"},
+		Cmd:          []string{"/bin/bash", "-c", "ps ax"},
 	}
 
 	IDResp, err := cli.ContainerExecCreate(ctx, container.ID, config)
@@ -589,16 +609,51 @@ func checkProcessIsRunAtContainer(cli *client.Client, container *types.Container
 	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
 
-	output := []string{}
 	text, err := resp.Reader.ReadString('\n')
 	for err == nil {
-		output = append(output, text)
+		if strings.HasSuffix(text, processPath+"\n") {
+			arr := strings.Split(text, " ")
+			for _, c := range arr {
+				if c != "" {
+					pid, err := strconv.ParseInt(c, 10, 32)
+					Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+					return int(pid)
+				}
+			}
+		}
 		text, err = resp.Reader.ReadString('\n')
 	}
 	if err != nil && err.Error() == "EOF" {
-		err = nil
+		return 0
 	}
 	Expect(err).ToNot(HaveOccurred(), "error response reading at container")
-	fmt.Printf("%#v", output)
-	return nil
+	return 0
+}
+
+func killProcessAtContainer(cli *client.Client, container *types.Container, processPid int) {
+	ctx := context.Background()
+	config := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+		Cmd:          []string{"/bin/bash", "-c", "kill -9 " + strconv.Itoa(processPid)},
+	}
+
+	IDResp, err := cli.ContainerExecCreate(ctx, container.ID, config)
+	Expect(err).ToNot(HaveOccurred(), "error execution at container")
+
+	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
+	defer resp.Close()
+	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	fmt.Println(err)
+}
+
+func killAllInstancesOfProcessAtContainer(cli *client.Client, container *types.Container, processPath string) {
+	for {
+		pid := firstProcessPIDAtContainer(dockerCli, container, processPath)
+		if pid == 0 {
+			break
+		}
+		killProcessAtContainer(cli, container, pid)
+	}
 }
