@@ -328,6 +328,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
 			runDaemonAtContainer(dockerCli, testClientContainer, authdPath)
+			time.Sleep(time.Second)
 			pidAuthd := firstProcessPIDAtContainer(dockerCli, testClientContainer, authdPath)
 			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
@@ -366,6 +367,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, authdPath)
 			runDaemonAtContainer(dockerCli, testServerContainer, authdPath)
+			time.Sleep(time.Second)
 			pidAuthd := firstProcessPIDAtContainer(dockerCli, testServerContainer, authdPath)
 			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
@@ -388,11 +390,9 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/opt/server-access/config.yaml", acccesdCFG)
 			Expect(err).ToNot(HaveOccurred())
 
-			out := executeCommandAtContainer(dockerCli, testServerContainer, []string{"/bin/bash", "-c", "whoami"})
-			fmt.Printf("whoami: %#v \n", out)
-
 			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, serverAccessdPath)
 			runDaemonAtContainer(dockerCli, testServerContainer, serverAccessdPath)
+			time.Sleep(time.Second)
 			pidServerAccessd := firstProcessPIDAtContainer(dockerCli, testServerContainer, serverAccessdPath)
 			Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
 
