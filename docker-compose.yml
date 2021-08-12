@@ -60,7 +60,9 @@ services:
       - kafka
 
   test_client:
-    image: ubuntu:20.04
+    build:
+      context: .
+      dockerfile: Dockerfile.test_client
     depends_on:
       - vault
     volumes:
@@ -69,7 +71,9 @@ services:
     command: ["sleep", "infinity"]
 
   test_server:
-    image: ubuntu:20.04
+    build:
+      context: .
+      dockerfile: Dockerfile.test_server
     volumes:
       - "./authd/build:/opt/authd/bin"
       - "./server-access/flant-server-accessd/build:/opt/server-access/bin"
@@ -78,7 +82,6 @@ services:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:
       - vault
-    command: ["sleep", "infinity"]
 
 #volumes:
 #  zookeeper_data:
