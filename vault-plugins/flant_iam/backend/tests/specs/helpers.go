@@ -65,7 +65,7 @@ func CreateRandomTenant(tenantsAPI api.TestAPI) model.Tenant {
 	rawTenant := createdData.Get("tenant")
 	data := []byte(rawTenant.String())
 	var tenant model.Tenant
-	err := json.Unmarshal(data, &tenant) //nolint:errcheck
+	err := json.Unmarshal(data, &tenant)
 	Expect(err).ToNot(HaveOccurred())
 	return tenant
 }
@@ -79,7 +79,7 @@ func CreateRandomUser(userAPI api.TestAPI, tenantID model.TenantUUID) model.User
 	rawUser := createdData.Get("user")
 	data := []byte(rawUser.String())
 	var user model.User
-	err := json.Unmarshal(data, &user) //nolint:errcheck
+	err := json.Unmarshal(data, &user)
 	Expect(err).ToNot(HaveOccurred())
 	return user
 }
@@ -98,7 +98,7 @@ func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, 
 	rawGroup := createdData.Get("group")
 	data := []byte(rawGroup.String())
 	var group model.Group
-	err := json.Unmarshal(data, &group) //nolint:errcheck
+	err := json.Unmarshal(data, &group)
 	Expect(err).ToNot(HaveOccurred())
 	return group
 }
@@ -132,7 +132,7 @@ func CreateUserMultipass(userMultipassAPI api.TestAPI, user model.User, descript
 	rawMultipass := createData.Get("multipass")
 	data := []byte(rawMultipass.String())
 	var multipass model.Multipass
-	err := json.Unmarshal(data, &multipass) //nolint:errcheck
+	err := json.Unmarshal(data, &multipass)
 	Expect(err).ToNot(HaveOccurred())
 	return multipass, createData.Get("token").String()
 }
@@ -144,7 +144,7 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 	rawRole := createData.Get("role")
 	data := []byte(rawRole.String())
 	var role model.Role
-	err := json.Unmarshal(data, &role) //nolint:errcheck
+	err := json.Unmarshal(data, &role)
 	Expect(err).ToNot(HaveOccurred())
 	return role
 }
@@ -159,7 +159,7 @@ func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) mode
 	rawProject := createData.Get("project")
 	data := []byte(rawProject.String())
 	var project model.Project
-	err := json.Unmarshal(data, &project) //nolint:errcheck
+	err := json.Unmarshal(data, &project)
 	Expect(err).ToNot(HaveOccurred())
 	return project
 }
@@ -175,7 +175,7 @@ func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.R
 	rawRoleBinding := createData.Get("role_binding")
 	data := []byte(rawRoleBinding.String())
 	var roleBinding model.RoleBinding
-	err := json.Unmarshal(data, &roleBinding) //nolint:errcheck
+	err := json.Unmarshal(data, &roleBinding)
 	Expect(err).ToNot(HaveOccurred())
 	return roleBinding
 }
@@ -197,7 +197,7 @@ func RegisterServer(serverAPI api.TestAPI, server model2.Server) ServerRegistrat
 	createData := serverAPI.Create(params, url.Values{}, createPayload)
 	data := []byte(createData.String())
 	var createdServer ServerRegistrationResult
-	err := json.Unmarshal(data, &createdServer) //nolint:errcheck
+	err := json.Unmarshal(data, &createdServer)
 	Expect(err).ToNot(HaveOccurred())
 	return createdServer
 }
@@ -215,7 +215,7 @@ func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server model2.Server, i
 	createData := connectionInfoAPI.Update(params, url.Values{}, createPayload)
 	data := []byte(createData.Get("server").String())
 	var resultServer model2.Server
-	err := json.Unmarshal(data, &resultServer) //nolint:errcheck
+	err := json.Unmarshal(data, &resultServer)
 	Expect(err).ToNot(HaveOccurred())
 	return resultServer
 }
@@ -240,7 +240,7 @@ func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, servi
 	rawMultipass := createData.Get("multipass")
 	data := []byte(rawMultipass.String())
 	var multipass model.Multipass
-	err := json.Unmarshal(data, &multipass) //nolint:errcheck
+	err := json.Unmarshal(data, &multipass)
 	Expect(err).ToNot(HaveOccurred())
 	return multipass, createData.Get("token").String()
 }

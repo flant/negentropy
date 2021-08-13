@@ -13,7 +13,7 @@ func Test_tenantFeatureFlagCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TenantAPI = api.NewTenantAPI(&backend)
 	FeatureFlagAPI = api.NewFeatureFlagAPI(&backend)
-	TestApi = api.NewTenantFeatureFlagAPI(&backend)
+	TestAPI = api.NewTenantFeatureFlagAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Tenant Feature Flags")
 }

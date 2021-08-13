@@ -15,7 +15,7 @@ import (
 var (
 	TenantAPI      api.TestAPI
 	FeatureFlagAPI api.TestAPI
-	TestApi        api.TestAPI
+	TestAPI        api.TestAPI
 )
 
 var _ = Describe("Tenant feature flags", func() {
@@ -41,7 +41,7 @@ var _ = Describe("Tenant feature flags", func() {
 			"service_accounts": []string{uuid.New()},
 		}
 
-		_ = TestApi.Create(params, url.Values{}, data)
+		_ = TestAPI.Create(params, url.Values{}, data)
 	})
 
 	It("can be read from tenant", func() {
@@ -57,7 +57,7 @@ var _ = Describe("Tenant feature flags", func() {
 	})
 
 	It("can be unbound", func() {
-		TestApi.Delete(api.Params{
+		TestAPI.Delete(api.Params{
 			"tenant_uuid":       tenantID,
 			"feature_flag_name": ffName,
 			"expectStatus":      api.ExpectExactStatus(200),
