@@ -59,7 +59,7 @@ services:
     depends_on:
       - kafka
 
-  test_client:
+  test-client:
     build:
       context: .
       dockerfile: Dockerfile.test_client
@@ -68,9 +68,9 @@ services:
     volumes:
       - "./authd/build:/opt/authd/bin"
       - "./cli/build:/opt/cli/bin"
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
 
-  test_server:
+  test-server:
     build:
       context: .
       dockerfile: Dockerfile.test_server

@@ -3,11 +3,11 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/flant/server-access/util"
-	"github.com/flant/server-access/vault"
 	"io"
 	"os"
 
+	"github.com/flant/server-access/util"
+	"github.com/flant/server-access/vault"
 	"sigs.k8s.io/yaml"
 )
 
@@ -17,9 +17,7 @@ type Config struct {
 	DatabasePath string `json:"database"`
 }
 
-var (
-	AppConfig Config
-)
+var AppConfig Config
 
 const (
 	DefaultConfigFile   = "server-accessd.yaml"
@@ -31,7 +29,6 @@ func LoadConfig(fileName string) (Config, error) {
 		fileName = DefaultConfigFile
 	}
 	cfg, err := LoadConfigFromFile(fileName)
-
 	if err != nil {
 		return Config{}, fmt.Errorf("load config '%s': %v", fileName, err)
 	}

@@ -67,8 +67,8 @@ var _ = BeforeSuite(func() {
 	authdPath = "/opt/authd/bin/authd"
 	cliPath = "/opt/cli/bin/cli"
 	serverAccessdPath = "/opt/server-access/bin/server-accessd"
-	testServerContainerName = "negentropy_test_server_1"
-	testClientContainerName = "negentropy_test_client_1"
+	testServerContainerName = "negentropy_test-server_1"
+	testClientContainerName = "negentropy_test-client_1"
 
 	// Open connections, create clients
 	var err error
@@ -101,7 +101,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 		group       model.Group
 		rolebinding model.RoleBinding
 		testServer  specs.ServerRegistrationResult
-		testClient  specs.ServerRegistrationResult
+		// testClient  specs.ServerRegistrationResult
 		userJWToken string
 	)
 
@@ -239,30 +239,30 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			fmt.Printf("Created rolebinding:%#v\n", rolebinding)
 		})
 
-		It("can register as a server 'test_client'", func() {
-			// TODO check is it necessary?
-			testClient = specs.RegisterServer(lib.NewServerAPI(iamVaultClient),
-				model2.Server{
-					TenantUUID:  tenant.UUID,
-					ProjectUUID: project.UUID,
-					Identifier:  testClientIdentifier,
-				})
-			fmt.Printf("Created testClient Server:%#v\n", testClient)
-		})
+		//It("can register as a server 'test_client'", func() {
+		//	// TODO check is it necessary?
+		//	testClient = specs.RegisterServer(lib.NewServerAPI(iamVaultClient),
+		//		model2.Server{
+		//			TenantUUID:  tenant.UUID,
+		//			ProjectUUID: project.UUID,
+		//			Identifier:  testClientIdentifier,
+		//		})
+		//	fmt.Printf("Created testClient Server:%#v\n", testClient)
+		//})
 
-		It("can add connection_info for a server 'test_client'", func() {
-			s := specs.UpdateConnectionInfo(lib.NewConnectionInfoAPI(iamVaultClient),
-				model2.Server{
-					UUID:        testClient.ServerUUID,
-					TenantUUID:  tenant.UUID,
-					ProjectUUID: project.UUID,
-				},
-				model2.ConnectionInfo{
-					Hostname: testClientIdentifier,
-				},
-			)
-			fmt.Printf("connection_info is updated: %#v\n", s.ConnectionInfo)
-		})
+		//It("can add connection_info for a server 'test_client'", func() {
+		//	s := specs.UpdateConnectionInfo(lib.NewConnectionInfoAPI(iamVaultClient),
+		//		model2.Server{
+		//			UUID:        testClient.ServerUUID,
+		//			TenantUUID:  tenant.UUID,
+		//			ProjectUUID: project.UUID,
+		//		},
+		//		model2.ConnectionInfo{
+		//			Hostname: testClientIdentifier,
+		//		},
+		//	)
+		//	fmt.Printf("connection_info is updated: %#v\n", s.ConnectionInfo)
+		//})
 
 		It("can register as a server 'test_server'", func() {
 			testServer = specs.RegisterServer(lib.NewServerAPI(iamVaultClient),
@@ -292,45 +292,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			_, userJWToken = specs.CreateUserMultipass(lib.NewUserMultipassAPI(iamVaultClient),
 				user, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
 			fmt.Printf("user JWToken: : %#v\n", userJWToken)
-		})
-	})
-
-	Describe("Test_сlient configuring", func() {
-		It("TestClient has authd", func() {
-			err := checkFileExistAtContainer(dockerCli, testClientContainer, authdPath, "f")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("Test_сlient has cli", func() {
-			err := checkFileExistAtContainer(dockerCli, testClientContainer, cliPath, "f")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("Authd can be configured and runned at Test_сlient", func() {
-			err := createIfNotExistsDirectoryAtContainer(dockerCli, testClientContainer,
-				"/etc/flant/negentropy/authd-conf.d")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = writeFileToContainer(dockerCli, testClientContainer,
-				"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG)
-			Expect(err).ToNot(HaveOccurred())
-
-			err = writeFileToContainer(dockerCli, testClientContainer,
-				"/etc/flant/negentropy/authd-conf.d/sock1.yaml", clientSocketCFG)
-			Expect(err).ToNot(HaveOccurred())
-
-			err = writeFileToContainer(dockerCli, testClientContainer,
-				"/opt/authd/client-jwt", userJWToken)
-			Expect(err).ToNot(HaveOccurred())
-
-			executeCommandAtContainer(dockerCli, testClientContainer,
-				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"})
-
-			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
-			runDaemonAtContainer(dockerCli, testClientContainer, authdPath)
-			time.Sleep(time.Second)
-			pidAuthd := firstProcessPIDAtContainer(dockerCli, testClientContainer, authdPath)
-			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
 	})
 
@@ -402,6 +363,49 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
 			principal := calculatePrincipal(testServer.ServerUUID, user.UUID)
 			Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\"" + principal + "\" ssh-rsa.{373}"))
+		})
+	})
+
+	Describe("Test_сlient configuring", func() {
+		It("TestClient has authd", func() {
+			err := checkFileExistAtContainer(dockerCli, testClientContainer, authdPath, "f")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Test_сlient has cli", func() {
+			err := checkFileExistAtContainer(dockerCli, testClientContainer, cliPath, "f")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Authd can be configured and runned at Test_сlient", func() {
+			err := createIfNotExistsDirectoryAtContainer(dockerCli, testClientContainer,
+				"/etc/flant/negentropy/authd-conf.d")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = writeFileToContainer(dockerCli, testClientContainer,
+				"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = writeFileToContainer(dockerCli, testClientContainer,
+				"/etc/flant/negentropy/authd-conf.d/sock1.yaml", clientSocketCFG)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = writeFileToContainer(dockerCli, testClientContainer,
+				"/opt/authd/client-jwt", userJWToken)
+			Expect(err).ToNot(HaveOccurred())
+
+			executeCommandAtContainer(dockerCli, testClientContainer,
+				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"})
+
+			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
+			runDaemonAtContainer(dockerCli, testClientContainer, authdPath)
+			time.Sleep(time.Second)
+			pidAuthd := firstProcessPIDAtContainer(dockerCli, testClientContainer, authdPath)
+			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
+		})
+
+		It("Cli can ne runned and got access throug ssh", func() {
+			fmt.Printf("\nexport TENANT_ID=%s && export USER_UUID=%s && export USER_FULL_ID=%s && /opt/cli/bin/cli ssh\n", tenant.Identifier, user.UUID, user.FullIdentifier)
 		})
 	})
 })
