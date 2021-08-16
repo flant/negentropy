@@ -90,6 +90,7 @@ func (s *Session) RenderSSHConfigToFile() {
 		}
 	}
 	s.SSHConfigFile.Seek(0, 0)
+
 	for _, server := range s.ServerList.Servers {
 		s.SSHConfigFile.Write([]byte(server.RenderSSHConfigEntry(&s.User)))
 	}
@@ -157,6 +158,8 @@ func (s *Session) RefreshClientCertificates() {
 
 		serversBucket := s.ServerList.Servers[i:j]
 		signedCertificateForBucket := s.generateAndSignSSHCertificateSetForServerBucket(serversBucket)
+
+		// TODO remove after refresh
 		s.SSHAgent.Add(signedCertificateForBucket)
 		i += maxSize
 	}

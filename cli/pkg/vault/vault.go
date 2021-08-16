@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"main/pkg/iam"
 	"os"
+	"strings"
 
 	vault_api "github.com/hashicorp/vault/api"
 
@@ -189,11 +190,13 @@ func (vs *VaultSession) GetSSHUser() iam.User {
 		userUUID = "uuu"
 	}
 	userFullID := os.Getenv("USER_FULL_ID")
+	a := strings.Split(userFullID, "@")
+
 	if userFullID == "" {
 		userFullID = "fluser"
 	}
 	fmt.Printf("user %s, identifier %s\n", userUUID, userFullID)
-	return iam.User{UUID: userUUID, Identifier: userFullID}
+	return iam.User{UUID: userUUID, FullIdentifier: a[0]}
 }
 
 func (vs *VaultSession) getTenantByIdentifier(identifier string) (iam.Tenant, error) {
