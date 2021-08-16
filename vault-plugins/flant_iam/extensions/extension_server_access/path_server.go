@@ -39,7 +39,8 @@ func ServerPaths(b logical.Backend, storage *io.MemoryStore, jwtController *jwt.
 func (b *serverBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "register_server"),
+			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"),
+				"project", uuid.Pattern("project_uuid"), "register_server"),
 			Fields: map[string]*framework.FieldSchema{
 				"tenant_uuid": {
 					Type:        framework.TypeNameString,
@@ -79,7 +80,8 @@ func (b *serverBackend) paths() []*framework.Path {
 		},
 		{
 			Pattern: path.Join(
-				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid")),
+				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"),
+				"server", uuid.Pattern("server_uuid")),
 			Fields: map[string]*framework.FieldSchema{
 				"resource_version": {
 					Type:        framework.TypeString,
@@ -144,7 +146,7 @@ func (b *serverBackend) paths() []*framework.Path {
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
+				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
 					Summary:  "List servers",
 				},
@@ -152,7 +154,8 @@ func (b *serverBackend) paths() []*framework.Path {
 		},
 		{
 			Pattern: path.Join(
-				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid"), "fingerprint",
+				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"),
+				"server", uuid.Pattern("server_uuid"), "fingerprint",
 			),
 			Fields: map[string]*framework.FieldSchema{
 				"server_uuid": {
@@ -178,7 +181,8 @@ func (b *serverBackend) paths() []*framework.Path {
 		},
 		{
 			Pattern: path.Join(
-				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid"), "connection_info",
+				"tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"),
+				"server", uuid.Pattern("server_uuid"), "connection_info",
 			),
 			Fields: map[string]*framework.FieldSchema{
 				"server_uuid": {

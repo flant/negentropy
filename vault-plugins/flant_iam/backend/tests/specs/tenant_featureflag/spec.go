@@ -13,17 +13,17 @@ import (
 )
 
 var (
-	TestTenantAPI      api.TestAPI
-	TestFeatureFlagAPI api.TestAPI
-	TestTenantFFApi    api.TestAPI
+	TenantAPI      api.TestAPI
+	FeatureFlagAPI api.TestAPI
+	TestAPI        api.TestAPI
 )
 
 var _ = Describe("Tenant feature flags", func() {
 	var tenantID, ffName string
 	BeforeSuite(func() {
-		res := TestTenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
+		res := TenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
 		tenantID = res.Get("tenant.uuid").String()
-		res = TestFeatureFlagAPI.Create(api.Params{"tenant_uuid": tenantID}, url.Values{}, fixtures.RandomFeatureFlagCreatePayload())
+		res = FeatureFlagAPI.Create(api.Params{"tenant_uuid": tenantID}, url.Values{}, fixtures.RandomFeatureFlagCreatePayload())
 		ffName = res.Get("feature_flag.name").String()
 	})
 
@@ -41,11 +41,11 @@ var _ = Describe("Tenant feature flags", func() {
 			"service_accounts": []string{uuid.New()},
 		}
 
-		_ = TestTenantFFApi.Create(params, url.Values{}, data)
+		_ = TestAPI.Create(params, url.Values{}, data)
 	})
 
 	It("can be read from tenant", func() {
-		TestTenantAPI.Read(api.Params{
+		TenantAPI.Read(api.Params{
 			"tenant": tenantID,
 			"expectPayload": func(json gjson.Result) {
 				ffArr := json.Get("tenant.feature_flags").Array()
@@ -57,13 +57,13 @@ var _ = Describe("Tenant feature flags", func() {
 	})
 
 	It("can be unbound", func() {
-		TestTenantFFApi.Delete(api.Params{
+		TestAPI.Delete(api.Params{
 			"tenant_uuid":       tenantID,
 			"feature_flag_name": ffName,
 			"expectStatus":      api.ExpectExactStatus(200),
 		}, nil)
 
-		TestTenantAPI.Read(api.Params{
+		TenantAPI.Read(api.Params{
 			"tenant": tenantID,
 			"expectPayload": func(json gjson.Result) {
 				ffArr := json.Get("tenant.feature_flags").Array()

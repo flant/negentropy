@@ -1,0 +1,11 @@
+apiVersion: authd.negentropy.example.com/v1
+kind: AuthdSocketConfig
+path: authd.sock
+#user: root
+#group: wheel
+mode: 0777
+allowedRole:
+  - role: iam.view
+  - role: iam.edit
+  - role: ssh
+  - role: servers

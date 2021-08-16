@@ -16,7 +16,7 @@ make build install
 
 ## Installation
 
-Put libnss_flantauth.so.2 into `/lib/x86_64-linux-gnu` or `/usr/lib64` and add `flantauth` service to `passwd`, `group` and `shadow` databases in nsswitch.conf:
+Put libnss_flantauth.so.2 into `/lib/x86_64-linux-gnu` or `/usr/lib64` and add `flantauth` service to `passwd`, `group` and `shadow` databases in /etc/nsswitch.conf:
 
 ```
 passwd:   files flantauth

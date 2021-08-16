@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"main/pkg/iam"
+	"os"
 
-	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+	vault_api "github.com/hashicorp/vault/api"
 
 	"github.com/flant/negentropy/authd"
-	vault_api "github.com/hashicorp/vault/api"
+	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 )
 
 type VaultSession struct {
@@ -182,8 +183,17 @@ func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
 }
 
 func (vs *VaultSession) GetSSHUser() iam.User {
-	// достать из vault инфу про текущего юзера
-	return iam.User{UUID: "uuu", Identifier: "fluser"}
+	// достать   из vault инфу про текущего юзера
+	userUUID := os.Getenv("USER_UUID")
+	if userUUID == "" {
+		userUUID = "uuu"
+	}
+	userFullID := os.Getenv("USER_FULL_ID")
+	if userFullID == "" {
+		userFullID = "fluser"
+	}
+	fmt.Printf("user %s, identifier %s\n", userUUID, userFullID)
+	return iam.User{UUID: userUUID, Identifier: userFullID}
 }
 
 func (vs *VaultSession) getTenantByIdentifier(identifier string) (iam.Tenant, error) {

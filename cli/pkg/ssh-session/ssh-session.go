@@ -59,7 +59,7 @@ func (s *Session) SyncServersFromVault() {
 	}
 
 	s.ServerList = sl
-	//fmt.Println(sl.Projects[0].Tenant.UUID)
+	// fmt.Println(sl.Projects[0].Tenant.UUID)
 }
 
 func (s *Session) RenderKnownHostsToFile() {
@@ -224,9 +224,15 @@ func (s *Session) syncRoutineEveryMinute() {
 func (s *Session) Go() {
 	os.MkdirAll(Workdir, os.ModePerm)
 	s.UUID = uuid.Must(uuid.NewRandom()).String()
+	// TODO Hardcoded
 
+	tenantIdentifier := os.Getenv("TENANT_ID")
+	if tenantIdentifier == "" {
+		tenantIdentifier = "1tv"
+	}
+	fmt.Printf("Tenant identifier %s\n", tenantIdentifier)
 	s.ServerFilter = vault.ServerFilter{
-		TenantIdentifier: "1tv",
+		TenantIdentifier: tenantIdentifier,
 	}
 
 	s.VaultSession.Init()

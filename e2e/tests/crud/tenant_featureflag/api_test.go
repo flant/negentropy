@@ -12,9 +12,9 @@ import (
 
 func Test_tenantFeatureFlagCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
-	tenant_featureflag.TestTenantAPI = lib.NewTenantAPI(rootClient)
-	tenant_featureflag.TestFeatureFlagAPI = lib.NewFeatureFlagAPI(rootClient)
-	tenant_featureflag.TestTenantFFApi = lib.NewTenantFeatureFlagAPI(rootClient)
+	tenant_featureflag.TenantAPI = lib.NewTenantAPI(rootClient)
+	tenant_featureflag.FeatureFlagAPI = lib.NewFeatureFlagAPI(rootClient)
+	tenant_featureflag.TestAPI = lib.NewTenantFeatureFlagAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Tenant Feature Flags")
 }

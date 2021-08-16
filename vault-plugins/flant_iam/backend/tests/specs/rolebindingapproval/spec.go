@@ -13,17 +13,17 @@ import (
 )
 
 var (
-	TestTenantAPI              api.TestAPI
-	TestRoleBindingAPI         api.TestAPI
-	TestRoleBindingApprovalAPI api.TestAPI
+	TenantAPI      api.TestAPI
+	RoleBindingAPI api.TestAPI
+	TestAPI        api.TestAPI
 )
 
 var _ = Describe("Role binding approval", func() {
 	var tenantID, roleBindingID string
 	BeforeSuite(func() {
-		res := TestTenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
+		res := TenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
 		tenantID = res.Get("tenant.uuid").String()
-		res = TestRoleBindingAPI.Create(api.Params{"tenant_uuid": tenantID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		res = RoleBindingAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
 		roleBindingID = res.Get("role_binding.uuid").String()
 	})
 
@@ -39,9 +39,9 @@ var _ = Describe("Role binding approval", func() {
 				Expect(ap.Get("group_uuids").Array()).To(HaveLen(1))
 				Expect(ap.Get("service_account_uuids").Array()).To(HaveLen(1))
 			},
-			"tenant_uuid":       tenantID,
-			"role_binding_uuid": roleBindingID,
-			"uuid":              uuid.New(),
+			"tenant":       tenantID,
+			"role_binding": roleBindingID,
+			"uuid":         uuid.New(),
 		}
 
 		data := map[string]interface{}{
@@ -51,15 +51,15 @@ var _ = Describe("Role binding approval", func() {
 			"service_accounts": []string{uuid.New()},
 		}
 
-		createdData := TestRoleBindingApprovalAPI.Create(params, url.Values{}, data)
+		createdData := TestAPI.Create(params, url.Values{}, data)
 		createdRB = createdData.Get("role_binding_approval")
 	})
 
 	It("can be read", func() {
-		TestRoleBindingApprovalAPI.Read(api.Params{
-			"uuid":              createdRB.Get("uuid").String(),
-			"tenant_uuid":       tenantID,
-			"role_binding_uuid": roleBindingID,
+		TestAPI.Read(api.Params{
+			"uuid":         createdRB.Get("uuid").String(),
+			"tenant":       tenantID,
+			"role_binding": roleBindingID,
 			"expectPayload": func(json gjson.Result) {
 				Expect(createdRB).To(Equal(json.Get("role_binding_approval")))
 			},
@@ -67,17 +67,17 @@ var _ = Describe("Role binding approval", func() {
 	})
 
 	It("can be deleted", func() {
-		TestRoleBindingApprovalAPI.Delete(api.Params{
-			"uuid":              createdRB.Get("uuid").String(),
-			"tenant_uuid":       tenantID,
-			"role_binding_uuid": roleBindingID,
+		TestAPI.Delete(api.Params{
+			"uuid":         createdRB.Get("uuid").String(),
+			"tenant":       tenantID,
+			"role_binding": roleBindingID,
 		}, nil)
 
-		deletedRBData := TestRoleBindingApprovalAPI.Read(api.Params{
-			"uuid":              createdRB.Get("uuid").String(),
-			"tenant_uuid":       tenantID,
-			"role_binding_uuid": roleBindingID,
-			"expectStatus":      api.ExpectExactStatus(200),
+		deletedRBData := TestAPI.Read(api.Params{
+			"uuid":         createdRB.Get("uuid").String(),
+			"tenant":       tenantID,
+			"role_binding": roleBindingID,
+			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedRBData.Get("role_binding_approval.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})

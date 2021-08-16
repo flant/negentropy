@@ -59,7 +59,7 @@ var _ = Describe("Group", func() {
 	})
 
 	It("can be read", func() {
-		group := specs.CreateRandomGroup(TestAPI, tenant.UUID, user.UUID)
+		group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
 		createdData := specs.ConvertToGJSON(group)
 
 		TestAPI.Read(api.Params{
@@ -72,7 +72,7 @@ var _ = Describe("Group", func() {
 	})
 
 	It("can be deleted", func() {
-		group := specs.CreateRandomGroup(TestAPI, tenant.UUID, user.UUID)
+		group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
 
 		TestAPI.Delete(api.Params{
 			"tenant": group.TenantUUID,
@@ -88,7 +88,7 @@ var _ = Describe("Group", func() {
 	})
 
 	It("can be listed", func() {
-		group := specs.CreateRandomGroup(TestAPI, tenant.UUID, user.UUID)
+		group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
 
 		TestAPI.List(api.Params{
 			"tenant": user.TenantUUID,

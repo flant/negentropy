@@ -11,9 +11,9 @@ import (
 
 func Test_tenantFeatureFlagCRUD(t *testing.T) {
 	backend := api.TestBackend()
-	TestTenantAPI = api.NewTenantAPI(&backend)
-	TestFeatureFlagAPI = api.NewFeatureFlagAPI(&backend)
-	TestTenantFFApi = api.NewTenantFeatureFlagAPI(&backend)
+	TenantAPI = api.NewTenantAPI(&backend)
+	FeatureFlagAPI = api.NewFeatureFlagAPI(&backend)
+	TestAPI = api.NewTenantFeatureFlagAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Tenant Feature Flags")
 }
