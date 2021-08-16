@@ -118,6 +118,7 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
   docker-exec 'vault write ssh/roles/signer - <<"EOF"
 {
   "allow_user_certificates": true,
+  "algorithm_signer": "rsa-sha2-256",
   "allowed_users": "*",
   "allowed_extensions": "permit-pty,permit-agent-forwarding",
   "default_extensions": [
@@ -127,7 +128,7 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
     }
   ],
   "key_type": "ca",
-  "ttl": "2m0s"
+  "ttl": "5m0s"
 }
 EOF"' > /dev/null 2>&1
 }
