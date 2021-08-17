@@ -1,11 +1,9 @@
 package ssh_session
 
 // func to specify a restrictions for a valid SSHSessionRunParams
-// return error if Params invalid, it finishes and fails validation
 type sshSessionRunParamsChecker func(params SSHSessionRunParams) error
 
 // func to specify valid SSHSessionRunParams
-// return true if Params valid, it finishes validation with success
 type sshSessionRunParamsAllower func(params SSHSessionRunParams) bool
 
 type SSHSessionRunParams struct {
