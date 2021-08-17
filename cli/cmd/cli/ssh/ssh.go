@@ -1,11 +1,10 @@
 package ssh
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/flant/negentropy/cli/internals/consts"
 	session "github.com/flant/negentropy/cli/internals/ssh-session"
-	"github.com/flant/negentropy/cli/internals/vault"
+
+	"github.com/spf13/cobra"
 )
 
 func NewCMD() *cobra.Command {
@@ -52,14 +51,11 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		if *err != nil {
 			return
 		}
-
-		params.Args = args
-
-		var s session.Session
-		s, *err = session.New(vault.NewService(), params)
+		*err = params.Validate()
 		if *err != nil {
 			return
 		}
-		s.Start()
+		s := session.Session{}
+		s.Go()
 	}
 }

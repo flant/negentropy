@@ -17,3 +17,8 @@ replace (
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0 => ../vault-plugins/flant_iam
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../vault-plugins/shared
 )
+
+replace (
+	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0 => ../vault-plugins/flant_iam
+	github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../vault-plugins/shared
+)
