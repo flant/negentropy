@@ -3,6 +3,7 @@ package ssh_session
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"log"
 	"main/pkg/iam"
@@ -202,12 +203,44 @@ func (s *Session) StartShell() {
 	os.Setenv("SSH_AUTH_SOCK", s.SSHAgentSocketPath)
 	os.Setenv("FLINT_SESSION_UUID", s.UUID)
 
-	cmd := exec.Command("/bin/bash", "--rcfile", s.BashRCFile.Name())
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	_ = cmd.Run()
+	// Todo redo
+	cmdsJson := os.Getenv("COMMANDS")
+	if cmdsJson == "" {
+		cmd := exec.Command("/bin/bash", "--rcfile", s.BashRCFile.Name())
+
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
+		_ = cmd.Run()
+	} else {
+		var cmds []string
+		err := json.Unmarshal([]byte(cmdsJson), &cmds)
+		if err != nil {
+			panic(err)
+		}
+
+		cmd := exec.Command("/bin/bash", "--rcfile", s.BashRCFile.Name(), "-i")
+
+		// cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
+		pipe, err := cmd.StdinPipe()
+		if err != nil {
+			panic(err)
+		}
+		//_ = cmd.Run()
+		cmd.Start()
+		pipe.Write([]byte("alias ssh='ssh -o UserKnownHostsFile=/tmp/flint/" + s.UUID + "-known_hosts -F /tmp/flint/" + s.UUID + "-ssh_config';\n"))
+
+		for _, c := range cmds {
+			pipe.Write([]byte(c))
+			pipe.Write([]byte("\n"))
+		}
+		pipe.Close()
+		time.Sleep(time.Second * 1) // Need some time to execute commands
+	}
 }
 
 func (s *Session) syncRoutine() {
