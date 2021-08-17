@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"main/pkg/iam"
 	"os"
 	"strings"
+
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+
+	"github.com/flant/negentropy/cli/internals/models"
 
 	vault_api "github.com/hashicorp/vault/api"
 
@@ -45,7 +50,7 @@ type VaultProjectsResponse struct {
 
 type VaultServersResponse struct {
 	Data struct {
-		Servers []iam.Server `json:"servers"`
+		Servers []ext.Server `json:"servers"`
 	} `json:"data"`
 }
 
@@ -123,15 +128,15 @@ func (vs *VaultSession) RequestProjects(tenant *iam.Tenant) ([]iam.Project, erro
 	}
 
 	projects := vaultProjectsResponse.Data.Projects
-	for i := range projects {
-		projects[i].Tenant = tenant
-	}
+	//for i := range projects {
+	//	projects[i].Tenant = tenant
+	//}
 	return projects, nil
 }
 
 // TODO filter
 // TODO warnings
-func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project) ([]iam.Server, error) {
+func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project) ([]ext.Server, error) {
 	var vaultServersResponse VaultServersResponse
 	var requestPath string
 	if project != nil {
@@ -142,12 +147,12 @@ func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project)
 
 	vaultServersResponseBytes, err := vs.Request("GET", requestPath)
 	if err != nil {
-		return []iam.Server{}, err
+		return []ext.Server{}, err
 	}
 
 	err = json.Unmarshal(vaultServersResponseBytes, &vaultServersResponse)
 	if err != nil {
-		return []iam.Server{}, err
+		return []ext.Server{}, err
 	}
 
 	servers := vaultServersResponse.Data.Servers
@@ -159,17 +164,17 @@ func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project)
 	//		ProjectUUID: "0831b50a-dcfc-406c-b7bf-8d52619e8de5",
 	//	},
 	//}
-	if project != nil {
-		for i := range servers {
-			servers[i].Project = project
-		}
-	}
+	//if project != nil {
+	//	for i := range servers {
+	//		servers[i].Project = project
+	//	}
+	//}
 
 	return servers, nil
 }
 
-func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
-	vaultServerTokenResponseBytes, err := vs.Request("GET", fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s", server.Project.Tenant.UUID, server.Project.UUID, server.UUID))
+func (vs *VaultSession) RequestServerToken(server *ext.Server) (string, error) {
+	vaultServerTokenResponseBytes, err := vs.Request("GET", fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s", server.TenantUUID, server.ProjectUUID, server.UUID))
 	if err != nil {
 		return "", err
 	}
@@ -184,6 +189,8 @@ func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
 }
 
 func (vs *VaultSession) GetSSHUser() iam.User {
+	// vs.Request("/")
+
 	// достать   из vault инфу про текущего юзера
 	userUUID := os.Getenv("USER_UUID")
 	if userUUID == "" {
@@ -223,7 +230,7 @@ func (vs *VaultSession) getTenantByIdentifier(identifier string) (iam.Tenant, er
 	return iam.Tenant{}, nil
 }
 
-func (vs *VaultSession) QueryServer(filter ServerFilter) (iam.ServerList, error) {
+func (vs *VaultSession) QueryServer(filter ServerFilter) (models.ServerList, error) {
 	// sl.Tenant = vs.getTenantByIdentifier(filter.TenantIdentifier)
 	// если в фильтре есть ограничения по проектам:
 	//   projects := vs.getProjectsByTenant(&sl.Tenant)
@@ -239,39 +246,44 @@ func (vs *VaultSession) QueryServer(filter ServerFilter) (iam.ServerList, error)
 
 	tenant, err := vs.getTenantByIdentifier(filter.TenantIdentifier)
 	if err != nil {
-		return iam.ServerList{}, err
+		return models.ServerList{}, err
 	}
 
-	sl := iam.ServerList{
+	sl := models.ServerList{
 		Tenant:   tenant,
-		Projects: []iam.Project{},
-		Servers:  []iam.Server{},
+		Projects: map[iam.ProjectUUID]iam.Project{},
+		Servers:  []ext.Server{},
 	}
-	sl.Projects, err = vs.RequestProjects(&sl.Tenant)
+	projects, err := vs.RequestProjects(&sl.Tenant)
 	if err != nil {
-		return iam.ServerList{}, err
+		return models.ServerList{}, err
+	}
+	for i := range projects {
+		project := projects[i]
+		sl.Projects[project.UUID] = project
 	}
 
 	if len(filter.ProjectIdentifiers) == 0 {
 		sl.Servers, err = vs.RequestServers(&sl.Tenant, nil)
 		if err != nil {
-			return iam.ServerList{}, err
+			return models.ServerList{}, err
 		}
 
-		for i, server := range sl.Servers {
-			for j, project := range sl.Projects {
-				if server.ProjectUUID == project.UUID {
-					sl.Servers[i].Project = &sl.Projects[j]
-				}
-			}
-		}
+		//for i, server := range sl.Servers {
+		//	for j, project := range sl.Projects {
+		//		if server.ProjectUUID == project.UUID {
+		//			sl.Servers[i].Project = &sl.Projects[j]
+		//		}
+		//	}
+		//}
 	} else {
 		for _, projectIdentifier := range filter.ProjectIdentifiers {
-			for i, project := range sl.Projects {
+			for uuid := range sl.Projects {
+				project := sl.Projects[uuid]
 				if project.Identifier == projectIdentifier {
-					servers, err := vs.RequestServers(&sl.Tenant, &sl.Projects[i])
+					servers, err := vs.RequestServers(&sl.Tenant, &project)
 					if err != nil {
-						return iam.ServerList{}, err
+						return models.ServerList{}, err
 					}
 					sl.Servers = append(sl.Servers, servers...)
 				}
