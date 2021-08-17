@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"main/pkg/iam"
-	"main/pkg/vault"
 	"net"
 	"os"
 	"os/exec"
@@ -16,16 +14,22 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/flant/negentropy/cli/internals/models"
+	"github.com/flant/negentropy/cli/internals/vault"
 )
 
 type Session struct {
 	UUID               string
 	User               iam.User
-	ServerList         iam.ServerList
+	ServerList         models.ServerList
 	ServerFilter       vault.ServerFilter
 	VaultSession       vault.VaultSession
 	EnvSSHAuthSock     string
@@ -56,7 +60,7 @@ func (s *Session) SyncServersFromVault() {
 		if err != nil {
 			panic(err)
 		}
-		sl.Servers[i].SetSecureManifest(token)
+		models.UpdateSecureData(&sl.Servers[i], token)
 	}
 
 	s.ServerList = sl
@@ -76,7 +80,7 @@ func (s *Session) RenderKnownHostsToFile() {
 
 	s.KnownHostsFile.Seek(0, 0)
 	for _, server := range s.ServerList.Servers {
-		s.KnownHostsFile.Write([]byte(server.RenderKnownHostsRow()))
+		s.KnownHostsFile.Write([]byte(models.RenderKnownHostsRow(server)))
 	}
 }
 
@@ -93,7 +97,8 @@ func (s *Session) RenderSSHConfigToFile() {
 	s.SSHConfigFile.Seek(0, 0)
 
 	for _, server := range s.ServerList.Servers {
-		s.SSHConfigFile.Write([]byte(server.RenderSSHConfigEntry(&s.User)))
+		project := s.ServerList.Projects[server.ProjectUUID]
+		s.SSHConfigFile.Write([]byte(models.RenderSSHConfigEntry(project, server, s.User)))
 	}
 }
 
@@ -113,12 +118,12 @@ func (s *Session) RenderBashRCToFile() {
 	s.BashRCFile.Write([]byte(data))
 }
 
-func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []iam.Server) agent.AddedKey {
+func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.Server) agent.AddedKey {
 	principals := []string{}
 	identifiers := []string{}
 
 	for _, server := range servers {
-		principals = append(principals, server.GenerateUserPrincipal(s.User))
+		principals = append(principals, models.GenerateUserPrincipal(server, s.User))
 		identifiers = append(identifiers, server.Identifier)
 	}
 

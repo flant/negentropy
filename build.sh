@@ -47,12 +47,13 @@ function build_cli() {
 
   docker run --rm \
     -w /go/src/app/cli \
+    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
     -v $CLI_DIR/build:/src/build \
     -v $CLI_DIR:/go/src/app/cli \
     -v /tmp/cli-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
-    go build -o /src/build/cli main.go
+    go build -o /src/build/cli cmd/cli/main.go
 }
 
 function build_server_accessd() {
