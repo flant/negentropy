@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -239,31 +240,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			fmt.Printf("Created rolebinding:%#v\n", rolebinding)
 		})
 
-		//It("can register as a server 'test_client'", func() {
-		//	// TODO check is it necessary?
-		//	testClient = specs.RegisterServer(lib.NewServerAPI(iamVaultClient),
-		//		model2.Server{
-		//			TenantUUID:  tenant.UUID,
-		//			ProjectUUID: project.UUID,
-		//			Identifier:  testClientIdentifier,
-		//		})
-		//	fmt.Printf("Created testClient Server:%#v\n", testClient)
-		//})
-
-		//It("can add connection_info for a server 'test_client'", func() {
-		//	s := specs.UpdateConnectionInfo(lib.NewConnectionInfoAPI(iamVaultClient),
-		//		model2.Server{
-		//			UUID:        testClient.ServerUUID,
-		//			TenantUUID:  tenant.UUID,
-		//			ProjectUUID: project.UUID,
-		//		},
-		//		model2.ConnectionInfo{
-		//			Hostname: testClientIdentifier,
-		//		},
-		//	)
-		//	fmt.Printf("connection_info is updated: %#v\n", s.ConnectionInfo)
-		//})
-
 		It("can register as a server 'test_server'", func() {
 			testServer = specs.RegisterServer(lib.NewServerAPI(iamVaultClient),
 				model2.Server{
@@ -306,7 +282,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("Authd can be configured and runned at Test_server", func() {
+		It("Authd can be configured and run at Test_server", func() {
 			err := createIfNotExistsDirectoryAtContainer(dockerCli, testServerContainer,
 				"/etc/flant/negentropy/authd-conf.d")
 			Expect(err).ToNot(HaveOccurred())
@@ -327,7 +303,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"})
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, authdPath)
-			runDaemonAtContainer(dockerCli, testServerContainer, authdPath)
+			runDaemonAtContainer(dockerCli, testServerContainer, authdPath, "server_authd.log")
 			time.Sleep(time.Second)
 			pidAuthd := firstProcessPIDAtContainer(dockerCli, testServerContainer, authdPath)
 			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
@@ -352,7 +328,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, serverAccessdPath)
-			runDaemonAtContainer(dockerCli, testServerContainer, serverAccessdPath)
+			runDaemonAtContainer(dockerCli, testServerContainer, serverAccessdPath, "server_accessd.log")
 			time.Sleep(time.Second)
 			pidServerAccessd := firstProcessPIDAtContainer(dockerCli, testServerContainer, serverAccessdPath)
 			Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
@@ -398,17 +374,90 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"})
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
-			runDaemonAtContainer(dockerCli, testClientContainer, authdPath)
+			runDaemonAtContainer(dockerCli, testClientContainer, authdPath, "client_authd.log")
 			time.Sleep(time.Second)
 			pidAuthd := firstProcessPIDAtContainer(dockerCli, testClientContainer, authdPath)
 			Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 		})
 
-		It("Cli can ne runned and got access throug ssh", func() {
-			fmt.Printf("\nexport TENANT_ID=%s && export USER_UUID=%s && export USER_FULL_ID=%s && /opt/cli/bin/cli ssh\n", tenant.Identifier, user.UUID, user.FullIdentifier)
+		It("Cli ssh can run, write through ssh, and remove tmp files", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+
+			// TODO Redo after design CLI
+			runningCliCmd := fmt.Sprintf("export TENANT_ID=%s && export USER_UUID=%s && export USER_FULL_ID=%s && /opt/cli/bin/cli ssh\n", tenant.Identifier, user.UUID, user.FullIdentifier)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			// fmt.Println(touchCommand)
+			cmds := []string{sshCmd, touchCommand}
+			cmdsJson, _ := json.Marshal(cmds)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				"export COMMANDS='" + string(cmdsJson) + "' && " + runningCliCmd,
+			})
+			writeLogToFile(output, "cli.log")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
 		})
 	})
 })
+
+func writeLogToFile(output []string, logFilePath string) {
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		panic(err)
+	}
+	for _, s := range output {
+		logFile.WriteString(s)
+	}
+	logFile.Close()
+}
+
+func directoryAtContainerNotExistOrEmpty(cli *client.Client, container *types.Container, directoryPath string) bool {
+	ctx := context.Background()
+	config := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+		Cmd:          []string{"/bin/bash", "-c", "ls " + directoryPath},
+	}
+
+	IDResp, err := cli.ContainerExecCreate(ctx, container.ID, config)
+	Expect(err).ToNot(HaveOccurred(), "error execution at container")
+
+	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
+	defer resp.Close()
+	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+
+	output := []string{}
+	var text string
+	for err == nil {
+		text, err = resp.Reader.ReadString('\n')
+		if text != "" {
+			output = append(output, text)
+		}
+	}
+	if err.Error() != "EOF" {
+		Expect(err).ToNot(HaveOccurred(), "error response reading at container")
+		return false
+	}
+	if len(output) == 0 ||
+		(len(output) == 1 && strings.HasSuffix(output[0], "ls: cannot access '"+directoryPath+"': No such file or directory\n")) {
+		return true
+	}
+	return false
+}
 
 func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
 	principalHash := sha256.New()
@@ -580,7 +629,7 @@ func executeCommandAtContainer(cli *client.Client, container *types.Container, c
 	return nil
 }
 
-func runDaemonAtContainer(cli *client.Client, container *types.Container, daemonPath string) {
+func runDaemonAtContainer(cli *client.Client, container *types.Container, daemonPath string, logFilePath string) {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -594,7 +643,23 @@ func runDaemonAtContainer(cli *client.Client, container *types.Container, daemon
 
 	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
-	defer resp.Close()
+	go func() {
+		logFile, err := os.Create(logFilePath)
+		if err != nil {
+			panic(err)
+		}
+		var text string
+		for err == nil {
+			text, err = resp.Reader.ReadString('\n')
+			logFile.WriteString(text)
+			logFile.Sync()
+		}
+		if err.Error() != "EOF" {
+			logFile.Write([]byte(fmt.Sprintf("reading from container %s:%s", container.Names, err)))
+		}
+		logFile.Close()
+		defer resp.Close()
+	}()
 }
 
 func firstProcessPIDAtContainer(cli *client.Client, container *types.Container, processPath string) int {
