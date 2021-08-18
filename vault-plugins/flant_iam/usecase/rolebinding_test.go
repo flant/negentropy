@@ -7,10 +7,11 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createRoleBindings(t *testing.T, repo *model.RoleBindingRepository, rbs ...model.RoleBinding) {
+func createRoleBindings(t *testing.T, repo *iam_repo.RoleBindingRepository, rbs ...model.RoleBinding) {
 	for _, rb := range rbs {
 		tmp := rb
 		err := repo.Create(&tmp)
@@ -26,7 +27,7 @@ func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
 			makeMemberNotations(model.GroupType, rbs[i].Groups))
 	}
 	tx := store.Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 	createRoleBindings(t, repo, rbs...)
 	err := tx.Commit()
 	require.NoError(t, err)
@@ -51,7 +52,7 @@ func roleBindingsUUIDsFromMap(rbs map[model.RoleBindingUUID]*model.RoleBinding) 
 func Test_RoleBindingList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbs, err := repo.List(fixtures.TenantUUID1, false)
 
@@ -65,7 +66,7 @@ func Test_RoleBindingList(t *testing.T) {
 func Test_FindDirectRoleBindingsForTenantUser(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbsMap, err := repo.FindDirectRoleBindingsForTenantUser(fixtures.TenantUUID1, fixtures.UserUUID1)
 
@@ -76,7 +77,7 @@ func Test_FindDirectRoleBindingsForTenantUser(t *testing.T) {
 func Test_FindDirectRoleBindingsForTenantServiceAccount(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbsMap, err := repo.FindDirectRoleBindingsForTenantServiceAccount(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
 
@@ -87,7 +88,7 @@ func Test_FindDirectRoleBindingsForTenantServiceAccount(t *testing.T) {
 func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbsMap, err := repo.FindDirectRoleBindingsForTenantGroups(fixtures.TenantUUID1, fixtures.GroupUUID2, fixtures.GroupUUID3)
 
@@ -98,7 +99,7 @@ func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
 func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbsMap, err := repo.FindDirectRoleBindingsForRoles(fixtures.TenantUUID1, fixtures.RoleName1, fixtures.RoleName5, fixtures.RoleName8)
 
@@ -110,7 +111,7 @@ func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
 func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := model.NewRoleBindingRepository(tx)
+	repo := iam_repo.NewRoleBindingRepository(tx)
 
 	rbsMap, err := repo.FindDirectRoleBindingsForTenantProject(fixtures.TenantUUID1, fixtures.ProjectUUID3)
 

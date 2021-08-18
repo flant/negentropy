@@ -2,11 +2,12 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type TenantService struct {
-	repo *model.TenantRepository
+	repo *iam_repo.TenantRepository
 
 	// subtenants
 	childrenDeleters []DeleterByParent
@@ -14,7 +15,7 @@ type TenantService struct {
 
 func Tenants(db *io.MemoryStoreTxn) *TenantService {
 	return &TenantService{
-		repo: model.NewTenantRepository(db),
+		repo: iam_repo.NewTenantRepository(db),
 		childrenDeleters: []DeleterByParent{
 			NewIdentitySharingDeleter(db),
 			UserDeleter(db),
@@ -27,7 +28,7 @@ func Tenants(db *io.MemoryStoreTxn) *TenantService {
 }
 
 func (s *TenantService) Create(t *model.Tenant) error {
-	t.Version = model.NewResourceVersion()
+	t.Version = iam_repo.NewResourceVersion()
 	return s.repo.Create(t)
 }
 
@@ -42,7 +43,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	if stored.Version != updated.Version {
 		return model.ErrBadVersion
 	}
-	updated.Version = model.NewResourceVersion()
+	updated.Version = iam_repo.NewResourceVersion()
 
 	// Update
 

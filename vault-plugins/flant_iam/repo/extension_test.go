@@ -1,4 +1,4 @@
-package model
+package repo
 
 import (
 	"encoding/json"
@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 func Test_ExtensionMarshalling(t *testing.T) {
-	ex := &Extension{
+	ex := &model.Extension{
 		Origin:              "test",
 		OwnerType:           "test",
 		OwnerUUID:           uuid.New(),

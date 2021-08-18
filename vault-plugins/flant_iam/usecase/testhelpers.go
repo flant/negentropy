@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemoryStore)) *io.MemoryStore {
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	require.NoError(t, err)
 	store, err := io.NewMemoryStore(schema, nil)
 	require.NoError(t, err)
@@ -21,14 +22,14 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 	return store
 }
 
-func toMemberNotation(m model.Model) model.MemberNotation {
+func toMemberNotation(m iam_repo.Model) model.MemberNotation {
 	return model.MemberNotation{
 		Type: m.ObjType(),
 		UUID: m.ObjId(),
 	}
 }
 
-func toMemberNotations(ms ...model.Model) []model.MemberNotation {
+func toMemberNotations(ms ...iam_repo.Model) []model.MemberNotation {
 	sns := make([]model.MemberNotation, 0)
 	for _, m := range ms {
 		sns = append(sns, toMemberNotation(m))

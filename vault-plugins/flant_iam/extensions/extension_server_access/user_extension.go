@@ -12,6 +12,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -79,8 +80,8 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: iam_model.ProjectType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			groupRepo := iam_model.NewGroupRepository(txn)
-			projectRepo := iam_model.NewProjectRepository(txn)
+			groupRepo := iam_repo.NewGroupRepository(txn)
+			projectRepo := iam_repo.NewProjectRepository(txn)
 
 			project := obj.(*iam_model.Project)
 

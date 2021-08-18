@@ -8,12 +8,12 @@ import (
 	hcjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-hclog"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/multipass"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -56,7 +56,7 @@ func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *mod
 }
 
 func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, tnx *io.MemoryStoreTxn) (*model.AuthSource, error) {
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := ext_repo.NewAuthSourceRepo(tnx)
 	authSource, err := repo.Get(method.Source)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 		Logger:       loggerForAuth,
 		MultipassService: &usecase.Multipass{
 			JwtController:    f.jwtController,
-			MultipassRepo:    iam.NewMultipassRepository(tnx),
+			MultipassRepo:    iam_repo.NewMultipassRepository(tnx),
 			GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
 			Logger:           loggerForAuth,
 		},

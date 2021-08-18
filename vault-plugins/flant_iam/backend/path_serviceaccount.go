@@ -11,6 +11,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -427,7 +428,7 @@ func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		var (
 			id       = data.Get("uuid").(string)
-			tenantID = data.Get(model.TenantForeignPK).(string)
+			tenantID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 
 		b.Logger().Debug("checking serviceAccount existence", "path", req.Path, "id", id, "op", req.Operation)
@@ -447,7 +448,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 		b.Logger().Debug("create service_account", "path", req.Path)
 		var (
 			id         = getCreationID(expectID, data)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 
 			ttl    = data.Get("token_ttl").(int)
 			maxttl = data.Get("token_max_ttl").(int)
@@ -486,7 +487,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 		b.Logger().Debug("update service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 
 			ttl    = data.Get("token_ttl").(int)
 			maxttl = data.Get("token_max_ttl").(int)
@@ -494,7 +495,7 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 
 		serviceAccount := &model.ServiceAccount{
 			UUID:        id,
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
+			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
 			Version:     data.Get("resource_version").(string),
 			Identifier:  data.Get("identifier").(string),
 			BuiltinType: "",
@@ -525,7 +526,7 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 		b.Logger().Debug("delete service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 
 		tx := b.storage.Txn(true)
@@ -548,7 +549,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 		b.Logger().Debug("read service_account", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 
 		tx := b.storage.Txn(false)
@@ -571,7 +572,7 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		tenantUUID := data.Get(model.TenantForeignPK).(string)
+		tenantUUID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
@@ -673,7 +674,7 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": iam_repo.OmitSensitive(mp)}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
@@ -799,7 +800,7 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"password": model.OmitSensitive(pass)}}
+		resp := &logical.Response{Data: map[string]interface{}{"password": iam_repo.OmitSensitive(pass)}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

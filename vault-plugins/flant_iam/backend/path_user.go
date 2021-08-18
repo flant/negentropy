@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -401,7 +402,7 @@ func neverExisting(context.Context, *logical.Request, *framework.FieldData) (boo
 func (b *userBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		b.Logger().Debug("checking user existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -423,7 +424,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create user", "path", req.Path)
 		id := getCreationID(expectID, data)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		user := &model.User{
 			UUID:             id,
 			TenantUUID:       tenantID,
@@ -459,7 +460,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("update user", "path", req.Path)
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
@@ -495,7 +496,7 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("delete user", "path", req.Path)
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
@@ -516,7 +517,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("read user", "path", req.Path)
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
@@ -538,7 +539,7 @@ func (b *userBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
@@ -563,7 +564,7 @@ func (b *userBackend) handleRestore() framework.OperationFunc {
 		defer tx.Abort()
 
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		user, err := usecase.Users(tx, tenantID).Restore(id)
 		if err != nil {
@@ -661,7 +662,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		resp := &logical.Response{Data: map[string]interface{}{"multipass": model.OmitSensitive(mp)}}
+		resp := &logical.Response{Data: map[string]interface{}{"multipass": iam_repo.OmitSensitive(mp)}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

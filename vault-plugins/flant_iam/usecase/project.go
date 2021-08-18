@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -15,20 +16,20 @@ func Projects(db *io.MemoryStoreTxn) *ProjectService {
 
 func (s *ProjectService) Create(project *model.Project) error {
 	// Verify tenant exists
-	_, err := model.NewTenantRepository(s.db).GetByID(project.TenantUUID)
+	_, err := repo.NewTenantRepository(s.db).GetByID(project.TenantUUID)
 	if err != nil {
 		return err
 	}
 
-	project.Version = model.NewResourceVersion()
+	project.Version = repo.NewResourceVersion()
 
-	return model.NewProjectRepository(s.db).Create(project)
+	return repo.NewProjectRepository(s.db).Create(project)
 }
 
 func (s *ProjectService) Update(project *model.Project) error {
-	repo := model.NewProjectRepository(s.db)
+	repository := repo.NewProjectRepository(s.db)
 
-	stored, err := repo.GetByID(project.UUID)
+	stored, err := repository.GetByID(project.UUID)
 	if err != nil {
 		return err
 	}
@@ -40,26 +41,26 @@ func (s *ProjectService) Update(project *model.Project) error {
 	if stored.Version != project.Version {
 		return model.ErrBadVersion
 	}
-	project.Version = model.NewResourceVersion()
+	project.Version = repo.NewResourceVersion()
 
 	// Update
 
-	return repo.Update(project)
+	return repository.Update(project)
 }
 
 func (s *ProjectService) Delete(id model.ProjectUUID) error {
 	archivingTimestamp, archivingHash := ArchivingLabel()
-	return model.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
+	return repo.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *ProjectService) List(tid model.TenantUUID, showArchived bool) ([]*model.Project, error) {
-	return model.NewProjectRepository(s.db).List(tid, showArchived)
+	return repo.NewProjectRepository(s.db).List(tid, showArchived)
 }
 
 func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) {
-	return model.NewProjectRepository(s.db).GetByID(pid)
+	return repo.NewProjectRepository(s.db).GetByID(pid)
 }
 
 func (s *ProjectService) Restore(id model.ProjectUUID) (*model.Project, error) {
-	return model.NewProjectRepository(s.db).Restore(id)
+	return repo.NewProjectRepository(s.db).Restore(id)
 }

@@ -2,22 +2,23 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func IdentityShares(db *io.MemoryStoreTxn) *IdentitySharingService {
 	return &IdentitySharingService{
 		db:         db,
-		sharesRepo: model.NewIdentitySharingRepository(db),
-		tenantRepo: model.NewTenantRepository(db),
+		sharesRepo: repo.NewIdentitySharingRepository(db),
+		tenantRepo: repo.NewTenantRepository(db),
 	}
 }
 
 type IdentitySharingService struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 
-	sharesRepo *model.IdentitySharingRepository
-	tenantRepo *model.TenantRepository
+	sharesRepo *repo.IdentitySharingRepository
+	tenantRepo *repo.TenantRepository
 }
 
 func (s *IdentitySharingService) GetByID(id model.IdentitySharingUUID) (*model.IdentitySharing, error) {
@@ -34,12 +35,12 @@ func (s *IdentitySharingService) Create(is *model.IdentitySharing) error {
 		return err
 	}
 
-	is.Version = model.NewResourceVersion()
+	is.Version = repo.NewResourceVersion()
 	return s.sharesRepo.Create(is)
 }
 
 func (s *IdentitySharingService) Update(is *model.IdentitySharing) error {
-	is.Version = model.NewResourceVersion()
+	is.Version = repo.NewResourceVersion()
 
 	// Update
 	return s.sharesRepo.Update(is)

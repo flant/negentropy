@@ -9,6 +9,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -18,10 +19,10 @@ import (
 type ServerService struct {
 	tenantService      *usecase.TenantService
 	projectsService    *usecase.ProjectService
-	groupRepo          *iam_model.GroupRepository
-	serviceAccountRepo *iam_model.ServiceAccountRepository
+	groupRepo          *iam_repo.GroupRepository
+	serviceAccountRepo *iam_repo.ServiceAccountRepository
 	roleService        *usecase.RoleService
-	roleBindingRepo    *iam_model.RoleBindingRepository
+	roleBindingRepo    *iam_repo.RoleBindingRepository
 	serverRepo         *repo.ServerRepository
 
 	tx *io.MemoryStoreTxn
@@ -31,9 +32,9 @@ func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 	return &ServerService{
 		tenantService:      usecase.Tenants(tx),
 		projectsService:    usecase.Projects(tx),
-		groupRepo:          iam_model.NewGroupRepository(tx),
-		serviceAccountRepo: iam_model.NewServiceAccountRepository(tx),
-		roleBindingRepo:    iam_model.NewRoleBindingRepository(tx),
+		groupRepo:          iam_repo.NewGroupRepository(tx),
+		serviceAccountRepo: iam_repo.NewServiceAccountRepository(tx),
+		roleBindingRepo:    iam_repo.NewRoleBindingRepository(tx),
 		serverRepo:         repo.NewServerRepository(tx),
 		roleService:        usecase.Roles(tx),
 		tx:                 tx,
@@ -55,7 +56,7 @@ func (s *ServerService) Create(
 		UUID:        uuid.New(),
 		TenantUUID:  tenantUUID,
 		ProjectUUID: projectUUID,
-		Version:     iam_model.NewResourceVersion(),
+		Version:     iam_repo.NewResourceVersion(),
 		Identifier:  serverID,
 		Labels:      labels,
 		Annotations: annotations,
@@ -127,7 +128,7 @@ func (s *ServerService) Create(
 		if roleBinding == nil {
 			newRoleBinding := &iam_model.RoleBinding{
 				UUID:       uuid.New(),
-				Version:    iam_model.NewResourceVersion(),
+				Version:    iam_repo.NewResourceVersion(),
 				TenantUUID: tenant.ObjId(),
 				Origin:     iam_model.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
@@ -158,7 +159,7 @@ func (s *ServerService) Create(
 			newRoleBinding := &iam_model.RoleBinding{
 				UUID:       uuid.New(),
 				TenantUUID: tenant.ObjId(),
-				Version:    iam_model.NewResourceVersion(),
+				Version:    iam_repo.NewResourceVersion(),
 				Origin:     iam_model.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
 				Groups:     []iam_model.GroupUUID{group.UUID},
@@ -182,11 +183,11 @@ func (s *ServerService) Create(
 
 		newServiceAccount := &iam_model.ServiceAccount{
 			UUID:           uuid.New(),
-			Version:        iam_model.NewResourceVersion(),
+			Version:        iam_repo.NewResourceVersion(),
 			TenantUUID:     tenant.ObjId(),
 			Origin:         iam_model.OriginServerAccess,
 			Identifier:     saIdentifier,
-			FullIdentifier: iam_model.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
+			FullIdentifier: iam_repo.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
 		}
 
 		err := s.serviceAccountRepo.Create(newServiceAccount)
@@ -238,7 +239,7 @@ func (s *ServerService) Create(
 		return "", "", err
 	}
 
-	server.Version = iam_model.NewResourceVersion()
+	server.Version = iam_repo.NewResourceVersion()
 	server.MultipassUUID = mp.UUID
 	err = s.tx.Insert(model.ServerType, server)
 	if err != nil {
@@ -257,7 +258,7 @@ func (s *ServerService) Update(server *model.Server) error {
 	if stored.TenantUUID != server.TenantUUID {
 		return iam_model.ErrNotFound
 	}
-	server.Version = iam_model.NewResourceVersion()
+	server.Version = iam_repo.NewResourceVersion()
 
 	project, err := s.projectsService.GetByID(server.ProjectUUID)
 	if err != nil {
@@ -270,7 +271,7 @@ func (s *ServerService) Update(server *model.Server) error {
 	}
 
 	sa.Identifier = nameForServerRelatedProjectLevelObjects(project.Identifier, stored.Identifier)
-	sa.Version = iam_model.NewResourceVersion()
+	sa.Version = iam_repo.NewResourceVersion()
 
 	err = s.serviceAccountRepo.Update(sa)
 	if err != nil {

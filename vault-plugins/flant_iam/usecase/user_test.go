@@ -7,11 +7,12 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createUsers(t *testing.T, repo *model.UserRepository, users ...model.User) {
+func createUsers(t *testing.T, repo *iam_repo.UserRepository, users ...model.User) {
 	for _, user := range users {
 		tmp := user
 		tmp.Version = uuid.New()
@@ -23,7 +24,7 @@ func createUsers(t *testing.T, repo *model.UserRepository, users ...model.User) 
 
 func userFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	repo := model.NewUserRepository(tx)
+	repo := iam_repo.NewUserRepository(tx)
 	createUsers(t, repo, fixtures.Users()...)
 	err := tx.Commit()
 	require.NoError(t, err)
@@ -31,7 +32,7 @@ func userFixture(t *testing.T, store *io.MemoryStore) {
 
 func Test_UserList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
-	repo := model.NewUserRepository(tx)
+	repo := iam_repo.NewUserRepository(tx)
 
 	users, err := repo.List(fixtures.TenantUUID1, false)
 

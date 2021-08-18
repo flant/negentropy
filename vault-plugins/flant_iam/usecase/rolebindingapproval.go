@@ -2,16 +2,17 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type RoleBindingApprovalService struct {
-	repo *model.RoleBindingApprovalRepository
+	repo *iam_repo.RoleBindingApprovalRepository
 }
 
 func RoleBindingApprovals(db *io.MemoryStoreTxn) *RoleBindingApprovalService {
 	return &RoleBindingApprovalService{
-		repo: model.NewRoleBindingApprovalRepository(db),
+		repo: iam_repo.NewRoleBindingApprovalRepository(db),
 	}
 }
 

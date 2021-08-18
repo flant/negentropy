@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
@@ -54,9 +54,9 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("got tenant request in auth")
 
-	repo := model.NewTenantRepository(txn)
+	repository := repo.NewTenantRepository(txn)
 
-	tenants, err := repo.List(false)
+	tenants, err := repository.List(false)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +85,9 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
-	repo := model.NewProjectRepository(txn)
+	repository := repo.NewProjectRepository(txn)
 
-	projects, err := repo.List(tenantID, false)
+	projects, err := repository.List(tenantID, false)
 	if err != nil {
 		return nil, err
 	}

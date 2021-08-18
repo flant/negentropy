@@ -12,8 +12,9 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -212,7 +213,7 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
 
-		repo := repo.NewServerRepository(txn)
+		repo := ext_repo.NewServerRepository(txn)
 		server, err := repo.GetByUUID(serverID)
 		if err != nil {
 			return nil, err
@@ -361,8 +362,8 @@ func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 // TODO: change to real func
 func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*model.User, []*model.ServiceAccount, error) {
 	// for stub, return all users and SA
-	userRepo := model.NewUserRepository(tx)
-	saRepo := model.NewServiceAccountRepository(tx)
+	userRepo := iam_repo.NewUserRepository(tx)
+	saRepo := iam_repo.NewServiceAccountRepository(tx)
 
 	resUsers := make([]*model.User, 0)
 	resSa := make([]*model.ServiceAccount, 0)
@@ -400,7 +401,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 		return result, err
 	}
 
-	repo := repo.NewServerRepository(tx)
+	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
@@ -425,7 +426,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 }
 
 func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]queryServer, error) {
-	repo := repo.NewServerRepository(tx)
+	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
@@ -454,7 +455,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 	for _, name := range names {
 		nameMap[strings.ToLower(name)] = false
 	}
-	repo := repo.NewServerRepository(tx)
+	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {

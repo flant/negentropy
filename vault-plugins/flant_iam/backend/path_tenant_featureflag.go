@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
@@ -52,7 +53,7 @@ func (b *tenantBackend) featureFlagPath() *framework.Path {
 
 func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		featureFlagName := data.Get("feature_flag_name").(string)
 		enabledByDefault := data.Get("enabled_for_new_projects").(bool)
 
@@ -84,7 +85,7 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 
 func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		featureFlagName := data.Get("feature_flag_name").(string)
 
 		if featureFlagName == "" {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -43,10 +44,10 @@ token_max_ttl – максимальная продолжительность ж
 
 type MultipassService struct {
 	// dependencies
-	repo       *model.MultipassRepository
-	tenantRepo *model.TenantRepository
-	userRepo   *model.UserRepository
-	saRepo     *model.ServiceAccountRepository
+	repo       *iam_repo.MultipassRepository
+	tenantRepo *iam_repo.TenantRepository
+	userRepo   *iam_repo.UserRepository
+	saRepo     *iam_repo.ServiceAccountRepository
 
 	// context
 	origin     model.ObjectOrigin
@@ -65,10 +66,10 @@ func ServiceAccountMultipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin,
 
 func Multipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, otype model.MultipassOwnerType, tid model.TenantUUID, oid model.OwnerUUID) *MultipassService {
 	return &MultipassService{
-		repo:       model.NewMultipassRepository(db),
-		tenantRepo: model.NewTenantRepository(db),
-		userRepo:   model.NewUserRepository(db),
-		saRepo:     model.NewServiceAccountRepository(db),
+		repo:       iam_repo.NewMultipassRepository(db),
+		tenantRepo: iam_repo.NewTenantRepository(db),
+		userRepo:   iam_repo.NewUserRepository(db),
+		saRepo:     iam_repo.NewServiceAccountRepository(db),
 
 		origin:     origin,
 		ownerType:  otype,
@@ -132,7 +133,7 @@ func (r *MultipassService) CreateWithJWT(
 		return "", nil, err
 	}
 
-	safeMp := model.OmitSensitive(mp).(model.Multipass)
+	safeMp := iam_repo.OmitSensitive(mp).(model.Multipass)
 	return jwtString, &safeMp, nil
 }
 
@@ -160,7 +161,7 @@ func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, er
 	if mp.OwnerType != r.ownerType {
 		return nil, model.ErrNotFound
 	}
-	safeMp := model.OmitSensitive(mp).(model.Multipass)
+	safeMp := iam_repo.OmitSensitive(mp).(model.Multipass)
 	return &safeMp, nil
 }
 
@@ -181,7 +182,7 @@ func (r *MultipassService) PublicList(showArchived bool) ([]*model.Multipass, er
 
 	safeMps := make([]*model.Multipass, len(mps))
 	for i := range mps {
-		safe := model.OmitSensitive(mps[i]).(model.Multipass)
+		safe := iam_repo.OmitSensitive(mps[i]).(model.Multipass)
 		safeMps[i] = &safe
 	}
 

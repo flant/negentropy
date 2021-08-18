@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -9,8 +10,8 @@ type ServiceAccountService struct {
 	tenantUUID model.TenantUUID
 	origin     model.ObjectOrigin
 
-	repo       *model.ServiceAccountRepository
-	tenantRepo *model.TenantRepository
+	repo       *iam_repo.ServiceAccountRepository
+	tenantRepo *iam_repo.TenantRepository
 
 	childrenDeleters []DeleterByParent
 }
@@ -20,8 +21,8 @@ func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model
 		tenantUUID: tid,
 		origin:     origin,
 
-		repo:       model.NewServiceAccountRepository(db),
-		tenantRepo: model.NewTenantRepository(db),
+		repo:       iam_repo.NewServiceAccountRepository(db),
+		tenantRepo: iam_repo.NewTenantRepository(db),
 
 		childrenDeleters: []DeleterByParent{
 			MultipassDeleter(db),
@@ -41,8 +42,8 @@ func (s *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 	if sa.Origin == "" {
 		return model.ErrBadOrigin
 	}
-	sa.Version = model.NewResourceVersion()
-	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.Version = iam_repo.NewResourceVersion()
+	sa.FullIdentifier = iam_repo.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
 	return s.repo.Create(sa)
 }
@@ -92,8 +93,8 @@ func (s *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 
 	// Update
 	sa.TenantUUID = s.tenantUUID
-	sa.Version = model.NewResourceVersion()
-	sa.FullIdentifier = model.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
+	sa.Version = iam_repo.NewResourceVersion()
+	sa.FullIdentifier = iam_repo.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
 
 	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if sa.Extensions == nil {

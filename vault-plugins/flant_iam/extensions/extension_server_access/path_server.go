@@ -13,7 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/usecase"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -376,8 +376,8 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 
 		server := &model.Server{
 			UUID:        data.Get("server_uuid").(string),
-			TenantUUID:  data.Get(iam_model.TenantForeignPK).(string),
-			ProjectUUID: data.Get(iam_model.ProjectForeignPK).(string),
+			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
+			ProjectUUID: data.Get(iam_repo.ProjectForeignPK).(string),
 			Version:     data.Get("resource_version").(string),
 			Identifier:  data.Get("identifier").(string),
 			Labels:      labels,
@@ -427,8 +427,8 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 func (b *serverBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(iam_model.TenantForeignPK).(string)
-		projectID := data.Get(iam_model.ProjectForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
+		projectID := data.Get(iam_repo.ProjectForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 		repo := repo.NewServerRepository(tx)

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -272,7 +273,7 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleRepository(tx)
+		repo := iam_repo.NewRoleRepository(tx)
 
 		list, err := repo.List(showArchived)
 		if err != nil {

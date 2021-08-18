@@ -1,14 +1,18 @@
-package model
+package repo
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-func Test_FeatureFlagMarshalling(t *testing.T) {
-	ten := &FeatureFlag{
-		Name: "somefun",
+func Test_TenantMarshalling(t *testing.T) {
+	ten := &model.Tenant{
+		UUID:       uuid.New(),
+		Identifier: "somefun",
 	}
 
 	raw, err := json.Marshal(ten)
@@ -16,8 +20,8 @@ func Test_FeatureFlagMarshalling(t *testing.T) {
 		t.Fatalf("cannot marshal tenant with sensitive data: %v", err)
 	}
 
-	ten2 := &FeatureFlag{}
-	err = json.Unmarshal(raw, ten2)
+	ten2 := &model.Tenant{}
+	err = json.Unmarshal(raw, &ten2)
 	if err != nil {
 		t.Fatalf("cannot unmarshal tenant back: %v", err)
 	}
@@ -27,8 +31,8 @@ func Test_FeatureFlagMarshalling(t *testing.T) {
 	}
 }
 
-func Test_FeatureFlagDbSchema(t *testing.T) {
-	schema := FeatureFlagSchema()
+func Test_TenantDbSchema(t *testing.T) {
+	schema := TenantSchema()
 	if err := schema.Validate(); err != nil {
 		t.Fatalf("tenant schema is invalid: %v", err)
 	}

@@ -9,6 +9,7 @@ import (
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -89,11 +90,11 @@ func Test_List(t *testing.T) {
 func GenerateTenantFixtures(t *testing.T, tx *io.MemoryStoreTxn) *iam_model.Tenant {
 	t.Helper()
 
-	tenantRepo := iam_model.NewTenantRepository(tx)
+	tenantRepo := iam_repo.NewTenantRepository(tx)
 
 	tenant := &iam_model.Tenant{
 		UUID:       uuid.New(),
-		Version:    iam_model.NewResourceVersion(),
+		Version:    iam_repo.NewResourceVersion(),
 		Identifier: "main",
 	}
 
@@ -106,12 +107,12 @@ func GenerateTenantFixtures(t *testing.T, tx *io.MemoryStoreTxn) *iam_model.Tena
 func GenerateProjectFixtures(t *testing.T, tx *io.MemoryStoreTxn, tenantUUID string) *iam_model.Project {
 	t.Helper()
 
-	projectRepo := iam_model.NewProjectRepository(tx)
+	projectRepo := iam_repo.NewProjectRepository(tx)
 
 	project := &iam_model.Project{
 		UUID:       uuid.New(),
 		TenantUUID: tenantUUID,
-		Version:    iam_model.NewResourceVersion(),
+		Version:    iam_repo.NewResourceVersion(),
 		Identifier: "main",
 	}
 
@@ -124,7 +125,7 @@ func GenerateProjectFixtures(t *testing.T, tx *io.MemoryStoreTxn, tenantUUID str
 func GenerateRoleFixtures(t *testing.T, tx *io.MemoryStoreTxn, roleScope iam_model.RoleScope) *iam_model.Role {
 	t.Helper()
 
-	roleRepo := iam_model.NewRoleRepository(tx)
+	roleRepo := iam_repo.NewRoleRepository(tx)
 
 	role := &iam_model.Role{Name: "main"}
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -45,22 +46,22 @@ func ServerSchema() *memdb.DBSchema {
 			model.ServerType: {
 				Name: model.ServerType,
 				Indexes: map[string]*memdb.IndexSchema{
-					iam_model.PK: {
-						Name:   iam_model.PK,
+					iam_repo.PK: {
+						Name:   iam_repo.PK,
 						Unique: true,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
-					iam_model.TenantForeignPK: {
-						Name: iam_model.TenantForeignPK,
+					iam_repo.TenantForeignPK: {
+						Name: iam_repo.TenantForeignPK,
 						Indexer: &memdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
 						},
 					},
-					iam_model.ProjectForeignPK: {
-						Name: iam_model.ProjectForeignPK,
+					iam_repo.ProjectForeignPK: {
+						Name: iam_repo.ProjectForeignPK,
 						Indexer: &memdb.StringFieldIndex{
 							Field:     "ProjectUUID",
 							Lowercase: true,
@@ -99,7 +100,7 @@ func (r *ServerRepository) Create(server *model.Server) error {
 }
 
 func (r *ServerRepository) GetByUUID(id string) (*model.Server, error) {
-	raw, err := r.db.First(model.ServerType, iam_model.PK, id)
+	raw, err := r.db.First(model.ServerType, iam_repo.PK, id)
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +152,13 @@ func (r *ServerRepository) List(tenantID, projectID string) ([]*model.Server, er
 		iter, err = r.db.Get(model.ServerType, "tenant_project", tenantID, projectID)
 
 	case tenantID != "":
-		iter, err = r.db.Get(model.ServerType, iam_model.TenantForeignPK, tenantID)
+		iter, err = r.db.Get(model.ServerType, iam_repo.TenantForeignPK, tenantID)
 
 	case projectID != "":
-		iter, err = r.db.Get(model.ServerType, iam_model.ProjectForeignPK, projectID)
+		iter, err = r.db.Get(model.ServerType, iam_repo.ProjectForeignPK, projectID)
 
 	default:
-		iter, err = r.db.Get(model.ServerType, iam_model.PK)
+		iter, err = r.db.Get(model.ServerType, iam_repo.PK)
 	}
 	if err != nil {
 		return nil, err
@@ -178,7 +179,7 @@ func (r *ServerRepository) List(tenantID, projectID string) ([]*model.Server, er
 type UserServerAccessRepository struct {
 	db                              *io.MemoryStoreTxn
 	serverRepo                      *ServerRepository
-	userRepo                        *iam_model.UserRepository
+	userRepo                        *iam_repo.UserRepository
 	currentUID                      int // FIXME: commit to Vault local storage
 	expireSeedAfterRevealIn         time.Duration
 	deleteExpiredPasswordSeedsAfter time.Duration
@@ -189,7 +190,7 @@ func NewUserServerAccessRepository(
 ) *UserServerAccessRepository {
 	return &UserServerAccessRepository{
 		db:                              tx,
-		userRepo:                        iam_model.NewUserRepository(tx),
+		userRepo:                        iam_repo.NewUserRepository(tx),
 		serverRepo:                      NewServerRepository(tx),
 		currentUID:                      initialUID,
 		expireSeedAfterRevealIn:         expireSeedAfterRevealIn,

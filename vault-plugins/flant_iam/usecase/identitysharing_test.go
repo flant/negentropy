@@ -7,10 +7,11 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createIdentitySharings(t *testing.T, repo *model.IdentitySharingRepository, shares ...model.IdentitySharing) {
+func createIdentitySharings(t *testing.T, repo *iam_repo.IdentitySharingRepository, shares ...model.IdentitySharing) {
 	for _, share := range shares {
 		tmp := share
 		err := repo.Create(&tmp)
@@ -20,14 +21,14 @@ func createIdentitySharings(t *testing.T, repo *model.IdentitySharingRepository,
 
 func identitySharingFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	repo := model.NewIdentitySharingRepository(tx)
+	repo := iam_repo.NewIdentitySharingRepository(tx)
 	createIdentitySharings(t, repo, fixtures.IdentitySharings()...)
 	err := tx.Commit()
 	require.NoError(t, err)
 }
 
 func Test_IdentitySharingDbSchema(t *testing.T) {
-	schema := model.IdentitySharingSchema()
+	schema := iam_repo.IdentitySharingSchema()
 	if err := schema.Validate(); err != nil {
 		t.Fatalf("identity sharing schema is invalid: %v", err)
 	}
@@ -36,7 +37,7 @@ func Test_IdentitySharingDbSchema(t *testing.T) {
 func Test_ListIdentitySharing(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
 		identitySharingFixture).Txn(true)
-	repo := model.NewIdentitySharingRepository(tx)
+	repo := iam_repo.NewIdentitySharingRepository(tx)
 
 	shares, err := repo.List(fixtures.TenantUUID1, false)
 
@@ -51,7 +52,7 @@ func Test_ListIdentitySharing(t *testing.T) {
 func Test_ListForDestinationTenant(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
 		identitySharingFixture).Txn(true)
-	repo := model.NewIdentitySharingRepository(tx)
+	repo := iam_repo.NewIdentitySharingRepository(tx)
 
 	shares, err := repo.ListForDestinationTenant(fixtures.TenantUUID1)
 

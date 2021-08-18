@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	iamrepos "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -14,8 +15,8 @@ import (
 type ObjectHandler struct {
 	eaRepo     *model.EntityAliasRepo
 	entityRepo *model.EntityRepo
-	usersRepo  *iamrepos.UserRepository
-	saRepo     *iamrepos.ServiceAccountRepository
+	usersRepo  *iam_repo.UserRepository
+	saRepo     *iam_repo.ServiceAccountRepository
 	downstream *vault.VaultEntityDownstreamApi
 	memStore   *io.MemoryStore
 	txn        *io.MemoryStoreTxn
@@ -27,8 +28,8 @@ func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vau
 	return &ObjectHandler{
 		eaRepo:     model.NewEntityAliasRepo(txn),
 		entityRepo: model.NewEntityRepo(txn),
-		usersRepo:  iamrepos.NewUserRepository(txn),
-		saRepo:     iamrepos.NewServiceAccountRepository(txn),
+		usersRepo:  iam_repo.NewUserRepository(txn),
+		saRepo:     iam_repo.NewServiceAccountRepository(txn),
 		memStore:   memStore,
 		txn:        txn,
 		downstream: api,

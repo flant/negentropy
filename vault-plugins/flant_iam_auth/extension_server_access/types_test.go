@@ -8,6 +8,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -79,7 +80,7 @@ func TestUserToPosix(t *testing.T) {
 		Identifier: "tenant2",
 	}
 
-	st, _ := io.NewMemoryStore(iam_model.TenantSchema(), nil)
+	st, _ := io.NewMemoryStore(iam_repo.TenantSchema(), nil)
 	tx := st.Txn(true)
 	_ = tx.Insert(iam_model.TenantType, tenant2)
 	_ = tx.Commit()

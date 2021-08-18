@@ -6,16 +6,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 )
 
 func Test_collectAllRolesAndRoleBindings(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(fixtures.TenantUUID1, fixtures.RoleName1)
@@ -31,9 +31,9 @@ func Test_collectAllRoleBindingsForUser(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	roleBindings, err := rr.collectAllRoleBindingsForUser(fixtures.TenantUUID1, fixtures.UserUUID1)
@@ -47,9 +47,9 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	hasRole, gotParams, err := rr.CheckUserForProjectScopedRole(fixtures.UserUUID1, fixtures.RoleName1,
@@ -65,9 +65,9 @@ func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	roleBindings, err := rr.collectAllRoleBindingsForServiceAccount(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
@@ -81,9 +81,9 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	hasRole, gotParams, err := rr.CheckServiceAccountForProjectScopedRole(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
@@ -99,9 +99,9 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	hasRole, gotParams, err := rr.CheckUserForTenantScopedRole(fixtures.UserUUID2, fixtures.RoleName9,
@@ -117,9 +117,9 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	hasRole, gotParams, err := rr.CheckServiceAccountForTenantScopedRole(fixtures.ServiceAccountUUID2,
@@ -135,9 +135,9 @@ func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.TenantUUID1,
@@ -153,9 +153,9 @@ func Test_FindMembersWithTenantScopedRole(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, roleFixture, projectFixture,
 		roleBindingFixture).Txn(true)
 	rr := roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
 	users, serviceAccounts, err := rr.FindMembersWithTenantScopedRole(fixtures.RoleName9, fixtures.TenantUUID1)

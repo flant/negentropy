@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -9,9 +10,9 @@ type ServiceAccountPasswordsService struct {
 	tenantUUID model.TenantUUID
 	ownerUUID  model.ServiceAccountUUID
 
-	repo       *model.ServiceAccountPasswordRepository
-	saRepo     *model.ServiceAccountRepository
-	tenantRepo *model.TenantRepository
+	repo       *iam_repo.ServiceAccountPasswordRepository
+	saRepo     *iam_repo.ServiceAccountRepository
+	tenantRepo *iam_repo.TenantRepository
 }
 
 func ServiceAccountPasswords(db *io.MemoryStoreTxn, tid model.TenantUUID, said model.ServiceAccountUUID) *ServiceAccountPasswordsService {
@@ -19,9 +20,9 @@ func ServiceAccountPasswords(db *io.MemoryStoreTxn, tid model.TenantUUID, said m
 		tenantUUID: tid,
 		ownerUUID:  said,
 
-		repo:       model.NewServiceAccountPasswordRepository(db),
-		saRepo:     model.NewServiceAccountRepository(db),
-		tenantRepo: model.NewTenantRepository(db),
+		repo:       iam_repo.NewServiceAccountPasswordRepository(db),
+		saRepo:     iam_repo.NewServiceAccountRepository(db),
+		tenantRepo: iam_repo.NewTenantRepository(db),
 	}
 }
 

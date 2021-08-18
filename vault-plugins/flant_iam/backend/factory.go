@@ -16,6 +16,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
@@ -71,7 +72,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +105,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
 	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, logger.Named("KafkaSourceJWKS")))
-	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, model.PK)
+	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -153,7 +153,7 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	if err != nil {
 		t.Fatal(err)
 	}

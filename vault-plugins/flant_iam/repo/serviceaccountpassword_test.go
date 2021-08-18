@@ -1,15 +1,16 @@
-package model
+package repo
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 func Test_ServiceAccountPasswordMarshalling(t *testing.T) {
-	flipflopSAP := func(t *testing.T, token *ServiceAccountPassword, includeSensitive bool) *ServiceAccountPassword {
+	flipflopSAP := func(t *testing.T, token *model.ServiceAccountPassword, includeSensitive bool) *model.ServiceAccountPassword {
 		var res interface{}
 
 		res = token
@@ -21,7 +22,7 @@ func Test_ServiceAccountPasswordMarshalling(t *testing.T) {
 			t.Fatalf("cannot marshal multipass without sensitive data: %v", err)
 		}
 
-		restored := &ServiceAccountPassword{}
+		restored := &model.ServiceAccountPassword{}
 		err = json.Unmarshal(j, restored)
 		if err != nil {
 			t.Fatalf("cannot unmarshal multipass back: %v", err)
@@ -30,7 +31,7 @@ func Test_ServiceAccountPasswordMarshalling(t *testing.T) {
 		return restored
 	}
 
-	initialSAP := &ServiceAccountPassword{
+	initialSAP := &model.ServiceAccountPassword{
 		UUID:        uuid.New(),
 		TenantUUID:  uuid.New(),
 		OwnerUUID:   uuid.New(),

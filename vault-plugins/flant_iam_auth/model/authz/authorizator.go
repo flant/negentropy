@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -17,8 +18,8 @@ import (
 )
 
 type Authorizator struct {
-	UserRepo   *iam.UserRepository
-	SaRepo     *iam.ServiceAccountRepository
+	UserRepo   *iam_repo.UserRepository
+	SaRepo     *iam_repo.ServiceAccountRepository
 	EntityRepo *model.EntityRepo
 	EaRepo     *model.EntityAliasRepo
 
@@ -32,8 +33,8 @@ func NewAutorizator(tnx *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *
 	return &Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 
-		SaRepo:   iam.NewServiceAccountRepository(tnx),
-		UserRepo: iam.NewUserRepository(tnx),
+		SaRepo:   iam_repo.NewServiceAccountRepository(tnx),
+		UserRepo: iam_repo.NewUserRepository(tnx),
 
 		EaRepo:     model.NewEntityAliasRepo(tnx),
 		EntityRepo: model.NewEntityRepo(tnx),

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -37,7 +37,7 @@ func (cd *commonDest) simpleObjectKafker(topic string, obj io.MemoryStorableObje
 
 	var public interface{} = obj
 	if !includeSensitive {
-		public = model.OmitSensitive(obj)
+		public = iam_repo.OmitSensitive(obj)
 	}
 	data, err := json.Marshal(public)
 	if err != nil {

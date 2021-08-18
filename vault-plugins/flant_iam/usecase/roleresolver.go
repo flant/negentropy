@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -405,9 +406,9 @@ func (r *roleResolver) CheckGroupForRole(groupUUID model.GroupUUID, roleName mod
 
 func NewRoleResolver(tx *io.MemoryStoreTxn) RoleResolver {
 	return &roleResolver{
-		ri:  model.NewRoleRepository(tx),
-		gi:  model.NewGroupRepository(tx),
-		rbi: model.NewRoleBindingRepository(tx),
-		si:  model.NewIdentitySharingRepository(tx),
+		ri:  repo.NewRoleRepository(tx),
+		gi:  repo.NewGroupRepository(tx),
+		rbi: repo.NewRoleBindingRepository(tx),
+		si:  repo.NewIdentitySharingRepository(tx),
 	}
 }

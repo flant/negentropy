@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -178,7 +179,7 @@ func (b projectBackend) paths() []*framework.Path {
 func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -203,7 +204,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		id := getCreationID(expectID, data)
 		project := &model.Project{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
 		}
 
@@ -236,7 +237,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 		project := &model.Project{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
 		}
@@ -301,7 +302,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
