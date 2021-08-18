@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -80,7 +80,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	type response struct {
 		Warnings []string `json:"warnings"`
 		Data     struct {
-			Servers []model.Server `json:"servers"`
+			Servers []ext_model.Server `json:"servers"`
 		} `json:"data"`
 	}
 
@@ -328,7 +328,7 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	if len(serverID) > 0 {
 		predefinedID = serverID[0]
 	}
-	serverDB1 := &model.Server{
+	serverDB1 := &ext_model.Server{
 		UUID:        predefinedID,
 		TenantUUID:  tenantID,
 		ProjectUUID: projectID,
@@ -339,7 +339,7 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 		Annotations: nil,
 	}
 
-	serverWithLabels := &model.Server{
+	serverWithLabels := &ext_model.Server{
 		UUID:        uuid.New(),
 		TenantUUID:  tenantID,
 		ProjectUUID: projectID,
@@ -352,12 +352,12 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 		Annotations: nil,
 	}
 
-	err := tx.Insert(model.ServerType, serverDB1)
+	err := tx.Insert(ext_model.ServerType, serverDB1)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Insert(model.ServerType, serverWithLabels)
+	err = tx.Insert(ext_model.ServerType, serverWithLabels)
 	if err != nil {
 		return err
 	}
@@ -368,7 +368,7 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 	userAttr := map[string]interface{}{
 		"UID": 42,
-		"passwords": []model.UserServerPassword{
+		"passwords": []ext_model.UserServerPassword{
 			{
 				Seed: []byte("1"),
 				Salt: []byte("1"),
@@ -384,15 +384,15 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 		return err
 	}
 
-	user := &iam.User{
+	user := &iam_model.User{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
 		Version:        uuid.New(),
-		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			iam.OriginServerAccess: {
-				Origin:     iam.OriginServerAccess,
+		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
+			iam_model.OriginServerAccess: {
+				Origin:     iam_model.OriginServerAccess,
 				Attributes: attrs,
 			},
 		},
@@ -400,7 +400,7 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 
 	saAttr := map[string]interface{}{
 		"UID": 42,
-		"passwords": []model.UserServerPassword{
+		"passwords": []ext_model.UserServerPassword{
 			{
 				Seed: []byte("3"),
 				Salt: []byte("3"),
@@ -415,26 +415,26 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 	if err != nil {
 		return err
 	}
-	sa := &iam.ServiceAccount{
+	sa := &iam_model.ServiceAccount{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant,
 		Identifier:     "serviceacc",
 		FullIdentifier: "serviceacc@tenant1",
 		Version:        uuid.New(),
-		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			iam.OriginServerAccess: {
-				Origin:     iam.OriginServerAccess,
+		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
+			iam_model.OriginServerAccess: {
+				Origin:     iam_model.OriginServerAccess,
 				Attributes: attrs,
 			},
 		},
 	}
 
-	err = tx.Insert(iam.UserType, user)
+	err = tx.Insert(iam_model.UserType, user)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Insert(iam.ServiceAccountType, sa)
+	err = tx.Insert(iam_model.ServiceAccountType, sa)
 
 	return err
 }

@@ -6,8 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -17,11 +18,11 @@ import (
 type ServerService struct {
 	tenantService      *usecase.TenantService
 	projectsService    *usecase.ProjectService
-	groupRepo          *model.GroupRepository
-	serviceAccountRepo *model.ServiceAccountRepository
+	groupRepo          *iam_model.GroupRepository
+	serviceAccountRepo *iam_model.ServiceAccountRepository
 	roleService        *usecase.RoleService
-	roleBindingRepo    *model.RoleBindingRepository
-	serverRepo         *model2.ServerRepository
+	roleBindingRepo    *iam_model.RoleBindingRepository
+	serverRepo         *repo.ServerRepository
 
 	tx *io.MemoryStoreTxn
 }
@@ -30,10 +31,10 @@ func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 	return &ServerService{
 		tenantService:      usecase.Tenants(tx),
 		projectsService:    usecase.Projects(tx),
-		groupRepo:          model.NewGroupRepository(tx),
-		serviceAccountRepo: model.NewServiceAccountRepository(tx),
-		roleBindingRepo:    model.NewRoleBindingRepository(tx),
-		serverRepo:         model2.NewServerRepository(tx),
+		groupRepo:          iam_model.NewGroupRepository(tx),
+		serviceAccountRepo: iam_model.NewServiceAccountRepository(tx),
+		roleBindingRepo:    iam_model.NewRoleBindingRepository(tx),
+		serverRepo:         repo.NewServerRepository(tx),
 		roleService:        usecase.Roles(tx),
 		tx:                 tx,
 	}
@@ -46,15 +47,15 @@ func (s *ServerService) Create(
 	roles []string,
 ) (string, string, error) {
 	var (
-		tenantBoundRoles  []model.BoundRole
-		projectBoundRoles []model.BoundRole
+		tenantBoundRoles  []iam_model.BoundRole
+		projectBoundRoles []iam_model.BoundRole
 	)
 
-	server := &model2.Server{
+	server := &model.Server{
 		UUID:        uuid.New(),
 		TenantUUID:  tenantUUID,
 		ProjectUUID: projectUUID,
-		Version:     model.NewResourceVersion(),
+		Version:     iam_model.NewResourceVersion(),
 		Identifier:  serverID,
 		Labels:      labels,
 		Annotations: annotations,
@@ -71,7 +72,7 @@ func (s *ServerService) Create(
 	}
 
 	rawServer, err := s.serverRepo.GetByID(tenantUUID, projectUUID, serverID)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
 		return "", "", err
 	}
 	if rawServer != nil {
@@ -79,15 +80,15 @@ func (s *ServerService) Create(
 	}
 
 	group, getGroupErr := s.groupRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-	if getGroupErr != nil && !errors.Is(getGroupErr, model.ErrNotFound) {
+	if getGroupErr != nil && !errors.Is(getGroupErr, iam_model.ErrNotFound) {
 		return "", "", err
 	}
 	if group == nil {
-		group = &model.Group{
+		group = &iam_model.Group{
 			UUID:       uuid.New(),
 			TenantUUID: tenant.UUID,
 			Identifier: nameForTenantLevelObjects(tenant.Identifier),
-			Origin:     model.OriginServerAccess,
+			Origin:     iam_model.OriginServerAccess,
 		}
 	}
 
@@ -99,12 +100,12 @@ func (s *ServerService) Create(
 		}
 
 		switch role.Scope {
-		case model.RoleScopeTenant:
-			tenantBoundRoles = append(tenantBoundRoles, model.BoundRole{
+		case iam_model.RoleScopeTenant:
+			tenantBoundRoles = append(tenantBoundRoles, iam_model.BoundRole{
 				Name: role.Name,
 			})
-		case model.RoleScopeProject:
-			projectBoundRoles = append(projectBoundRoles, model.BoundRole{
+		case iam_model.RoleScopeProject:
+			projectBoundRoles = append(projectBoundRoles, iam_model.BoundRole{
 				Name: role.Name,
 			})
 		}
@@ -113,24 +114,24 @@ func (s *ServerService) Create(
 	// FIXME: remove duplication
 	if len(tenantBoundRoles) != 0 {
 		var (
-			roleBinding *model.RoleBinding
+			roleBinding *iam_model.RoleBinding
 			err         error
 		)
 
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
+		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
 			return "", "", err
 		}
 
 		if roleBinding == nil {
-			newRoleBinding := &model.RoleBinding{
+			newRoleBinding := &iam_model.RoleBinding{
 				UUID:       uuid.New(),
-				Version:    model.NewResourceVersion(),
+				Version:    iam_model.NewResourceVersion(),
 				TenantUUID: tenant.ObjId(),
-				Origin:     model.OriginServerAccess,
+				Origin:     iam_model.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
-				Groups:     []model.GroupUUID{group.UUID},
+				Groups:     []iam_model.GroupUUID{group.UUID},
 				Roles:      tenantBoundRoles,
 			}
 
@@ -143,24 +144,24 @@ func (s *ServerService) Create(
 
 	if len(projectBoundRoles) != 0 {
 		var (
-			roleBinding *model.RoleBinding
+			roleBinding *iam_model.RoleBinding
 			err         error
 		)
 
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
+		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
 			return "", "", err
 		}
 
 		if roleBinding == nil {
-			newRoleBinding := &model.RoleBinding{
+			newRoleBinding := &iam_model.RoleBinding{
 				UUID:       uuid.New(),
 				TenantUUID: tenant.ObjId(),
-				Version:    model.NewResourceVersion(),
-				Origin:     model.OriginServerAccess,
+				Version:    iam_model.NewResourceVersion(),
+				Origin:     iam_model.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
-				Groups:     []model.GroupUUID{group.UUID},
+				Groups:     []iam_model.GroupUUID{group.UUID},
 				Roles:      projectBoundRoles,
 			}
 
@@ -172,20 +173,20 @@ func (s *ServerService) Create(
 	}
 
 	serviceAccount, err := s.serviceAccountRepo.GetByIdentifier(tenantUUID, nameForServerRelatedProjectLevelObjects(project.Identifier, serverID))
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
 		return "", "", err
 	}
 
 	if serviceAccount == nil {
 		saIdentifier := nameForServerRelatedProjectLevelObjects(project.Identifier, serverID)
 
-		newServiceAccount := &model.ServiceAccount{
+		newServiceAccount := &iam_model.ServiceAccount{
 			UUID:           uuid.New(),
-			Version:        model.NewResourceVersion(),
+			Version:        iam_model.NewResourceVersion(),
 			TenantUUID:     tenant.ObjId(),
-			Origin:         model.OriginServerAccess,
+			Origin:         iam_model.OriginServerAccess,
 			Identifier:     saIdentifier,
-			FullIdentifier: model.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
+			FullIdentifier: iam_model.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
 		}
 
 		err := s.serviceAccountRepo.Create(newServiceAccount)
@@ -209,7 +210,7 @@ func (s *ServerService) Create(
 
 	groupService := usecase.Groups(s.tx, tenantUUID)
 
-	if errors.Is(getGroupErr, model.ErrNotFound) {
+	if errors.Is(getGroupErr, iam_model.ErrNotFound) {
 		err := groupService.Create(group)
 		if err != nil {
 			return "", "", err
@@ -221,7 +222,7 @@ func (s *ServerService) Create(
 		}
 	}
 
-	var multipassRoleNames []model.RoleName
+	var multipassRoleNames []iam_model.RoleName
 	for _, tenantRole := range tenantBoundRoles {
 		multipassRoleNames = append(multipassRoleNames, tenantRole.Name)
 	}
@@ -229,7 +230,7 @@ func (s *ServerService) Create(
 		multipassRoleNames = append(multipassRoleNames, projectRole.Name)
 	}
 
-	multipassService := usecase.Multipasses(s.tx, model.OriginServerAccess, model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
+	multipassService := usecase.Multipasses(s.tx, iam_model.OriginServerAccess, iam_model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
 
 	// TODO: are these valid?
 	multipassJWT, mp, err := multipassService.CreateWithJWT(multipassIssue, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
@@ -237,9 +238,9 @@ func (s *ServerService) Create(
 		return "", "", err
 	}
 
-	server.Version = model.NewResourceVersion()
+	server.Version = iam_model.NewResourceVersion()
 	server.MultipassUUID = mp.UUID
-	err = s.tx.Insert(model2.ServerType, server)
+	err = s.tx.Insert(model.ServerType, server)
 	if err != nil {
 		return "", "", err
 	}
@@ -247,16 +248,16 @@ func (s *ServerService) Create(
 	return server.UUID, multipassJWT, nil
 }
 
-func (s *ServerService) Update(server *model2.Server) error {
+func (s *ServerService) Update(server *model.Server) error {
 	stored, err := s.serverRepo.GetByUUID(server.UUID)
 	if err != nil {
 		return err
 	}
 
 	if stored.TenantUUID != server.TenantUUID {
-		return model.ErrNotFound
+		return iam_model.ErrNotFound
 	}
-	server.Version = model.NewResourceVersion()
+	server.Version = iam_model.NewResourceVersion()
 
 	project, err := s.projectsService.GetByID(server.ProjectUUID)
 	if err != nil {
@@ -269,7 +270,7 @@ func (s *ServerService) Update(server *model2.Server) error {
 	}
 
 	sa.Identifier = nameForServerRelatedProjectLevelObjects(project.Identifier, stored.Identifier)
-	sa.Version = model.NewResourceVersion()
+	sa.Version = iam_model.NewResourceVersion()
 
 	err = s.serviceAccountRepo.Update(sa)
 	if err != nil {
@@ -303,7 +304,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	multipassService := usecase.ServiceAccountMultipasses(s.tx, model.OriginServerAccess, tenant.UUID, server.UUID)
+	multipassService := usecase.ServiceAccountMultipasses(s.tx, iam_model.OriginServerAccess, tenant.UUID, server.UUID)
 
 	mp, err := multipassService.GetByID(server.MultipassUUID)
 	if err != nil {
@@ -351,7 +352,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 
 	if !serversPresentInProject {
 		groupToDelete, err := s.groupRepo.GetByIdentifier(tenant.UUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
+		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
 			return err
 		}
 
@@ -368,7 +369,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 			return err
 		}
 		for _, rb := range rbsInProject {
-			if rb.Origin == model.OriginServerAccess {
+			if rb.Origin == iam_model.OriginServerAccess {
 				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err
@@ -384,7 +385,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 			return err
 		}
 		for _, rb := range rbsInProject {
-			if rb.Origin == model.OriginServerAccess {
+			if rb.Origin == iam_model.OriginServerAccess {
 				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err

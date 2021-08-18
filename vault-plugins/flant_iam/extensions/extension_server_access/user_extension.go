@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -57,11 +57,11 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.UserType,
+		ObjType: iam_model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
+			repo := repo.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
 
-			user := obj.(*model.User)
+			user := obj.(*iam_model.User)
 
 			err := repo.CreateExtension(user)
 			if err != nil {
@@ -77,12 +77,12 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// TODO: refactor this bullshit
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.ProjectType,
+		ObjType: iam_model.ProjectType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			groupRepo := model.NewGroupRepository(txn)
-			projectRepo := model.NewProjectRepository(txn)
+			groupRepo := iam_model.NewGroupRepository(txn)
+			projectRepo := iam_model.NewProjectRepository(txn)
 
-			project := obj.(*model.Project)
+			project := obj.(*iam_model.Project)
 
 			groups, err := groupRepo.List(project.TenantUUID, false)
 			if err != nil {
@@ -99,7 +99,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				projectIDSet[project.Identifier] = struct{}{}
 			}
 
-			var groupToChange *model.Group
+			var groupToChange *iam_model.Group
 			for _, group := range groups {
 				if !strings.HasPrefix(group.Identifier, "servers/") {
 					continue

@@ -3,20 +3,20 @@ package root
 import (
 	"encoding/json"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ModelHandler interface {
-	HandleUser(user *iam.User) error
+	HandleUser(user *iam_model.User) error
 	HandleDeleteUser(uuid string) error
 
-	HandleMultipass(mp *iam.Multipass) error
+	HandleMultipass(mp *iam_model.Multipass) error
 	HandleDeleteMultipass(uuid string) error
 
-	HandleServiceAccount(sa *iam.ServiceAccount) error
+	HandleServiceAccount(sa *iam_model.ServiceAccount) error
 	HandleDeleteServiceAccount(uuid string) error
 }
 
@@ -30,9 +30,9 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 	objID := msg.ID
 
 	switch msg.Type {
-	case iam.UserType:
-		table = iam.UserType
-		user := &iam.User{}
+	case iam_model.UserType:
+		table = iam_model.UserType
+		user := &iam_model.User{}
 		user.UUID = objID
 		inputObject = user
 		// dont call here because we need unmarshal and add object in mem storage before handler
@@ -46,9 +46,9 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 			}
 		}
 
-	case iam.ServiceAccountType:
-		table = iam.ServiceAccountType
-		sa := &iam.ServiceAccount{}
+	case iam_model.ServiceAccountType:
+		table = iam_model.ServiceAccountType
+		sa := &iam_model.ServiceAccount{}
 		sa.UUID = objID
 		inputObject = sa
 		if isDelete {
@@ -60,53 +60,53 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 				return handler.HandleServiceAccount(sa)
 			}
 		}
-	case iam.ProjectType:
-		p := &iam.Project{}
+	case iam_model.ProjectType:
+		p := &iam_model.Project{}
 		p.UUID = objID
 		inputObject = p
-		table = iam.ProjectType
+		table = iam_model.ProjectType
 
-	case iam.TenantType:
-		t := &iam.Tenant{}
+	case iam_model.TenantType:
+		t := &iam_model.Tenant{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.TenantType
+		table = iam_model.TenantType
 
-	case iam.FeatureFlagType:
-		t := &iam.FeatureFlag{}
+	case iam_model.FeatureFlagType:
+		t := &iam_model.FeatureFlag{}
 		t.Name = objID
 		inputObject = t
-		table = iam.FeatureFlagType
+		table = iam_model.FeatureFlagType
 
-	case iam.GroupType:
-		t := &iam.Group{}
+	case iam_model.GroupType:
+		t := &iam_model.Group{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.GroupType
+		table = iam_model.GroupType
 
-	case iam.RoleType:
-		t := &iam.Role{}
+	case iam_model.RoleType:
+		t := &iam_model.Role{}
 		t.Name = objID
 		inputObject = t
-		table = iam.RoleType
+		table = iam_model.RoleType
 
-	case iam.RoleBindingType:
-		t := &iam.RoleBinding{}
+	case iam_model.RoleBindingType:
+		t := &iam_model.RoleBinding{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.RoleBindingType
+		table = iam_model.RoleBindingType
 
-	case iam.RoleBindingApprovalType:
-		t := &iam.RoleBindingApproval{}
+	case iam_model.RoleBindingApprovalType:
+		t := &iam_model.RoleBindingApproval{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.RoleBindingApprovalType
+		table = iam_model.RoleBindingApprovalType
 
-	case iam.MultipassType:
-		mp := &iam.Multipass{}
+	case iam_model.MultipassType:
+		mp := &iam_model.Multipass{}
 		mp.UUID = objID
 		inputObject = mp
-		table = iam.MultipassType
+		table = iam_model.MultipassType
 		if isDelete {
 			entityHandler = func() error {
 				return handler.HandleDeleteMultipass(objID)
@@ -117,21 +117,21 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 			}
 		}
 
-	case iam.ServiceAccountPasswordType:
-		t := &iam.ServiceAccountPassword{}
+	case iam_model.ServiceAccountPasswordType:
+		t := &iam_model.ServiceAccountPassword{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.ServiceAccountPasswordType
+		table = iam_model.ServiceAccountPasswordType
 
-	case iam.IdentitySharingType:
-		t := &iam.IdentitySharing{}
+	case iam_model.IdentitySharingType:
+		t := &iam_model.IdentitySharing{}
 		t.UUID = objID
 		inputObject = t
-		table = iam.IdentitySharingType
+		table = iam_model.IdentitySharingType
 
-	case model.ServerType:
-		inputObject = &model.Server{}
-		table = model.ServerType
+	case ext_model.ServerType:
+		inputObject = &ext_model.Server{}
+		table = ext_model.ServerType
 
 	default:
 		return nil

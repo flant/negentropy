@@ -5,8 +5,8 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
-	iam_ext_serv "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 )
@@ -31,19 +31,19 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
 
-		iam.UserSchema(),
-		iam.TenantSchema(),
-		iam.ProjectSchema(),
-		iam.ServiceAccountSchema(),
-		iam.FeatureFlagSchema(),
-		iam.GroupSchema(),
-		iam.RoleSchema(),
-		iam.RoleBindingSchema(),
-		iam.RoleBindingApprovalSchema(),
-		iam.MultipassSchema(),
-		iam.ServiceAccountPasswordSchema(),
-		iam.IdentitySharingSchema(),
-		iam_ext_serv.ServerSchema(),
+		iam_model.UserSchema(),
+		iam_model.TenantSchema(),
+		iam_model.ProjectSchema(),
+		iam_model.ServiceAccountSchema(),
+		iam_model.FeatureFlagSchema(),
+		iam_model.GroupSchema(),
+		iam_model.RoleSchema(),
+		iam_model.RoleBindingSchema(),
+		iam_model.RoleBindingApprovalSchema(),
+		iam_model.MultipassSchema(),
+		iam_model.ServiceAccountPasswordSchema(),
+		iam_model.IdentitySharingSchema(),
+		ext_repo.ServerSchema(),
 		jwtSchema,
 	}
 

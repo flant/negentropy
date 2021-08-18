@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	server_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/usecase"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -273,7 +275,7 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
@@ -305,7 +307,7 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
@@ -337,7 +339,7 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
@@ -360,7 +362,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		var (
 			labels      = make(map[string]string)
@@ -373,10 +375,10 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 			annotations[k] = v.(string)
 		}
 
-		server := &server_model.Server{
+		server := &model.Server{
 			UUID:        data.Get("server_uuid").(string),
-			TenantUUID:  data.Get(model.TenantForeignPK).(string),
-			ProjectUUID: data.Get(model.ProjectForeignPK).(string),
+			TenantUUID:  data.Get(iam_model.TenantForeignPK).(string),
+			ProjectUUID: data.Get(iam_model.ProjectForeignPK).(string),
 			Version:     data.Get("resource_version").(string),
 			Identifier:  data.Get("identifier").(string),
 			Labels:      labels,
@@ -406,7 +408,7 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		err := repo.Delete(id)
 		if err != nil {
@@ -426,11 +428,11 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 func (b *serverBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
-		projectID := data.Get(model.ProjectForeignPK).(string)
+		tenantID := data.Get(iam_model.TenantForeignPK).(string)
+		projectID := data.Get(iam_model.ProjectForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 
 		list, err := repo.List(tenantID, projectID)
 		if err != nil {
@@ -451,13 +453,13 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := server_model.NewServerRepository(tx)
+		repo := repo.NewServerRepository(tx)
 		serverUUID := data.Get("server_uuid").(string)
 		server, err := repo.GetByUUID(serverUUID)
 		if err != nil {
 			return responseErr(req, err)
 		}
-		connectionInfo := server_model.ConnectionInfo{
+		connectionInfo := model.ConnectionInfo{
 			Hostname:     data.Get("hostname").(string),
 			Port:         data.Get("port").(string),
 			JumpHostname: data.Get("jump_hostname").(string),

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -32,14 +32,14 @@ func TestUserToPosix(t *testing.T) {
 	attrs1, err := marshallUnmarshal(attrUser1)
 	assert.NoError(t, err)
 
-	user1 := &iam.User{
+	user1 := &iam_model.User{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant1,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
-		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			iam.OriginServerAccess: {
-				Origin:     iam.OriginServerAccess,
+		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
+			iam_model.OriginServerAccess: {
+				Origin:     iam_model.OriginServerAccess,
 				Attributes: attrs1,
 			},
 		},
@@ -61,27 +61,27 @@ func TestUserToPosix(t *testing.T) {
 	attrs2, err := marshallUnmarshal(attrUser2)
 	assert.NoError(t, err)
 
-	user2 := &iam.User{
+	user2 := &iam_model.User{
 		UUID:           uuid.New(),
 		TenantUUID:     tenant2ID,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant2",
-		Extensions: map[iam.ObjectOrigin]*iam.Extension{
-			iam.OriginServerAccess: {
-				Origin:     iam.OriginServerAccess,
+		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
+			iam_model.OriginServerAccess: {
+				Origin:     iam_model.OriginServerAccess,
 				Attributes: attrs2,
 			},
 		},
 	}
-	tenant2 := &iam.Tenant{
+	tenant2 := &iam_model.Tenant{
 		UUID:       tenant2ID,
 		Version:    uuid.New(),
 		Identifier: "tenant2",
 	}
 
-	st, _ := io.NewMemoryStore(iam.TenantSchema(), nil)
+	st, _ := io.NewMemoryStore(iam_model.TenantSchema(), nil)
 	tx := st.Txn(true)
-	_ = tx.Insert(iam.TenantType, tenant2)
+	_ = tx.Insert(iam_model.TenantType, tenant2)
 	_ = tx.Commit()
 
 	serverID := "serverX"
