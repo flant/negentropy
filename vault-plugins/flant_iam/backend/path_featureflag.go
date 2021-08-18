@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -92,7 +93,7 @@ func (b *featureFlagBackend) handleExistence() framework.ExistenceFunc {
 		b.Logger().Debug("checking featureFlag existence", "path", req.Path, "name", name, "op", req.Operation)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewFeatureFlagRepository(tx)
+		repo := iam_repo.NewFeatureFlagRepository(tx)
 
 		flag, err := repo.GetByID(name)
 		if err != nil {
