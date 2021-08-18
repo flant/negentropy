@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
-
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"

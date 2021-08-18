@@ -8,10 +8,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-
 	"github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
