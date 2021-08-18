@@ -45,7 +45,7 @@ func (a *EntityAPI) GetID(name string) (string, error) {
 	err = a.callOp(op)
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("callOp:%w", err)
 	}
 
 	if resp == nil {

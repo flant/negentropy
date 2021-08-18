@@ -14,4 +14,4 @@ done
 
 mkdir /run/sshd
 
-/usr/sbin/sshd -d
+/usr/sbin/sshd -D

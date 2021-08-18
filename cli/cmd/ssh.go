@@ -6,17 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	sshCmd = &cobra.Command{
-		Use:   "ssh",
-		Short: "Create SSH ssh-session to set of servers",
-		Long:  ``, // TODO
-		Run:   startSSHSession,
-	}
-)
+var sshCmd = &cobra.Command{
+	Use:   "ssh",
+	Short: "Create SSH ssh-session to set of servers",
+	Long:  ``, // TODO
+	Run:   startSSHSession,
+}
 
 func init() {
-	command.AddCommand(sshCmd)
+	rootCmd.AddCommand(sshCmd)
 }
 
 func startSSHSession(cmd *cobra.Command, args []string) {

@@ -5,16 +5,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	command = &cobra.Command{
-		Use:   "flint",
-		Short: "Flant integration CLI", // TODO
-		Long:  `Flant integration CLI.`,
-	}
-)
+var rootCmd = &cobra.Command{
+	Use:   "flint",
+	Short: "Flant integration CLI", // TODO
+	Long:  `Flant integration CLI.`,
+}
 
 func Execute() error {
-	return command.Execute()
+	return rootCmd.Execute()
 }
 
 func init() {

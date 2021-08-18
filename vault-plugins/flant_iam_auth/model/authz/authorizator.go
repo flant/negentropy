@@ -187,7 +187,7 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 
 	entityId, err := a.IdentityApi.EntityApi().GetID(entity.Name)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("getting entity_id:%w", err)
 	}
 
 	if entityId == "" {
