@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
+	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 )
 
 type Authenticator struct {
@@ -20,7 +20,7 @@ type Authenticator struct {
 	Logger       log.Logger
 }
 
-func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn.Result, error) {
+func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn2.Result, error) {
 	token := d.Get("jwt").(string)
 	if len(token) == 0 {
 		return nil, fmt.Errorf("missing token")
@@ -75,7 +75,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 		return nil, fmt.Errorf("error validating claims: %s", err.Error())
 	}
 
-	return &authn.Result{
+	return &authn2.Result{
 		UUID:      alias.Name,
 		ModelType: "", // its unknown
 

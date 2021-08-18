@@ -13,15 +13,16 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type Authorizator struct {
 	UserRepo   *iam_repo.UserRepository
 	SaRepo     *iam_repo.ServiceAccountRepository
-	EntityRepo *model.EntityRepo
-	EaRepo     *model.EntityAliasRepo
+	EntityRepo *repo.EntityRepo
+	EaRepo     *repo.EntityAliasRepo
 
 	IdentityApi   *api.IdentityAPI
 	MountAccessor *vault.MountAccessorGetter
@@ -36,15 +37,15 @@ func NewAutorizator(tnx *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *
 		SaRepo:   iam_repo.NewServiceAccountRepository(tnx),
 		UserRepo: iam_repo.NewUserRepository(tnx),
 
-		EaRepo:     model.NewEntityAliasRepo(tnx),
-		EntityRepo: model.NewEntityRepo(tnx),
+		EaRepo:     repo.NewEntityAliasRepo(tnx),
+		EntityRepo: repo.NewEntityRepo(tnx),
 
 		MountAccessor: aGetter,
 		IdentityApi:   api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),
 	}
 }
 
-func (a *Authorizator) Authorize(authnResult *authn.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
+func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	uuid := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", uuid))
 
@@ -128,7 +129,7 @@ func (a *Authorizator) authorizeUser(user *iam.User, method *model.AuthMethod, s
 	}, nil
 }
 
-func (a *Authorizator) populateAuthnData(authzRes *logical.Auth, authnResult *authn.Result) {
+func (a *Authorizator) populateAuthnData(authzRes *logical.Auth, authnResult *authn2.Result) {
 	if len(authnResult.Metadata) > 0 {
 		for k, v := range authnResult.Metadata {
 			if _, ok := authzRes.Metadata[k]; ok {

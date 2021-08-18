@@ -9,6 +9,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -103,7 +104,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 	// does not atomic
 
 	// first, get entity for user id
-	entityRepo := model.NewEntityRepo(readTxn)
+	entityRepo := repo.NewEntityRepo(readTxn)
 	entity, err := entityRepo.GetByUserId(entityAlias.UserId)
 	if err != nil {
 		return nil, err

@@ -13,7 +13,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/utils/tests"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -53,7 +53,7 @@ func assertCreatedEntityWithAliases(t *testing.T, store *io.MemoryStore, sources
 	tx := store.Txn(false)
 	defer tx.Abort()
 
-	e, err := model.NewEntityRepo(tx).GetByUserId(uuid)
+	e, err := repo.NewEntityRepo(tx).GetByUserId(uuid)
 	require.NoError(t, err)
 
 	require.NotNil(t, e, "must save entity")
@@ -85,7 +85,7 @@ func insert(t *testing.T, s *io.MemoryStore, table string, o io.MemoryStorableOb
 func getAllAliases(t *testing.T, tx *io.MemoryStoreTxn, iamModelId string) ([]*model.EntityAlias, map[string]*model.EntityAlias) {
 	aliases := make([]*model.EntityAlias, 0)
 	aliasesBySourceId := map[string]*model.EntityAlias{}
-	err := model.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
+	err := repo.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
 		aliases = append(aliases, a)
 		aliasesBySourceId[a.SourceId] = a
 		return true, nil
@@ -258,7 +258,7 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		},
 	}
 
-	repo := ext_repo.NewAuthSourceRepo(tnx)
+	repo := repo.NewAuthSourceRepo(tnx)
 	for _, s := range sources {
 		err := repo.Put(s.source)
 		require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			require.NotNil(t, "must save user in db")
 			tests.AssertDeepEqual(t, user, u)
 
-			e, err := model.NewEntityRepo(tx).GetByUserId(uuid)
+			e, err := repo.NewEntityRepo(tx).GetByUserId(uuid)
 			require.NoError(t, err)
 
 			require.NotNil(t, e, "must save entity")
@@ -595,7 +595,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 			require.ErrorIs(t, err, iam_model.ErrNotFound)
 			require.Nil(t, ie)
 
-			e, err := model.NewEntityRepo(tx).GetByUserId(objUUID)
+			e, err := repo.NewEntityRepo(tx).GetByUserId(objUUID)
 			require.NoError(t, err)
 			require.Nil(t, e, "entity must be deleted")
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -177,7 +178,7 @@ func (rk *MultipassGenerationKafkaSource) processMessage(source *sharedkafka.Sou
 	source.IgnoreBody = true
 
 	if msg.IsDeleted() {
-		obj, err := tx.First(model.MultipassGenerationNumberType, model.ID, msg.ID)
+		obj, err := tx.First(model.MultipassGenerationNumberType, repo.ID, msg.ID)
 		if err != nil {
 			return err
 		}

@@ -5,9 +5,37 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-memdb"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
+
+func AuthSourceSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			model.AuthSourceType: {
+				Name: model.AuthSourceType,
+				Indexes: map[string]*memdb.IndexSchema{
+					ID: {
+						Name:   ID,
+						Unique: true,
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					ByName: {
+						Name:   ByName,
+						Unique: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Name",
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 var (
 	ErrSourceNotFound       = errors.New("ErrSourceNotFound")
@@ -29,7 +57,7 @@ func NewAuthSourceRepo(db *io.MemoryStoreTxn) *AuthSourceRepo {
 }
 
 func (r *AuthSourceRepo) Get(name string) (*model.AuthSource, error) {
-	raw, err := r.db.First(r.tableName, model.ByName, name)
+	raw, err := r.db.First(r.tableName, ByName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +110,7 @@ func (r *AuthSourceRepo) Delete(name string) error {
 }
 
 func (r *AuthSourceRepo) Iter(withInternal bool, action func(*model.AuthSource) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, model.ID)
+	iter, err := r.db.Get(r.tableName, ID)
 	if err != nil {
 		return err
 	}

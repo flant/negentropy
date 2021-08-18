@@ -3,9 +3,36 @@ package repo
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-memdb"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
+
+func AuthMethodSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			model.AuthMethodType: {
+				Name: model.AuthMethodType,
+				Indexes: map[string]*memdb.IndexSchema{
+					ID: {
+						Name:   ID,
+						Unique: true,
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					ByName: {
+						Name: ByName,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Name",
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 type AuthMethodRepo struct {
 	db        *io.MemoryStoreTxn
@@ -20,7 +47,7 @@ func NewAuthMethodRepo(db *io.MemoryStoreTxn) *AuthMethodRepo {
 }
 
 func (r *AuthMethodRepo) Get(name string) (*model.AuthMethod, error) {
-	raw, err := r.db.First(r.tableName, model.ByName, name)
+	raw, err := r.db.First(r.tableName, ByName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +88,7 @@ func (r *AuthMethodRepo) Delete(name string) error {
 }
 
 func (r *AuthMethodRepo) Iter(action func(*model.AuthMethod) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, model.ID)
+	iter, err := r.db.Get(r.tableName, ID)
 	if err != nil {
 		return err
 	}

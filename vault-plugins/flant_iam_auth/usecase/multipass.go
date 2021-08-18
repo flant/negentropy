@@ -8,6 +8,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwt_usecases "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -15,7 +16,7 @@ import (
 
 type Multipass struct {
 	MultipassRepo    *iam_repo.MultipassRepository
-	GenMultipassRepo *model.MultipassGenerationNumberRepository
+	GenMultipassRepo *repo.MultipassGenerationNumberRepository
 	JwtController    *jwt.Controller
 
 	Logger hclog.Logger

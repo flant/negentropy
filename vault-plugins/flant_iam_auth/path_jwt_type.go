@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -86,7 +86,7 @@ func (b *flantIamAuthBackend) pathJwtTypeExistenceCheck(ctx context.Context, req
 	typeName := data.Get("name").(string)
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 	jwtType, err := repo.Get(typeName)
 	if err != nil {
 		return false, err
@@ -96,7 +96,7 @@ func (b *flantIamAuthBackend) pathJwtTypeExistenceCheck(ctx context.Context, req
 
 func (b *flantIamAuthBackend) pathJwtTypesList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	tnx := b.storage.Txn(false)
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 
 	var typesNames []string
 	err := repo.Iter(func(s *model.JWTIssueType) (bool, error) {
@@ -118,7 +118,7 @@ func (b *flantIamAuthBackend) pathJwtTypeRead(ctx context.Context, req *logical.
 	}
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 	jwtType, err := repo.Get(name)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (b *flantIamAuthBackend) pathJwtTypeDelete(ctx context.Context, req *logica
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 
 	val, err := repo.Get(name)
 	if err != nil {
@@ -186,7 +186,7 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 	// Check if the auth already exists
 	jwtType, err := repo.Get(name)
 	if err != nil {

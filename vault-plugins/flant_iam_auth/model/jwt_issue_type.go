@@ -3,38 +3,12 @@ package model
 import (
 	"time"
 
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 )
 
 const (
 	JWTIssueTypeType = "jwt_type" // also, memdb schema name
 )
-
-func JWTIssueTypeSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			JWTIssueTypeType: {
-				Name: JWTIssueTypeType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ByName: {
-						Name: ByName,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
-					},
-				},
-			},
-		},
-	}
-}
 
 type JWTIssueType struct {
 	UUID string `json:"uuid"` // ID

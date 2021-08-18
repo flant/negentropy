@@ -3,9 +3,36 @@ package repo
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-memdb"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
+
+func JWTIssueTypeSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			model.JWTIssueTypeType: {
+				Name: model.JWTIssueTypeType,
+				Indexes: map[string]*memdb.IndexSchema{
+					ID: {
+						Name:   ID,
+						Unique: true,
+						Indexer: &memdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					ByName: {
+						Name: ByName,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Name",
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 type JWTIssueTypeRepo struct {
 	db        *io.MemoryStoreTxn
@@ -20,7 +47,7 @@ func NewJWTIssueTypeRepo(db *io.MemoryStoreTxn) *JWTIssueTypeRepo {
 }
 
 func (r *JWTIssueTypeRepo) Get(name string) (*model.JWTIssueType, error) {
-	raw, err := r.db.First(r.tableName, model.ByName, name)
+	raw, err := r.db.First(r.tableName, ByName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +76,7 @@ func (r *JWTIssueTypeRepo) Delete(name string) error {
 }
 
 func (r *JWTIssueTypeRepo) Iter(action func(*model.JWTIssueType) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, model.ID)
+	iter, err := r.db.Get(r.tableName, ID)
 	if err != nil {
 		return err
 	}

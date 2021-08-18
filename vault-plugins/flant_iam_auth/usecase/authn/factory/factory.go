@@ -10,11 +10,11 @@ import (
 
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/multipass"
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
+	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
+	multipass2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/multipass"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
@@ -42,7 +42,7 @@ func (f *AuthenticatorFactory) Reset() {
 	f.validators = map[string]*hcjwt.Validator{}
 }
 
-func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn.Authenticator, *model.AuthSource, error) {
+func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
 	switch method.MethodType {
 	case model.MethodTypeJWT:
 		return f.jwt(ctx, method, tnx)
@@ -56,7 +56,7 @@ func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *mod
 }
 
 func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, tnx *io.MemoryStoreTxn) (*model.AuthSource, error) {
-	repo := ext_repo.NewAuthSourceRepo(tnx)
+	repo := repo.NewAuthSourceRepo(tnx)
 	authSource, err := repo.Get(method.Source)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, tnx *io.M
 	return authSource, nil
 }
 
-func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn.Authenticator, *model.AuthSource, error) {
+func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
 	authSource, err := f.getAuthSource(method, tnx)
 	if err != nil {
 		return nil, nil, err
@@ -79,7 +79,7 @@ func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod
 		return nil, nil, err
 	}
 
-	return &jwt.Authenticator{
+	return &jwt2.Authenticator{
 		AuthMethod:   method,
 		Logger:       f.logger.Named("JWTAutheNticator"),
 		AuthSource:   authSource,
@@ -87,7 +87,7 @@ func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod
 	}, authSource, nil
 }
 
-func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn.Authenticator, *model.AuthSource, error) {
+func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
 	f.logger.Debug("It is multipass. Check jwt is enabled")
 
 	enabled, err := f.jwtController.IsEnabled(tnx)
@@ -123,7 +123,7 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 
 	loggerForAuth := f.logger.Named("MultipassAutheNticator")
 
-	authenticator := &multipass.Authenticator{
+	authenticator := &multipass2.Authenticator{
 		AuthSource:   authSource,
 		AuthMethod:   method,
 		JwtValidator: jwtValidator,
@@ -131,7 +131,7 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 		MultipassService: &usecase.Multipass{
 			JwtController:    f.jwtController,
 			MultipassRepo:    iam_repo.NewMultipassRepository(tnx),
-			GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+			GenMultipassRepo: repo.NewMultipassGenerationNumberRepository(tnx),
 			Logger:           loggerForAuth,
 		},
 	}

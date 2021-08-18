@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 
@@ -138,30 +137,4 @@ func (s *AuthSource) HasType(t string) bool {
 	}
 
 	return strutil.StrListContains(s.OIDCResponseTypes, t)
-}
-
-func AuthSourceSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			AuthSourceType: {
-				Name: AuthSourceType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ByName: {
-						Name:   ByName,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
-					},
-				},
-			},
-		},
-	}
 }

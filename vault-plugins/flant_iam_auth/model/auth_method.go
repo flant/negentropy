@@ -3,13 +3,10 @@ package model
 import (
 	"time"
 
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 )
 
-const (
-	AuthMethodType = "auth_method" // also, memdb schema name
-)
+const AuthMethodType = "auth_method" // also, memdb schema name
 
 const (
 	ClaimDefaultLeeway    = 150
@@ -23,31 +20,6 @@ const (
 	MethodTypeMultipass  = "multipass_jwt"
 	MethodTypeSAPassword = "service_account_password"
 )
-
-func AuthMethodSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			AuthMethodType: {
-				Name: AuthMethodType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ByName: {
-						Name: ByName,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
-					},
-				},
-			},
-		},
-	}
-}
 
 type AuthMethod struct {
 	tokenutil.TokenParams

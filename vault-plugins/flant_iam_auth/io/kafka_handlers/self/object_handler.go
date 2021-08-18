@@ -9,12 +9,13 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type ObjectHandler struct {
-	eaRepo     *model.EntityAliasRepo
-	entityRepo *model.EntityRepo
+	eaRepo     *repo.EntityAliasRepo
+	entityRepo *repo.EntityRepo
 	usersRepo  *iam_repo.UserRepository
 	saRepo     *iam_repo.ServiceAccountRepository
 	downstream *vault.VaultEntityDownstreamApi
@@ -26,8 +27,8 @@ type ObjectHandler struct {
 
 func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vault.VaultEntityDownstreamApi, logger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
-		eaRepo:     model.NewEntityAliasRepo(txn),
-		entityRepo: model.NewEntityRepo(txn),
+		eaRepo:     repo.NewEntityAliasRepo(txn),
+		entityRepo: repo.NewEntityRepo(txn),
 		usersRepo:  iam_repo.NewUserRepository(txn),
 		saRepo:     iam_repo.NewServiceAccountRepository(txn),
 		memStore:   memStore,

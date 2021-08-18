@@ -11,9 +11,9 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn"
-	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
 	auth_usecase "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
+	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
@@ -28,10 +28,10 @@ type Authenticator struct {
 	Logger hclog.Logger
 }
 
-func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn.Result, error) {
+func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData) (*authn2.Result, error) {
 	a.Logger.Debug("Start authn multipass")
 
-	authenticator := &authnjwt.Authenticator{
+	authenticator := &jwt2.Authenticator{
 		AuthMethod:   a.AuthMethod,
 		Logger:       a.Logger.Named("JWT"),
 		AuthSource:   a.AuthSource,
@@ -44,7 +44,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 	}
 
 	a.Logger.Debug(fmt.Sprintf("Try to get jti from claims %s", res.UUID))
-	jtiFromTokenRaw := authnjwt.GetClaim(a.Logger, res.Claims, "jti")
+	jtiFromTokenRaw := jwt2.GetClaim(a.Logger, res.Claims, "jti")
 	if jtiFromTokenRaw == nil {
 		return nil, fmt.Errorf("not found jti from token")
 	}
@@ -61,7 +61,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, d *framework.FieldData
 
 	a.Logger.Debug(fmt.Sprintf("Found multipass owner %s", multipass.OwnerUUID))
 
-	return &authn.Result{
+	return &authn2.Result{
 		UUID:         multipass.OwnerUUID,
 		Metadata:     map[string]string{},
 		GroupAliases: make([]string, 0),

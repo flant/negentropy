@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authz"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	authz2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
 )
 
 func pathLogin(b *flantIamAuthBackend) *framework.Path {
@@ -75,7 +75,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	}
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 	}
 
-	authorizator := authz.NewAutorizator(tnx, vaultClient, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(tnx, vaultClient, b.accessorGetter, logger)
 
 	logger.Debug("Start Authorize")
 	authzRes, err := authorizator.Authorize(authnRes, method, authSource)
@@ -134,7 +134,7 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 
 	// Ensure that the Role still exists.
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", methodName), err)
