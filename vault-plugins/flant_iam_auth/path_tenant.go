@@ -8,8 +8,9 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
@@ -43,30 +44,25 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 	}
 }
 
-type uuidIdentifier struct {
-	UUID       string `json:"uuid"`
-	Identifier string `json:"identifier"`
-}
-
 func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
 	b.Logger().Debug("got tenant request in auth")
 
-	repository := repo.NewTenantRepository(txn)
+	repo := iam_model.NewTenantRepository(txn)
 
-	tenants, err := repository.List(false)
+	tenants, err := repo.List(false)
 	if err != nil {
 		return nil, err
 	}
 
 	b.Logger().Debug("list", "tenants", tenants)
 
-	result := make([]uuidIdentifier, 0, len(tenants))
+	result := make([]model.TenantIdentifiers, 0, len(tenants))
 
 	for _, tenant := range tenants {
-		res := uuidIdentifier{
+		res := model.TenantIdentifiers{
 			Identifier: tenant.Identifier,
 			UUID:       tenant.UUID,
 		}
@@ -85,17 +81,17 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
-	repository := repo.NewProjectRepository(txn)
+	repo := iam_model.NewProjectRepository(txn)
 
-	projects, err := repository.List(tenantID, false)
+	projects, err := repo.List(tenantID, false)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]uuidIdentifier, 0, len(projects))
+	result := make([]model.ProjectIdentifiers, 0, len(projects))
 
 	for _, project := range projects {
-		res := uuidIdentifier{
+		res := model.ProjectIdentifiers{
 			Identifier: project.Identifier,
 			UUID:       project.UUID,
 		}
