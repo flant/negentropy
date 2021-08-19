@@ -1,23 +1,14 @@
-package models
+package ssh_session
 
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"html/template"
-
-	"github.com/square/go-jose/v3"
 
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
-
-type ServerList struct {
-	Tenant   iam.Tenant
-	Projects map[iam.ProjectUUID]iam.Project
-	Servers  []ext.Server
-}
 
 func GenerateUserPrincipal(s ext.Server, user iam.User) string {
 	hash := sha256.Sum256([]byte(s.UUID + user.UUID))
@@ -25,7 +16,6 @@ func GenerateUserPrincipal(s ext.Server, user iam.User) string {
 }
 
 func RenderKnownHostsRow(s ext.Server) string {
-	// TODO Shouldn't it be in ssh-ssh-session.go?
 	if s.ConnectionInfo.Port == "22" {
 		return fmt.Sprintf("%s %s\n", s.ConnectionInfo.Hostname, s.Fingerprint)
 	} else {
@@ -34,8 +24,6 @@ func RenderKnownHostsRow(s ext.Server) string {
 }
 
 func RenderSSHConfigEntry(project iam.Project, s ext.Server, user iam.User) string {
-	// TODO Shouldn't it be in ssh-ssh-session.go?
-
 	entryBuffer := bytes.Buffer{}
 	tmpl, err := template.New("ssh_config_entry").Parse(`
 Host {{.Project.Identifier}}.{{.Server.Identifier}}
@@ -69,26 +57,4 @@ Host {{.Project.Identifier}}.{{.Server.Identifier}}
 		panic(err)
 	}
 	return entryBuffer.String()
-}
-
-func UpdateSecureData(s *ext.Server, token string) error {
-	// TODO check signature
-	jose.ParseSigned(token)
-
-	jwt, err := jose.ParseSigned(token)
-	if err != nil {
-		return err
-	}
-
-	payloadBytes := jwt.UnsafePayloadWithoutVerification()
-
-	var server ext.Server
-
-	err = json.Unmarshal(payloadBytes, &server)
-	if err != nil {
-		return err
-	}
-	s.ConnectionInfo = server.ConnectionInfo
-	s.Fingerprint = server.Fingerprint
-	return nil
 }
