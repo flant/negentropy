@@ -12,25 +12,26 @@ import (
 )
 
 type VaultService interface {
-	GetServerToken(*ext.Server) (string, error)
+	GetServerToken(ext.Server) (string, error)
 	GetUser() iam.User
 	GetServersByFilter(model.ServerFilter) (*model.ServerList, error)
 	SignPublicSSHCertificate(model.VaultSSHSignRequest) []byte
+	FillServerSecureData(*ext.Server) error
 }
 
-type vaultServer struct {
+type vaultService struct {
 	vaultSession VaultSession
 }
 
-func (v vaultServer) GetServerToken(server *ext.Server) (string, error) {
+func (v vaultService) GetServerToken(server ext.Server) (string, error) {
 	return v.vaultSession.GetServerToken(server)
 }
 
-func (v vaultServer) GetUser() iam.User {
+func (v vaultService) GetUser() iam.User {
 	return v.vaultSession.GetUser()
 }
 
-func (v vaultServer) GetServersByFilter(filter model.ServerFilter) (*model.ServerList, error) {
+func (v vaultService) GetServersByFilter(filter model.ServerFilter) (*model.ServerList, error) {
 	// sl.Tenant = vs.getTenantByIdentifier(filter.TenantIdentifier)
 	// если в фильтре есть ограничения по проектам:
 	//   projects := vs.getProjectsByTenant(&sl.Tenant)
@@ -62,15 +63,15 @@ func (v vaultServer) GetServersByFilter(filter model.ServerFilter) (*model.Serve
 	}, nil
 }
 
-func (v vaultServer) SignPublicSSHCertificate(req model.VaultSSHSignRequest) []byte {
+func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) []byte {
 	return v.vaultSession.SignPublicSSHCertificate(req)
 }
 
 func NewService() VaultService {
-	return vaultServer{NewVaultSession()}
+	return vaultService{NewVaultSession()}
 }
 
-func (v vaultServer) tenantsByIdentifiers(tenantsIdentifiers []string) (map[iam.TenantUUID]iam.Tenant, error) {
+func (v vaultService) tenantsByIdentifiers(tenantsIdentifiers []string) (map[iam.TenantUUID]iam.Tenant, error) {
 	tenants, err := v.vaultSession.getTenants()
 	if err != nil {
 		return nil, fmt.Errorf("tenantsByIdentifiers:%w", err)
@@ -88,7 +89,7 @@ func (v vaultServer) tenantsByIdentifiers(tenantsIdentifiers []string) (map[iam.
 	return result, nil
 }
 
-func (v vaultServer) projectsByTenantsAndProjectIdentifiers(tenants map[iam.TenantUUID]iam.Tenant,
+func (v vaultService) projectsByTenantsAndProjectIdentifiers(tenants map[iam.TenantUUID]iam.Tenant,
 	projectIdentifiers []iam.ProjectUUID) (map[iam.ProjectUUID]iam.Project, error) {
 	projects := []iam.Project{}
 	for tenantUUID := range tenants {
@@ -116,7 +117,7 @@ func (v vaultServer) projectsByTenantsAndProjectIdentifiers(tenants map[iam.Tena
 	return result, nil
 }
 
-func (v vaultServer) serversByFilter(projects map[iam.ProjectUUID]iam.Project, identifiers []string,
+func (v vaultService) serversByFilter(projects map[iam.ProjectUUID]iam.Project, identifiers []string,
 	selectors []string) ([]ext.Server, error) {
 
 	var servers []ext.Server
@@ -135,20 +136,25 @@ func (v vaultServer) serversByFilter(projects map[iam.ProjectUUID]iam.Project, i
 	for i := range servers {
 		if _, ok := idSet[servers[i].Identifier]; ok ||
 			len(idSet) == 0 { // TODO add checking labels
-			connectionToken, err := v.vaultSession.GetServerToken(&servers[i])
+			err := v.FillServerSecureData(&servers[i])
 			if err != nil {
 				return nil, fmt.Errorf("serversByFilter:%w", err)
 			}
-			UpdateSecureData(&servers[i], connectionToken)
+
 			result = append(result, servers[i])
 		}
 	}
 	return result, nil
 }
 
-func UpdateSecureData(s *ext.Server, token string) error {
+func (v vaultService) FillServerSecureData(s *ext.Server) error {
+	token, err := v.vaultSession.GetServerToken(*s)
+	if err != nil {
+		return fmt.Errorf("FillServerSecureData:%w", err)
+	}
+
 	// TODO check signature
-	jose.ParseSigned(token)
+	jose.ParseSigned(token) // nolint:errCheck
 
 	jwt, err := jose.ParseSigned(token)
 	if err != nil {
