@@ -10,6 +10,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -93,7 +94,7 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 
 	if pb.tenantID != objectTenantID {
 		name = fullIdentifier
-		repo := iam.NewTenantRepository(pb.tx)
+		repo := iam_repo.NewTenantRepository(pb.tx)
 		tenant, err := repo.GetByID(objectTenantID)
 		if err != nil {
 			return posixUser{}, fmt.Errorf("tenant error: %s", err)

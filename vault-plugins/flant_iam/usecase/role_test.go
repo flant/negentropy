@@ -7,10 +7,11 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createRoles(t *testing.T, repo *model.RoleRepository, roles ...model.Role) {
+func createRoles(t *testing.T, repo *iam_repo.RoleRepository, roles ...model.Role) {
 	for _, role := range roles {
 		tmp := role
 		err := repo.Create(&tmp)
@@ -20,7 +21,7 @@ func createRoles(t *testing.T, repo *model.RoleRepository, roles ...model.Role) 
 
 func roleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	repo := model.NewRoleRepository(tx)
+	repo := iam_repo.NewRoleRepository(tx)
 	createRoles(t, repo, fixtures.Roles()...)
 	err := tx.Commit()
 	require.NoError(t, err)
@@ -28,7 +29,7 @@ func roleFixture(t *testing.T, store *io.MemoryStore) {
 
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
-	repo := model.NewRoleRepository(tx)
+	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindDirectIncludingRoles(fixtures.RoleName1)
 
@@ -38,7 +39,7 @@ func Test_Role_findDirectIncludingRoles(t *testing.T) {
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
-	repo := model.NewRoleRepository(tx)
+	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindAllIncludingRoles(fixtures.RoleName1)
 

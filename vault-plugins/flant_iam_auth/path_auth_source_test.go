@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 )
 
 const authSourceTestName = "a"
@@ -103,7 +103,7 @@ func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
 }
 
 func assertAuthSource(t *testing.T, b *flantIamAuthBackend, name string, expected *model.AuthSource) {
-	conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
+	conf, err := repo2.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -763,7 +763,7 @@ func TestAuthSource_Delete(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		conf, err := repo.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
+		conf, err := repo2.NewAuthSourceRepo(b.storage.Txn(false)).Get(authSourceTestName)
 		if err != nil {
 			t.Fatal(err)
 		}

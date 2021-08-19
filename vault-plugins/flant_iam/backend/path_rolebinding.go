@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -211,7 +212,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		b.Logger().Debug("checking role binding existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -219,7 +220,7 @@ func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewRoleBindingRepository(tx)
+		repo := iam_repo.NewRoleBindingRepository(tx)
 
 		obj, err := repo.GetByID(id)
 		if err != nil {
@@ -250,7 +251,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 
 		roleBinding := &model.RoleBinding{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
 			Members:    members,
@@ -299,7 +300,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 		roleBinding := &model.RoleBinding{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			ValidTill:  expiration,
 			RequireMFA: data.Get("require_mfa").(bool),
@@ -369,7 +370,7 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 

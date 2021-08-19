@@ -5,22 +5,24 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwt_usecases "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 type Multipass struct {
-	MultipassRepo    *iam.MultipassRepository
-	GenMultipassRepo *model.MultipassGenerationNumberRepository
+	MultipassRepo    *iam_repo.MultipassRepository
+	GenMultipassRepo *repo.MultipassGenerationNumberRepository
 	JwtController    *jwt.Controller
 
 	Logger hclog.Logger
 }
 
-func (m *Multipass) GetWithGeneration(uuid string) (*iam.Multipass, *model.MultipassGenerationNumber, error) {
+func (m *Multipass) GetWithGeneration(uuid string) (*iam_model.Multipass, *model.MultipassGenerationNumber, error) {
 	multipass, err := m.MultipassRepo.GetByID(uuid)
 	if err != nil {
 		return nil, nil, err

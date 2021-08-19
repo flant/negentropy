@@ -7,25 +7,25 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type ObjectHandler struct {
-	entityRepo       *model.EntityRepo
-	eaRepo           *model.EntityAliasRepo
-	authSourceRepo   *repo.AuthSourceRepo
-	multipassGenRepo *model.MultipassGenerationNumberRepository
+	entityRepo       *repo2.EntityRepo
+	eaRepo           *repo2.EntityAliasRepo
+	authSourceRepo   *repo2.AuthSourceRepo
+	multipassGenRepo *repo2.MultipassGenerationNumberRepository
 
 	logger hclog.Logger
 }
 
 func NewObjectHandler(txn *io.MemoryStoreTxn, logger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
-		entityRepo:       model.NewEntityRepo(txn),
-		eaRepo:           model.NewEntityAliasRepo(txn),
-		authSourceRepo:   repo.NewAuthSourceRepo(txn),
-		multipassGenRepo: model.NewMultipassGenerationNumberRepository(txn),
+		entityRepo:       repo2.NewEntityRepo(txn),
+		eaRepo:           repo2.NewEntityAliasRepo(txn),
+		authSourceRepo:   repo2.NewAuthSourceRepo(txn),
+		multipassGenRepo: repo2.NewMultipassGenerationNumberRepository(txn),
 		logger:           logger,
 	}
 }

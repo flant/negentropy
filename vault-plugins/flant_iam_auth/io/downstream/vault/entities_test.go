@@ -16,6 +16,7 @@ import (
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	vault_identity "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -41,7 +42,7 @@ func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, *api.Client
 		return nil, nil, nil, err
 	}
 
-	schema, err := model.GetSchema()
+	schema, err := repo.GetSchema()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -130,7 +131,7 @@ func TestEntites_WriteNewEntity(t *testing.T) {
 		}
 
 		tnx := storage.Txn(true)
-		entityRepo := model.NewEntityRepo(tnx)
+		entityRepo := repo.NewEntityRepo(tnx)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -186,7 +187,7 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 		}
 
 		tnx := storage.Txn(true)
-		entityRepo := model.NewEntityRepo(tnx)
+		entityRepo := repo.NewEntityRepo(tnx)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -258,7 +259,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 		}
 
 		tnx := storage.Txn(true)
-		entityRepo := model.NewEntityRepo(tnx)
+		entityRepo := repo.NewEntityRepo(tnx)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -356,7 +357,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 		}
 
 		tnx := storage.Txn(true)
-		entityRepo := model.NewEntityRepo(tnx)
+		entityRepo := repo.NewEntityRepo(tnx)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),

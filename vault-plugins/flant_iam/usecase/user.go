@@ -2,14 +2,15 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type UserService struct {
 	tenantUUID model.TenantUUID
 
-	tenantRepo *model.TenantRepository
-	usersRepo  *model.UserRepository
+	tenantRepo *iam_repo.TenantRepository
+	usersRepo  *iam_repo.UserRepository
 
 	childrenDeleters []DeleterByParent
 }
@@ -18,8 +19,8 @@ func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
 	return &UserService{
 		tenantUUID: tenantUUID,
 
-		tenantRepo: model.NewTenantRepository(db),
-		usersRepo:  model.NewUserRepository(db),
+		tenantRepo: iam_repo.NewTenantRepository(db),
+		usersRepo:  iam_repo.NewUserRepository(db),
 
 		childrenDeleters: []DeleterByParent{
 			MultipassDeleter(db),
@@ -33,7 +34,7 @@ func (s *UserService) Create(user *model.User) error {
 		return err
 	}
 
-	user.Version = model.NewResourceVersion()
+	user.Version = iam_repo.NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 	if user.Origin == "" {
 		return model.ErrBadOrigin
@@ -73,7 +74,7 @@ func (s *UserService) Update(user *model.User) error {
 
 	// Update
 	user.TenantUUID = s.tenantUUID
-	user.Version = model.NewResourceVersion()
+	user.Version = iam_repo.NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 
 	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API

@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 )
 
 type errCase struct {
@@ -25,7 +25,7 @@ type errCase struct {
 }
 
 func assertAuthMethod(t *testing.T, b *flantIamAuthBackend, methodName string, expected model.AuthMethod) {
-	actual, err := repo.NewAuthMethodRepo(b.storage.Txn(false)).Get(methodName)
+	actual, err := repo2.NewAuthMethodRepo(b.storage.Txn(false)).Get(methodName)
 	if err != nil {
 		t.Fatal(err)
 	}

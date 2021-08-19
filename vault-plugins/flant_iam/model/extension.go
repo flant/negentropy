@@ -2,8 +2,6 @@ package model
 
 import (
 	"fmt"
-
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type ExtensionOwnerType string
@@ -43,8 +41,4 @@ func (e Extension) ObjType() string {
 
 func (e Extension) ObjId() string {
 	return fmt.Sprintf("%s.%s.%s", e.Origin, e.OwnerType, e.OwnerUUID)
-}
-
-type ExtensionRepository struct {
-	db *io.MemoryStoreTxn
 }

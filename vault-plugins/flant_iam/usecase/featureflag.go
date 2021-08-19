@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -15,34 +16,34 @@ func Featureflags(db *io.MemoryStoreTxn) *FeatureFlagService {
 }
 
 func (s *FeatureFlagService) Create(featureFlag *model.FeatureFlag) error {
-	return model.NewFeatureFlagRepository(s.db).Create(featureFlag)
+	return repo.NewFeatureFlagRepository(s.db).Create(featureFlag)
 }
 
 func (s *FeatureFlagService) List(showArchived bool) ([]*model.FeatureFlag, error) {
-	return model.NewFeatureFlagRepository(s.db).List(showArchived)
+	return repo.NewFeatureFlagRepository(s.db).List(showArchived)
 }
 
 func (s *FeatureFlagService) Delete(id model.FeatureFlagName) error {
 	// TODO before the deletion, check
 	// TODO REMOVE FROM archived
 	archivingTimestamp, archivingHash := ArchivingLabel()
-	return model.NewFeatureFlagRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
+	return repo.NewFeatureFlagRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }
 
 // TenantFeatureFlagService manages feature_flags for tenants
 type TenantFeatureFlagService struct {
 	tenantUUID model.TenantUUID
-	ffRepo     *model.FeatureFlagRepository
-	tenantRepo *model.TenantRepository
-	roleRepo   *model.RoleRepository
+	ffRepo     *repo.FeatureFlagRepository
+	tenantRepo *repo.TenantRepository
+	roleRepo   *repo.RoleRepository
 }
 
 func TenantFeatureFlags(tx *io.MemoryStoreTxn, id model.TenantUUID) *TenantFeatureFlagService {
 	return &TenantFeatureFlagService{
 		tenantUUID: id,
-		ffRepo:     model.NewFeatureFlagRepository(tx),
-		tenantRepo: model.NewTenantRepository(tx),
-		roleRepo:   model.NewRoleRepository(tx),
+		ffRepo:     repo.NewFeatureFlagRepository(tx),
+		tenantRepo: repo.NewTenantRepository(tx),
+		roleRepo:   repo.NewRoleRepository(tx),
 	}
 }
 
@@ -143,8 +144,8 @@ type ProjectFeatureFlagService struct {
 	tenantUUID  model.TenantUUID
 	projectUUID model.ProjectUUID
 
-	ffRepo      *model.FeatureFlagRepository
-	projectRepo *model.ProjectRepository
+	ffRepo      *repo.FeatureFlagRepository
+	projectRepo *repo.ProjectRepository
 }
 
 // Feature flag for projects
@@ -153,8 +154,8 @@ func ProjectFeatureFlags(tx *io.MemoryStoreTxn, tenantID model.TenantUUID, proje
 		tenantUUID:  tenantID,
 		projectUUID: projectID,
 
-		ffRepo:      model.NewFeatureFlagRepository(tx),
-		projectRepo: model.NewProjectRepository(tx),
+		ffRepo:      repo.NewFeatureFlagRepository(tx),
+		projectRepo: repo.NewProjectRepository(tx),
 	}
 }
 

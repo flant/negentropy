@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -15,9 +16,9 @@ type MembersFetcher struct {
 
 func NewMembersFetcher(db *io.MemoryStoreTxn) *MembersFetcher {
 	return &MembersFetcher{
-		serviceAccountRepo: model.NewServiceAccountRepository(db),
-		userRepo:           model.NewUserRepository(db),
-		groupRepo:          model.NewGroupRepository(db),
+		serviceAccountRepo: iam_repo.NewServiceAccountRepository(db),
+		userRepo:           iam_repo.NewUserRepository(db),
+		groupRepo:          iam_repo.NewGroupRepository(db),
 	}
 }
 
@@ -40,7 +41,7 @@ func (f *MembersFetcher) Fetch(members []model.MemberNotation) (*model.Members, 
 		if err != nil {
 			return nil, err
 		}
-		m := raw.(model.Model)
+		m := raw.(iam_repo.Model)
 		id := m.ObjId()
 		if _, ok := seen[id]; ok {
 			continue

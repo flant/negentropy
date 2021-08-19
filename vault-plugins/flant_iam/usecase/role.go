@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -14,19 +15,19 @@ func Roles(db *io.MemoryStoreTxn) *RoleService {
 }
 
 func (s *RoleService) Create(role *model.Role) error {
-	return model.NewRoleRepository(s.db).Create(role)
+	return iam_repo.NewRoleRepository(s.db).Create(role)
 }
 
 func (s *RoleService) Get(roleID model.RoleName) (*model.Role, error) {
-	return model.NewRoleRepository(s.db).GetByID(roleID)
+	return iam_repo.NewRoleRepository(s.db).GetByID(roleID)
 }
 
 func (s *RoleService) List(showArchived bool) ([]*model.Role, error) {
-	return model.NewRoleRepository(s.db).List(showArchived)
+	return iam_repo.NewRoleRepository(s.db).List(showArchived)
 }
 
 func (s *RoleService) Update(updated *model.Role) error {
-	repo := model.NewRoleRepository(s.db)
+	repo := iam_repo.NewRoleRepository(s.db)
 
 	stored, err := repo.GetByID(updated.Name)
 	if err != nil {
@@ -53,11 +54,11 @@ func (s *RoleService) Delete(roleID model.RoleName) error {
 	//      * tokens,
 	//      * service account passwords
 	archivingTimestamp, archivingHash := ArchivingLabel()
-	return model.NewRoleRepository(s.db).Delete(roleID, archivingTimestamp, archivingHash)
+	return iam_repo.NewRoleRepository(s.db).Delete(roleID, archivingTimestamp, archivingHash)
 }
 
 func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole) error {
-	repo := model.NewRoleRepository(s.db)
+	repo := iam_repo.NewRoleRepository(s.db)
 
 	// validate target exists
 	role, err := repo.GetByID(roleID)
@@ -78,7 +79,7 @@ func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole
 }
 
 func (s *RoleService) Exclude(roleID, exclRoleID model.RoleName) error {
-	repo := model.NewRoleRepository(s.db)
+	repo := iam_repo.NewRoleRepository(s.db)
 
 	role, err := repo.GetByID(roleID)
 	if err != nil {

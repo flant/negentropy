@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
@@ -159,7 +159,7 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 	}
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(tnx)
 
 	config, err := repo.Get(sourceName)
 	if err != nil {
@@ -232,7 +232,7 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(tnx)
 	existingSource, err := repo.Get(sourceName)
 	if err != nil {
 		return nil, err
@@ -319,7 +319,7 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	// NOTE: the OIDC lib states that if nothing is passed into its sourceForStore, it
 	// defaults to "RS256". So in the case of a zero value here it won't
 	// default to e.g. "none".
-	if err := jwt.SupportedSigningAlgorithm(authnjwt.ToAlg(sourceForStore.JWTSupportedAlgs)...); err != nil {
+	if err := jwt.SupportedSigningAlgorithm(jwt2.ToAlg(sourceForStore.JWTSupportedAlgs)...); err != nil {
 		return logical.ErrorResponse("invalid jwt_supported_algs: %s", err), nil
 	}
 
@@ -355,7 +355,7 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 
 func (b *flantIamAuthBackend) pathAuthSourceList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(tnx)
 
 	var sourcesNames []string
 	err := repo.Iter(false, func(s *model.AuthSource) (bool, error) {
@@ -378,14 +378,14 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(tnx)
 
 	err := repo.Delete(sourceName)
 	if err != nil {
 		switch {
-		case errors.Is(err, repos.ErrSourceUsingInMethods):
+		case errors.Is(err, repo2.ErrSourceUsingInMethods):
 			return logical.ErrorResponse("%v", err), nil
-		case errors.Is(err, repos.ErrSourceNotFound):
+		case errors.Is(err, repo2.ErrSourceNotFound):
 			return logical.ErrorResponse("source not found"), nil
 		}
 

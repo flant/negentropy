@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
@@ -185,7 +185,7 @@ type ServerRegistrationResult struct {
 	ServerUUID   string `json:"uuid"`
 }
 
-func RegisterServer(serverAPI api.TestAPI, server model2.Server) ServerRegistrationResult {
+func RegisterServer(serverAPI api.TestAPI, server ext_model.Server) ServerRegistrationResult {
 	params := api.Params{
 		"tenant":       server.TenantUUID,
 		"project":      server.ProjectUUID,
@@ -202,7 +202,7 @@ func RegisterServer(serverAPI api.TestAPI, server model2.Server) ServerRegistrat
 	return createdServer
 }
 
-func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server model2.Server, info model2.ConnectionInfo) model2.Server {
+func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server ext_model.Server, info ext_model.ConnectionInfo) ext_model.Server {
 	params := api.Params{
 		"tenant":       server.TenantUUID,
 		"project":      server.ProjectUUID,
@@ -214,7 +214,7 @@ func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server model2.Server, i
 	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
 	createData := connectionInfoAPI.Update(params, url.Values{}, createPayload)
 	data := []byte(createData.Get("server").String())
-	var resultServer model2.Server
+	var resultServer ext_model.Server
 	err := json.Unmarshal(data, &resultServer)
 	Expect(err).ToNot(HaveOccurred())
 	return resultServer

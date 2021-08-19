@@ -2,22 +2,23 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type RoleBindingService struct {
-	repo        *model.RoleBindingRepository
-	tenantsRepo *model.TenantRepository
+	repo        *iam_repo.RoleBindingRepository
+	tenantsRepo *iam_repo.TenantRepository
 
 	memberFetcher *MembersFetcher
 }
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 	return &RoleBindingService{
-		repo:          model.NewRoleBindingRepository(db),
+		repo:          iam_repo.NewRoleBindingRepository(db),
 		memberFetcher: NewMembersFetcher(db),
-		tenantsRepo:   model.NewTenantRepository(db),
+		tenantsRepo:   iam_repo.NewTenantRepository(db),
 	}
 }
 
@@ -29,7 +30,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	if rb.Version != "" {
 		return model.ErrBadVersion
 	}
-	rb.Version = model.NewResourceVersion()
+	rb.Version = iam_repo.NewResourceVersion()
 
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)

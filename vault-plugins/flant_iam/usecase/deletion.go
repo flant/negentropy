@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -60,52 +61,52 @@ func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp mod
 
 func MultipassDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewMultipassRepository(tx),
+		repo.NewMultipassRepository(tx),
 	)
 }
 
 func PasswordDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewServiceAccountPasswordRepository(tx),
+		repo.NewServiceAccountPasswordRepository(tx),
 	)
 }
 
 func GroupDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewGroupRepository(tx),
+		repo.NewGroupRepository(tx),
 		// TODO clean group references from rolebindings and groups in other tenants
 	)
 }
 
 func RoleBindingApprovalDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewRoleBindingApprovalRepository(tx),
+		repo.NewRoleBindingApprovalRepository(tx),
 	)
 }
 
 func RoleBindingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewRoleBindingRepository(tx),
+		repo.NewRoleBindingRepository(tx),
 		RoleBindingApprovalDeleter(tx),
 	)
 }
 
 func ProjectDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewProjectRepository(tx),
+		repo.NewProjectRepository(tx),
 	)
 }
 
 func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewIdentitySharingRepository(tx),
+		repo.NewIdentitySharingRepository(tx),
 		// TODO clean identity sharings where the tenant is the destination
 	)
 }
 
 func UserDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewUserRepository(tx),
+		repo.NewUserRepository(tx),
 		MultipassDeleter(tx),
 		// TODO clean user references from rolebindings and groups in other tenants
 	)
@@ -113,7 +114,7 @@ func UserDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 
 func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
-		model.NewServiceAccountRepository(tx),
+		repo.NewServiceAccountRepository(tx),
 		MultipassDeleter(tx),
 		PasswordDeleter(tx),
 		// TODO clean SA references from rolebindings and groups in other tenants

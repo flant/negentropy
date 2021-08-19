@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -130,8 +131,8 @@ func (b roleBindingApprovalBackend) paths() []*framework.Path {
 
 func (b *roleBindingApprovalBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		tenantID := data.Get(model.TenantForeignPK).(string)
-		roleBindingID := data.Get(model.RoleBindingForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
+		roleBindingID := data.Get(iam_repo.RoleBindingForeignPK).(string)
 
 		if !uuid.IsValid(roleBindingID) {
 			return false, fmt.Errorf("roleBindingID must be valid UUIDv4")
@@ -169,8 +170,8 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 
 		roleBindingApproval := &model.RoleBindingApproval{
 			UUID:                  id,
-			TenantUUID:            data.Get(model.TenantForeignPK).(string),
-			RoleBindingUUID:       data.Get(model.RoleBindingForeignPK).(string),
+			TenantUUID:            data.Get(iam_repo.TenantForeignPK).(string),
+			RoleBindingUUID:       data.Get(iam_repo.RoleBindingForeignPK).(string),
 			Users:                 userIDs,
 			Groups:                groupIDs,
 			ServiceAccounts:       serviceAccountIDs,
@@ -240,7 +241,7 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		rbID := data.Get(model.RoleBindingForeignPK).(string)
+		rbID := data.Get(iam_repo.RoleBindingForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 

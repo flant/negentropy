@@ -19,8 +19,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 )
 
 const (
@@ -141,7 +141,7 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 
 	// Ensure that the Role still exists.
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 		return logical.ErrorResponse(errLoginFailed + " Incorrect method."), nil
 	}
 
-	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 	methodName := oidcReq.method
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse(errLoginFailed + " authMethod type must be OIDC"), nil
 	}
 
-	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -325,12 +325,12 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		}
 	}
 
-	alias, _, err := authnjwt.CreateIdentity(b.Logger(), allClaims, method, tokenSource)
+	alias, _, err := jwt.CreateIdentity(b.Logger(), allClaims, method, tokenSource)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	if err := authnjwt.ValidateBoundClaims(b.Logger(), method.BoundClaimsType, method.BoundClaims, allClaims); err != nil {
+	if err := jwt.ValidateBoundClaims(b.Logger(), method.BoundClaimsType, method.BoundClaims, allClaims); err != nil {
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
@@ -387,7 +387,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 	clientNonce := d.Get("client_nonce").(string)
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(authMethodName)
 	if err != nil {
 		return nil, err
@@ -407,7 +407,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		},
 	}
 
-	authSource, err := repos.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}

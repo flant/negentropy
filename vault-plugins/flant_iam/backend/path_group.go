@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -172,7 +173,7 @@ func (b groupBackend) paths() []*framework.Path {
 func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		b.Logger().Debug("checking group existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -180,7 +181,7 @@ func (b *groupBackend) handleExistence() framework.ExistenceFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		repo := model.NewGroupRepository(tx)
+		repo := iam_repo.NewGroupRepository(tx)
 
 		obj, err := repo.GetByID(id)
 		if err != nil {
@@ -196,7 +197,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		b.Logger().Debug("create group", "path", req.Path)
 		var (
 			id         = getCreationID(expectID, data)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
@@ -208,7 +209,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 
 		group := &model.Group{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
 			Origin:     model.OriginIAM,
@@ -236,7 +237,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		b.Logger().Debug("update group", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 
 		members, err := parseMembers(data.Get("members"))
@@ -249,7 +250,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 		group := &model.Group{
 			UUID:       id,
-			TenantUUID: data.Get(model.TenantForeignPK).(string),
+			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
@@ -277,7 +278,7 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 		b.Logger().Debug("delete groups", "path", req.Path)
 		var (
 			id         = data.Get("uuid").(string)
-			tenantUUID = data.Get(model.TenantForeignPK).(string)
+			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
 
 		tx := b.storage.Txn(true)
@@ -301,7 +302,7 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewGroupRepository(tx)
+		repo := iam_repo.NewGroupRepository(tx)
 		group, err := repo.GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
@@ -320,10 +321,10 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
-		repo := model.NewGroupRepository(tx)
+		repo := iam_repo.NewGroupRepository(tx)
 
 		groups, err := repo.List(tenantID, showArchived)
 		if err != nil {

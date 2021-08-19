@@ -9,10 +9,11 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/utils/tests"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -52,7 +53,7 @@ func assertCreatedEntityWithAliases(t *testing.T, store *io.MemoryStore, sources
 	tx := store.Txn(false)
 	defer tx.Abort()
 
-	e, err := model.NewEntityRepo(tx).GetByUserId(uuid)
+	e, err := repo.NewEntityRepo(tx).GetByUserId(uuid)
 	require.NoError(t, err)
 
 	require.NotNil(t, e, "must save entity")
@@ -84,7 +85,7 @@ func insert(t *testing.T, s *io.MemoryStore, table string, o io.MemoryStorableOb
 func getAllAliases(t *testing.T, tx *io.MemoryStoreTxn, iamModelId string) ([]*model.EntityAlias, map[string]*model.EntityAlias) {
 	aliases := make([]*model.EntityAlias, 0)
 	aliasesBySourceId := map[string]*model.EntityAlias{}
-	err := model.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
+	err := repo.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
 		aliases = append(aliases, a)
 		aliasesBySourceId[a.SourceId] = a
 		return true, nil
@@ -121,8 +122,8 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				if object.ObjType() == iam.UserType {
-					return object.(*iam.User).Email
+				if object.ObjType() == iam_model.UserType {
+					return object.(*iam_model.User).Email
 				}
 
 				return ""
@@ -145,8 +146,8 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				if object.ObjType() == iam.UserType {
-					return object.(*iam.User).FullIdentifier
+				if object.ObjType() == iam_model.UserType {
+					return object.(*iam_model.User).FullIdentifier
 				}
 
 				return ""
@@ -169,8 +170,8 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				if object.ObjType() == iam.UserType {
-					return object.(*iam.User).UUID
+				if object.ObjType() == iam_model.UserType {
+					return object.(*iam_model.User).UUID
 				}
 				return ""
 			},
@@ -194,10 +195,10 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
 				switch object.ObjType() {
-				case iam.UserType:
-					return object.(*iam.User).UUID
-				case iam.ServiceAccountType:
-					return object.(*iam.ServiceAccount).UUID
+				case iam_model.UserType:
+					return object.(*iam_model.User).UUID
+				case iam_model.ServiceAccountType:
+					return object.(*iam_model.ServiceAccount).UUID
 				}
 
 				return ""
@@ -222,10 +223,10 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
 				switch object.ObjType() {
-				case iam.UserType:
-					return object.(*iam.User).FullIdentifier
-				case iam.ServiceAccountType:
-					return object.(*iam.ServiceAccount).FullIdentifier
+				case iam_model.UserType:
+					return object.(*iam_model.User).FullIdentifier
+				case iam_model.ServiceAccountType:
+					return object.(*iam_model.ServiceAccount).FullIdentifier
 				}
 
 				return ""
@@ -249,15 +250,15 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 			},
 
 			expectedEaName: func(object io.MemoryStorableObject) string {
-				if object.ObjType() == iam.UserType {
-					return object.(*iam.User).Email
+				if object.ObjType() == iam_model.UserType {
+					return object.(*iam_model.User).Email
 				}
 				return ""
 			},
 		},
 	}
 
-	repo := repos.NewAuthSourceRepo(tnx)
+	repo := repo.NewAuthSourceRepo(tnx)
 	for _, s := range sources {
 		err := repo.Put(s.source)
 		require.NoError(t, err)
@@ -277,28 +278,28 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 	}{
 		{
 			title: "tenant",
-			obj: &iam.Tenant{
+			obj: &iam_model.Tenant{
 				UUID:       utils.UUID(),
 				Version:    "1",
 				Identifier: "tenant_id",
-				FeatureFlags: []iam.TenantFeatureFlag{
+				FeatureFlags: []iam_model.TenantFeatureFlag{
 					{EnabledForNewProjects: true},
 				},
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewTenantRepository(tx).GetByID(id)
+				return iam_repo.NewTenantRepository(tx).GetByID(id)
 			},
 		},
 		{
 			title: "project",
-			obj: &iam.Project{
+			obj: &iam_model.Project{
 				UUID:       utils.UUID(),
 				TenantUUID: utils.UUID(),
 				Version:    "1",
 				Identifier: "project_id",
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewProjectRepository(tx).GetByID(id)
+				return iam_repo.NewProjectRepository(tx).GetByID(id)
 			},
 		},
 	}
@@ -325,47 +326,47 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 	}{
 		{
 			title: "user",
-			obj: &iam.User{
+			obj: &iam_model.User{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
 				Email:          "user_id@example.com",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewUserRepository(tx).GetByID(id)
+				return iam_repo.NewUserRepository(tx).GetByID(id)
 			},
 			fullId: func(object io.MemoryStorableObject) string {
-				return object.(*iam.User).FullIdentifier
+				return object.(*iam_model.User).FullIdentifier
 			},
 			id: func(object io.MemoryStorableObject) string {
-				return object.(*iam.User).UUID
+				return object.(*iam_model.User).UUID
 			},
 		},
 
 		{
 			title: "service account",
-			obj: &iam.ServiceAccount{
+			obj: &iam_model.ServiceAccount{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewServiceAccountRepository(tx).GetByID(id)
+				return iam_repo.NewServiceAccountRepository(tx).GetByID(id)
 			},
 			fullId: func(object io.MemoryStorableObject) string {
-				return object.(*iam.ServiceAccount).FullIdentifier
+				return object.(*iam_model.ServiceAccount).FullIdentifier
 			},
 			id: func(object io.MemoryStorableObject) string {
-				return object.(*iam.ServiceAccount).UUID
+				return object.(*iam_model.ServiceAccount).UUID
 			},
 		},
 	}
@@ -384,7 +385,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			require.NotNil(t, "must save user in db")
 			tests.AssertDeepEqual(t, user, u)
 
-			e, err := model.NewEntityRepo(tx).GetByUserId(uuid)
+			e, err := repo.NewEntityRepo(tx).GetByUserId(uuid)
 			require.NoError(t, err)
 
 			require.NotNil(t, e, "must save entity")
@@ -424,38 +425,38 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 	}{
 		{
 			title: "tenant",
-			obj: &iam.Tenant{
+			obj: &iam_model.Tenant{
 				UUID:       utils.UUID(),
 				Version:    "1",
 				Identifier: "tenant_id",
-				FeatureFlags: []iam.TenantFeatureFlag{
+				FeatureFlags: []iam_model.TenantFeatureFlag{
 					{EnabledForNewProjects: true},
 				},
 			},
-			objStale: &iam.Tenant{
+			objStale: &iam_model.Tenant{
 				UUID:       utils.UUID(),
 				Version:    "1",
 				Identifier: "tenant_saved",
-				FeatureFlags: []iam.TenantFeatureFlag{
+				FeatureFlags: []iam_model.TenantFeatureFlag{
 					{EnabledForNewProjects: true},
 				},
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewTenantRepository(tx).GetByID(id)
+				return iam_repo.NewTenantRepository(tx).GetByID(id)
 			},
-			tableName: iam.TenantType,
+			tableName: iam_model.TenantType,
 		},
 
 		{
 			title: "project",
-			obj: &iam.Project{
+			obj: &iam_model.Project{
 				UUID:       utils.UUID(),
 				TenantUUID: utils.UUID(),
 				Version:    "1",
 				Identifier: "project_id",
 			},
 
-			objStale: &iam.Project{
+			objStale: &iam_model.Project{
 				UUID:       utils.UUID(),
 				TenantUUID: utils.UUID(),
 				Version:    "1",
@@ -463,10 +464,10 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 			},
 
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewProjectRepository(tx).GetByID(id)
+				return iam_repo.NewProjectRepository(tx).GetByID(id)
 			},
 
-			tableName: iam.ProjectType,
+			tableName: iam_model.ProjectType,
 		},
 	}
 
@@ -481,7 +482,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 
 			tnx := store.Txn(false)
 			o, err := c.get(tnx, c.obj.ObjId())
-			require.ErrorIs(t, err, iam.ErrNotFound, "should delete iam entity")
+			require.ErrorIs(t, err, iam_model.ErrNotFound, "should delete iam entity")
 
 			o, err = c.get(tnx, c.objStale.ObjId())
 			require.NoError(t, err)
@@ -500,75 +501,75 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 	}{
 		{
 			title: "user",
-			obj: &iam.User{
+			obj: &iam_model.User{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
 				Email:          "user_id@example.com",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 			},
-			objStale: &iam.User{
+			objStale: &iam_model.User{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "user_stale",
 				FullIdentifier: "user_stale@tenant",
 				Email:          "user_stale@example.com",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 			},
 
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewUserRepository(tx).GetByID(id)
+				return iam_repo.NewUserRepository(tx).GetByID(id)
 			},
 			fullId: func(object io.MemoryStorableObject) string {
-				return object.(*iam.User).FullIdentifier
+				return object.(*iam_model.User).FullIdentifier
 			},
 			id: func(object io.MemoryStorableObject) string {
-				return object.(*iam.User).UUID
+				return object.(*iam_model.User).UUID
 			},
 
-			tableName: iam.UserType,
+			tableName: iam_model.UserType,
 		},
 
 		{
 			title: "service account",
-			obj: &iam.ServiceAccount{
+			obj: &iam_model.ServiceAccount{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "Sa",
 				FullIdentifier: "user_id@tenant",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,
 			},
 
-			objStale: &iam.ServiceAccount{
+			objStale: &iam_model.ServiceAccount{
 				UUID:           utils.UUID(),
 				TenantUUID:     utils.UUID(),
 				Version:        "1",
 				Identifier:     "sa_stale",
 				FullIdentifier: "sa_stale@tenant",
-				Origin:         iam.OriginIAM,
+				Origin:         iam_model.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,
 			},
 
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
-				return iam.NewServiceAccountRepository(tx).GetByID(id)
+				return iam_repo.NewServiceAccountRepository(tx).GetByID(id)
 			},
 			fullId: func(object io.MemoryStorableObject) string {
-				return object.(*iam.ServiceAccount).FullIdentifier
+				return object.(*iam_model.ServiceAccount).FullIdentifier
 			},
 			id: func(object io.MemoryStorableObject) string {
-				return object.(*iam.ServiceAccount).UUID
+				return object.(*iam_model.ServiceAccount).UUID
 			},
 
-			tableName: iam.ServiceAccountType,
+			tableName: iam_model.ServiceAccountType,
 		},
 	}
 
@@ -591,10 +592,10 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 
 			tx := store.Txn(false)
 			ie, err := c.get(tx, objUUID)
-			require.ErrorIs(t, err, iam.ErrNotFound)
+			require.ErrorIs(t, err, iam_model.ErrNotFound)
 			require.Nil(t, ie)
 
-			e, err := model.NewEntityRepo(tx).GetByUserId(objUUID)
+			e, err := repo.NewEntityRepo(tx).GetByUserId(objUUID)
 			require.NoError(t, err)
 			require.Nil(t, e, "entity must be deleted")
 

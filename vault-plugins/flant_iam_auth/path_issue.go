@@ -7,9 +7,8 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -101,7 +100,7 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("cannot cast 'options' to map[string]interface{}")
 	}
 
-	repo := repos.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(tnx)
 	jwtType, err := repo.Get(name)
 	if err != nil {
 		return nil, err
@@ -168,8 +167,8 @@ func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *lo
 
 	multipassService := &usecase.Multipass{
 		JwtController:    b.jwtController,
-		MultipassRepo:    iam.NewMultipassRepository(tnx),
-		GenMultipassRepo: model.NewMultipassGenerationNumberRepository(tnx),
+		MultipassRepo:    iam_repo.NewMultipassRepository(tnx),
+		GenMultipassRepo: repo2.NewMultipassGenerationNumberRepository(tnx),
 		Logger:           b.NamedLogger("MultipassNewGen"),
 	}
 

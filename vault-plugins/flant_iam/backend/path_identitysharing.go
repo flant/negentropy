@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -215,7 +216,7 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 func (b *identitySharingBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		tenantID := data.Get(model.TenantForeignPK).(string)
+		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		b.Logger().Debug("checking identity sharing existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -225,7 +226,7 @@ func (b *identitySharingBackend) handleExistence() framework.ExistenceFunc {
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
 
-		repo := model.NewIdentitySharingRepository(tx)
+		repo := iam_repo.NewIdentitySharingRepository(tx)
 
 		obj, err := repo.GetByID(id)
 		if err != nil {

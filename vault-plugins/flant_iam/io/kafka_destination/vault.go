@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/go-memdb"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -24,7 +24,7 @@ type VaultKafkaDestination struct {
 	replicaName string
 }
 
-func NewVaultKafkaDestination(mb *kafka.MessageBroker, replica model.Replica) *VaultKafkaDestination {
+func NewVaultKafkaDestination(mb *kafka.MessageBroker, replica iam_model.Replica) *VaultKafkaDestination {
 	return &VaultKafkaDestination{
 		commonDest:  newCommonDest(),
 		mb:          mb,
@@ -66,15 +66,15 @@ func (vkd *VaultKafkaDestination) ProcessObjectDelete(_ *io.MemoryStore, _ *memd
 
 func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 	switch objType {
-	case model.TenantType,
-		model.ProjectType,
-		model.UserType,
-		model.ServiceAccountType,
-		model.RoleBindingType,
-		model.GroupType,
-		model.MultipassType,
-		model.ServiceAccountPasswordType,
-		model2.ServerType:
+	case iam_model.TenantType,
+		iam_model.ProjectType,
+		iam_model.UserType,
+		iam_model.ServiceAccountType,
+		iam_model.RoleBindingType,
+		iam_model.GroupType,
+		iam_model.MultipassType,
+		iam_model.ServiceAccountPasswordType,
+		ext_model.ServerType:
 		return true
 
 	default:

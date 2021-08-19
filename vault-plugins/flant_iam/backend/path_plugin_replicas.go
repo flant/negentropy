@@ -14,6 +14,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -81,7 +82,7 @@ func (b replicaBackend) handleReplicaList(ctx context.Context, req *logical.Requ
 	tx := b.storage.Txn(false)
 
 	var replicaNames []string
-	iter, err := tx.Get(model.ReplicaType, model.PK)
+	iter, err := tx.Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func (b replicaBackend) handleReplicaRead(ctx context.Context, req *logical.Requ
 	replicaName := data.Get("replica_name").(string)
 
 	tx := b.storage.Txn(false)
-	raw, err := tx.First(model.ReplicaType, model.PK, replicaName)
+	raw, err := tx.First(model.ReplicaType, iam_repo.PK, replicaName)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 
 	// Verify existence
 
-	raw, err := tx.First(model.ReplicaType, model.PK, replicaName)
+	raw, err := tx.First(model.ReplicaType, iam_repo.PK, replicaName)
 	if err != nil {
 		return nil, err
 	}

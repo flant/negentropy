@@ -22,7 +22,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/self"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/factory"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -51,7 +52,7 @@ type flantIamAuthBackend struct {
 	l            sync.RWMutex
 	provider     *oidc.Provider
 	oidcRequests *cache.Cache
-	authnFactoty *factory.AuthenticatorFactory
+	authnFactoty *factory2.AuthenticatorFactory
 
 	jwtTypesValidators map[string]openapi.Validator
 
@@ -85,7 +86,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return nil, err
 	}
 
-	schema, err := model.GetSchema()
+	schema, err := repo.GetSchema()
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +183,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return allErrors
 	}
 
-	b.authnFactoty = factory.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
+	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
 
 	b.Backend = &framework.Backend{
 		AuthRenew:    b.pathLoginRenew,

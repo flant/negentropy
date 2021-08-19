@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -16,8 +17,8 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 type GroupService struct {
 	tenantUUID model.TenantUUID
 
-	repo           *model.GroupRepository
-	tenantsRepo    *model.TenantRepository
+	repo           *iam_repo.GroupRepository
+	tenantsRepo    *iam_repo.TenantRepository
 	membersFetcher *MembersFetcher
 }
 
@@ -25,8 +26,8 @@ func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupService {
 	return &GroupService{
 		tenantUUID: tid,
 
-		repo:           model.NewGroupRepository(db),
-		tenantsRepo:    model.NewTenantRepository(db),
+		repo:           iam_repo.NewGroupRepository(db),
+		tenantsRepo:    iam_repo.NewTenantRepository(db),
 		membersFetcher: NewMembersFetcher(db),
 	}
 }
@@ -43,7 +44,7 @@ func (s *GroupService) Create(group *model.Group) error {
 	if group.Origin == "" {
 		return model.ErrBadOrigin
 	}
-	group.Version = model.NewResourceVersion()
+	group.Version = iam_repo.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
 	subj, err := s.membersFetcher.Fetch(group.Members)
@@ -80,7 +81,7 @@ func (s *GroupService) Update(group *model.Group) error {
 	}
 	// Update
 	group.TenantUUID = s.tenantUUID
-	group.Version = model.NewResourceVersion()
+	group.Version = iam_repo.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
 	subj, err := s.membersFetcher.Fetch(group.Members)

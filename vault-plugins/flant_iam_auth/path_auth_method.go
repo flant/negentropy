@@ -14,8 +14,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	authnjwt "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/authn/jwt"
-	repos "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model/repo"
+	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -164,7 +164,7 @@ func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, 
 	methodName := data.Get("name").(string)
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return false, err
@@ -175,7 +175,7 @@ func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *flantIamAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 
 	var methodsNames []string
 	err := repo.Iter(func(s *model.AuthMethod) (bool, error) {
@@ -197,7 +197,7 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 	}
 
 	tnx := b.storage.Txn(false)
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *log
 	tnx := b.storage.Txn(true)
 	defer tnx.Abort()
 
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 
 	err := repo.Delete(methodName)
 	if err != nil {
@@ -274,7 +274,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return errResponse, err
 	}
 
-	repo := repos.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(tnx)
 
 	// get or create method obj
 	method, err := repo.Get(methodName)
@@ -325,7 +325,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			return logical.ErrorResponse("can not change source"), nil
 		}
 
-		source, err := repos.NewAuthSourceRepo(tnx).Get(sourceName)
+		source, err := repo2.NewAuthSourceRepo(tnx).Get(sourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +433,7 @@ func fillBoundClaimsParamsToAuthMethod(method *model.AuthMethod, data *framework
 		if boundClaimsType == model.BoundClaimsTypeGlob {
 			// Check that the claims are all strings
 			for _, claimValues := range method.BoundClaims {
-				claimsValuesList, ok := authnjwt.NormalizeList(claimValues)
+				claimsValuesList, ok := jwt2.NormalizeList(claimValues)
 
 				if !ok {
 					return logical.ErrorResponse("claim is not a string or list: %v", claimValues), nil
