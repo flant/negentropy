@@ -122,7 +122,7 @@ func (vs *VaultSession) GetServers(tenantUUID iam.TenantUUID, projectUUID iam.Pr
 	return servers, nil
 }
 
-func (vs *VaultSession) GetServerToken(server *ext.Server) (string, error) {
+func (vs *VaultSession) GetServerToken(server ext.Server) (string, error) {
 	vaultServerTokenResponseBytes, err := vs.makeRequest("GET",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s",
 			server.TenantUUID, server.ProjectUUID, server.UUID))

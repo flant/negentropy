@@ -53,11 +53,10 @@ func (s *Session) SyncServersFromVault() {
 	}
 
 	for i := range sl.Servers {
-		token, err := s.VaultService.GetServerToken(&sl.Servers[i])
+		err := s.VaultService.FillServerSecureData(&sl.Servers[i])
 		if err != nil {
 			panic(err)
 		}
-		vault.UpdateSecureData(&sl.Servers[i], token)
 	}
 
 	s.ServerList = *sl
