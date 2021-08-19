@@ -16,7 +16,6 @@ type VaultService interface {
 	GetUser() iam.User
 	GetServersByFilter(model.ServerFilter) (*model.ServerList, error)
 	SignPublicSSHCertificate(model.VaultSSHSignRequest) []byte
-	FillServerSecureData(*ext.Server) error
 }
 
 type vaultService struct {
@@ -136,7 +135,7 @@ func (v vaultService) serversByFilter(projects map[iam.ProjectUUID]iam.Project, 
 	for i := range servers {
 		if _, ok := idSet[servers[i].Identifier]; ok ||
 			len(idSet) == 0 { // TODO add checking labels
-			err := v.FillServerSecureData(&servers[i])
+			err := v.fillServerSecureData(&servers[i])
 			if err != nil {
 				return nil, fmt.Errorf("serversByFilter:%w", err)
 			}
@@ -147,7 +146,7 @@ func (v vaultService) serversByFilter(projects map[iam.ProjectUUID]iam.Project, 
 	return result, nil
 }
 
-func (v vaultService) FillServerSecureData(s *ext.Server) error {
+func (v vaultService) fillServerSecureData(s *ext.Server) error {
 	token, err := v.vaultSession.GetServerToken(*s)
 	if err != nil {
 		return fmt.Errorf("FillServerSecureData:%w", err)
