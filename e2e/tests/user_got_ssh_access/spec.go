@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -300,7 +299,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			executeCommandAtContainer(dockerCli, testServerContainer,
-				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"})
+				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"}, nil)
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testServerContainer, authdPath)
 			runDaemonAtContainer(dockerCli, testServerContainer, authdPath, "server_authd.log")
@@ -335,7 +334,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 
 			authKeysFilePath := filepath.Join("/home", user.Identifier, ".ssh", "authorized_keys")
 			contentAuthKeysFile := executeCommandAtContainer(dockerCli, testServerContainer,
-				[]string{"/bin/bash", "-c", "cat " + authKeysFilePath})
+				[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
 			Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
 			principal := calculatePrincipal(testServer.ServerUUID, user.UUID)
 			Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\"" + principal + "\" ssh-rsa.{373}"))
@@ -371,7 +370,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			executeCommandAtContainer(dockerCli, testClientContainer,
-				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"})
+				[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"}, nil)
 
 			killAllInstancesOfProcessAtContainer(dockerCli, testClientContainer, authdPath)
 			runDaemonAtContainer(dockerCli, testClientContainer, authdPath, "client_authd.log")
@@ -390,12 +389,16 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			testFilePath := fmt.Sprintf("/home/%s/test.txt", user.Identifier)
 			touchCommand := "touch " + testFilePath
 			// fmt.Println(touchCommand)
-			cmds := []string{sshCmd, touchCommand}
-			cmdsJson, _ := json.Marshal(cmds)
 			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
 				"/bin/bash", "-c",
-				"export COMMANDS='" + string(cmdsJson) + "' && " + runningCliCmd,
-			})
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+
 			writeLogToFile(output, "cli.log")
 
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
@@ -596,7 +599,7 @@ func writeFileToContainer(cli *client.Client, container *types.Container, path s
 	return fmt.Errorf("unexpected output creating directory: %s", text)
 }
 
-func executeCommandAtContainer(cli *client.Client, container *types.Container, cmd []string) []string {
+func executeCommandAtContainer(cli *client.Client, container *types.Container, cmd []string, extraInputToSTDIN []string) []string {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -611,6 +614,13 @@ func executeCommandAtContainer(cli *client.Client, container *types.Container, c
 	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
 	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+
+	go func() {
+		for _, input := range extraInputToSTDIN {
+			time.Sleep(time.Millisecond * 500)
+			resp.Conn.Write([]byte(input + "\n"))
+		}
+	}()
 
 	output := []string{}
 	var text string
