@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
 
 	vault_api "github.com/hashicorp/vault/api"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/flant/negentropy/cli/internals/model"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 // wrap requests to vault
@@ -144,22 +143,22 @@ func (vs *VaultSession) GetServerToken(server ext.Server) (string, error) {
 	return vaultServerTokenResponse.Data.Token, nil
 }
 
-func (vs *VaultSession) GetUser() iam.User {
-	// vs.makeRequest("/")
-
-	// достать   из vault инфу про текущего юзера
-	userUUID := os.Getenv("USER_UUID")
-	if userUUID == "" {
-		userUUID = "uuu"
+func (vs *VaultSession) GetUser() (*auth.User, error) {
+	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner")
+	if err != nil {
+		return nil, fmt.Errorf("get_user:%w", err)
 	}
-	userFullID := os.Getenv("USER_FULL_ID")
-	a := strings.Split(userFullID, "@")
-
-	if userFullID == "" {
-		userFullID = "fluser"
+	var vaultUserMultipasOwnerResponse struct {
+		Data struct {
+			User auth.User `json:"user"`
+		} `json:"data"`
 	}
-	fmt.Printf("user %s, identifier %s\n", userUUID, userFullID)
-	return iam.User{UUID: userUUID, FullIdentifier: a[0]}
+
+	err = json.Unmarshal(vaultResponseBytes, &vaultUserMultipasOwnerResponse)
+	if err != nil {
+		return nil, fmt.Errorf("get_user:%w", err)
+	}
+	return &vaultUserMultipasOwnerResponse.Data.User, nil
 }
 
 func (vs *VaultSession) getTenantByIdentifier(tenantIdentifier string) (iam.Tenant, error) {
