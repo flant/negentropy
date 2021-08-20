@@ -8,6 +8,7 @@ import (
 
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 func GenerateUserPrincipal(serverUUID, userUUID string) string {
@@ -23,12 +24,12 @@ func RenderKnownHostsRow(s ext.Server) string {
 	}
 }
 
-func RenderSSHConfigEntry(project iam.Project, s ext.Server, user iam.User) string {
+func RenderSSHConfigEntry(project iam.Project, s ext.Server, user auth.User) string {
 	entryBuffer := bytes.Buffer{}
 	tmpl, err := template.New("ssh_config_entry").Parse(`
 Host {{.Project.Identifier}}.{{.Server.Identifier}}
   ForwardAgent yes
-  User {{.User.FullIdentifier}}
+  User {{.User.Identifier}}
   Hostname {{.Server.ConnectionInfo.Hostname}}
 {{- if .Server.ConnectionInfo.Port }}
   Port {{.Server.ConnectionInfo.Port}}
@@ -44,7 +45,7 @@ Host {{.Project.Identifier}}.{{.Server.Identifier}}
 
 	context := struct {
 		Server  ext.Server
-		User    iam.User
+		User    auth.User
 		Project iam.Project
 	}{
 		Server:  s,

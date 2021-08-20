@@ -211,6 +211,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 				pathAuthSource(b),
 				pathAuthSourceList(b),
 				pathLogin(b),
+				pathMultipassOwnner(b),
 				pathJwtType(b),
 				pathJwtTypeList(b),
 				pathIssueJwtType(b),

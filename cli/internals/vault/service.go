@@ -9,11 +9,12 @@ import (
 	"github.com/flant/negentropy/cli/internals/model"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type VaultService interface {
 	GetServerToken(ext.Server) (string, error)
-	GetUser() iam.User
+	GetUser() (*auth.User, error)
 	GetServersByFilter(model.ServerFilter) (*model.ServerList, error)
 	SignPublicSSHCertificate(model.VaultSSHSignRequest) []byte
 }
@@ -26,7 +27,7 @@ func (v vaultService) GetServerToken(server ext.Server) (string, error) {
 	return v.vaultSession.GetServerToken(server)
 }
 
-func (v vaultService) GetUser() iam.User {
+func (v vaultService) GetUser() (*auth.User, error) {
 	return v.vaultSession.GetUser()
 }
 
