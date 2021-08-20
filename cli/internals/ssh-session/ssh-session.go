@@ -5,8 +5,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"log"
-	"main/pkg/iam"
-	"main/pkg/vault"
 	"net"
 	"os"
 	"os/exec"
@@ -15,18 +13,22 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/flant/negentropy/cli/internals/model"
+	"github.com/flant/negentropy/cli/internals/vault"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 type Session struct {
 	UUID               string
 	User               iam.User
-	ServerList         iam.ServerList
-	ServerFilter       vault.ServerFilter
-	VaultSession       vault.VaultSession
+	ServerList         model.ServerList
+	ServerFilter       model.ServerFilter
+	VaultService       vault.VaultService
 	EnvSSHAuthSock     string
 	SSHAgent           agent.Agent
 	SSHAgentSocketPath string
@@ -37,7 +39,7 @@ type Session struct {
 
 const Workdir = "/tmp/flint"
 
-func (s *Session) Destroy() {
+func (s *Session) Close() {
 	_ = os.Remove(s.SSHAgentSocketPath)
 	_ = os.Remove(s.SSHConfigFile.Name())
 	_ = os.Remove(s.KnownHostsFile.Name())
@@ -45,21 +47,19 @@ func (s *Session) Destroy() {
 }
 
 func (s *Session) SyncServersFromVault() {
-	sl, err := s.VaultSession.QueryServer(s.ServerFilter)
+	sl, err := s.VaultService.GetServersByFilter(s.ServerFilter)
 	if err != nil {
 		panic(err)
 	}
 
 	for i := range sl.Servers {
-		token, err := s.VaultSession.RequestServerToken(&sl.Servers[i])
+		err := s.VaultService.FillServerSecureData(&sl.Servers[i])
 		if err != nil {
 			panic(err)
 		}
-		sl.Servers[i].SetSecureManifest(token)
 	}
 
-	s.ServerList = sl
-	// fmt.Println(sl.Projects[0].Tenant.UUID)
+	s.ServerList = *sl
 }
 
 func (s *Session) RenderKnownHostsToFile() {
@@ -75,7 +75,7 @@ func (s *Session) RenderKnownHostsToFile() {
 
 	s.KnownHostsFile.Seek(0, 0)
 	for _, server := range s.ServerList.Servers {
-		s.KnownHostsFile.Write([]byte(server.RenderKnownHostsRow()))
+		s.KnownHostsFile.Write([]byte(RenderKnownHostsRow(server)))
 	}
 }
 
@@ -92,7 +92,8 @@ func (s *Session) RenderSSHConfigToFile() {
 	s.SSHConfigFile.Seek(0, 0)
 
 	for _, server := range s.ServerList.Servers {
-		s.SSHConfigFile.Write([]byte(server.RenderSSHConfigEntry(&s.User)))
+		project := s.ServerList.Projects[server.ProjectUUID]
+		s.SSHConfigFile.Write([]byte(RenderSSHConfigEntry(project, server, s.User)))
 	}
 }
 
@@ -112,12 +113,12 @@ func (s *Session) RenderBashRCToFile() {
 	s.BashRCFile.Write([]byte(data))
 }
 
-func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []iam.Server) agent.AddedKey {
+func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.Server) agent.AddedKey {
 	principals := []string{}
 	identifiers := []string{}
 
 	for _, server := range servers {
-		principals = append(principals, server.GenerateUserPrincipal(s.User))
+		principals = append(principals, GenerateUserPrincipal(server, s.User))
 		identifiers = append(identifiers, server.Identifier)
 	}
 
@@ -127,12 +128,12 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []iam.
 		panic(err.Error())
 	}
 
-	vaultReq := map[string]interface{}{
-		"public_key":       string(ssh.MarshalAuthorizedKey(pubkey)),
-		"valid_principals": strings.Join(principals, ","),
+	vaultReq := model.VaultSSHSignRequest{
+		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
+		ValidPrincipals: strings.Join(principals, ","),
 	}
 
-	signedPublicSSHCertBytes := s.VaultSession.SignPublicSSHCertificate(vaultReq)
+	signedPublicSSHCertBytes := s.VaultService.SignPublicSSHCertificate(vaultReq)
 
 	ak, _, _, _, err := ssh.ParseAuthorizedKey(signedPublicSSHCertBytes)
 	if err != nil {
@@ -179,7 +180,7 @@ func (s *Session) StartSSHAgent() {
 		sig := <-c
 		log.Printf("Caught signal %s: shutting down.", sig)
 		agentListener.Close()
-		s.Destroy()
+		s.Close()
 		os.Exit(0)
 	}(sigc)
 
@@ -235,12 +236,11 @@ func (s *Session) Go() {
 		tenantIdentifier = "1tv"
 	}
 	fmt.Printf("Tenant identifier %s\n", tenantIdentifier)
-	s.ServerFilter = vault.ServerFilter{
-		TenantIdentifier: tenantIdentifier,
+	s.ServerFilter = model.ServerFilter{
+		TenantIdentifiers: []string{tenantIdentifier}, // TODO redo for several tenants
 	}
 
-	s.VaultSession.Init()
-	s.User = s.VaultSession.GetSSHUser()
+	s.User = s.VaultService.GetUser()
 	s.StartSSHAgent()
 
 	s.syncRoutine()
@@ -248,5 +248,5 @@ func (s *Session) Go() {
 
 	s.StartShell()
 
-	s.Destroy()
+	s.Close()
 }

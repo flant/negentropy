@@ -13,9 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -220,7 +221,7 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 		}
 
 		if server.TenantUUID != tenantID || server.ProjectUUID != projectID {
-			return nil, model.ErrNotFound
+			return nil, iam_model.ErrNotFound
 		}
 
 		token, err := b.jwtController.IssuePayloadAsJwt(txn, server.AsMap(), &jwttoken.TokenOptions{})
@@ -233,14 +234,6 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
-}
-
-type queryServer struct {
-	UUID        string `json:"uuid"`
-	Identifier  string `json:"identifier"`
-	Version     string `json:"resource_version"`
-	ProjectUUID string `json:"project_uuid"`
-	TenantUUID  string `json:"tenant_uuid"`
 }
 
 func (b *serverAccessBackend) queryServer() framework.OperationFunc {
@@ -279,7 +272,7 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		defer txn.Abort()
 
 		var (
-			result   []queryServer
+			result   []model.Server
 			err      error
 			warnings []string
 		)
@@ -360,13 +353,13 @@ func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 }
 
 // TODO: change to real func
-func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*model.User, []*model.ServiceAccount, error) {
+func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*iam_model.User, []*iam_model.ServiceAccount, error) {
 	// for stub, return all users and SA
 	userRepo := iam_repo.NewUserRepository(tx)
 	saRepo := iam_repo.NewServiceAccountRepository(tx)
 
-	resUsers := make([]*model.User, 0)
-	resSa := make([]*model.ServiceAccount, 0)
+	resUsers := make([]*iam_model.User, 0)
+	resSa := make([]*iam_model.ServiceAccount, 0)
 
 	uList, err := userRepo.List(tenantID, false)
 	if err != nil {
@@ -393,8 +386,8 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*mode
 	return resUsers, resSa, nil
 }
 
-func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]queryServer, error) {
-	result := make([]queryServer, 0)
+func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model.Server, error) {
+	result := make([]model.Server, 0)
 
 	selector, err := labels.Parse(labelSelector)
 	if err != nil {
@@ -411,7 +404,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	for _, server := range list {
 		set := labels.Set(server.Labels)
 		if selector.Matches(set) {
-			qs := queryServer{
+			qs := model.Server{
 				UUID:        server.UUID,
 				Identifier:  server.Identifier,
 				Version:     server.Version,
@@ -425,17 +418,17 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	return result, nil
 }
 
-func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]queryServer, error) {
+func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model.Server, error) {
 	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]queryServer, 0, len(list))
+	result := make([]model.Server, 0, len(list))
 
 	for _, server := range list {
-		qs := queryServer{
+		qs := model.Server{
 			UUID:        server.UUID,
 			Identifier:  server.Identifier,
 			Version:     server.Version,
@@ -448,8 +441,8 @@ func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]queryServ
 	return result, nil
 }
 
-func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]queryServer, []string, error) {
-	result := make([]queryServer, 0)
+func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model.Server, []string, error) {
+	result := make([]model.Server, 0)
 
 	nameMap := make(map[string]bool)
 	for _, name := range names {
@@ -464,7 +457,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 
 	for _, server := range list {
 		if _, ok := nameMap[strings.ToLower(server.Identifier)]; ok {
-			qs := queryServer{
+			qs := model.Server{
 				UUID:        server.UUID,
 				Identifier:  server.Identifier,
 				Version:     server.Version,
