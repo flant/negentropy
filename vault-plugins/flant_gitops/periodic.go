@@ -19,6 +19,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
+	uuid "github.com/satori/go.uuid"
 	"github.com/werf/logboek"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
 	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
@@ -233,7 +234,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 		serviceDirInContext := ".flant_gitops"
 		serviceDockerfilePath := path.Join(serviceDirInContext, "Dockerfile")
-
 		contextReader, contextWriter := io.Pipe()
 		go func() {
 			if err := func() error {
@@ -283,15 +283,20 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 		b.Logger().Debug(fmt.Sprintf("Running commands %+q in the base image %q", config.Commands, config.DockerImage))
 
+		serviceLabels := map[string]string{
+			"negentropy-flant-gitops-periodic-uuid": uuid.NewV4().String(),
+		}
+
 		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
+			Dockerfile:  serviceDockerfilePath,
+			Labels:      serviceLabels,
 			NoCache:     true,
 			ForceRemove: true,
 			PullParent:  true,
-			Dockerfile:  serviceDockerfilePath,
 			Version:     types.BuilderV1,
 		})
 		if err != nil {
-			return fmt.Errorf("unable to run Docker image build: %s", err)
+			return fmt.Errorf("unable to run docker image build: %s", err)
 		}
 
 		var outputBuf bytes.Buffer
@@ -306,6 +311,10 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		b.Logger().Debug("Command output END\n")
 
 		b.Logger().Debug(fmt.Sprintf("Commands %+q in the base image %q succeeded", config.Commands, config.DockerImage))
+
+		if err := docker.RemoveImagesByLabels(ctx, cli, serviceLabels); err != nil {
+			return fmt.Errorf("unable to remove service docker image: %s", err)
+		}
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{
