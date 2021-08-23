@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -17,7 +18,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 	// Check if role might be granted for newBindingRole members.
 	newRoleBindingGrantsRole, err := CheckRoleBindingGrantsRole(txn, newRoleBinding, roleOfConcern)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange: %w", err)
 	}
 	// Return nothing if role is not granted in updated RoleBinding.
 	if !newRoleBindingGrantsRole {
@@ -27,10 +28,10 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 	// Check if role might be granted for oldBindingRole members.
 	oldRoleBindingGrantsRole, err := CheckRoleBindingGrantsRole(txn, oldRoleBinding, roleOfConcern)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange: %w", err)
 	}
 
-	groupRepo := model.NewGroupRepository(txn)
+	groupRepo := iam_repo.NewGroupRepository(txn)
 	// Return all members of the new RoleBinding if role was not granted
 	// by the old RoleBinding and become granted by the new RoleBinding.
 	if !oldRoleBindingGrantsRole && newRoleBindingGrantsRole {
@@ -81,7 +82,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStor
 	}
 
 	// Get all role binding for newGroup uuid and for all parent groups.
-	groupRepo := model.NewGroupRepository(txn)
+	groupRepo := iam_repo.NewGroupRepository(txn)
 	parentGroups, err := groupRepo.FindAllParentGroupsForGroupUUID(newGroup.TenantUUID, newGroup.UUID)
 	if err != nil {
 		return nil, nil, err
@@ -156,7 +157,7 @@ func CheckRoleBindingGrantsRole(txn *io.MemoryStoreTxn, roleBinding *model.RoleB
 	for _, includedRole := range roleBinding.Roles {
 		granted, err = CheckRoleIncludeRole(txn, includedRole.Name, role)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("CheckRoleBindingGrantsRole: %w", err)
 		}
 		if granted {
 			break
@@ -171,10 +172,10 @@ func CheckRoleIncludeRole(txn *io.MemoryStoreTxn, role string, roleOfConcern str
 		return true, nil
 	}
 
-	repo := model.NewRoleRepository(txn)
+	repo := iam_repo.NewRoleRepository(txn)
 	roles, err := repo.FindAllIncludingRoles(role)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("CheckRoleIncludeRole for role `%s`: %w", role, err)
 	}
 
 	for roleName := range roles {
@@ -190,7 +191,7 @@ func CheckRoleObjectIncludeRole(txn *io.MemoryStoreTxn, role *model.Role, roleOf
 		return true, nil
 	}
 
-	repo := model.NewRoleRepository(txn)
+	repo := iam_repo.NewRoleRepository(txn)
 	for _, included := range role.IncludedRoles {
 		if included.Name == roleOfConcern {
 			return true, nil
@@ -212,13 +213,13 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 		return nil, nil, err
 	}
 
-	tenantRepo := model.NewTenantRepository(txn)
-	tenants, err := tenantRepo.List()
+	tenantRepo := iam_repo.NewTenantRepository(txn)
+	tenants, err := tenantRepo.List(false)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	repo := model.NewRoleBindingRepository(txn)
+	repo := iam_repo.NewRoleBindingRepository(txn)
 	roleBindings := make(map[model.RoleBindingUUID]struct{})
 	for _, tenant := range tenants {
 		tenantRoleBindings, err := repo.FindDirectRoleBindingsForRoles(tenant.UUID, parentRoles...)
@@ -233,7 +234,7 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 	users := make(map[model.UserUUID]struct{})
 	serviceAccounts := make(map[model.ServiceAccountUUID]struct{})
 
-	groupRepo := model.NewGroupRepository(txn)
+	groupRepo := iam_repo.NewGroupRepository(txn)
 	for roleBinding := range roleBindings {
 		rb, err := repo.GetByID(roleBinding)
 		if err != nil {
@@ -254,7 +255,7 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 func HasRoleBindingsWithGroupAndRole(txn *io.MemoryStoreTxn, tenantUUID model.TenantUUID, groups map[model.GroupUUID]struct{}, role string) (bool, error) {
 	visited := make(map[model.RoleBindingUUID]struct{})
 
-	repo := model.NewRoleBindingRepository(txn)
+	repo := iam_repo.NewRoleBindingRepository(txn)
 	for groupUUID := range groups {
 		roleBindings, err := repo.FindDirectRoleBindingsForTenantGroups(tenantUUID, groupUUID)
 		if err != nil {
@@ -312,7 +313,7 @@ func GetParentRolesForRole(txn *io.MemoryStoreTxn, role model.RoleName) ([]model
 	for {
 		visitedNow := make(map[model.RoleName]struct{})
 		for _, roleName := range searchRoles {
-			iter, err := txn.Get(model.RoleType, model.IncludedRolesIndex, roleName)
+			iter, err := txn.Get(model.RoleType, iam_repo.IncludedRolesIndex, roleName)
 			if err != nil {
 				return nil, err
 			}

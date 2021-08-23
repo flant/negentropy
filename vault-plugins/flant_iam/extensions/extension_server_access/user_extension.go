@@ -10,12 +10,15 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/txnwatchers"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest, memStore *io.MemoryStore) error {
+func InitializeExtensionServerAccess(ctx context.Context, initRequest *logical.InitializationRequest,
+	memStore *io.MemoryStore) error {
 	storage := initRequest.Storage
 	log.L().Debug("init server-access")
 
@@ -57,13 +60,17 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.UserType,
+		ObjType: iam_model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo := model2.NewUserServerAccessRepository(txn, sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter)
+			repo, err := ext_repo.NewUserServerAccessRepository(txn, sac.LastAllocatedUID,
+				sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
+			if err != nil {
+				return err
+			}
 
-			user := obj.(*model.User)
+			user := obj.(*iam_model.User)
 
-			err := repo.CreateExtension(user)
+			err = repo.CreateExtension(user)
 			if err != nil {
 				return err
 			}
@@ -77,19 +84,19 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// TODO: refactor this bullshit
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.ProjectType,
+		ObjType: iam_model.ProjectType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			groupRepo := model.NewGroupRepository(txn)
-			projectRepo := model.NewProjectRepository(txn)
+			groupRepo := iam_repo.NewGroupRepository(txn)
+			projectRepo := iam_repo.NewProjectRepository(txn)
 
-			project := obj.(*model.Project)
+			project := obj.(*iam_model.Project)
 
-			groups, err := groupRepo.List(project.TenantUUID)
+			groups, err := groupRepo.List(project.TenantUUID, false)
 			if err != nil {
 				return err
 			}
 
-			projects, err := projectRepo.List(project.TenantUUID)
+			projects, err := projectRepo.List(project.TenantUUID, false)
 			if err != nil {
 				return err
 			}
@@ -99,7 +106,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 				projectIDSet[project.Identifier] = struct{}{}
 			}
 
-			var groupToChange *model.Group
+			var groupToChange *iam_model.Group
 			for _, group := range groups {
 				if !strings.HasPrefix(group.Identifier, "servers/") {
 					continue
@@ -129,17 +136,17 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// update group hook
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.GroupType,
+		ObjType: iam_model.GroupType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			newGroup, ok := obj.(*model.Group)
+			newGroup, ok := obj.(*iam_model.Group)
 			if !ok {
 				return fmt.Errorf("need Group type, actually passed %T", obj)
 			}
-			repo := model.NewGroupRepository(txn)
+			repo := iam_repo.NewGroupRepository(txn)
 			oldGroup, err := repo.GetByID(newGroup.UUID)
-			if err == model.ErrNotFound {
+			if err == iam_model.ErrNotFound {
 				err = nil
-				oldGroup = &model.Group{}
+				oldGroup = &iam_model.Group{}
 			}
 			if err != nil {
 				return fmt.Errorf("getting old group value: %w", err)
@@ -163,17 +170,17 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// update roleBinding hook
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.RoleBindingType,
+		ObjType: iam_model.RoleBindingType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			newRoleBinding, ok := obj.(*model.RoleBinding)
+			newRoleBinding, ok := obj.(*iam_model.RoleBinding)
 			if !ok {
 				return fmt.Errorf("need RoleBinding type, actually passed %T", obj)
 			}
-			repo := model.NewRoleBindingRepository(txn)
+			repo := iam_repo.NewRoleBindingRepository(txn)
 			oldRoleBinding, err := repo.GetByID(newRoleBinding.UUID)
-			if err == model.ErrNotFound {
+			if err == iam_model.ErrNotFound {
 				err = nil
-				oldRoleBinding = &model.RoleBinding{}
+				oldRoleBinding = &iam_model.RoleBinding{}
 			}
 			if err != nil {
 				return fmt.Errorf("getting old roleBinding value: %w", err)
@@ -198,17 +205,17 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 	// update role hook
 	memStore.RegisterHook(io.ObjectHook{
 		Events:  []io.HookEvent{io.HookEventInsert},
-		ObjType: model.RoleType,
+		ObjType: iam_model.RoleType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			newRole, ok := obj.(*model.Role)
+			newRole, ok := obj.(*iam_model.Role)
 			if !ok {
 				return fmt.Errorf("need Role type, actually passed %T", obj)
 			}
-			repo := model.NewRoleRepository(txn)
+			repo := iam_repo.NewRoleRepository(txn)
 			oldRole, err := repo.GetByID(newRole.Name)
-			if err == model.ErrNotFound {
+			if err == iam_model.ErrNotFound {
 				err = nil
-				oldRole = &model.Role{}
+				oldRole = &iam_model.Role{}
 			}
 			if err != nil {
 				return fmt.Errorf("getting old roleBinding value: %w", err)
@@ -232,30 +239,29 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 }
 
 func checkAndCreateServiceAccountExtension(txn *io.MemoryStoreTxn,
-	sac *ServerAccessConfig, accounts map[model.ServiceAccountUUID]struct{}) error {
+	sac *ServerAccessConfig, accounts map[iam_model.ServiceAccountUUID]struct{}) error {
 	// TODO implement for serviceAccounts
 	return nil
 }
 
-func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig, users map[model.UserUUID]struct{}, vaultStore logical.Storage) error {
-	repoUserExtension, err := ext_model.NewUserServerAccessRepository(txn,
+func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig,
+	users map[iam_model.UserUUID]struct{}, vaultStore logical.Storage) error {
+	repoUserExtension, err := ext_repo.NewUserServerAccessRepository(txn,
 		sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
 	if err != nil {
-		return err
+		return fmt.Errorf("checkAndCreateUserExtension: %w", err)
 	}
-	repoUser := model.NewUserRepository(txn)
+	repoUser := iam_repo.NewUserRepository(txn)
 
 	for userUUID := range users {
 		user, err := repoUser.GetByID(userUUID)
 		if err != nil {
-			return fmt.Errorf("get user by id: %w", err)
+			return fmt.Errorf("checkAndCreateUserExtension: %w", err)
 		}
-		if len(user.Extensions) >= 0 {
-			if _, isSet := user.Extensions[model.OriginServerAccess]; !isSet {
-				err = repoUserExtension.CreateExtension(user)
-				if err != nil {
-					return fmt.Errorf("creating user extension: %w", err)
-				}
+		if _, isSet := user.Extensions[iam_model.OriginServerAccess]; !isSet {
+			err = repoUserExtension.CreateExtension(user)
+			if err != nil {
+				return fmt.Errorf("creating user extension: %w", err)
 			}
 		}
 	}

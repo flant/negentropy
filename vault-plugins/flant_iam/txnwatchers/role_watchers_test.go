@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -224,6 +225,7 @@ func fixtureForRoleBindingChange(t *testing.T, txn *io.MemoryStoreTxn) {
 
 	createRoles(t, txn,
 		testRole("test", model.RoleScopeProject),
+		testRole("test2", model.RoleScopeProject),
 	)
 }
 
@@ -252,7 +254,7 @@ func fixtureForGroupChange(t *testing.T, txn *io.MemoryStoreTxn) {
 
 func getTestMemoryStorage(t *testing.T, fixtureFunc func(t *testing.T, txn *io.MemoryStoreTxn)) *io.MemoryStore {
 	// Create db with some entities.
-	schema, err := model.GetSchema()
+	schema, err := repo.GetSchema()
 	require.NoError(t, err)
 	mem, err := io.NewMemoryStore(schema, nil)
 	require.NoError(t, err)

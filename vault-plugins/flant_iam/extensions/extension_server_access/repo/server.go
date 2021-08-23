@@ -1,16 +1,19 @@
 package repo
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"sort"
 	"time"
 
 	"github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -43,8 +46,8 @@ func ServerSchema() *memdb.DBSchema {
 
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
-			model.ServerType: {
-				Name: model.ServerType,
+			ext_model.ServerType: {
+				Name: ext_model.ServerType,
 				Indexes: map[string]*memdb.IndexSchema{
 					iam_repo.PK: {
 						Name:   iam_repo.PK,
@@ -95,12 +98,12 @@ func NewServerRepository(tx *io.MemoryStoreTxn) *ServerRepository {
 	}
 }
 
-func (r *ServerRepository) Create(server *model.Server) error {
-	return r.db.Insert(model.ServerType, server)
+func (r *ServerRepository) Create(server *ext_model.Server) error {
+	return r.db.Insert(ext_model.ServerType, server)
 }
 
-func (r *ServerRepository) GetByUUID(id string) (*model.Server, error) {
-	raw, err := r.db.First(model.ServerType, iam_repo.PK, id)
+func (r *ServerRepository) GetByUUID(id string) (*ext_model.Server, error) {
+	raw, err := r.db.First(ext_model.ServerType, iam_repo.PK, id)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +111,12 @@ func (r *ServerRepository) GetByUUID(id string) (*model.Server, error) {
 		return nil, iam_model.ErrNotFound
 	}
 
-	server := raw.(*model.Server)
+	server := raw.(*ext_model.Server)
 	return server, nil
 }
 
-func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*model.Server, error) {
-	raw, err := r.db.First(model.ServerType, "identifier", tenant_uuid, project_uuid, id)
+func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*ext_model.Server, error) {
+	raw, err := r.db.First(ext_model.ServerType, "identifier", tenant_uuid, project_uuid, id)
 	if err != nil {
 		return nil, err
 	}
@@ -121,16 +124,16 @@ func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*model
 		return nil, iam_model.ErrNotFound
 	}
 
-	server := raw.(*model.Server)
+	server := raw.(*ext_model.Server)
 	return server, nil
 }
 
-func (r *ServerRepository) Update(server *model.Server) error {
+func (r *ServerRepository) Update(server *ext_model.Server) error {
 	_, err := r.GetByUUID(server.UUID)
 	if err != nil {
 		return err
 	}
-	return r.db.Insert(model.ServerType, server)
+	return r.db.Insert(ext_model.ServerType, server)
 }
 
 func (r *ServerRepository) Delete(uuid string) error {
@@ -138,10 +141,10 @@ func (r *ServerRepository) Delete(uuid string) error {
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(model.ServerType, server)
+	return r.db.Delete(ext_model.ServerType, server)
 }
 
-func (r *ServerRepository) List(tenantID, projectID string) ([]*model.Server, error) {
+func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server, error) {
 	var (
 		iter memdb.ResultIterator
 		err  error
@@ -149,53 +152,79 @@ func (r *ServerRepository) List(tenantID, projectID string) ([]*model.Server, er
 
 	switch {
 	case tenantID != "" && projectID != "":
-		iter, err = r.db.Get(model.ServerType, "tenant_project", tenantID, projectID)
+		iter, err = r.db.Get(ext_model.ServerType, "tenant_project", tenantID, projectID)
 
 	case tenantID != "":
-		iter, err = r.db.Get(model.ServerType, iam_repo.TenantForeignPK, tenantID)
+		iter, err = r.db.Get(ext_model.ServerType, iam_repo.TenantForeignPK, tenantID)
 
 	case projectID != "":
-		iter, err = r.db.Get(model.ServerType, iam_repo.ProjectForeignPK, projectID)
+		iter, err = r.db.Get(ext_model.ServerType, iam_repo.ProjectForeignPK, projectID)
 
 	default:
-		iter, err = r.db.Get(model.ServerType, iam_repo.PK)
+		iter, err = r.db.Get(ext_model.ServerType, iam_repo.PK)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	ids := make([]*model.Server, 0)
+	ids := make([]*ext_model.Server, 0)
 	for {
 		raw := iter.Next()
 		if raw == nil {
 			break
 		}
-		u := raw.(*model.Server)
+		u := raw.(*ext_model.Server)
 		ids = append(ids, u)
 	}
 	return ids, nil
 }
 
+const uidKey = "uidKey"
+
 type UserServerAccessRepository struct {
 	db                              *io.MemoryStoreTxn
 	serverRepo                      *ServerRepository
 	userRepo                        *iam_repo.UserRepository
-	currentUID                      int // FIXME: commit to Vault local storage
+	vaultStore                      logical.Storage
 	expireSeedAfterRevealIn         time.Duration
 	deleteExpiredPasswordSeedsAfter time.Duration
 }
 
 func NewUserServerAccessRepository(
 	tx *io.MemoryStoreTxn, initialUID int, expireSeedAfterRevealIn, deleteExpiredPasswordSeedsAfter time.Duration,
-) *UserServerAccessRepository {
-	return &UserServerAccessRepository{
+	vaultStore logical.Storage) (*UserServerAccessRepository, error) {
+	r := &UserServerAccessRepository{
 		db:                              tx,
 		userRepo:                        iam_repo.NewUserRepository(tx),
 		serverRepo:                      NewServerRepository(tx),
-		currentUID:                      initialUID,
+		vaultStore:                      vaultStore,
 		expireSeedAfterRevealIn:         expireSeedAfterRevealIn,
 		deleteExpiredPasswordSeedsAfter: deleteExpiredPasswordSeedsAfter,
 	}
+
+	err := r.saveUID(initialUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func (r *UserServerAccessRepository) saveUID(value int) error {
+	return r.vaultStore.Put(context.Background(), &logical.StorageEntry{
+		Key:      uidKey,
+		Value:    big.NewInt(int64(value)).Bytes(),
+		SealWrap: false,
+	})
+}
+
+func (r *UserServerAccessRepository) getUID() (int, error) {
+	entry, err := r.vaultStore.Get(context.Background(), uidKey)
+	if err != nil {
+		return 0, err
+	}
+	value := big.NewInt(0).SetBytes(entry.Value).Uint64()
+	return int(value), nil
 }
 
 func (r *UserServerAccessRepository) CreateExtension(user *iam_model.User) error {
@@ -217,13 +246,19 @@ func (r *UserServerAccessRepository) CreateExtension(user *iam_model.User) error
 		return nil
 	}
 
+	lastUUID, err := r.getUID()
+	if err != nil {
+		return nil
+	}
+	currentUUID := lastUUID + 1
+
 	user.Extensions[iam_model.OriginServerAccess] = &iam_model.Extension{
 		Origin:    iam_model.OriginServerAccess,
 		OwnerType: iam_model.ExtensionOwnerTypeUser,
 		OwnerUUID: user.ObjId(),
 		Attributes: map[string]interface{}{
-			"UID": r.currentUID,
-			"passwords": []model.UserServerPassword{
+			"UID": currentUUID,
+			"passwords": []ext_model.UserServerPassword{
 				{
 					Seed:      randomSeed,
 					Salt:      randomSalt,
@@ -234,9 +269,7 @@ func (r *UserServerAccessRepository) CreateExtension(user *iam_model.User) error
 		SensitiveAttributes: nil, // TODO: ?
 	}
 
-	r.currentUID++
-
-	return nil
+	return r.saveUID(currentUUID)
 }
 
 func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) (string, error) {
@@ -256,7 +289,7 @@ func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) 
 	}
 
 	passwordsRaw := user.Extensions[iam_model.OriginServerAccess].Attributes["passwords"]
-	passwords := passwordsRaw.([]model.UserServerPassword)
+	passwords := passwordsRaw.([]ext_model.UserServerPassword)
 
 	passwords = garbageCollectPasswords(passwords, randomSeed, randomSalt, r.expireSeedAfterRevealIn, r.deleteExpiredPasswordSeedsAfter)
 
@@ -274,9 +307,9 @@ func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) 
 
 var NoValidPasswords = errors.New("no valid Password found in User extension")
 
-func returnFreshPassword(usps []model.UserServerPassword) (model.UserServerPassword, error) {
+func returnFreshPassword(usps []ext_model.UserServerPassword) (ext_model.UserServerPassword, error) {
 	if len(usps) == 0 {
-		return model.UserServerPassword{}, errors.New("no User password found")
+		return ext_model.UserServerPassword{}, errors.New("no User password found")
 	}
 
 	sort.Slice(usps, func(i, j int) bool {
@@ -286,8 +319,8 @@ func returnFreshPassword(usps []model.UserServerPassword) (model.UserServerPassw
 	return usps[0], NoValidPasswords
 }
 
-func garbageCollectPasswords(usps []model.UserServerPassword, seed, salt []byte,
-	expirePasswordSeedAfterRevealIn, deleteAfter time.Duration) (ret []model.UserServerPassword) {
+func garbageCollectPasswords(usps []ext_model.UserServerPassword, seed, salt []byte,
+	expirePasswordSeedAfterRevealIn, deleteAfter time.Duration) (ret []ext_model.UserServerPassword) {
 	var (
 		currentTime                            = time.Now()
 		expirePasswordSeedAfterTimestamp       = currentTime.Add(expirePasswordSeedAfterRevealIn)
@@ -297,7 +330,7 @@ func garbageCollectPasswords(usps []model.UserServerPassword, seed, salt []byte,
 
 	if !usps[len(usps)-1].ValidTill.After(expirePasswordSeedAfterTimestampHalved) {
 		usps[len(usps)-1].ValidTill = time.Time{}
-		usps = append(usps, model.UserServerPassword{
+		usps = append(usps, ext_model.UserServerPassword{
 			Seed:      seed,
 			Salt:      salt,
 			ValidTill: expirePasswordSeedAfterTimestamp,

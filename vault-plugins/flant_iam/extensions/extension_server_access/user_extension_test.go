@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -134,7 +135,7 @@ func prepareRoleBinding(t *testing.T, txn *io.MemoryStoreTxn, roleName model.Rol
 }
 
 func Test_UserIncludesToGroupWithSSH(t *testing.T) {
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
 	store, err := io.NewMemoryStore(schema, nil)
 	dieOnErr(t, err)
@@ -142,7 +143,7 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 	ten := prepareTenant(t, txn)
 	role := prepareSSHRole(t, txn)
 	user := prepareUser(t, txn, ten.UUID)
-	//sa := prepareServiceAccount(t, txn, ten.UUID)
+	// sa := prepareServiceAccount(t, txn, ten.UUID)
 	group := prepareGroup(t, txn, ten.UUID, nil, nil, nil)
 	prepareRoleBinding(t, txn, role.Name, ten.UUID, nil, nil, []model.GroupUUID{group.UUID})
 	assert.NoError(t, err)
@@ -155,7 +156,7 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 		ExpirePasswordSeedAfterReveialIn: 1000000,
 		LastAllocatedUID:                 1,
 	})
-	repoUser := model.NewUserRepository(txn)
+	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
 	assert.NotContains(t, user.Extensions, model.OriginServerAccess, "should not be an extension")
@@ -175,7 +176,7 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 }
 
 func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
 	store, err := io.NewMemoryStore(schema, nil)
 	dieOnErr(t, err)
@@ -183,7 +184,7 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 	ten := prepareTenant(t, txn)
 	role := prepareSSHRole(t, txn)
 	user := prepareUser(t, txn, ten.UUID)
-	//sa := prepareServiceAccount(t, txn, ten.UUID)
+	// sa := prepareServiceAccount(t, txn, ten.UUID)
 	rb := prepareRoleBinding(t, txn, role.Name, ten.UUID, nil, nil, nil)
 	assert.NoError(t, err)
 	storage := &logical.InmemStorage{}
@@ -202,7 +203,7 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 	err = txn.Insert(model.RoleBindingType, &newRoleBinding)
 
 	dieOnErr(t, err)
-	repoUser := model.NewUserRepository(txn)
+	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
 	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
@@ -212,7 +213,7 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 }
 
 func Test_SSHIsAddedToRoleBinding(t *testing.T) {
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
 	store, err := io.NewMemoryStore(schema, nil)
 	dieOnErr(t, err)
@@ -221,7 +222,7 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 	sshRole := prepareSSHRole(t, txn)
 	notSSHRRole := prepareNotSSHRole(t, txn)
 	user := prepareUser(t, txn, ten.UUID)
-	//sa := prepareServiceAccount(t, txn, ten.UUID)
+	// sa := prepareServiceAccount(t, txn, ten.UUID)
 	rb := prepareRoleBinding(t, txn, notSSHRRole.Name, ten.UUID, []model.UserUUID{user.UUID}, nil, nil)
 	assert.NoError(t, err)
 	storage := &logical.InmemStorage{}
@@ -243,7 +244,7 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 	err = txn.Insert(model.RoleBindingType, &newRoleBinding)
 
 	dieOnErr(t, err)
-	repoUser := model.NewUserRepository(txn)
+	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
 	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
@@ -253,7 +254,7 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 }
 
 func Test_SSHIsIncludedToRole(t *testing.T) {
-	schema, err := model.GetSchema()
+	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
 	store, err := io.NewMemoryStore(schema, nil)
 	dieOnErr(t, err)
@@ -262,7 +263,7 @@ func Test_SSHIsIncludedToRole(t *testing.T) {
 	sshRole := prepareSSHRole(t, txn)
 	notSSHRRole := prepareNotSSHRole(t, txn)
 	user := prepareUser(t, txn, ten.UUID)
-	//sa := prepareServiceAccount(t, txn, ten.UUID)
+	// sa := prepareServiceAccount(t, txn, ten.UUID)
 	prepareRoleBinding(t, txn, notSSHRRole.Name, ten.UUID, []model.UserUUID{user.UUID}, nil, nil)
 	assert.NoError(t, err)
 	storage := &logical.InmemStorage{}
@@ -283,7 +284,7 @@ func Test_SSHIsIncludedToRole(t *testing.T) {
 	err = txn.Insert(model.RoleType, &newNotSSHRole)
 
 	dieOnErr(t, err)
-	repoUser := model.NewUserRepository(txn)
+	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
 	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")

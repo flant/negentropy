@@ -149,6 +149,15 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 	return role
 }
 
+func CreateRoles(roleAPI api.TestAPI, roles ...model.Role) {
+	for _, r := range roles {
+		createPayload := fixtures.RoleCreatePayload(r)
+		params := api.Params{}
+		// don't check errors, as global roles can be already created
+		roleAPI.Create(params, url.Values{}, createPayload)
+	}
+}
+
 func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
 	createPayload := fixtures.RandomGroupCreatePayload()
 	createPayload["tenant_uuid"] = tenantID

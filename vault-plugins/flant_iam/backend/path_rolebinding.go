@@ -264,8 +264,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		defer tx.Abort()
 
 		if err := usecase.RoleBindings(tx).Create(roleBinding); err != nil {
-			msg := "cannot create role binding"
-			b.Logger().Debug(msg, "err", err.Error())
+			msg := fmt.Sprintf("cannot create role binding:%s", err)
+			b.Logger().Debug(msg)
 			return logical.ErrorResponse(msg), nil
 		}
 		if err := commit(tx, b.Logger()); err != nil {

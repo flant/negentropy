@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
@@ -35,7 +37,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
-		return err
+		return fmt.Errorf("RoleBindingService.Create:%s", err)
 	}
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
