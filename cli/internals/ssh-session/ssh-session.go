@@ -51,14 +51,6 @@ func (s *Session) SyncServersFromVault() {
 	if err != nil {
 		panic(err)
 	}
-
-	for i := range sl.Servers {
-		err := s.VaultService.FillServerSecureData(&sl.Servers[i])
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	s.ServerList = *sl
 }
 
@@ -115,11 +107,11 @@ func (s *Session) RenderBashRCToFile() {
 
 func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.Server) agent.AddedKey {
 	principals := []string{}
-	identifiers := []string{}
+	serverIdentifiers := []string{}
 
 	for _, server := range servers {
-		principals = append(principals, GenerateUserPrincipal(server, s.User))
-		identifiers = append(identifiers, server.Identifier)
+		principals = append(principals, GenerateUserPrincipal(server.UUID, s.User.UUID))
+		serverIdentifiers = append(serverIdentifiers, server.Identifier)
 	}
 
 	privateRSA, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -143,7 +135,7 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.
 
 	return agent.AddedKey{
 		PrivateKey:   privateRSA,
-		Comment:      strings.Join(identifiers, ","),
+		Comment:      strings.Join(serverIdentifiers, ","),
 		Certificate:  signedPublicSSHCert,
 		LifetimeSecs: uint32(signedPublicSSHCert.ValidBefore - uint64(time.Now().UTC().Unix())),
 	}
@@ -226,21 +218,7 @@ func (s *Session) syncRoutineEveryMinute() {
 	}
 }
 
-func (s *Session) Go() {
-	os.MkdirAll(Workdir, os.ModePerm)
-	s.UUID = uuid.Must(uuid.NewRandom()).String()
-	// TODO Hardcoded
-
-	tenantIdentifier := os.Getenv("TENANT_ID")
-	if tenantIdentifier == "" {
-		tenantIdentifier = "1tv"
-	}
-	fmt.Printf("Tenant identifier %s\n", tenantIdentifier)
-	s.ServerFilter = model.ServerFilter{
-		TenantIdentifiers: []string{tenantIdentifier}, // TODO redo for several tenants
-	}
-
-	s.User = s.VaultService.GetUser()
+func (s *Session) Start() {
 	s.StartSSHAgent()
 
 	s.syncRoutine()
@@ -249,4 +227,21 @@ func (s *Session) Go() {
 	s.StartShell()
 
 	s.Close()
+}
+
+func New(vaultService vault.VaultService, params SSHSessionRunParams) (Session, error) {
+	os.MkdirAll(Workdir, os.ModePerm)
+	session := Session{VaultService: vaultService}
+	session.UUID = uuid.Must(uuid.NewRandom()).String()
+	// TODO add serversIdentifiers and lables
+	if !params.AllTenants {
+		session.ServerFilter.TenantIdentifiers = []string{params.Tenant}
+	}
+	if !params.AllProjects {
+		session.ServerFilter.ProjectIdentifiers = []string{params.Project}
+	}
+	session.ServerFilter.ServerIdentifiers = params.Args
+	session.ServerFilter.LabelSelectors = params.Labels
+	session.User = session.VaultService.GetUser()
+	return session, nil
 }

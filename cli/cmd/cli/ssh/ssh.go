@@ -52,11 +52,14 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		if *err != nil {
 			return
 		}
-		*err = params.Validate()
+
+		params.Args = args
+
+		var s session.Session
+		s, *err = session.New(vault.NewService(), params)
 		if *err != nil {
 			return
 		}
-		s := session.Session{VaultService: vault.NewService()}
-		s.Go()
+		s.Start()
 	}
 }

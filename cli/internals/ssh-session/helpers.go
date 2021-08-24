@@ -10,8 +10,8 @@ import (
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-func GenerateUserPrincipal(s ext.Server, user iam.User) string {
-	hash := sha256.Sum256([]byte(s.UUID + user.UUID))
+func GenerateUserPrincipal(serverUUID, userUUID string) string {
+	hash := sha256.Sum256([]byte(serverUUID + userUUID))
 	return fmt.Sprintf("%x", hash)
 }
 
