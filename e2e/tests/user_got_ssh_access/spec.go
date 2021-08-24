@@ -384,7 +384,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/tmp/flint files doesn't exist before start")
 
 			// TODO Redo after design CLI
-			runningCliCmd := fmt.Sprintf("export USER_UUID=%s && export USER_FULL_ID=%s && /opt/cli/bin/cli  ssh -t %s --all-projects\n", user.UUID, user.FullIdentifier, tenant.Identifier)
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", tenant.Identifier)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test.txt", user.Identifier)
 			touchCommand := "touch " + testFilePath

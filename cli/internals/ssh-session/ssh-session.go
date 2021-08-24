@@ -20,12 +20,12 @@ import (
 	"github.com/flant/negentropy/cli/internals/model"
 	"github.com/flant/negentropy/cli/internals/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type Session struct {
 	UUID               string
-	User               iam.User
+	User               auth.User
 	ServerList         model.ServerList
 	ServerFilter       model.ServerFilter
 	VaultService       vault.VaultService
@@ -229,7 +229,7 @@ func (s *Session) Start() {
 	s.Close()
 }
 
-func New(vaultService vault.VaultService, params SSHSessionRunParams) (Session, error) {
+func New(vaultService vault.VaultService, params SSHSessionRunParams) (*Session, error) {
 	os.MkdirAll(Workdir, os.ModePerm)
 	session := Session{VaultService: vaultService}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
@@ -242,6 +242,10 @@ func New(vaultService vault.VaultService, params SSHSessionRunParams) (Session, 
 	}
 	session.ServerFilter.ServerIdentifiers = params.Args
 	session.ServerFilter.LabelSelectors = params.Labels
-	session.User = session.VaultService.GetUser()
-	return session, nil
+	user, err := session.VaultService.GetUser()
+	if err != nil {
+		return nil, err
+	}
+	session.User = *user
+	return &session, nil
 }

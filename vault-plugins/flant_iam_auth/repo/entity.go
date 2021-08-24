@@ -31,6 +31,13 @@ func EntitySchema() *memdb.DBSchema {
 							Field: "UserId",
 						},
 					},
+					ByName: {
+						Name:   ByName,
+						Unique: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Name",
+						},
+					},
 				},
 			},
 		},
@@ -51,6 +58,10 @@ func NewEntityRepo(db *io.MemoryStoreTxn) *EntityRepo {
 
 func (r *EntityRepo) GetByID(id string) (*model.Entity, error) {
 	return r.get(ID, id)
+}
+
+func (r *EntityRepo) GetByName(name string) (*model.Entity, error) {
+	return r.get(ByName, name)
 }
 
 func (r *EntityRepo) GetByUserId(name string) (*model.Entity, error) {

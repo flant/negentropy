@@ -87,3 +87,25 @@ func (a *EntityAPI) GetByName(name string) (map[string]interface{}, error) {
 func (a *EntityAPI) entityPath(name string) string {
 	return fmt.Sprintf("/identity/entity/name/%s", name)
 }
+
+func (a *EntityAPI) GetByID(entityID string) (map[string]interface{}, error) {
+	var resp *api.Secret
+	var err error
+
+	path := fmt.Sprintf("/identity/entity/id/%s", entityID)
+	op := func() error {
+		resp, err = a.clientApi.Logical().Read(path)
+		return err
+	}
+
+	err = a.callOp(op)
+
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, nil
+	}
+
+	return resp.Data, nil
+}
