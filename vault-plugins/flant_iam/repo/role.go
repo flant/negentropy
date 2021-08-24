@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	IncludedRolesIndex = "IncludedRolesIndex"
+	IncludedRolesIndex = "included_roles_index"
 	RoleScopeIndex     = "scope"
 	ArchivedAtIndex    = "archived_at_index"
 )

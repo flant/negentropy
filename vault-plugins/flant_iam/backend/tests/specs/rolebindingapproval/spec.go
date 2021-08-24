@@ -8,12 +8,14 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
 var (
 	TenantAPI      api.TestAPI
+	RoleAPI        api.TestAPI
 	RoleBindingAPI api.TestAPI
 	TestAPI        api.TestAPI
 )
@@ -21,6 +23,7 @@ var (
 var _ = Describe("Role binding approval", func() {
 	var tenantID, roleBindingID string
 	BeforeSuite(func() {
+		specs.CreateRoles(RoleAPI, fixtures.Roles()...)
 		res := TenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
 		tenantID = res.Get("tenant.uuid").String()
 		res = RoleBindingAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())

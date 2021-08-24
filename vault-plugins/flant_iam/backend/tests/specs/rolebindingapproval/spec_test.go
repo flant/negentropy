@@ -12,6 +12,7 @@ import (
 func Test_rolebindingApprovalCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TenantAPI = api.NewTenantAPI(&backend)
+	RoleAPI = api.NewRoleAPI(&backend)
 	RoleBindingAPI = api.NewRoleBindingAPI(&backend)
 	TestAPI = api.NewRoleBindingApprovalAPI(&backend)
 	RegisterFailHandler(Fail)
