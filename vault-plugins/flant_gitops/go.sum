@@ -1388,6 +1388,8 @@ github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210715224349-006041336244 h1:
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210715224349-006041336244/go.mod h1:lVWKjcbYzJ5CBw8NmDI4kQlO5FQNb/Pe9fGY3RtJ6BA=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210823182616-23a91b817bc8 h1:B17Ydokj1FLMH4COivf+3f5mt0jXCGAfjOpgu8SgJdA=
 github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210823182616-23a91b817bc8/go.mod h1:lVWKjcbYzJ5CBw8NmDI4kQlO5FQNb/Pe9fGY3RtJ6BA=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210824164229-ed847e15b393 h1:ppCWK9Pb1KcSQfGDT/R/wSbdOKUyy69xWMzDuzclX+U=
+github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210824164229-ed847e15b393/go.mod h1:lVWKjcbYzJ5CBw8NmDI4kQlO5FQNb/Pe9fGY3RtJ6BA=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 github.com/xdg-go/pbkdf2 v1.0.0 h1:Su7DPu48wXMwC3bs7MCNG+z4FhcyEuz5dlvchbq0B0c=

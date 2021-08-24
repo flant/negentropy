@@ -234,6 +234,9 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 		serviceDirInContext := ".flant_gitops"
 		serviceDockerfilePath := path.Join(serviceDirInContext, "Dockerfile")
+		serviceLabels := map[string]string{
+			"negentropy-flant-gitops-periodic-uuid": uuid.NewV4().String(),
+		}
 		contextReader, contextWriter := io.Pipe()
 		go func() {
 			if err := func() error {
@@ -243,7 +246,10 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
 				}
 
-				dockerfileOpts := docker.DockerfileOpts{EnvVars: vaultRequestEnvs}
+				dockerfileOpts := docker.DockerfileOpts{
+					EnvVars: vaultRequestEnvs,
+					Labels:  serviceLabels,
+				}
 
 				if apiConfig != nil {
 					vaultAddr := apiConfig.APIURL
@@ -283,13 +289,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 		b.Logger().Debug(fmt.Sprintf("Running commands %+q in the base image %q", config.Commands, config.DockerImage))
 
-		serviceLabels := map[string]string{
-			"negentropy-flant-gitops-periodic-uuid": uuid.NewV4().String(),
-		}
-
 		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
 			Dockerfile:  serviceDockerfilePath,
-			Labels:      serviceLabels,
 			NoCache:     true,
 			ForceRemove: true,
 			PullParent:  true,
@@ -298,6 +299,11 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		if err != nil {
 			return fmt.Errorf("unable to run docker image build: %s", err)
 		}
+		defer func() {
+			if err := docker.RemoveImagesByLabels(ctx, cli, serviceLabels); err != nil {
+				b.Logger().Error(fmt.Sprintf("unable to remove service docker image: %s", err))
+			}
+		}()
 
 		var outputBuf bytes.Buffer
 		out := io.MultiWriter(&outputBuf, logboek.Context(ctx).OutStream())
@@ -311,10 +317,6 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 		b.Logger().Debug("Command output END\n")
 
 		b.Logger().Debug(fmt.Sprintf("Commands %+q in the base image %q succeeded", config.Commands, config.DockerImage))
-
-		if err := docker.RemoveImagesByLabels(ctx, cli, serviceLabels); err != nil {
-			return fmt.Errorf("unable to remove service docker image: %s", err)
-		}
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{

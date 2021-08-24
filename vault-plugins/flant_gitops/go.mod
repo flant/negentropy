@@ -14,7 +14,7 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/werf/logboek v0.5.4
-	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210823182616-23a91b817bc8
+	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210824164229-ed847e15b393
 )
 
 replace github.com/theupdateframework/go-tuf => github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2
