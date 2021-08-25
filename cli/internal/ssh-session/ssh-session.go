@@ -17,10 +17,10 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/flant/negentropy/cli/internals/model"
-	"github.com/flant/negentropy/cli/internals/vault"
+	"github.com/flant/negentropy/cli/internal/model"
+	"github.com/flant/negentropy/cli/internal/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
 )
 
 type Session struct {
@@ -52,6 +52,12 @@ func (s *Session) SyncServersFromVault() {
 		panic(err)
 	}
 	s.ServerList = *sl
+	for i := range s.ServerList.Servers {
+		err := s.VaultService.FillServerSecureData(&s.ServerList.Servers[i])
+		if err != nil {
+			fmt.Printf("Error getting server secure data: %s", err)
+		}
+	}
 }
 
 func (s *Session) RenderKnownHostsToFile() {
@@ -229,22 +235,13 @@ func (s *Session) Start() {
 	s.Close()
 }
 
-func New(vaultService vault.VaultService, params SSHSessionRunParams) (*Session, error) {
+func New(vaultService vault.VaultService, params model.ServerFilter) (*Session, error) {
 	os.MkdirAll(Workdir, os.ModePerm)
-	session := Session{VaultService: vaultService}
+	session := Session{VaultService: vaultService, ServerFilter: params}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
-	// TODO add serversIdentifiers and lables
-	if !params.AllTenants {
-		session.ServerFilter.TenantIdentifiers = []string{params.Tenant}
-	}
-	if !params.AllProjects {
-		session.ServerFilter.ProjectIdentifiers = []string{params.Project}
-	}
-	session.ServerFilter.ServerIdentifiers = params.Args
-	session.ServerFilter.LabelSelectors = params.Labels
 	user, err := session.VaultService.GetUser()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting user: %w", err)
 	}
 	session.User = *user
 	return &session, nil

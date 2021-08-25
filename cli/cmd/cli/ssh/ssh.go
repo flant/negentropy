@@ -3,9 +3,10 @@ package ssh
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/flant/negentropy/cli/internals/consts"
-	session "github.com/flant/negentropy/cli/internals/ssh-session"
-	"github.com/flant/negentropy/cli/internals/vault"
+	"github.com/flant/negentropy/cli/internal/consts"
+	"github.com/flant/negentropy/cli/internal/model"
+	session "github.com/flant/negentropy/cli/internal/ssh-session"
+	"github.com/flant/negentropy/cli/internal/vault"
 )
 
 func NewCMD() *cobra.Command {
@@ -22,16 +23,18 @@ To establish connection at child session run 'ssh SERVER_IDENTIFIER@TENANT_IDENT
 	}
 	SSHCmd.PersistentFlags().Bool(consts.AllTenantsFlagName, false, "address all tenants of the user: --all-tenants")
 	SSHCmd.PersistentFlags().StringP(consts.TenantFlagName, string(consts.TenantFlagName[0]), "", "specify one of user tenant: -t first_tenant")
-	SSHCmd.PersistentFlags().Bool(consts.AllProjectsFlagName, false, "address all projects of the user: --all=projects")
+	SSHCmd.PersistentFlags().Bool(consts.AllProjectsFlagName, false, "address all projects of the user: --all-projects")
 	SSHCmd.PersistentFlags().StringP(consts.ProjectFlagName, string(consts.ProjectFlagName[0]), "", "specify one of user project at specific tenant: -t first tenant -p main")
-	SSHCmd.PersistentFlags().StringArrayP(consts.LabelsFlagName, string(consts.LabelsFlagName[0]), nil, "specify labels of desired servers: --all-tenants -l cloud=aws")
+	SSHCmd.PersistentFlags().StringP(consts.LabelsFlagName, string(consts.LabelsFlagName[0]), "", "specify labels of desired servers: --all-tenants -l cloud=aws")
+	SSHCmd.PersistentFlags().Bool(consts.AllServersFlagName, false, "address all servers: --all")
+
 	return SSHCmd
 }
 
 func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
-		params := session.SSHSessionRunParams{Args: args}
+		params := model.ServerFilter{ServerIdentifiers: args}
 		params.AllTenants, *err = flags.GetBool(consts.AllTenantsFlagName)
 		if *err != nil {
 			return
@@ -40,22 +43,26 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		if *err != nil {
 			return
 		}
-		params.Tenant, *err = flags.GetString(consts.TenantFlagName)
+		params.TenantIdentifier, *err = flags.GetString(consts.TenantFlagName)
 		if *err != nil {
 			return
 		}
-		params.Project, *err = flags.GetString(consts.ProjectFlagName)
+		params.ProjectIdentifier, *err = flags.GetString(consts.ProjectFlagName)
 		if *err != nil {
 			return
 		}
-		params.Labels, *err = flags.GetStringArray(consts.LabelsFlagName)
+		params.LabelSelector, *err = flags.GetString(consts.LabelsFlagName)
 		if *err != nil {
 			return
 		}
-		params.Args = args
-		*err = params.Validate()
+		params.AllServers, *err = flags.GetBool(consts.AllServersFlagName)
 		if *err != nil {
 			return
+		}
+		params.ServerIdentifiers = args
+
+		if len(params.ServerIdentifiers) == 0 {
+			params.AllServers = true
 		}
 
 		var s *session.Session
