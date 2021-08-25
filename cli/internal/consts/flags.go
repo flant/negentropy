@@ -6,4 +6,5 @@ const (
 	ProjectFlagName     = "project"
 	TenantFlagName      = "tenant"
 	LabelsFlagName      = "label"
+	AllServersFlagName  = "all"
 )

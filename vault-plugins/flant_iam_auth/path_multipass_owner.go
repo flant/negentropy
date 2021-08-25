@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 )
 
@@ -80,7 +80,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 		logger.Debug(fmt.Sprintf("found service_account UUID: %s", sa.UUID))
 		return logical.RespondWithStatusCode(&logical.Response{
 			Data: map[string]interface{}{
-				"service_account": model.ServiceAccount{
+				"service_account": ext.ServiceAccount{
 					UUID:           sa.UUID,
 					TenantUUID:     sa.TenantUUID,
 					BuiltinType:    sa.BuiltinType,
@@ -95,7 +95,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 	logger.Debug(fmt.Sprintf("found user UUID: %s", user.UUID))
 	return logical.RespondWithStatusCode(&logical.Response{
 		Data: map[string]interface{}{
-			"user": model.User{
+			"user": ext.User{
 				UUID:             user.UUID,
 				TenantUUID:       user.TenantUUID,
 				Origin:           user.TenantUUID,

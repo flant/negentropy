@@ -10,7 +10,7 @@ import (
 
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
 )
 
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
@@ -45,6 +45,7 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 }
 
 func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// TODO remove not user tenants
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
@@ -59,10 +60,10 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("list", "tenants", tenants)
 
-	result := make([]model.TenantIdentifiers, 0, len(tenants))
+	result := make([]ext.TenantIdentifiers, 0, len(tenants))
 
 	for _, tenant := range tenants {
-		res := model.TenantIdentifiers{
+		res := ext.TenantIdentifiers{
 			Identifier: tenant.Identifier,
 			UUID:       tenant.UUID,
 		}
@@ -76,6 +77,7 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 }
 
 func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	// TODO remove not user tenant
 	tenantID := data.Get("tenant_uuid").(string)
 
 	txn := b.storage.Txn(false)
@@ -88,10 +90,10 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
-	result := make([]model.ProjectIdentifiers, 0, len(projects))
+	result := make([]ext.ProjectIdentifiers, 0, len(projects))
 
 	for _, project := range projects {
-		res := model.ProjectIdentifiers{
+		res := ext.ProjectIdentifiers{
 			Identifier: project.Identifier,
 			UUID:       project.UUID,
 		}
