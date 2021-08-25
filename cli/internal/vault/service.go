@@ -37,7 +37,6 @@ func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, serverLis
 		newSl *model.ServerList
 		err   error
 	)
-	fmt.Printf("\nfilter:\n %#v\n", filter)
 	if !filter.AllTenants && !filter.AllProjects {
 		newSl, err = v.updateServerListByTenantAndProject(filter, serverList)
 	} else if !filter.AllTenants {
@@ -54,7 +53,7 @@ func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, serverLis
 		// TODO вот это должно рабоать по протуханию JWT или по отсутствию СonnectionInfo
 		err := v.FillServerSecureData(&newSl.Servers[i])
 		if err != nil {
-			fmt.Printf("Error getting server secure data: %s", err)
+			return nil, fmt.Errorf("getting server secure data: %w", err)
 		}
 	}
 	return newSl, nil
@@ -88,6 +87,7 @@ func (v vaultService) FillServerSecureData(s *ext.Server) error {
 	if err != nil {
 		return fmt.Errorf("FillServerSecureData, unmarshalling jwt: %w", err)
 	}
+	s.Identifier = server.Identifier
 	s.ConnectionInfo = server.ConnectionInfo
 	s.Fingerprint = server.Fingerprint
 	return nil
