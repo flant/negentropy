@@ -20,6 +20,7 @@ import (
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
 )
 
@@ -61,7 +62,7 @@ func (s *Session) Close() error {
 
 func (s *Session) SyncServersFromVault() error {
 	if s.ServerList == nil {
-		// TODO читать из кешного файла
+		// TODO read from cashe file
 		s.ServerList = &model.ServerList{
 			Tenants:  map[iam.TenantUUID]iam.Tenant{},
 			Projects: map[iam.ProjectUUID]iam.Project{},
@@ -73,6 +74,7 @@ func (s *Session) SyncServersFromVault() error {
 		return fmt.Errorf("SyncServersFromVault: %w", err)
 	}
 	s.ServerList = sl
+	//  TODO write to cashe file
 	return nil
 }
 
