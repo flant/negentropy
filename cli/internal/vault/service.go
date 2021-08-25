@@ -32,19 +32,7 @@ func (v vaultService) GetUser() (*auth.User, error) {
 	return v.vaultSession.GetUser()
 }
 
-func (v vaultService) GetServersByFilter(filter model.ServerFilter) (*model.ServerList, error) {
-	// sl.Tenant = vs.getTenantByIdentifier(filter.TenantIdentifier)
-	// если в фильтре есть ограничения по проектам:
-	//   projects := vs.getProjectsByTenant(&sl.Tenant)
-	//   выгрести лишние проекты из ответа по фильтру
-	//   для оставшихся проектов: LIST /tenant/<tenant.UUID>/project/<project.UUID>/query_server?<filter.RenderURIArgs()>
-	// если ограничений нет, то
-	//   LIST /tenant/<tenant.UUID>/query_server?<filter.RenderURIArgs()>
-
-	// == имеем ServerList, осталось заполнить манифесты
-	// для каждого сервера server.ConnectionInfo = vs.getServerManifest(server)
-	// если есть bastion, то как-то его надо заинклудить
-	// return serverList
+func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, serverList *model.ServerList) (*model.ServerList, error) {
 	if !filter.AllTenants && !filter.AllProjects {
 		return v.getServersByTenantAndProject(filter)
 	} else if !filter.AllTenants {
@@ -56,7 +44,7 @@ func (v vaultService) GetServersByFilter(filter model.ServerFilter) (*model.Serv
 	}
 }
 
-func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) []byte {
+func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) ([]byte, error) {
 	return v.vaultSession.SignPublicSSHCertificate(req)
 }
 

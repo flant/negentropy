@@ -149,18 +149,20 @@ func (vs *VaultSession) GetUser() (*auth.User, error) {
 	return &vaultUserMultipasOwnerResponse.Data.User, nil
 }
 
-func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) []byte {
+func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) ([]byte, error) {
 	var reqMap map[string]interface{}
 	data, _ := json.Marshal(vaultReq)
-	json.Unmarshal(data, &reqMap)
+	err := json.Unmarshal(data, &reqMap)
+	if err != nil {
+		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
+	}
 
 	ssh := vs.Client.SSHWithMountPoint("ssh")
 	secret, err := ssh.SignKey("signer", reqMap)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
 	}
-
-	return []byte(secret.Data["signed_key"].(string))
+	return []byte(secret.Data["signed_key"].(string)), nil
 }
 
 func (vs *VaultSession) GetServersByTenant(tenantUUID iam.TenantUUID,
