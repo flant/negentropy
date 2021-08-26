@@ -4,13 +4,15 @@ import "encoding/json"
 
 const ServerType = "server" // also, memdb schema name
 
+type ServerUUID = string
+
 type Server struct {
-	UUID          string `json:"uuid"` // ID
-	TenantUUID    string `json:"tenant_uuid"`
-	ProjectUUID   string `json:"project_uuid"`
-	Version       string `json:"resource_version"`
-	Identifier    string `json:"identifier"`
-	MultipassUUID string `json:"multipass_uuid"`
+	UUID          ServerUUID `json:"uuid"` // ID
+	TenantUUID    string     `json:"tenant_uuid"`
+	ProjectUUID   string     `json:"project_uuid"`
+	Version       string     `json:"resource_version"`
+	Identifier    string     `json:"identifier"`
+	MultipassUUID string     `json:"multipass_uuid"`
 
 	Fingerprint string            `json:"fingerprint"`
 	Labels      map[string]string `json:"labels"`

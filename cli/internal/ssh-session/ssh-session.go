@@ -66,7 +66,7 @@ func (s *Session) SyncServersFromVault() error {
 		s.ServerList = &model.ServerList{
 			Tenants:  map[iam.TenantUUID]iam.Tenant{},
 			Projects: map[iam.ProjectUUID]iam.Project{},
-			Servers:  []ext.Server{},
+			Servers:  map[ext.ServerUUID]ext.Server{},
 		}
 	}
 	sl, err := s.VaultService.UpdateServersByFilter(s.ServerFilter, s.ServerList)
@@ -188,14 +188,18 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.
 }
 
 func (s *Session) RefreshClientCertificates() error {
+	servers := make([]ext.Server, 0, len(s.ServerList.Servers))
+	for _, s := range s.ServerList.Servers {
+		servers = append(servers, s)
+	}
 	maxSize := 256
-	for i, j := 0, 0; i < len(s.ServerList.Servers); {
+	for i, j := 0, 0; i < len(servers); {
 		j += maxSize
-		if j > len(s.ServerList.Servers) {
-			j = len(s.ServerList.Servers)
+		if j > len(servers) {
+			j = len(servers)
 		}
 
-		serversBucket := s.ServerList.Servers[i:j]
+		serversBucket := servers[i:j]
 		signedCertificateForBucket, err := s.generateAndSignSSHCertificateSetForServerBucket(serversBucket)
 		if err != nil {
 			return fmt.Errorf("RefreshClientCertificates: %w", err)

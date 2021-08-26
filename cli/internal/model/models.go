@@ -21,7 +21,7 @@ type ServerFilter struct {
 type ServerList struct {
 	Tenants  map[iam.TenantUUID]iam.Tenant
 	Projects map[iam.ProjectUUID]iam.Project
-	Servers  []ext.Server
+	Servers  map[ext.ServerUUID]ext.Server
 }
 
 type VaultSSHSignRequest struct {

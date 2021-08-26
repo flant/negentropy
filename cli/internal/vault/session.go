@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	vault_api "github.com/hashicorp/vault/api"
@@ -43,8 +44,11 @@ func NewVaultSession() VaultSession {
 	}
 }
 
-func (vs *VaultSession) makeRequest(method, requestPath string) ([]byte, error) {
+func (vs *VaultSession) makeRequest(method, requestPath string, params url.Values) ([]byte, error) {
 	req := vs.Client.NewRequest(method, requestPath)
+	if params != nil {
+		req.Params = params
+	}
 	resp, err := vs.Client.RawRequest(req)
 	defer resp.Body.Close()
 
@@ -58,7 +62,7 @@ func (vs *VaultSession) makeRequest(method, requestPath string) ([]byte, error) 
 }
 
 func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) { // TODO UP
-	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant")
+	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +80,7 @@ func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) { // TODO UP
 
 func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) { // TODO UP
 	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
-		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID))
+		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjects: %w", err)
 	}
@@ -108,7 +112,7 @@ func (vs *VaultSession) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, 
 func (vs *VaultSession) GetServerToken(server ext.Server) (string, error) {
 	vaultServerTokenResponseBytes, err := vs.makeRequest("GET",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s",
-			server.TenantUUID, server.ProjectUUID, server.UUID))
+			server.TenantUUID, server.ProjectUUID, server.UUID), nil)
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +132,7 @@ func (vs *VaultSession) GetServerToken(server ext.Server) (string, error) {
 }
 
 func (vs *VaultSession) GetUser() (*auth.User, error) {
-	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner")
+	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner", nil)
 	if err != nil {
 		return nil, fmt.Errorf("get_user:%w", err)
 	}
@@ -187,11 +191,12 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 	if len(serverIdentifiers) > 0 && labelSelector != "" {
 		return nil, fmt.Errorf("getServers: only serverIdentifiers or labelSelector must be set")
 	}
+	var params url.Values
 	if len(serverIdentifiers) > 0 {
-		requestPath += "?name=" + strings.Join(serverIdentifiers, ",")
+		params = url.Values{"names": []string{strings.Join(serverIdentifiers, ",")}}
 	}
 	if labelSelector != "" {
-		requestPath += "?labelSelector=" + labelSelector
+		params = url.Values{"labelSelector": []string{labelSelector}}
 	}
 	var vaultServersResponse struct {
 		Data struct {
@@ -199,7 +204,9 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 		} `json:"data"`
 	}
 
-	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath)
+	fmt.Printf("\npath with args=\n%s", requestPath)
+
+	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params)
 	if err != nil {
 		return nil, fmt.Errorf("VaultSession.getServers: %w", err)
 	}
@@ -215,7 +222,7 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 }
 
 func (vs *VaultSession) getTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID)
+	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getTenantByUUID: %w", err)
 	}
@@ -233,7 +240,7 @@ func (vs *VaultSession) getTenantByUUID(tenantUUID string) (*iam.Tenant, error) 
 
 func (vs *VaultSession) getProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
-		"/project/"+projectUUID)
+		"/project/"+projectUUID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
 	}

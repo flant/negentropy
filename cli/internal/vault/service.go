@@ -49,12 +49,13 @@ func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, serverLis
 	if err != nil {
 		return nil, fmt.Errorf("UpdateServersByFilter: %w", err)
 	}
-	for i := range newSl.Servers {
+	for serverUUID, s := range newSl.Servers {
 		// TODO вот это должно рабоать по протуханию JWT или по отсутствию СonnectionInfo
-		err := v.FillServerSecureData(&newSl.Servers[i])
+		err := v.FillServerSecureData(&s)
 		if err != nil {
 			return nil, fmt.Errorf("getting server secure data: %w", err)
 		}
+		newSl.Servers[serverUUID] = s
 	}
 	return newSl, nil
 }
@@ -117,10 +118,15 @@ func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilt
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenantAndProject, collecting servers: %w", err)
 	}
+	serverMap, err := v.updateServers(oldServerlist.Servers, servers)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByTenantAndProject, collecting servers: %w", err)
+	}
+
 	return &model.ServerList{
 		Tenants:  tenants,
 		Projects: projects,
-		Servers:  servers,
+		Servers:  serverMap,
 	}, nil
 }
 
@@ -205,10 +211,14 @@ func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldSer
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenant, collecting servers: %w", err)
 	}
+	serverMap, err := v.updateServers(oldServerlist.Servers, servers)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByTenant, collecting servers: %w", err)
+	}
 	return &model.ServerList{
 		Tenants:  tenants,
 		Projects: projects,
-		Servers:  servers,
+		Servers:  serverMap,
 	}, nil
 }
 
@@ -232,10 +242,14 @@ func (v vaultService) updateServerListByProject(filter model.ServerFilter, oldSe
 	if err != nil {
 		return nil, fmt.Errorf("getServersByProject, collecting servers: %w", err)
 	}
+	serverMap, err := v.updateServers(oldServerlist.Servers, servers)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByProject, collecting servers: %w", err)
+	}
 	return &model.ServerList{
 		Tenants:  allTenants,
 		Projects: projects,
-		Servers:  servers,
+		Servers:  serverMap,
 	}, nil
 }
 
@@ -253,9 +267,30 @@ func (v vaultService) updateServerList(filter model.ServerFilter, oldServerlist 
 	if err != nil {
 		return nil, fmt.Errorf("getServers, collecting servers: %w", err)
 	}
+	serverMap, err := v.updateServers(oldServerlist.Servers, servers)
+	if err != nil {
+		return nil, fmt.Errorf("getServers, collecting servers: %w", err)
+	}
 	return &model.ServerList{
 		Tenants:  allTenants,
 		Projects: allProjects,
-		Servers:  servers,
+		Servers:  serverMap,
 	}, nil
+}
+
+func (v vaultService) updateServers(oldServers map[ext.ServerUUID]ext.Server,
+	newServers []ext.Server) (map[ext.ServerUUID]ext.Server, error) {
+	result := map[ext.ServerUUID]ext.Server{}
+	for _, s := range newServers {
+		if oldS, ok := oldServers[s.UUID]; !ok || oldS.Version != s.Version {
+			err := v.FillServerSecureData(&s)
+			if err != nil {
+				return nil, fmt.Errorf("updateServers: %w", err)
+			}
+		} else {
+			s = oldS
+		}
+		result[s.UUID] = s
+	}
+	return result, nil
 }
