@@ -41,6 +41,8 @@ var serverSocketCFG string
 //go:embed server_main.yaml
 var serverMainCFG string
 
+var labels = map[string]string{"system": "ubuntu20"}
+
 // Config vars through envs
 var (
 	testServerContainerName string
@@ -245,6 +247,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					TenantUUID:  tenant.UUID,
 					ProjectUUID: project.UUID,
 					Identifier:  testServerIdentifier,
+					Labels:      labels,
 				})
 			fmt.Printf("Created testServer Server:%#v\n", testServer)
 		})
@@ -383,7 +386,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
 				"/tmp/flint files doesn't exist before start")
 
-			// TODO Redo after design CLI
 			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", tenant.Identifier)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test.txt", user.Identifier)
@@ -420,7 +422,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
 				"/tmp/flint files doesn't exist before start")
 
-			// TODO Redo after design CLI
 			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", tenant.Identifier, project.Identifier)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test2.txt", user.Identifier)
@@ -453,12 +454,16 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/tmp/flint is empty  after closing cli")
 		})
 
-		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects ]", func() {
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects -l system=ubuntu20]", func() {
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
 				"/tmp/flint files doesn't exist before start")
 
-			// TODO Redo after design CLI
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects\n")
+			var labelSelector string
+			for k, v := range labels {
+				labelSelector = k + "=" + v
+				break // just one pair
+			}
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects -l %s\n", labelSelector)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test3.txt", user.Identifier)
 			touchCommand := "touch " + testFilePath
@@ -490,12 +495,11 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/tmp/flint is empty  after closing cli")
 		})
 
-		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX ]", func() {
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX  test-server]", func() {
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
 				"/tmp/flint files doesn't exist before start")
 
-			// TODO Redo after design CLI
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s\n", project.Identifier)
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", project.Identifier, testServerIdentifier)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test4.txt", user.Identifier)
 			touchCommand := "touch " + testFilePath
