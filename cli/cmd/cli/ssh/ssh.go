@@ -1,6 +1,9 @@
 package ssh
 
 import (
+	"os"
+	"path"
+
 	"github.com/spf13/cobra"
 
 	"github.com/flant/negentropy/cli/internal/consts"
@@ -65,8 +68,17 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 			params.AllServers = true
 		}
 
-		var s *session.Session
-		s, *err = session.New(vault.NewService(), params)
+		var (
+			s       *session.Session
+			homeDir string
+		)
+		homeDir, *err = os.UserHomeDir()
+		if *err != nil {
+			return
+		}
+		permanentCacheFilePath := path.Join(homeDir, ".flant", "cli", "ssh", "cache")
+
+		s, *err = session.New(vault.NewService(), params, permanentCacheFilePath)
 		if *err != nil {
 			return
 		}
