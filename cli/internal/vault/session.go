@@ -61,7 +61,7 @@ func (vs *VaultSession) makeRequest(method, requestPath string, params url.Value
 	return buf.Bytes(), nil
 }
 
-func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) { // TODO UP
+func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) { // TODO UP
 	return vaultTenantsResponse.Data.Tenants, nil
 }
 
-func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) { // TODO UP
+func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) {
 	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil)
 	if err != nil {
@@ -203,8 +203,6 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 			Servers []ext.Server `json:"servers"`
 		} `json:"data"`
 	}
-
-	fmt.Printf("\npath with args=\n%s", requestPath)
 
 	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params)
 	if err != nil {

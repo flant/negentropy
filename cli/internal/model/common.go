@@ -3,25 +3,19 @@ package model
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
+
 	"github.com/flant/negentropy/cli/internal/consts"
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 type ServerFilter struct {
-	AllTenants        bool
-	AllProjects       bool
-	AllServers        bool
-	TenantIdentifier  string
-	ProjectIdentifier string
-	LabelSelector     string
-	ServerIdentifiers []string
-}
-
-type ServerList struct {
-	Tenants  map[iam.TenantUUID]iam.Tenant
-	Projects map[iam.ProjectUUID]iam.Project
-	Servers  map[ext.ServerUUID]ext.Server
+	AllTenants         bool
+	AllProjects        bool
+	AllServers         bool
+	TenantIdentifiers  StringSet
+	ProjectIdentifiers StringSet
+	LabelSelector      string
+	ServerIdentifiers  []string
 }
 
 type VaultSSHSignRequest struct {
@@ -62,7 +56,7 @@ func (p ServerFilter) Validate() error {
 }
 
 func needTenant(params ServerFilter) error {
-	if params.AllTenants || params.TenantIdentifier != "" {
+	if params.AllTenants || !params.TenantIdentifiers.IsEmpty() {
 		return nil
 	}
 	return fmt.Errorf("needs %s or %s flag", consts.AllTenantsFlagName, consts.TenantFlagName)
@@ -70,7 +64,7 @@ func needTenant(params ServerFilter) error {
 
 func needProjectsIfTenant(params ServerFilter) error {
 	if !params.AllTenants {
-		if params.AllProjects || params.ProjectIdentifier != "" {
+		if params.AllProjects || !params.ProjectIdentifiers.IsEmpty() {
 			return nil
 		}
 		return fmt.Errorf("needs %s or %s flag in case of tenant is defined", consts.AllProjectsFlagName,
@@ -87,10 +81,41 @@ func needOneOfAllServersFlagOrServersIdentifiers(params ServerFilter) error {
 }
 
 func needServersIdentifiersOrLabelSelector(params ServerFilter) error {
-	if ((params.AllServers || len(params.ServerIdentifiers) > 0) && params.LabelSelector != "") ||
-		((!params.AllServers || len(params.ServerIdentifiers) == 0) && params.LabelSelector == "") {
+	if len(params.ServerIdentifiers) > 0 && params.LabelSelector != "" {
 		return fmt.Errorf("needs one of : %s, or servers identifiers, or %s", consts.AllServersFlagName,
 			consts.LabelsFlagName)
 	}
 	return nil
+}
+
+type StringSet map[string]struct{}
+
+func (s *StringSet) Put(identifier string) {
+	(*s)[identifier] = struct{}{}
+}
+
+func (s *StringSet) Contains(identifier string) bool {
+	if _, ok := (*s)[identifier]; ok {
+		return true
+	}
+	return false
+}
+
+func (s *StringSet) Length() int {
+	return len(*s)
+}
+
+func (s *StringSet) IsEmpty() bool {
+	return len(*s) == 0
+}
+
+func StringSetFromStringFlag(flags *pflag.FlagSet, flagName string) (StringSet, error) {
+	s, err := flags.GetString(flagName)
+	if err != nil {
+		return StringSet{}, err
+	}
+	if s == "" {
+		return StringSet{}, nil
+	}
+	return StringSet{s: struct{}{}}, nil
 }

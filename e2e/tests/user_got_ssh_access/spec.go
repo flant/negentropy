@@ -94,7 +94,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 	const SSHRole = "ssh"
 	const ServerRole = "servers"
 	const testServerIdentifier = "test-server"
-	const testClientIdentifier = "test-client"
 
 	var (
 		tenant      model.Tenant
@@ -103,7 +102,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 		group       model.Group
 		rolebinding model.RoleBinding
 		testServer  specs.ServerRegistrationResult
-		// testClient  specs.ServerRegistrationResult
 		userJWToken string
 	)
 

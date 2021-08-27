@@ -7,4 +7,6 @@ const (
 	TenantFlagName      = "tenant"
 	LabelsFlagName      = "label"
 	AllServersFlagName  = "all"
+	OutputFlagName      = "output"
+	OnlyCacheFlagName   = "only-from-cache"
 )
