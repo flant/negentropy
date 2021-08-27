@@ -41,6 +41,8 @@ var serverSocketCFG string
 //go:embed server_main.yaml
 var serverMainCFG string
 
+var labels = map[string]string{"system": "ubuntu20"}
+
 // Config vars through envs
 var (
 	testServerContainerName string
@@ -245,6 +247,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					TenantUUID:  tenant.UUID,
 					ProjectUUID: project.UUID,
 					Identifier:  testServerIdentifier,
+					Labels:      labels,
 				})
 			fmt.Printf("Created testServer Server:%#v\n", testServer)
 		})
@@ -383,7 +386,6 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
 				"/tmp/flint files doesn't exist before start")
 
-			// TODO Redo after design CLI
 			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", tenant.Identifier)
 			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
 			testFilePath := fmt.Sprintf("/home/%s/test.txt", user.Identifier)
@@ -416,116 +418,230 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				"/tmp/flint is empty  after closing cli")
 		})
 
-		//It("Cli ssh can run, write through ssh, and remove tmp files, [-t XXX -p YYY]", func() {
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist before start")
-		//
-		//	// TODO Redo after design CLI
-		//	runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", tenant.Identifier, project.Identifier)
-		//	sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
-		//	testFilePath := fmt.Sprintf("/home/%s/test2.txt", user.Identifier)
-		//	touchCommand := "touch " + testFilePath
-		//	fmt.Printf("\n%s\n", runningCliCmd)
-		//	fmt.Printf("\n%s\n", sshCmd)
-		//	fmt.Printf("\n%s\n", touchCommand)
-		//	output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
-		//		"/bin/bash", "-c",
-		//		runningCliCmd,
-		//	},
-		//		[]string{
-		//			sshCmd,
-		//			touchCommand,
-		//			"exit", "exit",
-		//		})
-		//
-		//	writeLogToFile(output, "cli.log")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist after closing cli")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint is empty  after closing cli")
-		//})
-		//
-		//It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects ]", func() {
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist before start")
-		//
-		//	// TODO Redo after design CLI
-		//	runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects\n")
-		//	sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
-		//	testFilePath := fmt.Sprintf("/home/%s/test3.txt", user.Identifier)
-		//	touchCommand := "touch " + testFilePath
-		//	fmt.Printf("\n%s\n", runningCliCmd)
-		//	fmt.Printf("\n%s\n", sshCmd)
-		//	fmt.Printf("\n%s\n", touchCommand)
-		//	output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
-		//		"/bin/bash", "-c",
-		//		runningCliCmd,
-		//	},
-		//		[]string{
-		//			sshCmd,
-		//			touchCommand,
-		//			"exit", "exit",
-		//		})
-		//
-		//	writeLogToFile(output, "cli.log")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist after closing cli")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint is empty  after closing cli")
-		//})
-		//
-		//It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX ]", func() {
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist before start")
-		//
-		//	// TODO Redo after design CLI
-		//	runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s\n", project.Identifier)
-		//	sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
-		//	testFilePath := fmt.Sprintf("/home/%s/test4.txt", user.Identifier)
-		//	touchCommand := "touch " + testFilePath
-		//	fmt.Printf("\n%s\n", runningCliCmd)
-		//	fmt.Printf("\n%s\n", sshCmd)
-		//	fmt.Printf("\n%s\n", touchCommand)
-		//	output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
-		//		"/bin/bash", "-c",
-		//		runningCliCmd,
-		//	},
-		//		[]string{
-		//			sshCmd,
-		//			touchCommand,
-		//			"exit", "exit",
-		//		})
-		//
-		//	writeLogToFile(output, "cli.log")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint files doesn't exist after closing cli")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-		//
-		//	Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
-		//		ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-		//
-		//	Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
-		//		"/tmp/flint is empty  after closing cli")
-		//})
+		It("Cli ssh can run, write through ssh, and remove tmp files, [-t XXX -p YYY]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", tenant.Identifier, project.Identifier)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test2.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+
+			writeLogToFile(output, "cli.log")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
+
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects -l system=ubuntu20]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+
+			var labelSelector string
+			for k, v := range labels {
+				labelSelector = k + "=" + v
+				break // just one pair
+			}
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects -l %s\n", labelSelector)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test3.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+
+			writeLogToFile(output, "cli.log")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
+
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX  test-server]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", project.Identifier, testServerIdentifier)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test4.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+
+      output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+
+			writeLogToFile(output, "cli.log")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
+
+		It("Cli ssh can run, write through ssh, and remove tmp files, [-t XXX -p YYY]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+		
+			// TODO Redo after design CLI
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", tenant.Identifier, project.Identifier)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test2.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+		
+			writeLogToFile(output, "cli.log")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
+		
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects ]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+		
+			// TODO Redo after design CLI
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects\n")
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test3.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+		
+			writeLogToFile(output, "cli.log")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
+		
+		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX ]", func() {
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist before start")
+		
+			// TODO Redo after design CLI
+			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s\n", project.Identifier)
+			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", project.Identifier, testServerIdentifier)
+			testFilePath := fmt.Sprintf("/home/%s/test4.txt", user.Identifier)
+			touchCommand := "touch " + testFilePath
+			fmt.Printf("\n%s\n", runningCliCmd)
+			fmt.Printf("\n%s\n", sshCmd)
+			fmt.Printf("\n%s\n", touchCommand)
+			output := executeCommandAtContainer(dockerCli, testClientContainer, []string{
+				"/bin/bash", "-c",
+				runningCliCmd,
+			},
+				[]string{
+					sshCmd,
+					touchCommand,
+					"exit", "exit",
+				})
+		
+			writeLogToFile(output, "cli.log")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint files doesn't exist after closing cli")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testServerContainer, testFilePath, "f")).
+				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+		
+			Expect(checkFileExistAtContainer(dockerCli, testClientContainer, "/tmp/flint", "d")).
+				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+		
+			Expect(directoryAtContainerNotExistOrEmpty(dockerCli, testClientContainer, "/tmp/flint")).To(BeTrue(),
+				"/tmp/flint is empty  after closing cli")
+		})
 	})
 })
 

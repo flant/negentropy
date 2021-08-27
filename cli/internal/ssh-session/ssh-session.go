@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +27,8 @@ import (
 
 type Session struct {
 	UUID               string
+	PermanentCache     model.ServerList
+	CachePath          string
 	User               auth.User
 	ServerList         *model.ServerList
 	ServerFilter       model.ServerFilter
@@ -62,19 +65,22 @@ func (s *Session) Close() error {
 
 func (s *Session) SyncServersFromVault() error {
 	if s.ServerList == nil {
-		// TODO read from cashe file
-		s.ServerList = &model.ServerList{
-			Tenants:  map[iam.TenantUUID]iam.Tenant{},
-			Projects: map[iam.ProjectUUID]iam.Project{},
-			Servers:  []ext.Server{},
+		cache, err := s.tryReadCacheFromFile()
+		if err != nil {
+			return fmt.Errorf("SyncServersFromVault, reading permanent cache: %w", err)
 		}
+		s.PermanentCache = *cache
+		s.ServerList = cache
 	}
 	sl, err := s.VaultService.UpdateServersByFilter(s.ServerFilter, s.ServerList)
 	if err != nil {
 		return fmt.Errorf("SyncServersFromVault: %w", err)
 	}
 	s.ServerList = sl
-	//  TODO write to cashe file
+	err = s.updateCache()
+	if err != nil {
+		return fmt.Errorf("SyncServersFromVault, saving permanent cache: %w", err)
+	}
 	return nil
 }
 
@@ -188,14 +194,18 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.
 }
 
 func (s *Session) RefreshClientCertificates() error {
+	servers := make([]ext.Server, 0, len(s.ServerList.Servers))
+	for _, s := range s.ServerList.Servers {
+		servers = append(servers, s)
+	}
 	maxSize := 256
-	for i, j := 0, 0; i < len(s.ServerList.Servers); {
+	for i, j := 0, 0; i < len(servers); {
 		j += maxSize
-		if j > len(s.ServerList.Servers) {
-			j = len(s.ServerList.Servers)
+		if j > len(servers) {
+			j = len(servers)
 		}
 
-		serversBucket := s.ServerList.Servers[i:j]
+		serversBucket := servers[i:j]
 		signedCertificateForBucket, err := s.generateAndSignSSHCertificateSetForServerBucket(serversBucket)
 		if err != nil {
 			return fmt.Errorf("RefreshClientCertificates: %w", err)
@@ -313,9 +323,40 @@ func (s *Session) Start() error {
 	return err
 }
 
-func New(vaultService vault.VaultService, params model.ServerFilter) (*Session, error) {
+func (s *Session) updateCache() error {
+	for k, v := range s.ServerList.Tenants {
+		s.PermanentCache.Tenants[k] = v
+	}
+	for k, v := range s.ServerList.Projects {
+		s.PermanentCache.Projects[k] = v
+	}
+	for k, v := range s.ServerList.Servers {
+		s.PermanentCache.Servers[k] = v
+	}
+	return SaveToFile(s.PermanentCache, s.CachePath)
+}
+
+func (s *Session) tryReadCacheFromFile() (*model.ServerList, error) {
+	if _, err := os.Stat(s.CachePath); os.IsNotExist(err) {
+		dirPath := path.Dir(s.CachePath)
+		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+			err = os.MkdirAll(dirPath, 0o644) // Create path
+			if err != nil {
+				return nil, fmt.Errorf("tryReadCacheFromFile, creating dirs: %w", err)
+			}
+		}
+		return &model.ServerList{
+			Tenants:  map[iam.TenantUUID]iam.Tenant{},
+			Projects: map[iam.ProjectUUID]iam.Project{},
+			Servers:  map[ext.ServerUUID]ext.Server{},
+		}, nil
+	}
+	return ReadFromFile(s.CachePath)
+}
+
+func New(vaultService vault.VaultService, serverFilter model.ServerFilter, cacheFilePath string) (*Session, error) {
 	os.MkdirAll(Workdir, os.ModePerm)
-	session := Session{VaultService: vaultService, ServerFilter: params}
+	session := Session{VaultService: vaultService, ServerFilter: serverFilter, CachePath: cacheFilePath}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
 	user, err := session.VaultService.GetUser()
 	if err != nil {
