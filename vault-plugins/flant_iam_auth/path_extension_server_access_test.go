@@ -73,7 +73,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	tenant := uuid.New()
 	project := uuid.New()
 
-	err = createServers(tx, tenant, project)
+	serverUUIDs, err := createServers(tx, tenant, project)
 	require.NoError(t, err)
 	_ = tx.Commit()
 
@@ -100,7 +100,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, serverUUIDs[0], respData.Data.Servers[0].UUID)
 		})
 
 		t.Run("by name with warnings", func(t *testing.T) {
@@ -118,7 +119,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, serverUUIDs[0], respData.Data.Servers[0].UUID)
 
 			require.Len(t, respData.Warnings, 1)
 			assert.Equal(t, respData.Warnings[0], `Server: "db-3" not found`)
@@ -139,7 +141,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, serverUUIDs[1], respData.Data.Servers[0].UUID)
 		})
 
 		t.Run("by IN labels", func(t *testing.T) {
@@ -157,7 +160,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, serverUUIDs[1], respData.Data.Servers[0].UUID)
 		})
 
 		t.Run("names and labelSelector at once are forbidden", func(t *testing.T) {
@@ -207,7 +211,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, serverUUIDs[1], respData.Data.Servers[0].UUID)
 		})
 	})
 
@@ -244,7 +249,8 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier)
+			assert.Equal(t, "", respData.Data.Servers[0].Identifier)
 		})
 	})
 }
@@ -298,7 +304,7 @@ func Test_ExtensionServer_JWT(t *testing.T) {
 	project := uuid.New()
 	serverID := uuid.New()
 
-	err = createServers(tx, tenant, project, serverID)
+	_, err = createServers(tx, tenant, project, serverID)
 	require.NoError(t, err)
 	_ = tx.Commit()
 
@@ -323,7 +329,8 @@ func Test_ExtensionServer_JWT(t *testing.T) {
 	assert.NotEmpty(t, respData.Data.Token)
 }
 
-func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID ...string) error {
+// returns servers uuids
+func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID ...string) ([]string, error) {
 	predefinedID := uuid.New()
 	if len(serverID) > 0 {
 		predefinedID = serverID[0]
@@ -354,15 +361,15 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 
 	err := tx.Insert(ext_model.ServerType, serverDB1)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = tx.Insert(ext_model.ServerType, serverWithLabels)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return []string{serverDB1.UUID, serverWithLabels.UUID}, nil
 }
 
 func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {

@@ -1,13 +1,28 @@
 package model
 
-type ProjectIdentifiers struct {
-	UUID       string `json:"uuid"`
+type SafeProject struct {
+	UUID       string `json:"uuid"` // PK
+	TenantUUID string `json:"tenant_uuid"`
+	Version    string `json:"resource_version"`
+}
+
+type Project struct {
+	UUID       string `json:"uuid"` // PK
+	TenantUUID string `json:"tenant_uuid"`
+	Version    string `json:"resource_version"`
 	Identifier string `json:"identifier"`
 }
 
-type TenantIdentifiers struct {
-	UUID       string `json:"uuid"`
-	Identifier string `json:"identifier"`
+type SafeTenant struct {
+	UUID    string `json:"uuid"`
+	Version string `json:"version"`
+}
+
+type SafeServer struct {
+	UUID        string `json:"uuid"`
+	Version     string `json:"resource_version"`
+	ProjectUUID string `json:"project_uuid"`
+	TenantUUID  string `json:"tenant_uuid"`
 }
 
 type Server struct {

@@ -15,8 +15,8 @@ import (
 type VaultService interface {
 	GetServerToken(ext.Server) (string, error)
 	GetUser() (*auth.User, error)
-	GetServersByFilter(model.ServerFilter) (*model.ServerList, error)
-	SignPublicSSHCertificate(model.VaultSSHSignRequest) []byte
+	UpdateServersByFilter(model.ServerFilter, *model.ServerList) (*model.ServerList, error)
+	SignPublicSSHCertificate(model.VaultSSHSignRequest) ([]byte, error)
 	FillServerSecureData(s *ext.Server) error
 }
 
@@ -32,31 +32,34 @@ func (v vaultService) GetUser() (*auth.User, error) {
 	return v.vaultSession.GetUser()
 }
 
-func (v vaultService) GetServersByFilter(filter model.ServerFilter) (*model.ServerList, error) {
-	// sl.Tenant = vs.getTenantByIdentifier(filter.TenantIdentifier)
-	// если в фильтре есть ограничения по проектам:
-	//   projects := vs.getProjectsByTenant(&sl.Tenant)
-	//   выгрести лишние проекты из ответа по фильтру
-	//   для оставшихся проектов: LIST /tenant/<tenant.UUID>/project/<project.UUID>/query_server?<filter.RenderURIArgs()>
-	// если ограничений нет, то
-	//   LIST /tenant/<tenant.UUID>/query_server?<filter.RenderURIArgs()>
-
-	// == имеем ServerList, осталось заполнить манифесты
-	// для каждого сервера server.ConnectionInfo = vs.getServerManifest(server)
-	// если есть bastion, то как-то его надо заинклудить
-	// return serverList
+func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, serverList *model.ServerList) (*model.ServerList, error) {
+	var (
+		newSl *model.ServerList
+		err   error
+	)
 	if !filter.AllTenants && !filter.AllProjects {
-		return v.getServersByTenantAndProject(filter)
+		newSl, err = v.updateServerListByTenantAndProject(filter, serverList)
 	} else if !filter.AllTenants {
-		return v.getServersByTenant(filter)
+		newSl, err = v.updateServerListByTenant(filter, serverList)
 	} else if !filter.AllProjects {
-		return v.getServersByProject(filter)
+		newSl, err = v.updateServerListByProject(filter, serverList)
 	} else {
-		return v.getServers(filter)
+		newSl, err = v.updateServerList(filter, serverList)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("UpdateServersByFilter: %w", err)
+	}
+	for i := range newSl.Servers {
+		// TODO вот это должно рабоать по протуханию JWT или по отсутствию СonnectionInfo
+		err := v.FillServerSecureData(&newSl.Servers[i])
+		if err != nil {
+			return nil, fmt.Errorf("getting server secure data: %w", err)
+		}
+	}
+	return newSl, nil
 }
 
-func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) []byte {
+func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) ([]byte, error) {
 	return v.vaultSession.SignPublicSSHCertificate(req)
 }
 
@@ -71,8 +74,6 @@ func (v vaultService) FillServerSecureData(s *ext.Server) error {
 	}
 
 	// TODO check signature
-	jose.ParseSigned(token) // nolint:errCheck
-
 	jwt, err := jose.ParseSigned(token)
 	if err != nil {
 		return fmt.Errorf("FillServerSecureData, parsing jwt: %w", err)
@@ -86,24 +87,32 @@ func (v vaultService) FillServerSecureData(s *ext.Server) error {
 	if err != nil {
 		return fmt.Errorf("FillServerSecureData, unmarshalling jwt: %w", err)
 	}
+	s.Identifier = server.Identifier
 	s.ConnectionInfo = server.ConnectionInfo
 	s.Fingerprint = server.Fingerprint
-	fmt.Printf("conn info: %#v", s.ConnectionInfo)
 	return nil
 }
 
-func (v vaultService) getServersByTenantAndProject(filter model.ServerFilter) (*model.ServerList, error) {
-	tenant, err := v.tenantByIdentifier(filter.TenantIdentifier)
-	if err != nil {
-		return nil, fmt.Errorf("getServersByTenantAndProject, collecting tenant: %w", err)
-	}
-	tenants := map[iam.TenantUUID]iam.Tenant{tenant.UUID: *tenant}
-	project, err := v.projectByTenantAndProjectIdentifier(tenant.UUID, filter.ProjectIdentifier)
+func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+	tenants, err := v.updateTenants(oldServerlist.Tenants, &filter.TenantIdentifier)
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenantAndProject, collecting project: %w", err)
 	}
-	projects := map[iam.ProjectUUID]iam.Project{project.UUID: *project}
-	servers, err := v.vaultSession.GetServersByTenantAndProject(tenant.UUID, project.UUID,
+	var tenantUUID iam.TenantUUID
+	for tenantUUID = range tenants {
+		break // the only one uuid should be presented
+	}
+
+	projects, err := v.updateProjects(oldServerlist.Projects, tenants, &filter.ProjectIdentifier)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByTenantAndProject, collecting project: %w", err)
+	}
+	var projectUUID iam.ProjectUUID
+	for projectUUID = range projects {
+		break // the only one uuid should be presented
+	}
+
+	servers, err := v.vaultSession.GetServersByTenantAndProject(tenantUUID, projectUUID,
 		filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenantAndProject, collecting servers: %w", err)
@@ -115,17 +124,84 @@ func (v vaultService) getServersByTenantAndProject(filter model.ServerFilter) (*
 	}, nil
 }
 
-func (v vaultService) getServersByTenant(filter model.ServerFilter) (*model.ServerList, error) {
-	tenant, err := v.tenantByIdentifier(filter.TenantIdentifier)
+// updateTenants return user tenants
+// if tenantIdentifier not nil, only one tenant can be returned
+func (v vaultService) updateTenants(oldTenants map[iam.TenantUUID]iam.Tenant, tenantIdentifier *string) (map[iam.TenantUUID]iam.Tenant, error) {
+	result := map[iam.TenantUUID]iam.Tenant{}
+	tenants, err := v.vaultSession.getTenants()
 	if err != nil {
-		return nil, fmt.Errorf("getServersByTenant, collecting tenant: %w", err)
+		return nil, fmt.Errorf("updateTenants: %w", err)
 	}
-	tenants := map[iam.TenantUUID]iam.Tenant{tenant.UUID: *tenant}
-	projects, err := v.projectsByTenant(tenant.UUID)
+	for _, t := range tenants {
+		var tenant iam.Tenant
+
+		if oldTenant, ok := oldTenants[t.UUID]; !ok ||
+			oldTenant.Version != t.Version {
+			tmp, err := v.vaultSession.getTenantByUUID(t.UUID)
+			if err != nil {
+				return nil, fmt.Errorf("updateTenants: %w", err)
+			}
+			tenant = *tmp
+		} else {
+			tenant = oldTenant
+		}
+		if tenantIdentifier == nil || tenant.Identifier == *tenantIdentifier {
+			result[tenant.UUID] = tenant
+		}
+	}
+	return result, nil
+}
+
+// updateTenants return user tenants
+// if tenantIdentifier not nil, only one tenant can be returned
+func (v vaultService) updateProjects(oldProjects map[iam.ProjectUUID]iam.Project, tenants map[iam.TenantUUID]iam.Tenant,
+	projectIdentifier *string) (map[iam.ProjectUUID]iam.Project, error) {
+	result := map[iam.ProjectUUID]iam.Project{}
+	var projects []auth.SafeProject
+	for tenantUUID := range tenants {
+		ps, err := v.vaultSession.getProjects(tenantUUID)
+		if err != nil {
+			return nil, fmt.Errorf("updateTenants: %w", err)
+		}
+		projects = append(projects, ps...)
+	}
+
+	for _, p := range projects {
+		var project iam.Project
+
+		if oldProject, ok := oldProjects[p.UUID]; !ok ||
+			oldProject.Version != p.Version {
+			tmp, err := v.vaultSession.getProjectByUUIDs(p.TenantUUID, p.UUID)
+			if err != nil {
+				return nil, fmt.Errorf("updateTenants: %w", err)
+			}
+			project = *tmp
+		} else {
+			project = oldProject
+		}
+		if projectIdentifier == nil || project.Identifier == *projectIdentifier {
+			result[project.UUID] = project
+		}
+	}
+	return result, nil
+}
+
+func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+	tenants, err := v.updateTenants(oldServerlist.Tenants, &filter.TenantIdentifier)
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenant, collecting project: %w", err)
 	}
-	servers, err := v.vaultSession.GetServersByTenant(tenant.UUID, filter.ServerIdentifiers, filter.LabelSelector)
+	var tenantUUID iam.TenantUUID
+	for tenantUUID = range tenants {
+		break // the only one uuid should be presented
+	}
+
+	projects, err := v.updateProjects(oldServerlist.Projects, tenants, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByTenant, collecting project: %w", err)
+	}
+
+	servers, err := v.vaultSession.GetServersByTenant(tenantUUID, filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("getServersByTenant, collecting servers: %w", err)
 	}
@@ -136,16 +212,21 @@ func (v vaultService) getServersByTenant(filter model.ServerFilter) (*model.Serv
 	}, nil
 }
 
-func (v vaultService) getServersByProject(filter model.ServerFilter) (*model.ServerList, error) {
-	allTenants, err := v.allTenants()
-	if err != nil {
-		return nil, fmt.Errorf("getServersByProject, collecting tenants: %w", err)
-	}
-
-	project, err := v.projectByTenantsAndProjectIdentifier(allTenants, filter.ProjectIdentifier)
+func (v vaultService) updateServerListByProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+	allTenants, err := v.updateTenants(oldServerlist.Tenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getServersByProject, collecting project: %w", err)
 	}
+
+	projects, err := v.updateProjects(oldServerlist.Projects, allTenants, &filter.ProjectIdentifier)
+	if err != nil {
+		return nil, fmt.Errorf("getServersByProject, collecting project: %w", err)
+	}
+	var project iam.Project
+	for _, project = range projects {
+		break // the only one project should be presented
+	}
+
 	servers, err := v.vaultSession.GetServersByTenantAndProject(project.TenantUUID, project.UUID,
 		filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
@@ -153,18 +234,18 @@ func (v vaultService) getServersByProject(filter model.ServerFilter) (*model.Ser
 	}
 	return &model.ServerList{
 		Tenants:  allTenants,
-		Projects: map[iam.ProjectUUID]iam.Project{project.UUID: *project},
+		Projects: projects,
 		Servers:  servers,
 	}, nil
 }
 
-func (v vaultService) getServers(filter model.ServerFilter) (*model.ServerList, error) {
-	allTenants, err := v.allTenants()
+func (v vaultService) updateServerList(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+	allTenants, err := v.updateTenants(oldServerlist.Tenants, nil)
 	if err != nil {
-		return nil, fmt.Errorf("getServers, collecting tenants: %w", err)
+		return nil, fmt.Errorf("getServers, collecting project: %w", err)
 	}
 
-	allProjects, err := v.allProjectsByTenants(allTenants)
+	allProjects, err := v.updateProjects(oldServerlist.Projects, allTenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getServers, collecting project: %w", err)
 	}
@@ -177,89 +258,4 @@ func (v vaultService) getServers(filter model.ServerFilter) (*model.ServerList, 
 		Projects: allProjects,
 		Servers:  servers,
 	}, nil
-}
-
-func (v vaultService) projectByTenantAndProjectIdentifier(tenantUUID iam.TenantUUID,
-	projectIdentifier string) (*iam.Project, error) {
-	projects, err := v.vaultSession.getProjects(tenantUUID)
-	if err != nil {
-		return nil, fmt.Errorf("projectsByTenantsAndProjectIdentifiers: %w", err)
-	}
-	for i := range projects {
-		project := projects[i]
-		if project.Identifier == projectIdentifier {
-			return &project, nil
-		}
-	}
-	return nil, iam.ErrNotFound
-}
-
-func (v vaultService) projectsByTenant(tenantUUID iam.TenantUUID) (map[iam.ProjectUUID]iam.Project, error) {
-	result := map[iam.ProjectUUID]iam.Project{}
-	ps, err := v.vaultSession.getProjects(tenantUUID)
-	if err != nil {
-		return nil, fmt.Errorf("projectsByTenant: %w", err)
-	}
-	for i := range ps {
-		ps[i].TenantUUID = tenantUUID
-		result[ps[i].UUID] = ps[i]
-	}
-	return result, nil
-}
-
-func (v vaultService) allTenants() (map[iam.TenantUUID]iam.Tenant, error) {
-	result := map[iam.TenantUUID]iam.Tenant{}
-	tanants, err := v.vaultSession.getTenants()
-	if err != nil {
-		return nil, fmt.Errorf("allTenants: %w", err)
-	}
-	for i := range tanants {
-		result[tanants[i].UUID] = tanants[i]
-	}
-	return result, nil
-}
-
-func (v vaultService) tenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error) {
-	tenants, err := v.vaultSession.getTenants()
-	if err != nil {
-		return nil, fmt.Errorf("tenantByIdentifier:%w", err)
-	}
-	for i := range tenants {
-		if tenantIdentifier != "" && tenants[i].Identifier == tenantIdentifier {
-			return &tenants[i], nil
-		}
-	}
-	return nil, nil
-}
-
-func (v vaultService) projectByTenantsAndProjectIdentifier(tenants map[iam.TenantUUID]iam.Tenant,
-	projectIdentifier iam.ProjectUUID) (*iam.Project, error) {
-	for tenantUUID := range tenants {
-		ps, err := v.vaultSession.getProjects(tenantUUID)
-		if err != nil {
-			return nil, fmt.Errorf("projectByTenantsAndProjectIdentifier: %w", err)
-		}
-		for i := range ps {
-			if ps[i].Identifier == projectIdentifier {
-				ps[i].TenantUUID = tenantUUID
-				return &ps[i], nil
-			}
-		}
-	}
-	return nil, iam.ErrNotFound
-}
-
-func (v vaultService) allProjectsByTenants(tenants map[iam.TenantUUID]iam.Tenant) (map[iam.ProjectUUID]iam.Project, error) {
-	result := map[iam.ProjectUUID]iam.Project{}
-	for tenantUUID := range tenants {
-		ps, err := v.vaultSession.getProjects(tenantUUID)
-		if err != nil {
-			return nil, fmt.Errorf("allProjectsByTenants: %w", err)
-		}
-		for i := range ps {
-			ps[i].TenantUUID = tenantUUID
-			result[ps[i].UUID] = ps[i]
-		}
-	}
-	return result, iam.ErrNotFound
 }

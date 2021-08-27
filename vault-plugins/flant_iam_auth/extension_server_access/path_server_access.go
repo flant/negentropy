@@ -241,6 +241,7 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		var tenantID, projectID string
 		var serverNames []string
 
+		// it needs this long way because method is used in several paths
 		tenantIDRaw, ok := data.GetOk("tenant_uuid")
 		if ok {
 			tenantID = tenantIDRaw.(string)
@@ -272,7 +273,7 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		defer txn.Abort()
 
 		var (
-			result   []model2.Server
+			result   []model2.SafeServer
 			err      error
 			warnings []string
 		)
@@ -386,8 +387,8 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*iam_
 	return resUsers, resSa, nil
 }
 
-func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model2.Server, error) {
-	result := make([]model2.Server, 0)
+func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model2.SafeServer, error) {
+	result := make([]model2.SafeServer, 0)
 
 	selector, err := labels.Parse(labelSelector)
 	if err != nil {
@@ -404,9 +405,8 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	for _, server := range list {
 		set := labels.Set(server.Labels)
 		if selector.Matches(set) {
-			qs := model2.Server{
+			qs := model2.SafeServer{
 				UUID:        server.UUID,
-				Identifier:  server.Identifier,
 				Version:     server.Version,
 				ProjectUUID: server.ProjectUUID,
 				TenantUUID:  server.TenantUUID,
@@ -418,19 +418,18 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	return result, nil
 }
 
-func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model2.Server, error) {
+func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model2.SafeServer, error) {
 	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]model2.Server, 0, len(list))
+	result := make([]model2.SafeServer, 0, len(list))
 
 	for _, server := range list {
-		qs := model2.Server{
+		qs := model2.SafeServer{
 			UUID:        server.UUID,
-			Identifier:  server.Identifier,
 			Version:     server.Version,
 			ProjectUUID: server.ProjectUUID,
 			TenantUUID:  server.TenantUUID,
@@ -441,8 +440,8 @@ func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model2.Se
 	return result, nil
 }
 
-func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model2.Server, []string, error) {
-	result := make([]model2.Server, 0)
+func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model2.SafeServer, []string, error) {
+	result := make([]model2.SafeServer, 0)
 
 	nameMap := make(map[string]bool)
 	for _, name := range names {
@@ -457,9 +456,8 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 
 	for _, server := range list {
 		if _, ok := nameMap[strings.ToLower(server.Identifier)]; ok {
-			qs := model2.Server{
+			qs := model2.SafeServer{
 				UUID:        server.UUID,
-				Identifier:  server.Identifier,
 				Version:     server.Version,
 				ProjectUUID: server.ProjectUUID,
 				TenantUUID:  server.TenantUUID,

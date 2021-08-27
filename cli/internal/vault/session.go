@@ -57,42 +57,38 @@ func (vs *VaultSession) makeRequest(method, requestPath string) ([]byte, error) 
 	return buf.Bytes(), nil
 }
 
-func (vs *VaultSession) getTenants() ([]iam.Tenant, error) { // TODO UP
+func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) { // TODO UP
 	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant")
 	if err != nil {
-		return []iam.Tenant{}, err
+		return nil, err
 	}
-
 	var vaultTenantsResponse struct {
 		Data struct {
-			Tenants []iam.Tenant `json:"tenants"`
+			Tenants []auth.SafeTenant `json:"tenants"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(vaultTenantsResponseBytes, &vaultTenantsResponse)
 	if err != nil {
-		return []iam.Tenant{}, err
+		return nil, err
 	}
-
 	return vaultTenantsResponse.Data.Tenants, nil
 }
 
-func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]iam.Project, error) { // TODO UP
+func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) { // TODO UP
 	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID))
 	if err != nil {
-		return []iam.Project{}, err
+		return nil, fmt.Errorf("getProjects: %w", err)
 	}
-
 	var vaultProjectsResponse struct {
 		Data struct {
-			Projects []iam.Project `json:"projects"`
+			Projects []auth.SafeProject `json:"projects"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(vaultProjectsResponseBytes, &vaultProjectsResponse)
 	if err != nil {
-		return []iam.Project{}, err
+		return nil, fmt.Errorf("getProjects: %w", err)
 	}
-
 	projects := vaultProjectsResponse.Data.Projects
 	return projects, nil
 }
@@ -149,18 +145,20 @@ func (vs *VaultSession) GetUser() (*auth.User, error) {
 	return &vaultUserMultipasOwnerResponse.Data.User, nil
 }
 
-func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) []byte {
+func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) ([]byte, error) {
 	var reqMap map[string]interface{}
 	data, _ := json.Marshal(vaultReq)
-	json.Unmarshal(data, &reqMap)
+	err := json.Unmarshal(data, &reqMap)
+	if err != nil {
+		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
+	}
 
 	ssh := vs.Client.SSHWithMountPoint("ssh")
 	secret, err := ssh.SignKey("signer", reqMap)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
 	}
-
-	return []byte(secret.Data["signed_key"].(string))
+	return []byte(secret.Data["signed_key"].(string)), nil
 }
 
 func (vs *VaultSession) GetServersByTenant(tenantUUID iam.TenantUUID,
@@ -214,4 +212,39 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 	servers := vaultServersResponse.Data.Servers
 
 	return servers, nil
+}
+
+func (vs *VaultSession) getTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
+	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID)
+	if err != nil {
+		return nil, fmt.Errorf("getTenantByUUID: %w", err)
+	}
+	var vaultTenantResponse struct {
+		Data struct {
+			Tenant iam.Tenant `json:"tenant"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(vaultTenantsResponseBytes, &vaultTenantResponse)
+	if err != nil {
+		return nil, fmt.Errorf("getTenantByUUID: %w", err)
+	}
+	return &vaultTenantResponse.Data.Tenant, nil
+}
+
+func (vs *VaultSession) getProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
+	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
+		"/project/"+projectUUID)
+	if err != nil {
+		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
+	}
+	var vaultProjectResponse struct {
+		Data struct {
+			Project iam.Project `json:"project"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(vaultTenantsResponseBytes, &vaultProjectResponse)
+	if err != nil {
+		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
+	}
+	return &vaultProjectResponse.Data.Project, nil
 }

@@ -70,6 +70,6 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		if *err != nil {
 			return
 		}
-		s.Start()
+		*err = s.Start()
 	}
 }
