@@ -163,47 +163,58 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 	return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
 }
 
-// availableTenantsByEntityIDOwner returns list of tenants available for EntityIDOwner
+// availableTenantsAndProjectsByEntityIDOwner returns sets of tenants and projects available for EntityIDOwner
 func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx context.Context,
-	req *logical.Request) (map[iam.TenantUUID]struct{}, error) {
+	req *logical.Request) (map[iam.TenantUUID]struct{}, map[iam.ProjectUUID]struct{}, error) {
 	subjectType, subject, err := b.revealEntityIDOwner(ctx, req)
 	if errors.Is(err, iam.ErrNotFound) {
-		return map[iam.TenantUUID]struct{}{}, nil
+		return map[iam.TenantUUID]struct{}{}, map[iam.ProjectUUID]struct{}{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	switch subjectType {
 	case iam.UserType:
 		{
 			user, ok := subject.(*iam.User)
 			if !ok {
-				return nil, fmt.Errorf("can't cast, need *model.User, got: %T", subject)
+				return nil, nil, fmt.Errorf("can't cast, need *model.User, got: %T", subject)
 			}
 			txn := b.storage.Txn(false)
 			defer txn.Abort()
-			//  TODO здесь нужно на две гоуртины поделиться
 			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.UUID)
 			gs := make([]iam.GroupUUID, 0, len(groups))
 			for uuid := range groups {
 				gs = append(gs, uuid)
 			}
 			if err != nil {
-				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+				return nil, nil, fmt.Errorf("collecting tenants, get groups: %w", err)
 			}
+			//  TODO Here easy to have two or three paralleled goroutines
 			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
 			if err != nil {
-				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+				return nil, nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
 			}
 			tenants[user.TenantUUID] = struct{}{}
-			return tenants, nil
+
+			rbRepository := iam_repo.NewRoleBindingRepository(txn)
+			userRBs, err := rbRepository.FindDirectRoleBindingsForUser(user.UUID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForUser: %w", err)
+			}
+			groupsRBs, err := rbRepository.FindDirectRoleBindingsForGroups(gs...)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
+			}
+			projects := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs)
+			return tenants, projects, nil
 		}
 
 	case iam.ServiceAccountType:
 		{
 			sa, ok := subject.(*iam.ServiceAccount)
 			if !ok {
-				return nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", subject)
+				return nil, nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", subject)
 			}
 			txn := b.storage.Txn(false)
 			defer txn.Abort()
@@ -213,15 +224,47 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 				gs = append(gs, uuid)
 			}
 			if err != nil {
-				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+				return nil, nil, fmt.Errorf("collecting tenants, get groups: %w", err)
 			}
+			//  TODO Here easy to have two or three paralleled goroutines
 			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
 			if err != nil {
-				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+				return nil, nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
 			}
 			tenants[sa.TenantUUID] = struct{}{}
-			return tenants, nil
+			rbRepository := iam_repo.NewRoleBindingRepository(txn)
+
+			userRBs, err := rbRepository.FindDirectRoleBindingsForServiceAccount(sa.UUID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForServiceAccount: %w", err)
+			}
+			groupsRBs, err := rbRepository.FindDirectRoleBindingsForGroups(gs...)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
+			}
+			projects := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs)
+			return tenants, projects, nil
 		}
 	}
-	return nil, fmt.Errorf("unexpected subjectType: `%s`", subjectType)
+	return nil, nil, fmt.Errorf("unexpected subjectType: `%s`", subjectType)
+}
+
+func collectProjectUUIDsFromRoleBindigns(rbs1 map[iam.RoleBindingUUID]*iam.RoleBinding,
+	rbs2 map[iam.RoleBindingUUID]*iam.RoleBinding) map[iam.ProjectUUID]struct{} {
+	result := map[iam.ProjectUUID]struct{}{}
+	for _, rb := range rbs1 {
+		if !rb.AnyProject {
+			for _, pUUID := range rb.Projects {
+				result[pUUID] = struct{}{}
+			}
+		}
+	}
+	for _, rb := range rbs2 {
+		if !rb.AnyProject {
+			for _, pUUID := range rb.Projects {
+				result[pUUID] = struct{}{}
+			}
+		}
+	}
+	return result
 }
