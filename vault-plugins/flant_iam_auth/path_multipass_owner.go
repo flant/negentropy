@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"net/http"
 
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
-
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 )
 
-func pathMultipassOwnner(b *flantIamAuthBackend) *framework.Path {
+func pathMultipassOwner(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `multipass_owner$`,
 		Fields: map[string]*framework.FieldSchema{
@@ -163,4 +161,67 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 	msg := fmt.Sprintf("unexpected subjectType: `%s`", subjectType)
 	logger.Debug(msg)
 	return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
+}
+
+// availableTenantsByEntityIDOwner returns list of tenants available for EntityIDOwner
+func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx context.Context,
+	req *logical.Request) (map[iam.TenantUUID]struct{}, error) {
+	subjectType, subject, err := b.revealEntityIDOwner(ctx, req)
+	if errors.Is(err, iam.ErrNotFound) {
+		return map[iam.TenantUUID]struct{}{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	switch subjectType {
+	case iam.UserType:
+		{
+			user, ok := subject.(*iam.User)
+			if !ok {
+				return nil, fmt.Errorf("can't cast, need *model.User, got: %T", subject)
+			}
+			txn := b.storage.Txn(false)
+			defer txn.Abort()
+			//  TODO здесь нужно на две гоуртины поделиться
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.TenantUUID, user.UUID)
+			gs := make([]iam.GroupUUID, 0, len(groups))
+			for uuid := range groups {
+				gs = append(gs, uuid)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+			}
+			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
+			if err != nil {
+				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+			}
+			tenants[user.TenantUUID] = struct{}{}
+			return tenants, nil
+		}
+
+	case iam.ServiceAccountType:
+		{
+			sa, ok := subject.(*iam.ServiceAccount)
+			if !ok {
+				return nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", subject)
+			}
+			txn := b.storage.Txn(false)
+			defer txn.Abort()
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForServiceAccountUUID(sa.TenantUUID, sa.UUID)
+			gs := make([]iam.GroupUUID, 0, len(groups))
+			for uuid := range groups {
+				gs = append(gs, uuid)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+			}
+			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
+			if err != nil {
+				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+			}
+			tenants[sa.TenantUUID] = struct{}{}
+			return tenants, nil
+		}
+	}
+	return nil, fmt.Errorf("unexpected subjectType: `%s`", subjectType)
 }

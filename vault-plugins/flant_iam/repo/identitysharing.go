@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	SourceTenantUUIDIndex      = TenantForeignPK // it is generated because tenant is the parent object for shares
-	DestinationTenantUUIDIndex = "destination_tenant_uuid_index"
+	SourceTenantUUIDIndex         = TenantForeignPK // it is generated because tenant is the parent object for shares
+	DestinationTenantUUIDIndex    = "destination_tenant_uuid_index"
+	GroupUUIDIdentitySharingIndex = "group_in_identity_sharing_index"
 )
 
 func IdentitySharingSchema() *memdb.DBSchema {
@@ -37,6 +38,13 @@ func IdentitySharingSchema() *memdb.DBSchema {
 						Name: DestinationTenantUUIDIndex,
 						Indexer: &memdb.UUIDFieldIndex{
 							Field: "DestinationTenantUUID",
+						},
+					},
+					GroupUUIDIdentitySharingIndex: {
+						Name:   GroupUUIDIdentitySharingIndex,
+						Unique: false,
+						Indexer: &memdb.StringSliceFieldIndex{
+							Field: "Groups",
 						},
 					},
 				},
@@ -183,6 +191,29 @@ func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID model.Tena
 		}
 		u := raw.(*model.IdentitySharing)
 		res = append(res, u)
+	}
+	return res, nil
+}
+
+// ListDestinationTenantsByGroupUUIDs returns destination tenants uuids for specified groups uuids
+func (r *IdentitySharingRepository) ListDestinationTenantsByGroupUUIDs(groupUUIDs ...model.GroupUUID) (map[model.TenantUUID]struct{}, error) {
+	res := map[model.TenantUUID]struct{}{}
+	for _, groupUUID := range groupUUIDs {
+		iter, err := r.db.Get(model.IdentitySharingType, GroupUUIDIdentitySharingIndex, groupUUID)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			raw := iter.Next()
+			if raw == nil {
+				break
+			}
+			i := raw.(*model.IdentitySharing)
+			if i.ArchivingHash != 0 {
+				continue
+			}
+			res[i.DestinationTenantUUID] = struct{}{}
+		}
 	}
 	return res, nil
 }

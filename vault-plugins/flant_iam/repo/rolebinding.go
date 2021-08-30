@@ -237,6 +237,7 @@ func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (
 	return roleBinding, nil
 }
 
+// memberInTenantRoleBindingIndexer build index tenantUUID+rb.ServiceAccounts[i].UUID, several indexes for one record
 type memberInTenantRoleBindingIndexer struct {
 	memberFieldName string
 }
@@ -368,6 +369,7 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantProject(tenantUUI
 	return extractRoleBindings(iter)
 }
 
+// roleInTenantRoleBindingIndexer build index tenantUUID+rb.Roles[i].Name, several indexes for one record
 type roleInTenantRoleBindingIndexer struct{}
 
 func (roleInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
