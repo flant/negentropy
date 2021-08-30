@@ -9,7 +9,9 @@ import (
 )
 
 // FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange
-func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.MemoryStoreTxn, oldRoleBinding *model.RoleBinding, newRoleBinding *model.RoleBinding, roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
+func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.MemoryStoreTxn,
+	oldRoleBinding *model.RoleBinding, newRoleBinding *model.RoleBinding,
+	roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
 	// There is no way to add role by role binding deletion.
 	if newRoleBinding == nil {
 		return nil, nil, nil
@@ -35,7 +37,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 	// Return all members of the new RoleBinding if role was not granted
 	// by the old RoleBinding and become granted by the new RoleBinding.
 	if !oldRoleBindingGrantsRole && newRoleBindingGrantsRole {
-		return groupRepo.FindAllMembersFor(newRoleBinding.TenantUUID, newRoleBinding.Users, newRoleBinding.ServiceAccounts, newRoleBinding.Groups)
+		return groupRepo.FindAllMembersFor(newRoleBinding.Users, newRoleBinding.ServiceAccounts, newRoleBinding.Groups)
 	}
 
 	// Return added subjects if role is not changed.
@@ -46,7 +48,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 		return nil, nil, nil
 	}
 
-	return groupRepo.FindAllMembersFor(newRoleBinding.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
+	return groupRepo.FindAllMembersFor(arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
 }
 
 // FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange
@@ -55,7 +57,8 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnRoleBindingChange(txn *io.Memo
 // Return empty if group and parent groups have no role binding with the specified role.
 // Return newly added users if group is modified and there are role bindings
 // for group or for parent group which have the specified role.
-func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStoreTxn, oldGroup *model.Group, newGroup *model.Group, roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
+func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStoreTxn, oldGroup *model.Group,
+	newGroup *model.Group, roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
 	var err error
 
 	// Group is deleted. There is no way to grant role on group deletion.
@@ -83,12 +86,12 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStor
 
 	// Get all role binding for newGroup uuid and for all parent groups.
 	groupRepo := iam_repo.NewGroupRepository(txn)
-	parentGroups, err := groupRepo.FindAllParentGroupsForGroupUUID(newGroup.TenantUUID, newGroup.UUID)
+	parentGroups, err := groupRepo.FindAllParentGroupsForGroupUUID(newGroup.UUID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	hasRoleBindings, err := HasRoleBindingsWithGroupAndRole(txn, newGroup.TenantUUID, parentGroups, roleOfConcern)
+	hasRoleBindings, err := HasRoleBindingsWithGroupAndRole(txn, parentGroups, roleOfConcern)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get role bindings with group and role '%s': %v", roleOfConcern, err)
 	}
@@ -99,7 +102,7 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStor
 	}
 
 	// Return subjects for added users.
-	return groupRepo.FindAllMembersFor(newGroup.TenantUUID, arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
+	return groupRepo.FindAllMembersFor(arrayFromMap(addedUsers), arrayFromMap(addedSAs), arrayFromMap(addedGroups))
 }
 
 // FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange
@@ -108,7 +111,8 @@ func FindUsersAndSAsAffectedByPossibleRoleAddingOnGroupChange(txn *io.MemoryStor
 // Return empty if group and parent groups have no role binding with the specified role.
 // Return newly added users if group is modified and there are role bindings
 // for group or for parent group which have the specified role.
-func FindSubjectsAffectedByPossibleRoleAddingOnRoleChange(txn *io.MemoryStoreTxn, oldRole *model.Role, newRole *model.Role, roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
+func FindSubjectsAffectedByPossibleRoleAddingOnRoleChange(txn *io.MemoryStoreTxn, oldRole *model.Role, newRole *model.Role,
+	roleOfConcern string) (map[model.UserUUID]struct{}, map[model.ServiceAccountUUID]struct{}, error) {
 	// Role is deleted. There is no way to grant role on role deletion.
 	if newRole == nil {
 		return nil, nil, nil
@@ -213,22 +217,10 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 		return nil, nil, err
 	}
 
-	tenantRepo := iam_repo.NewTenantRepository(txn)
-	tenants, err := tenantRepo.List(false)
+	repo := iam_repo.NewRoleBindingRepository(txn)
+	roleBindings, err := repo.FindDirectRoleBindingsForRoles(parentRoles...)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	repo := iam_repo.NewRoleBindingRepository(txn)
-	roleBindings := make(map[model.RoleBindingUUID]struct{})
-	for _, tenant := range tenants {
-		tenantRoleBindings, err := repo.FindDirectRoleBindingsForRoles(tenant.UUID, parentRoles...)
-		if err != nil {
-			return nil, nil, err
-		}
-		for roleBindingUUID := range tenantRoleBindings {
-			roleBindings[roleBindingUUID] = struct{}{}
-		}
 	}
 
 	users := make(map[model.UserUUID]struct{})
@@ -240,7 +232,7 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 		if err != nil {
 			return nil, nil, err
 		}
-		rbUsers, rbSAs, err := groupRepo.FindAllMembersFor(rb.TenantUUID, rb.Users, rb.ServiceAccounts, rb.Groups)
+		rbUsers, rbSAs, err := groupRepo.FindAllMembersFor(rb.Users, rb.ServiceAccounts, rb.Groups)
 		for uuid := range rbUsers {
 			users[uuid] = struct{}{}
 		}
@@ -252,12 +244,12 @@ func FindAllSubjectsWithGrantedRole(txn *io.MemoryStoreTxn, role model.RoleName)
 	return users, serviceAccounts, nil
 }
 
-func HasRoleBindingsWithGroupAndRole(txn *io.MemoryStoreTxn, tenantUUID model.TenantUUID, groups map[model.GroupUUID]struct{}, role string) (bool, error) {
+func HasRoleBindingsWithGroupAndRole(txn *io.MemoryStoreTxn, groups map[model.GroupUUID]struct{}, role string) (bool, error) {
 	visited := make(map[model.RoleBindingUUID]struct{})
 
 	repo := iam_repo.NewRoleBindingRepository(txn)
 	for groupUUID := range groups {
-		roleBindings, err := repo.FindDirectRoleBindingsForTenantGroups(tenantUUID, groupUUID)
+		roleBindings, err := repo.FindDirectRoleBindingsForGroups(groupUUID)
 		if err != nil {
 			return false, err
 		}

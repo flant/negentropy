@@ -63,34 +63,34 @@ func Test_RoleBindingList(t *testing.T) {
 	}, roleBindingsUUIDSFromSlice(rbs))
 }
 
-func Test_FindDirectRoleBindingsForTenantUser(t *testing.T) {
+func Test_FindDirectRoleBindingsForUser(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
-	rbsMap, err := repo.FindDirectRoleBindingsForTenantUser(fixtures.TenantUUID1, fixtures.UserUUID1)
+	rbsMap, err := repo.FindDirectRoleBindingsForUser(fixtures.UserUUID1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID4}, roleBindingsUUIDsFromMap(rbsMap))
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID2, fixtures.RbUUID4}, roleBindingsUUIDsFromMap(rbsMap))
 }
 
-func Test_FindDirectRoleBindingsForTenantServiceAccount(t *testing.T) {
+func Test_FindDirectRoleBindingsForServiceAccount(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
-	rbsMap, err := repo.FindDirectRoleBindingsForTenantServiceAccount(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
+	rbsMap, err := repo.FindDirectRoleBindingsForServiceAccount(fixtures.ServiceAccountUUID1)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID5}, roleBindingsUUIDsFromMap(rbsMap))
 }
 
-func Test_FindDirectRoleBindingsForTenantGroups(t *testing.T) {
+func Test_FindDirectRoleBindingsForGroups(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
-	rbsMap, err := repo.FindDirectRoleBindingsForTenantGroups(fixtures.TenantUUID1, fixtures.GroupUUID2, fixtures.GroupUUID3)
+	rbsMap, err := repo.FindDirectRoleBindingsForGroups(fixtures.GroupUUID2, fixtures.GroupUUID3)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3}, roleBindingsUUIDsFromMap(rbsMap))
@@ -104,16 +104,16 @@ func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
 	rbsMap, err := repo.FindDirectRoleBindingsForRoles(fixtures.TenantUUID1, fixtures.RoleName1, fixtures.RoleName5, fixtures.RoleName8)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID5},
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID2, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID5},
 		roleBindingsUUIDsFromMap(rbsMap))
 }
 
-func Test_FindDirectRoleBindingsForTenantProject(t *testing.T) {
+func Test_FindDirectRoleBindingsForProject(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
-	rbsMap, err := repo.FindDirectRoleBindingsForTenantProject(fixtures.TenantUUID1, fixtures.ProjectUUID3)
+	rbsMap, err := repo.FindDirectRoleBindingsForProject(fixtures.ProjectUUID3)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID4, fixtures.RbUUID5},

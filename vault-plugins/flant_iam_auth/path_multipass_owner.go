@@ -183,7 +183,7 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			txn := b.storage.Txn(false)
 			defer txn.Abort()
 			//  TODO здесь нужно на две гоуртины поделиться
-			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.TenantUUID, user.UUID)
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.UUID)
 			gs := make([]iam.GroupUUID, 0, len(groups))
 			for uuid := range groups {
 				gs = append(gs, uuid)
@@ -207,7 +207,7 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			}
 			txn := b.storage.Txn(false)
 			defer txn.Abort()
-			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForServiceAccountUUID(sa.TenantUUID, sa.UUID)
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForServiceAccountUUID(sa.UUID)
 			gs := make([]iam.GroupUUID, 0, len(groups))
 			for uuid := range groups {
 				gs = append(gs, uuid)

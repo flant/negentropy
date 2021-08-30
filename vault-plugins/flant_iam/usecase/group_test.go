@@ -72,27 +72,27 @@ func Test_findDirectParentGroupsByUserUUID(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
-	ids, err := repository.FindDirectParentGroupsByUserUUID(fixtures.TenantUUID1, fixtures.UserUUID3)
+	ids, err := repository.FindDirectParentGroupsByUserUUID(fixtures.UserUUID3)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.GroupUUID1, fixtures.GroupUUID2, fixtures.GroupUUID4}, stringSlice(ids))
+	require.ElementsMatch(t, []string{fixtures.GroupUUID1, fixtures.GroupUUID2, fixtures.GroupUUID3, fixtures.GroupUUID4}, stringSlice(ids))
 }
 
 func Test_findDirectParentGroupsByServiceAccountUUID(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
-	ids, err := repository.FindDirectParentGroupsByServiceAccountUUID(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
+	ids, err := repository.FindDirectParentGroupsByServiceAccountUUID(fixtures.ServiceAccountUUID1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.GroupUUID1}, stringSlice(ids))
+	require.ElementsMatch(t, []string{fixtures.GroupUUID1, fixtures.GroupUUID3}, stringSlice(ids))
 }
 
 func Test_findDirectParentGroupsByGroupUUID(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
-	ids, err := repository.FindDirectParentGroupsByGroupUUID(fixtures.TenantUUID1, fixtures.GroupUUID1)
+	ids, err := repository.FindDirectParentGroupsByGroupUUID(fixtures.GroupUUID1)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.GroupUUID5}, stringSlice(ids))
@@ -102,7 +102,7 @@ func Test_FindAllParentGroupsForUserUUID(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
-	ids, err := repository.FindAllParentGroupsForUserUUID(fixtures.TenantUUID1, fixtures.UserUUID1)
+	ids, err := repository.FindAllParentGroupsForUserUUID(fixtures.UserUUID1)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.GroupUUID2, fixtures.GroupUUID4, fixtures.GroupUUID5}, stringSlice(ids))
@@ -112,8 +112,11 @@ func Test_FindAllParentGroupsForServiceAccountUUID(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
-	ids, err := repository.FindAllParentGroupsForServiceAccountUUID(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
+	ids, err := repository.FindAllParentGroupsForServiceAccountUUID(fixtures.ServiceAccountUUID1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.GroupUUID1, fixtures.GroupUUID5}, stringSlice(ids))
+	require.ElementsMatch(t, []string{
+		fixtures.GroupUUID1, fixtures.GroupUUID3,
+		fixtures.GroupUUID4, fixtures.GroupUUID5,
+	}, stringSlice(ids))
 }

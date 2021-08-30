@@ -18,12 +18,12 @@ func Test_collectAllRolesAndRoleBindings(t *testing.T) {
 		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
-	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(fixtures.TenantUUID1, fixtures.RoleName1)
+	roles, roleBindings, err := rr.collectAllRolesAndRoleBindings(fixtures.RoleName1)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.RoleName1, fixtures.RoleName3, fixtures.RoleName4, fixtures.RoleName5},
 		stringSlice(roles))
-	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5},
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID2, fixtures.RbUUID3, fixtures.RbUUID5},
 		roleBindingsUUIDsFromMap(roleBindings))
 }
 
@@ -36,10 +36,10 @@ func Test_collectAllRoleBindingsForUser(t *testing.T) {
 		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
-	roleBindings, err := rr.collectAllRoleBindingsForUser(fixtures.TenantUUID1, fixtures.UserUUID1)
+	roleBindings, err := rr.collectAllRoleBindingsForUser(fixtures.UserUUID1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID7},
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID2, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID7},
 		roleBindingsUUIDsFromMap(roleBindings))
 }
 
@@ -53,7 +53,7 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 	}
 
 	hasRole, gotParams, err := rr.CheckUserForProjectScopedRole(fixtures.UserUUID1, fixtures.RoleName1,
-		fixtures.TenantUUID1, fixtures.ProjectUUID1)
+		fixtures.ProjectUUID1)
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
@@ -70,10 +70,10 @@ func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
 		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
-	roleBindings, err := rr.collectAllRoleBindingsForServiceAccount(fixtures.TenantUUID1, fixtures.ServiceAccountUUID1)
+	roleBindings, err := rr.collectAllRoleBindingsForServiceAccount(fixtures.ServiceAccountUUID1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5},
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5, fixtures.RbUUID7},
 		roleBindingsUUIDsFromMap(roleBindings))
 }
 
@@ -87,7 +87,7 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 	}
 
 	hasRole, gotParams, err := rr.CheckServiceAccountForProjectScopedRole(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
-		fixtures.TenantUUID1, fixtures.ProjectUUID1)
+		fixtures.ProjectUUID1)
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
@@ -140,8 +140,7 @@ func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.TenantUUID1,
-		fixtures.ProjectUUID3)
+	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.ProjectUUID3)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.UserUUID1, fixtures.UserUUID2, fixtures.UserUUID3, fixtures.UserUUID4},

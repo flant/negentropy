@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	RoleBindingForeignPK                   = "role_binding_uuid"
-	UserInTenantRoleBindingIndex           = "user_in_tenant_role_binding"
-	ServiceAccountInTenantRoleBindingIndex = "service_account_in_tenant_role_binding"
-	GroupInTenantRoleBindingIndex          = "group_in_tenant_role_binding"
-	ProjectInTenantRoleBindingIndex        = "project_in_tenant_role_binding"
-	RoleInTenantRoleBindingIndex           = "role_in_tenant_role_binding"
-	TenantUUIDRoleBindingIdIndex           = "tenant_uuid_role_binding_id"
+	RoleBindingForeignPK             = "role_binding_uuid"
+	UserInRoleBindingIndex           = "user_in_role_binding"
+	ServiceAccountInRoleBindingIndex = "service_account_in_role_binding"
+	GroupInRoleBindingIndex          = "group_in_role_binding"
+	ProjectInRoleBindingIndex        = "project_in_role_binding"
+	RoleInRoleBindingIndex           = "role_in_role_binding"
+	TenantUUIDRoleBindingIdIndex     = "tenant_uuid_role_binding_id"
 )
 
 func RoleBindingSchema() *memdb.DBSchema {
@@ -54,43 +54,43 @@ func RoleBindingSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					UserInTenantRoleBindingIndex: {
-						Name:         UserInTenantRoleBindingIndex,
+					UserInRoleBindingIndex: {
+						Name:         UserInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memberInTenantRoleBindingIndexer{
-							memberFieldName: "Users",
+						Indexer: &memdb.StringSliceFieldIndex{
+							Field: "Users",
 						},
 					},
-					ServiceAccountInTenantRoleBindingIndex: {
-						Name:         ServiceAccountInTenantRoleBindingIndex,
+					ServiceAccountInRoleBindingIndex: {
+						Name:         ServiceAccountInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memberInTenantRoleBindingIndexer{
-							memberFieldName: "ServiceAccounts",
+						Indexer: &memdb.StringSliceFieldIndex{
+							Field: "ServiceAccounts",
 						},
 					},
-					GroupInTenantRoleBindingIndex: {
-						Name:         GroupInTenantRoleBindingIndex,
+					GroupInRoleBindingIndex: {
+						Name:         GroupInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memberInTenantRoleBindingIndexer{
-							memberFieldName: "Groups",
+						Indexer: &memdb.StringSliceFieldIndex{
+							Field: "Groups",
 						},
 					},
-					ProjectInTenantRoleBindingIndex: {
-						Name:         ProjectInTenantRoleBindingIndex,
+					ProjectInRoleBindingIndex: {
+						Name:         ProjectInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memberInTenantRoleBindingIndexer{
-							memberFieldName: "Projects",
+						Indexer: &memdb.StringSliceFieldIndex{
+							Field: "Projects",
 						},
 					},
-					RoleInTenantRoleBindingIndex: {
-						Name:         RoleInTenantRoleBindingIndex,
+					RoleInRoleBindingIndex: {
+						Name:         RoleInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer:      &roleInTenantRoleBindingIndexer{},
+						Indexer:      &roleInRoleBindingIndexer{},
 					},
 					TenantUUIDRoleBindingIdIndex: {
 						Name:    TenantUUIDRoleBindingIdIndex,
@@ -237,70 +237,7 @@ func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (
 	return roleBinding, nil
 }
 
-// memberInTenantRoleBindingIndexer build index tenantUUID+rb.ServiceAccounts[i].UUID, several indexes for one record
-type memberInTenantRoleBindingIndexer struct {
-	memberFieldName string
-}
-
-func (_ memberInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	if len(args) != 2 {
-		return nil, model.ErrNeedDoubleArgument
-	}
-	tenantUUID, ok := args[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
-	}
-	memberUUID, ok := args[1].(string)
-	if !ok {
-		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
-	}
-	// Add the null character as a terminator
-	return []byte(tenantUUID + memberUUID + "\x00"), nil
-}
-
-func (s memberInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
-	usersLabel := "Users"
-	serviceAccountsLabel := "ServiceAccounts"
-	groupsLabel := "Groups"
-	projectLabel := "Projects"
-	validMemberFieldNames := map[string]struct{}{
-		usersLabel: {}, serviceAccountsLabel: {},
-		groupsLabel: {}, projectLabel: {},
-	}
-	if _, valid := validMemberFieldNames[s.memberFieldName]; !valid {
-		return false, nil, fmt.Errorf("invalid member_field_name: %s", s.memberFieldName)
-	}
-	rb, ok := raw.(*model.RoleBinding)
-	if !ok {
-		return false, nil, fmt.Errorf("format error: need RoleBinding type, actual passed %#v", raw)
-	}
-	result := [][]byte{}
-	tenantUUID := rb.TenantUUID
-	switch s.memberFieldName {
-	case usersLabel:
-		for i := range rb.Users {
-			result = append(result, []byte(tenantUUID+rb.Users[i]+"\x00"))
-		}
-	case serviceAccountsLabel:
-		for i := range rb.ServiceAccounts {
-			result = append(result, []byte(tenantUUID+rb.ServiceAccounts[i]+"\x00"))
-		}
-	case groupsLabel:
-		for i := range rb.Groups {
-			result = append(result, []byte(tenantUUID+rb.Groups[i]+"\x00"))
-		}
-	case projectLabel:
-		for i := range rb.Projects {
-			result = append(result, []byte(tenantUUID+rb.Projects[i]+"\x00"))
-		}
-	}
-	if len(result) == 0 {
-		return false, nil, nil
-	}
-	return true, result, nil
-}
-
-func extractRoleBindings(iter memdb.ResultIterator) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
+func extractRoleBindings(iter memdb.ResultIterator, showArchived bool) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
 	rbs := map[model.RoleBindingUUID]*model.RoleBinding{}
 	for {
 		raw := iter.Next()
@@ -311,43 +248,46 @@ func extractRoleBindings(iter memdb.ResultIterator) (map[model.RoleBindingUUID]*
 		if !ok {
 			return nil, fmt.Errorf("need type RoleBindig, actually passed: %#v", raw)
 		}
+		if !showArchived && rb.ArchivingHash != 0 {
+			continue
+		}
 		rbs[rb.UUID] = rb
 	}
 	return rbs, nil
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantUser(tenantUUID model.TenantUUID,
+func (r *RoleBindingRepository) FindDirectRoleBindingsForUser(
 	userUUID model.UserUUID) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, UserInTenantRoleBindingIndex, tenantUUID, userUUID)
+	iter, err := r.db.Get(model.RoleBindingType, UserInRoleBindingIndex, userUUID)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindings(iter)
+	return extractRoleBindings(iter, false)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantServiceAccount(tenantUUID model.TenantUUID,
+func (r *RoleBindingRepository) FindDirectRoleBindingsForServiceAccount(
 	serviceAccountUUID model.ServiceAccountUUID) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, ServiceAccountInTenantRoleBindingIndex, tenantUUID, serviceAccountUUID)
+	iter, err := r.db.Get(model.RoleBindingType, ServiceAccountInRoleBindingIndex, serviceAccountUUID)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindings(iter)
+	return extractRoleBindings(iter, false)
 }
 
-func (r *RoleBindingRepository) findDirectRoleBindingsForTenantGroup(tenantUUID model.TenantUUID, groupUUID model.GroupUUID) (
+func (r *RoleBindingRepository) findDirectRoleBindingsForGroup(groupUUID model.GroupUUID) (
 	map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, GroupInTenantRoleBindingIndex, tenantUUID, groupUUID)
+	iter, err := r.db.Get(model.RoleBindingType, GroupInRoleBindingIndex, groupUUID)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindings(iter)
+	return extractRoleBindings(iter, false)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantGroups(tenantUUID model.TenantUUID, groupUUIDs ...model.GroupUUID) (
+func (r *RoleBindingRepository) FindDirectRoleBindingsForGroups(groupUUIDs ...model.GroupUUID) (
 	map[model.RoleBindingUUID]*model.RoleBinding, error) {
 	rbs := map[model.RoleBindingUUID]*model.RoleBinding{}
 	for _, groupUUID := range groupUUIDs {
-		partRBs, err := r.findDirectRoleBindingsForTenantGroup(tenantUUID, groupUUID)
+		partRBs, err := r.findDirectRoleBindingsForGroup(groupUUID)
 		if err != nil {
 			return nil, err
 		}
@@ -360,43 +300,38 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantGroups(tenantUUID
 	return rbs, nil
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForTenantProject(tenantUUID model.TenantUUID, projectUUID model.ProjectUUID) (
+func (r *RoleBindingRepository) FindDirectRoleBindingsForProject(projectUUID model.ProjectUUID) (
 	map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, ProjectInTenantRoleBindingIndex, tenantUUID, projectUUID)
+	iter, err := r.db.Get(model.RoleBindingType, ProjectInRoleBindingIndex, projectUUID)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindings(iter)
+	return extractRoleBindings(iter, false)
 }
 
-// roleInTenantRoleBindingIndexer build index tenantUUID+rb.Roles[i].Name, several indexes for one record
-type roleInTenantRoleBindingIndexer struct{}
+// roleInRoleBindingIndexer build index rb.Roles[i].Name, several indexes for one record
+type roleInRoleBindingIndexer struct{}
 
-func (roleInTenantRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	if len(args) != 2 {
-		return nil, model.ErrNeedDoubleArgument
+func (roleInRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, model.ErrNeedSingleArgument
 	}
-	tenantUUID, ok := args[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
-	}
-	roleName, ok := args[1].(string)
+	roleName, ok := args[0].(string)
 	if !ok {
 		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
 	}
 	// Add the null character as a terminator
-	return []byte(tenantUUID + roleName + "\x00"), nil
+	return []byte(roleName + "\x00"), nil
 }
 
-func (roleInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
+func (roleInRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
 	rb, ok := raw.(*model.RoleBinding)
 	if !ok {
 		return false, nil, fmt.Errorf("format error: need RoleBinding type, actual passed %#v", raw)
 	}
 	result := [][]byte{}
-	tenantUUID := rb.TenantUUID
 	for i := range rb.Roles {
-		result = append(result, []byte(tenantUUID+rb.Roles[i].Name+"\x00"))
+		result = append(result, []byte(rb.Roles[i].Name+"\x00"))
 	}
 	if len(result) == 0 {
 		return false, nil, nil
@@ -404,18 +339,18 @@ func (roleInTenantRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byt
 	return true, result, nil
 }
 
-func (r *RoleBindingRepository) findDirectRoleBindingsForRole(tenantUUID model.TenantUUID, role model.RoleName) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, RoleInTenantRoleBindingIndex, tenantUUID, role)
+func (r *RoleBindingRepository) findDirectRoleBindingsForRole(role model.RoleName) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
+	iter, err := r.db.Get(model.RoleBindingType, RoleInRoleBindingIndex, role)
 	if err != nil {
 		return nil, err
 	}
-	return extractRoleBindings(iter)
+	return extractRoleBindings(iter, false)
 }
 
-func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(tenantUUID model.TenantUUID, roles ...model.RoleName) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
+func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(roles ...model.RoleName) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
 	roleBindings := map[model.RoleBindingUUID]*model.RoleBinding{}
 	for _, role := range roles {
-		partRoleBindings, err := r.findDirectRoleBindingsForRole(tenantUUID, role)
+		partRoleBindings, err := r.findDirectRoleBindingsForRole(role)
 		if err != nil {
 			return nil, err
 		}
