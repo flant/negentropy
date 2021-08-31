@@ -1,4 +1,4 @@
-package jwtauth
+package backend
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 )
@@ -117,7 +117,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 			}
 			return logical.RespondWithStatusCode(&logical.Response{
 				Data: map[string]interface{}{
-					"user": ext.User{
+					"user": model.User{
 						UUID:             user.UUID,
 						TenantUUID:       user.TenantUUID,
 						Origin:           user.TenantUUID,
@@ -145,7 +145,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 			}
 			return logical.RespondWithStatusCode(&logical.Response{
 				Data: map[string]interface{}{
-					"service_account": ext.ServiceAccount{
+					"service_account": model.ServiceAccount{
 						UUID:           sa.UUID,
 						TenantUUID:     sa.TenantUUID,
 						BuiltinType:    sa.BuiltinType,

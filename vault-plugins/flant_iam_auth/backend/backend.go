@@ -1,4 +1,4 @@
-package jwtauth
+package backend
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access"
+	extension_server_access2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
@@ -230,7 +230,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
 
 			// server_access_extension
-			extension_server_access.ServerAccessPaths(b, storage, b.jwtController),
+			extension_server_access2.ServerAccessPaths(b, storage, b.jwtController),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,

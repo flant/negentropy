@@ -1,4 +1,4 @@
-package jwtauth
+package backend
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 )
 
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
@@ -99,10 +99,10 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("list", "tenants", tenants)
 
-	result := make([]ext.SafeTenant, 0, len(tenants))
+	result := make([]model.SafeTenant, 0, len(tenants))
 
 	for _, tenant := range tenants {
-		res := ext.SafeTenant{
+		res := model.SafeTenant{
 			UUID:    tenant.UUID,
 			Version: tenant.Version,
 		}
@@ -129,10 +129,10 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
-	result := make([]ext.SafeProject, 0, len(projects))
+	result := make([]model.SafeProject, 0, len(projects))
 
 	for _, project := range projects {
-		res := ext.SafeProject{
+		res := model.SafeProject{
 			UUID:       project.UUID,
 			TenantUUID: project.TenantUUID,
 			Version:    project.Version,
@@ -176,7 +176,7 @@ func (b *flantIamAuthBackend) readProject(ctx context.Context, req *logical.Requ
 	}
 
 	resp := &logical.Response{Data: map[string]interface{}{
-		"project": &ext.Project{
+		"project": &model.Project{
 			UUID:       project.UUID,
 			TenantUUID: project.TenantUUID,
 			Version:    project.Version,
