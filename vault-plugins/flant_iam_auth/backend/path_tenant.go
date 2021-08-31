@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path"
 
@@ -84,7 +85,6 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 
 // UNSAFE : only uuids and versions in response
 func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	// TODO remove not user tenants
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
@@ -99,14 +99,21 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("list", "tenants", tenants)
 
+	acceptedTenants, _, err := b.availableTenantsAndProjectsByEntityIDOwner(ctx, req)
+	if err != nil {
+		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
+	}
+
 	result := make([]model.SafeTenant, 0, len(tenants))
 
 	for _, tenant := range tenants {
-		res := model.SafeTenant{
-			UUID:    tenant.UUID,
-			Version: tenant.Version,
+		if _, accepted := acceptedTenants[tenant.UUID]; accepted {
+			res := model.SafeTenant{
+				UUID:    tenant.UUID,
+				Version: tenant.Version,
+			}
+			result = append(result, res)
 		}
-		result = append(result, res)
 	}
 
 	resp := &logical.Response{
@@ -116,7 +123,6 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 }
 
 func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// TODO remove not user projects
 	tenantID := data.Get("tenant_uuid").(string)
 
 	txn := b.storage.Txn(false)
@@ -129,15 +135,25 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
+	acceptedTenants, acceptedProjects, err := b.availableTenantsAndProjectsByEntityIDOwner(ctx, req)
+	if err != nil {
+		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants & acceptedProjects: %s", err.Error()),
+			http.StatusInternalServerError)
+	}
+
 	result := make([]model.SafeProject, 0, len(projects))
 
 	for _, project := range projects {
-		res := model.SafeProject{
-			UUID:       project.UUID,
-			TenantUUID: project.TenantUUID,
-			Version:    project.Version,
+		_, tenantAcccepted := acceptedTenants[project.TenantUUID]
+		_, projectAcccepted := acceptedProjects[project.UUID]
+		if tenantAcccepted && projectAcccepted {
+			res := model.SafeProject{
+				UUID:       project.UUID,
+				TenantUUID: project.TenantUUID,
+				Version:    project.Version,
+			}
+			result = append(result, res)
 		}
-		result = append(result, res)
 	}
 
 	resp := &logical.Response{

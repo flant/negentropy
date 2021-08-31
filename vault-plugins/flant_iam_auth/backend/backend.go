@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
@@ -18,6 +15,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	extension_server_access2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	entity_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
@@ -455,7 +454,10 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
 			}
-			projects := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs)
+			projects, err := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs, txn)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects: %w", err)
+			}
 			return tenants, projects, nil
 		}
 
@@ -491,7 +493,10 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
 			}
-			projects := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs)
+			projects, err := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs, txn)
+			if err != nil {
+				return nil, nil, fmt.Errorf("collecting projects: %w", err)
+			}
 			return tenants, projects, nil
 		}
 	}
@@ -499,21 +504,43 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 }
 
 func collectProjectUUIDsFromRoleBindigns(rbs1 map[iam.RoleBindingUUID]*iam.RoleBinding,
-	rbs2 map[iam.RoleBindingUUID]*iam.RoleBinding) map[iam.ProjectUUID]struct{} {
+	rbs2 map[iam.RoleBindingUUID]*iam.RoleBinding, txn *sharedio.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error) {
 	result := map[iam.ProjectUUID]struct{}{}
+	projectRepo := iam_repo.NewProjectRepository(txn)
+	fullTenants := map[iam.TenantUUID]struct{}{}
 	for _, rb := range rbs1 {
-		if !rb.AnyProject {
-			for _, pUUID := range rb.Projects {
-				result[pUUID] = struct{}{}
-			}
+		err := processRoleBinding(rb, &fullTenants, projectRepo, &result)
+		if err != nil {
+			return nil, err
 		}
 	}
 	for _, rb := range rbs2 {
-		if !rb.AnyProject {
-			for _, pUUID := range rb.Projects {
-				result[pUUID] = struct{}{}
-			}
+		err := processRoleBinding(rb, &fullTenants, projectRepo, &result)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return result
+	return result, nil
+}
+
+// processRoleBinding check rb and write to given pointers
+func processRoleBinding(rb *iam.RoleBinding, fullTenants *map[iam.TenantUUID]struct{},
+	projectRepo *iam_repo.ProjectRepository, result *map[iam.ProjectUUID]struct{}) error {
+	if rb.AnyProject {
+		if _, processedTenant := (*fullTenants)[rb.TenantUUID]; !processedTenant {
+			(*fullTenants)[rb.TenantUUID] = struct{}{}
+			allTenantProject, err := projectRepo.ListIDs(rb.TenantUUID, false)
+			if err != nil {
+				return err
+			}
+			for _, p := range allTenantProject {
+				(*result)[p] = struct{}{}
+			}
+		}
+	} else {
+		for _, pUUID := range rb.Projects {
+			(*result)[pUUID] = struct{}{}
+		}
+	}
+	return nil
 }
