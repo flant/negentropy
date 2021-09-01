@@ -46,7 +46,7 @@ func Test_ListIdentitySharing(t *testing.T) {
 	for _, obj := range shares {
 		ids = append(ids, obj.ObjId())
 	}
-	require.ElementsMatch(t, []string{fixtures.ShareUUID1}, ids)
+	require.ElementsMatch(t, []string{fixtures.ShareUUID1, fixtures.ShareUUID3}, ids)
 }
 
 func Test_ListForDestinationTenant(t *testing.T) {
@@ -62,4 +62,34 @@ func Test_ListForDestinationTenant(t *testing.T) {
 		ids = append(ids, obj.ObjId())
 	}
 	require.ElementsMatch(t, []string{fixtures.ShareUUID2}, ids)
+}
+
+func Test_ListDestinationTenantsByGroupUUIDs(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
+		identitySharingFixture).Txn(true)
+	repo := iam_repo.NewIdentitySharingRepository(tx)
+
+	shares, err := repo.ListDestinationTenantsByGroupUUIDs(fixtures.GroupUUID4, fixtures.GroupUUID3)
+
+	require.NoError(t, err)
+	ids := make([]string, 0)
+	for tUUID := range shares {
+		ids = append(ids, tUUID)
+	}
+	require.ElementsMatch(t, []string{fixtures.TenantUUID1, fixtures.TenantUUID2}, ids)
+}
+
+func Test_ListDestinationTenantsByGroupUUIDs2(t *testing.T) {
+	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
+		identitySharingFixture).Txn(true)
+	repo := iam_repo.NewIdentitySharingRepository(tx)
+
+	shares, err := repo.ListDestinationTenantsByGroupUUIDs(fixtures.GroupUUID1, fixtures.GroupUUID3)
+
+	require.NoError(t, err)
+	ids := make([]string, 0)
+	for tUUID := range shares {
+		ids = append(ids, tUUID)
+	}
+	require.ElementsMatch(t, []string{fixtures.TenantUUID1, fixtures.TenantUUID2}, ids)
 }

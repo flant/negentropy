@@ -16,7 +16,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -273,7 +273,7 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		defer txn.Abort()
 
 		var (
-			result   []model2.SafeServer
+			result   []model.SafeServer
 			err      error
 			warnings []string
 		)
@@ -387,8 +387,8 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*iam_
 	return resUsers, resSa, nil
 }
 
-func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model2.SafeServer, error) {
-	result := make([]model2.SafeServer, 0)
+func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model.SafeServer, error) {
+	result := make([]model.SafeServer, 0)
 
 	selector, err := labels.Parse(labelSelector)
 	if err != nil {
@@ -405,7 +405,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	for _, server := range list {
 		set := labels.Set(server.Labels)
 		if selector.Matches(set) {
-			qs := model2.SafeServer{
+			qs := model.SafeServer{
 				UUID:        server.UUID,
 				Version:     server.Version,
 				ProjectUUID: server.ProjectUUID,
@@ -418,17 +418,17 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	return result, nil
 }
 
-func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model2.SafeServer, error) {
+func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model.SafeServer, error) {
 	repo := ext_repo.NewServerRepository(tx)
 
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]model2.SafeServer, 0, len(list))
+	result := make([]model.SafeServer, 0, len(list))
 
 	for _, server := range list {
-		qs := model2.SafeServer{
+		qs := model.SafeServer{
 			UUID:        server.UUID,
 			Version:     server.Version,
 			ProjectUUID: server.ProjectUUID,
@@ -440,8 +440,8 @@ func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model2.Sa
 	return result, nil
 }
 
-func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model2.SafeServer, []string, error) {
-	result := make([]model2.SafeServer, 0)
+func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model.SafeServer, []string, error) {
+	result := make([]model.SafeServer, 0)
 
 	nameMap := make(map[string]bool)
 	for _, name := range names {
@@ -456,7 +456,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 
 	for _, server := range list {
 		if _, ok := nameMap[strings.ToLower(server.Identifier)]; ok {
-			qs := model2.SafeServer{
+			qs := model.SafeServer{
 				UUID:        server.UUID,
 				Version:     server.Version,
 				ProjectUUID: server.ProjectUUID,

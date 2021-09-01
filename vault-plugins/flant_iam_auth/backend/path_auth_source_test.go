@@ -1,4 +1,4 @@
-package jwtauth
+package backend
 
 import (
 	"context"

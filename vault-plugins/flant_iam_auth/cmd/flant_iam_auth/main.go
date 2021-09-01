@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
 
-	jwtauth "github.com/flant/negentropy/vault-plugins/flant_iam_auth"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/backend"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 
 	err = plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-			return jwtauth.Factory(ctx, config, nil)
+			return backend.Factory(ctx, config, nil)
 		},
 		TLSProviderFunc: tlsProviderFunc,
 	})

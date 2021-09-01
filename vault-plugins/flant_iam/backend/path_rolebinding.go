@@ -65,6 +65,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Requires multi-factor authentication",
 					Required:    true,
 				},
+				"any_project": {
+					Type:        framework.TypeBool,
+					Description: "allow rolebinding for all projects of tenant",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -114,6 +119,11 @@ func (b roleBindingBackend) paths() []*framework.Path {
 				"require_mfa": {
 					Type:        framework.TypeBool,
 					Description: "Requires multi-factor authentication",
+					Required:    true,
+				},
+				"any_project": {
+					Type:        framework.TypeBool,
+					Description: "allow rolebinding for all projects of tenant",
 					Required:    true,
 				},
 			},
@@ -258,6 +268,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			Roles:      roles,
 			Origin:     model.OriginIAM,
 			Identifier: data.Get("identifier").(string),
+			AnyProject: data.Get("any_project").(bool),
 		}
 
 		tx := b.storage.Txn(true)
@@ -307,6 +318,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			Members:    members,
 			Roles:      roles,
 			Origin:     model.OriginIAM,
+			AnyProject: data.Get("any_project").(bool),
 		}
 
 		tx := b.storage.Txn(true)

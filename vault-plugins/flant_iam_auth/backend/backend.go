@@ -1,4 +1,4 @@
-package jwtauth
+package backend
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extension_server_access"
+	extension_server_access2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
@@ -67,6 +67,8 @@ type flantIamAuthBackend struct {
 	accessorGetter *vault.MountAccessorGetter
 
 	jwksIdGetter func() (string, error)
+
+	entityIDResolver EntityIDResolver
 }
 
 func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (*flantIamAuthBackend, error) {
@@ -211,7 +213,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 				pathAuthSource(b),
 				pathAuthSourceList(b),
 				pathLogin(b),
-				pathMultipassOwnner(b),
+				pathMultipassOwner(b),
 				pathJwtType(b),
 				pathJwtTypeList(b),
 				pathIssueJwtType(b),
@@ -230,7 +232,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
 
 			// server_access_extension
-			extension_server_access.ServerAccessPaths(b, storage, b.jwtController),
+			extension_server_access2.ServerAccessPaths(b, storage, b.jwtController),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,
@@ -251,6 +253,11 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 
 	err = b.accessVaultController.Init(config.StorageView)
 	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
+		return err
+	}
+
+	b.entityIDResolver, err = NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
+	if err != nil {
 		return err
 	}
 

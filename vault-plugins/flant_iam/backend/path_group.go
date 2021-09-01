@@ -219,7 +219,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		defer tx.Abort()
 
 		if err := usecase.Groups(tx, tenantUUID).Create(group); err != nil {
-			msg := "cannot create service account"
+			msg := "cannot create group"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}

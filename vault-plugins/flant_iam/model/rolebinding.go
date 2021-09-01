@@ -12,9 +12,9 @@ type RoleBinding struct {
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`
 
-	Users           []UserUUID           `json:"-"`
-	Groups          []GroupUUID          `json:"-"`
-	ServiceAccounts []ServiceAccountUUID `json:"-"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 	Members         []MemberNotation     `json:"members"`
 
 	AnyProject bool          `json:"any_project"`
