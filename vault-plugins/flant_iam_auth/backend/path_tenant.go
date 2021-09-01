@@ -90,7 +90,7 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("got tenant request in auth")
 
-	acceptedTenants, _, err := b.entityIDResolver.AvailableTenantsAndProjectsByEntityID(req.EntityID, txn)
+	acceptedTenants, err := b.entityIDResolver.AvailableTenantsByEntityID(req.EntityID, txn)
 	if err != nil {
 		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
 	}
@@ -113,7 +113,7 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
-	_, acceptedProjects, err := b.entityIDResolver.AvailableTenantsAndProjectsByEntityID(req.EntityID, txn)
+	acceptedProjects, err := b.entityIDResolver.AvailableProjectsByEntityID(req.EntityID, txn)
 	if err != nil {
 		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants & acceptedProjects: %s", err.Error()),
 			http.StatusInternalServerError)

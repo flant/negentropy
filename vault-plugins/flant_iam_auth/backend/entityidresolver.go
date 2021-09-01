@@ -27,8 +27,10 @@ type EntityIDResolver interface {
 	// RevealEntityIDOwner returns type and info about token owner by its EntityID
 	// it can be iam.User, or iam.ServiceAccount
 	RevealEntityIDOwner(EntityID, *io.MemoryStoreTxn) (*EntityIDOwner, error)
-	// AvailableTenantsAndProjectsByEntityID returns sets of tenants and projects available for EntityID
-	AvailableTenantsAndProjectsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, map[iam.ProjectUUID]struct{}, error)
+	// AvailableTenantsByEntityID returns set of tenants available for EntityID
+	AvailableTenantsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error)
+	// AvailableProjectsByEntityID returns set of projects available for EntityID
+	AvailableProjectsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error)
 }
 
 type entityIDResolver struct {
@@ -95,21 +97,20 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 	}
 }
 
-func (r entityIDResolver) AvailableTenantsAndProjectsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{},
-	map[iam.ProjectUUID]struct{}, error) {
+func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error) {
 	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn)
 	if errors.Is(err, iam.ErrNotFound) {
-		return map[iam.TenantUUID]struct{}{}, map[iam.ProjectUUID]struct{}{}, nil
+		return map[iam.TenantUUID]struct{}{}, nil
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	switch entityIDOwner.OwnerType {
 	case iam.UserType:
 		{
 			user, ok := entityIDOwner.Owner.(*iam.User)
 			if !ok {
-				return nil, nil, fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
+				return nil, fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
 			}
 			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.UUID)
 			gs := make([]iam.GroupUUID, 0, len(groups))
@@ -117,37 +118,22 @@ func (r entityIDResolver) AvailableTenantsAndProjectsByEntityID(entityID EntityI
 				gs = append(gs, uuid)
 			}
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
 			}
-			//  TODO Here easy to have two or three paralleled goroutines
 			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
 			}
 			tenants[user.TenantUUID] = struct{}{}
 
-			rbRepository := iam_repo.NewRoleBindingRepository(txn)
-			userRBs, err := rbRepository.FindDirectRoleBindingsForUser(user.UUID)
-			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForUser: %w", err)
-			}
-			groupsRBs, err := rbRepository.FindDirectRoleBindingsForGroups(gs...)
-			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
-			}
-			projectRepo := iam_repo.NewProjectRepository(txn)
-			projects, err := collectProjectUUIDsFromRoleBindings(userRBs, groupsRBs, projectRepo)
-			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects: %w", err)
-			}
-			return tenants, projects, nil
+			return tenants, nil
 		}
 
 	case iam.ServiceAccountType:
 		{
 			sa, ok := entityIDOwner.Owner.(*iam.ServiceAccount)
 			if !ok {
-				return nil, nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
+				return nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
 			}
 			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForServiceAccountUUID(sa.UUID)
 			gs := make([]iam.GroupUUID, 0, len(groups))
@@ -155,34 +141,94 @@ func (r entityIDResolver) AvailableTenantsAndProjectsByEntityID(entityID EntityI
 				gs = append(gs, uuid)
 			}
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting tenants, get groups: %w", err)
+				return nil, fmt.Errorf("collecting tenants, get groups: %w", err)
 			}
-			//  TODO Here easy to have two or three paralleled goroutines
 			tenants, err := iam_repo.NewIdentitySharingRepository(txn).ListDestinationTenantsByGroupUUIDs(gs...)
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
+				return nil, fmt.Errorf("collecting tenants, get target tenants: %w", err)
 			}
 			tenants[sa.TenantUUID] = struct{}{}
+			return tenants, nil
+		}
+	}
+	return nil, fmt.Errorf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
+}
+
+func (r entityIDResolver) AvailableProjectsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error) {
+	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn)
+	if errors.Is(err, iam.ErrNotFound) {
+		return map[iam.ProjectUUID]struct{}{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	switch entityIDOwner.OwnerType {
+	case iam.UserType:
+		{
+			user, ok := entityIDOwner.Owner.(*iam.User)
+			if !ok {
+				return nil, fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
+			}
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForUserUUID(user.UUID)
+			gs := make([]iam.GroupUUID, 0, len(groups))
+			for uuid := range groups {
+				gs = append(gs, uuid)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("collecting projects, get groups: %w", err)
+			}
+
+			rbRepository := iam_repo.NewRoleBindingRepository(txn)
+			userRBs, err := rbRepository.FindDirectRoleBindingsForUser(user.UUID)
+			if err != nil {
+				return nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForUser: %w", err)
+			}
+			groupsRBs, err := rbRepository.FindDirectRoleBindingsForGroups(gs...)
+			if err != nil {
+				return nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
+			}
+			projectRepo := iam_repo.NewProjectRepository(txn)
+			projects, err := collectProjectUUIDsFromRoleBindings(userRBs, groupsRBs, projectRepo)
+			if err != nil {
+				return nil, fmt.Errorf("collecting projects: %w", err)
+			}
+			return projects, nil
+		}
+
+	case iam.ServiceAccountType:
+		{
+			sa, ok := entityIDOwner.Owner.(*iam.ServiceAccount)
+			if !ok {
+				return nil, fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
+			}
+			groups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForServiceAccountUUID(sa.UUID)
+			gs := make([]iam.GroupUUID, 0, len(groups))
+			for uuid := range groups {
+				gs = append(gs, uuid)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("collecting projects, get groups: %w", err)
+			}
 			rbRepository := iam_repo.NewRoleBindingRepository(txn)
 
 			userRBs, err := rbRepository.FindDirectRoleBindingsForServiceAccount(sa.UUID)
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForServiceAccount: %w", err)
+				return nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForServiceAccount: %w", err)
 			}
 			groupsRBs, err := rbRepository.FindDirectRoleBindingsForGroups(gs...)
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
+				return nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
 			}
 
 			projectRepo := iam_repo.NewProjectRepository(txn)
 			projects, err := collectProjectUUIDsFromRoleBindings(userRBs, groupsRBs, projectRepo)
 			if err != nil {
-				return nil, nil, fmt.Errorf("collecting projects: %w", err)
+				return nil, fmt.Errorf("collecting projects: %w", err)
 			}
-			return tenants, projects, nil
+			return projects, nil
 		}
 	}
-	return nil, nil, fmt.Errorf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
+	return nil, fmt.Errorf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
 }
 
 func NewEntityIDResolver(logger log.Logger, vaultClient *client.VaultClientController) (EntityIDResolver, error) {
