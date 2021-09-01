@@ -309,7 +309,7 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForProject(projectUUID mod
 	return extractRoleBindings(iter, false)
 }
 
-// roleInRoleBindingIndexer build index rb.Roles[i].Name, several indexes for one record
+// roleInRoleBindingIndexer builds index rb.Roles[i].Name, several indexes for one record
 type roleInRoleBindingIndexer struct{}
 
 func (roleInRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {

@@ -58,7 +58,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 					"user": model.User{
 						UUID:             user.UUID,
 						TenantUUID:       user.TenantUUID,
-						Origin:           user.TenantUUID,
+						Origin:           string(user.Origin),
 						Identifier:       user.Identifier,
 						FullIdentifier:   user.FullIdentifier,
 						FirstName:        user.FirstName,
@@ -90,7 +90,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 						Identifier:     sa.Identifier,
 						FullIdentifier: sa.FullIdentifier,
 						CIDRs:          sa.CIDRs,
-						Origin:         sa.TenantUUID,
+						Origin:         string(sa.Origin),
 					},
 				},
 			}, req, http.StatusOK)

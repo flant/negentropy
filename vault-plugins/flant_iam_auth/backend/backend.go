@@ -454,7 +454,7 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
 			}
-			projects, err := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs, txn)
+			projects, err := collectProjectUUIDsFromRoleBindings(userRBs, groupsRBs, txn)
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects: %w", err)
 			}
@@ -493,7 +493,7 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects, get FindDirectRoleBindingsForGroups: %w", err)
 			}
-			projects, err := collectProjectUUIDsFromRoleBindigns(userRBs, groupsRBs, txn)
+			projects, err := collectProjectUUIDsFromRoleBindings(userRBs, groupsRBs, txn)
 			if err != nil {
 				return nil, nil, fmt.Errorf("collecting projects: %w", err)
 			}
@@ -503,7 +503,7 @@ func (b *flantIamAuthBackend) availableTenantsAndProjectsByEntityIDOwner(ctx con
 	return nil, nil, fmt.Errorf("unexpected subjectType: `%s`", subjectType)
 }
 
-func collectProjectUUIDsFromRoleBindigns(rbs1 map[iam.RoleBindingUUID]*iam.RoleBinding,
+func collectProjectUUIDsFromRoleBindings(rbs1 map[iam.RoleBindingUUID]*iam.RoleBinding,
 	rbs2 map[iam.RoleBindingUUID]*iam.RoleBinding, txn *sharedio.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error) {
 	result := map[iam.ProjectUUID]struct{}{}
 	projectRepo := iam_repo.NewProjectRepository(txn)
