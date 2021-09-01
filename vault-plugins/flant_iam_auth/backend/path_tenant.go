@@ -9,10 +9,10 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 )
 
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
@@ -90,74 +90,42 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	b.Logger().Debug("got tenant request in auth")
 
-	repo := iam_repo.NewTenantRepository(txn)
-
-	tenants, err := repo.List(false)
-	if err != nil {
-		return nil, err
-	}
-
-	b.Logger().Debug("list", "tenants", tenants)
-
 	acceptedTenants, _, err := b.entityIDResolver.AvailableTenantsAndProjectsByEntityID(req.EntityID, txn)
 	if err != nil {
 		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
 	}
 
-	result := make([]model.SafeTenant, 0, len(tenants))
-
-	for _, tenant := range tenants {
-		if _, accepted := acceptedTenants[tenant.UUID]; accepted {
-			res := model.SafeTenant{
-				UUID:    tenant.UUID,
-				Version: tenant.Version,
-			}
-			result = append(result, res)
-		}
+	tenants, err := usecase.ListAvailableSafeTenants(txn, acceptedTenants)
+	if err != nil {
+		return responseErrMessage(req, fmt.Sprintf("collect tenants: %s", err.Error()), http.StatusInternalServerError)
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{"tenants": result},
+		Data: map[string]interface{}{"tenants": tenants},
 	}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
+// UNSAFE : only uuids and versions in response
 func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	tenantID := data.Get("tenant_uuid").(string)
 
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
 
-	repo := iam_repo.NewProjectRepository(txn)
-
-	projects, err := repo.List(tenantID, false)
-	if err != nil {
-		return nil, err
-	}
-
-	acceptedTenants, acceptedProjects, err := b.entityIDResolver.AvailableTenantsAndProjectsByEntityID(req.EntityID, txn)
+	_, acceptedProjects, err := b.entityIDResolver.AvailableTenantsAndProjectsByEntityID(req.EntityID, txn)
 	if err != nil {
 		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants & acceptedProjects: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
 
-	result := make([]model.SafeProject, 0, len(projects))
-
-	for _, project := range projects {
-		_, tenantAcccepted := acceptedTenants[project.TenantUUID]
-		_, projectAcccepted := acceptedProjects[project.UUID]
-		if tenantAcccepted && projectAcccepted {
-			res := model.SafeProject{
-				UUID:       project.UUID,
-				TenantUUID: project.TenantUUID,
-				Version:    project.Version,
-			}
-			result = append(result, res)
-		}
+	projects, err := usecase.ListAvailableSafeProjects(txn, tenantID, acceptedProjects)
+	if err != nil {
+		return responseErrMessage(req, fmt.Sprintf("collect projects: %s", err.Error()), http.StatusInternalServerError)
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{"projects": result},
+		Data: map[string]interface{}{"projects": projects},
 	}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
@@ -168,7 +136,7 @@ func (b *flantIamAuthBackend) readTenant(ctx context.Context, req *logical.Reque
 
 	tx := b.storage.Txn(false)
 
-	tenant, err := usecase.Tenants(tx).GetByID(id)
+	tenant, err := iam_usecase.Tenants(tx).GetByID(id)
 	if err != nil {
 		return responseErr(req, err)
 	}
@@ -186,7 +154,7 @@ func (b *flantIamAuthBackend) readProject(ctx context.Context, req *logical.Requ
 
 	tx := b.storage.Txn(false)
 
-	project, err := usecase.Projects(tx).GetByID(id)
+	project, err := iam_usecase.Projects(tx).GetByID(id)
 	if err != nil {
 		return responseErr(req, err)
 	}
