@@ -37,19 +37,19 @@ func pathMultipassOwner(b *flantIamAuthBackend) *framework.Path {
 func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.Request,
 	d *framework.FieldData) (*logical.Response, error) {
 	logger := b.NamedLogger("multipassOwner")
-	subjectType, subject, err := b.revealEntityIDOwner(ctx, req)
+	entityIDOwner, err := b.entityIDResolver.RevealEntityIDOwner(req.EntityID, b.storage.Txn(false))
 	if errors.Is(err, iam.ErrNotFound) {
 		return logical.RespondWithStatusCode(nil, req, http.StatusNotFound) //nolint:errCheck
 	}
 	if err != nil {
 		return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
-	switch subjectType {
+	switch entityIDOwner.OwnerType {
 	case iam.UserType:
 		{
-			user, ok := subject.(*iam.User)
+			user, ok := entityIDOwner.Owner.(*iam.User)
 			if !ok {
-				err := fmt.Errorf("can't cast, need *model.User, got: %T", subject)
+				err := fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
 				logger.Debug(err.Error())
 				return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
 			}
@@ -75,9 +75,9 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 
 	case iam.ServiceAccountType:
 		{
-			sa, ok := subject.(*iam.ServiceAccount)
+			sa, ok := entityIDOwner.Owner.(*iam.ServiceAccount)
 			if !ok {
-				err := fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", subject)
+				err := fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
 				logger.Debug(err.Error())
 				return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
 			}
@@ -96,7 +96,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 			}, req, http.StatusOK)
 		}
 	}
-	msg := fmt.Sprintf("unexpected subjectType: `%s`", subjectType)
+	msg := fmt.Sprintf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
 	logger.Debug(msg)
 	return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
 }
