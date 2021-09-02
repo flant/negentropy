@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/flant/negentropy/cli/cmd/cli/ssh"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/spf13/cobra"
+	"github.com/flant/negentropy/cli/cmd/cli/get"
+	"github.com/flant/negentropy/cli/cmd/cli/ssh"
 )
 
 func main() {
@@ -20,7 +21,8 @@ func main() {
 Find more information at https://flant.com`,
 	}
 
-	rootCmd.AddCommand(ssh.NewCMD())
+	rootCmd.AddCommand(ssh.NewCMD(),
+		get.NewCMD())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

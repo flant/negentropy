@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -21,7 +20,6 @@ import (
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 )
 
@@ -33,7 +31,6 @@ type Session struct {
 	ServerList         *model.ServerList
 	ServerFilter       model.ServerFilter
 	VaultService       vault.VaultService
-	EnvSSHAuthSock     string
 	SSHAgent           agent.Agent
 	SSHAgentSocketPath string
 	SSHConfigFile      *os.File
@@ -65,7 +62,7 @@ func (s *Session) Close() error {
 
 func (s *Session) SyncServersFromVault() error {
 	if s.ServerList == nil {
-		cache, err := s.tryReadCacheFromFile()
+		cache, err := model.TryReadCacheFromFile(s.CachePath)
 		if err != nil {
 			return fmt.Errorf("SyncServersFromVault, reading permanent cache: %w", err)
 		}
@@ -324,40 +321,15 @@ func (s *Session) Start() error {
 }
 
 func (s *Session) updateCache() error {
-	for k, v := range s.ServerList.Tenants {
-		s.PermanentCache.Tenants[k] = v
-	}
-	for k, v := range s.ServerList.Projects {
-		s.PermanentCache.Projects[k] = v
-	}
-	for k, v := range s.ServerList.Servers {
-		s.PermanentCache.Servers[k] = v
-	}
-	return SaveToFile(s.PermanentCache, s.CachePath)
-}
-
-func (s *Session) tryReadCacheFromFile() (*model.ServerList, error) {
-	if _, err := os.Stat(s.CachePath); os.IsNotExist(err) {
-		dirPath := path.Dir(s.CachePath)
-		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-			err = os.MkdirAll(dirPath, 0o644) // Create path
-			if err != nil {
-				return nil, fmt.Errorf("tryReadCacheFromFile, creating dirs: %w", err)
-			}
-		}
-		return &model.ServerList{
-			Tenants:  map[iam.TenantUUID]iam.Tenant{},
-			Projects: map[iam.ProjectUUID]iam.Project{},
-			Servers:  map[ext.ServerUUID]ext.Server{},
-		}, nil
-	}
-	return ReadFromFile(s.CachePath)
+	model.UpdateServerListCacheWithFreshValues(s.PermanentCache, *s.ServerList)
+	return model.SaveToFile(s.PermanentCache, s.CachePath)
 }
 
 func New(vaultService vault.VaultService, serverFilter model.ServerFilter, cacheFilePath string) (*Session, error) {
 	os.MkdirAll(Workdir, os.ModePerm)
 	session := Session{VaultService: vaultService, ServerFilter: serverFilter, CachePath: cacheFilePath}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
+	session.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", Workdir, session.UUID)
 	user, err := session.VaultService.GetUser()
 	if err != nil {
 		return nil, fmt.Errorf("getting user: %w", err)
