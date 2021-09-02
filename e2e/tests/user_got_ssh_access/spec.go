@@ -6,6 +6,7 @@ import (
 	"os"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
@@ -32,164 +33,69 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("Process of getting ssh access to server by a user", func() {
 	Describe("cli ssh running", func() {
-		It("Cli ssh can run, write through ssh, and remove tmp files, [-t XXX --all-projects]", func() {
-			d := testServerAndClientSuite
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist before start")
+		testCounter := 1
+		DescribeTable("cli ssh command variations",
+			func(buildCliCmd func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string) {
+				d := testServerAndClientSuite
+				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+					"/tmp/flint files doesn't exist before start")
 
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", cfg.Tenant.Identifier)
-			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-				flant_iam_preparing.TestServerIdentifier)
-			testFilePath := fmt.Sprintf("/home/%s/test.txt", cfg.User.Identifier)
-			touchCommand := "touch " + testFilePath
-			fmt.Printf("\n%s\n", runningCliCmd)
-			fmt.Printf("\n%s\n", sshCmd)
-			fmt.Printf("\n%s\n", touchCommand)
-			output := d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
-				"/bin/bash", "-c",
-				runningCliCmd,
+				runningCliCmd := buildCliCmd(cfg)
+				sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
+					flant_iam_preparing.TestServerIdentifier)
+				testFilePath := fmt.Sprintf("/home/%s/test%d.txt", cfg.User.Identifier, testCounter)
+				touchCommand := "touch " + testFilePath
+				fmt.Printf("\n%s\n", runningCliCmd)
+				fmt.Printf("\n%s\n", sshCmd)
+				fmt.Printf("\n%s\n", touchCommand)
+				output := d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
+					"/bin/bash", "-c",
+					runningCliCmd,
+				},
+					[]string{
+						sshCmd,
+						touchCommand,
+						"exit", "exit",
+					})
+
+				writeLogToFile(output, fmt.Sprintf("cli%d.log", testCounter))
+				testCounter++
+
+				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+					"/tmp/flint files doesn't exist after closing cli")
+
+				Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
+					ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+				Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
+					ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
+
+				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+					"/tmp/flint is empty  after closing cli")
 			},
-				[]string{
-					sshCmd,
-					touchCommand,
-					"exit", "exit",
-				})
-
-			writeLogToFile(output, "cli.log")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist after closing cli")
-
-			Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
-				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-
-			Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
-				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint is empty  after closing cli")
-		})
-
-		It("Cli ssh can run, write through ssh, and remove tmp files, [-t XXX -p YYY]", func() {
-			d := testServerAndClientSuite
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist before start")
-
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", cfg.Tenant.Identifier, cfg.Project.Identifier)
-			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-				flant_iam_preparing.TestServerIdentifier)
-			testFilePath := fmt.Sprintf("/home/%s/test2.txt", cfg.User.Identifier)
-			touchCommand := "touch " + testFilePath
-			fmt.Printf("\n%s\n", runningCliCmd)
-			fmt.Printf("\n%s\n", sshCmd)
-			fmt.Printf("\n%s\n", touchCommand)
-			output := d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
-				"/bin/bash", "-c",
-				runningCliCmd,
-			},
-				[]string{
-					sshCmd,
-					touchCommand,
-					"exit", "exit",
-				})
-
-			writeLogToFile(output, "cli.log")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist after closing cli")
-
-			Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
-				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-
-			Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
-				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint is empty  after closing cli")
-		})
-
-		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants --all-projects -l system=ubuntu20]", func() {
-			d := testServerAndClientSuite
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist before start")
-
-			var labelSelector string
-			for k, v := range flant_iam_preparing.ServerLabels {
-				labelSelector = k + "=" + v
-				break // just one pair
-			}
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects -l %s\n", labelSelector)
-			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-				flant_iam_preparing.TestServerIdentifier)
-			testFilePath := fmt.Sprintf("/home/%s/test3.txt", cfg.User.Identifier)
-			touchCommand := "touch " + testFilePath
-			fmt.Printf("\n%s\n", runningCliCmd)
-			fmt.Printf("\n%s\n", sshCmd)
-			fmt.Printf("\n%s\n", touchCommand)
-			output := d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
-				"/bin/bash", "-c",
-				runningCliCmd,
-			},
-				[]string{
-					sshCmd,
-					touchCommand,
-					"exit", "exit",
-				})
-
-			writeLogToFile(output, "cli.log")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist after closing cli")
-
-			Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
-				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-
-			Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
-				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint is empty  after closing cli")
-		})
-
-		It("Cli ssh can run, write through ssh, and remove tmp files, [--all-tenants -p XXX  test-server]", func() {
-			d := testServerAndClientSuite
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist before start")
-
-			runningCliCmd := fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", cfg.Project.Identifier,
-				flant_iam_preparing.TestServerIdentifier)
-			sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-				flant_iam_preparing.TestServerIdentifier)
-			testFilePath := fmt.Sprintf("/home/%s/test4.txt", cfg.User.Identifier)
-			touchCommand := "touch " + testFilePath
-			fmt.Printf("\n%s\n", runningCliCmd)
-			fmt.Printf("\n%s\n", sshCmd)
-			fmt.Printf("\n%s\n", touchCommand)
-
-			output := d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
-				"/bin/bash", "-c",
-				runningCliCmd,
-			},
-				[]string{
-					sshCmd,
-					touchCommand,
-					"exit", "exit",
-				})
-
-			writeLogToFile(output, "cli.log")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint files doesn't exist after closing cli")
-
-			Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
-				ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
-
-			Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
-				ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
-
-			Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				"/tmp/flint is empty  after closing cli")
-		})
+			Entry("[-t XXX --all-projects]",
+				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+					return fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", cfg.Tenant.Identifier)
+				}),
+			Entry("[--all-tenants --all-projects -l system=ubuntu20]",
+				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+					var labelSelector string
+					for k, v := range flant_iam_preparing.ServerLabels {
+						labelSelector = k + "=" + v
+						break // just one pair
+					}
+					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects -l %s\n", labelSelector)
+				}),
+			Entry("[--all-tenants -p XXX  test-server]",
+				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", cfg.Project.Identifier,
+						flant_iam_preparing.TestServerIdentifier)
+				}),
+			Entry(" [-t XXX -p YYY]",
+				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+					return fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", cfg.Tenant.Identifier, cfg.Project.Identifier)
+				}),
+		)
 	})
 })
 
