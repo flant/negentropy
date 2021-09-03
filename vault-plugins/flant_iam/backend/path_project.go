@@ -25,7 +25,8 @@ func projectPaths(b logical.Backend, storage *io.MemoryStore) []*framework.Path 
 		Backend: b,
 		storage: storage,
 	}
-	return bb.paths()
+	paths := append(bb.paths(), bb.featureFlagPath())
+	return paths
 }
 
 func (b projectBackend) paths() []*framework.Path {
