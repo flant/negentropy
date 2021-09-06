@@ -65,7 +65,7 @@ func tenant(outErr *error) func(*cobra.Command, []string) {
 			return
 		}
 
-		fmt.Printf("output flag = %s\n", output)
+		fmt.Printf("output flag= %s\n", output)
 		fmt.Printf("tenants: \n")
 		for _, t := range tenants {
 			fmt.Printf("%s\n", t.Identifier)

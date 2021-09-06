@@ -17,26 +17,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 )
 
-const (
-	SSHRole              = "ssh"
-	TestServerIdentifier = "test-server"
-	ServerRole           = "servers"
-)
-
-var ServerLabels = map[string]string{"system": "ubuntu20"}
+var serverLabels = map[string]string{"system": "ubuntu20"}
 
 type Suite struct {
 	IamVaultClient *http.Client
 }
 
 type CheckingSSHConnectionEnvironment struct {
-	Tenant      model.Tenant
-	User        model.User
-	Project     model.Project
-	Group       model.Group
-	Rolebinding model.RoleBinding
-	TestServer  specs.ServerRegistrationResult
-	UserJWToken string
+	Tenant               model.Tenant
+	User                 model.User
+	Project              model.Project
+	Group                model.Group
+	Rolebinding          model.RoleBinding
+	TestServer           specs.ServerRegistrationResult
+	UserJWToken          string
+	ServerLabels         map[string]string
+	TestServerIdentifier string
 }
 
 func (st *Suite) BeforeSuite() {
@@ -48,6 +44,12 @@ func (st *Suite) BeforeSuite() {
 }
 
 func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
+	const (
+		sshRole              = "ssh"
+		testServerIdentifier = "test-server"
+		serverRole           = "servers"
+	)
+
 	var result CheckingSSHConnectionEnvironment
 	// create some tenant
 	result.Tenant = specs.CreateRandomTenant(lib.NewTenantAPI(st.IamVaultClient))
@@ -66,10 +68,10 @@ func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
 	fmt.Printf("Created group:%#v\n", result.Group)
 
 	// create a role 'ssh' if not exists
-	st.createRoleIfNotExist(SSHRole)
+	st.createRoleIfNotExist(sshRole)
 
 	// create a role 'servers' if not exists
-	st.createRoleIfNotExist(ServerRole)
+	st.createRoleIfNotExist(serverRole)
 
 	// create rolebinding for a user in project with the ssh role
 	result.Rolebinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
@@ -81,7 +83,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
 			RequireMFA: false,
 			Members:    result.Group.Members,
 			AnyProject: true,
-			Roles:      []model.BoundRole{{Name: SSHRole, Options: map[string]interface{}{}}},
+			Roles:      []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.Rolebinding)
 
@@ -90,10 +92,12 @@ func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
 		model2.Server{
 			TenantUUID:  result.Tenant.UUID,
 			ProjectUUID: result.Project.UUID,
-			Identifier:  TestServerIdentifier,
-			Labels:      ServerLabels,
+			Identifier:  testServerIdentifier,
+			Labels:      serverLabels,
 		})
 	fmt.Printf("Created testServer Server:%#v\n", result.TestServer)
+	result.ServerLabels = serverLabels
+	result.TestServerIdentifier = testServerIdentifier
 
 	// add connection_info for a server 'test_server'
 	server := specs.UpdateConnectionInfo(lib.NewConnectionInfoAPI(st.IamVaultClient),
@@ -103,7 +107,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
 			ProjectUUID: result.Project.UUID,
 		},
 		model2.ConnectionInfo{
-			Hostname: TestServerIdentifier,
+			Hostname: testServerIdentifier,
 		},
 	)
 	fmt.Printf("connection_info is updated: %#v\n", server.ConnectionInfo)

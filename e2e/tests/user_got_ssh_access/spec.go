@@ -42,7 +42,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 
 				runningCliCmd := buildCliCmd(cfg)
 				sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-					flant_iam_preparing.TestServerIdentifier)
+					cfg.TestServerIdentifier)
 				testFilePath := fmt.Sprintf("/home/%s/test%d.txt", cfg.User.Identifier, testCounter)
 				touchCommand := "touch " + testFilePath
 				fmt.Printf("\n%s\n", runningCliCmd)
@@ -80,7 +80,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Entry("[--all-tenants --all-projects -l system=ubuntu20]",
 				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
 					var labelSelector string
-					for k, v := range flant_iam_preparing.ServerLabels {
+					for k, v := range cfg.ServerLabels {
 						labelSelector = k + "=" + v
 						break // just one pair
 					}
@@ -89,7 +89,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Entry("[--all-tenants -p XXX  test-server]",
 				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", cfg.Project.Identifier,
-						flant_iam_preparing.TestServerIdentifier)
+						cfg.TestServerIdentifier)
 				}),
 			Entry(" [-t XXX -p YYY]",
 				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
