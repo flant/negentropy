@@ -42,7 +42,9 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
-	rb.UUID = uuid.New()
+	if rb.UUID == "" {
+		rb.UUID = uuid.New()
+	}
 
 	return s.repo.Create(rb)
 }
