@@ -83,7 +83,7 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		}
 		permanentCacheFilePath := path.Join(homeDir, ".flant", "cli", "ssh", "cache")
 
-		s, *err = session.New(vault.NewService(), serverFilter, permanentCacheFilePath)
+		s, *err = session.New(vault.NewService(), serverFilter, permanentCacheFilePath, consts.CacheTTL)
 		if *err != nil {
 			return
 		}

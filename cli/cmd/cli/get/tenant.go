@@ -74,7 +74,7 @@ func tenant(outErr *error) func(*cobra.Command, []string) {
 	}
 }
 
-func getTenantData(onlyCache bool, cache *model.ServerList, serverFilter model.ServerFilter,
+func getTenantData(onlyCache bool, cache *model.Cache, serverFilter model.ServerFilter,
 	permanentCacheFilePath string) (map[iam.TenantUUID]iam.Tenant, error) {
 	var tenants map[iam.TenantUUID]iam.Tenant
 
@@ -92,10 +92,10 @@ func getTenantData(onlyCache bool, cache *model.ServerList, serverFilter model.S
 		if err != nil {
 			return nil, err
 		}
-		*cache = model.UpdateServerListCacheWithFreshValues(*cache, model.ServerList{
+		cache.Update(model.ServerList{
 			Tenants: tenants,
 		})
-		model.SaveToFile(*cache, permanentCacheFilePath)
+		cache.SaveToFile(permanentCacheFilePath)
 	}
 	return tenants, nil
 }
@@ -112,17 +112,18 @@ func getOutputAndCacheFlags(flags *pflag.FlagSet) (bool, string, error) {
 	return onlyCache, output, nil
 }
 
-func readCache() (*model.ServerList, string, error) {
+func readCache() (*model.Cache, string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, "", err
 	}
 	permanentCacheFilePath := path.Join(homeDir, ".flant", "cli", "ssh", "cache")
 
-	cache, err := model.TryReadCacheFromFile(permanentCacheFilePath)
+	cache, err := model.TryReadCacheFromFile(permanentCacheFilePath, consts.CacheTTL)
 	if err != nil {
 		err = fmt.Errorf("get project, reading permanent cache: %w", err)
 		return nil, "", err
 	}
+	cache.ClearOverdue()
 	return cache, permanentCacheFilePath, nil
 }

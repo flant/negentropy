@@ -69,7 +69,7 @@ func server(outErr *error) func(*cobra.Command, []string) {
 			return
 		}
 
-		var cache *model.ServerList
+		var cache *model.Cache
 		cache, permanentCacheFilePath, err := readCache()
 		if err != nil {
 			*outErr = err
@@ -98,7 +98,7 @@ func server(outErr *error) func(*cobra.Command, []string) {
 	}
 }
 
-func getServerData(onlyCache bool, cache *model.ServerList, serverFilter model.ServerFilter,
+func getServerData(onlyCache bool, cache *model.Cache, serverFilter model.ServerFilter,
 	permanentCacheFilePath string) (*model.ServerList, error) {
 	var (
 		tenants  map[iam.TenantUUID]iam.Tenant
@@ -138,13 +138,13 @@ func getServerData(onlyCache bool, cache *model.ServerList, serverFilter model.S
 		}
 	} else {
 		var err error
-		serverList, err = vault.NewService().UpdateServersByFilter(serverFilter, cache)
+		serverList, err = vault.NewService().UpdateServersByFilter(serverFilter, &cache.ServerList)
 		if err != nil {
 			return nil, err
 		}
-		*cache = model.UpdateServerListCacheWithFreshValues(*cache, *serverList)
+		cache.Update(*serverList)
 
-		model.SaveToFile(*cache, permanentCacheFilePath)
+		cache.SaveToFile(permanentCacheFilePath)
 	}
 	return serverList, nil
 }
