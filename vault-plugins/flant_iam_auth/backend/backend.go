@@ -187,6 +187,11 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
 
+	b.entityIDResolver, err = NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
+	if err != nil {
+		return nil, err
+	}
+
 	b.Backend = &framework.Backend{
 		AuthRenew:    b.pathLoginRenew,
 		BackendType:  logical.TypeCredential,
@@ -232,7 +237,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
 
 			// server_access_extension
-			extension_server_access2.ServerAccessPaths(b, storage, b.jwtController),
+			extension_server_access2.ServerAccessPaths(b, storage, b.jwtController, b.entityIDResolver),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,
@@ -253,11 +258,6 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 
 	err = b.accessVaultController.Init(config.StorageView)
 	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
-		return err
-	}
-
-	b.entityIDResolver, err = NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
-	if err != nil {
 		return err
 	}
 

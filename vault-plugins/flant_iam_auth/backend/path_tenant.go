@@ -92,12 +92,12 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 
 	acceptedTenants, err := b.entityIDResolver.AvailableTenantsByEntityID(req.EntityID, txn)
 	if err != nil {
-		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
+		return ResponseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
 	}
 
 	tenants, err := usecase.ListAvailableSafeTenants(txn, acceptedTenants)
 	if err != nil {
-		return responseErrMessage(req, fmt.Sprintf("collect tenants: %s", err.Error()), http.StatusInternalServerError)
+		return ResponseErrMessage(req, fmt.Sprintf("collect tenants: %s", err.Error()), http.StatusInternalServerError)
 	}
 
 	resp := &logical.Response{
@@ -115,13 +115,13 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 
 	acceptedProjects, err := b.entityIDResolver.AvailableProjectsByEntityID(req.EntityID, txn)
 	if err != nil {
-		return responseErrMessage(req, fmt.Sprintf("collect acceptedTenants & acceptedProjects: %s", err.Error()),
+		return ResponseErrMessage(req, fmt.Sprintf("collect acceptedTenants & acceptedProjects: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
 
 	projects, err := usecase.ListAvailableSafeProjects(txn, tenantID, acceptedProjects)
 	if err != nil {
-		return responseErrMessage(req, fmt.Sprintf("collect projects: %s", err.Error()), http.StatusInternalServerError)
+		return ResponseErrMessage(req, fmt.Sprintf("collect projects: %s", err.Error()), http.StatusInternalServerError)
 	}
 
 	resp := &logical.Response{

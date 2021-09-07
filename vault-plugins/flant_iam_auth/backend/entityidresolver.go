@@ -30,7 +30,7 @@ type EntityIDResolver interface {
 	// AvailableTenantsByEntityID returns set of tenants available for EntityID
 	AvailableTenantsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error)
 	// AvailableProjectsByEntityID returns set of projects available for EntityID
-	AvailableProjectsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error)
+	AvailableProjectsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error)
 }
 
 type entityIDResolver struct {
