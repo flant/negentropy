@@ -35,7 +35,19 @@ import (
 const loggerModule = "Auth"
 
 // Factory is used by framework
-func Factory(ctx context.Context, c *logical.BackendConfig, jwksIDGetter func() (string, error)) (logical.Backend, error) {
+func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
+	b, err := backend(c, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := b.SetupBackend(ctx, c); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func FactoryWithJwksIDGetter(ctx context.Context, c *logical.BackendConfig,
+	jwksIDGetter func() (string, error)) (logical.Backend, error) {
 	b, err := backend(c, jwksIDGetter)
 	if err != nil {
 		return nil, err

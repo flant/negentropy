@@ -31,7 +31,7 @@ func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	b, err := Factory(context.Background(), config, func() (string, error) {
+	b, err := FactoryWithJwksIDGetter(context.Background(), config, func() (string, error) {
 		return "test", nil
 	})
 
