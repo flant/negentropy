@@ -17,6 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
+	"github.com/flant/negentropy/cli/internal/consts"
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
@@ -25,7 +26,7 @@ import (
 
 type Session struct {
 	UUID               string
-	PermanentCache     model.ServerList
+	PermanentCache     model.Cache
 	CachePath          string
 	User               auth.User
 	ServerList         *model.ServerList
@@ -36,9 +37,8 @@ type Session struct {
 	SSHConfigFile      *os.File
 	KnownHostsFile     *os.File
 	BashRCFile         *os.File
+	cacheTTL           time.Duration
 }
-
-const Workdir = "/tmp/flint"
 
 func (s *Session) Close() error {
 	err := os.Remove(s.SSHAgentSocketPath)
@@ -62,12 +62,12 @@ func (s *Session) Close() error {
 
 func (s *Session) SyncServersFromVault() error {
 	if s.ServerList == nil {
-		cache, err := model.TryReadCacheFromFile(s.CachePath)
+		cache, err := model.TryReadCacheFromFile(s.CachePath, s.cacheTTL)
 		if err != nil {
 			return fmt.Errorf("SyncServersFromVault, reading permanent cache: %w", err)
 		}
 		s.PermanentCache = *cache
-		s.ServerList = cache
+		s.ServerList = &cache.ServerList
 	}
 	sl, err := s.VaultService.UpdateServersByFilter(s.ServerFilter, s.ServerList)
 	if err != nil {
@@ -84,7 +84,7 @@ func (s *Session) SyncServersFromVault() error {
 func (s *Session) RenderKnownHostsToFile() error {
 	_, err := s.KnownHostsFile.Stat()
 	if err != nil {
-		file, err := os.Create(fmt.Sprintf("%s/%s-known_hosts", Workdir, s.UUID))
+		file, err := os.Create(fmt.Sprintf("%s/%s-known_hosts", consts.SSHWorkdir, s.UUID))
 		if err != nil {
 			return fmt.Errorf("RenderKnownHostsToFile: %w", err)
 		}
@@ -104,7 +104,7 @@ func (s *Session) RenderKnownHostsToFile() error {
 func (s *Session) RenderSSHConfigToFile() error {
 	_, err := s.SSHConfigFile.Stat()
 	if err != nil {
-		file, err := os.Create(fmt.Sprintf("%s/%s-ssh_config", Workdir, s.UUID))
+		file, err := os.Create(fmt.Sprintf("%s/%s-ssh_config", consts.SSHWorkdir, s.UUID))
 		if err != nil {
 			return fmt.Errorf("RenderSSHConfigToFile: %w", err)
 		}
@@ -128,7 +128,7 @@ func (s *Session) RenderSSHConfigToFile() error {
 func (s *Session) RenderBashRCToFile() error {
 	_, err := s.BashRCFile.Stat()
 	if err != nil {
-		file, err := os.Create(fmt.Sprintf("%s/%s-bashrc", Workdir, s.UUID))
+		file, err := os.Create(fmt.Sprintf("%s/%s-bashrc", consts.SSHWorkdir, s.UUID))
 		if err != nil {
 			return fmt.Errorf("RenderBashRCToFile: %w", err)
 		}
@@ -220,7 +220,7 @@ func (s *Session) RefreshClientCertificates() error {
 
 func (s *Session) StartSSHAgent() error {
 	s.SSHAgent = agent.NewKeyring()
-	s.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", Workdir, s.UUID)
+	s.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", consts.SSHWorkdir, s.UUID)
 
 	agentListener, err := net.Listen("unix", s.SSHAgentSocketPath)
 	if err != nil {
@@ -321,19 +321,20 @@ func (s *Session) Start() error {
 }
 
 func (s *Session) updateCache() error {
-	model.UpdateServerListCacheWithFreshValues(s.PermanentCache, *s.ServerList)
-	return model.SaveToFile(s.PermanentCache, s.CachePath)
+	s.PermanentCache.Update(*s.ServerList)
+	return s.PermanentCache.SaveToFile(s.CachePath)
 }
 
-func New(vaultService vault.VaultService, serverFilter model.ServerFilter, cacheFilePath string) (*Session, error) {
-	os.MkdirAll(Workdir, os.ModePerm)
+func New(vaultService vault.VaultService, serverFilter model.ServerFilter, cacheFilePath string, cacheTTL time.Duration) (*Session, error) {
+	os.MkdirAll(consts.SSHWorkdir, os.ModePerm)
 	session := Session{VaultService: vaultService, ServerFilter: serverFilter, CachePath: cacheFilePath}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
-	session.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", Workdir, session.UUID)
+	session.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", consts.SSHWorkdir, session.UUID)
 	user, err := session.VaultService.GetUser()
 	if err != nil {
 		return nil, fmt.Errorf("getting user: %w", err)
 	}
 	session.User = *user
+	session.cacheTTL = cacheTTL
 	return &session, nil
 }
