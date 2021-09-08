@@ -12,11 +12,14 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/labels"
 
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -26,23 +29,30 @@ const (
 	serverAccessSSHRoleKey = "iam_auth.extensions.server_access.ssh_role"
 )
 
-type serverAccessBackend struct {
+type ServerAccessBackend struct {
 	logical.Backend
-	storage       *io.MemoryStore
-	jwtController *jwt.Controller
+	storage          *io.MemoryStore
+	jwtController    *jwt.Controller
+	entityIDResolver authn.EntityIDResolver
 }
 
-func ServerAccessPaths(b logical.Backend, storage *io.MemoryStore, jwtController *jwt.Controller) []*framework.Path {
-	bb := &serverAccessBackend{
+// NewServerAccessBackend returns valid ServerAccessBackend, except entityIDResolver
+// need set it before start using  ServerAccessBackend
+func NewServerAccessBackend(b logical.Backend, storage *io.MemoryStore,
+	jwtController *jwt.Controller) ServerAccessBackend {
+	return ServerAccessBackend{
 		Backend:       b,
 		storage:       storage,
 		jwtController: jwtController,
 	}
-
-	return bb.paths()
 }
 
-func (b *serverAccessBackend) paths() []*framework.Path {
+// SetEntityIDResolver set entityIDResolver
+func (b *ServerAccessBackend) SetEntityIDResolver(entityIDResolver authn.EntityIDResolver) {
+	b.entityIDResolver = entityIDResolver
+}
+
+func (b *ServerAccessBackend) Paths() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: path.Join("configure_extension", "server_access"),
@@ -88,7 +98,7 @@ func (b *serverAccessBackend) paths() []*framework.Path {
 				},
 			},
 		},
-
+		// todo remove it
 		{
 			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid")),
 			Fields: map[string]*framework.FieldSchema{
@@ -188,7 +198,7 @@ func (b *serverAccessBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *serverAccessBackend) handleConfig() framework.OperationFunc {
+func (b *ServerAccessBackend) handleConfig() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		rawRoleForSSHAccess := data.Get("role_for_ssh_access")
 
@@ -205,7 +215,7 @@ func (b *serverAccessBackend) handleConfig() framework.OperationFunc {
 	}
 }
 
-func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
+func (b *ServerAccessBackend) handleServerJWT() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tenantID := data.Get("tenant_uuid").(string)
 		projectID := data.Get("project_uuid").(string)
@@ -236,7 +246,9 @@ func (b *serverAccessBackend) handleServerJWT() framework.OperationFunc {
 	}
 }
 
-func (b *serverAccessBackend) queryServer() framework.OperationFunc {
+// queryServer serve safe and unsafe paths
+// safe path is served with tenantID and projectID
+func (b *ServerAccessBackend) queryServer() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		var tenantID, projectID string
 		var serverNames []string
@@ -272,35 +284,80 @@ func (b *serverAccessBackend) queryServer() framework.OperationFunc {
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
 
-		var (
-			result   []model.SafeServer
-			err      error
-			warnings []string
-		)
-
-		switch {
-		case len(serverNames) > 0:
-			result, warnings, err = findSeversByNames(txn, serverNames, tenantID, projectID)
-
-		case labelSelector != "":
-			result, err = findServersByLabels(txn, labelSelector, tenantID, projectID)
-
-		default:
-			result, err = findServers(txn, tenantID, projectID)
-		}
+		acceptedProjects, err := b.entityIDResolver.AvailableProjectsByEntityID(req.EntityID, txn)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, fmt.Sprintf("collect acceptedProjects: %s", err.Error()),
+				http.StatusInternalServerError)
+		}
+
+		servers, warnings, err := b.allowedServers(txn, tenantID, projectID, serverNames, labelSelector, acceptedProjects)
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, fmt.Sprintf("filtering servers: %s", err.Error()),
+				http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{
 			Warnings: warnings,
-			Data:     map[string]interface{}{"servers": result},
+			Data:     map[string]interface{}{"servers": servers},
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *serverAccessBackend) handleReadPosixUsers() framework.OperationFunc {
+func (b *ServerAccessBackend) allowedServers(txn *io.MemoryStoreTxn, tenantID string, projectID string, serverNames []string,
+	labelSelector string, allowedProjects map[iam_model.ProjectUUID]struct{}) (interface{}, []string, error) {
+	b.Logger().Debug("allowedServers", "tenantID", tenantID, "projectID", projectID, "serverNames", serverNames, "labelSelector", labelSelector, "allowedProjects", allowedProjects) // TODO REMOVE
+	var (
+		servers  []*ext_model.Server
+		err      error
+		warnings []string
+	)
+
+	switch {
+	case len(serverNames) > 0:
+		servers, warnings, err = findSeversByNames(txn, serverNames, tenantID, projectID)
+		servers = filterByProjects(servers, allowedProjects)
+	case labelSelector != "":
+		servers, err = findServersByLabels(txn, labelSelector, tenantID, projectID)
+		servers = filterByProjects(servers, allowedProjects)
+	default:
+		servers, err = findServers(txn, tenantID, projectID)
+		servers = filterByProjects(servers, allowedProjects)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if tenantID != "" && projectID != "" {
+		return servers, warnings, nil
+	}
+	return makeSafeServers(servers), warnings, nil
+}
+
+func makeSafeServers(servers []*ext_model.Server) []*model.SafeServer {
+	result := make([]*model.SafeServer, 0, len(servers))
+	for _, s := range servers {
+		result = append(result, &model.SafeServer{
+			UUID:        s.UUID,
+			Version:     s.Version,
+			ProjectUUID: s.ProjectUUID,
+			TenantUUID:  s.TenantUUID,
+		})
+	}
+	return result
+}
+
+func filterByProjects(servers []*ext_model.Server,
+	acceptedProjects map[iam_model.ProjectUUID]struct{}) []*ext_model.Server {
+	result := []*ext_model.Server{}
+	for i := range servers {
+		if _, ok := acceptedProjects[servers[i].ProjectUUID]; ok {
+			result = append(result, servers[i])
+		}
+	}
+	return result
+}
+
+func (b *ServerAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		tenantID := data.Get("tenant_uuid").(string)
 		// projectID := data.Get("project_uuid").(string) // TODO: use it in resolver
@@ -387,8 +444,8 @@ func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*iam_
 	return resUsers, resSa, nil
 }
 
-func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]model.SafeServer, error) {
-	result := make([]model.SafeServer, 0)
+func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, projectID string) ([]*ext_model.Server, error) {
+	result := make([]*ext_model.Server, 0)
 
 	selector, err := labels.Parse(labelSelector)
 	if err != nil {
@@ -405,43 +462,24 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 	for _, server := range list {
 		set := labels.Set(server.Labels)
 		if selector.Matches(set) {
-			qs := model.SafeServer{
-				UUID:        server.UUID,
-				Version:     server.Version,
-				ProjectUUID: server.ProjectUUID,
-				TenantUUID:  server.TenantUUID,
-			}
-			result = append(result, qs)
+			result = append(result, server)
 		}
 	}
 
 	return result, nil
 }
 
-func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]model.SafeServer, error) {
+func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]*ext_model.Server, error) {
 	repo := ext_repo.NewServerRepository(tx)
-
 	list, err := repo.List(tenantID, projectID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]model.SafeServer, 0, len(list))
-
-	for _, server := range list {
-		qs := model.SafeServer{
-			UUID:        server.UUID,
-			Version:     server.Version,
-			ProjectUUID: server.ProjectUUID,
-			TenantUUID:  server.TenantUUID,
-		}
-		result = append(result, qs)
-	}
-
-	return result, nil
+	return list, nil
 }
 
-func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]model.SafeServer, []string, error) {
-	result := make([]model.SafeServer, 0)
+func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectID string) ([]*ext_model.Server, []string, error) {
+	result := make([]*ext_model.Server, 0)
 
 	nameMap := make(map[string]bool)
 	for _, name := range names {
@@ -456,13 +494,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 
 	for _, server := range list {
 		if _, ok := nameMap[strings.ToLower(server.Identifier)]; ok {
-			qs := model.SafeServer{
-				UUID:        server.UUID,
-				Version:     server.Version,
-				ProjectUUID: server.ProjectUUID,
-				TenantUUID:  server.TenantUUID,
-			}
-			result = append(result, qs)
+			result = append(result, server)
 			nameMap[strings.ToLower(server.Identifier)] = true
 		}
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
+
+const path = "test.json"
 
 var (
 	cache = Cache{
@@ -73,4 +76,55 @@ func Test_clearOverdue(t *testing.T) {
 	require.Empty(t, c.ProjectsTimestamps)
 	require.Empty(t, c.Servers)
 	require.Empty(t, c.ServersTimestamps)
+}
+
+func Test_SaveToFile(t *testing.T) {
+	err := deleteFileIfExists(path)
+	require.NoError(t, err)
+	c := cache
+	c.Update(list)
+	require.NotEmpty(t, c.Tenants, list.Tenants)
+	require.NotEmpty(t, c.Projects, list.Projects)
+	require.NotEmpty(t, c.Servers, list.Servers)
+	require.NotEmpty(t, c.TenantsTimestamps)
+	require.NotEmpty(t, c.ProjectsTimestamps)
+	require.NotEmpty(t, c.ServersTimestamps)
+
+	err = c.SaveToFile(path)
+
+	require.NoError(t, err)
+	require.FileExists(t, path)
+	deleteFileIfExists(path)
+}
+
+func Test_ReadFromFile(t *testing.T) {
+	err := deleteFileIfExists(path)
+	require.NoError(t, err)
+	c := cache
+	c.Update(list)
+	require.NotEmpty(t, c.Tenants, list.Tenants)
+	require.NotEmpty(t, c.Projects, list.Projects)
+	require.NotEmpty(t, c.Servers, list.Servers)
+	require.NotEmpty(t, c.TenantsTimestamps)
+	require.NotEmpty(t, c.ProjectsTimestamps)
+	require.NotEmpty(t, c.ServersTimestamps)
+	err = c.SaveToFile(path)
+	require.NoError(t, err)
+	require.FileExists(t, path)
+
+	c2, err := ReadFromFile(path, time.Second*6)
+
+	require.NoError(t, err)
+	require.Equal(t, c2.Tenants, list.Tenants)
+	require.Equal(t, c2.Projects, list.Projects)
+	require.Equal(t, c2.Servers, list.Servers)
+	require.Equal(t, c2.TTL, time.Second*6)
+	deleteFileIfExists(path)
+}
+
+func deleteFileIfExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	}
+	return os.Remove(path)
 }

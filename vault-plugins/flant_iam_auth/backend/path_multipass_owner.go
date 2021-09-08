@@ -11,6 +11,7 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 )
 
 func pathMultipassOwner(b *flantIamAuthBackend) *framework.Path {
@@ -42,7 +43,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 		return logical.RespondWithStatusCode(nil, req, http.StatusNotFound) //nolint:errCheck
 	}
 	if err != nil {
-		return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	switch entityIDOwner.OwnerType {
 	case iam.UserType:
@@ -51,7 +52,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 			if !ok {
 				err := fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
 				logger.Debug(err.Error())
-				return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
+				return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 			}
 			return logical.RespondWithStatusCode(&logical.Response{
 				Data: map[string]interface{}{
@@ -79,7 +80,7 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 			if !ok {
 				err := fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
 				logger.Debug(err.Error())
-				return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
+				return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 			}
 			return logical.RespondWithStatusCode(&logical.Response{
 				Data: map[string]interface{}{
@@ -98,5 +99,5 @@ func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.R
 	}
 	msg := fmt.Sprintf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
 	logger.Debug(msg)
-	return responseErrMessage(req, err.Error(), http.StatusInternalServerError)
+	return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 }

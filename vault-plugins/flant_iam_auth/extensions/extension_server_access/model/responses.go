@@ -25,14 +25,6 @@ type SafeServer struct {
 	TenantUUID  string `json:"tenant_uuid"`
 }
 
-type Server struct {
-	UUID        string `json:"uuid"`
-	Identifier  string `json:"identifier"`
-	Version     string `json:"resource_version"`
-	ProjectUUID string `json:"project_uuid"`
-	TenantUUID  string `json:"tenant_uuid"`
-}
-
 type User struct {
 	UUID       string `json:"uuid"` // PK
 	TenantUUID string `json:"tenant_uuid"`

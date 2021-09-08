@@ -28,7 +28,7 @@ type Cache struct {
 	TTL time.Duration
 }
 
-func (c Cache) ClearOverdue() {
+func (c *Cache) ClearOverdue() {
 	now := time.Now()
 	for id, lastAccess := range c.TenantsTimestamps {
 		if now.After(lastAccess.Add(c.TTL)) {
@@ -50,7 +50,7 @@ func (c Cache) ClearOverdue() {
 	}
 }
 
-func (c Cache) SaveToFile(path string) error {
+func (c *Cache) SaveToFile(path string) error {
 	data, err := json.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("SaveToFile: %w", err)
@@ -85,22 +85,15 @@ func TryReadCacheFromFile(filePath string, ttl time.Duration) (*Cache, error) {
 				return nil, fmt.Errorf("tryReadCacheFromFile, creating dirs: %w", err)
 			}
 		}
-		return &Cache{
-			ServerList: ServerList{
-				Tenants:  map[iam.TenantUUID]iam.Tenant{},
-				Projects: map[iam.ProjectUUID]iam.Project{},
-				Servers:  map[ext.ServerUUID]ext.Server{},
-			},
-			TenantsTimestamps:  map[iam.TenantUUID]time.Time{},
-			ProjectsTimestamps: map[iam.ProjectUUID]time.Time{},
-			ServersTimestamps:  map[ext.ServerUUID]time.Time{},
-			TTL:                ttl,
-		}, nil
+		cache := Cache{TTL: ttl}
+		cache.initializeIfEmpty()
+		return &cache, nil
 	}
 	return ReadFromFile(filePath, ttl)
 }
 
-func (c Cache) Update(freshList ServerList) {
+func (c *Cache) Update(freshList ServerList) {
+	c.initializeIfEmpty()
 	now := time.Now()
 	for k, v := range freshList.Tenants {
 		c.Tenants[k] = v
@@ -115,4 +108,25 @@ func (c Cache) Update(freshList ServerList) {
 		c.ServersTimestamps[k] = now
 	}
 	c.ClearOverdue()
+}
+
+func (c *Cache) initializeIfEmpty() {
+	if c.Projects == nil {
+		c.Projects = map[iam.ProjectUUID]iam.Project{}
+	}
+	if c.Tenants == nil {
+		c.Tenants = map[iam.TenantUUID]iam.Tenant{}
+	}
+	if c.Servers == nil {
+		c.Servers = map[ext.ServerUUID]ext.Server{}
+	}
+	if c.TenantsTimestamps == nil {
+		c.TenantsTimestamps = map[iam.TenantUUID]time.Time{}
+	}
+	if c.ProjectsTimestamps == nil {
+		c.ProjectsTimestamps = map[iam.ProjectUUID]time.Time{}
+	}
+	if c.ServersTimestamps == nil {
+		c.ServersTimestamps = map[ext.ServerUUID]time.Time{}
+	}
 }

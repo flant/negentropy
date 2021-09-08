@@ -32,3 +32,8 @@ func DurationSecParam(d *framework.FieldData, name string, min int) (time.Durati
 
 	return time.Duration(val), nil
 }
+
+func ResponseErrMessage(req *logical.Request, message string, status int) (*logical.Response, error) {
+	rr := logical.ErrorResponse(message)
+	return logical.RespondWithStatusCode(rr, req, status)
+}
