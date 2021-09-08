@@ -1,3 +1,8 @@
+// Package test_server_and_client_preparing provide preparing and operating
+// under two containers, which are run by docker-compose: 1) test-server and 2) test-client
+// the first one has authd, server-accessd and server-access-nss
+// second one has authd and cli
+// it allows to provide e2e testing for all of "backend" components
 package test_server_and_client_preparing
 
 import (
@@ -6,18 +11,19 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	. "github.com/onsi/gomega"
+
+	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 type Suite struct {
@@ -62,7 +68,7 @@ var serverMainCFG string
 
 func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) {
 	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.authdPath, "f")
-	Expect(err).ToNot(HaveOccurred(), "Test_server shoulkd have authd")
+	Expect(err).ToNot(HaveOccurred(), "Test_server should have authd")
 
 	err = s.CheckFileExistAtContainer(s.TestServerContainer, s.serverAccessdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_server should have server-accessd")
@@ -174,7 +180,7 @@ func (s *Suite) getContainerByName(name string) (*types.Container, error) {
 		for _, n := range c.Names {
 			if n == "/"+name {
 				if c.State != "running" {
-					return nil, errors.New("Container with name " + name + " has state: " + c.State)
+					return nil, fmt.Errorf("container with name %s has state: %s", name, c.State)
 				}
 				return &c, nil
 			}
@@ -197,8 +203,8 @@ func (s *Suite) CheckFileExistAtContainer(container *types.Container, path strin
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	text, err := resp.Reader.ReadString('\n')
 	if err != nil && err.Error() == "EOF" {
@@ -232,8 +238,8 @@ func (s *Suite) createIfNotExistsDirectoryAtContainer(container *types.Container
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	text, err := resp.Reader.ReadString('\n')
 	if err != nil && err.Error() == "EOF" {
@@ -261,8 +267,8 @@ func (s *Suite) writeFileToContainer(container *types.Container, path string, co
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	text, err := resp.Reader.ReadString('\n')
 	if err != nil && err.Error() == "EOF" {
@@ -286,8 +292,8 @@ func (s *Suite) ExecuteCommandAtContainer(container *types.Container, cmd []stri
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	go func() {
 		for _, input := range extraInputToSTDIN {
@@ -325,10 +331,9 @@ func (s *Suite) killProcessAtContainer(container *types.Container, processPid in
 	IDResp, err := s.dockerCli.ContainerExecCreate(ctx, container.ID, config)
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
-	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
+	_, err = s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
-	fmt.Println(err)
+
 }
 
 func (s *Suite) killAllInstancesOfProcessAtContainer(container *types.Container, processPath string) {
@@ -354,8 +359,8 @@ func (s *Suite) firstProcessPIDAtContainer(container *types.Container, processPa
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	text, err := resp.Reader.ReadString('\n')
 	for err == nil {
@@ -392,6 +397,7 @@ func (s *Suite) runDaemonAtContainer(container *types.Container, daemonPath stri
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	// It is an independent goroutine due to we run daemon and should return control back
 	go func() {
 		logFile, err := os.Create(logFilePath)
 		if err != nil {
@@ -403,11 +409,11 @@ func (s *Suite) runDaemonAtContainer(container *types.Container, daemonPath stri
 			logFile.WriteString(text)
 			logFile.Sync()
 		}
-		if err.Error() != "EOF" {
+		if !errors.Is(err, io.EOF) {
 			logFile.Write([]byte(fmt.Sprintf("reading from container %s:%s", container.Names, err)))
 		}
 		logFile.Close()
-		defer resp.Close()
+		resp.Close()
 	}()
 }
 
@@ -424,8 +430,8 @@ func (s *Suite) DirectoryAtContainerNotExistOrEmpty(container *types.Container, 
 	Expect(err).ToNot(HaveOccurred(), "error execution at container")
 
 	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	defer resp.Close()
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
 
 	output := []string{}
 	var text string
