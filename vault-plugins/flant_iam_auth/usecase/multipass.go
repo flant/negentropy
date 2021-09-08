@@ -46,7 +46,7 @@ func (m *Multipass) GetWithGeneration(uuid string) (*iam_model.Multipass, *model
 	return multipass, multipassGen, nil
 }
 
-func (m *Multipass) IssueNewMultipassGeneration(tnx *io.MemoryStoreTxn, uuid string) (string, error) {
+func (m *Multipass) IssueNewMultipassGeneration(txn *io.MemoryStoreTxn, uuid string) (string, error) {
 	mp, gen, err := m.GetWithGeneration(uuid)
 	if err != nil {
 		return "", err
@@ -54,7 +54,7 @@ func (m *Multipass) IssueNewMultipassGeneration(tnx *io.MemoryStoreTxn, uuid str
 
 	nextGen := gen.GenerationNumber + 1
 
-	tokenStr, err := m.JwtController.IssueMultipass(tnx, &jwt_usecases.PrimaryTokenOptions{
+	tokenStr, err := m.JwtController.IssueMultipass(txn, &jwt_usecases.PrimaryTokenOptions{
 		TTL:  mp.TTL,
 		UUID: mp.UUID,
 		JTI: jwt_usecases.TokenJTI{

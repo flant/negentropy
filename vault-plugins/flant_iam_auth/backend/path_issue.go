@@ -73,10 +73,10 @@ func pathIssueMultipassJwt(b *flantIamAuthBackend) *framework.Path {
 // pathJwtTypeCreateUpdate registers a new JwtTypeConfig with the backend or updates the options
 // of an existing JwtTypeConfig
 func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tnx := b.storage.Txn(false)
-	defer tnx.Abort()
+	txn := b.storage.Txn(false)
+	defer txn.Abort()
 
-	isEnabled, err := b.jwtController.IsEnabled(tnx)
+	isEnabled, err := b.jwtController.IsEnabled(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("cannot cast 'options' to map[string]interface{}")
 	}
 
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 	jwtType, err := repo.Get(name)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (b *flantIamAuthBackend) pathIssueJwt(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("cannot cast 'optionsWithDefaults' to map[string]interface{}")
 	}
 
-	signedJwt, err := b.jwtController.IssuePayloadAsJwt(tnx, mapOptions, &jwt.TokenOptions{
+	signedJwt, err := b.jwtController.IssuePayloadAsJwt(txn, mapOptions, &jwt.TokenOptions{
 		TTL: jwtType.TTL,
 	})
 	if err != nil {
@@ -153,10 +153,10 @@ func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *lo
 		return errResp, nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	isEnabled, err := b.jwtController.IsEnabled(tnx)
+	isEnabled, err := b.jwtController.IsEnabled(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -167,12 +167,12 @@ func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *lo
 
 	multipassService := &usecase.Multipass{
 		JwtController:    b.jwtController,
-		MultipassRepo:    iam_repo.NewMultipassRepository(tnx),
-		GenMultipassRepo: repo2.NewMultipassGenerationNumberRepository(tnx),
+		MultipassRepo:    iam_repo.NewMultipassRepository(txn),
+		GenMultipassRepo: repo2.NewMultipassGenerationNumberRepository(txn),
 		Logger:           b.NamedLogger("MultipassNewGen"),
 	}
 
-	token, err := multipassService.IssueNewMultipassGeneration(tnx, multipassUUID)
+	token, err := multipassService.IssueNewMultipassGeneration(txn, multipassUUID)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}

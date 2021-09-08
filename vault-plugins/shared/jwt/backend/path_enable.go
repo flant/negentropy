@@ -41,10 +41,10 @@ func PathDisable(b *Backend) *framework.Path {
 
 func (b *Backend) handleJWTEnableCreate(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	// put default config to the storage
-	tnx := b.memStorage.Txn(true)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(true)
+	defer txn.Abort()
 
-	s, err := b.deps.KeyPairsService(tnx)
+	s, err := b.deps.KeyPairsService(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (b *Backend) handleJWTEnableCreate(_ context.Context, _ *logical.Request, _
 		return nil, err
 	}
 
-	if err := tnx.Commit(); err != nil {
+	if err := txn.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -66,10 +66,10 @@ func (b *Backend) handleJWTEnableCreate(_ context.Context, _ *logical.Request, _
 }
 
 func (b *Backend) handleJWTDisableCreate(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	tnx := b.memStorage.Txn(true)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(true)
+	defer txn.Abort()
 
-	s, err := b.deps.KeyPairsService(tnx)
+	s, err := b.deps.KeyPairsService(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (b *Backend) handleJWTDisableCreate(_ context.Context, _ *logical.Request, 
 		return nil, err
 	}
 
-	if err := tnx.Commit(); err != nil {
+	if err := txn.Commit(); err != nil {
 		return nil, err
 	}
 

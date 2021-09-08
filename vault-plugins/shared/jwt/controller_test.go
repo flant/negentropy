@@ -94,10 +94,10 @@ func TestIssueMultipass(t *testing.T) {
 
 	t.Run("does not issue multipass if jwt is disabled", func(t *testing.T) {
 		b, _, memStore := getBackend(t, now)
-		tnx := memStore.Txn(false)
-		defer tnx.Abort()
+		txn := memStore.Txn(false)
+		defer txn.Abort()
 
-		token, err := b.controller.IssueMultipass(tnx, &options)
+		token, err := b.controller.IssueMultipass(txn, &options)
 
 		require.Error(t, err)
 		require.Empty(t, token)
@@ -108,16 +108,16 @@ func TestIssueMultipass(t *testing.T) {
 
 		test.EnableJWT(t, b, storage, true)
 
-		tnx := memStore.Txn(false)
-		defer tnx.Abort()
+		txn := memStore.Txn(false)
+		defer txn.Abort()
 
-		token, err := b.controller.IssueMultipass(tnx, &options)
+		token, err := b.controller.IssueMultipass(txn, &options)
 		require.NoError(t, err)
 		require.NotEmpty(t, token)
 
 		test.EnableJWT(t, b, storage, false)
 
-		token, err = b.controller.IssueMultipass(tnx, &options)
+		token, err = b.controller.IssueMultipass(txn, &options)
 		require.Error(t, err)
 		require.Empty(t, token)
 	})
@@ -125,12 +125,12 @@ func TestIssueMultipass(t *testing.T) {
 		b, storage, memStore := getBackend(t, now)
 		test.EnableJWT(t, b, storage, true)
 
-		tnx := memStore.Txn(false)
-		defer tnx.Abort()
-		token, err := b.controller.IssueMultipass(tnx, &options)
+		txn := memStore.Txn(false)
+		defer txn.Abort()
+		token, err := b.controller.IssueMultipass(txn, &options)
 		require.NoError(t, err)
 
-		k, err := b.controller.JWKS(tnx)
+		k, err := b.controller.JWKS(txn)
 		require.Len(t, k, 1)
 
 		req := &logical.Request{
@@ -197,9 +197,9 @@ func Test_NewToken(t *testing.T) {
 			TTL: time.Duration(ttl) * time.Second,
 		}
 
-		tnx := memstore.Txn(false)
-		defer tnx.Abort()
-		conf, err := b.controller.GetConfig(tnx)
+		txn := memstore.Txn(false)
+		defer txn.Abort()
+		conf, err := b.controller.GetConfig(txn)
 		require.NoError(t, err)
 
 		t.Run("signs payload successfully", func(t *testing.T) {
@@ -210,7 +210,7 @@ func Test_NewToken(t *testing.T) {
 					"b": float64(1),
 				},
 			}
-			token, err := b.controller.IssuePayloadAsJwt(tnx, payload, tokenOpt)
+			token, err := b.controller.IssuePayloadAsJwt(txn, payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)
@@ -234,7 +234,7 @@ func Test_NewToken(t *testing.T) {
 				"iat": 20,
 				"exp": 100500,
 			}
-			token, err := b.controller.IssuePayloadAsJwt(tnx, payload, tokenOpt)
+			token, err := b.controller.IssuePayloadAsJwt(txn, payload, tokenOpt)
 			require.NoError(t, err)
 
 			data := verifyAndGetTokensTest(t, keys, token)

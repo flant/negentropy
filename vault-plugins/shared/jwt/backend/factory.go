@@ -20,8 +20,8 @@ func NewBackend(storage *sharedio.MemoryStore, deps *usecase.Depends) *Backend {
 	}
 }
 
-func (b *Backend) mustEnabled(tnx *sharedio.MemoryStoreTxn) error {
-	r, err := b.deps.StateRepo(tnx)
+func (b *Backend) mustEnabled(txn *sharedio.MemoryStoreTxn) error {
+	r, err := b.deps.StateRepo(txn)
 	if err != nil {
 		return err
 	}

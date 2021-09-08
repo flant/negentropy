@@ -28,16 +28,16 @@ func NewJwtController(storage *sharedio.MemoryStore, idGetter func() (string, er
 	}
 }
 
-func (c *Controller) IssueMultipass(tnx *sharedio.MemoryStoreTxn, options *usecase.PrimaryTokenOptions) (string, error) {
-	iss, err := c.issuer(tnx)
+func (c *Controller) IssueMultipass(txn *sharedio.MemoryStoreTxn, options *usecase.PrimaryTokenOptions) (string, error) {
+	iss, err := c.issuer(txn)
 	if err != nil {
 		return "", err
 	}
 	return iss.PrimaryToken(options)
 }
 
-func (c *Controller) IssuePayloadAsJwt(tnx *sharedio.MemoryStoreTxn, payload map[string]interface{}, options *usecase.TokenOptions) (string, error) {
-	iss, err := c.issuer(tnx)
+func (c *Controller) IssuePayloadAsJwt(txn *sharedio.MemoryStoreTxn, payload map[string]interface{}, options *usecase.TokenOptions) (string, error) {
+	iss, err := c.issuer(txn)
 	if err != nil {
 		return "", err
 	}
@@ -89,8 +89,8 @@ func (c *Controller) CalcMultipassJTI(tokenNumber int64, salt string) string {
 	}.Hash()
 }
 
-func (c *Controller) OnPeriodical(tnx *sharedio.MemoryStoreTxn) error {
-	enabled, err := c.IsEnabled(tnx)
+func (c *Controller) OnPeriodical(txn *sharedio.MemoryStoreTxn) error {
+	enabled, err := c.IsEnabled(txn)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (c *Controller) OnPeriodical(tnx *sharedio.MemoryStoreTxn) error {
 		return nil
 	}
 
-	keyPair, err := c.deps.KeyPairsService(tnx)
+	keyPair, err := c.deps.KeyPairsService(txn)
 	if err != nil {
 		return nil
 	}
@@ -113,8 +113,8 @@ func (c *Controller) OnPeriodical(tnx *sharedio.MemoryStoreTxn) error {
 	return nil
 }
 
-func (c *Controller) GetConfig(tnx *sharedio.MemoryStoreTxn) (*model.Config, error) {
-	return c.deps.ConfigRepo(tnx).Get()
+func (c *Controller) GetConfig(txn *sharedio.MemoryStoreTxn) (*model.Config, error) {
+	return c.deps.ConfigRepo(txn).Get()
 }
 
 func (c *Controller) ApiPaths() []*framework.Path {
@@ -127,8 +127,8 @@ func (c *Controller) ApiPaths() []*framework.Path {
 	}
 }
 
-func (c *Controller) issuer(tnx *sharedio.MemoryStoreTxn) (*usecase.TokenIssuer, error) {
-	enabled, err := c.IsEnabled(tnx)
+func (c *Controller) issuer(txn *sharedio.MemoryStoreTxn) (*usecase.TokenIssuer, error) {
+	enabled, err := c.IsEnabled(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -137,12 +137,12 @@ func (c *Controller) issuer(tnx *sharedio.MemoryStoreTxn) (*usecase.TokenIssuer,
 		return nil, fmt.Errorf("jwt is disabled")
 	}
 
-	config, err := c.GetConfig(tnx)
+	config, err := c.GetConfig(txn)
 	if err != nil {
 		return nil, err
 	}
 
-	stateRepo, err := c.deps.StateRepo(tnx)
+	stateRepo, err := c.deps.StateRepo(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +163,8 @@ func (c *Controller) issuer(tnx *sharedio.MemoryStoreTxn) (*usecase.TokenIssuer,
 
 type MultipassIssFn func(options *usecase.PrimaryTokenOptions) (string, error)
 
-func CreateIssueMultipassFunc(c *Controller, tnx *sharedio.MemoryStoreTxn) MultipassIssFn {
+func CreateIssueMultipassFunc(c *Controller, txn *sharedio.MemoryStoreTxn) MultipassIssFn {
 	return func(options *usecase.PrimaryTokenOptions) (string, error) {
-		return c.IssueMultipass(tnx, options)
+		return c.IssueMultipass(txn, options)
 	}
 }

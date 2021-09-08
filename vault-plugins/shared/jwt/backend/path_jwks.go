@@ -38,15 +38,15 @@ func PathRotateKey(b *Backend) *framework.Path {
 }
 
 func (b *Backend) handleJWKSRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	tnx := b.memStorage.Txn(false)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(false)
+	defer txn.Abort()
 
-	err := b.mustEnabled(tnx)
+	err := b.mustEnabled(txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	repo, err := b.deps.JwksRepo(tnx)
+	repo, err := b.deps.JwksRepo(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +64,15 @@ func (b *Backend) handleJWKSRead(_ context.Context, _ *logical.Request, _ *frame
 }
 
 func (b *Backend) handleRotateKeysUpdate(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	tnx := b.memStorage.Txn(true)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(true)
+	defer txn.Abort()
 
-	err := b.mustEnabled(tnx)
+	err := b.mustEnabled(txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	keyPairService, err := b.deps.KeyPairsService(tnx)
+	keyPairService, err := b.deps.KeyPairsService(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (b *Backend) handleRotateKeysUpdate(_ context.Context, _ *logical.Request, 
 		return nil, err
 	}
 
-	if err := tnx.Commit(); err != nil {
+	if err := txn.Commit(); err != nil {
 		return nil, err
 	}
 

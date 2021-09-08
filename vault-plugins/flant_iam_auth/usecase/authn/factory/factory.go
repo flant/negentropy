@@ -42,21 +42,21 @@ func (f *AuthenticatorFactory) Reset() {
 	f.validators = map[string]*hcjwt.Validator{}
 }
 
-func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
+func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
 	switch method.MethodType {
 	case model.MethodTypeJWT:
-		return f.jwt(ctx, method, tnx)
+		return f.jwt(ctx, method, txn)
 
 	case model.MethodTypeMultipass:
-		return f.multipass(ctx, method, tnx)
+		return f.multipass(ctx, method, txn)
 	}
 
 	f.logger.Warn(fmt.Sprintf("unsupported auth method %s", method.MethodType))
 	return nil, nil, fmt.Errorf("unsupported auth method")
 }
 
-func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, tnx *io.MemoryStoreTxn) (*model.AuthSource, error) {
-	repo := repo.NewAuthSourceRepo(tnx)
+func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, txn *io.MemoryStoreTxn) (*model.AuthSource, error) {
+	repo := repo.NewAuthSourceRepo(txn)
 	authSource, err := repo.Get(method.Source)
 	if err != nil {
 		return nil, err
@@ -68,8 +68,8 @@ func (f *AuthenticatorFactory) getAuthSource(method *model.AuthMethod, tnx *io.M
 	return authSource, nil
 }
 
-func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
-	authSource, err := f.getAuthSource(method, tnx)
+func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
+	authSource, err := f.getAuthSource(method, txn)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -87,10 +87,10 @@ func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod
 	}, authSource, nil
 }
 
-func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.AuthMethod, tnx *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
+func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
 	f.logger.Debug("It is multipass. Check jwt is enabled")
 
-	enabled, err := f.jwtController.IsEnabled(tnx)
+	enabled, err := f.jwtController.IsEnabled(txn)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,14 +101,14 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 
 	f.logger.Debug("Jwt is enabled. Get jwt public keys")
 
-	keys, err := f.jwtController.JWKS(tnx)
+	keys, err := f.jwtController.JWKS(txn)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	f.logger.Debug(fmt.Sprintf("Got jwt keys. %s Get jwt config", keys))
 
-	jwtConf, err := f.jwtController.GetConfig(tnx)
+	jwtConf, err := f.jwtController.GetConfig(txn)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,8 +130,8 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 		Logger:       loggerForAuth,
 		MultipassService: &usecase.Multipass{
 			JwtController:    f.jwtController,
-			MultipassRepo:    iam_repo.NewMultipassRepository(tnx),
-			GenMultipassRepo: repo.NewMultipassGenerationNumberRepository(tnx),
+			MultipassRepo:    iam_repo.NewMultipassRepository(txn),
+			GenMultipassRepo: repo.NewMultipassGenerationNumberRepository(txn),
 			Logger:           loggerForAuth,
 		},
 	}
