@@ -25,14 +25,14 @@ func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecod
 	}
 
 	handle := func(t *testing.T) {
-		tnx := storage.Txn(true)
-		defer tnx.Abort()
+		txn := storage.Txn(true)
+		defer txn.Abort()
 
-		objectHandler := NewObjectHandler(tnx, hclog.NewNullLogger())
-		err := HandleNewMessageIamRootSource(tnx, objectHandler, msg)
+		objectHandler := NewObjectHandler(txn, hclog.NewNullLogger())
+		err := HandleNewMessageIamRootSource(txn, objectHandler, msg)
 		require.NoError(t, err)
 
-		err = tnx.Commit()
+		err = txn.Commit()
 		require.NoError(t, err)
 	}
 
@@ -102,8 +102,8 @@ type sourceForTest struct {
 }
 
 func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
-	tnx := store.Txn(true)
-	defer tnx.Abort()
+	txn := store.Txn(true)
+	defer txn.Abort()
 
 	sources := []sourceForTest{
 		{
@@ -258,13 +258,13 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		},
 	}
 
-	repo := repo.NewAuthSourceRepo(tnx)
+	repo := repo.NewAuthSourceRepo(txn)
 	for _, s := range sources {
 		err := repo.Put(s.source)
 		require.NoError(t, err)
 	}
 
-	err := tnx.Commit()
+	err := txn.Commit()
 	require.NoError(t, err)
 
 	return sources
@@ -309,8 +309,8 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			store, handle := getCreateUpdateHandler(t, c.obj, nil)
 			handle(t)
 
-			tnx := store.Txn(false)
-			o, err := c.get(tnx, c.obj.ObjId())
+			txn := store.Txn(false)
+			o, err := c.get(txn, c.obj.ObjId())
 			require.NoError(t, err)
 
 			tests.AssertDeepEqual(t, c.obj, o)
@@ -480,11 +480,11 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 
 			handle(t)
 
-			tnx := store.Txn(false)
-			o, err := c.get(tnx, c.obj.ObjId())
+			txn := store.Txn(false)
+			o, err := c.get(txn, c.obj.ObjId())
 			require.ErrorIs(t, err, iam_model.ErrNotFound, "should delete iam entity")
 
-			o, err = c.get(tnx, c.objStale.ObjId())
+			o, err = c.get(txn, c.objStale.ObjId())
 			require.NoError(t, err)
 			require.NotNil(t, o, "should delete only one iam entity")
 		})

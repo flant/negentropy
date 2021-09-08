@@ -158,8 +158,8 @@ func (b *flantIamAuthBackend) pathAuthSourceRead(ctx context.Context, req *logic
 		return errorResp, nil
 	}
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthSourceRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthSourceRepo(txn)
 
 	config, err := repo.Get(sourceName)
 	if err != nil {
@@ -229,10 +229,10 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	// an update, since req.Operation is always 'update' in this handler, and
 	// there's no existence check defined.
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	repo := repo2.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(txn)
 	existingSource, err := repo.Get(sourceName)
 	if err != nil {
 		return nil, err
@@ -343,7 +343,7 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -354,8 +354,8 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 }
 
 func (b *flantIamAuthBackend) pathAuthSourceList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthSourceRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthSourceRepo(txn)
 
 	var sourcesNames []string
 	err := repo.Iter(false, func(s *model.AuthSource) (bool, error) {
@@ -375,10 +375,10 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 		return errorResp, nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	repo := repo2.NewAuthSourceRepo(tnx)
+	repo := repo2.NewAuthSourceRepo(txn)
 
 	err := repo.Delete(sourceName)
 	if err != nil {
@@ -392,7 +392,7 @@ func (b *flantIamAuthBackend) pathAuthSourceDelete(ctx context.Context, req *log
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}

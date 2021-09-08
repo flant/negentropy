@@ -30,15 +30,15 @@ type Authorizator struct {
 	Logger hclog.Logger
 }
 
-func NewAutorizator(tnx *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
+func NewAutorizator(txn *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
 	return &Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 
-		SaRepo:   iam_repo.NewServiceAccountRepository(tnx),
-		UserRepo: iam_repo.NewUserRepository(tnx),
+		SaRepo:   iam_repo.NewServiceAccountRepository(txn),
+		UserRepo: iam_repo.NewUserRepository(txn),
 
-		EaRepo:     repo.NewEntityAliasRepo(tnx),
-		EntityRepo: repo.NewEntityRepo(tnx),
+		EaRepo:     repo.NewEntityAliasRepo(txn),
+		EntityRepo: repo.NewEntityRepo(txn),
 
 		MountAccessor: aGetter,
 		IdentityApi:   api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),

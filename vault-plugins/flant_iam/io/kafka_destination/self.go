@@ -37,7 +37,7 @@ func (mkd *SelfKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 	return []kafka.Message{msg}, nil
 }
 
-func (mkd *SelfKafkaDestination) ProcessObjectDelete(ms *io.MemoryStore, tnx *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+func (mkd *SelfKafkaDestination) ProcessObjectDelete(ms *io.MemoryStore, txn *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
 	msg, err := mkd.simpleObjectDeleteKafker(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err

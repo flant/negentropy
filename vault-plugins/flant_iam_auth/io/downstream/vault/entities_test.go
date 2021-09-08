@@ -130,8 +130,8 @@ func TestEntites_WriteNewEntity(t *testing.T) {
 			t.Fatal("not init", err)
 		}
 
-		tnx := storage.Txn(true)
-		entityRepo := repo.NewEntityRepo(tnx)
+		txn := storage.Txn(true)
+		entityRepo := repo.NewEntityRepo(txn)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -145,14 +145,14 @@ func TestEntites_WriteNewEntity(t *testing.T) {
 			t.Fatal("Not write entity", err)
 		}
 
-		err = tnx.Commit()
+		err = txn.Commit()
 		if err != nil {
 			t.Fatal("does not commit", err)
 		}
 
-		tnxProc := storage.Txn(true)
+		txnProc := storage.Txn(true)
 
-		actions, err := downstream.ProcessObject(storage, tnxProc, entity)
+		actions, err := downstream.ProcessObject(storage, txnProc, entity)
 		if err != nil {
 			t.Fatal("process obj return error", err)
 		}
@@ -186,8 +186,8 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 			t.Fatal("not init", err)
 		}
 
-		tnx := storage.Txn(true)
-		entityRepo := repo.NewEntityRepo(tnx)
+		txn := storage.Txn(true)
+		entityRepo := repo.NewEntityRepo(txn)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -201,7 +201,7 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 			t.Fatal("Not write entity", err)
 		}
 
-		err = tnx.Commit()
+		err = txn.Commit()
 		if err != nil {
 			t.Fatal("does not commit", err)
 		}
@@ -217,9 +217,9 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 			UserId: entity.UserId,
 		}
 
-		tnxProc := storage.Txn(true)
+		txnProc := storage.Txn(true)
 
-		actions, err := downstream.ProcessObject(storage, tnxProc, entityAlias)
+		actions, err := downstream.ProcessObject(storage, txnProc, entityAlias)
 		if err != nil {
 			t.Fatal("process obj return error", err)
 		}
@@ -258,8 +258,8 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("not init", err)
 		}
 
-		tnx := storage.Txn(true)
-		entityRepo := repo.NewEntityRepo(tnx)
+		txn := storage.Txn(true)
+		entityRepo := repo.NewEntityRepo(txn)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -273,7 +273,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("Not write entity", err)
 		}
 
-		err = tnx.Commit()
+		err = txn.Commit()
 		if err != nil {
 			t.Fatal("does not commit", err)
 		}
@@ -356,8 +356,8 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("not init", err)
 		}
 
-		tnx := storage.Txn(true)
-		entityRepo := repo.NewEntityRepo(tnx)
+		txn := storage.Txn(true)
+		entityRepo := repo.NewEntityRepo(txn)
 
 		entity := &model.Entity{
 			UUID:   utils.UUID(),
@@ -371,7 +371,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("Not write entity", err)
 		}
 
-		err = tnx.Commit()
+		err = txn.Commit()
 		if err != nil {
 			t.Fatal("does not commit", err)
 		}

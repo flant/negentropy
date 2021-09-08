@@ -140,8 +140,8 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 	oidcReq := requestRaw.(*oidcRequest)
 
 	// Ensure that the Role still exists.
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (b *flantIamAuthBackend) pathCallbackPost(ctx context.Context, req *logical
 		return logical.ErrorResponse(errLoginFailed + " Incorrect method."), nil
 	}
 
-	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(txn).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +201,8 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 
 	methodName := oidcReq.method
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(oidcReq.method)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (b *flantIamAuthBackend) pathCallback(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse(errLoginFailed + " authMethod type must be OIDC"), nil
 	}
 
-	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(txn).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -386,8 +386,8 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 
 	clientNonce := d.Get("client_nonce").(string)
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(authMethodName)
 	if err != nil {
 		return nil, err
@@ -407,7 +407,7 @@ func (b *flantIamAuthBackend) authURL(ctx context.Context, req *logical.Request,
 		},
 	}
 
-	authSource, err := repo2.NewAuthSourceRepo(tnx).Get(method.Source)
+	authSource, err := repo2.NewAuthSourceRepo(txn).Get(method.Source)
 	if err != nil {
 		return nil, err
 	}

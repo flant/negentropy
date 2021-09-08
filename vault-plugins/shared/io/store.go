@@ -24,8 +24,8 @@ type KafkaSource interface {
 }
 
 type KafkaDestination interface {
-	ProcessObject(ms *MemoryStore, tnx *memdb.Txn, obj MemoryStorableObject) ([]kafka.Message, error)
-	ProcessObjectDelete(ms *MemoryStore, tnx *memdb.Txn, obj MemoryStorableObject) ([]kafka.Message, error)
+	ProcessObject(ms *MemoryStore, txn *memdb.Txn, obj MemoryStorableObject) ([]kafka.Message, error)
+	ProcessObjectDelete(ms *MemoryStore, txn *memdb.Txn, obj MemoryStorableObject) ([]kafka.Message, error)
 	ReplicaName() string // which replica it belongs to
 }
 

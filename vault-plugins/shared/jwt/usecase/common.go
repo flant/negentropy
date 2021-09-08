@@ -25,8 +25,8 @@ func NewDeps(idGetter func() (string, error), logger hclog.Logger, now func() ti
 	}
 }
 
-func (b *Depends) ConfigRepo(tnx *sharedio.MemoryStoreTxn) *model.ConfigRepo {
-	return model.NewConfigRepo(tnx)
+func (b *Depends) ConfigRepo(txn *sharedio.MemoryStoreTxn) *model.ConfigRepo {
+	return model.NewConfigRepo(txn)
 }
 
 func (b *Depends) JwksRepo(db *sharedio.MemoryStoreTxn) (*model.JWKSRepo, error) {

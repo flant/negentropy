@@ -60,15 +60,15 @@ host, and optionally, port number and path components, but no query or fragment 
 }
 
 func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	tnx := b.memStorage.Txn(false)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(false)
+	defer txn.Abort()
 
-	err := b.mustEnabled(tnx)
+	err := b.mustEnabled(txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	conf, err := b.deps.ConfigRepo(tnx).Get()
+	conf, err := b.deps.ConfigRepo(txn).Get()
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +83,10 @@ func (b *Backend) handleConfigurationRead(ctx context.Context, req *logical.Requ
 }
 
 func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	tnx := b.memStorage.Txn(true)
-	defer tnx.Abort()
+	txn := b.memStorage.Txn(true)
+	defer txn.Abort()
 
-	err := b.mustEnabled(tnx)
+	err := b.mustEnabled(txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -118,7 +118,7 @@ func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Re
 	c.Issuer = fields.Raw["issuer"].(string)
 	c.OwnAudience = fields.Raw["multipass_audience"].(string)
 
-	err = b.deps.ConfigRepo(tnx).Put(&c)
+	err = b.deps.ConfigRepo(txn).Put(&c)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (b *Backend) handleConfigurationUpdate(ctx context.Context, req *logical.Re
 		Data: req.Data,
 	}
 
-	if err := tnx.Commit(); err != nil {
+	if err := txn.Commit(); err != nil {
 		return nil, err
 	}
 

@@ -163,8 +163,8 @@ user was actively authenticated.`,
 func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	methodName := data.Get("name").(string)
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return false, err
@@ -174,8 +174,8 @@ func (b *flantIamAuthBackend) pathAuthMethodExistenceCheck(ctx context.Context, 
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *flantIamAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 
 	var methodsNames []string
 	err := repo.Iter(func(s *model.AuthMethod) (bool, error) {
@@ -196,8 +196,8 @@ func (b *flantIamAuthBackend) pathAuthMethodRead(ctx context.Context, req *logic
 		return logical.ErrorResponse("missing name"), nil
 	}
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
@@ -240,17 +240,17 @@ func (b *flantIamAuthBackend) pathAuthMethodDelete(ctx context.Context, req *log
 		return logical.ErrorResponse("authMethodConfig name required"), nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	repo := repo2.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(txn)
 
 	err := repo.Delete(methodName)
 	if err != nil {
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -266,15 +266,15 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return errResponse, nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	methodType, errResponse, err := verifyAuthMethodType(b, data, tnx)
+	methodType, errResponse, err := verifyAuthMethodType(b, data, txn)
 	if errResponse != nil || err != nil {
 		return errResponse, err
 	}
 
-	repo := repo2.NewAuthMethodRepo(tnx)
+	repo := repo2.NewAuthMethodRepo(txn)
 
 	// get or create method obj
 	method, err := repo.Get(methodName)
@@ -325,7 +325,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			return logical.ErrorResponse("can not change source"), nil
 		}
 
-		source, err := repo2.NewAuthSourceRepo(tnx).Get(sourceName)
+		source, err := repo2.NewAuthSourceRepo(txn).Get(sourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +382,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +551,7 @@ func fillOIDCParamsToAuthMethod(method *model.AuthMethod, data *framework.FieldD
 	return nil, nil
 }
 
-func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, tnx *io.MemoryStoreTxn) (string, *logical.Response, error) {
+func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, txn *io.MemoryStoreTxn) (string, *logical.Response, error) {
 	// verify method type
 	methodTypeRaw, ok := data.GetOk("method_type")
 	if !ok {
@@ -580,7 +580,7 @@ func verifyAuthMethodType(b *flantIamAuthBackend, data *framework.FieldData, tnx
 	}
 
 	if methodType == model.MethodTypeMultipass {
-		jwtEnabled, err := b.jwtController.IsEnabled(tnx)
+		jwtEnabled, err := b.jwtController.IsEnabled(txn)
 		if err != nil {
 			return "", nil, err
 		}

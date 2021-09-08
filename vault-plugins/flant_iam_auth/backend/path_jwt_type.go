@@ -85,8 +85,8 @@ func pathJwtType(b *flantIamAuthBackend) *framework.Path {
 func (b *flantIamAuthBackend) pathJwtTypeExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	typeName := data.Get("name").(string)
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 	jwtType, err := repo.Get(typeName)
 	if err != nil {
 		return false, err
@@ -95,8 +95,8 @@ func (b *flantIamAuthBackend) pathJwtTypeExistenceCheck(ctx context.Context, req
 }
 
 func (b *flantIamAuthBackend) pathJwtTypesList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 
 	var typesNames []string
 	err := repo.Iter(func(s *model.JWTIssueType) (bool, error) {
@@ -117,8 +117,8 @@ func (b *flantIamAuthBackend) pathJwtTypeRead(ctx context.Context, req *logical.
 		return logical.ErrorResponse("missing name"), nil
 	}
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 	jwtType, err := repo.Get(name)
 	if err != nil {
 		return nil, err
@@ -148,10 +148,10 @@ func (b *flantIamAuthBackend) pathJwtTypeDelete(ctx context.Context, req *logica
 		return logical.ErrorResponse("jwt type name is required"), nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 
 	val, err := repo.Get(name)
 	if err != nil {
@@ -167,7 +167,7 @@ func (b *flantIamAuthBackend) pathJwtTypeDelete(ctx context.Context, req *logica
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -183,10 +183,10 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 		return errResp, nil
 	}
 
-	tnx := b.storage.Txn(true)
-	defer tnx.Abort()
+	txn := b.storage.Txn(true)
+	defer txn.Abort()
 
-	repo := repo2.NewJWTIssueTypeRepo(tnx)
+	repo := repo2.NewJWTIssueTypeRepo(txn)
 	// Check if the auth already exists
 	jwtType, err := repo.Get(name)
 	if err != nil {
@@ -246,7 +246,7 @@ func (b *flantIamAuthBackend) pathJwtTypeCreateUpdate(ctx context.Context, req *
 		return nil, err
 	}
 
-	err = tnx.Commit()
+	err = txn.Commit()
 	if err != nil {
 		return nil, err
 	}

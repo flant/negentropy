@@ -74,8 +74,8 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse("missing method"), nil
 	}
 
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	}
 
 	logger.Debug("Choice method type")
-	authenticator, authSource, err := b.authnFactoty.GetAuthenticator(ctx, method, tnx)
+	authenticator, authSource, err := b.authnFactoty.GetAuthenticator(ctx, method, txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -108,7 +108,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 	}
 
-	authorizator := authz2.NewAutorizator(tnx, vaultClient, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(txn, vaultClient, b.accessorGetter, logger)
 
 	logger.Debug("Start Authorize")
 	authzRes, err := authorizator.Authorize(authnRes, method, authSource)
@@ -133,8 +133,8 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 	}
 
 	// Ensure that the Role still exists.
-	tnx := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(tnx)
+	txn := b.storage.Txn(false)
+	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(methodName)
 	if err != nil {
 		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", methodName), err)
@@ -143,7 +143,7 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", methodName)
 	}
 
-	authenticator, _, err := b.authnFactoty.GetAuthenticator(ctx, method, tnx)
+	authenticator, _, err := b.authnFactoty.GetAuthenticator(ctx, method, txn)
 	if err != nil {
 		return nil, err
 	}
