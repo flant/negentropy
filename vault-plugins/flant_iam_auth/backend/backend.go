@@ -202,7 +202,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
 
-	b.serverAccessBackend = extension_server_access.NewServerAccessBackend(b, storage, b.jwtController)
+	b.serverAccessBackend = extension_server_access.NewServerAccessBackend(b, storage)
 
 	b.Backend = &framework.Backend{
 		AuthRenew:    b.pathLoginRenew,

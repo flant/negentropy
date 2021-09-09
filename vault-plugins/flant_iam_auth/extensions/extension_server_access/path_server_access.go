@@ -21,8 +21,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/jwt"
-	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
 )
 
 const (
@@ -32,18 +30,15 @@ const (
 type ServerAccessBackend struct {
 	logical.Backend
 	storage          *io.MemoryStore
-	jwtController    *jwt.Controller
 	entityIDResolver authn.EntityIDResolver
 }
 
 // NewServerAccessBackend returns valid ServerAccessBackend, except entityIDResolver
 // need set it before start using  ServerAccessBackend
-func NewServerAccessBackend(b logical.Backend, storage *io.MemoryStore,
-	jwtController *jwt.Controller) ServerAccessBackend {
+func NewServerAccessBackend(b logical.Backend, storage *io.MemoryStore) ServerAccessBackend {
 	return ServerAccessBackend{
-		Backend:       b,
-		storage:       storage,
-		jwtController: jwtController,
+		Backend: b,
+		storage: storage,
 	}
 }
 
@@ -95,33 +90,6 @@ func (b *ServerAccessBackend) Paths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleReadPosixUsers(),
 					Summary:  "GET all posix users",
-				},
-			},
-		},
-		// todo remove it
-		{
-			Pattern: path.Join("tenant", uuid.Pattern("tenant_uuid"), "project", uuid.Pattern("project_uuid"), "server", uuid.Pattern("server_uuid")),
-			Fields: map[string]*framework.FieldSchema{
-				"tenant_uuid": {
-					Type:        framework.TypeString,
-					Description: "UUID of a tenant",
-					Required:    true,
-				},
-				"project_uuid": {
-					Type:        framework.TypeString,
-					Description: "UUID of a project",
-					Required:    true,
-				},
-				"server_uuid": {
-					Type:        framework.TypeString,
-					Description: "UUID of a server",
-					Required:    true,
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleServerJWT(),
-					Summary:  "GET server JWT",
 				},
 			},
 		},
@@ -212,37 +180,6 @@ func (b *ServerAccessBackend) handleConfig() framework.OperationFunc {
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusOK)
-	}
-}
-
-func (b *ServerAccessBackend) handleServerJWT() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		tenantID := data.Get("tenant_uuid").(string)
-		projectID := data.Get("project_uuid").(string)
-		serverID := data.Get("server_uuid").(string)
-
-		txn := b.storage.Txn(false)
-		defer txn.Abort()
-
-		repo := ext_repo.NewServerRepository(txn)
-		server, err := repo.GetByUUID(serverID)
-		if err != nil {
-			return nil, err
-		}
-
-		if server.TenantUUID != tenantID || server.ProjectUUID != projectID {
-			return nil, iam_model.ErrNotFound
-		}
-
-		token, err := b.jwtController.IssuePayloadAsJwt(txn, server.AsMap(), &jwttoken.TokenOptions{})
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{"token": token},
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
