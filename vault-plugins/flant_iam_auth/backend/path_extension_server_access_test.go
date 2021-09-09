@@ -100,7 +100,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
 			assert.Equal(t, serverUUIDs[0], respData.Data.Servers[0].UUID)
 		})
 
@@ -119,7 +119,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, "db-1", respData.Data.Servers[0].Identifier)
 			assert.Equal(t, serverUUIDs[0], respData.Data.Servers[0].UUID)
 
 			require.Len(t, respData.Warnings, 1)
@@ -141,7 +141,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
 			assert.Equal(t, serverUUIDs[1], respData.Data.Servers[0].UUID)
 		})
 
@@ -160,7 +160,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 			err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 			require.NoError(t, err)
 			require.Len(t, respData.Data.Servers, 1)
-			assert.Equal(t, "", respData.Data.Servers[0].Identifier) // no unsafe data by unsafe path
+			assert.Equal(t, "db-2", respData.Data.Servers[0].Identifier)
 			assert.Equal(t, serverUUIDs[1], respData.Data.Servers[0].UUID)
 		})
 
@@ -365,6 +365,29 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	}
 
 	err = tx.Insert(ext_model.ServerType, serverWithLabels)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant := iam_model.Tenant{
+		UUID:       tenantID,
+		Version:    "v1",
+		Identifier: "i1",
+	}
+
+	err = tx.Insert(iam_model.TenantType, &tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	project := iam_model.Project{
+		UUID:       projectID,
+		TenantUUID: tenantID,
+		Version:    "v1",
+		Identifier: "i2",
+	}
+
+	err = tx.Insert(iam_model.ProjectType, &project)
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,11 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
@@ -39,6 +44,10 @@ func getBackend(t *testing.T) (*flantIamAuthBackend, logical.Storage) {
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
+
+	entityIdResolver := mockEntityIDResolver{}
+	fb.entityIDResolver = entityIdResolver
+	fb.serverAccessBackend.SetEntityIDResolver(entityIdResolver)
 
 	return fb, config.StorageView
 }
@@ -206,4 +215,43 @@ func assertResponseCode(t *testing.T, r *api.Response, code int) {
 	if code != rCode {
 		t.Errorf("Incorrect response code, got %v; need %v", rCode, code)
 	}
+}
+
+type mockEntityIDResolver struct{}
+
+func (m mockEntityIDResolver) RevealEntityIDOwner(_ authn2.EntityID, _ *io.MemoryStoreTxn) (*authn2.EntityIDOwner, error) {
+	panic("if now need RevealEntityIDOwner, implement it")
+}
+
+func (m mockEntityIDResolver) AvailableTenantsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn) (map[model.TenantUUID]struct{}, error) {
+	tenantRepo := repo.NewTenantRepository(txn)
+	tenants, err := tenantRepo.List(false)
+	if err != nil {
+		return nil, err
+	}
+	result := map[model.TenantUUID]struct{}{}
+	for _, t := range tenants {
+		result[t.UUID] = struct{}{}
+	}
+	return result, nil
+}
+
+func (m mockEntityIDResolver) AvailableProjectsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn) (map[model.ProjectUUID]struct{}, error) {
+	projectRepo := repo.NewProjectRepository(txn)
+	tenantRepo := repo.NewTenantRepository(txn)
+	tenants, err := tenantRepo.List(false)
+	if err != nil {
+		return nil, err
+	}
+	result := map[model.ProjectUUID]struct{}{}
+	for _, t := range tenants {
+		projects, err := projectRepo.List(t.UUID, false)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range projects {
+			result[p.UUID] = struct{}{}
+		}
+	}
+	return result, nil
 }
