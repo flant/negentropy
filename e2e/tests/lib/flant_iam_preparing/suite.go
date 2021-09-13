@@ -21,6 +21,7 @@ var serverLabels = map[string]string{"system": "ubuntu20"}
 
 type Suite struct {
 	IamVaultClient *http.Client
+	// IamAuthVaultClient *http.Client
 }
 
 type CheckingSSHConnectionEnvironment struct {
@@ -36,11 +37,11 @@ type CheckingSSHConnectionEnvironment struct {
 }
 
 func (st *Suite) BeforeSuite() {
-	// try to read TEST_VAULT_SECOND_TOKEN, ROOT_VAULT_BASE_URL
+	// try to read ROOT_VAULT_TOKEN, ROOT_VAULT_BASE_URL
 	st.IamVaultClient = lib.NewConfiguredIamVaultClient()
 
-	// try to read TEST_VAULT_SECOND_TOKEN, AUTH_VAULT_BASE_URL
-	// authVaulyClient = lib.NewConfiguredIamAuthVaultClient()
+	// try to read AUTH_VAULT_TOKEN, AUTH_VAULT_BASE_URL
+	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
 func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {

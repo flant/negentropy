@@ -6,6 +6,7 @@
 package test_server_and_client_preparing
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	_ "embed"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -33,6 +35,9 @@ type Suite struct {
 	cliPath                 string
 	serverAccessdPath       string
 
+	RootVaultInternalURL string
+	AuthVaultInternalURL string
+
 	dockerCli *client.Client
 
 	TestServerContainer *types.Container
@@ -41,12 +46,13 @@ type Suite struct {
 
 func (s *Suite) BeforeSuite() {
 	// TODO read vars from envs!
-	// TODO read vars from envs!
 	s.authdPath = "/opt/authd/bin/authd"
 	s.cliPath = "/opt/cli/bin/cli"
 	s.serverAccessdPath = "/opt/server-access/bin/server-accessd"
 	s.testServerContainerName = "negentropy_test-server_1"
 	s.testClientContainerName = "negentropy_test-client_1"
+	s.RootVaultInternalURL = getFromEnv("ROOT_VAULT_INTERNAL_URL")
+	s.AuthVaultInternalURL = getFromEnv("AUTH_VAULT_INTERNAL_URL")
 
 	// Open connections, create clients
 	var err error
@@ -60,11 +66,19 @@ func (s *Suite) BeforeSuite() {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func getFromEnv(envName string) string {
+	value := os.Getenv(envName)
+	if value == "" {
+		panic(fmt.Sprintf("equired environment variable %s is not set", envName))
+	}
+	return value
+}
+
 //go:embed server_sock1.yaml
 var serverSocketCFG string
 
 //go:embed server_main.yaml
-var serverMainCFG string
+var serverMainCFGTPL string
 
 func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) {
 	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.authdPath, "f")
@@ -78,8 +92,14 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingSSHCo
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
+	t, err := template.New("").Parse(serverMainCFGTPL)
+	Expect(err).ToNot(HaveOccurred(), "template should be ok")
+	var serverMainCFG bytes.Buffer
+	err = t.Execute(&serverMainCFG, *s)
+	Expect(err).ToNot(HaveOccurred(), "template should be executed")
+
 	err = s.writeFileToContainer(s.TestServerContainer,
-		"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG)
+		"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG.String())
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.writeFileToContainer(s.TestServerContainer,
@@ -135,7 +155,7 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingSSHCo
 var clientSocketCFG string
 
 //go:embed client_main.yaml
-var clientMainCFG string
+var clientMainCFGTPL string
 
 func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) {
 	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.authdPath, "f")
@@ -149,8 +169,14 @@ func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingSSHCo
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
+	t, err := template.New("").Parse(clientMainCFGTPL)
+	Expect(err).ToNot(HaveOccurred(), "template should be ok")
+	var clientMainCFG bytes.Buffer
+	err = t.Execute(&clientMainCFG, *s)
+	Expect(err).ToNot(HaveOccurred(), "template should be executed")
+
 	err = s.writeFileToContainer(s.TestClientContainer,
-		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG)
+		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG.String())
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.writeFileToContainer(s.TestClientContainer,
@@ -333,7 +359,6 @@ func (s *Suite) killProcessAtContainer(container *types.Container, processPid in
 
 	_, err = s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
-
 }
 
 func (s *Suite) killAllInstancesOfProcessAtContainer(container *types.Container, processPath string) {

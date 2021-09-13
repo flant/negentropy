@@ -45,7 +45,7 @@ func NewIamVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
-	token := GetSecondRootToken()
+	token := GetRootRootToken()
 	return NewVaultClient(GetRootVaultBaseUrl(), token, IamPluginPath)
 }
 
@@ -54,7 +54,7 @@ func NewIamAuthVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredIamAuthVaultClient() *http.Client {
-	token := GetSecondRootToken()
+	token := GetAuthRootToken()
 	return NewIamAuthVaultClient(token)
 }
 
@@ -95,10 +95,18 @@ func NewVaultClient(baseURL string, token string, pluginPath string) *http.Clien
 	return &http.Client{Transport: tr}
 }
 
-func GetSecondRootToken() string {
-	token := os.Getenv("TEST_VAULT_SECOND_TOKEN")
+func GetRootRootToken() string {
+	token := os.Getenv("ROOT_VAULT_TOKEN")
 	if token == "" {
-		panic("TEST_VAULT_SECOND_TOKEN is empty, need valid token to access vault")
+		panic("ROOT_VAULT_TOKEN is empty, need valid token to access vault")
+	}
+	return token
+}
+
+func GetAuthRootToken() string {
+	token := os.Getenv("AUTH_VAULT_TOKEN")
+	if token == "" {
+		panic("AUTH_VAULT_TOKEN is empty, need valid token to access vault")
 	}
 	return token
 }

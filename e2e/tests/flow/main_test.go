@@ -234,18 +234,19 @@ func switchJwt(enable bool) {
 }
 
 var _ = BeforeSuite(func() {
-	token := lib.GetSecondRootToken()
-	iamAuthClient = configure.GetClient(token)
-	iamAuthClient.SetToken(token)
+	authVaultToken := lib.GetAuthRootToken()
+	iamAuthClient = configure.GetClient(authVaultToken)
+	iamAuthClient.SetToken(authVaultToken)
 
-	iamClient = configure.GetClient(token)
-	iamClient.SetToken(token)
+	rootVaultToken := lib.GetRootRootToken()
+	iamClient = configure.GetClient(rootVaultToken)
+	iamClient.SetToken(rootVaultToken)
 
-	identityApi = flant_vault_api.NewIdentityAPI(configure.GetClient(token), hclog.NewNullLogger())
+	identityApi = flant_vault_api.NewIdentityAPI(configure.GetClient(authVaultToken), hclog.NewNullLogger())
 
-	role := configure.CreateGoodRole(token)
+	role := configure.CreateGoodRole(rootVaultToken)
 
-	configure.ConfigureVaultAccess(token, lib.IamAuthPluginPath, role)
+	configure.ConfigureVaultAccess(authVaultToken, lib.IamAuthPluginPath, role)
 
 	var err error
 	switchJwt(true)
@@ -258,7 +259,7 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	configure.CreatePolicy(token, methodReaderOnlyPolicyName, methodReaderOnlyPolicy)
+	configure.CreatePolicy(authVaultToken, methodReaderOnlyPolicyName, methodReaderOnlyPolicy)
 
 	jwtMethodName = tools.RandomStr()
 	createJwtAuthMethod(jwtMethodName, "uuid", auth_source.JWTWithEaNameEmail, map[string]interface{}{
@@ -275,7 +276,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	mountAccessorId, err = vault.NewMountAccessorGetter(func() (*api.Client, error) {
-		return configure.GetClient(token), nil
+		return configure.GetClient(authVaultToken), nil
 	}, "flant_iam_auth/").MountAccessor()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mountAccessorId).ToNot(BeEmpty())

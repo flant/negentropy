@@ -42,7 +42,12 @@ jobs:
 
       - name: Tests
         run: |
-          export TEST_VAULT_SECOND_TOKEN=$(cat /tmp/root_token)
+          export ROOT_VAULT_TOKEN=$(cat /tmp/root_token)
+          export AUTH_VAULT_TOKEN=$(cat /tmp/root_token)
+          export ROOT_VAULT_BASE_URL=http://127.0.0.1:8200/v1/
+          export AUTH_VAULT_BASE_URL=http://127.0.0.1:8200/v1/
+          export ROOT_VAULT_INTERNAL_URL=http://vault:8200
+          export AUTH_VAULT_INTERNAL_URL=http://vault:8200
           go mod download
           go run github.com/onsi/ginkgo/ginkgo run ./...
         working-directory: e2e

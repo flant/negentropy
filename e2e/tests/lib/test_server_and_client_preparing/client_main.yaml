@@ -3,7 +3,7 @@ kind: AuthdConfig
 jwtPath: "/opt/authd/client-jwt"
 defaultSocketDirectory: "/run"
 servers:
-  - domain: http://vault:8200
+  - domain: {{.RootVaultInternalURL}}
     default: true
-  - domain: http://vault:8200
+  - domain: {{.AuthVaultInternalURL}}
     type: auth
