@@ -73,6 +73,54 @@ function initialize() {
   docker-exec "vault_root" "vault write -force flant_iam/jwt/enable" > /dev/null 2>&1
   docker-exec "vault_root" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
   docker-exec "vault_auth" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
+
+  # create policy
+  docker-exec 'vault_root' 'cat <<'EOF' > full.hcl
+path "*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+EOF'
+  docker-exec 'vault_auth' 'cat <<'EOF' > full.hcl
+path "*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+EOF'
+
+  # enable approle
+  docker-exec "vault_root" "vault auth enable approle"
+  docker-exec "vault_auth" "vault auth enable approle"
+
+  # load policy
+  docker-exec "vault_root" "vault policy write full full.hcl"
+  docker-exec "vault_auth" "vault policy write full full.hcl"
+
+  # configure approle
+  docker-exec "vault_root" "vault write auth/approle/role/full secret_id_ttl=30m token_ttl=900s token_policies=full"
+  root_secretID=$(docker-exec "vault_root" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
+  root_roleID=$(docker-exec "vault_root" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
+  docker-exec "vault_auth" "vault write auth/approle/role/full secret_id_ttl=30m token_ttl=900s token_policies=full"
+  auth_secretID=$(docker-exec "vault_auth" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
+  auth_roleID=$(docker-exec "vault_auth" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
+
+  # configure self-access
+  docker-exec "vault_root" "vault write auth/flant_iam_auth/configure_vault_access \
+    vault_addr=\"http://127.0.0.1:8200\" \
+    vault_tls_server_name=\"vault_host\" \
+    role_name=\"full\" \
+    secret_id_ttl=\"120m\" \
+    approle_mount_point=\"/auth/approle/\" \
+    secret_id=\"$root_secretID\" \
+    role_id=\"$root_roleID\" \
+    vault_api_ca=\"\""
+  docker-exec "vault_auth" "vault write auth/flant_iam_auth/configure_vault_access \
+    vault_addr=\"http://127.0.0.1:8200\" \
+    vault_tls_server_name=\"vault_host\" \
+    role_name=\"full\" \
+    secret_id_ttl=\"120m\" \
+    approle_mount_point=\"/auth/approle/\" \
+    secret_id=\"$auth_secretID\" \
+    role_id=\"$auth_roleID\" \
+    vault_api_ca=\"\""
 }
 
 docker run -it --rm -v $(pwd):/app -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh"
