@@ -37,28 +37,6 @@ services:
     depends_on:
       - "kafka"
 
-  vault_root:
-    image: alpine:3.14.2
-    volumes:
-      - "./infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./e2e/data:/vault/testdata"
-    ports:
-      - 8300:8200
-    environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://0.0.0.0:8200
-      - VAULT_ADDRESS=http://0.0.0.0:8200
-      - VAULT_TOKEN=root
-      - VAULT_DEV_ROOT_TOKEN_ID=root
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_LOG_LEVEL=debug
-      - VAULT_LOG_FORMAT=json
-    command: vault server -dev
-    cap_add:
-      - IPC_LOCK
-    depends_on:
-      - kafka
-
   vault_auth:
     image: alpine:3.14.2
     volumes:
@@ -74,7 +52,29 @@ services:
       - VAULT_DEV_ROOT_TOKEN_ID=root
       - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
       - VAULT_LOG_LEVEL=debug
-      - VAULT_LOG_FORMAT=json
+#      - VAULT_LOG_FORMAT=json
+    command: vault server -dev
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - kafka
+
+  vault_root:
+    image: alpine:3.14.2
+    volumes:
+      - "./infra/common/vault/vault/bin/vault:/bin/vault"
+      - "./e2e/data:/vault/testdata"
+    ports:
+      - 8300:8200
+    environment:
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://0.0.0.0:8200
+      - VAULT_ADDRESS=http://0.0.0.0:8200
+      - VAULT_TOKEN=root
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOG_LEVEL=debug
+#      - VAULT_LOG_FORMAT=json
     command: vault server -dev
     cap_add:
       - IPC_LOCK
