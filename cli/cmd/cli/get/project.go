@@ -82,7 +82,7 @@ func project(outErr *error) func(*cobra.Command, []string) {
 	}
 }
 
-func getProjectData(onlyCache bool, cache *model.ServerList, serverFilter model.ServerFilter,
+func getProjectData(onlyCache bool, cache *model.Cache, serverFilter model.ServerFilter,
 	permanentCacheFilePath string) (map[iam.TenantUUID]iam.Tenant, map[iam.ProjectUUID]iam.Project, error) {
 	var (
 		tenants  map[iam.TenantUUID]iam.Tenant
@@ -113,12 +113,12 @@ func getProjectData(onlyCache bool, cache *model.ServerList, serverFilter model.
 		if err != nil {
 			return nil, nil, err
 		}
-		*cache = model.UpdateServerListCacheWithFreshValues(*cache, model.ServerList{
+		cache.Update(model.ServerList{
 			Tenants:  tenants,
 			Projects: projects,
 		})
 
-		model.SaveToFile(*cache, permanentCacheFilePath)
+		cache.SaveToFile(permanentCacheFilePath)
 	}
 	return tenants, projects, nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
 
-	extension_server_access2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
@@ -23,6 +23,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -80,7 +81,9 @@ type flantIamAuthBackend struct {
 
 	jwksIdGetter func() (string, error)
 
-	entityIDResolver EntityIDResolver
+	serverAccessBackend extension_server_access.ServerAccessBackend
+
+	entityIDResolver authn.EntityIDResolver
 }
 
 func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (*flantIamAuthBackend, error) {
@@ -199,6 +202,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
 
+	b.serverAccessBackend = extension_server_access.NewServerAccessBackend(b, storage)
+
 	b.Backend = &framework.Backend{
 		AuthRenew:    b.pathLoginRenew,
 		BackendType:  logical.TypeCredential,
@@ -244,7 +249,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
 
 			// server_access_extension
-			extension_server_access2.ServerAccessPaths(b, storage, b.jwtController),
+			b.serverAccessBackend.Paths(),
 			pathTenant(b),
 		),
 		Clean: b.cleanup,
@@ -268,10 +273,12 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 		return err
 	}
 
-	b.entityIDResolver, err = NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
+	b.entityIDResolver, err = authn.NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
 	if err != nil {
 		return err
 	}
+
+	b.serverAccessBackend.SetEntityIDResolver(b.entityIDResolver)
 
 	return nil
 }
