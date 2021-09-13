@@ -1,0 +1,116 @@
+version: "3"
+
+services:
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3
+    ports:
+      - "2181:2181"
+#    volumes:
+#      - "zookeeper_data:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: docker.io/bitnami/kafka:2
+    ports:
+      - "9093:9093"
+#    volumes:
+#      - "kafka_data:/bitnami"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    restart: "no"
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka"
+
+  vault_root:
+    image: alpine:3.14.2
+    volumes:
+      - "./infra/common/vault/vault/bin/vault:/bin/vault"
+      - "./e2e/data:/vault/testdata"
+    ports:
+      - 8300:8200
+    environment:
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://0.0.0.0:8200
+      - VAULT_ADDRESS=http://0.0.0.0:8200
+      - VAULT_TOKEN=root
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOG_LEVEL=debug
+      - VAULT_LOG_FORMAT=json
+    command: vault server -dev
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - kafka
+
+  vault_auth:
+    image: alpine:3.14.2
+    volumes:
+      - "./infra/common/vault/vault/bin/vault:/bin/vault"
+      - "./e2e/data:/vault/testdata"
+    ports:
+      - 8200:8200
+    environment:
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://0.0.0.0:8200
+      - VAULT_ADDRESS=http://0.0.0.0:8200
+      - VAULT_TOKEN=root
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOG_LEVEL=debug
+      - VAULT_LOG_FORMAT=json
+    command: vault server -dev
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - kafka
+
+  test-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.test_client
+    depends_on:
+      - vault_root
+      - vault_auth
+    volumes:
+      - "./authd/build:/opt/authd/bin"
+      - "./cli/build:/opt/cli/bin"
+    command: [ "sleep", "infinity" ]
+
+  test-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.test_server
+    volumes:
+      - "./authd/build:/opt/authd/bin"
+      - "./server-access/flant-server-accessd/build:/opt/server-access/bin"
+      - "./server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
+    environment:
+      - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
+    depends_on:
+      - vault_root
+      - vault_auth
+
+#volumes:
+#  zookeeper_data:
+#    driver: local
+#  kafka_data:
+#    driver: local
+#  vault_data:
+#    driver: local
