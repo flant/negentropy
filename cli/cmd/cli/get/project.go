@@ -113,7 +113,7 @@ func getProjectData(onlyCache bool, cache *model.Cache, serverFilter model.Serve
 		if err != nil {
 			return nil, nil, err
 		}
-		(*cache).Update(model.ServerList{
+		cache.Update(model.ServerList{
 			Tenants:  tenants,
 			Projects: projects,
 		})

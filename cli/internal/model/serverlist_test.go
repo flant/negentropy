@@ -20,10 +20,10 @@ var (
 			Projects: map[iam.ProjectUUID]iam.Project{},
 			Servers:  map[ext.ServerUUID]ext.Server{},
 		},
-		TenantsTimestamps:  map[iam.TenantUUID]time.Time{},
-		ProjectsTimestamps: map[iam.ProjectUUID]time.Time{},
-		ServersTimestamps:  map[ext.ServerUUID]time.Time{},
-		TTL:                time.Second * 5,
+		tenantsTimestamps:  map[iam.TenantUUID]time.Time{},
+		projectsTimestamps: map[iam.ProjectUUID]time.Time{},
+		serversTimestamps:  map[ext.ServerUUID]time.Time{},
+		ttl:                time.Second * 5,
 	}
 	list = ServerList{
 		Tenants: map[iam.TenantUUID]iam.Tenant{"tu1": {
@@ -63,19 +63,19 @@ func Test_clearOverdue(t *testing.T) {
 	require.NotEmpty(t, c.Tenants, list.Tenants)
 	require.NotEmpty(t, c.Projects, list.Projects)
 	require.NotEmpty(t, c.Servers, list.Servers)
-	require.NotEmpty(t, c.TenantsTimestamps)
-	require.NotEmpty(t, c.ProjectsTimestamps)
-	require.NotEmpty(t, c.ServersTimestamps)
+	require.NotEmpty(t, c.tenantsTimestamps)
+	require.NotEmpty(t, c.projectsTimestamps)
+	require.NotEmpty(t, c.serversTimestamps)
 
-	c.TTL = 0
+	c.ttl = 0
 	c.ClearOverdue()
 
 	require.Empty(t, c.Tenants)
-	require.Empty(t, c.TenantsTimestamps)
+	require.Empty(t, c.tenantsTimestamps)
 	require.Empty(t, c.Projects)
-	require.Empty(t, c.ProjectsTimestamps)
+	require.Empty(t, c.projectsTimestamps)
 	require.Empty(t, c.Servers)
-	require.Empty(t, c.ServersTimestamps)
+	require.Empty(t, c.serversTimestamps)
 }
 
 func Test_SaveToFile(t *testing.T) {
@@ -86,9 +86,9 @@ func Test_SaveToFile(t *testing.T) {
 	require.NotEmpty(t, c.Tenants, list.Tenants)
 	require.NotEmpty(t, c.Projects, list.Projects)
 	require.NotEmpty(t, c.Servers, list.Servers)
-	require.NotEmpty(t, c.TenantsTimestamps)
-	require.NotEmpty(t, c.ProjectsTimestamps)
-	require.NotEmpty(t, c.ServersTimestamps)
+	require.NotEmpty(t, c.tenantsTimestamps)
+	require.NotEmpty(t, c.projectsTimestamps)
+	require.NotEmpty(t, c.serversTimestamps)
 
 	err = c.SaveToFile(path)
 
@@ -105,9 +105,9 @@ func Test_ReadFromFile(t *testing.T) {
 	require.NotEmpty(t, c.Tenants, list.Tenants)
 	require.NotEmpty(t, c.Projects, list.Projects)
 	require.NotEmpty(t, c.Servers, list.Servers)
-	require.NotEmpty(t, c.TenantsTimestamps)
-	require.NotEmpty(t, c.ProjectsTimestamps)
-	require.NotEmpty(t, c.ServersTimestamps)
+	require.NotEmpty(t, c.tenantsTimestamps)
+	require.NotEmpty(t, c.projectsTimestamps)
+	require.NotEmpty(t, c.serversTimestamps)
 	err = c.SaveToFile(path)
 	require.NoError(t, err)
 	require.FileExists(t, path)
@@ -118,7 +118,7 @@ func Test_ReadFromFile(t *testing.T) {
 	require.Equal(t, c2.Tenants, list.Tenants)
 	require.Equal(t, c2.Projects, list.Projects)
 	require.Equal(t, c2.Servers, list.Servers)
-	require.Equal(t, c2.TTL, time.Second*6)
+	require.Equal(t, c2.ttl, time.Second*6)
 	deleteFileIfExists(path)
 }
 

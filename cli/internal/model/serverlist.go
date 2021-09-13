@@ -21,31 +21,31 @@ type ServerList struct {
 type Cache struct {
 	ServerList
 	// last vault access to entity
-	TenantsTimestamps  map[iam.TenantUUID]time.Time
-	ProjectsTimestamps map[iam.ProjectUUID]time.Time
-	ServersTimestamps  map[ext.ServerUUID]time.Time
+	tenantsTimestamps  map[iam.TenantUUID]time.Time
+	projectsTimestamps map[iam.ProjectUUID]time.Time
+	serversTimestamps  map[ext.ServerUUID]time.Time
 	// ttl of entity
-	TTL time.Duration
+	ttl time.Duration
 }
 
 func (c *Cache) ClearOverdue() {
-	now := time.Now()
-	for id, lastAccess := range c.TenantsTimestamps {
-		if now.After(lastAccess.Add(c.TTL)) {
+	tooLongAgo := time.Now().Add(-c.ttl)
+	for id, lastAccess := range c.tenantsTimestamps {
+		if lastAccess.Before(tooLongAgo) {
 			delete(c.Tenants, id)
-			delete(c.TenantsTimestamps, id)
+			delete(c.tenantsTimestamps, id)
 		}
 	}
-	for id, lastAccess := range c.ProjectsTimestamps {
-		if now.After(lastAccess.Add(c.TTL)) {
+	for id, lastAccess := range c.projectsTimestamps {
+		if lastAccess.Before(tooLongAgo) {
 			delete(c.Projects, id)
-			delete(c.ProjectsTimestamps, id)
+			delete(c.projectsTimestamps, id)
 		}
 	}
-	for id, lastAccess := range c.ServersTimestamps {
-		if now.After(lastAccess.Add(c.TTL)) {
+	for id, lastAccess := range c.serversTimestamps {
+		if lastAccess.Before(tooLongAgo) {
 			delete(c.Servers, id)
-			delete(c.ServersTimestamps, id)
+			delete(c.serversTimestamps, id)
 		}
 	}
 }
@@ -72,7 +72,7 @@ func ReadFromFile(path string, ttl time.Duration) (*Cache, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ReadFromFile: %w", err)
 	}
-	result.TTL = ttl
+	result.ttl = ttl
 	return &result, nil
 }
 
@@ -84,10 +84,14 @@ func TryReadCacheFromFile(filePath string, ttl time.Duration) (*Cache, error) {
 			if err != nil {
 				return nil, fmt.Errorf("tryReadCacheFromFile, creating dirs: %w", err)
 			}
+		} else if err != nil {
+			return nil, fmt.Errorf("tryReadCacheFromFile, accessing dir: %w", err)
 		}
-		cache := Cache{TTL: ttl}
+		cache := Cache{ttl: ttl}
 		cache.initializeIfEmpty()
 		return &cache, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("tryReadCacheFromFile, accessing cache file: %w", err)
 	}
 	return ReadFromFile(filePath, ttl)
 }
@@ -97,15 +101,15 @@ func (c *Cache) Update(freshList ServerList) {
 	now := time.Now()
 	for k, v := range freshList.Tenants {
 		c.Tenants[k] = v
-		c.TenantsTimestamps[k] = now
+		c.tenantsTimestamps[k] = now
 	}
 	for k, v := range freshList.Projects {
 		c.Projects[k] = v
-		c.ProjectsTimestamps[k] = now
+		c.projectsTimestamps[k] = now
 	}
 	for k, v := range freshList.Servers {
 		c.Servers[k] = v
-		c.ServersTimestamps[k] = now
+		c.serversTimestamps[k] = now
 	}
 	c.ClearOverdue()
 }
@@ -120,13 +124,13 @@ func (c *Cache) initializeIfEmpty() {
 	if c.Servers == nil {
 		c.Servers = map[ext.ServerUUID]ext.Server{}
 	}
-	if c.TenantsTimestamps == nil {
-		c.TenantsTimestamps = map[iam.TenantUUID]time.Time{}
+	if c.tenantsTimestamps == nil {
+		c.tenantsTimestamps = map[iam.TenantUUID]time.Time{}
 	}
-	if c.ProjectsTimestamps == nil {
-		c.ProjectsTimestamps = map[iam.ProjectUUID]time.Time{}
+	if c.projectsTimestamps == nil {
+		c.projectsTimestamps = map[iam.ProjectUUID]time.Time{}
 	}
-	if c.ServersTimestamps == nil {
-		c.ServersTimestamps = map[ext.ServerUUID]time.Time{}
+	if c.serversTimestamps == nil {
+		c.serversTimestamps = map[ext.ServerUUID]time.Time{}
 	}
 }
