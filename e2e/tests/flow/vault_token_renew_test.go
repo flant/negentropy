@@ -28,7 +28,7 @@ var _ = Describe("Renewing token", func() {
 			token = auth.ClientToken
 			Expect(token).ToNot(BeEmpty())
 
-			prolongClient = configure.GetClient(token)
+			prolongClient = configure.GetClientWithToken(token, authVaultAddr)
 		})
 
 		It("successful renew not expired token", func() {

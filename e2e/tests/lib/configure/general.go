@@ -24,42 +24,40 @@ type GoodAppRole struct {
 	ID       string
 }
 
-func GetClient(token string) *api.Client {
+// GetClientWithToken create vault client with customized token and addr
+// example: GetClientWithToken("token","http://127.0.0.1:8200")
+func GetClientWithToken(token string, addr string) *api.Client {
 	cl, err := api.NewClient(api.DefaultConfig())
 	Expect(err).To(BeNil())
 
 	cl.SetToken(token)
-	err = cl.SetAddress("http://127.0.0.1:8200")
+	err = cl.SetAddress(addr)
 	Expect(err).To(BeNil())
 
 	return cl
 }
 
-func CreatePolicy(token, name, content string) {
-	cl := GetClient(token)
-
-	policyFromServer, err := cl.Sys().GetPolicy(name)
+func CreatePolicy(vaultClient *api.Client, name, content string) {
+	policyFromServer, err := vaultClient.Sys().GetPolicy(name)
 	Expect(err).To(BeNil())
 
 	if policyFromServer == "" {
-		err := cl.Sys().PutPolicy(name, content)
+		err := vaultClient.Sys().PutPolicy(name, content)
 		Expect(err).To(BeNil())
 	}
 }
 
-func CreateGoodRole(token string) *GoodAppRole {
-	cl := GetClient(token)
+func CreateGoodRole(vaultClient *api.Client) *GoodAppRole {
+	CreatePolicy(vaultClient, goodPolicyName, goodPolicy)
 
-	CreatePolicy(token, goodPolicyName, goodPolicy)
-
-	EnableAuthPlugin("flant_iam_auth", "flant_iam_auth", token)
-	EnableAuthPlugin("approle", "approle", token)
+	EnableAuthPlugin("flant_iam_auth", "flant_iam_auth", vaultClient)
+	EnableAuthPlugin("approle", "approle", vaultClient)
 
 	appRolePath := fmt.Sprintf("/auth/approle/role/%s", goodRoleName)
-	roleFromServer, err := cl.Logical().Read(appRolePath)
+	roleFromServer, err := vaultClient.Logical().Read(appRolePath)
 	Expect(err).To(BeNil())
 	if roleFromServer == nil {
-		res, err := cl.Logical().Write(appRolePath, map[string]interface{}{
+		res, err := vaultClient.Logical().Write(appRolePath, map[string]interface{}{
 			"secret_id_ttl":  "30m",
 			"token_ttl":      "25m",
 			"token_policies": []string{goodPolicyName},
@@ -68,10 +66,10 @@ func CreateGoodRole(token string) *GoodAppRole {
 		Expect(res).To(BeNil())
 	}
 
-	secretIdData, err := cl.Logical().Write(appRolePath+"/secret-id", nil)
+	secretIdData, err := vaultClient.Logical().Write(appRolePath+"/secret-id", nil)
 	Expect(err).To(BeNil())
 
-	roleIdData, err := cl.Logical().Read(appRolePath + "/role-id")
+	roleIdData, err := vaultClient.Logical().Read(appRolePath + "/role-id")
 	Expect(err).To(BeNil())
 	Expect(roleIdData).ToNot(BeNil())
 
@@ -82,10 +80,8 @@ func CreateGoodRole(token string) *GoodAppRole {
 	}
 }
 
-func ConfigureVaultAccess(token, pluginPath string, appRole *GoodAppRole) {
-	cl := GetClient(token)
-
-	_, err := cl.Logical().Write(pluginPath+"/configure_vault_access", map[string]interface{}{
+func ConfigureVaultAccess(vaultClient *api.Client, pluginPath string, appRole *GoodAppRole) {
+	_, err := vaultClient.Logical().Write(pluginPath+"/configure_vault_access", map[string]interface{}{
 		"vault_addr":            "http://127.0.0.1:8200",
 		"vault_tls_server_name": "vault_host",
 		"role_name":             appRole.Name,
@@ -99,9 +95,8 @@ func ConfigureVaultAccess(token, pluginPath string, appRole *GoodAppRole) {
 	Expect(err).To(BeNil())
 }
 
-func EnableAuthPlugin(plugin, path, token string) {
-	cl := GetClient(token)
-	err := cl.Sys().EnableAuthWithOptions(path, &api.EnableAuthOptions{
+func EnableAuthPlugin(plugin, path string, vaultClient *api.Client) {
+	err := vaultClient.Sys().EnableAuthWithOptions(path, &api.EnableAuthOptions{
 		Type: plugin,
 	})
 	if err != nil {

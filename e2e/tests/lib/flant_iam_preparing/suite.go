@@ -37,10 +37,10 @@ type CheckingSSHConnectionEnvironment struct {
 }
 
 func (st *Suite) BeforeSuite() {
-	// try to read ROOT_VAULT_TOKEN, ROOT_VAULT_BASE_URL
+	// try to read ROOT_VAULT_TOKEN, ROOT_VAULT_URL
 	st.IamVaultClient = lib.NewConfiguredIamVaultClient()
 
-	// try to read AUTH_VAULT_TOKEN, AUTH_VAULT_BASE_URL
+	// try to read AUTH_VAULT_TOKEN, AUTH_VAULT_URL
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 

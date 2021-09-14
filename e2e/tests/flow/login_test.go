@@ -21,7 +21,7 @@ func assertVaultUser(user *iam.User, auth *api.SecretAuth) {
 }
 
 func assertHasAccess(token string) {
-	cl := configure.GetClient(token)
+	cl := configure.GetClientWithToken(token, authVaultAddr)
 	method, err := cl.Logical().Read(lib.IamAuthPluginPath + "/auth_method/" + jwtMethodName)
 
 	Expect(err).ToNot(HaveOccurred())
@@ -60,7 +60,7 @@ var _ = Describe("Login", func() {
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
 
-				cl := configure.GetClient(auth.ClientToken)
+				cl := configure.GetClientWithToken(auth.ClientToken, authVaultAddr)
 				method, err := cl.Logical().Read(lib.IamAuthPluginPath + "/auth_method/" + jwtMethodName)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -74,7 +74,7 @@ var _ = Describe("Login", func() {
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
 
-				cl := configure.GetClient(auth.ClientToken)
+				cl := configure.GetClientWithToken(auth.ClientToken, authVaultAddr)
 				_, err := cl.Logical().Delete(lib.IamAuthPluginPath + "/auth_method/" + jwtMethodName)
 
 				Expect(err).To(HaveOccurred())
@@ -120,7 +120,7 @@ var _ = Describe("Login", func() {
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
 
-				cl := configure.GetClient(auth.ClientToken)
+				cl := configure.GetClientWithToken(auth.ClientToken, authVaultAddr)
 				_, err := cl.Logical().Delete(lib.IamAuthPluginPath + "/auth_method/" + jwtMethodName)
 
 				Expect(err).To(HaveOccurred())
@@ -157,7 +157,7 @@ var _ = Describe("Login", func() {
 				})
 				Expect(auth.ClientToken).ToNot(BeEmpty())
 
-				prolongClient = configure.GetClient(auth.ClientToken)
+				prolongClient = configure.GetClientWithToken(auth.ClientToken, authVaultAddr)
 			})
 
 			It("successful log in after prolong multipass", func() {

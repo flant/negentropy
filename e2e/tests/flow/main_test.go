@@ -46,14 +46,16 @@ path "auth/token/renew" {
 )
 
 var (
-	iamAuthClient       *api.Client
-	iamClient           *api.Client
-	identityApi         *flant_vault_api.IdentityAPI
-	sources             []auth_source.SourceForTest
-	mountAccessorId     string
-	jwtMethodName       string
-	multipassMethodName string
-	tokenTTl            = 20 * time.Second
+	iamAuthClientWithRoot *api.Client
+	iamClientWithRoot     *api.Client
+	identityApi           *flant_vault_api.IdentityAPI
+	sources               []auth_source.SourceForTest
+	mountAccessorId       string
+	jwtMethodName         string
+	multipassMethodName   string
+	tokenTTl              = 20 * time.Second
+
+	authVaultAddr string
 )
 
 func uuidFromResp(resp *api.Secret, entityKey, key string) string {
@@ -61,15 +63,15 @@ func uuidFromResp(resp *api.Secret, entityKey, key string) string {
 }
 
 func createUser() *iam.User {
-	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
+	tenantRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	tenantUUID := uuidFromResp(tenantRaw, "tenant", "uuid")
 
-	userUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/user/", fixtures.RandomUserCreatePayload())
+	userUUIDResp, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/user/", fixtures.RandomUserCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	userUUID := uuidFromResp(userUUIDResp, "user", "uuid")
 
-	userRaw, err := iamClient.Logical().Read(lib.IamPluginPath + "/tenant/" + tenantUUID + "/user/" + userUUID)
+	userRaw, err := iamClientWithRoot.Logical().Read(lib.IamPluginPath + "/tenant/" + tenantUUID + "/user/" + userUUID)
 	Expect(err).ToNot(HaveOccurred())
 
 	userObj := iam.User{}
@@ -86,7 +88,7 @@ func createUser() *iam.User {
 }
 
 func deleteUserMultipass(user *iam.User, multipass *iam.Multipass) {
-	_, err := iamClient.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID + "/multipass/" + multipass.UUID)
+	_, err := iamClientWithRoot.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID + "/multipass/" + multipass.UUID)
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(2 * time.Second)
@@ -105,7 +107,7 @@ func prolongUserMultipass(positiveCase bool, uuid string, client *api.Client) st
 }
 
 func getJwks() *jose.JSONWebKeySet {
-	jwksRaw, err := iamClient.Logical().Read(lib.IamAuthPluginPath + "/jwks/")
+	jwksRaw, err := iamAuthClientWithRoot.Logical().Read(lib.IamAuthPluginPath + "/jwks/")
 	Expect(err).ToNot(HaveOccurred())
 
 	jwksStr, err := json.Marshal(jwksRaw.Data)
@@ -119,7 +121,7 @@ func getJwks() *jose.JSONWebKeySet {
 }
 
 func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
-	maRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass", tools.ToMap(multipass.GetPayload()))
+	maRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass", tools.ToMap(multipass.GetPayload()))
 	Expect(err).ToNot(HaveOccurred())
 
 	maObj := iam.Multipass{}
@@ -140,15 +142,15 @@ func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
 }
 
 func createServiceAccount() *iam.ServiceAccount {
-	tenantRaw, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
+	tenantRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	tenantUUID := uuidFromResp(tenantRaw, "tenant", "uuid")
 
-	saUUIDResp, err := iamClient.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/service_account/", fixtures.RandomServiceAccountCreatePayload())
+	saUUIDResp, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant/"+tenantUUID+"/service_account/", fixtures.RandomServiceAccountCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
 	saUUID := uuidFromResp(saUUIDResp, "service_account", "uuid")
 
-	saRaw, err := iamClient.Logical().Read(lib.IamPluginPath + "/tenant/" + tenantUUID + "/service_account/" + saUUID)
+	saRaw, err := iamClientWithRoot.Logical().Read(lib.IamPluginPath + "/tenant/" + tenantUUID + "/service_account/" + saUUID)
 	Expect(err).ToNot(HaveOccurred())
 
 	saObj := iam.ServiceAccount{}
@@ -181,7 +183,7 @@ func createJwtAuthMethod(methodName, userClaim string, source auth_source.Source
 		}
 	}
 
-	_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
+	_, err := iamAuthClientWithRoot.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -199,12 +201,16 @@ func createMultipassAuthMethod(methodName string, payloadRewrite map[string]inte
 		}
 	}
 
-	_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
+	_, err := iamAuthClientWithRoot.Logical().Write(lib.IamAuthPluginPath+"/auth_method/"+methodName, payload)
 	Expect(err).ToNot(HaveOccurred())
 }
 
 func login(positiveCase bool, params map[string]interface{}) *api.SecretAuth {
-	secret, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/login", params)
+	cl := configure.GetClientWithToken("", authVaultAddr)
+	cl.ClearToken()
+
+	secret, err := cl.Logical().Write(lib.IamAuthPluginPath+"/login", params)
+
 	if positiveCase {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(secret).ToNot(BeNil())
@@ -224,10 +230,10 @@ func switchJwt(enable bool) {
 		method = "disable"
 	}
 	var err error
-	_, err = iamClient.Logical().Write(lib.IamPluginPath+"/jwt/"+method, nil)
+	_, err = iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/jwt/"+method, nil)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/"+method, nil)
+	_, err = iamAuthClientWithRoot.Logical().Write(lib.IamAuthPluginPath+"/jwt/"+method, nil)
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(3 * time.Second)
@@ -235,18 +241,18 @@ func switchJwt(enable bool) {
 
 var _ = BeforeSuite(func() {
 	authVaultToken := lib.GetAuthRootToken()
-	iamAuthClient = configure.GetClient(authVaultToken)
-	iamAuthClient.SetToken(authVaultToken)
+	authVaultAddr = lib.GetAuthVaultUrl()
+	iamAuthClientWithRoot = configure.GetClientWithToken(authVaultToken, authVaultAddr)
 
 	rootVaultToken := lib.GetRootRootToken()
-	iamClient = configure.GetClient(rootVaultToken)
-	iamClient.SetToken(rootVaultToken)
+	rootVaultAddr := lib.GetRootVaultUrl()
+	iamClientWithRoot = configure.GetClientWithToken(rootVaultToken, rootVaultAddr)
 
-	identityApi = flant_vault_api.NewIdentityAPI(configure.GetClient(authVaultToken), hclog.NewNullLogger())
+	identityApi = flant_vault_api.NewIdentityAPI(iamAuthClientWithRoot, hclog.NewNullLogger())
 
-	role := configure.CreateGoodRole(rootVaultToken)
+	role := configure.CreateGoodRole(iamAuthClientWithRoot)
 
-	configure.ConfigureVaultAccess(authVaultToken, lib.IamAuthPluginPath, role)
+	configure.ConfigureVaultAccess(iamAuthClientWithRoot, lib.IamAuthPluginPath, role)
 
 	var err error
 	switchJwt(true)
@@ -255,11 +261,11 @@ var _ = BeforeSuite(func() {
 
 	for _, s := range sources {
 		p, name := s.ToPayload()
-		_, err := iamAuthClient.Logical().Write(lib.IamAuthPluginPath+"/auth_source/"+name, p)
+		_, err := iamAuthClientWithRoot.Logical().Write(lib.IamAuthPluginPath+"/auth_source/"+name, p)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	configure.CreatePolicy(authVaultToken, methodReaderOnlyPolicyName, methodReaderOnlyPolicy)
+	configure.CreatePolicy(iamAuthClientWithRoot, methodReaderOnlyPolicyName, methodReaderOnlyPolicy)
 
 	jwtMethodName = tools.RandomStr()
 	createJwtAuthMethod(jwtMethodName, "uuid", auth_source.JWTWithEaNameEmail, map[string]interface{}{
@@ -276,7 +282,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	mountAccessorId, err = vault.NewMountAccessorGetter(func() (*api.Client, error) {
-		return configure.GetClient(authVaultToken), nil
+		return iamAuthClientWithRoot, nil
 	}, "flant_iam_auth/").MountAccessor()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mountAccessorId).ToNot(BeEmpty())
