@@ -17,7 +17,7 @@ var _ = Describe("Token issuing", func() {
 
 		Context("not issue", func() {
 			It("if multipass is not exists", func() {
-				prolongUserMultipass(false, uuid.New(), iamAuthClient)
+				prolongUserMultipass(false, uuid.New(), iamAuthClientWithRoot) // TODO maybe should check user token
 			})
 
 			Context("jwt disabling", func() {
@@ -32,7 +32,7 @@ var _ = Describe("Token issuing", func() {
 				})
 
 				It("if jwt is disabled", func() {
-					prolongUserMultipass(false, multipass.UUID, iamAuthClient)
+					prolongUserMultipass(false, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
 				})
 			})
 		})
@@ -57,7 +57,7 @@ var _ = Describe("Token issuing", func() {
 			})
 
 			It("verifies with jwks", func() {
-				token := prolongUserMultipass(true, multipass.UUID, iamAuthClient)
+				token := prolongUserMultipass(true, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
 
 				parsed, claims := parseToken(token)
 
@@ -82,7 +82,7 @@ var _ = Describe("Token issuing", func() {
 			})
 
 			It("generates new JTI", func() {
-				token := prolongUserMultipass(true, multipass.UUID, iamAuthClient)
+				token := prolongUserMultipass(true, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
 
 				_, claimsNew := parseToken(token)
 				_, claimsOld := parseToken(multipassJwt)

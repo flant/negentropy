@@ -68,14 +68,15 @@ func assertRequiredTokenFields(t *testing.T, data map[string]interface{}, conf *
 	require.Contains(t, data, "iss")
 	require.Equal(t, data["iss"], conf.Issuer)
 
-	now := nowF().Unix()
-	ttl := int64(o.TTL.Seconds())
+	now := float64(nowF().Unix())
+	ttl := o.TTL.Seconds()
 
 	require.Contains(t, data, "iat")
-	require.Equal(t, data["iat"], float64(now))
+	require.LessOrEqual(t, data["iat"], now)
+	require.Less(t, data["iat"], now+2.0)
 
 	require.Contains(t, data, "exp")
-	require.Equal(t, data["exp"], float64(now+ttl))
+	require.Equal(t, data["exp"], data["iat"].(float64)+ttl)
 }
 
 func TestIssueMultipass(t *testing.T) {

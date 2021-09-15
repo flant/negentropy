@@ -35,26 +35,26 @@ func (t *customHeadersTransport) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 const (
-	defaultBaseURL    = "http://127.0.0.1:8200/v1/"
+	defaultBaseURL    = "http://127.0.0.1:8200"
 	IamPluginPath     = "flant_iam"
 	IamAuthPluginPath = "auth/flant_iam_auth"
 )
 
 func NewIamVaultClient(token string) *http.Client {
-	return NewVaultClient(GetRootVaultBaseUrl(), token, IamPluginPath)
+	return NewVaultClient(GetRootVaultUrl(), token, IamPluginPath)
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
-	token := GetSecondRootToken()
-	return NewVaultClient(GetRootVaultBaseUrl(), token, IamPluginPath)
+	token := GetRootRootToken()
+	return NewVaultClient(GetRootVaultUrl()+"/v1/", token, IamPluginPath)
 }
 
 func NewIamAuthVaultClient(token string) *http.Client {
-	return NewVaultClient(GetAuthVaultBaseUrl(), token, IamAuthPluginPath)
+	return NewVaultClient(GetAuthVaultUrl()+"/v1/", token, IamAuthPluginPath)
 }
 
 func NewConfiguredIamAuthVaultClient() *http.Client {
-	token := GetSecondRootToken()
+	token := GetAuthRootToken()
 	return NewIamAuthVaultClient(token)
 }
 
@@ -95,26 +95,34 @@ func NewVaultClient(baseURL string, token string, pluginPath string) *http.Clien
 	return &http.Client{Transport: tr}
 }
 
-func GetSecondRootToken() string {
-	token := os.Getenv("TEST_VAULT_SECOND_TOKEN")
+func GetRootRootToken() string {
+	token := os.Getenv("ROOT_VAULT_TOKEN")
 	if token == "" {
-		panic("TEST_VAULT_SECOND_TOKEN is empty, need valid token to access vault")
+		panic("ROOT_VAULT_TOKEN is empty, need valid token to access vault")
 	}
 	return token
 }
 
-func GetRootVaultBaseUrl() string {
-	u := os.Getenv("ROOT_VAULT_BASE_URL")
+func GetAuthRootToken() string {
+	token := os.Getenv("AUTH_VAULT_TOKEN")
+	if token == "" {
+		panic("AUTH_VAULT_TOKEN is empty, need valid token to access vault")
+	}
+	return token
+}
+
+func GetRootVaultUrl() string {
+	u := os.Getenv("ROOT_VAULT_URL")
 	if u == "" {
-		return defaultBaseURL
+		panic("ROOT_VAULT_URL is empty, need valid URL to access vault")
 	}
 	return u
 }
 
-func GetAuthVaultBaseUrl() string {
-	u := os.Getenv("AUTH_VAULT_BASE_URL")
+func GetAuthVaultUrl() string {
+	u := os.Getenv("AUTH_VAULT_URL")
 	if u == "" {
-		return defaultBaseURL
+		panic("AUTH_VAULT_URL is empty, need valid URL to access vault")
 	}
 	return u
 }
