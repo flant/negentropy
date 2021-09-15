@@ -25,7 +25,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
-	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -252,8 +251,6 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			// server_access_extension
 			b.serverAccessBackend.Paths(),
 			pathTenant(b),
-
-			backentutils.BigBadabumPath(b.Backend),
 		),
 		Clean: b.cleanup,
 	}
