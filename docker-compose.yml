@@ -41,19 +41,12 @@ services:
     image: alpine:3.14.2
     volumes:
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./e2e/data:/vault/testdata"
+      - "./e2e/data/vault_auth.hcl:/etc/vault.hcl"
     ports:
       - 8200:8200
     environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://0.0.0.0:8200
-      - VAULT_ADDRESS=http://0.0.0.0:8200
-      - VAULT_TOKEN=root
-      - VAULT_DEV_ROOT_TOKEN_ID=root
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_LOG_LEVEL=debug
-#      - VAULT_LOG_FORMAT=json
-    command: vault server -dev
+      - VAULT_ADDR=http://127.0.0.1:8200
+    command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
@@ -63,19 +56,12 @@ services:
     image: alpine:3.14.2
     volumes:
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./e2e/data:/vault/testdata"
+      - "./e2e/data/vault_root.hcl:/etc/vault.hcl"
     ports:
       - 8300:8200
     environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://0.0.0.0:8200
-      - VAULT_ADDRESS=http://0.0.0.0:8200
-      - VAULT_TOKEN=root
-      - VAULT_DEV_ROOT_TOKEN_ID=root
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_LOG_LEVEL=debug
-#      - VAULT_LOG_FORMAT=json
-    command: vault server -dev
+      - VAULT_ADDR=http://127.0.0.1:8200
+    command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
