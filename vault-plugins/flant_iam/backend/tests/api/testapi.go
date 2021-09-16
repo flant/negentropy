@@ -171,6 +171,10 @@ func NewProjectAPI(b *logical.Backend) TestAPI {
 	return &BackendBasedAPI{backend: b, url: &url2.ProjectEndpointBuilder{}}
 }
 
+func NewProjectFeatureFlagAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ProjectFeatureFlagEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

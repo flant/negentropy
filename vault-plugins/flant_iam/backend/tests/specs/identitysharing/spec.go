@@ -40,7 +40,7 @@ var _ = Describe("Identity sharing", func() {
 				Expect(is.Map()).To(HaveKey("groups"))
 				Expect(is.Get("groups").Array()).To(HaveLen(3))
 			},
-			"tenant_uuid": sourceTenantID,
+			"tenant": sourceTenantID,
 		}
 		data := map[string]interface{}{
 			"destination_tenant_uuid": targetTenantID,
@@ -51,8 +51,8 @@ var _ = Describe("Identity sharing", func() {
 
 	It("can be read", func() {
 		TestAPI.Read(api.Params{
-			"uuid":        createdData.Get("identity_sharing.uuid").String(),
-			"tenant_uuid": sourceTenantID,
+			"uuid":   createdData.Get("identity_sharing.uuid").String(),
+			"tenant": sourceTenantID,
 			"expectPayload": func(json gjson.Result) {
 				Expect(createdData).To(Equal(json))
 			},
@@ -61,7 +61,7 @@ var _ = Describe("Identity sharing", func() {
 
 	It("can be listed", func() {
 		list := TestAPI.List(api.Params{
-			"tenant_uuid": sourceTenantID,
+			"tenant": sourceTenantID,
 		}, url.Values{})
 		Expect(list.Get("identity_sharings").Array()).To(HaveLen(1))
 		Expect(list.Get("identity_sharings").Array()[0].Get("uuid").String()).To(BeEquivalentTo(createdData.Get("identity_sharing.uuid").String()))
@@ -69,13 +69,13 @@ var _ = Describe("Identity sharing", func() {
 
 	It("can be deleted", func() {
 		TestAPI.Delete(api.Params{
-			"uuid":        createdData.Get("identity_sharing.uuid").String(),
-			"tenant_uuid": sourceTenantID,
+			"uuid":   createdData.Get("identity_sharing.uuid").String(),
+			"tenant": sourceTenantID,
 		}, nil)
 
 		deletedISData := TestAPI.Read(api.Params{
 			"uuid":         createdData.Get("identity_sharing.uuid").String(),
-			"tenant_uuid":  sourceTenantID,
+			"tenant":       sourceTenantID,
 			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedISData.Get("identity_sharing.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))

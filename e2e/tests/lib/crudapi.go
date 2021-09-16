@@ -170,3 +170,7 @@ func NewConnectionInfoAPI(client *http.Client) TestAPI {
 func NewServiceAccountMultipassAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.ServiceAccountMultipassEndpointBuilder{}}
 }
+
+func NewProjectFeatureFlagAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ProjectFeatureFlagEndpointBuilder{}}
+}
