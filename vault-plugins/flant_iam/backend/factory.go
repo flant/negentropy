@@ -17,7 +17,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
@@ -194,8 +193,6 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		extension_server_access.ServerPaths(b, storage, tokenController),
 		extension_server_access.ServerConfigurePaths(b, storage),
-
-		backentutils.BigBadabumPath(b),
 
 		tokenController.ApiPaths(),
 	)
