@@ -1,5 +1,14 @@
-storage "file" {
-  path = "/tmp/vault/data"
+#storage "file" {
+#  path = "/tmp/vault/data"
+#}
+
+storage "s3" {
+  access_key = "minio"
+  secret_key = "minio123"
+  endpoint = "minio:9000"
+  bucket = "vault-root"
+  s3_force_path_style = "true"
+  disable_ssl = "true"
 }
 
 listener "tcp" {

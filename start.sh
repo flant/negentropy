@@ -5,7 +5,8 @@ function docker-exec() {
 }
 
 function init-vault() {
-  ROOT_VAULT_OPERATOR_OUTPUT=$(docker-exec "vault_root" "vault operator init")
+  docker-exec "vault_root" "vault operator init" > /tmp/vault_root_operator_output
+  ROOT_VAULT_OPERATOR_OUTPUT=$(cat /tmp/vault_root_operator_output)
   ROOT_VAULT_TOKEN=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Initial Root Token:" | sed 's/.*: *//')
   ROOT_VAULT_UNSEAL_KEY_1=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 1:" | sed 's/.*: *//')
   ROOT_VAULT_UNSEAL_KEY_2=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 2:" | sed 's/.*: *//')
@@ -13,7 +14,8 @@ function init-vault() {
   ROOT_VAULT_UNSEAL_KEY_4=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 4:" | sed 's/.*: *//')
   ROOT_VAULT_UNSEAL_KEY_5=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 5:" | sed 's/.*: *//')
 
-  AUTH_VAULT_OPERATOR_OUTPUT=$(docker-exec "vault_auth" "vault operator init")
+  docker-exec "vault_auth" "vault operator init" > /tmp/vault_auth_operator_output
+  AUTH_VAULT_OPERATOR_OUTPUT=$(cat /tmp/vault_auth_operator_output)
   AUTH_VAULT_TOKEN=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Initial Root Token:" | sed 's/.*: *//')
   AUTH_VAULT_UNSEAL_KEY_1=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 1:" | sed 's/.*: *//')
   AUTH_VAULT_UNSEAL_KEY_2=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 2:" | sed 's/.*: *//')
@@ -220,6 +222,16 @@ EOF"' > /dev/null 2>&1
 }
 
 docker run --rm -v $(pwd):/app -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh"
+
+docker-compose up -d minio
+
+while true; do
+  docker run --rm --network=negentropy_default --entrypoint=sh minio/mc -c "mc config host add minio http://minio:9000 minio minio123 && mc mb minio/vault-root && mc mb minio/vault-auth"
+  status=$?
+  if [ $status -eq 0 ]; then
+    break
+  fi
+done
 
 docker-compose up -d
 
