@@ -5,8 +5,8 @@ services:
     image: docker.io/bitnami/zookeeper:3
     ports:
       - "2181:2181"
-#    volumes:
-#      - "zookeeper_data:/bitnami"
+    #    volumes:
+    #      - "zookeeper_data:/bitnami"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
 
@@ -14,8 +14,8 @@ services:
     image: docker.io/bitnami/kafka:2
     ports:
       - "9093:9093"
-#    volumes:
-#      - "kafka_data:/bitnami"
+    #    volumes:
+    #      - "kafka_data:/bitnami"
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
@@ -55,17 +55,20 @@ services:
       retries: 10
 
   vault_auth:
-    image: alpine:3.14.2
+    build:
+      context: .
+      dockerfile: ./Dockerfile.debug
     volumes:
-#      - "vault_auth_data:/tmp/vault/data"
+      #      - "vault_auth_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
       - "./e2e/data/vault_auth.hcl:/etc/vault.hcl"
     ports:
+      - 2345:2345
       - 8200:8200
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
       - DEBUG=true
-    command: vault server -config /etc/vault.hcl
+    command: --listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
@@ -73,17 +76,20 @@ services:
       - minio
 
   vault_root:
-    image: alpine:3.14.2
+    build:
+      context: .
+      dockerfile: ./Dockerfile.debug
     volumes:
       #      - "vault_root_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
       - "./e2e/data/vault_root.hcl:/etc/vault.hcl"
     ports:
+      - 2346:2345
       - 8300:8200
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
       - DEBUG=true
-    command: vault server -config /etc/vault.hcl
+    command: --listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
