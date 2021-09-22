@@ -134,11 +134,9 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	if strings.HasSuffix(config.ApproleMountPoint, "/") {
-		config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
-	}
+	config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 
-	err = c.setAccessConfig(ctx, c.storageFactory(req.Storage), config)
+	err = c.setAccessConfig(ctx, newAccessConfigStorage(req.Storage), config)
 	if err != nil {
 		return nil, err
 	}

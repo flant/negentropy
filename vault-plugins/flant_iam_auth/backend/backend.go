@@ -2,8 +2,8 @@ package backend
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -37,6 +37,14 @@ const loggerModule = "Auth"
 
 // Factory is used by framework
 func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
+	logger := c.Logger.Named("flant_iam_auth.Factory")
+	logger.Debug("started")
+	defer logger.Debug("exit")
+	if os.Getenv("DEBUG") == "true" {
+		kafka.DoNotEncrypt = true
+		logger.Debug("DEBUG mode is ON, messages will not be encrypted")
+	}
+
 	b, err := backend(c, nil)
 	if err != nil {
 		return nil, err
@@ -44,6 +52,7 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 	if err := b.SetupBackend(ctx, c); err != nil {
 		return nil, err
 	}
+	logger.Debug("normal finish")
 	return b, nil
 }
 
@@ -88,26 +97,24 @@ type flantIamAuthBackend struct {
 
 func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
+	logger := conf.Logger.Named("flant_iam_auth.backend")
+	logger.Debug("started")
+	defer logger.Debug("exit")
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-
 	iamAuthLogger := conf.Logger.Named(loggerModule)
-
 	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
 		return iamAuthLogger.Named("ApiClient")
-	})
-
+	}, conf.StorageView)
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
 		return nil, err
 	}
-
 	schema, err := repo.GetSchema()
 	if err != nil {
 		return nil, err
 	}
-
 	clientGetter := func() (*api.Client, error) {
 		return b.accessVaultController.APIClient()
 	}
@@ -254,6 +261,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		),
 		Clean: b.cleanup,
 	}
+	logger.Debug("normal finish")
 
 	return b, nil
 }
@@ -263,13 +271,12 @@ func (b *flantIamAuthBackend) NamedLogger(name string) hclog.Logger {
 }
 
 func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
+	logger := config.Logger.Named("flant_iam_auth.SetupBackend")
+	logger.Debug("started")
+	defer logger.Debug("exit")
+
 	err := b.Setup(ctx, config)
 	if err != nil {
-		return err
-	}
-
-	err = b.accessVaultController.Init(config.StorageView)
-	if err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}
 
@@ -279,6 +286,7 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 	}
 
 	b.serverAccessBackend.SetEntityIDResolver(b.entityIDResolver)
+	logger.Debug("normal finish")
 
 	return nil
 }

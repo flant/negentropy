@@ -21,24 +21,26 @@ type VaultClientController struct {
 	clientLock sync.RWMutex
 	apiClient  *api.Client
 
-	storageFactory func(s logical.Storage) *accessConfigStorage
-	getLogger      func() log.Logger
+	accessConfigStorage *accessConfigStorage
+	// accessConfigStorageFactory func(s logical.Storage) *accessConfigStorage
+	loggerFactory func() log.Logger
 }
 
-func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientController {
+// NewVaultClientController returns uninitialized VaultClientController
+func NewVaultClientController(loggerFactory func() log.Logger, storage logical.Storage) *VaultClientController {
 	c := &VaultClientController{
-		getLogger: loggerFactory,
+		loggerFactory:       loggerFactory,
+		accessConfigStorage: newAccessConfigStorage(storage),
 	}
-
-	c.storageFactory = newAccessConfigStorage
+	// c.accessConfigStorageFactory = newAccessConfigStorage
 
 	return c
 }
 
 // GetApiConfig get vault api access config (APIURL, APIHost, APICa)
 // if configuration not found returns nil pointer
-func (c *VaultClientController) GetApiConfig(ctx context.Context, s logical.Storage) (*VaultApiConf, error) {
-	conf, err := c.storageFactory(s).Get(ctx)
+func (c *VaultClientController) GetApiConfig(ctx context.Context) (*VaultApiConf, error) {
+	conf, err := c.accessConfigStorage.GetConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,52 +56,63 @@ func (c *VaultClientController) GetApiConfig(ctx context.Context, s logical.Stor
 	}, nil
 }
 
-// Init initialize api client
+// init initialize api client by demand
 // if store don't contains configuration it may return ErrNotSetConf error
-// it is normal case
-func (c *VaultClientController) Init(s logical.Storage) error {
-	apiClient, err := c.APIClient()
-	if err == nil && apiClient != nil {
+// it is normal case for just started and not configured plugin
+func (c *VaultClientController) init() error {
+	logger := c.loggerFactory().Named("init")
+	logger.Debug("started")
+	defer logger.Debug("exit")
+	c.clientLock.RLock()
+	defer c.clientLock.RUnlock()
+	if c.apiClient != nil {
 		return nil
 	}
 
 	ctx := context.Background()
-	curConf, err := c.storageFactory(s).Get(ctx)
+	curConf, err := c.accessConfigStorage.GetConfig(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting access config: %w", err)
 	}
 
 	if curConf == nil {
 		return ErrNotSetConf
 	}
 
-	apiClient, err = newAPIClient(curConf)
+	apiClient, err := newAPIClient(curConf)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating api client: %w", err)
 	}
 
-	accessClient := newAccessClient(apiClient, curConf, c.getLogger())
-	auth, err := accessClient.AppRole().Login()
+	appRole := newAccessClient(apiClient, curConf, c.loggerFactory()).AppRole()
+
+	auth, err := appRole.Login()
 	if err != nil {
-		return err
+		return fmt.Errorf("login: %w", err)
 	}
 
 	apiClient.SetToken(auth.ClientToken)
 	c.setAPIClient(apiClient)
-
+	logger.Debug("normal finish")
 	return nil
 }
 
 // APIClient getting vault api client for communicate between plugins and vault
 func (c *VaultClientController) APIClient() (*api.Client, error) {
 	c.clientLock.RLock()
-	defer c.clientLock.RUnlock()
+	apiClient := c.apiClient
+	c.clientLock.RUnlock()
+	if apiClient == nil {
+		err := c.init()
+		if err != nil {
+			return nil, err
+		}
+		c.clientLock.RLock()
+		apiClient = c.apiClient
+		c.clientLock.RUnlock()
 
-	if c.apiClient == nil {
-		return nil, ErrNotInit
 	}
-
-	return c.apiClient, nil
+	return apiClient, nil
 }
 
 // ReInit full reinitialisation apiClient
@@ -108,11 +121,12 @@ func (c *VaultClientController) ReInit(s logical.Storage) error {
 	// clear client
 	c.setAPIClient(nil)
 	// init from store
-	return c.Init(s)
+	c.accessConfigStorage = newAccessConfigStorage(s)
+	return c.init()
 }
 
 func (c *VaultClientController) renewLease() error {
-	c.getLogger().Info("Run renew lease")
+	c.loggerFactory().Info("Run renew lease")
 	clientAPI, err := c.APIClient()
 	if err != nil {
 		return err
@@ -120,7 +134,7 @@ func (c *VaultClientController) renewLease() error {
 
 	err = prolongAccessToken(clientAPI, 120)
 	if err != nil {
-		c.getLogger().Info(" prolong")
+		c.loggerFactory().Info(" prolong")
 	}
 	return err
 }
@@ -129,7 +143,7 @@ func (c *VaultClientController) renewLease() error {
 // if store don't contains configuration it may return ErrNotSetConf error
 // it is normal case
 func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
-	logger := c.getLogger()
+	logger := c.loggerFactory()
 
 	apiClient, err := c.APIClient()
 	if err != nil && errors.Is(err, ErrNotInit) {
@@ -145,15 +159,15 @@ func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Req
 		logger.Info("token prolong success")
 	}
 
-	store := c.storageFactory(r.Storage)
+	store := newAccessConfigStorage(r.Storage)
 
-	accessConf, err := store.Get(ctx)
+	accessConf, err := store.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
 
 	if accessConf == nil {
-		logger.Info("access not configurated")
+		logger.Info("access not configured")
 		return nil
 	}
 
@@ -163,7 +177,7 @@ func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Req
 	}
 
 	// login in with new secret id in gen function
-	err = genNewSecretID(ctx, apiClient, store, accessConf, c.getLogger())
+	err = genNewSecretID(ctx, apiClient, store, accessConf, c.loggerFactory())
 	if err != nil {
 		return err
 	}
@@ -197,7 +211,7 @@ func (c *VaultClientController) setAccessConfig(ctx context.Context, store *acce
 	}
 
 	// login in with new secret id in gen function
-	err = genNewSecretID(ctx, apiClient, store, curConf, c.getLogger())
+	err = genNewSecretID(ctx, apiClient, store, curConf, c.loggerFactory())
 	if err != nil {
 		return err
 	}

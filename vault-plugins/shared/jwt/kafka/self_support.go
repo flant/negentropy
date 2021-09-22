@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -9,28 +9,23 @@ import (
 )
 
 func SelfRestoreMessage(txn *memdb.Txn, objType string, data []byte) (handled bool, err error) {
-	var handler func(*memdb.Txn, interface{}) error
-
 	switch objType {
 	case model.JWTConfigType:
-		handler = model.HandleRestoreConfig
+		err := model.HandleRestoreConfig(txn, data)
+		if err != nil {
+			return false, fmt.Errorf("handling type=%s, raw=%s: %w", objType, string(data), err)
+		}
 	case model.JWTStateType:
-		handler = model.HandleRestoreState
+		err := model.HandleRestoreState(txn, data)
+		if err != nil {
+			return false, fmt.Errorf("handling type=%s, raw=%s: %w", objType, string(data), err)
+		}
+	case model.JWKSType: // TODO REMOVE
+		// TODO REMOVE - should this message be here or not?
+		// what to do after this message?
 	default:
 		return false, nil
 	}
-
-	var o interface{}
-	err = json.Unmarshal(data, o)
-	if err != nil {
-		return false, err
-	}
-
-	err = handler(txn, o)
-	if err != nil {
-		return false, err
-	}
-
 	return true, nil
 }
 

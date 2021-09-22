@@ -46,7 +46,7 @@ func (sks *SelfKafkaSource) Name() string {
 	return sks.kf.PluginConfig.SelfTopicName
 }
 
-func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
+func (sks *SelfKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	sks.logger.Debug("Restore - start", "replica name", replicaName)
 	defer sks.logger.Debug("Restore - end", "replica name", replicaName)
@@ -61,10 +61,10 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 
 	sks.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, replicaName))
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, sks.restoreMsHandler)
+	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, sks.restoreMsHandler, sks.logger)
 }
 
-func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message) error {
+func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
 	l := sks.logger
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {

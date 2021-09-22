@@ -44,8 +44,11 @@ func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan str
 	}
 }
 
-func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName string, txn *memdb.Txn, handler func(txn *memdb.Txn, msg *kafka.Message) error) error {
+func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName string, txn *memdb.Txn, handler func(txn *memdb.Txn, msg *kafka.Message, logger hclog.Logger) error, logger hclog.Logger) error {
 	var lastOffset int64
+	logger = logger.Named("RunRestorationLoop")
+	logger.Debug("started")
+	defer logger.Debug("exit")
 
 	if runConsumer != nil {
 		// get the latest offset from existing reader
@@ -90,18 +93,24 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 		return nil
 	}
 
+	c := newConsumer.Events()
+
 	for {
-		msg, err := newConsumer.ReadMessage(-1)
+		var msg *kafka.Message
+		ev := <-c
+
+		switch e := ev.(type) {
+		case *kafka.Message:
+			msg = e
+		default:
+			logger.Debug(fmt.Sprintf("Recieve not handled event %s", e.String()))
+			continue
+		}
+		err := handler(txn, msg, logger)
 		if err != nil {
 			return err
 		}
-
-		err = handler(txn, msg)
-		if err != nil {
-			return err
-		}
-
-		if int64(msg.TopicPartition.Offset) == lastOffset-1 {
+		if int64(msg.TopicPartition.Offset) == lastOffset-2 {
 			return nil
 		}
 	}

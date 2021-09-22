@@ -256,7 +256,7 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 		"bootstrap.servers":        brokers,
 		"auto.offset.reset":        "earliest",
 		"group.id":                 false,
-		"enable.auto.commit":       true,
+		"enable.auto.commit":       false,
 		"isolation.level":          "read_committed",
 		"go.events.channel.enable": true,
 	})

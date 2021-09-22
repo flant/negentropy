@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -129,10 +130,11 @@ func (s *StateRepo) SetLastRotationTime(t time.Time) error {
 	return s.put(st)
 }
 
-func HandleRestoreState(db *memdb.Txn, o interface{}) error {
-	entry, ok := o.(*state)
-	if !ok {
-		return fmt.Errorf("does not restore jwt keypair. cannot cast")
+func HandleRestoreState(db *memdb.Txn, data []byte) error {
+	entry := &state{}
+	err := json.Unmarshal(data, entry)
+	if err != nil {
+		return fmt.Errorf("parsing: %w", err)
 	}
 
 	if entry.ID != jwtStateStoreKey {

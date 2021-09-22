@@ -14,7 +14,7 @@ func newAccessConfigStorage(parent logical.Storage) *accessConfigStorage {
 	return &accessConfigStorage{parent: parent}
 }
 
-func (s *accessConfigStorage) Get(ctx context.Context) (*vaultAccessConfig, error) {
+func (s *accessConfigStorage) GetConfig(ctx context.Context) (*vaultAccessConfig, error) {
 	raw, err := s.parent.Get(ctx, storagePath)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (s *accessConfigStorage) Get(ctx context.Context) (*vaultAccessConfig, erro
 	return config, nil
 }
 
-func (s *accessConfigStorage) Put(ctx context.Context, conf *vaultAccessConfig) error {
+func (s *accessConfigStorage) PutConfig(ctx context.Context, conf *vaultAccessConfig) error {
 	entry, err := logical.StorageEntryJSON(storagePath, conf)
 	if err != nil {
 		return err

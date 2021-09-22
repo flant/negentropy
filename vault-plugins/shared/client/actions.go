@@ -69,7 +69,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 	accessConf.SecretID = newSecretID
 	accessConf.LastRenewTime = time.Now()
 
-	err = store.Put(ctx, accessConf)
+	err = store.PutConfig(ctx, accessConf)
 	if err != nil {
 		return err
 	}

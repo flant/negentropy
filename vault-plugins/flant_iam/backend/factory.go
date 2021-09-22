@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -27,6 +28,14 @@ var _ logical.Factory = Factory
 
 // Factory configures and returns Mock backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	logger := conf.Logger.Named("flant_iam.Factory")
+	logger.Debug("started")
+	defer logger.Debug("exit")
+	if os.Getenv("DEBUG") == "true" {
+		logger.Debug("DEBUG mode is ON, messages will not be encrypted")
+		sharedkafka.DoNotEncrypt = true
+	}
+
 	if conf == nil {
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
@@ -35,10 +44,11 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	if err != nil {
 		return nil, err
 	}
+
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
 	}
-
+	logger.Debug("normal finish")
 	return b, nil
 }
 
@@ -66,6 +76,10 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
 	}
+
+	localLogger := conf.Logger.Named("flant_iam.newBackend")
+	localLogger.Debug("started")
+	defer localLogger.Debug("exit")
 
 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
 	if err != nil {
@@ -95,6 +109,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	logger := conf.Logger.Named("IAM")
 
 	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers))
+
 	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger.Named("KafkaSourceJWKS")))
 
 	err = storage.Restore()
@@ -104,11 +119,14 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
+
 	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, logger.Named("KafkaSourceJWKS")))
+
 	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
 		return nil, err
 	}
+
 	for {
 		raw := replicaIter.Next()
 		if raw == nil {
@@ -196,6 +214,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		tokenController.ApiPaths(),
 	)
+	localLogger.Debug("normal finish")
 
 	return b, nil
 }
