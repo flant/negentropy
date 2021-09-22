@@ -30,56 +30,65 @@ services:
     image: obsidiandynamics/kafdrop
     restart: "no"
     ports:
-      - "9000:9000"
+      - "9100:9000"
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
     depends_on:
       - "kafka"
 
+  minio:
+    image: minio/minio:RELEASE.2021-09-18T18-09-59Z
+    #    volumes:
+    #      - "minio_data:/data"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    command: server --console-address ":9001" /data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 20s
+      retries: 10
+
   vault_auth:
     image: alpine:3.14.2
     volumes:
+      #      - "vault_auth_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./e2e/data:/vault/testdata"
+      - "./e2e/data/vault_auth.hcl:/etc/vault.hcl"
     ports:
       - 8200:8200
     environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://0.0.0.0:8200
-      - VAULT_ADDRESS=http://0.0.0.0:8200
-      - VAULT_TOKEN=root
-      - VAULT_DEV_ROOT_TOKEN_ID=root
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_LOG_LEVEL=debug
-#      - VAULT_LOG_FORMAT=json
-    command: vault server -dev
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - DEBUG=true
+    command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
       - kafka
+      - minio
 
   vault_root:
     image: alpine:3.14.2
     volumes:
+      #      - "vault_root_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./e2e/data:/vault/testdata"
+      - "./e2e/data/vault_root.hcl:/etc/vault.hcl"
     ports:
       - 8300:8200
     environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://0.0.0.0:8200
-      - VAULT_ADDRESS=http://0.0.0.0:8200
-      - VAULT_TOKEN=root
-      - VAULT_DEV_ROOT_TOKEN_ID=root
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_LOG_LEVEL=debug
-#      - VAULT_LOG_FORMAT=json
-    command: vault server -dev
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - DEBUG=true
+    command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
       - kafka
+      - minio
 
   test-client:
     build:
@@ -108,9 +117,8 @@ services:
       - vault_auth
 
 #volumes:
+#  vault_root_data:
+#  vault_auth_data:
+#  minio_data:
 #  zookeeper_data:
-#    driver: local
 #  kafka_data:
-#    driver: local
-#  vault_data:
-#    driver: local

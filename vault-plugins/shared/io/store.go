@@ -18,7 +18,7 @@ type MemoryStorableObject interface {
 
 type KafkaSource interface {
 	Name() string
-	Restore(txn *memdb.Txn) error
+	Restore(txn *memdb.Txn, logger log.Logger) error
 	Run(ms *MemoryStore)
 	Stop()
 }
@@ -211,7 +211,7 @@ func (ms *MemoryStore) SetLogger(l log.Logger) {
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 	name := s.Name()
-	ms.logger.Debug(fmt.Sprintf("Add kafka source '%s'", s.Name()))
+	ms.logger.Debug(fmt.Sprintf("Add kafka source '%s'", name))
 	ms.RemoveKafkaSource(name)
 
 	ms.kafkaMutex.Lock()
@@ -220,10 +220,10 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 		ms.kafkaMapSources[name] = s
 	}
 	ms.kafkaMutex.Unlock()
-
 	if ms.kafkaConnection.Configured() {
 		go s.Run(ms)
 	}
+	ms.logger.Debug(fmt.Sprintf("kafka source '%s', AddKafkaSource finished", name))
 }
 
 func (ms *MemoryStore) ReinitializeKafka() {
@@ -262,7 +262,7 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 	if name == "" {
 		return
 	}
-
+	ms.logger.Debug(fmt.Sprintf("kafka source '%s' RemoveKafkaSource is started", name))
 	ms.kafkaMutex.Lock()
 	defer ms.kafkaMutex.Unlock()
 
@@ -286,6 +286,7 @@ func (ms *MemoryStore) RemoveKafkaSource(name string) {
 
 	ms.kafkaSources = append(ms.kafkaSources[:index], ms.kafkaSources[index+1:]...)
 	delete(ms.kafkaMapSources, name)
+	ms.logger.Debug(fmt.Sprintf("kafka source '%s' RemoveKafkaSource finish", name))
 }
 
 func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
@@ -316,6 +317,10 @@ func (ms *MemoryStore) RemoveKafkaDestination(replicaName string) {
 }
 
 func (ms *MemoryStore) Restore() error {
+	logger := ms.logger.Named("StorageRestore")
+	logger.Debug("started")
+	defer logger.Debug("exit")
+
 	if !ms.kafkaConnection.Configured() {
 		ms.logger.Warn("Kafka is not configured. Skipping restore")
 		return nil
@@ -324,13 +329,13 @@ func (ms *MemoryStore) Restore() error {
 	ms.kafkaMutex.RLock()
 	defer ms.kafkaMutex.RUnlock()
 	for _, ks := range ms.kafkaSources {
-		err := ks.Restore(txn)
+		err := ks.Restore(txn, logger)
 		if err != nil {
 			txn.Abort()
 			return err
 		}
 	}
 	txn.Commit()
-
+	logger.Debug("normal finish")
 	return nil
 }

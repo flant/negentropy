@@ -28,7 +28,7 @@ func getTestBackend(t *testing.T, ctx context.Context) (*backend, logical.Storag
 		StorageView: &logical.InmemStorage{},
 	}
 
-	b, err := newBackend()
+	b, err := newBackend(config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %s", err)
 	}

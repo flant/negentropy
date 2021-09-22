@@ -44,6 +44,9 @@ func (c *AppRole) Login() (*api.SecretAuth, error) {
 		"role_id":   c.client.conf.RoleID,
 		"secret_id": c.client.conf.SecretID,
 	}
+	logger := c.logger.Named("Login")
+	logger.Debug("started")
+	defer logger.Debug("exit")
 	secret, err := c.client.apiClient.Logical().Write(c.pluginPath("/login"), data)
 	if err != nil {
 		c.logger.Error(fmt.Sprintf("error while login %v", err))
@@ -53,7 +56,7 @@ func (c *AppRole) Login() (*api.SecretAuth, error) {
 	if secret.Auth == nil {
 		return nil, fmt.Errorf("login error does not contain Auth")
 	}
-
+	logger.Debug("normal finish")
 	return secret.Auth, nil
 }
 

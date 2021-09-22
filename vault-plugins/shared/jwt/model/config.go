@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -100,10 +101,11 @@ func (s *ConfigRepo) Get() (*Config, error) {
 	return entry.Config, nil
 }
 
-func HandleRestoreConfig(db *memdb.Txn, o interface{}) error {
-	entry, ok := o.(*configPairTableEntity)
-	if !ok {
-		return fmt.Errorf("does not restore jwt config. cannot cast")
+func HandleRestoreConfig(db *memdb.Txn, data []byte) error {
+	entry := &configPairTableEntity{}
+	err := json.Unmarshal(data, entry)
+	if err != nil {
+		return fmt.Errorf("parsing: %w", err)
 	}
 
 	if entry.ID != configStoreKey {

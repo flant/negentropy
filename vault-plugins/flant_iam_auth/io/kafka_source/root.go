@@ -44,7 +44,7 @@ func (rk *RootKafkaSource) Name() string {
 	return rk.kf.PluginConfig.RootTopicName
 }
 
-func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
+func (rk *RootKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 	rootTopic := rk.kf.PluginConfig.RootTopicName
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 
@@ -63,10 +63,10 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
 
 	rk.logger.Debug("Restore - got restoration reader")
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, rk.restoreMsgHandler)
+	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
-func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message) error {
+func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
 	rk.logger.Debug("Restore - handler run")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {

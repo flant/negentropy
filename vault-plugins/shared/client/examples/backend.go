@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/flant/negentropy/vault-plugins/shared/client"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 // Factory is used by framework
@@ -27,7 +28,7 @@ type exampleBackend struct {
 
 func backend() *exampleBackend {
 	b := new(exampleBackend)
-	b.accessVaultController = client.NewVaultClientController(log.L)
+	b.accessVaultController = client.NewVaultClientController(log.L, &logical.InmemStorage{})
 
 	b.Backend = &framework.Backend{
 		BackendType:  logical.TypeCredential,
@@ -102,9 +103,9 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 		return err
 	}
 
-	// Init access controller
-	err = b.accessVaultController.Init(config.StorageView)
-	// init may be return ErrNotSetConf error
+	// APIClient
+	_, err = b.accessVaultController.APIClient()
+	// 	_, err = b.accessVaultController.APIClient() may be return ErrNotSetConf error
 	// if plugin initialized first time and has not saved config
 	// its normal behavior. Because we set configuration
 	// through "/configure_vault_access" path
@@ -139,7 +140,7 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 }
 
 func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiConf, err := b.accessVaultController.GetApiConfig(ctx, req.Storage)
+	apiConf, err := b.accessVaultController.GetApiConfig(ctx)
 	if err != nil {
 		return nil, err
 	}

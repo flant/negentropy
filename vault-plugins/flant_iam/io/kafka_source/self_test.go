@@ -45,6 +45,6 @@ func TestInitial(t *testing.T) {
 	require.NoError(t, err)
 
 	ss := NewSelfKafkaSource(mb, []RestoreFunc{})
-	err = ss.Restore(nil)
+	err = ss.Restore(nil, nil)
 	require.NoError(t, err)
 }

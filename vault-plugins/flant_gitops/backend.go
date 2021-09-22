@@ -2,7 +2,6 @@ package flant_gitops
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
@@ -26,7 +25,7 @@ type backend struct {
 var _ logical.Factory = Factory
 
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	b, err := newBackend()
+	b, err := newBackend(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +41,10 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend() (*backend, error) {
+func newBackend(conf *logical.BackendConfig) (*backend, error) {
 	b := &backend{
 		TasksManager:          tasks_manager.NewManager(),
-		AccessVaultController: client.NewVaultClientController(hclog.L),
+		AccessVaultController: client.NewVaultClientController(hclog.L, conf.StorageView),
 	}
 
 	b.Backend = &framework.Backend{
@@ -85,10 +84,6 @@ func newBackend() (*backend, error) {
 
 func (b *backend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
 	if err := b.Setup(ctx, config); err != nil {
-		return err
-	}
-
-	if err := b.AccessVaultController.Init(config.StorageView); err != nil && !errors.Is(err, client.ErrNotSetConf) {
 		return err
 	}
 
