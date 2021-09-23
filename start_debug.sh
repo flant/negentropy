@@ -221,7 +221,7 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
 EOF"' > /dev/null 2>&1
 }
 
-docker run --rm -v $(pwd):/app -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault_debug.sh"
+docker run --rm -v $(pwd):/app -v /tmp/vault_debug_cache:/go/pkg -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault_debug.sh"
 
 docker-compose -f docker-compose.debug.yml up -d minio
 

@@ -2,8 +2,7 @@
 
 BINARY="./vault/bin/vault"
 if [ -f "$BINARY" ]; then
-    >&2 echo "Skipping vault binary build. It already exists at $BINARY"
-    exit 0
+    rm -rf vault
 fi
 
 export XC_OS="linux"
