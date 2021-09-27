@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function docker-exec() {
-  docker-compose -f docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
+  docker-compose -f docker-compose.debug.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
 }
 
 function init-vault() {
@@ -221,9 +221,9 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
 EOF"' > /dev/null 2>&1
 }
 
-docker run --rm -v $(pwd):/app -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh"
+docker run --rm -v $(pwd):/app -v /tmp/vault_debug_cache:/go/pkg -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault_debug.sh"
 
-docker-compose -f docker-compose.yml up -d minio
+docker-compose -f docker-compose.debug.yml up -d minio
 
 while true; do
   docker run --rm --network=negentropy_default --entrypoint=sh minio/mc -c "mc config host add minio http://minio:9000 minio minio123 && mc mb minio/vault-root && mc mb minio/vault-auth"
@@ -233,7 +233,16 @@ while true; do
   fi
 done
 
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker-compose.debug.yml up -d
+
+echo "run you debug tools connecting dlv servers at both vaults"
+
+until false
+do
+  read -p "Are you ready? (Y/n) " Answer;
+  if [[ -z "$Answer" ]]; then Answer=Y; fi
+  if [[ "$Answer" == "Y" ]]; then break; fi
+done
 
 echo "DEBUG: sleep for 5s"
 sleep 5
