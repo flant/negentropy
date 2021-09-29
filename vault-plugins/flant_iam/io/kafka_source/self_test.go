@@ -5,8 +5,11 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 
@@ -21,6 +24,8 @@ func TestInitial(t *testing.T) {
 	pk, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
+	topic := "topic_kafka_source_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_")
+
 	config := kafka.BrokerConfig{
 		Endpoints:             []string{"localhost:9093"},
 		ConnectionPrivateKey:  nil,
@@ -30,7 +35,7 @@ func TestInitial(t *testing.T) {
 	}
 
 	plugin := kafka.PluginConfig{
-		SelfTopicName: "root_source",
+		SelfTopicName: topic,
 	}
 	d1, _ := json.Marshal(config)
 	d2, _ := json.Marshal(plugin)
@@ -40,10 +45,10 @@ func TestInitial(t *testing.T) {
 	mb, err := kafka.NewMessageBroker(context.TODO(), storage)
 	require.NoError(t, err)
 
-	err = mb.CreateTopic(context.TODO(), "root_source", nil)
+	err = mb.CreateTopic(context.TODO(), topic, nil)
 	require.NoError(t, err)
 
 	ss := NewSelfKafkaSource(mb, []RestoreFunc{})
-	err = ss.Restore(nil, nil)
+	err = ss.Restore(nil, log.NewNullLogger())
 	require.NoError(t, err)
 }
