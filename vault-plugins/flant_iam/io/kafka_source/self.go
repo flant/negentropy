@@ -41,7 +41,7 @@ func (mks *SelfKafkaSource) Name() string {
 func (mks *SelfKafkaSource) Restore(txn *memdb.Txn, logger log.Logger) error {
 	logger = logger.Named("flant_iam.SelfKafkaSource.Restore")
 	logger.Debug("start")
-	r := mks.kf.GetRestorationReader(mks.kf.PluginConfig.SelfTopicName)
+	r := mks.kf.GetRestorationReader()
 	logger.Debug("got restoration reader")
 	defer r.Close()
 

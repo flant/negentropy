@@ -229,33 +229,12 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocommit bool) *kafka.Consumer {
+func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 consumerGroupID,
 		"auto.offset.reset":        "earliest",
-		"enable.auto.commit":       autocommit,
-		"isolation.level":          "read_committed",
-		"go.events.channel.enable": true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.SubscribeTopics([]string{topicName}, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
-}
-
-func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
-	brokers := strings.Join(mb.config.Endpoints, ",")
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":        brokers,
-		"auto.offset.reset":        "earliest",
-		"group.id":                 false,
 		"enable.auto.commit":       false,
 		"isolation.level":          "read_committed",
 		"go.events.channel.enable": true,
@@ -263,7 +242,29 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 	if err != nil {
 		panic(err)
 	}
-	err = c.SubscribeTopics([]string{topic}, nil)
+	return c
+}
+
+func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) *kafka.Consumer {
+	c := mb.GetUnsubscribedRunConsumer(consumerGroupID)
+	err := c.Subscribe(topicName, nil)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+// GetRestorationReader returns Unsubscribed for any topic consumer
+func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":        brokers,
+		"auto.offset.reset":        "earliest",
+		"group.id":                 "restoration_reader",
+		"enable.auto.commit":       false,
+		"isolation.level":          "read_committed",
+		"go.events.channel.enable": true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -347,7 +348,6 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 		// treat all other errors as fatal errors
 		return err
 	}
-
 	return nil
 }
 
@@ -474,7 +474,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 			return res[0].Error
 		}
 	}
-
+	ac.Close()
 	return nil
 }
 
@@ -495,4 +495,15 @@ func (mb *MessageBroker) DeleteTopic(ctx context.Context, topicName string) erro
 	}
 
 	return nil
+}
+
+func (mb *MessageBroker) Close() {
+	if mb.producer != nil {
+		mb.producer.Close()
+		mb.producer = nil
+	}
+	if mb.transProducer != nil {
+		mb.transProducer.Close()
+		mb.transProducer = nil
+	}
 }

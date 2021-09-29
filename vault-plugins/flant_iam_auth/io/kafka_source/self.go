@@ -51,17 +51,17 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 	sks.logger.Debug("Restore - start", "replica name", replicaName)
 	defer sks.logger.Debug("Restore - end", "replica name", replicaName)
 
-	r := sks.kf.GetRestorationReader(sks.kf.PluginConfig.SelfTopicName)
-	defer r.Close()
+	restorationConsumer := sks.kf.GetRestorationReader()
+	defer restorationConsumer.Close()
 
 	// groupId := fmt.Sprintf("restore-%s", replicaName)
 	groupId := replicaName
-	runConsumer := sks.kf.GetConsumer(groupId, replicaName, false)
+	runConsumer := sks.kf.GetUnsubscribedRunConsumer(groupId)
 	defer runConsumer.Close()
 
 	sks.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, replicaName))
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, sks.restoreMsHandler, sks.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, replicaName, txn, sks.restoreMsHandler, sks.logger)
 }
 
 func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -130,7 +130,7 @@ func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 
 	// groupId := fmt.Sprintf("run-%s", replicaName)
 	groupId := replicaName
-	rd := sks.kf.GetConsumer(groupId, replicaName, false)
+	rd := sks.kf.GetSubscribedRunConsumer(groupId, replicaName)
 	sks.logger.Debug(fmt.Sprintf("Watcher - got consumer %s/%s/%s", groupId, replicaName, replicaName), "replica_name", replicaName)
 
 	sharedkafka.RunMessageLoop(rd, sks.messageHandler(store), sks.stopC, sks.logger)

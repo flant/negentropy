@@ -14,7 +14,6 @@ import (
 )
 
 func TestInitial(t *testing.T) {
-	t.Skip("manual or integration test. Requires kafka")
 	storage := &logical.InmemStorage{}
 	key := "kafka.config"
 	pl := "kafka.plugin.config"
