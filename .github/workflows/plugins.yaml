@@ -49,4 +49,6 @@ jobs:
                echo "Sleep for 15s"
                sleep 15
              fi
-               go test -race -vet=off ./...
+             go test -race -vet=off ./...
+             docker-compose ps || true
+               
