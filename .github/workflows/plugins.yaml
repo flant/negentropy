@@ -41,4 +41,12 @@ jobs:
 
       - name: Test ${{ matrix.plugin }}
         working-directory: vault-plugins/${{ matrix.plugin }}
-        run: go test -race -vet=off ./...
+        run: |
+             CURRENT_DIR=$(basename "$PWD")
+             if [[ $CURRENT_DIR == 'shared' ]]; then
+               echo "Start kafka"
+               docker-compose -f ../../docker-compose.yml up -d kafka
+               echo "Sleep for 15s"
+               sleep 15
+             fi
+               go test -race -vet=off ./...
