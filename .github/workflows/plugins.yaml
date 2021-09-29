@@ -43,7 +43,7 @@ jobs:
         working-directory: vault-plugins/${{ matrix.plugin }}
         run: |
              CURRENT_DIR=$(basename "$PWD")
-             if [[ $CURRENT_DIR == 'shared' ]]; then
+             if [[ $CURRENT_DIR == 'shared' || $CURRENT_DIR == "flant_iam" ]]; then
                echo "Start kafka"
                docker-compose -f ../../docker-compose.yml up -d kafka
                echo "Sleep for 15s"
