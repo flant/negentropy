@@ -10,14 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hashicorp/vault/sdk/logical"
-
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,7 +63,7 @@ func TestTable(t *testing.T) {
 			return c
 		})
 		assert.NoError(t, err, testcase.description+":filling messages")
-		mainReadingGroupID := "group" + strings.Replace(time.Now().String()[11:19], ":", "_", -1)
+		mainReadingGroupID := "group" + strings.ReplaceAll(time.Now().String()[11:19], ":", "_")
 
 		err = tryWithTimeOut(30, func() <-chan struct{} {
 			c := make(chan struct{})
@@ -136,7 +133,7 @@ func TestTable(t *testing.T) {
 		})
 		assert.NoError(t, err, testcase.description+":check offset functions")
 
-		broker.DeleteTopic(context.TODO(), topic)
+		broker.DeleteTopic(context.TODO(), topic) // nolint:errcheck
 		broker.Close()
 		if t.Failed() {
 			fmt.Println("testcase is FAILED ")
@@ -221,7 +218,7 @@ func messageBroker(t *testing.T) *MessageBroker {
 	}
 
 	plugin := PluginConfig{
-		SelfTopicName: "topic_" + strings.Replace(time.Now().String()[11:23], ":", "_", -1),
+		SelfTopicName: "topic_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_"),
 	}
 	d1, _ := json.Marshal(config)
 	d2, _ := json.Marshal(plugin)
