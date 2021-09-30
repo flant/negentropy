@@ -53,5 +53,7 @@ jobs:
              go test -race -vet=off ./...
       - name: DEBUG
         if: always()
-        run: docker logs negentropy_kafka_1
+        run: | 
+             docker logs negentropy_kafka_1
+             docker-compose exec -T kafka sh -c "kafka-topics.sh --list --zookeeper zookeeper:2181"
 
