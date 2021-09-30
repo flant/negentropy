@@ -46,7 +46,7 @@ jobs:
              CURRENT_DIR=$(basename "$PWD")
              if [[ $CURRENT_DIR == 'shared' || $CURRENT_DIR == "flant_iam" ]]; then
                echo "Start kafka"
-               docker-compose -f ../../docker-compose.yml up -d kafka
+               docker-compose -f ../../docker-compose.kafka.yml up -d
                echo "Sleep for 15s"
                sleep 15
              fi
