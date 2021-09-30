@@ -50,5 +50,7 @@ jobs:
                sleep 15
              fi
              go test -race -vet=off ./...
-             docker-compose ps || true
-               
+      - name: DEBUG
+        if: always()
+        run: docker ps
+
