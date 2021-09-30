@@ -8,8 +8,8 @@ services:
 #    volumes:
 #      - "zookeeper_data:/bitnami"
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
-      - ZOO_4LW_COMMANDS_WHITELIST=srvr, mntr, ruok
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_4LW_COMMANDS_WHITELIST: "srvr, mntr, ruok"
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc -w 2 zookeeper 2181"]
       interval: 10s
@@ -23,12 +23,12 @@ services:
 #    volumes:
 #      - "kafka_data:/bitnami"
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
-      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092,EXTERNAL://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092,EXTERNAL://localhost:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -47,8 +47,6 @@ services:
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
-#    depends_on:
-#      - "kafka"
     depends_on:
       kafka:
         condition: service_healthy
@@ -61,8 +59,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=minio123
+      MINIO_ROOT_USER: "minio"
+      MINIO_ROOT_PASSWORD: "minio123"
     command: server --console-address ":9001" /data
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
@@ -79,32 +77,36 @@ services:
     ports:
       - 8200:8200
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
-      - DEBUG=true
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      DEBUG: "true"
     command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
-      - minio
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   vault_root:
     image: alpine:3.14.2
     volumes:
-      #      - "vault_root_data:/tmp/vault/data"
+#      - "vault_root_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
       - "./e2e/data/vault_root.hcl:/etc/vault.hcl"
     ports:
       - 8300:8200
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
-      - DEBUG=true
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      DEBUG: "true"
     command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
-      - minio
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   test-client:
     build:
@@ -127,7 +129,7 @@ services:
       - "./server-access/flant-server-accessd/build:/opt/server-access/bin"
       - "./server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
     environment:
-      - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
+      SERVER_ACCESSD_CONF: "/opt/server-access/config.yaml"
     depends_on:
       - vault_root
       - vault_auth

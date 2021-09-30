@@ -5,26 +5,39 @@ services:
     image: docker.io/bitnami/zookeeper:3
     ports:
       - "2181:2181"
-    #    volumes:
-    #      - "zookeeper_data:/bitnami"
+#    volumes:
+#      - "zookeeper_data:/bitnami"
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_4LW_COMMANDS_WHITELIST: "srvr, mntr, ruok"
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 zookeeper 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: docker.io/bitnami/kafka:2
     ports:
       - "9093:9093"
-    #    volumes:
-    #      - "kafka_data:/bitnami"
+#    volumes:
+#      - "kafka_data:/bitnami"
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
-      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092,EXTERNAL://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092,EXTERNAL://localhost:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafdrop:
     image: obsidiandynamics/kafdrop
@@ -35,7 +48,8 @@ services:
       KAFKA_BROKERCONNECT: "kafka:9092"
       JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
     depends_on:
-      - "kafka"
+      kafka:
+        condition: service_healthy
 
   minio:
     image: minio/minio:RELEASE.2021-09-18T18-09-59Z
@@ -45,8 +59,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=minio123
+      MINIO_ROOT_USER: "minio"
+      MINIO_ROOT_PASSWORD: "minio123"
     command: server --console-address ":9001" /data
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
@@ -59,42 +73,46 @@ services:
       context: .
       dockerfile: ./Dockerfile.debug
     volumes:
-      #      - "vault_auth_data:/tmp/vault/data"
+#      - "vault_auth_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
       - "./e2e/data/vault_auth.hcl:/etc/vault.hcl"
     ports:
       - 2345:2345
       - 8200:8200
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
-      - DEBUG=true
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      DEBUG: "true"
     command: --listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
-      - minio
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   vault_root:
     build:
       context: .
       dockerfile: ./Dockerfile.debug
     volumes:
-      #      - "vault_root_data:/tmp/vault/data"
+#      - "vault_root_data:/tmp/vault/data"
       - "./infra/common/vault/vault/bin/vault:/bin/vault"
       - "./e2e/data/vault_root.hcl:/etc/vault.hcl"
     ports:
       - 2346:2345
       - 8300:8200
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
-      - DEBUG=true
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      DEBUG: "true"
     command: --listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
-      - minio
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   test-client:
     build:
@@ -117,7 +135,7 @@ services:
       - "./server-access/flant-server-accessd/build:/opt/server-access/bin"
       - "./server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
     environment:
-      - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
+      SERVER_ACCESSD_CONF: "/opt/server-access/config.yaml"
     depends_on:
       - vault_root
       - vault_auth
