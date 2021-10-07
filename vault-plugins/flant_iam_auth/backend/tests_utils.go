@@ -219,11 +219,11 @@ func assertResponseCode(t *testing.T, r *api.Response, code int) {
 
 type mockEntityIDResolver struct{}
 
-func (m mockEntityIDResolver) RevealEntityIDOwner(_ authn2.EntityID, _ *io.MemoryStoreTxn) (*authn2.EntityIDOwner, error) {
+func (m mockEntityIDResolver) RevealEntityIDOwner(_ authn2.EntityID, _ *io.MemoryStoreTxn, _ logical.Storage) (*authn2.EntityIDOwner, error) {
 	panic("if now need RevealEntityIDOwner, implement it")
 }
 
-func (m mockEntityIDResolver) AvailableTenantsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn) (map[model.TenantUUID]struct{}, error) {
+func (m mockEntityIDResolver) AvailableTenantsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn, _ logical.Storage) (map[model.TenantUUID]struct{}, error) {
 	tenantRepo := repo.NewTenantRepository(txn)
 	tenants, err := tenantRepo.List(false)
 	if err != nil {
@@ -236,7 +236,7 @@ func (m mockEntityIDResolver) AvailableTenantsByEntityID(_ authn2.EntityID, txn 
 	return result, nil
 }
 
-func (m mockEntityIDResolver) AvailableProjectsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn) (map[model.ProjectUUID]struct{}, error) {
+func (m mockEntityIDResolver) AvailableProjectsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn, _ logical.Storage) (map[model.ProjectUUID]struct{}, error) {
 	projectRepo := repo.NewProjectRepository(txn)
 	tenantRepo := repo.NewTenantRepository(txn)
 	tenants, err := tenantRepo.List(false)

@@ -221,7 +221,7 @@ func (b *ServerAccessBackend) queryServer() framework.OperationFunc {
 		txn := b.storage.Txn(false)
 		defer txn.Abort()
 
-		acceptedProjects, err := b.entityIDResolver.AvailableProjectsByEntityID(req.EntityID, txn)
+		acceptedProjects, err := b.entityIDResolver.AvailableProjectsByEntityID(req.EntityID, txn, req.Storage)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, fmt.Sprintf("collect acceptedProjects: %s", err.Error()),
 				http.StatusInternalServerError)

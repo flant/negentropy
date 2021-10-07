@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +66,7 @@ func TestPublicKeyGet(t *testing.T) {
 			dd, _ := json.Marshal(tb.broker.config)
 			err = storage.Put(cctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: dd, SealWrap: true})
 			require.NoError(t, err)
-			mb, err := NewMessageBroker(cctx, storage)
+			mb, err := NewMessageBroker(cctx, storage, log.NewNullLogger())
 			require.NoError(t, err)
 
 			tb.broker = mb

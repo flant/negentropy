@@ -67,14 +67,16 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 }
 
 func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
-	rk.logger.Debug("Restore - handler run")
+	l := rk.logger.Named("restoreMsgHandler")
+	l.Debug("started")
+	defer l.Debug("exit")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
-		rk.logger.Debug("wrong object key format", "key", msg.Key)
+		l.Debug("wrong object key format", "key", msg.Key)
 		return fmt.Errorf("key has wong format: %s", msg.Key)
 	}
 
-	rk.logger.Debug("Restore - messages keys", "keys", splitted)
+	l.Debug("Restore - messages keys", "keys", splitted)
 
 	var signature []byte
 	var chunked bool
@@ -88,14 +90,10 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 		}
 	}
 
-	rk.logger.Debug("Restore - signature", "sig", signature, "chuncked", chunked)
-
 	decrypted, err := rk.decryptData(msg.Value, chunked)
 	if err != nil {
 		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
-
-	rk.logger.Debug("Restore - decryption", "decrypted msg", decrypted)
 
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
@@ -105,8 +103,6 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 	if err != nil {
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
-
-	rk.logger.Debug("Restore - signature verified", "decripted", decrypted)
 
 	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
 }
@@ -128,7 +124,7 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 
 func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
-		l := rk.logger
+		l := rk.logger.Named("msgHandler")
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
 			// return fmt.Debugf("key has wrong format: %s", string(msg.Key))

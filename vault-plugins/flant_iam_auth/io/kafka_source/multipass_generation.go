@@ -109,7 +109,7 @@ func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
-			// return fmt.Debugf("key has wong format: %s", string(msg.Key))
+			rk.logger.Debug("key has wong format", string(msg.Key))
 			return
 		}
 		objType, objId := splitted[0], splitted[1]

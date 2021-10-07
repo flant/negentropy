@@ -21,8 +21,9 @@ func (m *MsgDecoded) IsDeleted() bool {
 type MessageHandler func(sourceConsumer *kafka.Consumer, msg *kafka.Message)
 
 func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan struct{}, logger hclog.Logger) {
-	defer logger.Info("Stop message loop")
-	logger.Info("Start message loop")
+	logger = logger.Named("RunMessageLoop")
+	logger.Info("start")
+	defer logger.Info("exit")
 
 	for {
 		select {
@@ -96,8 +97,9 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 		return nil
 	}
 
-	c := newConsumer.Events()
+	logger.Debug(fmt.Sprintf("topic %s: lastOffset %d lastOffset %d", topicName, lastOffset, lastOffset)) // TODO REMOVE
 
+	c := newConsumer.Events()
 	for {
 		var msg *kafka.Message
 		ev := <-c

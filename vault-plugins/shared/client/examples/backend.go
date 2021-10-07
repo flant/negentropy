@@ -28,7 +28,7 @@ type exampleBackend struct {
 
 func backend() *exampleBackend {
 	b := new(exampleBackend)
-	b.accessVaultController = client.NewVaultClientController(log.L, &logical.InmemStorage{})
+	b.accessVaultController = client.NewVaultClientController(log.L)
 
 	b.Backend = &framework.Backend{
 		BackendType:  logical.TypeCredential,
@@ -104,7 +104,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 	}
 
 	// APIClient
-	_, err = b.accessVaultController.APIClient()
+	_, err = b.accessVaultController.APIClient(config.StorageView)
 	// 	_, err = b.accessVaultController.APIClient() may be return ErrNotSetConf error
 	// if plugin initialized first time and has not saved config
 	// its normal behavior. Because we set configuration
@@ -117,7 +117,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 }
 
 func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiClient, err := b.accessVaultController.APIClient()
+	apiClient, err := b.accessVaultController.APIClient(req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 }
 
 func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiConf, err := b.accessVaultController.GetApiConfig(ctx)
+	apiConf, err := b.accessVaultController.GetApiConfig(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.
 
 // dont need in your backend use for test
 func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiClient, err := b.accessVaultController.APIClient()
+	apiClient, err := b.accessVaultController.APIClient(req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	apiClient, err = b.accessVaultController.APIClient()
+	apiClient, err = b.accessVaultController.APIClient(req.Storage)
 	if err != nil {
 		return nil, err
 	}

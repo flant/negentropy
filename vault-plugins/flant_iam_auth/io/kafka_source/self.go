@@ -48,8 +48,7 @@ func (sks *SelfKafkaSource) Name() string {
 
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
-	sks.logger.Debug("Restore - start", "replica name", replicaName)
-	defer sks.logger.Debug("Restore - end", "replica name", replicaName)
+	groupID := replicaName
 
 	r := sks.kf.GetRestorationReader(sks.kf.PluginConfig.SelfTopicName)
 	defer r.Close()
@@ -65,20 +64,20 @@ func (sks *SelfKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
 }
 
 func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
-	l := sks.logger
+	l := sks.logger.Named("restoreMsHandler")
+	l.Debug("started")
+	defer l.Debug("exit")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		return fmt.Errorf("key has wong format: %s", string(msg.Key))
 	}
 
-	sks.logger.Debug("Restore - keys", "keys", splitted)
+	l.Debug("Restore - keys", "keys", splitted)
 
 	var signature []byte
 	var chunked bool
 
-	l.Debug("Restore - Start parse header")
 	for _, header := range msg.Headers {
-		l.Debug("Restore - Switch header", "header", header)
 		switch header.Key {
 		case "signature":
 			signature = header.Value
@@ -88,7 +87,6 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 		}
 	}
 
-	l.Debug("Restore - Start decrypt message", "msg", msg.Value)
 	var decrypted []byte
 	if len(msg.Value) > 0 {
 		var err error
@@ -100,8 +98,6 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 		l.Debug(fmt.Sprintf("empty value for %s/%s. It is tombstone. Skip decrypt", splitted[0], splitted[1]))
 	}
 
-	l.Debug("Restore - Message decrypted", "decrypted", decrypted)
-
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
@@ -111,15 +107,13 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	l.Debug("Restore - Message verified", "decrypted", decrypted)
-
 	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted, []self.RestoreFunc{
 		jwtkafka.SelfRestoreMessage,
 	})
 	if err != nil {
 		return err
 	}
-
+	l.Debug("normal finish")
 	return nil
 }
 
@@ -210,8 +204,8 @@ func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessag
 		sks.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return err
 	}
-
-	sks.logger.Debug(fmt.Sprintf("Message handled successful %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
+	sks.logger.Debug(fmt.Sprintf("Message handled successful %s/%s, try commit", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID) // TODO REMOVE
+	defer sks.logger.Debug(fmt.Sprintf("Message handled successful %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
 
 	return tx.Commit(source)
 }

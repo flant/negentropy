@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -43,9 +44,8 @@ type SourceInputMessage struct {
 }
 
 func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceInputMessage, error) {
-	pos, err := c.Position([]kafka.TopicPartition{tp})
-	if err != nil {
-		return nil, err
+	if tp == emptyTopicPartition {
+		return nil, fmt.Errorf("empty topic partition")
 	}
 	cm, err := c.GetConsumerGroupMetadata()
 	if err != nil {
@@ -67,11 +67,14 @@ type MessageBroker struct {
 
 	config       BrokerConfig
 	PluginConfig PluginConfig
+
+	logger log.Logger
 }
 
-func NewMessageBroker(ctx context.Context, storage logical.Storage) (*MessageBroker, error) {
-	mb := &MessageBroker{}
-
+func NewMessageBroker(ctx context.Context, storage logical.Storage, parentLogger log.Logger) (*MessageBroker, error) {
+	mb := &MessageBroker{
+		logger: parentLogger.Named("MessageBroker"),
+	}
 	// load encryption private key
 	se, err := storage.Get(ctx, kafkaConfigPath)
 	if err != nil {
@@ -272,7 +275,9 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
-	if sourceInput != nil && sourceInput.IgnoreBody {
+	mb.logger.Debug("SendMessages - started")
+	defer mb.logger.Debug("SendMessages - exit")
+	if sourceInput != nil && (sourceInput.IgnoreBody || len(msgs) == 0) {
 		return mb.sendOffset(sourceInput)
 	}
 
@@ -336,11 +341,13 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 	}
 
 	err = p.CommitTransaction(ctx)
+
 	if err != nil {
 		if err.(kafka.Error).TxnRequiresAbort() {
 			_ = p.AbortTransaction(ctx)
 			return err
 		} else if err.(kafka.Error).IsRetriable() {
+			mb.logger.Info(fmt.Sprintf("got err.(kafka.Error).IsRetriable():%s, retry in 5 seconds", err.Error()))
 			time.Sleep(500 * time.Millisecond)
 			return mb.sendMessages(msgs, source) // FIXME: not the best recursive call
 		}

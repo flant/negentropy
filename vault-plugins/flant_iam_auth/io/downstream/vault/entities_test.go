@@ -37,7 +37,7 @@ func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, *api.Client
 
 	storageView := &logical.InmemStorage{}
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storageView)
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storageView, hclog.NewNullLogger())
 	if err != nil {
 		return nil, nil, nil, err
 	}

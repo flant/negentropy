@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +16,7 @@ import (
 func CreateTestStorage(t *testing.T) *io.MemoryStore {
 	storageView := &logical.InmemStorage{}
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storageView)
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storageView, log.NewNullLogger())
 	require.NoError(t, err)
 
 	schema, err := repo.GetSchema()

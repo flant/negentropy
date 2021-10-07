@@ -81,7 +81,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	localLogger.Debug("started")
 	defer localLogger.Debug("exit")
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView)
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 	logger := conf.Logger.Named("IAM")
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers))
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger.Named("KafkaSourceSelf")))
 
 	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger.Named("KafkaSourceJWKS")))
 

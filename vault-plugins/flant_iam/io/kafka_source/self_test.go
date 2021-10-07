@@ -38,13 +38,13 @@ func TestInitial(t *testing.T) {
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: key, Value: d1})
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: pl, Value: d2})
 
-	mb, err := kafka.NewMessageBroker(context.TODO(), storage)
+	mb, err := kafka.NewMessageBroker(context.TODO(), storage, log.NewNullLogger())
 	require.NoError(t, err)
 
 	err = mb.CreateTopic(context.TODO(), "root_source", nil)
 	require.NoError(t, err)
 
-	ss := NewSelfKafkaSource(mb, []RestoreFunc{})
-	err = ss.Restore(nil, nil)
+	ss := NewSelfKafkaSource(mb, []RestoreFunc{}, log.NewNullLogger())
+	err = ss.Restore(nil)
 	require.NoError(t, err)
 }
