@@ -43,6 +43,8 @@ type SourceInputMessage struct {
 	IgnoreBody bool
 }
 
+var emptyTopicPartition = kafka.TopicPartition{}
+
 func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceInputMessage, error) {
 	if tp == emptyTopicPartition {
 		return nil, fmt.Errorf("empty topic partition")
@@ -51,8 +53,9 @@ func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceI
 	if err != nil {
 		return nil, err
 	}
+	tp.Offset = tp.Offset + 1
 	return &SourceInputMessage{
-		TopicPartition:   pos,
+		TopicPartition:   []kafka.TopicPartition{tp},
 		ConsumerMetadata: cm,
 	}, nil
 }
@@ -232,33 +235,12 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocommit bool) *kafka.Consumer {
+func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 consumerGroupID,
 		"auto.offset.reset":        "earliest",
-		"enable.auto.commit":       autocommit,
-		"isolation.level":          "read_committed",
-		"go.events.channel.enable": true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.SubscribeTopics([]string{topicName}, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
-}
-
-func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
-	brokers := strings.Join(mb.config.Endpoints, ",")
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":        brokers,
-		"auto.offset.reset":        "earliest",
-		"group.id":                 false,
 		"enable.auto.commit":       false,
 		"isolation.level":          "read_committed",
 		"go.events.channel.enable": true,
@@ -266,7 +248,29 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 	if err != nil {
 		panic(err)
 	}
-	err = c.SubscribeTopics([]string{topic}, nil)
+	return c
+}
+
+func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) *kafka.Consumer {
+	c := mb.GetUnsubscribedRunConsumer(consumerGroupID)
+	err := c.Subscribe(topicName, nil)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+// GetRestorationReader returns Unsubscribed for any topic consumer
+func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":        brokers,
+		"auto.offset.reset":        "earliest",
+		"group.id":                 "restoration_reader",
+		"enable.auto.commit":       false,
+		"isolation.level":          "read_committed",
+		"go.events.channel.enable": true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -283,10 +287,6 @@ func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMe
 
 	if len(msgs) == 0 {
 		return nil
-	}
-
-	if len(msgs) == 1 && sourceInput == nil { // only single message without source
-		return mb.sendSingleMessage(msgs[0])
 	}
 
 	return mb.sendMessages(msgs, sourceInput)
@@ -354,27 +354,6 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 		// treat all other errors as fatal errors
 		return err
 	}
-
-	return nil
-}
-
-func (mb *MessageBroker) sendSingleMessage(msg Message) error {
-	p := mb.GetKafkaProducer()
-	m := mb.prepareMessage(msg)
-	err := p.Produce(m, nil)
-	if err != nil {
-		return fmt.Errorf("producer failed: %s - %s: %v: %+v", err.Error(), p.String(), p, msg)
-	}
-
-	e := <-p.Events()
-	switch ev := e.(type) { // nolint: gocritic
-	case *kafka.Message:
-		if ev.TopicPartition.Error != nil {
-			return fmt.Errorf("delivery failed: %s", e.String())
-		}
-		return nil
-	}
-
 	return nil
 }
 
@@ -405,7 +384,7 @@ func (mb *MessageBroker) getProducer() *kafka.Producer {
 		p, err := kafka.NewProducer(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			// "batch.size": 16384,
-			"client.id": mb.PluginConfig.SelfTopicName,
+			"client.id": mb.PluginConfig.SelfTopicName + ".producer",
 		})
 		if err != nil {
 			panic(err)
@@ -423,7 +402,7 @@ func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 			"bootstrap.servers": brokers,
 			"transactional.id":  mb.PluginConfig.SelfTopicName,
 			// "batch.size": 16384,
-			"client.id": mb.PluginConfig.SelfTopicName,
+			"client.id": mb.PluginConfig.SelfTopicName + ".transactional_producer",
 		})
 		if err != nil {
 			panic(err)
@@ -481,7 +460,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 			return res[0].Error
 		}
 	}
-
+	ac.Close()
 	return nil
 }
 

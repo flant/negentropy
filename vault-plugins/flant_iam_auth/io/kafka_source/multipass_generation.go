@@ -40,16 +40,14 @@ func (rk *MultipassGenerationKafkaSource) Name() string {
 	return io.MultipassNumberGenerationTopic
 }
 
-func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
-	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic, false)
+func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn) error {
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
 	defer runConsumer.Close()
 
-	r := rk.kf.GetRestorationReader(io.MultipassNumberGenerationTopic)
-	defer r.Close()
+	restorationConsumer := rk.kf.GetRestorationReader()
+	defer restorationConsumer.Close()
 
-	rk.logger.Debug("Restore - got restoration reader")
-
-	return sharedkafka.RunRestorationLoop(r, runConsumer, io.MultipassNumberGenerationTopic, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -99,7 +97,7 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 }
 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {
-	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic, false)
+	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic)
 
 	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)

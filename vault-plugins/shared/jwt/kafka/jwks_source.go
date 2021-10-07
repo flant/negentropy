@@ -40,16 +40,16 @@ func (rk *JWKSKafkaSource) Name() string {
 	return topicName
 }
 
-func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
-	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
+func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
 	defer runConsumer.Close()
 
-	r := rk.kf.GetRestorationReader(topicName)
-	defer r.Close()
+	restorationReader := rk.kf.GetRestorationReader()
+	defer restorationReader.Close()
 
 	rk.logger.Debug("Restore - got restoration reader")
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationReader, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -99,7 +99,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
-	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
+	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, topicName)
 
 	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
