@@ -28,6 +28,7 @@ type SelfKafkaSource struct {
 	logger         hclog.Logger
 
 	stopC chan struct{}
+	run   bool
 }
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, logger hclog.Logger) *SelfKafkaSource {
@@ -127,6 +128,8 @@ func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 	rd := sks.kf.GetConsumer(groupId, replicaName, false)
 	sks.logger.Debug(fmt.Sprintf("Watcher - got consumer %s/%s/%s", groupId, replicaName, replicaName), "replica_name", replicaName)
 
+	sks.run = true
+
 	sharedkafka.RunMessageLoop(rd, sks.messageHandler(store), sks.stopC, sks.logger)
 }
 
@@ -220,5 +223,8 @@ func (sks *SelfKafkaSource) verifySign(signature []byte, data []byte) error {
 }
 
 func (sks *SelfKafkaSource) Stop() {
-	sks.stopC <- struct{}{}
+	if sks.run {
+		sks.stopC <- struct{}{}
+		sks.run = false
+	}
 }

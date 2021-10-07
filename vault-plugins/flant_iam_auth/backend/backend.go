@@ -292,6 +292,8 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 }
 
 func (b *flantIamAuthBackend) cleanup(_ context.Context) {
+	l := b.Logger().Named("cleanup")
+	l.Info("started")
 	b.l.Lock()
 	if b.providerCtxCancel != nil {
 		b.providerCtxCancel()
@@ -299,7 +301,9 @@ func (b *flantIamAuthBackend) cleanup(_ context.Context) {
 	if b.provider != nil {
 		b.provider.Done()
 	}
+	b.storage.Close()
 	b.l.Unlock()
+	l.Info("finished")
 }
 
 func (b *flantIamAuthBackend) invalidate(ctx context.Context, key string) {

@@ -216,6 +216,15 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	)
 	localLogger.Debug("normal finish")
 
+	b.Clean = func(context.Context) {
+		l := b.Logger().Named("cleanup")
+		l.Info("started")
+
+		storage.Close()
+
+		l.Info("finished")
+	}
+
 	return b, nil
 }
 

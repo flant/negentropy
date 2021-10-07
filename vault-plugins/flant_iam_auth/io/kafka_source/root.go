@@ -27,6 +27,7 @@ type RootKafkaSource struct {
 
 	logger            hclog.Logger
 	msgHandlerFactory RootSourceMsgHandlerFactory
+	run               bool
 }
 
 func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, logger hclog.Logger) *RootKafkaSource {
@@ -118,7 +119,7 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 
 	rd := rk.kf.GetConsumer(groupId, rootTopic, false)
 	rk.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, rootTopic), "root_topic", rootTopic, "replica_name", replicaName)
-
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
@@ -218,5 +219,8 @@ func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 }
 
 func (rk *RootKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }

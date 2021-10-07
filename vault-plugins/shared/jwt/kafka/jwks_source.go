@@ -26,6 +26,7 @@ type JWKSKafkaSource struct {
 	stopC chan struct{}
 
 	logger hclog.Logger
+	run    bool
 }
 
 func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *JWKSKafkaSource {
@@ -102,6 +103,7 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
 	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
 
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
@@ -208,5 +210,8 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 }
 
 func (rk *JWKSKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }

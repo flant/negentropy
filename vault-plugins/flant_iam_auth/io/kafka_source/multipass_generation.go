@@ -26,6 +26,7 @@ type MultipassGenerationKafkaSource struct {
 	stopC chan struct{}
 
 	logger hclog.Logger
+	run    bool
 }
 
 func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *MultipassGenerationKafkaSource {
@@ -102,6 +103,7 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {
 	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic, false)
 
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
@@ -208,5 +210,8 @@ func (rk *MultipassGenerationKafkaSource) processMessage(source *sharedkafka.Sou
 }
 
 func (rk *MultipassGenerationKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }
