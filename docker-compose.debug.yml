@@ -16,6 +16,8 @@ services:
       - "9093:9093"
     #    volumes:
     #      - "kafka_data:/bitnami"
+    volumes:
+      - "./log4j.properties:/bitnami/kafka/config/log4j.properties"
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
