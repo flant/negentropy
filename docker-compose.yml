@@ -66,6 +66,7 @@ services:
       - 8200:8200
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_CLIENT_TIMEOUT=120s
       - DEBUG=true
     command: vault server -config /etc/vault.hcl
     cap_add:
@@ -84,6 +85,7 @@ services:
       - 8300:8200
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_CLIENT_TIMEOUT=120s
       - DEBUG=true
     command: vault server -config /etc/vault.hcl
     cap_add:
