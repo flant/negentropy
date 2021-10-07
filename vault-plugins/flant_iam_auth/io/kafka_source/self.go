@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -219,7 +217,7 @@ func (sks *SelfKafkaSource) decryptData(data []byte, chunked bool) ([]byte, erro
 
 func (sks *SelfKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
-	return rsa.VerifyPKCS1v15(sks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
+	return sharedkafka.VerifySignature(signature, sks.kf.EncryptionPublicKey(), hashed)
 }
 
 func (sks *SelfKafkaSource) Stop() {

@@ -503,3 +503,14 @@ func (mb *MessageBroker) DeleteTopic(ctx context.Context, topicName string) erro
 
 	return nil
 }
+
+func (mb *MessageBroker) Close() {
+	if mb.producer != nil {
+		mb.producer.Close()
+		mb.producer = nil
+	}
+	if mb.transProducer != nil {
+		mb.transProducer.Close()
+		mb.transProducer = nil
+	}
+}

@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -199,7 +197,7 @@ func (rk *RootKafkaSource) decryptData(data []byte, chunked bool) ([]byte, error
 
 func (rk *RootKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
-	return rsa.VerifyPKCS1v15(rk.kf.PluginConfig.RootPublicKey, crypto.SHA256, hashed[:], signature)
+	return sharedkafka.VerifySignature(signature, rk.kf.PluginConfig.RootPublicKey, hashed)
 }
 
 func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, msg *sharedkafka.MsgDecoded) error {

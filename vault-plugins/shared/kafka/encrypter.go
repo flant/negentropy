@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -19,20 +20,19 @@ func NewEncrypter() *Encrypter {
 	return &Encrypter{}
 }
 
-const (
-	maxSize = 446 //  k-2*hash.Size()-2
-)
-
 func (c *Encrypter) Encrypt(data []byte, pub *rsa.PublicKey) (env []byte, chunked bool, err error) {
 	dataLen := len(data)
 	if DoNotEncrypt {
 		env = data
 		return
 	}
+
+	hash := sha256.New()
+	maxSize := pub.Size() - 2*hash.Size() - 2
 	// The message must be no longer than the length of the public modulus minus
 	// twice the hash length, minus a further 2.
 	if dataLen <= maxSize { //  k-2*hash.Size()-2
-		env, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, data, nil)
+		env, err = rsa.EncryptOAEP(hash, rand.Reader, pub, data, nil)
 		return
 	}
 
@@ -81,4 +81,13 @@ func (c *Encrypter) Decrypt(data []byte, priv *rsa.PrivateKey, chunked bool) ([]
 	}
 
 	return buf.Bytes(), nil
+}
+
+// VerifySignature check signature if DoNotEncrypt=false
+func VerifySignature(signature []byte, pub *rsa.PublicKey, hashed [32]byte) error {
+	if DoNotEncrypt {
+		return nil
+	}
+	err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], signature)
+	return err
 }

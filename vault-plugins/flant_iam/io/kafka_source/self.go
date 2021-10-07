@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -74,7 +72,7 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	}
 
 	hashed := sha256.Sum256(decrypted)
-	err = rsa.VerifyPKCS1v15(mks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
+	err = sharedkafka.VerifySignature(signature, mks.kf.EncryptionPublicKey(), hashed)
 	if err != nil {
 		return err
 	}

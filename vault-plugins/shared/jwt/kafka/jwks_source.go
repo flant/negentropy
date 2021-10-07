@@ -1,8 +1,6 @@
 package kafka
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -162,7 +160,7 @@ func (rk *JWKSKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
 
 	for _, pub := range rk.kf.PluginConfig.PeersPublicKeys {
-		err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], signature)
+		err := sharedkafka.VerifySignature(signature, pub, hashed)
 		if err == nil {
 			return nil
 		}
