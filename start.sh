@@ -144,7 +144,7 @@ EOF'
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
-    secret_id_ttl=\"120m\" \
+    secret_id_ttl=\"30m\" \
     approle_mount_point=\"/auth/approle/\" \
     secret_id=\"$root_secretID\" \
     role_id=\"$root_roleID\" \
@@ -153,7 +153,7 @@ EOF'
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
-    secret_id_ttl=\"120m\" \
+    secret_id_ttl=\"30m\" \
     approle_mount_point=\"/auth/approle/\" \
     secret_id=\"$auth_secretID\" \
     role_id=\"$auth_roleID\" \
