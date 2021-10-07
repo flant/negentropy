@@ -159,7 +159,7 @@ func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInput
 
 	// TODO: atomic check
 
-	if len(kafkaMessages) > 0 {
+	if len(kafkaMessages) > 0 || len(sourceMsg) > 0 {
 		var sm *kafka.SourceInputMessage
 		if len(sourceMsg) > 0 {
 			sm = sourceMsg[0]

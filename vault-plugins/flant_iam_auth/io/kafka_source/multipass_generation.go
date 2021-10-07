@@ -60,7 +60,6 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 
 	rk.logger.Debug("Restore - messages keys", "keys", splitted)
 	objType := splitted[0]
-	objId := splitted[1]
 
 	if len(msg.Value) == 0 {
 		return nil
@@ -86,14 +85,14 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	var jwks *model.MultipassGenerationNumber
+	multipassGenerationNumber := &model.MultipassGenerationNumber{}
 
-	err = json.Unmarshal(msg.Value, jwks)
+	err = json.Unmarshal(msg.Value, multipassGenerationNumber)
 	if err != nil {
 		return err
 	}
 
-	return txn.Insert(objType, objId)
+	return txn.Insert(model.MultipassGenerationNumberType, multipassGenerationNumber)
 }
 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {

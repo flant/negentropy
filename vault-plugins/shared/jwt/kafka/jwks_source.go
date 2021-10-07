@@ -62,7 +62,6 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 
 	rk.logger.Debug("Restore - messages keys", "keys", splitted)
 	objType := splitted[0]
-	objId := splitted[1]
 
 	if len(msg.Value) == 0 {
 		return nil
@@ -88,14 +87,14 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	var jwks *model.JWKS
+	jwks := &model.JWKS{}
 
 	err = json.Unmarshal(msg.Value, jwks)
 	if err != nil {
 		return err
 	}
 
-	return txn.Insert(objType, objId)
+	return txn.Insert(model.JWKSType, jwks)
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
@@ -181,6 +180,9 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 		obj, err := tx.First(model.JWKSType, "id", msg.ID)
 		if err != nil {
 			return err
+		}
+		if obj == nil {
+			return nil
 		}
 		err = tx.Delete(model.JWKSType, obj)
 		if err != nil {
