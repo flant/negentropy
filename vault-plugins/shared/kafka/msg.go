@@ -77,7 +77,7 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 		}
 	}
 
-	if lastOffset == 0 && lastOffset == 0 {
+	if lastOffset == 0 && edgeOffset == 0 {
 		logger.Debug("normal finish: no messages", "topicName", topicName)
 		return nil
 	}
@@ -99,7 +99,6 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 			logger.Debug("normal finish", "topicName", topicName)
 			return nil
 		}
-		logger.Debug(fmt.Sprintf("topic=%s, offset=%d, Headers=%v", topicName, msg.TopicPartition.Offset, msg.Headers)) // TODO REMOVE
 		err := handler(txn, msg, logger)
 		if err != nil {
 			return err

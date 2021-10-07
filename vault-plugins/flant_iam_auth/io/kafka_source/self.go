@@ -201,7 +201,6 @@ func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessag
 		sks.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return err
 	}
-	sks.logger.Debug(fmt.Sprintf("Message handled successful %s/%s, try commit", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID) // TODO REMOVE
 	defer sks.logger.Debug(fmt.Sprintf("Message handled successful %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
 
 	return tx.Commit(source)

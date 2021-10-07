@@ -53,7 +53,7 @@ func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceI
 	if err != nil {
 		return nil, err
 	}
-	tp.Offset = tp.Offset + 1
+	tp.Offset++ // need commit next offset
 	return &SourceInputMessage{
 		TopicPartition:   []kafka.TopicPartition{tp},
 		ConsumerMetadata: cm,

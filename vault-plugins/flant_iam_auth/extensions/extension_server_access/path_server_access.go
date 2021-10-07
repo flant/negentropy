@@ -243,7 +243,6 @@ func (b *ServerAccessBackend) queryServer() framework.OperationFunc {
 
 func (b *ServerAccessBackend) allowedServers(txn *io.MemoryStoreTxn, tenantID string, projectID string, serverNames []string,
 	labelSelector string, allowedProjects map[iam_model.ProjectUUID]struct{}) (interface{}, []string, error) {
-	b.Logger().Debug("allowedServers", "tenantID", tenantID, "projectID", projectID, "serverNames", serverNames, "labelSelector", labelSelector, "allowedProjects", allowedProjects) // TODO REMOVE
 	var (
 		servers  []*ext_model.Server
 		err      error

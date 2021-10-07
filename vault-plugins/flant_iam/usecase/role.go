@@ -48,7 +48,7 @@ func (s *RoleService) Delete(roleID model.RoleName) error {
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
-	// TODO REMOVE FROM archived
+	// TODO - REMOVE FROM archived
 	//      * role_biondings,
 	//      * approvals,
 	//      * tokens,

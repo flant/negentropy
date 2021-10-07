@@ -20,8 +20,8 @@ func SelfRestoreMessage(txn *memdb.Txn, objType string, data []byte) (handled bo
 		if err != nil {
 			return false, fmt.Errorf("handling type=%s, raw=%s: %w", objType, string(data), err)
 		}
-	case model.JWKSType: // TODO REMOVE
-		// TODO REMOVE - should this message be here or not?
+	case model.JWKSType: // TODO - REMOVE
+		// TODO should this message be here or not?
 		// what to do after this message?
 	default:
 		return false, nil
