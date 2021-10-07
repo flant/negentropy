@@ -68,7 +68,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		b.Logger().Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
 	}
 
-	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx)
+	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
 	if err != nil {
 		return fmt.Errorf("unable to get Vault API config: %s", err)
 	}
@@ -122,7 +122,8 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	return nil
 }
 
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration, gitCredentials *trdlGit.GitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
+func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration,
+	gitCredentials *trdlGit.GitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
 	b.Logger().Debug("Started periodic task")
 
 	// clone git repository and get head commit
@@ -214,7 +215,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 			b.Logger().Debug(fmt.Sprintf("Performing Vault request with configuration:\n%s\n", string(reqData)))
 		}
 
-		token, err := b.performWrappedVaultRequest(ctx, requestConfig)
+		token, err := b.performWrappedVaultRequest(ctx, storage, requestConfig)
 		if err != nil {
 			return fmt.Errorf("unable to perform %q Vault request: %s", requestConfig.Name, err)
 		}
@@ -327,29 +328,31 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 	return nil
 }
 
-func (b *backend) performWrappedVaultRequest(ctx context.Context, conf *vaultRequest) (string, error) {
-	apiClient, err := b.AccessVaultController.APIClient()
+func (b *backend) performWrappedVaultRequest(ctx context.Context, storage logical.Storage,
+	vaultReq *vaultRequest) (string, error) {
+	apiClient, err := b.AccessVaultController.APIClient(storage)
 	if err != nil {
-		return "", fmt.Errorf("unable to get Vault API Client for %q Vault request: %s", conf.Name, err)
+		return "", fmt.Errorf("unable to get Vault API Client for %q Vault request: %s", vaultReq.Name, err)
 	}
 
-	request := apiClient.NewRequest(conf.Method, conf.Path)
-	request.WrapTTL = strconv.FormatFloat(conf.WrapTTL.Seconds(), 'f', 0, 64)
-	if len(conf.Options) > 0 {
-		if err := request.SetJSONBody(conf.Options); err != nil {
-			return "", fmt.Errorf("unable to set %q field json data for %q Vault request: %s", fieldNameVaultRequestOptions, conf.Name, err)
+	request := apiClient.NewRequest(vaultReq.Method, vaultReq.Path)
+	request.WrapTTL = strconv.FormatFloat(vaultReq.WrapTTL.Seconds(), 'f', 0, 64)
+	if len(vaultReq.Options) > 0 {
+		if err := request.SetJSONBody(vaultReq.Options); err != nil {
+			return "", fmt.Errorf("unable to set %q field json data for %q Vault request: %s",
+				fieldNameVaultRequestOptions, vaultReq.Name, err)
 		}
 	}
 
 	resp, err := apiClient.RawRequestWithContext(ctx, request)
 	if err != nil {
-		return "", fmt.Errorf("unable to perform %q Vault request: %s", conf.Name, err)
+		return "", fmt.Errorf("unable to perform %q Vault request: %s", vaultReq.Name, err)
 	}
 
 	defer resp.Body.Close()
 	secret, err := api.ParseSecret(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("unable to parse wrap token for %q Vault request: %s", conf.Name, err)
+		return "", fmt.Errorf("unable to parse wrap token for %q Vault request: %s", vaultReq.Name, err)
 	}
 
 	return secret.WrapInfo.Token, nil
