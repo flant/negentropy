@@ -6,8 +6,12 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +20,9 @@ import (
 )
 
 func TestSendItem(t *testing.T) {
-	t.Skip("manual or integration test. Requires kafka")
+	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
+		t.Skip("manual or integration test. Requires kafka")
+	}
 	storage := &logical.InmemStorage{}
 	key := "kafka.config"
 	pl := "kafka.plugin.config"
@@ -32,8 +38,10 @@ func TestSendItem(t *testing.T) {
 		EncryptionPublicKey:   &pk.PublicKey,
 	}
 
+	topic := "topic_kafka_destination_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_")
+
 	plugin := kafka.PluginConfig{
-		SelfTopicName: "root_source",
+		SelfTopicName: topic,
 	}
 	d1, _ := json.Marshal(config)
 	d2, _ := json.Marshal(plugin)
@@ -43,7 +51,7 @@ func TestSendItem(t *testing.T) {
 	mb, err := kafka.NewMessageBroker(context.TODO(), storage, log.NewNullLogger())
 	require.NoError(t, err)
 
-	err = mb.CreateTopic(context.TODO(), "root_source", nil)
+	err = mb.CreateTopic(context.TODO(), topic, nil)
 	require.NoError(t, err)
 
 	ss := NewSelfKafkaDestination(mb)
