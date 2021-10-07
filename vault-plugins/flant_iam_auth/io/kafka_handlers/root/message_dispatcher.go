@@ -24,14 +24,12 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 	isDelete := msg.IsDeleted()
 
 	var inputObject interface{}
-	var table string
 	var entityHandler func() error
 
 	objID := msg.ID
 
 	switch msg.Type {
 	case iam_model.UserType:
-		table = iam_model.UserType
 		user := &iam_model.User{}
 		user.UUID = objID
 		inputObject = user
@@ -47,7 +45,6 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		}
 
 	case iam_model.ServiceAccountType:
-		table = iam_model.ServiceAccountType
 		sa := &iam_model.ServiceAccount{}
 		sa.UUID = objID
 		inputObject = sa
@@ -64,49 +61,41 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		p := &iam_model.Project{}
 		p.UUID = objID
 		inputObject = p
-		table = iam_model.ProjectType
 
 	case iam_model.TenantType:
 		t := &iam_model.Tenant{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.TenantType
 
 	case iam_model.FeatureFlagType:
 		t := &iam_model.FeatureFlag{}
 		t.Name = objID
 		inputObject = t
-		table = iam_model.FeatureFlagType
 
 	case iam_model.GroupType:
 		t := &iam_model.Group{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.GroupType
 
 	case iam_model.RoleType:
 		t := &iam_model.Role{}
 		t.Name = objID
 		inputObject = t
-		table = iam_model.RoleType
 
 	case iam_model.RoleBindingType:
 		t := &iam_model.RoleBinding{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.RoleBindingType
 
 	case iam_model.RoleBindingApprovalType:
 		t := &iam_model.RoleBindingApproval{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.RoleBindingApprovalType
 
 	case iam_model.MultipassType:
 		mp := &iam_model.Multipass{}
 		mp.UUID = objID
 		inputObject = mp
-		table = iam_model.MultipassType
 		if isDelete {
 			entityHandler = func() error {
 				return handler.HandleDeleteMultipass(objID)
@@ -121,21 +110,20 @@ func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler,
 		t := &iam_model.ServiceAccountPassword{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.ServiceAccountPasswordType
 
 	case iam_model.IdentitySharingType:
 		t := &iam_model.IdentitySharing{}
 		t.UUID = objID
 		inputObject = t
-		table = iam_model.IdentitySharingType
 
 	case ext_model.ServerType:
 		inputObject = &ext_model.Server{}
-		table = ext_model.ServerType
 
 	default:
 		return nil
 	}
+
+	table := msg.Type
 
 	if isDelete {
 		err := txn.Delete(table, inputObject)

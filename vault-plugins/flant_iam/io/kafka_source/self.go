@@ -136,7 +136,8 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		return err
 	}
 
-	err = txn.Insert(splitted[0], inputObject)
+	table := splitted[0]
+	err = txn.Insert(table, inputObject)
 	if err != nil {
 		return err
 	}
