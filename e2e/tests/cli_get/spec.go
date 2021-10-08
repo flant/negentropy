@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -27,7 +28,7 @@ var _ = BeforeSuite(func() {
 	flantIamSuite.BeforeSuite()
 	Describe("configuring system", func() {
 		cfg = flantIamSuite.PrepareForSSHTesting()
-
+		time.Sleep(time.Second * 10)
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
 	})
 }, 1.0)
