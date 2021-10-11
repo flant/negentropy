@@ -23,7 +23,8 @@ func (mkd *SelfKafkaDestination) encryptData(data []byte, pub *rsa.PublicKey) ([
 	return mkd.encrypter.Encrypt(data, pub)
 }
 
-func (mkd *SelfKafkaDestination) simpleObjectKafker(topic string, obj io.MemoryStorableObject, pk *rsa.PrivateKey, pub *rsa.PublicKey) (kafka.Message, error) {
+func (mkd *SelfKafkaDestination) simpleObjectKafker(topic string, obj io.MemoryStorableObject,
+	pk *rsa.PrivateKey, pub *rsa.PublicKey) (kafka.Message, error) {
 	key := fmt.Sprintf("%s/%s", obj.ObjType(), obj.ObjId())
 	data, err := json.Marshal(obj)
 	if err != nil {

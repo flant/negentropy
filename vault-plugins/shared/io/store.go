@@ -17,9 +17,13 @@ type MemoryStorableObject interface {
 }
 
 type KafkaSource interface {
+	// Name returns topic name
 	Name() string
-	Restore(txn *memdb.Txn, logger log.Logger) error
+	// Restore gets data from topic and store it to txn
+	Restore(txn *memdb.Txn) error
+	// Run starts infinite loop processing incoming messages, will returns after using Stop
 	Run(ms *MemoryStore)
+	// Stop finish running infinite loop, if used before Run, will do nothing
 	Stop()
 }
 
@@ -155,7 +159,7 @@ func (mst *MemoryStoreTxn) commitWithSourceInput(sourceMsg ...*kafka.SourceInput
 
 	// TODO: atomic check
 
-	if len(kafkaMessages) > 0 {
+	if len(kafkaMessages) > 0 || len(sourceMsg) > 0 {
 		var sm *kafka.SourceInputMessage
 		if len(sourceMsg) > 0 {
 			sm = sourceMsg[0]
@@ -329,13 +333,32 @@ func (ms *MemoryStore) Restore() error {
 	ms.kafkaMutex.RLock()
 	defer ms.kafkaMutex.RUnlock()
 	for _, ks := range ms.kafkaSources {
-		err := ks.Restore(txn, logger)
+		ms.logger.Debug(fmt.Sprintf("kafka_source %#v start", ks))
+		err := ks.Restore(txn)
 		if err != nil {
 			txn.Abort()
 			return err
 		}
+		ms.logger.Debug(fmt.Sprintf("kafka_source %#v end", ks))
 	}
 	txn.Commit()
 	logger.Debug("normal finish")
 	return nil
+}
+
+func (ms *MemoryStore) removeAllKafkaSources() {
+	ms.kafkaMutex.Lock()
+	defer ms.kafkaMutex.Unlock()
+	ms.logger.Debug("Call removeAllKafkaSources")
+	defer ms.logger.Debug("removeAllKafkaSources finished")
+	for _, k := range ms.kafkaSources {
+		delete(ms.kafkaMapSources, k.Name())
+		k.Stop()
+	}
+	ms.kafkaSources = []KafkaSource{}
+}
+
+func (ms *MemoryStore) Close() {
+	ms.removeAllKafkaSources()
+	ms.kafkaConnection.Close()
 }

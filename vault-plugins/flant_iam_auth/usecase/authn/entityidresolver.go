@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
@@ -26,11 +27,11 @@ type EntityID = string
 type EntityIDResolver interface {
 	// RevealEntityIDOwner returns type and info about token owner by its EntityID
 	// it can be iam.User, or iam.ServiceAccount
-	RevealEntityIDOwner(EntityID, *io.MemoryStoreTxn) (*EntityIDOwner, error)
+	RevealEntityIDOwner(EntityID, *io.MemoryStoreTxn, logical.Storage) (*EntityIDOwner, error)
 	// AvailableTenantsByEntityID returns set of tenants available for EntityID
-	AvailableTenantsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error)
+	AvailableTenantsByEntityID(EntityID, *io.MemoryStoreTxn, logical.Storage) (map[iam.TenantUUID]struct{}, error)
 	// AvailableProjectsByEntityID returns set of projects available for EntityID
-	AvailableProjectsByEntityID(EntityID, *io.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error)
+	AvailableProjectsByEntityID(EntityID, *io.MemoryStoreTxn, logical.Storage) (map[iam.ProjectUUID]struct{}, error)
 }
 
 type entityIDResolver struct {
@@ -38,9 +39,9 @@ type entityIDResolver struct {
 	vaultClient *client.VaultClientController // do not use  *entity_api.EntityAPI because vaultClient need successful Init before it can be used
 }
 
-func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryStoreTxn) (*EntityIDOwner, error) {
+func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryStoreTxn, storage logical.Storage) (*EntityIDOwner, error) {
 	r.logger.Debug(fmt.Sprintf("EntityID=%s", entityID))
-	vc, err := r.vaultClient.APIClient()
+	vc, err := r.vaultClient.APIClient(storage)
 	if err != nil {
 		return nil, fmt.Errorf("NewEntityIDResolver: internal error accessing vault client: %w", err)
 	}
@@ -97,8 +98,9 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 	}
 }
 
-func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn) (map[iam.TenantUUID]struct{}, error) {
-	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn)
+func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn,
+	storage logical.Storage) (map[iam.TenantUUID]struct{}, error) {
+	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn, storage)
 	if errors.Is(err, iam.ErrNotFound) {
 		return map[iam.TenantUUID]struct{}{}, nil
 	}
@@ -154,8 +156,9 @@ func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.
 	return nil, fmt.Errorf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
 }
 
-func (r entityIDResolver) AvailableProjectsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn) (map[iam.ProjectUUID]struct{}, error) {
-	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn)
+func (r entityIDResolver) AvailableProjectsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn,
+	storage logical.Storage) (map[iam.ProjectUUID]struct{}, error) {
+	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn, storage)
 	if errors.Is(err, iam.ErrNotFound) {
 		return map[iam.ProjectUUID]struct{}{}, nil
 	}

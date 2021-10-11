@@ -16,7 +16,7 @@ import (
 )
 
 func GetStorage(t *testing.T, config *logical.BackendConfig) *sharedio.MemoryStore {
-	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView)
+	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView, log.NewNullLogger())
 	require.NoError(t, err)
 	schema, err := model.GetSchema(false)
 	require.NoError(t, err)

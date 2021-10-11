@@ -62,7 +62,7 @@ func pathLogin(b *flantIamAuthBackend) *framework.Path {
 func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	logger := b.NamedLogger("Login")
 
-	vaultClient, err := b.accessVaultController.APIClient()
+	vaultClient, err := b.accessVaultController.APIClient(req.Storage)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Does not getting vault client %v", err))
 		return nil, fmt.Errorf("internal error")

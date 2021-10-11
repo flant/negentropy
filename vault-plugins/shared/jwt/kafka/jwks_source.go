@@ -1,8 +1,6 @@
 package kafka
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -26,6 +24,7 @@ type JWKSKafkaSource struct {
 	stopC chan struct{}
 
 	logger hclog.Logger
+	run    bool
 }
 
 func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *JWKSKafkaSource {
@@ -41,16 +40,16 @@ func (rk *JWKSKafkaSource) Name() string {
 	return topicName
 }
 
-func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
-	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
+func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
 	defer runConsumer.Close()
 
-	r := rk.kf.GetRestorationReader(topicName)
-	defer r.Close()
+	restorationReader := rk.kf.GetRestorationReader()
+	defer restorationReader.Close()
 
 	rk.logger.Debug("Restore - got restoration reader")
 
-	return sharedkafka.RunRestorationLoop(r, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationReader, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -63,7 +62,6 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 
 	rk.logger.Debug("Restore - messages keys", "keys", splitted)
 	objType := splitted[0]
-	objId := splitted[1]
 
 	if len(msg.Value) == 0 {
 		return nil
@@ -89,19 +87,20 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	var jwks *model.JWKS
+	jwks := &model.JWKS{}
 
 	err = json.Unmarshal(msg.Value, jwks)
 	if err != nil {
 		return err
 	}
 
-	return txn.Insert(objType, objId)
+	return txn.Insert(model.JWKSType, jwks)
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
-	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, topicName, false)
+	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, topicName)
 
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
@@ -160,7 +159,7 @@ func (rk *JWKSKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
 
 	for _, pub := range rk.kf.PluginConfig.PeersPublicKeys {
-		err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], signature)
+		err := sharedkafka.VerifySignature(signature, pub, hashed)
 		if err == nil {
 			return nil
 		}
@@ -181,6 +180,9 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 		obj, err := tx.First(model.JWKSType, "id", msg.ID)
 		if err != nil {
 			return err
+		}
+		if obj == nil {
+			return nil
 		}
 		err = tx.Delete(model.JWKSType, obj)
 		if err != nil {
@@ -208,5 +210,8 @@ func (rk *JWKSKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 }
 
 func (rk *JWKSKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }

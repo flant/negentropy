@@ -40,7 +40,7 @@ type testBackend struct {
 }
 
 func testFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	mb, err := NewMessageBroker(ctx, conf.StorageView)
+	mb, err := NewMessageBroker(ctx, conf.StorageView, log.NewNullLogger())
 	if err != nil {
 		return nil, err
 	}

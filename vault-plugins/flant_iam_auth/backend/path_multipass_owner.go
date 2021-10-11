@@ -38,7 +38,7 @@ func pathMultipassOwner(b *flantIamAuthBackend) *framework.Path {
 func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.Request,
 	d *framework.FieldData) (*logical.Response, error) {
 	logger := b.NamedLogger("multipassOwner")
-	entityIDOwner, err := b.entityIDResolver.RevealEntityIDOwner(req.EntityID, b.storage.Txn(false))
+	entityIDOwner, err := b.entityIDResolver.RevealEntityIDOwner(req.EntityID, b.storage.Txn(false), req.Storage)
 	if errors.Is(err, iam.ErrNotFound) {
 		return logical.RespondWithStatusCode(nil, req, http.StatusNotFound) //nolint:errCheck
 	}

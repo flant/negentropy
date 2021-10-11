@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -27,6 +25,7 @@ type RootKafkaSource struct {
 
 	logger            hclog.Logger
 	msgHandlerFactory RootSourceMsgHandlerFactory
+	run               bool
 }
 
 func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, logger hclog.Logger) *RootKafkaSource {
@@ -44,37 +43,30 @@ func (rk *RootKafkaSource) Name() string {
 	return rk.kf.PluginConfig.RootTopicName
 }
 
-func (rk *RootKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
-	rootTopic := rk.kf.PluginConfig.RootTopicName
-	replicaName := rk.kf.PluginConfig.SelfTopicName
+func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
+	groupID := rk.kf.PluginConfig.SelfTopicName
 
-	rk.logger.Debug("Restore started", "root topic", rk.kf.PluginConfig.RootTopicName, "self topic", rk.kf.PluginConfig.SelfTopicName)
-	defer rk.logger.Debug("Restore finished")
-
-	// groupId := fmt.Sprintf("restore-%s", replicaName)
-	groupId := replicaName
-	runConsumer := rk.kf.GetConsumer(groupId, rootTopic, false)
+	topicName := rk.kf.PluginConfig.RootTopicName
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
 	defer runConsumer.Close()
 
-	rk.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, rootTopic))
+	restorationConsumer := rk.kf.GetRestorationReader()
+	defer restorationConsumer.Close()
 
-	r := rk.kf.GetRestorationReader(rootTopic)
-	defer r.Close()
-
-	rk.logger.Debug("Restore - got restoration reader")
-
-	return sharedkafka.RunRestorationLoop(r, runConsumer, replicaName, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
-	rk.logger.Debug("Restore - handler run")
+	l := rk.logger.Named("restoreMsgHandler")
+	l.Debug("started")
+	defer l.Debug("exit")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
-		rk.logger.Debug("wrong object key format", "key", msg.Key)
+		l.Debug("wrong object key format", "key", msg.Key)
 		return fmt.Errorf("key has wong format: %s", msg.Key)
 	}
 
-	rk.logger.Debug("Restore - messages keys", "keys", splitted)
+	l.Debug("Restore - messages keys", "keys", splitted)
 
 	var signature []byte
 	var chunked bool
@@ -88,14 +80,10 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 		}
 	}
 
-	rk.logger.Debug("Restore - signature", "sig", signature, "chuncked", chunked)
-
 	decrypted, err := rk.decryptData(msg.Value, chunked)
 	if err != nil {
 		return fmt.Errorf("can't decrypt message. Skipping: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
-
-	rk.logger.Debug("Restore - decryption", "decrypted msg", decrypted)
 
 	if len(signature) == 0 {
 		return fmt.Errorf("no signature found. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
@@ -105,8 +93,6 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 	if err != nil {
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
-
-	rk.logger.Debug("Restore - signature verified", "decripted", decrypted)
 
 	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
 }
@@ -120,15 +106,15 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 	// groupId := fmt.Sprintf("run-%s", replicaName)
 	groupId := replicaName
 
-	rd := rk.kf.GetConsumer(groupId, rootTopic, false)
+	rd := rk.kf.GetSubscribedRunConsumer(groupId, rootTopic)
 	rk.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, rootTopic), "root_topic", rootTopic, "replica_name", replicaName)
-
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
 func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
-		l := rk.logger
+		l := rk.logger.Named("msgHandler")
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
 			// return fmt.Debugf("key has wrong format: %s", string(msg.Key))
@@ -202,7 +188,7 @@ func (rk *RootKafkaSource) decryptData(data []byte, chunked bool) ([]byte, error
 
 func (rk *RootKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
-	return rsa.VerifyPKCS1v15(rk.kf.PluginConfig.RootPublicKey, crypto.SHA256, hashed[:], signature)
+	return sharedkafka.VerifySignature(signature, rk.kf.PluginConfig.RootPublicKey, hashed)
 }
 
 func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *io.MemoryStore, msg *sharedkafka.MsgDecoded) error {
@@ -222,5 +208,8 @@ func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 }
 
 func (rk *RootKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }

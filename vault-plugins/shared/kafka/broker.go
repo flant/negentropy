@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -42,17 +43,19 @@ type SourceInputMessage struct {
 	IgnoreBody bool
 }
 
+var emptyTopicPartition = kafka.TopicPartition{}
+
 func NewSourceInputMessage(c *kafka.Consumer, tp kafka.TopicPartition) (*SourceInputMessage, error) {
-	pos, err := c.Position([]kafka.TopicPartition{tp})
-	if err != nil {
-		return nil, err
+	if tp == emptyTopicPartition {
+		return nil, fmt.Errorf("empty topic partition")
 	}
 	cm, err := c.GetConsumerGroupMetadata()
 	if err != nil {
 		return nil, err
 	}
+	tp.Offset++ // need commit next offset
 	return &SourceInputMessage{
-		TopicPartition:   pos,
+		TopicPartition:   []kafka.TopicPartition{tp},
 		ConsumerMetadata: cm,
 	}, nil
 }
@@ -67,11 +70,14 @@ type MessageBroker struct {
 
 	config       BrokerConfig
 	PluginConfig PluginConfig
+
+	logger log.Logger
 }
 
-func NewMessageBroker(ctx context.Context, storage logical.Storage) (*MessageBroker, error) {
-	mb := &MessageBroker{}
-
+func NewMessageBroker(ctx context.Context, storage logical.Storage, parentLogger log.Logger) (*MessageBroker, error) {
+	mb := &MessageBroker{
+		logger: parentLogger.Named("MessageBroker"),
+	}
 	// load encryption private key
 	se, err := storage.Get(ctx, kafkaConfigPath)
 	if err != nil {
@@ -229,33 +235,12 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) GetConsumer(consumerGroupID, topicName string, autocommit bool) *kafka.Consumer {
+func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 consumerGroupID,
 		"auto.offset.reset":        "earliest",
-		"enable.auto.commit":       autocommit,
-		"isolation.level":          "read_committed",
-		"go.events.channel.enable": true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.SubscribeTopics([]string{topicName}, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
-}
-
-func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
-	brokers := strings.Join(mb.config.Endpoints, ",")
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":        brokers,
-		"auto.offset.reset":        "earliest",
-		"group.id":                 false,
 		"enable.auto.commit":       false,
 		"isolation.level":          "read_committed",
 		"go.events.channel.enable": true,
@@ -263,7 +248,29 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 	if err != nil {
 		panic(err)
 	}
-	err = c.SubscribeTopics([]string{topic}, nil)
+	return c
+}
+
+func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) *kafka.Consumer {
+	c := mb.GetUnsubscribedRunConsumer(consumerGroupID)
+	err := c.Subscribe(topicName, nil)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+// GetRestorationReader returns Unsubscribed for any topic consumer
+func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
+	brokers := strings.Join(mb.config.Endpoints, ",")
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":        brokers,
+		"auto.offset.reset":        "earliest",
+		"group.id":                 "restoration_reader",
+		"enable.auto.commit":       false,
+		"isolation.level":          "read_committed",
+		"go.events.channel.enable": true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -272,16 +279,14 @@ func (mb *MessageBroker) GetRestorationReader(topic string) *kafka.Consumer {
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
-	if sourceInput != nil && sourceInput.IgnoreBody {
+	mb.logger.Debug("SendMessages - started")
+	defer mb.logger.Debug("SendMessages - exit")
+	if sourceInput != nil && (sourceInput.IgnoreBody || len(msgs) == 0) {
 		return mb.sendOffset(sourceInput)
 	}
 
 	if len(msgs) == 0 {
 		return nil
-	}
-
-	if len(msgs) == 1 && sourceInput == nil { // only single message without source
-		return mb.sendSingleMessage(msgs[0])
 	}
 
 	return mb.sendMessages(msgs, sourceInput)
@@ -336,38 +341,19 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 	}
 
 	err = p.CommitTransaction(ctx)
+
 	if err != nil {
 		if err.(kafka.Error).TxnRequiresAbort() {
 			_ = p.AbortTransaction(ctx)
 			return err
 		} else if err.(kafka.Error).IsRetriable() {
+			mb.logger.Info(fmt.Sprintf("got err.(kafka.Error).IsRetriable():%s, retry in 5 seconds", err.Error()))
 			time.Sleep(500 * time.Millisecond)
 			return mb.sendMessages(msgs, source) // FIXME: not the best recursive call
 		}
 		// treat all other errors as fatal errors
 		return err
 	}
-
-	return nil
-}
-
-func (mb *MessageBroker) sendSingleMessage(msg Message) error {
-	p := mb.GetKafkaProducer()
-	m := mb.prepareMessage(msg)
-	err := p.Produce(m, nil)
-	if err != nil {
-		return fmt.Errorf("producer failed: %s - %s: %v: %+v", err.Error(), p.String(), p, msg)
-	}
-
-	e := <-p.Events()
-	switch ev := e.(type) { // nolint: gocritic
-	case *kafka.Message:
-		if ev.TopicPartition.Error != nil {
-			return fmt.Errorf("delivery failed: %s", e.String())
-		}
-		return nil
-	}
-
 	return nil
 }
 
@@ -398,7 +384,7 @@ func (mb *MessageBroker) getProducer() *kafka.Producer {
 		p, err := kafka.NewProducer(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			// "batch.size": 16384,
-			"client.id": mb.PluginConfig.SelfTopicName,
+			"client.id": mb.PluginConfig.SelfTopicName + ".producer",
 		})
 		if err != nil {
 			panic(err)
@@ -416,7 +402,7 @@ func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 			"bootstrap.servers": brokers,
 			"transactional.id":  mb.PluginConfig.SelfTopicName,
 			// "batch.size": 16384,
-			"client.id": mb.PluginConfig.SelfTopicName,
+			"client.id": mb.PluginConfig.SelfTopicName + ".transactional_producer",
 		})
 		if err != nil {
 			panic(err)
@@ -474,7 +460,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 			return res[0].Error
 		}
 	}
-
+	ac.Close()
 	return nil
 }
 
@@ -495,4 +481,15 @@ func (mb *MessageBroker) DeleteTopic(ctx context.Context, topicName string) erro
 	}
 
 	return nil
+}
+
+func (mb *MessageBroker) Close() {
+	if mb.producer != nil {
+		mb.producer.Close()
+		mb.producer = nil
+	}
+	if mb.transProducer != nil {
+		mb.transProducer.Close()
+		mb.transProducer = nil
+	}
 }

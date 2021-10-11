@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -26,6 +24,7 @@ type MultipassGenerationKafkaSource struct {
 	stopC chan struct{}
 
 	logger hclog.Logger
+	run    bool
 }
 
 func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *MultipassGenerationKafkaSource {
@@ -41,16 +40,14 @@ func (rk *MultipassGenerationKafkaSource) Name() string {
 	return io.MultipassNumberGenerationTopic
 }
 
-func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn, _ hclog.Logger) error {
-	runConsumer := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic, false)
+func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn) error {
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
 	defer runConsumer.Close()
 
-	r := rk.kf.GetRestorationReader(io.MultipassNumberGenerationTopic)
-	defer r.Close()
+	restorationConsumer := rk.kf.GetRestorationReader()
+	defer restorationConsumer.Close()
 
-	rk.logger.Debug("Restore - got restoration reader")
-
-	return sharedkafka.RunRestorationLoop(r, runConsumer, io.MultipassNumberGenerationTopic, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -63,7 +60,6 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 
 	rk.logger.Debug("Restore - messages keys", "keys", splitted)
 	objType := splitted[0]
-	objId := splitted[1]
 
 	if len(msg.Value) == 0 {
 		return nil
@@ -89,19 +85,20 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	var jwks *model.MultipassGenerationNumber
+	multipassGenerationNumber := &model.MultipassGenerationNumber{}
 
-	err = json.Unmarshal(msg.Value, jwks)
+	err = json.Unmarshal(msg.Value, multipassGenerationNumber)
 	if err != nil {
 		return err
 	}
 
-	return txn.Insert(objType, objId)
+	return txn.Insert(model.MultipassGenerationNumberType, multipassGenerationNumber)
 }
 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {
-	rd := rk.kf.GetConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic, false)
+	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic)
 
+	rk.run = true
 	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
@@ -109,7 +106,7 @@ func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {
-			// return fmt.Debugf("key has wong format: %s", string(msg.Key))
+			rk.logger.Debug("key has wong format", string(msg.Key))
 			return
 		}
 		objType, objId := splitted[0], splitted[1]
@@ -160,7 +157,7 @@ func (rk *MultipassGenerationKafkaSource) verifySign(signature []byte, data []by
 	hashed := sha256.Sum256(data)
 
 	for _, pub := range rk.kf.PluginConfig.PeersPublicKeys {
-		err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], signature)
+		err := sharedkafka.VerifySignature(signature, pub, hashed)
 		if err == nil {
 			return nil
 		}
@@ -208,5 +205,8 @@ func (rk *MultipassGenerationKafkaSource) processMessage(source *sharedkafka.Sou
 }
 
 func (rk *MultipassGenerationKafkaSource) Stop() {
-	rk.stopC <- struct{}{}
+	if rk.run {
+		rk.stopC <- struct{}{}
+		rk.run = false
+	}
 }

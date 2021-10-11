@@ -25,7 +25,7 @@ func (s *FeatureFlagService) List(showArchived bool) ([]*model.FeatureFlag, erro
 
 func (s *FeatureFlagService) Delete(id model.FeatureFlagName) error {
 	// TODO before the deletion, check
-	// TODO REMOVE FROM archived
+	// TODO - REMOVE FROM archived
 	archivingTimestamp, archivingHash := ArchivingLabel()
 	return repo.NewFeatureFlagRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }

@@ -136,7 +136,7 @@ func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, 
 
 	config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 
-	err = c.setAccessConfig(ctx, newAccessConfigStorage(req.Storage), config)
+	err = c.setAccessConfig(ctx, req.Storage, config)
 	if err != nil {
 		return nil, err
 	}

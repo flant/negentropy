@@ -1,8 +1,6 @@
 package kafka_source
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -23,14 +21,16 @@ type SelfKafkaSource struct {
 	kf              *sharedkafka.MessageBroker
 	decryptor       *sharedkafka.Encrypter
 	restoreHandlers []RestoreFunc
+	logger          log.Logger
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, logger log.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
 		restoreHandlers: restoreHandlers,
+		logger:          logger,
 	}
 }
 
@@ -38,19 +38,18 @@ func (mks *SelfKafkaSource) Name() string {
 	return mks.kf.PluginConfig.SelfTopicName
 }
 
-func (mks *SelfKafkaSource) Restore(txn *memdb.Txn, logger log.Logger) error {
-	logger = logger.Named("flant_iam.SelfKafkaSource.Restore")
-	logger.Debug("start")
-	r := mks.kf.GetRestorationReader(mks.kf.PluginConfig.SelfTopicName)
-	logger.Debug("got restoration reader")
+func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
+	r := mks.kf.GetRestorationReader()
 	defer r.Close()
 
-	return sharedkafka.RunRestorationLoop(r, nil, mks.kf.PluginConfig.SelfTopicName, txn, mks.restorationHandler, logger)
+	return sharedkafka.RunRestorationLoop(r, nil, mks.kf.PluginConfig.SelfTopicName,
+		txn, mks.restorationHandler, mks.logger)
 }
 
 func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Message, logger log.Logger) error {
-	logger = logger.Named("restorationHandler") // TODO REMOVE
-	logger.Debug("start")                       // TODO REMOVE
+	logger = logger.Named("restorationHandler")
+	logger.Debug("started")
+	defer logger.Debug("exit")
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		return fmt.Errorf("key has wong format: %s", string(msg.Key))
@@ -67,19 +66,16 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 			chunked = true
 		}
 	}
-	logger.Debug("1") // TODO REMOVE
 	decrypted, err := mks.decryptor.Decrypt(msg.Value, mks.kf.EncryptionPrivateKey(), chunked)
 	if err != nil {
 		return err
 	}
-	logger.Debug("2") // TODO REMOVE
 
 	hashed := sha256.Sum256(decrypted)
-	err = rsa.VerifyPKCS1v15(mks.kf.EncryptionPublicKey(), crypto.SHA256, hashed[:], signature)
+	err = sharedkafka.VerifySignature(signature, mks.kf.EncryptionPublicKey(), hashed)
 	if err != nil {
 		return err
 	}
-	logger.Debug("3") // TODO REMOVE
 
 	for _, r := range mks.restoreHandlers {
 		handled, err := r(txn, splitted[0], decrypted)
@@ -91,7 +87,6 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 			return nil
 		}
 	}
-	logger.Debug("4") // TODO REMOVE
 
 	// Fill here objects for unmarshalling
 	var inputObject interface{}
@@ -139,11 +134,12 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		return err
 	}
 
-	err = txn.Insert(splitted[0], inputObject)
+	table := splitted[0]
+	err = txn.Insert(table, inputObject)
 	if err != nil {
 		return err
 	}
-	logger.Debug("end") // TODO REMOVE
+	logger.Debug("normal finish")
 	return nil
 }
 

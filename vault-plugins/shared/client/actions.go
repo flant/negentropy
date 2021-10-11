@@ -56,7 +56,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 		}
 	}
 
-	// generate ne w secret id
+	// generate new secret id
 	appRoleCli := newAccessClient(apiClient, accessConf, logger).AppRole()
 
 	newSecretID, err := appRoleCli.GenNewSecretID()

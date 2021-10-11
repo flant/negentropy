@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+echo "run ./build.sh first for building other than vaults staff"
+
+set -e
+
+docker-compose -f docker-compose.yml down
 
 function docker-exec() {
-  docker-compose -f docker-compose.debug.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
+  docker-compose -f docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
 }
 
 function init-vault() {
@@ -223,7 +228,9 @@ EOF"' > /dev/null 2>&1
 
 docker run --rm -v $(pwd):/app -v /tmp/vault_debug_cache:/go/pkg -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault_debug.sh"
 
-docker-compose -f docker-compose.debug.yml up -d minio
+docker-compose -f docker-compose.yml up -d minio
+
+sleep 5
 
 while true; do
   docker run --rm --network=negentropy_default --entrypoint=sh minio/mc -c "mc config host add minio http://minio:9000 minio minio123 && mc mb minio/vault-root && mc mb minio/vault-auth"
@@ -233,16 +240,9 @@ while true; do
   fi
 done
 
-docker-compose -f docker-compose.debug.yml up -d
+docker-compose -f docker-compose.yml up -d
 
-echo "run you debug tools connecting dlv servers at both vaults"
-
-until false
-do
-  read -p "Are you ready? (Y/n) " Answer;
-  if [[ -z "$Answer" ]]; then Answer=Y; fi
-  if [[ "$Answer" == "Y" ]]; then break; fi
-done
+sleep 15
 
 init-vault
 
@@ -261,3 +261,24 @@ done
 connect_plugins
 
 initialize
+
+sleep 15
+
+docker stop negentropy_vault_auth_1 negentropy_vault_root_1
+
+echo "vaults are down"
+
+sleep 15
+
+docker start negentropy_vault_auth_1 negentropy_vault_root_1
+
+echo "vaults are up"
+
+./unseal.sh
+
+echo "vaults are unsealed, run e2e tests soon"
+
+sleep 150
+
+./run_e2e_tests.sh
+

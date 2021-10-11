@@ -9,5 +9,5 @@ import (
 
 func Test_CliGet(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "User_got_ssh_access")
+	RunSpecs(t, "User_run_cli_get_commands")
 }

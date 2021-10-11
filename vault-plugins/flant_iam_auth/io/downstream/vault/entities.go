@@ -87,7 +87,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.Mem
 			return err
 		}
 
-		a.logger.Debug(fmt.Sprintf("Creating vault entity with name %s", entity.Name), "name", entity.Name)
+		a.logger.Debug(fmt.Sprintf("Created vault entity with name %s", entity.Name), "name", entity.Name)
 		return nil
 	})
 

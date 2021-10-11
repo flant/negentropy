@@ -106,8 +106,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	iamAuthLogger := conf.Logger.Named(loggerModule)
 	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
 		return iamAuthLogger.Named("ApiClient")
-	}, conf.StorageView)
-	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView)
+	})
+	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return nil, err
 	}
 	clientGetter := func() (*api.Client, error) {
-		return b.accessVaultController.APIClient()
+		return b.accessVaultController.APIClient(conf.StorageView)
 	}
 
 	b.accessorGetter = vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth/")
@@ -292,6 +292,8 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 }
 
 func (b *flantIamAuthBackend) cleanup(_ context.Context) {
+	l := b.Logger().Named("cleanup")
+	l.Info("started")
 	b.l.Lock()
 	if b.providerCtxCancel != nil {
 		b.providerCtxCancel()
@@ -299,7 +301,9 @@ func (b *flantIamAuthBackend) cleanup(_ context.Context) {
 	if b.provider != nil {
 		b.provider.Done()
 	}
+	b.storage.Close()
 	b.l.Unlock()
+	l.Info("finished")
 }
 
 func (b *flantIamAuthBackend) invalidate(ctx context.Context, key string) {

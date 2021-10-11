@@ -33,3 +33,17 @@ func (c *vaultAccessConfig) IsNeedToRenewSecretID(now time.Time) (bool, int) {
 
 	return diff > limit, int(limit) - int(diff)
 }
+
+// Preferable true if c should be used to configure client early configured with oldCfg
+func (c *vaultAccessConfig) Preferable(oldCfg *vaultAccessConfig) bool {
+	if c == nil {
+		return false
+	}
+	if oldCfg == nil {
+		return true
+	}
+	if *c != *oldCfg {
+		return true
+	}
+	return false
+}
