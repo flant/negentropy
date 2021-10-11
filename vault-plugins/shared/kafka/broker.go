@@ -235,7 +235,7 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
+func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
@@ -251,6 +251,10 @@ func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kaf
 	return c
 }
 
+func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
+	return mb.getUnsubscribedConsumer(consumerGroupID)
+}
+
 func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) *kafka.Consumer {
 	c := mb.GetUnsubscribedRunConsumer(consumerGroupID)
 	err := c.Subscribe(topicName, nil)
@@ -262,20 +266,7 @@ func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName str
 
 // GetRestorationReader returns Unsubscribed for any topic consumer
 func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
-	brokers := strings.Join(mb.config.Endpoints, ",")
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":        brokers,
-		"auto.offset.reset":        "earliest",
-		"group.id":                 "restoration_reader",
-		"enable.auto.commit":       false,
-		"isolation.level":          "read_committed",
-		"go.events.channel.enable": true,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	return c
+	return mb.getUnsubscribedConsumer("restoration_reader")
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
