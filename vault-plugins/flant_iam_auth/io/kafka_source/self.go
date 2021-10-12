@@ -29,7 +29,7 @@ type SelfKafkaSource struct {
 	run   bool
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, logger hclog.Logger) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, parentLogger hclog.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:             kf,
 		decryptor:      sharedkafka.NewEncrypter(),
@@ -37,7 +37,7 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSource
 
 		stopC: make(chan struct{}),
 
-		logger: logger,
+		logger: parentLogger.Named("authSelfKafkaSource"),
 	}
 }
 
@@ -48,13 +48,11 @@ func (sks *SelfKafkaSource) Name() string {
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
-
 	restorationConsumer := sks.kf.GetRestorationReader()
-	defer restorationConsumer.Close()
-
 	runConsumer := sks.kf.GetUnsubscribedRunConsumer(groupID)
-	defer runConsumer.Close()
 
+	defer sharedkafka.DeferredСlose(restorationConsumer, sks.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, sks.logger)
 	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, replicaName, txn, sks.restoreMsHandler, sks.logger)
 }
 
@@ -116,15 +114,12 @@ func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	sks.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer sks.logger.Debug("Watcher - stop", "replica_name", replicaName)
-
-	// groupId := fmt.Sprintf("run-%s", replicaName)
-	groupId := replicaName
-	rd := sks.kf.GetSubscribedRunConsumer(groupId, replicaName)
-	sks.logger.Debug(fmt.Sprintf("Watcher - got consumer %s/%s/%s", groupId, replicaName, replicaName), "replica_name", replicaName)
+	groupID := replicaName
+	runConsumer := sks.kf.GetSubscribedRunConsumer(groupID, replicaName)
 
 	sks.run = true
-
-	sharedkafka.RunMessageLoop(rd, sks.messageHandler(store), sks.stopC, sks.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, sks.logger)
+	sharedkafka.RunMessageLoop(runConsumer, sks.messageHandler(store), sks.stopC, sks.logger)
 }
 
 func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {

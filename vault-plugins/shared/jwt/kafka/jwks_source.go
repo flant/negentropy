@@ -27,12 +27,12 @@ type JWKSKafkaSource struct {
 	run    bool
 }
 
-func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *JWKSKafkaSource {
+func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *JWKSKafkaSource {
 	return &JWKSKafkaSource{
 		kf: kf,
 
 		stopC:  make(chan struct{}),
-		logger: logger,
+		logger: parentLogger.Named("jwksKafkaSource"),
 	}
 }
 
@@ -41,15 +41,15 @@ func (rk *JWKSKafkaSource) Name() string {
 }
 
 func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
-	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
-	defer runConsumer.Close()
+	replicaName := rk.kf.PluginConfig.SelfTopicName
+	groupID := replicaName
 
-	restorationReader := rk.kf.GetRestorationReader()
-	defer restorationReader.Close()
+	restorationConsumer := rk.kf.GetRestorationReader()
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
 
-	rk.logger.Debug("Restore - got restoration reader")
-
-	return sharedkafka.RunRestorationLoop(restorationReader, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
+	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -98,13 +98,18 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
-	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, topicName)
+	replicaName := rk.kf.PluginConfig.SelfTopicName
+	rk.logger.Debug("Watcher - start", "replica_name", replicaName)
+	defer rk.logger.Debug("Watcher - stop", "replica_name", replicaName)
+	groupID := replicaName
+	runConsumer := rk.kf.GetSubscribedRunConsumer(groupID, topicName)
 
 	rk.run = true
-	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	sharedkafka.RunMessageLoop(runConsumer, rk.messageHandler(store), rk.stopC, rk.logger)
 }
 
-func (rk *JWKSKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
+func (rk *JWKSKafkaSource) messageHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	return func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 		splitted := strings.Split(string(msg.Key), "/")
 		if len(splitted) != 2 {

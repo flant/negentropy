@@ -165,6 +165,43 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 	}
 }
 
+func TestLastOffsetByNewConsumer(t *testing.T) {
+	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
+		t.Skip("manual or integration test. Requires kafka")
+	}
+	DoNotEncrypt = true // TODO remove
+	broker := messageBroker(t)
+	topic := broker.PluginConfig.SelfTopicName
+	err := broker.CreateTopic(context.TODO(), topic, nil)
+	assert.NoError(t, err, "creating topic")
+	fillTopic(t, broker, 15)
+
+	newConsumer := broker.GetRestorationReader()
+	l, p, err := LastOffsetByNewConsumer(newConsumer, topic)
+
+	require.NoError(t, err, "LastOffsetByNewConsumer")
+	assert.Equal(t, int64(14), l)
+	assert.Equal(t, int32(0), p)
+}
+
+func TestLastOffsetByNewConsumerEmptyTopic(t *testing.T) {
+	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
+		t.Skip("manual or integration test. Requires kafka")
+	}
+	DoNotEncrypt = true // TODO remove
+	broker := messageBroker(t)
+	topic := broker.PluginConfig.SelfTopicName
+	err := broker.CreateTopic(context.TODO(), topic, nil)
+	assert.NoError(t, err, "creating topic")
+
+	newConsumer := broker.GetRestorationReader()
+	l, p, err := LastOffsetByNewConsumer(newConsumer, topic)
+
+	require.NoError(t, err, "LastOffsetByNewConsumer")
+	assert.Equal(t, int64(0), l)
+	assert.Equal(t, int32(0), p)
+}
+
 func tryWithTimeOut(seconds int, runner func() <-chan struct{}) error {
 	timer := time.NewTimer(time.Duration(seconds) * time.Second)
 	c := runner()

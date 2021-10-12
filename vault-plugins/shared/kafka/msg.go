@@ -30,7 +30,7 @@ func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan str
 		case <-stopC:
 			logger.Warn("Receive stop signal")
 			c.Unsubscribe() //nolint:errcheck
-			c.Close()       //nolint:errcheck
+			// c.Close()    // closing by DefferedClose()
 			return
 
 		case ev := <-c.Events():
@@ -47,8 +47,7 @@ func RunMessageLoop(c *kafka.Consumer, msgHandler MessageHandler, stopC chan str
 }
 
 // RunRestorationLoop read from topic untill runConsumer and handle with handler each message.
-// runConsumer is used only for getting edgeOffset by uncommited read, but it should not used after passing
-// to RunRestorationLoop
+// runConsumer after using at RunRestorationLoop can be used, but need Subscribe(topic)
 func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName string, txn *memdb.Txn,
 	handler func(txn *memdb.Txn, msg *kafka.Message, logger hclog.Logger) error, logger hclog.Logger) error {
 	logger = logger.Named("RunRestorationLoop")
@@ -63,29 +62,25 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 		if err != nil {
 			return fmt.Errorf("getting offset by RunConsumer:%w", err)
 		}
-		err = newConsumer.Subscribe(topicName, nil)
-		if err != nil {
-			return fmt.Errorf("subscribing newConsumer:%w", err)
-		}
 	} else {
 		lastOffset, partition, err = LastOffsetByNewConsumer(newConsumer, topicName)
 		if err != nil {
 			return fmt.Errorf("getting offset by newConsumer:%w", err)
 		}
-
 	}
 
 	if lastOffset == 0 && edgeOffset == 0 {
 		logger.Debug("normal finish: no messages", "topicName", topicName)
 		return nil
 	}
-
+	newConsumer.Unassign() // nolint:errcheck
 	err = setNewConsumerToBeginning(newConsumer, topicName, partition)
 	if err != nil {
 		return err
 	}
 
 	c := newConsumer.Events()
+	consumed := 0
 	for {
 		var msg *kafka.Message
 		ev := <-c
@@ -99,15 +94,16 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 		}
 		currentMessageOffset := int64(msg.TopicPartition.Offset)
 		if edgeOffset > 0 && currentMessageOffset >= edgeOffset {
-			logger.Debug("normal finish", "topicName", topicName)
+			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d messages", topicName, consumed))
 			return nil
 		}
 		err := handler(txn, msg, logger)
+		consumed++
 		if err != nil {
 			return err
 		}
 		if lastOffset > 0 && currentMessageOffset == lastOffset {
-			logger.Debug("normal finish", "topicName", topicName)
+			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d", topicName, consumed))
 			return nil
 		}
 	}

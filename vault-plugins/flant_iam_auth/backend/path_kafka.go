@@ -76,6 +76,8 @@ func kafkaPaths(b logical.Backend, storage *sharedio.MemoryStore, logger hclog.L
 }
 
 func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	kb.logger.Debug("handleKafkaConfiguration started")
+	defer kb.logger.Debug("handleKafkaConfiguration exit")
 	if len(kb.broker.GetEndpoints()) == 0 {
 		rr := logical.ErrorResponse("kafka connection is not configured. Run /kafka/configure_access first")
 		return logical.RespondWithStatusCode(rr, req, http.StatusPreconditionFailed)

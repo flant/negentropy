@@ -27,12 +27,12 @@ type MultipassGenerationKafkaSource struct {
 	run    bool
 }
 
-func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, logger hclog.Logger) *MultipassGenerationKafkaSource {
+func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *MultipassGenerationKafkaSource {
 	return &MultipassGenerationKafkaSource{
 		kf: kf,
 
 		stopC:  make(chan struct{}),
-		logger: logger,
+		logger: parentLogger.Named("authMultipassKafkaSource"),
 	}
 }
 
@@ -41,13 +41,15 @@ func (rk *MultipassGenerationKafkaSource) Name() string {
 }
 
 func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn) error {
-	runConsumer := rk.kf.GetUnsubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName)
-	defer runConsumer.Close()
-
+	replicaName := rk.kf.PluginConfig.SelfTopicName
+	groupID := replicaName
 	restorationConsumer := rk.kf.GetRestorationReader()
-	defer restorationConsumer.Close()
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
 
-	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic, txn, rk.restoreMsgHandler, rk.logger)
+	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic,
+		txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -96,10 +98,15 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 }
 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {
-	rd := rk.kf.GetSubscribedRunConsumer(rk.kf.PluginConfig.SelfTopicName, io.MultipassNumberGenerationTopic)
+	replicaName := rk.kf.PluginConfig.SelfTopicName
+	rk.logger.Debug("Watcher - start", "replica_name", replicaName)
+	defer rk.logger.Debug("Watcher - stop", "replica_name", replicaName)
+	groupID := replicaName
+	runConsumer := rk.kf.GetSubscribedRunConsumer(groupID, io.MultipassNumberGenerationTopic)
 
 	rk.run = true
-	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	sharedkafka.RunMessageLoop(runConsumer, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
 func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {

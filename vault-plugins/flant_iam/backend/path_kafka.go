@@ -62,6 +62,8 @@ func kafkaPaths(b logical.Backend, storage *io.MemoryStore, logger hclog.Logger)
 }
 
 func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	kb.logger.Debug("handleKafkaConfiguration started")
+	defer kb.logger.Debug("handleKafkaConfiguration exit")
 	topicName, ok := data.GetOk("self_topic_name")
 	if !ok || topicName == "" {
 		return nil, logical.CodedError(http.StatusBadRequest, "self_topic_name required")

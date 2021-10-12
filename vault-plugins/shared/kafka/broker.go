@@ -266,7 +266,7 @@ func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName str
 
 // GetRestorationReader returns Unsubscribed for any topic consumer
 func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
-	return mb.getUnsubscribedConsumer("restoration_reader")
+	return mb.getUnsubscribedConsumer(fmt.Sprintf("restoration_reader_%d", time.Now().Unix()))
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
@@ -430,7 +430,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 		ReplicationFactor: repFactor,
 		Config: map[string]string{
 			"min.insync.replicas": strconv.FormatInt(int64(inSyncReplicas), 10),
-			"cleanup.policy":      "compact",
+			"cleanup.policy":      "compact, delete",
 		},
 	}
 
@@ -483,4 +483,18 @@ func (mb *MessageBroker) Close() {
 		mb.transProducer.Close()
 		mb.transProducer = nil
 	}
+}
+
+type Closable interface {
+	Close() error
+}
+
+// DeferredСlose closes closable at separate goroutine
+func DeferredСlose(closable Closable, logger log.Logger) {
+	go func() {
+		err := closable.Close()
+		if err != nil {
+			logger.Warn(fmt.Sprintf("error during closing %#v: %s", closable, err.Error()))
+		}
+	}()
 }

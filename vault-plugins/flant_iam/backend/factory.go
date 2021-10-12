@@ -77,7 +77,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		BackendType: logical.TypeLogical,
 	}
 
-	localLogger := conf.Logger.Named("flant_iam.newBackend")
+	localLogger := conf.Logger.Named("newBackend")
 	localLogger.Debug("started")
 	defer localLogger.Debug("exit")
 

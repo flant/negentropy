@@ -20,10 +20,10 @@ type KafkaSource interface {
 	// Name returns topic name
 	Name() string
 	// Restore gets data from topic and store it to txn
-	// can't call it after calling Run
+	// don't call it after calling Run TODO fix it
 	Restore(txn *memdb.Txn) error
 	// Run starts infinite loop processing incoming messages, will returns after using Stop
-	// can call it once
+	// can call it once TODO fix it
 	Run(ms *MemoryStore)
 	// Stop finish running infinite loop, if used before Run, will do nothing
 	Stop()
