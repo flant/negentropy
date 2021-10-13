@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
@@ -80,7 +81,7 @@ func TestUserToPosix(t *testing.T) {
 		Identifier: "tenant2",
 	}
 
-	st, _ := io.NewMemoryStore(iam_repo.TenantSchema(), nil)
+	st, _ := io.NewMemoryStore(iam_repo.TenantSchema(), nil, hclog.NewNullLogger())
 	tx := st.Txn(true)
 	_ = tx.Insert(iam_model.TenantType, tenant2)
 	_ = tx.Commit()

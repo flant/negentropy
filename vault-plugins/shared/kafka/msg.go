@@ -162,7 +162,7 @@ func LastAndEdgeOffsetsByRunConsumer(runConsumer *kafka.Consumer, newConsumer *k
 		Offset:    kafka.OffsetTail(2),
 	}
 	err = newConsumer.Assign([]kafka.TopicPartition{tp})
-	defer newConsumer.Unassign()
+	defer newConsumer.Unassign() // nolint:errcheck
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("assigning last message: %w", err)
 	}

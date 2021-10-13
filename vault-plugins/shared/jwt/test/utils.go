@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
@@ -16,11 +16,11 @@ import (
 )
 
 func GetStorage(t *testing.T, config *logical.BackendConfig) *sharedio.MemoryStore {
-	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView, log.NewNullLogger())
+	mb, err := kafka.NewMessageBroker(context.TODO(), config.StorageView, hclog.NewNullLogger())
 	require.NoError(t, err)
 	schema, err := model.GetSchema(false)
 	require.NoError(t, err)
-	storage, err := sharedio.NewMemoryStore(schema, mb)
+	storage, err := sharedio.NewMemoryStore(schema, mb, hclog.NewNullLogger())
 
 	return storage
 }
@@ -30,7 +30,7 @@ func PrepareBackend(t *testing.T) *logical.BackendConfig {
 	maxLeaseTTLVal := time.Hour * 24
 
 	config := &logical.BackendConfig{
-		Logger: logging.NewVaultLogger(log.Trace),
+		Logger: logging.NewVaultLogger(hclog.Trace),
 
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: defaultLeaseTTLVal,

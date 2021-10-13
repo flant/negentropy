@@ -34,7 +34,7 @@ var testcases = []testCase{
 	{10, 0, 0, 0, "reading from not empty topic, without main reading before"},
 	{10, 5, 0, 5, "reading from topic, with partial main reading before"},
 	{10, 10, 9, 0, "reading from topic, with full main reading before"},
-	//{1000, 1000, 999, 0, "reading from topic, with full main reading before"},
+	// {1000, 1000, 999, 0, "reading from topic, with full main reading before"},
 }
 
 func TestTableForLastAndEdgeOffsets(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 			return c
 		})
 		if testcase.countMainRead > 0 {
-			fmt.Printf("restoration read for %d messages, spent %s\n", testcase.countMainRead, time.Now().Sub(start).String())
+			fmt.Printf("restoration read for %d messages, spent %s\n", testcase.countMainRead, time.Since(start).String())
 		}
 		assert.NoError(t, err, testcase.description+":restore reading  messages")
 

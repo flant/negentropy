@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
@@ -50,7 +50,7 @@ type MemoryStore struct {
 	hooks     map[string][]ObjectHook // by objectType
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
-	logger log.Logger
+	logger hclog.Logger
 }
 
 type MemoryStoreTxn struct {
@@ -191,7 +191,7 @@ func (mst *MemoryStoreTxn) Abort() {
 	mst.Txn.Abort()
 }
 
-func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryStore, error) {
+func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker, parentLogger hclog.Logger) (*MemoryStore, error) {
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
 		return nil, err
@@ -207,12 +207,8 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryS
 		make(map[string]KafkaDestination),
 		sync.Mutex{},
 		make(map[string][]ObjectHook),
-		log.New(nil),
+		parentLogger.Named("MemStore"),
 	}, nil
-}
-
-func (ms *MemoryStore) SetLogger(l log.Logger) {
-	ms.logger = l
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {

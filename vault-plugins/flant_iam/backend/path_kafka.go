@@ -24,12 +24,12 @@ type kafkaBackend struct {
 	logger  hclog.Logger
 }
 
-func kafkaPaths(b logical.Backend, storage *io.MemoryStore, logger hclog.Logger) []*framework.Path {
+func kafkaPaths(b logical.Backend, storage *io.MemoryStore, parentLogger hclog.Logger) []*framework.Path {
 	bb := kafkaBackend{
 		Backend: b,
 		storage: storage,
 		broker:  storage.GetKafkaBroker(),
-		logger:  logger,
+		logger:  parentLogger.Named("KafkaPath"),
 	}
 
 	configurePath := &framework.Path{

@@ -22,10 +22,10 @@ type MultipassGenerationKafkaDestination struct {
 	logger hclog.Logger
 }
 
-func NewMultipassGenerationKafkaDestination(mb *kafka.MessageBroker, logger hclog.Logger) *MultipassGenerationKafkaDestination {
+func NewMultipassGenerationKafkaDestination(mb *kafka.MessageBroker, parentLogger hclog.Logger) *MultipassGenerationKafkaDestination {
 	return &MultipassGenerationKafkaDestination{
 		mb:     mb,
-		logger: logger,
+		logger: parentLogger.Named("KafkaDestinationMultipassGen"),
 	}
 }
 

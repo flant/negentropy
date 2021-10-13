@@ -33,23 +33,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/openapi"
 )
 
-const loggerModule = "Auth"
-
 // Factory is used by framework
-func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
-	logger := c.Logger.Named("flant_iam_auth.Factory")
+func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	baseLogger := conf.Logger.ResetNamed("AUTH")
+	logger := baseLogger.Named("Factory")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 	if os.Getenv("DEBUG") == "true" {
 		kafka.DoNotEncrypt = true
 		logger.Debug("DEBUG mode is ON, messages will not be encrypted")
 	}
-
-	b, err := backend(c, nil)
+	conf.Logger = baseLogger
+	b, err := backend(conf, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := b.SetupBackend(ctx, c); err != nil {
+	if err := b.SetupBackend(ctx, conf); err != nil {
 		return nil, err
 	}
 	logger.Debug("normal finish")
@@ -93,20 +92,20 @@ type flantIamAuthBackend struct {
 	serverAccessBackend extension_server_access.ServerAccessBackend
 
 	entityIDResolver authn.EntityIDResolver
+
+	logger hclog.Logger
 }
 
 func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (*flantIamAuthBackend, error) {
 	b := new(flantIamAuthBackend)
-	logger := conf.Logger.Named("flant_iam_auth.backend")
+	b.logger = conf.Logger
+	logger := conf.Logger.Named("backend")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	iamAuthLogger := conf.Logger.Named(loggerModule)
-	b.accessVaultController = client.NewVaultClientController(func() hclog.Logger {
-		return iamAuthLogger.Named("ApiClient")
-	})
+	b.accessVaultController = client.NewVaultClientController(conf.Logger)
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
@@ -120,28 +119,25 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	}
 
 	b.accessorGetter = vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth/")
-	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, b.accessorGetter, iamAuthLogger.Named("VaultIdentityClient"))
+	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, b.accessorGetter, conf.Logger)
 
-	storage, err := sharedio.NewMemoryStore(schema, mb)
+	storage, err := sharedio.NewMemoryStore(schema, mb, conf.Logger)
 	if err != nil {
 		return nil, err
 	}
-	storage.SetLogger(iamAuthLogger.Named("MemStorage"))
 
-	selfSourceHandlerLogger := iamAuthLogger.Named("SelfSourceHandler")
 	selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler {
-		return self.NewObjectHandler(store, tx, entityApi, selfSourceHandlerLogger)
+		return self.NewObjectHandler(store, tx, entityApi, conf.Logger)
 	}
 
-	rootSourceHandlerLogger := iamAuthLogger.Named("RootSourceHandler")
 	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler {
-		return root.NewObjectHandler(tx, rootSourceHandlerLogger)
+		return root.NewObjectHandler(tx, conf.Logger)
 	}
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, iamAuthLogger.Named("KafkaSourceSelf")))
-	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, iamAuthLogger.Named("KafkaSourceRoot")))
-	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, iamAuthLogger.Named("KafkaSourceJWKS")))
-	storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, iamAuthLogger.Named("KafkaSourceMultipassGen")))
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, conf.Logger))
+	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, conf.Logger))
+	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
+	storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, conf.Logger))
 
 	err = storage.Restore()
 	if err != nil {
@@ -149,8 +145,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	}
 
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, iamAuthLogger.Named("KafkaDestinationJWKS")))
-	storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, iamAuthLogger.Named("KafkaDestinationMultipassGen")))
+	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
+	storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, conf.Logger))
 
 	if jwksIDGetter == nil {
 		jwksIDGetter = mb.GetEncryptionPublicKeyStrict
@@ -160,12 +156,12 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	b.jwtController = njwt.NewJwtController(
 		storage,
 		jwksIDGetter,
-		iamAuthLogger.Named("Jwt"),
+		conf.Logger,
 		time.Now,
 	)
 
-	periodicLogger := iamAuthLogger.Named("PeriodicFunc")
 	periodicFunction := func(ctx context.Context, request *logical.Request) error {
+		periodicLogger := conf.Logger.Named("PeriodicFunc")
 		periodicLogger.Debug("Run periodic function")
 		defer periodicLogger.Debug("Periodic function finished")
 
@@ -207,7 +203,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return allErrors
 	}
 
-	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, iamAuthLogger.Named("Login"))
+	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, conf.Logger)
 
 	b.serverAccessBackend = extension_server_access.NewServerAccessBackend(b, storage)
 
@@ -253,7 +249,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 				client.PathConfigure(b.accessVaultController),
 			},
 			pathOIDC(b),
-			kafkaPaths(b, storage, iamAuthLogger.Named("KafkaBackend")),
+			kafkaPaths(b, storage, conf.Logger),
 
 			// server_access_extension
 			b.serverAccessBackend.Paths(),
@@ -267,7 +263,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 }
 
 func (b *flantIamAuthBackend) NamedLogger(name string) hclog.Logger {
-	return b.Logger().Named(loggerModule).Named(name)
+	return b.logger.Named(name)
 }
 
 func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {

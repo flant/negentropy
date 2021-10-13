@@ -47,7 +47,7 @@ func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, *api.Client
 		return nil, nil, nil, err
 	}
 
-	storage, err := io.NewMemoryStore(schema, mb)
+	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())
 
 	getClient := func() (*api.Client, error) {
 		return client, nil

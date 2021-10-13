@@ -3,6 +3,7 @@ package txnwatchers
 import (
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -256,7 +257,7 @@ func getTestMemoryStorage(t *testing.T, fixtureFunc func(t *testing.T, txn *io.M
 	// Create db with some entities.
 	schema, err := repo.GetSchema()
 	require.NoError(t, err)
-	mem, err := io.NewMemoryStore(schema, nil)
+	mem, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 
 	if fixtureFunc != nil {

@@ -27,9 +27,9 @@ type AuthenticatorFactory struct {
 	validators map[string]*hcjwt.Validator
 }
 
-func NewAuthenticatorFactory(jwtController *njwt.Controller, logger hclog.Logger) *AuthenticatorFactory {
+func NewAuthenticatorFactory(jwtController *njwt.Controller, parentLogger hclog.Logger) *AuthenticatorFactory {
 	return &AuthenticatorFactory{
-		logger:        logger,
+		logger:        parentLogger.Named("Login"),
 		jwtController: jwtController,
 		validators:    map[string]*hcjwt.Validator{},
 	}

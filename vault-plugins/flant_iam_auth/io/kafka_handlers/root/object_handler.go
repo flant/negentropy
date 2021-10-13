@@ -20,13 +20,13 @@ type ObjectHandler struct {
 	logger hclog.Logger
 }
 
-func NewObjectHandler(txn *io.MemoryStoreTxn, logger hclog.Logger) *ObjectHandler {
+func NewObjectHandler(txn *io.MemoryStoreTxn, parentLogger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
 		entityRepo:       repo2.NewEntityRepo(txn),
 		eaRepo:           repo2.NewEntityAliasRepo(txn),
 		authSourceRepo:   repo2.NewAuthSourceRepo(txn),
 		multipassGenRepo: repo2.NewMultipassGenerationNumberRepository(txn),
-		logger:           logger,
+		logger:           parentLogger.Named("RootSourceHandler"),
 	}
 }
 

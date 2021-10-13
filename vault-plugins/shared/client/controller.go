@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -23,13 +23,13 @@ type VaultClientController struct {
 	clientLock sync.RWMutex
 	apiClient  *api.Client
 
-	loggerFactory func() log.Logger
+	logger hclog.Logger
 }
 
 // NewVaultClientController returns uninitialized VaultClientController
-func NewVaultClientController(loggerFactory func() log.Logger) *VaultClientController {
+func NewVaultClientController(parentLogger hclog.Logger) *VaultClientController {
 	c := &VaultClientController{
-		loggerFactory: loggerFactory,
+		logger: parentLogger.Named("ApiClient"),
 	}
 	return c
 }
@@ -65,7 +65,7 @@ func (c *VaultClientController) GetApiConfig(ctx context.Context, storage logica
 // if store don't contains configuration it may return ErrNotSetConf error
 // it is normal case for just started and not configured plugin
 func (c *VaultClientController) init(storage logical.Storage) (*api.Client, error) {
-	logger := c.loggerFactory().Named("init")
+	logger := c.logger.Named("init")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 
@@ -87,7 +87,7 @@ func (c *VaultClientController) init(storage logical.Storage) (*api.Client, erro
 		return nil, fmt.Errorf("creating api client: %w", err)
 	}
 
-	appRole := newAccessClient(apiClient, curConf, c.loggerFactory()).AppRole()
+	appRole := newAccessClient(apiClient, curConf, c.logger).AppRole()
 
 	auth, err := appRole.Login()
 	if err != nil {
@@ -137,7 +137,7 @@ func (c *VaultClientController) ReInit(storage logical.Storage) error {
 }
 
 func (c *VaultClientController) renewLease(storage logical.Storage) error {
-	c.loggerFactory().Info("Run renew lease")
+	c.logger.Info("Run renew lease")
 	clientAPI, err := c.APIClient(storage)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (c *VaultClientController) renewLease(storage logical.Storage) error {
 	if err != nil {
 		return err
 	}
-	c.loggerFactory().Info(" prolong")
+	c.logger.Info(" prolong")
 	return nil
 }
 
@@ -155,20 +155,18 @@ func (c *VaultClientController) renewLease(storage logical.Storage) error {
 // if store don't contains configuration it may return ErrNotSetConf error
 // it is normal case
 func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
-	logger := c.loggerFactory()
-
 	apiClient, err := c.APIClient(r.Storage)
 	if err != nil && errors.Is(err, ErrNotInit) {
-		logger.Info("not init client nothing to renew")
+		c.logger.Info("not init client nothing to renew")
 		return nil
 	}
 
 	// always renew current token
 	err = c.renewLease(r.Storage)
 	if err != nil {
-		logger.Error(fmt.Sprintf("not prolong lease %v", err))
+		c.logger.Error(fmt.Sprintf("not prolong lease %v", err))
 	} else {
-		logger.Info("token prolong success")
+		c.logger.Info("token prolong success")
 	}
 
 	store := newAccessConfigStorage(r.Storage)
@@ -179,22 +177,22 @@ func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Req
 	}
 
 	if accessConf == nil {
-		logger.Info("access not configured")
+		c.logger.Info("access not configured")
 		return nil
 	}
 
 	if need, remain := accessConf.IsNeedToRenewSecretID(time.Now()); !need {
-		logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
+		c.logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
 		return nil
 	}
 
 	// login in with new secret id in gen function
-	err = genNewSecretID(ctx, apiClient, store, accessConf, c.loggerFactory())
+	err = genNewSecretID(ctx, apiClient, store, accessConf, c.logger)
 	if err != nil {
 		return err
 	}
 
-	logger.Info("secret id renewed")
+	c.logger.Info("secret id renewed")
 
 	return nil
 }
@@ -219,7 +217,7 @@ func (c *VaultClientController) setAccessConfig(ctx context.Context, storage log
 
 	// login in with new secret id in gen function and save config to storage
 	accessConfigStorage := newAccessConfigStorage(storage)
-	err = genNewSecretID(ctx, apiClient, accessConfigStorage, curConf, c.loggerFactory())
+	err = genNewSecretID(ctx, apiClient, accessConfigStorage, curConf, c.logger)
 	if err != nil {
 		return err
 	}
