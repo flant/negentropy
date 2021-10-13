@@ -1,0 +1,21 @@
+diff --git a/builtin/plugin/backend.go b/builtin/plugin/backend.go
+index d33fe9c1a..8a45088e9 100644
+--- a/builtin/plugin/backend.go
++++ b/builtin/plugin/backend.go
+@@ -50,6 +50,7 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
+ 	sys := conf.System
+
+ 	// NewBackend with isMetadataMode set to true
++	conf.Config["FLANT_PLUGIN_LOADING_KEY"] = "false"
+ 	raw, err := bplugin.NewBackend(ctx, name, pluginType, sys, conf, true)
+ 	if err != nil {
+ 		return nil, err
+@@ -103,6 +104,8 @@ func (b *PluginBackend) startBackend(ctx context.Context, storage logical.Storag
+ 	// Ensure proper cleanup of the backend (i.e. call client.Kill())
+ 	b.Backend.Cleanup(ctx)
+
++	b.config.Config["FLANT_PLUGIN_LOADING_KEY"] = "true"
++
+ 	nb, err := bplugin.NewBackend(ctx, pluginName, pluginType, b.config.System, b.config, false)
+ 	if err != nil {
+ 		return err
