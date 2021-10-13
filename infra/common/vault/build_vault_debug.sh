@@ -22,6 +22,7 @@ go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam@v0.0.0 
 go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0=../../../../vault-plugins/flant_iam_auth
 patch -p1 < ../001_bucket_count.patch
 patch -p1 < ../002_add_flant_plugins.patch
+patch -p1 < ../003_add_loading_info_to_cfg.patch
 go get k8s.io/client-go@v0.21.1 # TODO: fix this hack. Next step crashes without installing more recent version of client-go
 go mod tidy
 make bootstrap
