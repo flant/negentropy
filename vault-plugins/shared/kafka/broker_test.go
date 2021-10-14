@@ -58,7 +58,7 @@ func TestTopicExistsTrue(t *testing.T) {
 	}
 	broker := messageBroker(t)
 	topic := broker.PluginConfig.SelfTopicName
-	broker.CreateTopic(context.Background(), topic, nil)
+	broker.CreateTopic(context.Background(), topic, nil) // nolint:errcheck
 
 	r, err := broker.TopicExists(topic)
 	require.NoError(t, err)

@@ -233,15 +233,28 @@ func (ms *MemoryStore) ReinitializeKafka() {
 	// need sync restore before kafka sources rewatch
 	ms.logger.Debug("Call reinitialize kafka")
 	defer ms.logger.Debug("Kafka reinitialized")
-	ms.Restore() // nolint: errcheck
+	ms.logger.Debug("Stopping run loops")
+	for _, s := range ms.kafkaSources {
+		name := s.Name()
+		ms.logger.Debug(fmt.Sprintf("Stop source %s", name))
+		s.Stop()
+	}
+
+	err := ms.Restore()
+	if err != nil {
+		// it is critical error, if it happens, there are no guarantees memStore consistency,
+		// also there is no way to anyhow restore it
+		ms.logger.Error(fmt.Sprintf("critical error: %s", err.Error()))
+	}
+	ms.logger.Debug("running loops")
 	for _, s := range ms.kafkaSources {
 		name := s.Name()
 		if name == "" {
-			ms.logger.Debug("Reinitialize with empty name")
+			ms.logger.Debug("empty name source")
 		} else {
 			ms.kafkaMapSources[name] = s
 		}
-		ms.logger.Debug(fmt.Sprintf("Reinitialize source %s", name))
+		ms.logger.Debug(fmt.Sprintf("run source %s", name))
 		go s.Run(ms)
 	}
 	ms.kafkaMutex.RUnlock()
