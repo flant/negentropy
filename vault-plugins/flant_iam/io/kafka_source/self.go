@@ -124,6 +124,12 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 	case model.ServiceAccountPasswordType:
 		inputObject = &model.ServiceAccountPassword{}
 
+	case model.IdentitySharingType:
+		inputObject = &model.IdentitySharing{}
+
+	case model.RoleBindingApprovalType:
+		inputObject = &model.RoleBindingApproval{}
+
 	default:
 		return fmt.Errorf("type= %s: is not implemented yet", splitted[0])
 	}
