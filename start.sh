@@ -75,6 +75,12 @@ function connect_plugins() {
   # configure flant_iam on root source vault
   VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/kafka/configure self_topic_name=root_source peers_public_keys=\"$root_auth_pubkey\",\"$auth_auth_pubkey\""
 
+  # create replica for root source vault flant_iam_auth
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$root_auth_pubkey\""
+
+  # create replica for auth vault flant_iam_auth
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-2 type=Vault public_key=\"$auth_auth_pubkey\""
+
   # configure flant_iam_auth on root source vault
   VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" \
     "vault write auth/flant_iam_auth/kafka/configure peers_public_keys=\"$root_pubkey\" self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
@@ -82,12 +88,6 @@ function connect_plugins() {
   # configure flant_iam_auth on auth vault
   VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" \
     "vault write auth/flant_iam_auth/kafka/configure peers_public_keys=\"$root_pubkey\" self_topic_name=auth-source.auth-2 root_topic_name=root_source.auth-2 root_public_key=\"$root_pubkey\""
-
-  # create replica for root source vault flant_iam_auth
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$root_auth_pubkey\""
-
-  # create replica for auth vault flant_iam_auth
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-2 type=Vault public_key=\"$auth_auth_pubkey\""
 }
 
 function initialize() {
