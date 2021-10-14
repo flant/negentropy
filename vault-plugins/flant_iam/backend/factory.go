@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/io"
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
@@ -111,6 +112,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		restoreHandlers := []kafka_source.RestoreFunc{
 			jwtkafka.SelfRestoreMessage,
+			io.HandleServerAccessObjects,
 		}
 
 		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))

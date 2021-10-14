@@ -15,7 +15,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)
+type RestoreFunc func(txn *memdb.Txn, objType string, data []byte) (handled bool, err error)
 
 type SelfKafkaSource struct {
 	kf              *sharedkafka.MessageBroker

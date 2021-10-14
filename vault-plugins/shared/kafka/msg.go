@@ -110,6 +110,7 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 }
 
 // returns metadata & last offset in topic
+// Note works only for 1 partition
 func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) (*kafka.Metadata, int64, error) {
 	edgeOffset := int64(0)
 	meta, err := consumer.GetMetadata(&topicName, false, -1)
