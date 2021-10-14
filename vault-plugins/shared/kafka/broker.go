@@ -485,6 +485,21 @@ func (mb *MessageBroker) Close() {
 	}
 }
 
+// TopicExists
+func (mb *MessageBroker) TopicExists(topic string) (bool, error) {
+	groupID := fmt.Sprintf("temp_group_%d", time.Now().Unix())
+	consumer := mb.getUnsubscribedConsumer(groupID)
+	defer DeferredСlose(consumer, mb.logger)
+	meta, err := consumer.GetMetadata(&topic, false, 1000)
+	if err != nil {
+		return false, err
+	}
+	if topicMeta := meta.Topics[topic]; topicMeta.Error.Code() == kafka.ErrUnknownTopicOrPart {
+		return false, nil
+	}
+	return true, nil
+}
+
 type Closable interface {
 	Close() error
 }
