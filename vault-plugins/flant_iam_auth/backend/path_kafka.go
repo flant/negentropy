@@ -141,11 +141,6 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 		kb.logger.Warn("Not pass one more peersKeys")
 	}
 
-	if len(kb.broker.GetEndpoints()) == 0 {
-		rr := logical.ErrorResponse("kafka is not configured. Run /kafka/configure_access first")
-		return logical.RespondWithStatusCode(rr, req, http.StatusPreconditionFailed)
-	}
-
 	kb.broker.PluginConfig.SelfTopicName = selfTopicName
 	kb.broker.PluginConfig.RootTopicName = rootTopicName
 	kb.broker.PluginConfig.RootPublicKey = pubkey

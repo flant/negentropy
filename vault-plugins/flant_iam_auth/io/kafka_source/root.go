@@ -44,6 +44,7 @@ func (rk *RootKafkaSource) Name() string {
 }
 
 func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
+	rootTopic := rk.kf.PluginConfig.RootTopicName
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 	restorationConsumer := rk.kf.GetRestorationReader()
@@ -51,7 +52,7 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
 
 	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
 	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
-	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, replicaName, txn, rk.restoreMsgHandler, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, rootTopic, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
