@@ -25,6 +25,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -126,30 +127,35 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return nil, err
 	}
 
-	selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler {
-		return self.NewObjectHandler(store, tx, entityApi, conf.Logger)
-	}
+	if backentutils.IsLoading(conf) {
+		logger.Info("second run Factory, apply kafka operations on MemoryStore")
+		selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler {
+			return self.NewObjectHandler(store, tx, entityApi, conf.Logger)
+		}
 
-	rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler {
-		return root.NewObjectHandler(tx, conf.Logger)
-	}
+		rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler {
+			return root.NewObjectHandler(tx, conf.Logger)
+		}
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, conf.Logger))
-	storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, conf.Logger))
-	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
-	storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, conf.Logger))
+		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, conf.Logger))
+		storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, conf.Logger))
+		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
+		storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, conf.Logger))
 
-	err = storage.Restore()
-	if err != nil {
-		return nil, err
-	}
+		err = storage.Restore()
+		if err != nil {
+			return nil, err
+		}
 
-	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
-	storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, conf.Logger))
+		storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
+		storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
+		storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, conf.Logger))
 
-	if jwksIDGetter == nil {
-		jwksIDGetter = mb.GetEncryptionPublicKeyStrict
+		if jwksIDGetter == nil {
+			jwksIDGetter = mb.GetEncryptionPublicKeyStrict
+		}
+	} else {
+		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
 	}
 
 	b.storage = storage
@@ -267,7 +273,7 @@ func (b *flantIamAuthBackend) NamedLogger(name string) hclog.Logger {
 }
 
 func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.BackendConfig) error {
-	logger := config.Logger.Named("flant_iam_auth.SetupBackend")
+	logger := config.Logger.Named("SetupBackend")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 

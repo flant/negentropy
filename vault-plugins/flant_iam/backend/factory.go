@@ -18,6 +18,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
@@ -81,9 +82,9 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		BackendType: logical.TypeLogical,
 	}
 
-	localLogger := conf.Logger.Named("newBackend")
-	localLogger.Debug("started")
-	defer localLogger.Debug("exit")
+	logger := conf.Logger.Named("newBackend")
+	logger.Debug("started")
+	defer logger.Debug("exit")
 
 	mb, err := sharedkafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
@@ -105,23 +106,30 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	restoreHandlers := []kafka_source.RestoreFunc{
-		jwtkafka.SelfRestoreMessage,
+	if backentutils.IsLoading(conf) {
+		logger.Info("second run Factory, apply kafka operations on MemoryStore")
+
+		restoreHandlers := []kafka_source.RestoreFunc{
+			jwtkafka.SelfRestoreMessage,
+		}
+
+		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))
+
+		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
+
+		err = storage.Restore()
+		if err != nil {
+			return nil, err
+		}
+
+		// destinations
+		storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
+
+		storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
+
+	} else {
+		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
 	}
-
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))
-
-	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
-
-	err = storage.Restore()
-	if err != nil {
-		return nil, err
-	}
-
-	// destinations
-	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
-
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
 
 	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
@@ -225,7 +233,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		l.Info("finished")
 	}
 
-	localLogger.Debug("normal finish")
+	logger.Debug("normal finish")
 	return b, nil
 }
 
