@@ -1,11 +1,13 @@
 package kafka
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,4 +50,31 @@ func TestMarshalingBrokerConfig(t *testing.T) {
 		assert.Equal(t, storedConfig.EncryptionPublicKey, newConfig.EncryptionPublicKey)
 		assert.Equal(t, storedConfig.EncryptionPrivateKey, newConfig.EncryptionPrivateKey)
 	})
+}
+
+func TestTopicExistsTrue(t *testing.T) {
+	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
+		t.Skip("manual or integration test. Requires kafka")
+	}
+	broker := messageBroker(t)
+	topic := broker.PluginConfig.SelfTopicName
+	broker.CreateTopic(context.Background(), topic, nil) // nolint:errcheck
+
+	r, err := broker.TopicExists(topic)
+	require.NoError(t, err)
+
+	require.Equal(t, true, r)
+}
+
+func TestTopicExistsFalse(t *testing.T) {
+	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
+		t.Skip("manual or integration test. Requires kafka")
+	}
+	broker := messageBroker(t)
+	topic := "newer_exists"
+
+	r, err := broker.TopicExists(topic)
+	require.NoError(t, err)
+
+	require.Equal(t, false, r)
 }

@@ -15,7 +15,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)
+type RestoreFunc func(txn *memdb.Txn, objType string, data []byte) (handled bool, err error)
 
 type SelfKafkaSource struct {
 	kf              *sharedkafka.MessageBroker
@@ -123,6 +123,12 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 
 	case model.ServiceAccountPasswordType:
 		inputObject = &model.ServiceAccountPassword{}
+
+	case model.IdentitySharingType:
+		inputObject = &model.IdentitySharing{}
+
+	case model.RoleBindingApprovalType:
+		inputObject = &model.RoleBindingApproval{}
 
 	default:
 		return fmt.Errorf("type= %s: is not implemented yet", splitted[0])

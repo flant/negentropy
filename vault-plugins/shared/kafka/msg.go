@@ -110,6 +110,7 @@ func RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName stri
 }
 
 // returns metadata & last offset in topic
+// Note works only for 1 partition
 func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) (*kafka.Metadata, int64, error) {
 	edgeOffset := int64(0)
 	meta, err := consumer.GetMetadata(&topicName, false, -1)
@@ -118,6 +119,13 @@ func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) 
 	}
 
 	topicMeta := meta.Topics[topicName]
+	if topicMeta.Topic == "" || len(topicMeta.Partitions) == 0 {
+		return nil, 0, fmt.Errorf("getMeta returns empty response, probably topic %s is not exists", topicName)
+	}
+	if len(topicMeta.Partitions) != 1 {
+		return nil, 0, fmt.Errorf("topic %s has %d partiotions, the program allows only 1 partition", topicName,
+			len(topicMeta.Partitions))
+	}
 	for _, partition := range topicMeta.Partitions {
 		_, lastPartitionOffset, err := consumer.QueryWatermarkOffsets(topicName, partition.ID, -1)
 		if err != nil {

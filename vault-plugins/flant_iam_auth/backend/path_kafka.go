@@ -89,6 +89,17 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 	rootTopicName := rootTopicNameRaw.(string)
 
+	topicExists, err := kb.broker.TopicExists(rootTopicName)
+	if err != nil {
+		rr := logical.ErrorResponse(fmt.Sprintf("checking topic %s existence: %s", rootTopicName, err.Error()))
+		return logical.RespondWithStatusCode(rr, req, http.StatusInternalServerError)
+	}
+
+	if !topicExists {
+		rr := logical.ErrorResponse(fmt.Sprintf("topic %s is not exit. Run flant_iam/replica first", rootTopicName))
+		return logical.RespondWithStatusCode(rr, req, http.StatusPreconditionFailed)
+	}
+
 	splittedTopic := strings.Split(rootTopicName, ".")
 	if len(splittedTopic) != 2 {
 		return nil, logical.CodedError(http.StatusBadRequest, "root_topic_name must be in form root_source.$replicaName")
@@ -128,11 +139,6 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 		}
 	} else {
 		kb.logger.Warn("Not pass one more peersKeys")
-	}
-
-	if len(kb.broker.GetEndpoints()) == 0 {
-		rr := logical.ErrorResponse("kafka is not configured. Run /kafka/configure_access first")
-		return logical.RespondWithStatusCode(rr, req, http.StatusPreconditionFailed)
 	}
 
 	kb.broker.PluginConfig.SelfTopicName = selfTopicName

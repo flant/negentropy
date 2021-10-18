@@ -37,6 +37,7 @@ func HandleRestoreMessagesRootSource(txn *memdb.Txn, objType string, data []byte
 		inputObject = &iam_model.ServiceAccountPassword{}
 	case iam_model.IdentitySharingType:
 		inputObject = &iam_model.IdentitySharing{}
+		// EXTENSION_SERVER_ACCESS
 	case ext_model.ServerType:
 		inputObject = &ext_model.Server{}
 	default:
