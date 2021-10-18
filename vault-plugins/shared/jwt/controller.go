@@ -19,8 +19,8 @@ type Controller struct {
 	backend *backend.Backend
 }
 
-func NewJwtController(storage *sharedio.MemoryStore, idGetter func() (string, error), logger hclog.Logger, now func() time.Time) *Controller {
-	deps := usecase.NewDeps(idGetter, logger, now)
+func NewJwtController(storage *sharedio.MemoryStore, idGetter func() (string, error), parentLogger hclog.Logger, now func() time.Time) *Controller {
+	deps := usecase.NewDeps(idGetter, parentLogger.Named("JWT.Controller"), now)
 	b := backend.NewBackend(storage, deps)
 	return &Controller{
 		deps:    deps,

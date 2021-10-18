@@ -21,10 +21,10 @@ type JWKSKafkaDestination struct {
 	logger hclog.Logger
 }
 
-func NewJWKSKafkaDestination(mb *kafka.MessageBroker, logger hclog.Logger) *JWKSKafkaDestination {
+func NewJWKSKafkaDestination(mb *kafka.MessageBroker, parentLogger hclog.Logger) *JWKSKafkaDestination {
 	return &JWKSKafkaDestination{
 		mb:     mb,
-		logger: logger,
+		logger: parentLogger.Named("KafkaSourceJWKS"),
 	}
 }
 

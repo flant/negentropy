@@ -28,7 +28,9 @@ var _ logical.Factory = Factory
 
 // Factory configures and returns Mock backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	logger := conf.Logger.Named("flant_iam.Factory")
+	baseLogger := conf.Logger.ResetNamed("IAM")
+
+	logger := baseLogger.Named("Factory")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 	if os.Getenv("DEBUG") == "true" {
@@ -39,6 +41,8 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	if conf == nil {
 		return nil, fmt.Errorf("configuration passed into backend is nil")
 	}
+
+	conf.Logger = baseLogger
 
 	b, err := newBackend(conf)
 	if err != nil {
@@ -77,7 +81,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		BackendType: logical.TypeLogical,
 	}
 
-	localLogger := conf.Logger.Named("flant_iam.newBackend")
+	localLogger := conf.Logger.Named("newBackend")
 	localLogger.Debug("started")
 	defer localLogger.Debug("exit")
 
@@ -96,21 +100,18 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	storage, err := sharedio.NewMemoryStore(schema, mb)
+	storage, err := sharedio.NewMemoryStore(schema, mb, conf.Logger)
 	if err != nil {
 		return nil, err
 	}
-	storage.SetLogger(conf.Logger)
 
 	restoreHandlers := []kafka_source.RestoreFunc{
 		jwtkafka.SelfRestoreMessage,
 	}
 
-	logger := conf.Logger.Named("IAM")
+	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))
 
-	storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger.Named("KafkaSourceSelf")))
-
-	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger.Named("KafkaSourceJWKS")))
+	storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
 
 	err = storage.Restore()
 	if err != nil {
@@ -120,7 +121,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	// destinations
 	storage.AddKafkaDestination(kafka_destination.NewSelfKafkaDestination(mb))
 
-	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, logger.Named("KafkaSourceJWKS")))
+	storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
 
 	replicaIter, err := storage.Txn(false).Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
@@ -149,12 +150,12 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	tokenController := sharedjwt.NewJwtController(
 		storage,
 		mb.GetEncryptionPublicKeyStrict,
-		logger.Named("JWT.Controller"),
+		conf.Logger,
 		time.Now,
 	)
 
-	periodicLogger := logger.Named("Periodic")
 	b.PeriodicFunc = func(ctx context.Context, request *logical.Request) error {
+		periodicLogger := conf.Logger.Named("Periodic")
 		periodicLogger.Debug("Run periodic function")
 		defer periodicLogger.Debug("Periodic function finished")
 
@@ -206,7 +207,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		rolePaths(b, storage),
 
 		replicasPaths(b, storage),
-		kafkaPaths(b, storage, logger.Named("KafkaPath")),
+		kafkaPaths(b, storage, conf.Logger),
 		identitySharingPaths(b, storage),
 
 		extension_server_access.ServerPaths(b, storage, tokenController),
@@ -214,7 +215,6 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		tokenController.ApiPaths(),
 	)
-	localLogger.Debug("normal finish")
 
 	b.Clean = func(context.Context) {
 		l := b.Logger().Named("cleanup")
@@ -225,6 +225,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		l.Info("finished")
 	}
 
+	localLogger.Debug("normal finish")
 	return b, nil
 }
 

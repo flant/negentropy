@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -12,7 +13,7 @@ import (
 
 func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
 	schema := model.ConfigSchema()
-	store, err := io.NewMemoryStore(schema, nil)
+	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 	txn := store.Txn(true)
 

@@ -25,7 +25,7 @@ type ObjectHandler struct {
 	logger hclog.Logger
 }
 
-func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vault.VaultEntityDownstreamApi, logger hclog.Logger) *ObjectHandler {
+func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vault.VaultEntityDownstreamApi, parentLogger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
 		eaRepo:     repo.NewEntityAliasRepo(txn),
 		entityRepo: repo.NewEntityRepo(txn),
@@ -34,7 +34,7 @@ func NewObjectHandler(memStore *io.MemoryStore, txn *io.MemoryStoreTxn, api *vau
 		memStore:   memStore,
 		txn:        txn,
 		downstream: api,
-		logger:     logger,
+		logger:     parentLogger.Named("SelfSourceHandler"),
 	}
 }
 

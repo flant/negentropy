@@ -44,7 +44,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 func newBackend(conf *logical.BackendConfig) (*backend, error) {
 	b := &backend{
 		TasksManager:          tasks_manager.NewManager(),
-		AccessVaultController: client.NewVaultClientController(hclog.L),
+		AccessVaultController: client.NewVaultClientController(hclog.Default()),
 	}
 
 	b.Backend = &framework.Backend{

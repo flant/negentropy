@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
@@ -20,8 +20,10 @@ type KafkaSource interface {
 	// Name returns topic name
 	Name() string
 	// Restore gets data from topic and store it to txn
+	// don't call it after calling Run TODO fix it
 	Restore(txn *memdb.Txn) error
 	// Run starts infinite loop processing incoming messages, will returns after using Stop
+	// can call it once TODO fix it
 	Run(ms *MemoryStore)
 	// Stop finish running infinite loop, if used before Run, will do nothing
 	Stop()
@@ -48,7 +50,7 @@ type MemoryStore struct {
 	hooks     map[string][]ObjectHook // by objectType
 	// vaultStorage      VaultStorage
 	// downstreamApis    []DownstreamApi
-	logger log.Logger
+	logger hclog.Logger
 }
 
 type MemoryStoreTxn struct {
@@ -189,7 +191,7 @@ func (mst *MemoryStoreTxn) Abort() {
 	mst.Txn.Abort()
 }
 
-func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryStore, error) {
+func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker, parentLogger hclog.Logger) (*MemoryStore, error) {
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
 		return nil, err
@@ -205,12 +207,8 @@ func NewMemoryStore(schema *memdb.DBSchema, conn *kafka.MessageBroker) (*MemoryS
 		make(map[string]KafkaDestination),
 		sync.Mutex{},
 		make(map[string][]ObjectHook),
-		log.New(nil),
+		parentLogger.Named("MemStore"),
 	}, nil
-}
-
-func (ms *MemoryStore) SetLogger(l log.Logger) {
-	ms.logger = l
 }
 
 func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {

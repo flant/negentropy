@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -28,7 +28,7 @@ type exampleBackend struct {
 
 func backend() *exampleBackend {
 	b := new(exampleBackend)
-	b.accessVaultController = client.NewVaultClientController(log.L)
+	b.accessVaultController = client.NewVaultClientController(hclog.Default())
 
 	b.Backend = &framework.Backend{
 		BackendType:  logical.TypeCredential,

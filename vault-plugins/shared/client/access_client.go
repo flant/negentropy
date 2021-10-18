@@ -15,7 +15,7 @@ type accessClient struct {
 	rolePrefix  string
 }
 
-func newAccessClient(apiClient *api.Client, accessConf *vaultAccessConfig, logger hclog.Logger) *accessClient {
+func newAccessClient(apiClient *api.Client, accessConf *vaultAccessConfig, parentLogger hclog.Logger) *accessClient {
 	rolePrefix := fmt.Sprintf("%s/role/%s", accessConf.ApproleMountPoint, accessConf.RoleName)
 
 	return &accessClient{
@@ -23,7 +23,7 @@ func newAccessClient(apiClient *api.Client, accessConf *vaultAccessConfig, logge
 		conf:        accessConf,
 		mountPrefix: accessConf.ApproleMountPoint,
 		rolePrefix:  rolePrefix,
-		logger:      logger,
+		logger:      parentLogger.Named("accessClient"),
 	}
 }
 

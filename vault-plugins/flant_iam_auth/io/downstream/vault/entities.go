@@ -27,11 +27,11 @@ type VaultEntityDownstreamApi struct {
 	logger              log.Logger
 }
 
-func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, logger log.Logger) *VaultEntityDownstreamApi {
+func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, parenatLogger log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
 		getClient:           getClient,
 		mountAccessorGetter: mountAccessorGetter,
-		logger:              logger,
+		logger:              parenatLogger.Named("VaultIdentityClient"),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,7 @@ import (
 
 func TestHooks(t *testing.T) {
 	t.Run("test insert", func(t *testing.T) {
-		mem, err := NewMemoryStore(testSchema(), nil)
+		mem, err := NewMemoryStore(testSchema(), nil, hclog.NewNullLogger())
 		require.NoError(t, err)
 
 		hook := ObjectHook{

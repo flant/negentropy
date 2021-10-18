@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
@@ -150,7 +150,7 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		BackendType: logical.TypeLogical,
 	}
 
-	mb, err := sharedkafka.NewMessageBroker(context.TODO(), config.StorageView, log.NewNullLogger())
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), config.StorageView, hclog.NewNullLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		t.Fatal(err)
 	}
 
-	storage, err := sharedio.NewMemoryStore(schema, mb)
+	storage, err := sharedio.NewMemoryStore(schema, mb, hclog.NewNullLogger())
 	if err != nil {
 		t.Fatal(err)
 	}

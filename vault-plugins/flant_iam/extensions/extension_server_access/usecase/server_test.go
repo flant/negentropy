@@ -3,6 +3,7 @@ package usecase
 import (
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -48,7 +49,7 @@ func Test_List(t *testing.T) {
 		Identifier:  "test",
 	}
 
-	memdb, _ := io.NewMemoryStore(repo.ServerSchema(), nil)
+	memdb, _ := io.NewMemoryStore(repo.ServerSchema(), nil, hclog.NewNullLogger())
 	tx := memdb.Txn(true)
 	err := tx.Insert(ext_model.ServerType, server)
 	require.NoError(t, err)

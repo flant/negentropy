@@ -28,13 +28,13 @@ type RootKafkaSource struct {
 	run               bool
 }
 
-func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, logger hclog.Logger) *RootKafkaSource {
+func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, parentLogger hclog.Logger) *RootKafkaSource {
 	return &RootKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
 		stopC:             make(chan struct{}),
-		logger:            logger,
+		logger:            parentLogger.Named("authRootKafkaSource"),
 		msgHandlerFactory: msgHandlerFactory,
 	}
 }
@@ -44,16 +44,14 @@ func (rk *RootKafkaSource) Name() string {
 }
 
 func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
-	groupID := rk.kf.PluginConfig.SelfTopicName
-
-	topicName := rk.kf.PluginConfig.RootTopicName
-	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
-	defer runConsumer.Close()
-
+	replicaName := rk.kf.PluginConfig.SelfTopicName
+	groupID := replicaName
 	restorationConsumer := rk.kf.GetRestorationReader()
-	defer restorationConsumer.Close()
+	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
 
-	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, topicName, txn, rk.restoreMsgHandler, rk.logger)
+	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, replicaName, txn, rk.restoreMsgHandler, rk.logger)
 }
 
 func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
@@ -102,14 +100,12 @@ func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	rk.logger.Debug("Watcher - start", "root_topic", rootTopic, "replica_name", replicaName)
 	defer rk.logger.Debug("Watcher - stop", "root_topic", rootTopic, "replica_name", replicaName)
+	groupID := replicaName
+	runConsumer := rk.kf.GetSubscribedRunConsumer(groupID, rootTopic)
 
-	// groupId := fmt.Sprintf("run-%s", replicaName)
-	groupId := replicaName
-
-	rd := rk.kf.GetSubscribedRunConsumer(groupId, rootTopic)
-	rk.logger.Debug(fmt.Sprintf("Restore - got consumer %s/%s/%s", groupId, replicaName, rootTopic), "root_topic", rootTopic, "replica_name", replicaName)
 	rk.run = true
-	sharedkafka.RunMessageLoop(rd, rk.msgHandler(store), rk.stopC, rk.logger)
+	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
+	sharedkafka.RunMessageLoop(runConsumer, rk.msgHandler(store), rk.stopC, rk.logger)
 }
 
 func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer *kafka.Consumer, msg *kafka.Message) {

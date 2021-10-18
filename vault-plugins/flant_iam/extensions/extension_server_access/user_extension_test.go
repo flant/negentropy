@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
 
@@ -137,7 +138,7 @@ func prepareRoleBinding(t *testing.T, txn *io.MemoryStoreTxn, roleName model.Rol
 func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
-	store, err := io.NewMemoryStore(schema, nil)
+	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	dieOnErr(t, err)
 	txn := store.Txn(true)
 	ten := prepareTenant(t, txn)
@@ -178,7 +179,7 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
-	store, err := io.NewMemoryStore(schema, nil)
+	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	dieOnErr(t, err)
 	txn := store.Txn(true)
 	ten := prepareTenant(t, txn)
@@ -215,7 +216,7 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
-	store, err := io.NewMemoryStore(schema, nil)
+	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	dieOnErr(t, err)
 	txn := store.Txn(true)
 	ten := prepareTenant(t, txn)
@@ -256,7 +257,7 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 func Test_SSHIsIncludedToRole(t *testing.T) {
 	schema, err := iam_repo.GetSchema()
 	dieOnErr(t, err)
-	store, err := io.NewMemoryStore(schema, nil)
+	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	dieOnErr(t, err)
 	txn := store.Txn(true)
 	ten := prepareTenant(t, txn)

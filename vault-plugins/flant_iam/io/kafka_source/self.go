@@ -24,13 +24,13 @@ type SelfKafkaSource struct {
 	logger          log.Logger
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, logger log.Logger) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, parentLogger log.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
 		restoreHandlers: restoreHandlers,
-		logger:          logger,
+		logger:          parentLogger.Named("iamSelfKafkaSource"),
 	}
 }
 
@@ -39,15 +39,14 @@ func (mks *SelfKafkaSource) Name() string {
 }
 
 func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
-	r := mks.kf.GetRestorationReader()
-	defer r.Close()
-
-	return sharedkafka.RunRestorationLoop(r, nil, mks.kf.PluginConfig.SelfTopicName,
+	restorationConsumer := mks.kf.GetRestorationReader()
+	defer sharedkafka.DeferredСlose(restorationConsumer, mks.logger)
+	return sharedkafka.RunRestorationLoop(restorationConsumer, nil, mks.kf.PluginConfig.SelfTopicName,
 		txn, mks.restorationHandler, mks.logger)
 }
 
-func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Message, logger log.Logger) error {
-	logger = logger.Named("restorationHandler")
+func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Message, _ log.Logger) error {
+	logger := mks.logger.Named("restorationHandler")
 	logger.Debug("started")
 	defer logger.Debug("exit")
 	splitted := strings.Split(string(msg.Key), "/")
