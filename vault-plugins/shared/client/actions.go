@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -47,7 +47,8 @@ func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	return client, nil
 }
 
-func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, accessConf *vaultAccessConfig, logger log.Logger) error {
+func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage,
+	accessConf *vaultAccessConfig, logger hclog.Logger) error {
 	// login with current secret id if no login current
 	if apiClient.Token() == "" {
 		err := loginAndSetToken(apiClient, accessConf, logger)
@@ -97,7 +98,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 	return nil
 }
 
-func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger log.Logger) error {
+func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger hclog.Logger) error {
 	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	loginRes, err := appRoleCli.Login()

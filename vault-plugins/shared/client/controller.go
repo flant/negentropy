@@ -117,10 +117,9 @@ func (c *VaultClientController) APIClient(storage logical.Storage) (*api.Client,
 		curConf.Preferable(c.cfg) {
 		c.clientLock.Lock()
 		defer c.clientLock.Unlock()
-		var err error
 		apiClient, err = c.init(storage)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("init and get apiClient: %w", err)
 		}
 	}
 	return apiClient, nil
@@ -155,9 +154,10 @@ func (c *VaultClientController) renewLease(storage logical.Storage) error {
 // if store don't contains configuration it may return ErrNotSetConf error
 // it is normal case
 func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
+	logger := c.logger.Named("renew")
 	apiClient, err := c.APIClient(r.Storage)
 	if err != nil && errors.Is(err, ErrNotInit) {
-		c.logger.Info("not init client nothing to renew")
+		logger.Warn("not init client nothing to renew")
 		return nil
 	}
 
@@ -177,22 +177,23 @@ func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Req
 	}
 
 	if accessConf == nil {
-		c.logger.Info("access not configured")
+		logger.Warn("access not configured")
 		return nil
 	}
 
 	if need, remain := accessConf.IsNeedToRenewSecretID(time.Now()); !need {
-		c.logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
+		logger.Info(fmt.Sprintf("no need renew secret id. remain %vs", remain))
 		return nil
 	}
 
 	// login in with new secret id in gen function
+	logger.Debug("try renew secretID&token")
 	err = genNewSecretID(ctx, apiClient, store, accessConf, c.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("genNewSecretID:%w", err)
 	}
 
-	c.logger.Info("secret id renewed")
+	logger.Info("secretID&token renewed")
 
 	return nil
 }
