@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-# TODO: it's only for debug and will be remove later
-
-set -x
+set -e
 
 function docker-exec() {
   docker-compose -f docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"

@@ -41,9 +41,7 @@ jobs:
         run: bash start.sh
 
       - name: Tests
-        run: |
-          ./run_e2e_tests.sh
-        working-directory: .
+        run: bash run-e2e-tests.sh
 
   remove-label:
     name: Remove Label

@@ -1,0 +1,72 @@
+version: "3"
+
+services:
+  vault-auth:
+    container_name: vault-auth
+    build:
+      context: .
+      dockerfile: Dockerfile.vault-debug
+    volumes:
+      - "../infra/common/vault/vault/bin/vault:/bin/vault"
+      - "./vault/vault-auth.hcl:/etc/vault.hcl"
+    ports:
+      - 2345:2345
+      - 8200:8200
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_CLIENT_TIMEOUT=120s
+      - DEBUG=true
+    command: --listen=:2345 --headless=true  --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - kafka
+
+  vault-root:
+    container_name: vault-root
+    build:
+      context: .
+      dockerfile: Dockerfile.vault-debug
+    volumes:
+      - "./infra/common/vault/vault/bin/vault:/bin/vault"
+      - "./vault/vault-root.hcl:/etc/vault.hcl"
+    ports:
+      - 2346:2345
+      - 8300:8200
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_CLIENT_TIMEOUT=120s
+      - DEBUG=true
+    command: --listen=:2345 --headless=true  --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - kafka
+
+  test-client:
+    container_name: test-client
+    build:
+      context: .
+      dockerfile: Dockerfile.test-client
+    depends_on:
+      - vault-root
+      - vault-auth
+    volumes:
+      - "../authd/build:/opt/authd/bin"
+      - "../cli/build:/opt/cli/bin"
+    command: [ "sleep", "infinity" ]
+
+  test-server:
+    container_name: test-server
+    build:
+      context: .
+      dockerfile: Dockerfile.test-server
+    volumes:
+      - "../authd/build:/opt/authd/bin"
+      - "../server-access/flant-server-accessd/build:/opt/server-access/bin"
+      - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
+    environment:
+      - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
+    depends_on:
+      - vault-root
+      - vault-auth

@@ -49,8 +49,8 @@ func (s *Suite) BeforeSuite() {
 	s.authdPath = "/opt/authd/bin/authd"
 	s.cliPath = "/opt/cli/bin/cli"
 	s.serverAccessdPath = "/opt/server-access/bin/server-accessd"
-	s.testServerContainerName = "negentropy_test-server_1"
-	s.testClientContainerName = "negentropy_test-client_1"
+	s.testServerContainerName = "test-server"
+	s.testClientContainerName = "test-client"
 	s.RootVaultInternalURL = getFromEnv("ROOT_VAULT_INTERNAL_URL")
 	s.AuthVaultInternalURL = getFromEnv("AUTH_VAULT_INTERNAL_URL")
 

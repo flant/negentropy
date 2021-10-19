@@ -43,5 +43,5 @@ server-access/server-access-nss/build/
 server-access/server-access-nss/target/
 
 # e2e
-e2e/data/*
+e2e/tests/**/*.log
 e2e/tools/*
