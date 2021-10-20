@@ -129,15 +129,12 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	if backentutils.IsLoading(conf) {
 		logger.Info("second run Factory, apply kafka operations on MemoryStore")
-		selfSourceHandler := func(store *sharedio.MemoryStore, tx *sharedio.MemoryStoreTxn) self.ModelHandler {
-			return self.NewObjectHandler(store, tx, entityApi, conf.Logger)
-		}
 
 		rootSourceHandler := func(tx *sharedio.MemoryStoreTxn) root.ModelHandler {
 			return root.NewObjectHandler(tx, conf.Logger)
 		}
 
-		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, selfSourceHandler, conf.Logger))
+		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, self.NewObjectHandler(entityApi, conf.Logger), conf.Logger))
 		storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, rootSourceHandler, conf.Logger))
 		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
 		storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, conf.Logger))

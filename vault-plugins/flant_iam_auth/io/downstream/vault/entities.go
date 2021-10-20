@@ -35,20 +35,20 @@ func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessor
 	}
 }
 
-func (a *VaultEntityDownstreamApi) ProcessObject(ms *io.MemoryStore, txn *io.MemoryStoreTxn, obj io.MemoryStorableObject) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessObject(txn *io.MemoryStoreTxn, obj io.MemoryStorableObject) ([]io.DownstreamAPIAction, error) {
 	switch obj.ObjType() {
 	case model.EntityType:
 		entity, ok := obj.(*model.Entity)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.ProcessEntity(ms, txn, entity)
+		return a.ProcessEntity(txn, entity)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.ProcessEntityAlias(ms, txn, entityAlias)
+		return a.ProcessEntityAlias(txn, entityAlias)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
@@ -61,19 +61,23 @@ func (a *VaultEntityDownstreamApi) ProcessObjectDelete(ms *io.MemoryStore, txn *
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.ProcessDeleteEntity(ms, txn, entity.Name)
+		return a.ProcessDeleteEntity(txn, entity.Name)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.ProcessDeleteEntityAlias(ms, txn, entityAlias.Name)
+		return a.ProcessDeleteEntityAlias(txn, entityAlias.Name)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessEntity(txn *io.MemoryStoreTxn, entity *model.Entity) ([]io.DownstreamAPIAction, error) {
+	err := a.createEntityInMemoryStoreIfNotExists(txn, entity)
+	if err != nil {
+		return nil, err
+	}
 	clientApi, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -94,17 +98,34 @@ func (a *VaultEntityDownstreamApi) ProcessEntity(ms *io.MemoryStore, txn *io.Mem
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
-	// got current snapshot in mem db
-	readTxn := ms.Txn(false)
+// this func needs to proceed vault downing case when incoming from kafka-root-source user was proceeded,
+// but incoming from kafka-self-source entity && entity-alias were not
+func (a *VaultEntityDownstreamApi) createEntityInMemoryStoreIfNotExists(txn *io.MemoryStoreTxn, entity *model.Entity) error {
+	entityRepo := repo.NewEntityRepo(txn)
+	// e, err := entityRepo.GetByUserId(entity.UserId)
+	e, err := entityRepo.GetByID(entity.UUID)
+	if err != nil {
+		return fmt.Errorf("getting entity from MemoryStore:%w", err)
+	}
+	if e == nil {
+		a.logger.Warn(fmt.Sprintf("fixing absence entity: %#v", *entity))
+		err = entityRepo.Put(entity)
+		if err != nil {
+			return fmt.Errorf("creating entity in MemoryStore:%w", err)
+		}
+		a.logger.Debug(fmt.Sprintf("entity UUID=%s created", entity.UUID))
+	}
+	return nil
+}
 
+func (a *VaultEntityDownstreamApi) ProcessEntityAlias(txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) ([]io.DownstreamAPIAction, error) {
 	// next we need to get vault entity id
 	// we dont store them in memstorage, because this id
 	// getting after creating entity in vault and store entity id
 	// does not atomic
 
 	// first, get entity for user id
-	entityRepo := repo.NewEntityRepo(readTxn)
+	entityRepo := repo.NewEntityRepo(txn)
 	entity, err := entityRepo.GetByUserId(entityAlias.UserId)
 	if err != nil {
 		return nil, err
@@ -112,6 +133,11 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 	if entity == nil {
 		a.logger.Error(fmt.Sprintf("Cannot get entity entity alias %s: %v", entityAlias.Name, err), "name", entityAlias.Name, "err", err)
 		return nil, fmt.Errorf("not found entity %v", entityAlias.UserId)
+	}
+
+	err = a.createEntityAliasInMemoryStoreIfNotExists(txn, entityAlias)
+	if err != nil {
+		return nil, err
 	}
 
 	apiClient, err := a.getClient()
@@ -152,7 +178,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 					"Can not create entity alias with name %s for entity id %s with mount accessor %s: %v",
 					entityAlias.Name, entityId, mountAccessor, err,
 				),
-				"eaName", entityAlias.Name, "enmtityId", entityId, "ma", mountAccessor, "err", err,
+				"eaName", entityAlias.Name, "entityId", entityId, "ma", mountAccessor, "err", err,
 			)
 
 			return err
@@ -169,7 +195,27 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(ms *io.MemoryStore, txn *i
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityName string) ([]io.DownstreamAPIAction, error) {
+// this func needs to proceed vault downing case when incoming from kafka-root-source user was proceeded,
+// but incoming from kafka-self-source  entity-alias was not
+func (a *VaultEntityDownstreamApi) createEntityAliasInMemoryStoreIfNotExists(txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) error {
+	eaRepo := repo.NewEntityAliasRepo(txn)
+	ea, err := eaRepo.GetById(entityAlias.UUID)
+	if err != nil {
+		return fmt.Errorf("getting entityAlias from MemoryStore:%w", err)
+	}
+	if ea == nil {
+		a.logger.Warn(fmt.Sprintf("fixing absence entityAlias: %#v", *entityAlias))
+		err = eaRepo.Put(entityAlias)
+		if err != nil {
+			return fmt.Errorf("creating entityAlias in MemoryStore:%w", err)
+		}
+		a.logger.Debug(fmt.Sprintf("entity UUID=%s created", entityAlias.UUID))
+
+	}
+	return nil
+}
+
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(txn *io.MemoryStoreTxn, entityName string) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -191,7 +237,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(ms *io.MemoryStore, txn *
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(ms *io.MemoryStore, txn *io.MemoryStoreTxn, entityAliasName string) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(txn *io.MemoryStoreTxn, entityAliasName string) ([]io.DownstreamAPIAction, error) {
 	apiClient, err := a.getClient()
 	if err != nil {
 		return nil, err

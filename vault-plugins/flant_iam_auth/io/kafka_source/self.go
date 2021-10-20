@@ -16,24 +16,26 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type SelfSourceMsgHandlerFactory func(store *io.MemoryStore, tx *io.MemoryStoreTxn) self.ModelHandler
+// type SelfSourceMsgHandlerFactory func(store *io.MemoryStore, tx *io.MemoryStoreTxn) self.ModelHandler
+type SelfSourceMsgHandlerFactory func() self.ModelHandler
 
 type SelfKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
 
-	handlerFactory SelfSourceMsgHandlerFactory
-	logger         hclog.Logger
+	// handlerFactory SelfSourceMsgHandlerFactory
+	handler self.ModelHandler
+	logger  hclog.Logger
 
 	stopC chan struct{}
 	run   bool
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, parentLogger hclog.Logger) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handler self.ModelHandler, parentLogger hclog.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
-		kf:             kf,
-		decryptor:      sharedkafka.NewEncrypter(),
-		handlerFactory: handlerFactory,
+		kf:        kf,
+		decryptor: sharedkafka.NewEncrypter(),
+		handler:   handler,
 
 		stopC: make(chan struct{}),
 
@@ -191,7 +193,7 @@ func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessag
 
 	sks.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
 
-	err := self.HandleNewMessageSelfSource(tx, sks.handlerFactory(store, tx), msg)
+	err := self.HandleNewMessageSelfSource(tx, sks.handler, msg)
 	if err != nil {
 		sks.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return err
