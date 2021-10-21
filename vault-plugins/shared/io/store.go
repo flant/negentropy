@@ -20,10 +20,10 @@ type KafkaSource interface {
 	// Name returns topic name
 	Name() string
 	// Restore gets data from topic and store it to txn
-	// don't call it after calling Run TODO fix it
+	// if called after Run, before Stop: do nothing
 	Restore(txn *memdb.Txn) error
 	// Run starts infinite loop processing incoming messages, will returns after using Stop
-	// can call it once TODO fix it
+	// if called second time  - without intermediate call Stop:  do nothing
 	Run(ms *MemoryStore)
 	// Stop finish running infinite loop, if used before Run, will do nothing
 	Stop()
@@ -35,6 +35,12 @@ type KafkaDestination interface {
 	ReplicaName() string // which replica it belongs to
 }
 
+// MemoryStore is complex logic structure to store data in memdb and interact with kafka
+// typical use:
+// a) create Memstore (NewMemoryStore) with nil connection to kafka, use it without synchronizing with kafka (Txn, Delete, Insert, Commit, Abort)
+// b) create Memstore with actual connection to kafka, add kafka destinations(AddKafkaDestination), add kafka sources (AddKafkaSource), Restore data from kafka,
+//  RunKafkaSourceMainLoops to run main reading kafka loops. Be free to use ReinitializeKafka to reRstore data from kafka
+// Use Close to close all connections to kafka
 type MemoryStore struct {
 	*memdb.MemDB
 
@@ -222,9 +228,9 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 		ms.kafkaMapSources[name] = s
 	}
 	ms.kafkaMutex.Unlock()
-	if ms.kafkaConnection.Configured() {
-		go s.Run(ms)
-	}
+	//if ms.kafkaConnection.Configured() {
+	//	go s.Run(ms)
+	//}
 	ms.logger.Debug(fmt.Sprintf("kafka source '%s', AddKafkaSource finished", name))
 }
 
@@ -355,6 +361,20 @@ func (ms *MemoryStore) Restore() error {
 	txn.Commit()
 	logger.Debug("normal finish")
 	return nil
+}
+
+// RunKafkaSourceMainLoops try run main loops
+func (ms *MemoryStore) RunKafkaSourceMainLoops() {
+	ms.logger.Info("TryRunKafkaSourceMainLoops started")
+	defer ms.logger.Info("TryRunKafkaSourceMainLoops exit")
+	if ms.kafkaConnection.Configured() {
+		for _, ks := range ms.kafkaSources {
+			ms.logger.Debug(fmt.Sprintf("kafka_source %s main loop starting", ks.Name()))
+			go ks.Run(ms)
+		}
+	} else {
+		ms.logger.Warn("TryRunKafkaSourceMainLoops: kafka connection is not configured")
+	}
 }
 
 func (ms *MemoryStore) removeAllKafkaSources() {

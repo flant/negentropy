@@ -48,6 +48,10 @@ func (sks *SelfKafkaSource) Name() string {
 }
 
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
+	if sks.run {
+		return fmt.Errorf("SelfKafkaSource has unstopped main reading loop")
+	}
+
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 	restorationConsumer := sks.kf.GetRestorationReader()
@@ -113,6 +117,10 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 }
 
 func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
+	if sks.run {
+		return
+	}
+
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	sks.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer sks.logger.Debug("Watcher - stop", "replica_name", replicaName)

@@ -148,6 +148,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
 		storage.AddKafkaDestination(kafka_destination.NewMultipassGenerationKafkaDestination(mb, conf.Logger))
 
+		storage.RunKafkaSourceMainLoops()
+
 		if jwksIDGetter == nil {
 			jwksIDGetter = mb.GetEncryptionPublicKeyStrict
 		}

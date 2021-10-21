@@ -41,6 +41,10 @@ func (rk *JWKSKafkaSource) Name() string {
 }
 
 func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
+	if rk.run {
+		return fmt.Errorf("JWKSKafkaSource has unstopped main reading loop")
+	}
+
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 
@@ -98,6 +102,10 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 }
 
 func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
+	if rk.run {
+		return
+	}
+
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	rk.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer rk.logger.Debug("Watcher - stop", "replica_name", replicaName)
