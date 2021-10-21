@@ -28,7 +28,7 @@ func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecod
 		txn := storage.Txn(true)
 		defer txn.Abort()
 
-		objectHandler := NewObjectHandler(txn, hclog.NewNullLogger())
+		objectHandler := NewObjectHandler(hclog.NewNullLogger())
 		err := HandleNewMessageIamRootSource(txn, objectHandler, msg)
 		require.NoError(t, err)
 

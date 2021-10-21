@@ -1,48 +1,46 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
 
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ObjectHandler struct {
-	entityRepo       *repo2.EntityRepo
-	eaRepo           *repo2.EntityAliasRepo
-	authSourceRepo   *repo2.AuthSourceRepo
-	multipassGenRepo *repo2.MultipassGenerationNumberRepository
-
 	logger hclog.Logger
 }
 
-func NewObjectHandler(txn *io.MemoryStoreTxn, parentLogger hclog.Logger) *ObjectHandler {
+func NewObjectHandler(parentLogger hclog.Logger) *ObjectHandler {
 	return &ObjectHandler{
-		entityRepo:       repo2.NewEntityRepo(txn),
-		eaRepo:           repo2.NewEntityAliasRepo(txn),
-		authSourceRepo:   repo2.NewAuthSourceRepo(txn),
-		multipassGenRepo: repo2.NewMultipassGenerationNumberRepository(txn),
-		logger:           parentLogger.Named("RootSourceHandler"),
+		logger: parentLogger.Named("RootSourceHandler"),
 	}
 }
 
-func (h *ObjectHandler) HandleUser(user *iam.User) error {
+func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam.User) error {
 	l := h.logger
-
 	l.Debug("Handle new user. Create entity object", user.FullIdentifier)
-	err := h.entityRepo.CreateForUser(user)
+	entityRepo := repo.NewEntityRepo(txn)
+	authSourceRepo := repo.NewAuthSourceRepo(txn)
+	eaRepo := repo.NewEntityAliasRepo(txn)
+
+	err := entityRepo.CreateForUser(user)
 	if err != nil {
 		return err
 	}
 	l.Debug("Entity object created for user", user.FullIdentifier)
 
-	err = h.authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
+	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
 		l.Debug("Create entity alias for user and source", user.FullIdentifier, source.Name)
-		err := h.eaRepo.CreateForUser(user, source)
+		err := eaRepo.CreateForUser(user, source)
 		if err != nil {
 			return false, err
 		}
@@ -58,14 +56,18 @@ func (h *ObjectHandler) HandleUser(user *iam.User) error {
 	return nil
 }
 
-func (h *ObjectHandler) HandleServiceAccount(sa *iam.ServiceAccount) error {
-	err := h.entityRepo.CreateForSA(sa)
+func (h *ObjectHandler) HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam.ServiceAccount) error {
+	entityRepo := repo.NewEntityRepo(txn)
+	eaRepo := repo.NewEntityAliasRepo(txn)
+	authSourceRepo := repo.NewAuthSourceRepo(txn)
+
+	err := entityRepo.CreateForSA(sa)
 	if err != nil {
 		return err
 	}
 
-	err = h.authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
-		err := h.eaRepo.CreateForSA(sa, source)
+	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
+		err := eaRepo.CreateForSA(sa, source)
 		if err != nil {
 			return false, err
 		}
@@ -76,19 +78,19 @@ func (h *ObjectHandler) HandleServiceAccount(sa *iam.ServiceAccount) error {
 	return nil
 }
 
-func (h *ObjectHandler) HandleDeleteUser(uuid string) error {
-	return h.deleteEntityWithAliases(uuid)
+func (h *ObjectHandler) HandleDeleteUser(txn *io.MemoryStoreTxn, uuid string) error {
+	return h.deleteEntityWithAliases(txn, uuid)
 }
 
-func (h *ObjectHandler) HandleDeleteServiceAccount(uuid string) error {
-	return h.deleteEntityWithAliases(uuid)
+func (h *ObjectHandler) HandleDeleteServiceAccount(txn *io.MemoryStoreTxn, uuid string) error {
+	return h.deleteEntityWithAliases(txn, uuid)
 }
 
-func (h *ObjectHandler) HandleMultipass(mp *iam.Multipass) error {
+func (h *ObjectHandler) HandleMultipass(txn *io.MemoryStoreTxn, mp *iam.Multipass) error {
 	l := h.logger
-
 	l.Debug(fmt.Sprintf("Handle multipass %s", mp.UUID))
-	genNum, err := h.multipassGenRepo.GetByID(mp.UUID)
+	multipassGenRepo := repo.NewMultipassGenerationNumberRepository(txn)
+	genNum, err := multipassGenRepo.GetByID(mp.UUID)
 	if err != nil {
 		return err
 	}
@@ -104,18 +106,22 @@ func (h *ObjectHandler) HandleMultipass(mp *iam.Multipass) error {
 	}
 
 	l.Debug(fmt.Sprintf("Try to create generation number for multipass %s", mp.UUID))
-	return h.multipassGenRepo.Create(genNum)
+	return multipassGenRepo.Create(genNum)
 }
 
-func (h *ObjectHandler) HandleDeleteMultipass(uuid string) error {
+func (h *ObjectHandler) HandleDeleteMultipass(txn *io.MemoryStoreTxn, uuid string) error {
 	h.logger.Debug(fmt.Sprintf("Handle delete multipass multipass %s. Try to delete multipass gen number", uuid))
-	return h.multipassGenRepo.Delete(uuid)
+	multipassGenRepo := repo.NewMultipassGenerationNumberRepository(txn)
+	return multipassGenRepo.Delete(uuid)
 }
 
-func (h *ObjectHandler) deleteEntityWithAliases(uuid string) error {
+func (h *ObjectHandler) deleteEntityWithAliases(txn *io.MemoryStoreTxn, uuid string) error {
 	// begin delete entity aliases
-	err := h.eaRepo.GetAllForUser(uuid, func(alias *model.EntityAlias) (bool, error) {
-		err := h.eaRepo.DeleteByID(alias.UUID)
+	entityRepo := repo.NewEntityRepo(txn)
+	eaRepo := repo.NewEntityAliasRepo(txn)
+
+	err := eaRepo.GetAllForUser(uuid, func(alias *model.EntityAlias) (bool, error) {
+		err := eaRepo.DeleteByID(alias.UUID)
 		if err != nil {
 			return false, err
 		}
@@ -126,5 +132,151 @@ func (h *ObjectHandler) deleteEntityWithAliases(uuid string) error {
 		return err
 	}
 
-	return h.entityRepo.DeleteForUser(uuid)
+	return entityRepo.DeleteForUser(uuid)
+}
+
+type ModelHandler interface {
+	HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User) error
+	HandleDeleteUser(txn *io.MemoryStoreTxn, uuid string) error
+
+	HandleMultipass(txn *io.MemoryStoreTxn, mp *iam_model.Multipass) error
+	HandleDeleteMultipass(txn *io.MemoryStoreTxn, uuid string) error
+
+	HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam_model.ServiceAccount) error
+	HandleDeleteServiceAccount(txn *io.MemoryStoreTxn, uuid string) error
+}
+
+func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler, msg *kafka.MsgDecoded) error {
+	isDelete := msg.IsDeleted()
+
+	var inputObject interface{}
+	var entityHandler func() error
+
+	objID := msg.ID
+
+	switch msg.Type {
+	case iam_model.UserType:
+		user := &iam_model.User{}
+		user.UUID = objID
+		inputObject = user
+		// dont call here because we need unmarshal and add object in mem storage before handler
+		if isDelete {
+			entityHandler = func() error {
+				return handler.HandleDeleteUser(txn, objID)
+			}
+		} else {
+			entityHandler = func() error {
+				return handler.HandleUser(txn, user)
+			}
+		}
+
+	case iam_model.ServiceAccountType:
+		sa := &iam_model.ServiceAccount{}
+		sa.UUID = objID
+		inputObject = sa
+		if isDelete {
+			entityHandler = func() error {
+				return handler.HandleDeleteServiceAccount(txn, objID)
+			}
+		} else {
+			entityHandler = func() error {
+				return handler.HandleServiceAccount(txn, sa)
+			}
+		}
+	case iam_model.ProjectType:
+		p := &iam_model.Project{}
+		p.UUID = objID
+		inputObject = p
+
+	case iam_model.TenantType:
+		t := &iam_model.Tenant{}
+		t.UUID = objID
+		inputObject = t
+
+	case iam_model.FeatureFlagType:
+		t := &iam_model.FeatureFlag{}
+		t.Name = objID
+		inputObject = t
+
+	case iam_model.GroupType:
+		t := &iam_model.Group{}
+		t.UUID = objID
+		inputObject = t
+
+	case iam_model.RoleType:
+		t := &iam_model.Role{}
+		t.Name = objID
+		inputObject = t
+
+	case iam_model.RoleBindingType:
+		t := &iam_model.RoleBinding{}
+		t.UUID = objID
+		inputObject = t
+
+	case iam_model.RoleBindingApprovalType:
+		t := &iam_model.RoleBindingApproval{}
+		t.UUID = objID
+		inputObject = t
+
+	case iam_model.MultipassType:
+		mp := &iam_model.Multipass{}
+		mp.UUID = objID
+		inputObject = mp
+		if isDelete {
+			entityHandler = func() error {
+				return handler.HandleDeleteMultipass(txn, objID)
+			}
+		} else {
+			entityHandler = func() error {
+				return handler.HandleMultipass(txn, mp)
+			}
+		}
+
+	case iam_model.ServiceAccountPasswordType:
+		t := &iam_model.ServiceAccountPassword{}
+		t.UUID = objID
+		inputObject = t
+
+	case iam_model.IdentitySharingType:
+		t := &iam_model.IdentitySharing{}
+		t.UUID = objID
+		inputObject = t
+
+	case ext_model.ServerType:
+		inputObject = &ext_model.Server{}
+
+	default:
+		return nil
+	}
+
+	table := msg.Type
+
+	if isDelete {
+		err := txn.Delete(table, inputObject)
+		if err != nil {
+			return err
+		}
+
+		if entityHandler != nil {
+			return entityHandler()
+		}
+
+		return nil
+	}
+
+	err := json.Unmarshal(msg.Data, inputObject)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Insert(table, inputObject)
+	if err != nil {
+		return err
+	}
+
+	if entityHandler != nil {
+		return entityHandler()
+	}
+
+	return nil
 }

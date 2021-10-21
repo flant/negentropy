@@ -23,19 +23,19 @@ type RootKafkaSource struct {
 
 	stopC chan struct{}
 
-	logger            hclog.Logger
-	msgHandlerFactory RootSourceMsgHandlerFactory
-	run               bool
+	logger        hclog.Logger
+	modelsHandler root.ModelHandler
+	run           bool
 }
 
-func NewRootKafkaSource(kf *sharedkafka.MessageBroker, msgHandlerFactory RootSourceMsgHandlerFactory, parentLogger hclog.Logger) *RootKafkaSource {
+func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelHandler, parentLogger hclog.Logger) *RootKafkaSource {
 	return &RootKafkaSource{
 		kf:        kf,
 		decryptor: sharedkafka.NewEncrypter(),
 
-		stopC:             make(chan struct{}),
-		logger:            parentLogger.Named("authRootKafkaSource"),
-		msgHandlerFactory: msgHandlerFactory,
+		stopC:         make(chan struct{}),
+		logger:        parentLogger.Named("authRootKafkaSource"),
+		modelsHandler: modelsHandler,
 	}
 }
 
@@ -201,7 +201,7 @@ func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 	defer tx.Abort()
 
 	rk.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
-	err := root.HandleNewMessageIamRootSource(tx, rk.msgHandlerFactory(tx), msg)
+	err := root.HandleNewMessageIamRootSource(tx, rk.modelsHandler, msg)
 	if err != nil {
 		rk.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return backoff.Permanent(err)
