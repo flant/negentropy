@@ -135,7 +135,7 @@ func (c *VaultClientController) ReInit(storage logical.Storage) error {
 	return err
 }
 
-//func (c *VaultClientController) renewLease(storage logical.Storage) error {
+// func (c *VaultClientController) renewLease(storage logical.Storage) error {
 //	c.logger.Info("Run renew lease")
 //	clientAPI, err := c.APIClient(storage)
 //	if err != nil {
@@ -148,7 +148,7 @@ func (c *VaultClientController) ReInit(storage logical.Storage) error {
 //	}
 //	c.logger.Info(" prolong")
 //	return nil
-//}
+// }
 
 // OnPeriodical must be called in periodical function
 // if store don't contains configuration it may return ErrNotSetConf error
@@ -162,12 +162,12 @@ func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Req
 	}
 
 	// always renew current token
-	//err = c.renewLease(r.Storage)
-	//if err != nil {
+	// err = c.renewLease(r.Storage)
+	// if err != nil {
 	//	logger.Error(fmt.Sprintf("not prolong lease %v", err))
-	//} else {
+	// } else {
 	//	logger.Info("token prolong success")
-	//}
+	// }
 
 	store := newAccessConfigStorage(r.Storage)
 

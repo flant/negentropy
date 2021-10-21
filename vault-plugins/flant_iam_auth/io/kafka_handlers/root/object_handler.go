@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
-	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
@@ -25,7 +24,7 @@ func NewObjectHandler(parentLogger hclog.Logger) *ObjectHandler {
 	}
 }
 
-func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam.User) error {
+func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User) error {
 	l := h.logger
 	l.Debug("Handle new user. Create entity object", user.FullIdentifier)
 	entityRepo := repo.NewEntityRepo(txn)
@@ -56,7 +55,7 @@ func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam.User) error
 	return nil
 }
 
-func (h *ObjectHandler) HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam.ServiceAccount) error {
+func (h *ObjectHandler) HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam_model.ServiceAccount) error {
 	entityRepo := repo.NewEntityRepo(txn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
 	authSourceRepo := repo.NewAuthSourceRepo(txn)
@@ -86,7 +85,7 @@ func (h *ObjectHandler) HandleDeleteServiceAccount(txn *io.MemoryStoreTxn, uuid 
 	return h.deleteEntityWithAliases(txn, uuid)
 }
 
-func (h *ObjectHandler) HandleMultipass(txn *io.MemoryStoreTxn, mp *iam.Multipass) error {
+func (h *ObjectHandler) HandleMultipass(txn *io.MemoryStoreTxn, mp *iam_model.Multipass) error {
 	l := h.logger
 	l.Debug(fmt.Sprintf("Handle multipass %s", mp.UUID))
 	multipassGenRepo := repo.NewMultipassGenerationNumberRepository(txn)

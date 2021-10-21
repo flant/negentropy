@@ -110,9 +110,9 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 	return nil
 }
 
-//var twoSeconds = 2 * time.Second
+// var twoSeconds = 2 * time.Second
 //
-//func prolongAccessToken(apiClient *api.Client, increment int, logger hclog.Logger) error {
+// func prolongAccessToken(apiClient *api.Client, increment int, logger hclog.Logger) error {
 //	logger = logger.Named("prolongAccessToken")
 //	var err error
 //	for i := 0; i < 5; i++ {
@@ -132,4 +132,4 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 //	}
 //
 //	return nil
-//}
+// }

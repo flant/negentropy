@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
-
 	"github.com/hashicorp/go-hclog"
 
 	iamrepos "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -14,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ObjectHandler struct {

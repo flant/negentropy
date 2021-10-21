@@ -228,9 +228,6 @@ func (ms *MemoryStore) AddKafkaSource(s KafkaSource) {
 		ms.kafkaMapSources[name] = s
 	}
 	ms.kafkaMutex.Unlock()
-	//if ms.kafkaConnection.Configured() {
-	//	go s.Run(ms)
-	//}
 	ms.logger.Debug(fmt.Sprintf("kafka source '%s', AddKafkaSource finished", name))
 }
 
