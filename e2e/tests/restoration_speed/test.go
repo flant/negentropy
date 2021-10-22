@@ -26,7 +26,7 @@ var feedingMultipliers = []int{10, 20, 30}
 // var feedingMultipliers = []int{1_000, 10_000, 50_000, 100_000}
 
 type Result struct {
-	N               int           // feed multiplier
+	FeedMultiplier  int           // feed multiplier
 	RootIAMFactory  time.Duration // root vault IAM factory second run
 	RootAUTHFactory time.Duration // root vault AUTH factory second run
 	AuthAUTHFactory time.Duration // auth vault AUTH factory second run
@@ -104,7 +104,7 @@ func main() {
 	}
 	fmt.Printf("         N     RootIAMFactory    RootAUTHFactory    AuthAUTHFactory\n")
 	for _, r := range result {
-		fmt.Printf("%10d %18s %18s %18s\n", r.N, r.RootIAMFactory.String(), r.RootAUTHFactory.String(), r.AuthAUTHFactory.String())
+		fmt.Printf("%10d %18s %18s %18s\n", r.FeedMultiplier, r.RootIAMFactory.String(), r.RootAUTHFactory.String(), r.AuthAUTHFactory.String())
 	}
 }
 
@@ -159,13 +159,6 @@ func NewVault(dockerCli *client.Client, containerName string, vaultURLEnv string
 
 func (v *Vault) Unseal() error {
 	for i := 0; i < 3; i++ {
-		//out := executeCommandAtContainer(v.dockerCli, v.container, []string{
-		//	"/bin/sh", "-c", "vault operator unseal " + v.unsealKeys[i],
-		//}, nil, []string{"VAULT_TOKEN=" + v.vaultToken})
-		//if !strings.Contains(out[0], "Key") || !strings.Contains(out[0], "Value") {
-		//	return fmt.Errorf("wrong output at %d key: %#v", i+1, out)
-		//}
-		//time.Sleep(time.Second)
 		executeCommandAtContainer(v.dockerCli, v.container, []string{
 			"/bin/sh", "-c", "vault operator unseal " + v.unsealKeys[i],
 		}, nil, []string{"VAULT_TOKEN=" + v.vaultToken})
@@ -267,9 +260,9 @@ func (s *Suite) BeforeSuite() {
 		"/tmp/vault_auth_operator_output")
 }
 
-func (s *Suite) CollectMetrics(caseMultiplier int) Result {
+func (s *Suite) CollectMetrics(caseFeedMultiplier int) Result {
 	return Result{
-		N:               caseMultiplier,
+		FeedMultiplier:  caseFeedMultiplier,
 		RootIAMFactory:  s.rootVault.LastFactoryDuration("IAM"),
 		RootAUTHFactory: s.rootVault.LastFactoryDuration("AUTH"),
 		AuthAUTHFactory: s.authVault.LastFactoryDuration("AUTH"),
