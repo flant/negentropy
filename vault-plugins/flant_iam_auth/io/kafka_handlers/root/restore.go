@@ -20,7 +20,7 @@ func HandleRestoreMessagesRootSource(txn *memdb.Txn, objType string, data []byte
 	case iam_model.ProjectType:
 		inputObject = &iam_model.Project{}
 	case iam_model.TenantType:
-		inputObject = &iam_model.Project{}
+		inputObject = &iam_model.Tenant{}
 	case iam_model.FeatureFlagType:
 		inputObject = &iam_model.FeatureFlag{}
 	case iam_model.GroupType:

@@ -41,6 +41,10 @@ func (rk *MultipassGenerationKafkaSource) Name() string {
 }
 
 func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn) error {
+	if rk.run {
+		return fmt.Errorf("MultipassGenerationKafkaSource has unstopped main reading loop")
+	}
+
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 	restorationConsumer := rk.kf.GetRestorationReader()
@@ -98,6 +102,10 @@ func (rk *MultipassGenerationKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg 
 }
 
 func (rk *MultipassGenerationKafkaSource) Run(store *sharedio.MemoryStore) {
+	if rk.run {
+		return
+	}
+
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	rk.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer rk.logger.Debug("Watcher - stop", "replica_name", replicaName)

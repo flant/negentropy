@@ -16,24 +16,26 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type SelfSourceMsgHandlerFactory func(store *io.MemoryStore, tx *io.MemoryStoreTxn) self.ModelHandler
+// type SelfSourceMsgHandlerFactory func(store *io.MemoryStore, tx *io.MemoryStoreTxn) self.ModelHandler
+type SelfSourceMsgHandlerFactory func() self.ModelHandler
 
 type SelfKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
 
-	handlerFactory SelfSourceMsgHandlerFactory
-	logger         hclog.Logger
+	// handlerFactory SelfSourceMsgHandlerFactory
+	handler self.ModelHandler
+	logger  hclog.Logger
 
 	stopC chan struct{}
 	run   bool
 }
 
-func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handlerFactory SelfSourceMsgHandlerFactory, parentLogger hclog.Logger) *SelfKafkaSource {
+func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handler self.ModelHandler, parentLogger hclog.Logger) *SelfKafkaSource {
 	return &SelfKafkaSource{
-		kf:             kf,
-		decryptor:      sharedkafka.NewEncrypter(),
-		handlerFactory: handlerFactory,
+		kf:        kf,
+		decryptor: sharedkafka.NewEncrypter(),
+		handler:   handler,
 
 		stopC: make(chan struct{}),
 
@@ -46,6 +48,10 @@ func (sks *SelfKafkaSource) Name() string {
 }
 
 func (sks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
+	if sks.run {
+		return fmt.Errorf("SelfKafkaSource has unstopped main reading loop")
+	}
+
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 	restorationConsumer := sks.kf.GetRestorationReader()
@@ -111,6 +117,10 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 }
 
 func (sks *SelfKafkaSource) Run(store *io.MemoryStore) {
+	if sks.run {
+		return
+	}
+
 	replicaName := sks.kf.PluginConfig.SelfTopicName
 	sks.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer sks.logger.Debug("Watcher - stop", "replica_name", replicaName)
@@ -191,7 +201,7 @@ func (sks *SelfKafkaSource) processMessage(source *sharedkafka.SourceInputMessag
 
 	sks.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
 
-	err := self.HandleNewMessageSelfSource(tx, sks.handlerFactory(store, tx), msg)
+	err := self.HandleNewMessageSelfSource(tx, sks.handler, msg)
 	if err != nil {
 		sks.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return err

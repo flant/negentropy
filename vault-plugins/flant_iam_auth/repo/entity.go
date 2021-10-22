@@ -64,8 +64,8 @@ func (r *EntityRepo) GetByName(name string) (*model.Entity, error) {
 	return r.get(ByName, name)
 }
 
-func (r *EntityRepo) GetByUserId(name string) (*model.Entity, error) {
-	return r.get(ByUserID, name)
+func (r *EntityRepo) GetByUserId(userID string) (*model.Entity, error) {
+	return r.get(ByUserID, userID)
 }
 
 func (r *EntityRepo) CreateForUser(user *iam.User) error {

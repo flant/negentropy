@@ -107,7 +107,7 @@ func TestEntites_SkipIncorrect(t *testing.T) {
 
 			txn := storage.Txn(true)
 
-			actions, err := downstream.ProcessObject(storage, txn, e)
+			actions, err := downstream.ProcessObject(txn, e)
 			if err != nil {
 				t.Fatal("raise error", err)
 			}
@@ -152,7 +152,7 @@ func TestEntites_WriteNewEntity(t *testing.T) {
 
 		txnProc := storage.Txn(true)
 
-		actions, err := downstream.ProcessObject(storage, txnProc, entity)
+		actions, err := downstream.ProcessObject(txnProc, entity)
 		if err != nil {
 			t.Fatal("process obj return error", err)
 		}
@@ -219,7 +219,7 @@ func TestEntites_WriteNewEntityAlias(t *testing.T) {
 
 		txnProc := storage.Txn(true)
 
-		actions, err := downstream.ProcessObject(storage, txnProc, entityAlias)
+		actions, err := downstream.ProcessObject(txnProc, entityAlias)
 		if err != nil {
 			t.Fatal("process obj return error", err)
 		}

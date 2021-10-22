@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -47,7 +47,8 @@ func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	return client, nil
 }
 
-func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage, accessConf *vaultAccessConfig, logger log.Logger) error {
+func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage,
+	accessConf *vaultAccessConfig, logger hclog.Logger) error {
 	// login with current secret id if no login current
 	if apiClient.Token() == "" {
 		err := loginAndSetToken(apiClient, accessConf, logger)
@@ -97,7 +98,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 	return nil
 }
 
-func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger log.Logger) error {
+func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger hclog.Logger) error {
 	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	loginRes, err := appRoleCli.Login()
@@ -109,18 +110,26 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 	return nil
 }
 
-func prolongAccessToken(apiClient *api.Client, increment int) error {
-	var err error
-	for i := 0; i < 5; i++ {
-		_, err = apiClient.Auth().Token().Renew(apiClient.Token(), increment)
-
-		if err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		return nil
-	}
-
-	return err
-}
+// var twoSeconds = 2 * time.Second
+//
+// func prolongAccessToken(apiClient *api.Client, increment int, logger hclog.Logger) error {
+//	logger = logger.Named("prolongAccessToken")
+//	var err error
+//	for i := 0; i < 5; i++ {
+//		_, err = apiClient.Auth().Token().Renew(apiClient.Token(), increment)
+//
+//		if err != nil {
+//			logger.Warn(fmt.Sprintf("prolong access token:%s, retry in %s", err.Error(), twoSeconds.String()))
+//			time.Sleep(twoSeconds)
+//			continue
+//		}
+//
+//		return nil
+//	}
+//
+//	if err != nil {
+//		return fmt.Errorf("prolong access token falls 5 attempts:%w", err)
+//	}
+//
+//	return nil
+// }

@@ -10,11 +10,11 @@ import (
 
 type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)
 
-func HandleRestoreMessagesSelfSource(txn *memdb.Txn, objType string, data []byte, restoreHandlers []RestoreFunc) error {
+func HandleRestoreMessagesSelfSource(txn *memdb.Txn, objType string, data []byte, extraRestoreHandlers []RestoreFunc) error {
 	var inputObject interface{}
 	var table string
 
-	for _, r := range restoreHandlers {
+	for _, r := range extraRestoreHandlers {
 		handled, err := r(txn, objType, data)
 		if err != nil {
 			return err

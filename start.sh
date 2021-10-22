@@ -126,10 +126,10 @@ EOF'
   VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault policy write full full.hcl"
 
   # configure approle
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/approle/role/full secret_id_ttl=30m token_ttl=900s token_policies=full"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
   VAULT_TOKEN=$ROOT_VAULT_TOKEN root_secretID=$(docker-exec "vault_root" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
   VAULT_TOKEN=$ROOT_VAULT_TOKEN root_roleID=$(docker-exec "vault_root" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/approle/role/full secret_id_ttl=30m token_ttl=900s token_policies=full"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
   VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_secretID=$(docker-exec "vault_auth" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
   VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_roleID=$(docker-exec "vault_auth" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
 
@@ -144,7 +144,7 @@ EOF'
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
-    secret_id_ttl=\"30m\" \
+    secret_id_ttl=\"15m\" \
     approle_mount_point=\"/auth/approle/\" \
     secret_id=\"$root_secretID\" \
     role_id=\"$root_roleID\" \
@@ -153,7 +153,7 @@ EOF'
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
-    secret_id_ttl=\"30m\" \
+    secret_id_ttl=\"15m\" \
     approle_mount_point=\"/auth/approle/\" \
     secret_id=\"$auth_secretID\" \
     role_id=\"$auth_roleID\" \

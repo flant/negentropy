@@ -129,6 +129,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		storage.AddKafkaDestination(jwtkafka.NewJWKSKafkaDestination(mb, conf.Logger))
 
+		storage.RunKafkaSourceMainLoops()
+
 	} else {
 		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
 	}

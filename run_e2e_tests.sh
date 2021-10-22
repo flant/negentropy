@@ -7,4 +7,5 @@ export AUTH_VAULT_URL=http://127.0.0.1:8200
 export ROOT_VAULT_INTERNAL_URL=http://vault_root:8200
 export AUTH_VAULT_INTERNAL_URL=http://vault_auth:8200
 go mod download
+go run tests/restoration_speed/test.go
 go run github.com/onsi/ginkgo/ginkgo run ./...
