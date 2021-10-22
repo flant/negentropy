@@ -3,6 +3,7 @@ package authz
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 
 	"github.com/hashicorp/go-hclog"
 	hcapi "github.com/hashicorp/vault/api"
@@ -10,6 +11,7 @@ import (
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	uuidlib "github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -46,26 +48,40 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *
 }
 
 func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
-	uuid := authnResult.UUID
-	a.Logger.Debug(fmt.Sprintf("Start authz for %s", uuid))
-
-	var authzRes *logical.Auth
+	var user *iam.User
 	var err error
+	var uuid string
 
-	var fullId string
+	// try to use universal check
+	switch {
+	case uuidlib.IsValid(authnResult.UUID):
+		uuid = authnResult.UUID
+		a.Logger.Debug(fmt.Sprintf("Start authz for uuid %s", uuid))
+		user, err = a.UserRepo.GetByID(uuid)
+	case isValidEmailAddress(authnResult.UUID):
+		email := authnResult.UUID
+		a.Logger.Debug(fmt.Sprintf("Start authz for email %s", email))
+		user, err = a.UserRepo.GetByEmail(email)
+	default:
+		return nil, fmt.Errorf("recieved uuid is neither pure uiid nor email")
+	}
 
-	user, err := a.UserRepo.GetByID(uuid)
 	if err != nil && !errors.Is(err, iam.ErrNotFound) {
 		return nil, err
 	}
 
+	var authzRes *logical.Auth
+	var fullID string
+
 	if user != nil {
-		fullId = user.FullIdentifier
-		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", fullId, uuid))
+		fullID = user.FullIdentifier
+		a.Logger.Debug(fmt.Sprintf("Found user %s for %s", fullID, authnResult.UUID))
 		authzRes, err = a.authorizeUser(user, method, source)
+		uuid = user.UUID
 	} else {
 		// not found user try to found service account
-		a.Logger.Debug(fmt.Sprintf("Not found user for %s uuid. Try find service account", uuid))
+		uuid = authnResult.UUID
+		a.Logger.Debug(fmt.Sprintf("Not found user for %s. Try find service account", uuid))
 		var sa *iam.ServiceAccount
 		sa, err = a.SaRepo.GetByID(uuid)
 		if err != nil && errors.Is(err, iam.ErrNotFound) {
@@ -75,9 +91,9 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 			return nil, err
 		}
 
-		fullId = sa.FullIdentifier
+		fullID = sa.FullIdentifier
 
-		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s uuid", fullId, uuid))
+		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s uuid", fullID, authnResult.UUID))
 		authzRes, err = a.authorizeServiceAccount(sa, method, source)
 	}
 
@@ -90,7 +106,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 		return nil, fmt.Errorf("not authz %s", uuid)
 	}
 
-	a.Logger.Debug(fmt.Sprintf("Start getting vault entity and entity alias %s", fullId))
+	a.Logger.Debug(fmt.Sprintf("Start getting vault entity and entity alias %s", fullID))
 	vaultAlias, entityId, err := a.getAlias(uuid, source)
 	if err != nil {
 		return nil, err
@@ -104,11 +120,11 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	method.PopulateTokenAuth(authzRes)
 	authzRes.InternalData["flantIamAuthMethod"] = method.Name
 
-	a.Logger.Debug(fmt.Sprintf("Token auth populated %s", fullId))
+	a.Logger.Debug(fmt.Sprintf("Token auth populated %s", fullID))
 
 	a.populateAuthnData(authzRes, authnResult)
 
-	a.Logger.Debug(fmt.Sprintf("Authn data populated %s", fullId))
+	a.Logger.Debug(fmt.Sprintf("Authn data populated %s", fullID))
 
 	return authzRes, nil
 }
@@ -219,4 +235,9 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 		MountAccessor: accessorId,
 		Name:          ea.Name,
 	}, entityId, nil
+}
+
+func isValidEmailAddress(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }

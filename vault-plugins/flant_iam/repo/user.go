@@ -9,6 +9,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
+const EmailIndex = "email"
+
 func UserSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
@@ -39,6 +41,13 @@ func UserSchema() *memdb.DBSchema {
 						Name: "identifier",
 						Indexer: &memdb.StringFieldIndex{
 							Field: "Identifier",
+						},
+					},
+					EmailIndex: {
+						Name:         EmailIndex,
+						AllowMissing: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Email",
 						},
 					},
 				},
@@ -185,4 +194,15 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (r *UserRepository) GetByEmail(email string) (*model.User, error) {
+	raw, err := r.db.First(model.UserType, EmailIndex, email)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, model.ErrNotFound
+	}
+	return raw.(*model.User), err
 }
