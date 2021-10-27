@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func RandomUserMultipassCreatePayload() map[string]interface{} {

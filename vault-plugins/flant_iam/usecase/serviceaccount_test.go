@@ -8,8 +8,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func createServiceAccounts(t *testing.T, repo *iam_repo.ServiceAccountRepository, sas ...model.ServiceAccount) {
