@@ -3,14 +3,13 @@ package usecase
 import (
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func createTeammates(t *testing.T, repo *iam_repo.TeammateRepository, teammates ...model.Teammate) {

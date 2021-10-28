@@ -8,7 +8,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	iam_uuid "github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	iam_uuid "github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 const (
