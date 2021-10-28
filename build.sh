@@ -16,6 +16,10 @@ function build_plugin() {
   if [ $PLUGIN_NAME == "flant_iam_auth" ]; then
     EXTRA_MOUNT="-v $PLUGINS_DIR/flant_iam:/go/src/app/flant_iam"
   fi
+  if [ $PLUGIN_NAME == "flant_flow" ]; then
+    EXTRA_MOUNT="-v $PLUGINS_DIR/flant_iam:/go/src/app/flant_iam"
+  fi
+
 
   docker run --rm \
     -w /go/src/app/"$PLUGIN_NAME" \
@@ -95,7 +99,7 @@ mkdir -p /tmp/server-accessd-build
 
 mkdir -p $NSS_DIR/build
 
-plugins=(flant_iam flant_iam_auth)
+plugins=(flant_iam flant_iam_auth flant_flow)
 
 for i in "${plugins[@]}"
 do
