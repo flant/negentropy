@@ -43,7 +43,7 @@ const (
 )
 
 func NewIamVaultClient(token string) *http.Client {
-	return NewVaultClient(GetRootVaultUrl(), token, IamPluginPath)
+	return NewVaultClient(GetRootVaultUrl()+"/v1/", token, IamPluginPath)
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
