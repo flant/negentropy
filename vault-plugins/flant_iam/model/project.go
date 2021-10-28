@@ -18,10 +18,10 @@ func (p *Project) IsDeleted() bool {
 	return p.ArchivingTimestamp != 0
 }
 
-func (u *Project) ObjType() string {
+func (p *Project) ObjType() string {
 	return ProjectType
 }
 
-func (u *Project) ObjId() string {
-	return u.UUID
+func (p *Project) ObjId() string {
+	return p.UUID
 }

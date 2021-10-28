@@ -47,7 +47,7 @@ func Projects() []model.Project {
 	}
 }
 
-func RandomprojectCreatePayload() map[string]interface{} {
+func RandomProjectCreatePayload() map[string]interface{} {
 	projectSet := Projects()
 	rand.Seed(time.Now().UnixNano())
 	sample := projectSet[rand.Intn(len(projectSet))]

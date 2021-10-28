@@ -20,7 +20,7 @@ var (
 	TenantAPI api.TestAPI
 )
 
-var _ = Describe("Group", func() {
+var _ = Describe("Project", func() {
 	var tenant model.Tenant
 
 	BeforeSuite(func() {
@@ -28,7 +28,7 @@ var _ = Describe("Group", func() {
 	}, 1.0)
 
 	It("can be created", func() {
-		createPayload := fixtures.RandomGroupCreatePayload()
+		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = tenant.UUID
 
 		params := api.Params{
@@ -95,7 +95,7 @@ var _ = Describe("Group", func() {
 	})
 
 	It("can be created with priveleged", func() {
-		createPayload := fixtures.RandomGroupCreatePayload()
+		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = tenant.UUID
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
@@ -103,9 +103,9 @@ var _ = Describe("Group", func() {
 		params := api.Params{
 			"expectStatus": api.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
-				groupData := json.Get("project")
-				Expect(groupData.Map()).To(HaveKey("uuid"))
-				Expect(groupData.Map()["uuid"].String()).To(Equal(originalUUID))
+				projectData := json.Get("project")
+				Expect(projectData.Map()).To(HaveKey("uuid"))
+				Expect(projectData.Map()["uuid"].String()).To(Equal(originalUUID))
 			},
 			"tenant": tenant.UUID,
 		}

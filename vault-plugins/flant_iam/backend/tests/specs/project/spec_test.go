@@ -9,7 +9,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 )
 
-func Test_groupCRUD(t *testing.T) {
+func Test_projectCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TestAPI = api.NewProjectAPI(&backend)
 	TenantAPI = api.NewTenantAPI(&backend)
