@@ -50,6 +50,8 @@ function activate-plugin() {
   # flant_iam only needs on root source vault
   elif [ $plugin == "flant_iam" ]; then
       VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
+  elif [ $plugin == "flant_flow" ]; then
+      VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
   else
       VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
       VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault secrets enable -path=$plugin $plugin"
@@ -246,7 +248,7 @@ do
   check-vault "$v"
 done
 
-plugins=(flant_iam flant_iam_auth ssh)
+plugins=(flant_iam flant_iam_auth ssh flant_flow)
 for i in "${plugins[@]}"
 do
   activate-plugin "$i"
