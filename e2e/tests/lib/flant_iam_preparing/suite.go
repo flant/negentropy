@@ -14,7 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var serverLabels = map[string]string{"system": "ubuntu20"}

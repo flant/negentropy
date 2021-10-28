@@ -11,8 +11,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 // no way to mock Vault storage right now, skipping

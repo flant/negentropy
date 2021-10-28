@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func getCreationID(expectID bool, data *framework.FieldData) string {

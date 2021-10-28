@@ -6,7 +6,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var _ = Describe("Token issuing", func() {

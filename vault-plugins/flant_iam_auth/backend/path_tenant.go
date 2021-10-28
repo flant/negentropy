@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/uuid"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func pathTenant(b *flantIamAuthBackend) []*framework.Path {
