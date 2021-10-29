@@ -10,7 +10,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs/project"
 )
 
-func Test_tenantCRUD(t *testing.T) {
+func Test_projectCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	project.TenantAPI = lib.NewTenantAPI(rootClient)
 	project.TestAPI = lib.NewProjectAPI(rootClient)

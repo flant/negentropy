@@ -198,13 +198,14 @@ func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingSSHCo
 }
 
 func (s *Suite) getContainerByName(name string) (*types.Container, error) {
+	name = strings.ReplaceAll(name, "_", "-")
 	containers, err := s.dockerCli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	for _, c := range containers {
 		for _, n := range c.Names {
-			if n == "/"+name {
+			if strings.ReplaceAll(n, "_", "-") == "/"+name {
 				if c.State != "running" {
 					return nil, fmt.Errorf("container with name %s has state: %s", name, c.State)
 				}
