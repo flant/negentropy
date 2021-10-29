@@ -30,9 +30,7 @@ start:
 
 .PHONY: enable
 enable:
-	export VAULT_ADDR=http://0.0.0.0:8200
-	export VAULT_TOKEN=root
-	vault secrets enable -path=flant_flow flant_flow
+	export VAULT_ADDR=http://0.0.0.0:8200 && export VAULT_TOKEN=root && vault secrets enable -path=flant_flow flant_flow
 
 .PHONY: clean
 clean:

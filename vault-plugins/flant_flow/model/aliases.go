@@ -3,12 +3,15 @@ package model
 import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
 type (
-	TeamUUID   = string
-	RoleAtTeam = string
-	ClientUUID = iam_model.TenantUUID
-	UnixTime   = int64
+	TeamUUID        = string
+	RoleAtTeam      = string
+	ClientUUID      = iam_model.TenantUUID
+	UnixTime        = int64
+	ServicePackName = string
+	ProjectUUID     = string
 )
 
+// Team types
 const (
 	StandardTeam = "standard_team"
 	DevopsTeam   = "devops_team"
@@ -16,6 +19,7 @@ const (
 
 var AllowedTeamTypes = []interface{}{StandardTeam, DevopsTeam}
 
+// Roles at teams
 var (
 	MemberRole         RoleAtTeam = "member"
 	EngineerRole       RoleAtTeam = "engineer"
@@ -29,4 +33,14 @@ var (
 	StardardTeamRoles = map[RoleAtTeam]struct{}{MemberRole: {}, ManagerRole: {}}
 
 	AllowedRolesAtTeam = []interface{}{MemberRole, EngineerRole, ManagerRole, ProjectManagerRole, TeamLeadRole}
+)
+
+// ServicePack names
+var (
+	L1         ServicePackName = "L1"
+	DevOps     ServicePackName = "DevOps"
+	Mk8s       ServicePackName = "mk8s"
+	Deckhouse  ServicePackName = "Deckhouse"
+	Okmeter    ServicePackName = "Okmeter"
+	Consulting ServicePackName = "Consulting"
 )

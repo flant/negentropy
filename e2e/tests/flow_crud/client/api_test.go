@@ -12,7 +12,7 @@ import (
 
 func Test_clientCRUD(t *testing.T) {
 	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
-	client.TestAPI = lib.NewClientAPI(flowRootClient)
+	client.TestAPI = lib.NewFlowClientAPI(flowRootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Client")
 }

@@ -168,10 +168,16 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
+	projectClient, err := iam_clients.NewProjectClient()
+	if err != nil {
+		return nil, err
+	}
+
 	b.Paths = framework.PathAppend(
 		teamPaths(b, storage),
 		teammatePaths(b, storage, fixtures.TeammateUUID1, userclient),
 		clientPaths(b, storage, tenantClient),
+		projectPaths(b, storage, projectClient),
 		// tokenController.ApiPaths(),
 	)
 
