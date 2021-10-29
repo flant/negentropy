@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -9,10 +9,10 @@ import (
 
 type ProjectService struct {
 	db            *io.MemoryStoreTxn
-	projectClient iam_clients.ProjectClient
+	projectClient iam_client.Projects
 }
 
-func Projects(db *io.MemoryStoreTxn, projectClient iam_clients.ProjectClient) *ProjectService {
+func Projects(db *io.MemoryStoreTxn, projectClient iam_client.Projects) *ProjectService {
 	return &ProjectService{db: db, projectClient: projectClient}
 }
 

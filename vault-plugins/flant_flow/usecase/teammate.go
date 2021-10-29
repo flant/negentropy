@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -12,10 +12,10 @@ import (
 
 type TeammateService struct {
 	repo       *repo.TeammateRepository
-	userClient iam_clients.UserClient
+	userClient iam_client.Users
 }
 
-func Teammates(db *io.MemoryStoreTxn, userClient iam_clients.UserClient) *TeammateService {
+func Teammates(db *io.MemoryStoreTxn, userClient iam_client.Users) *TeammateService {
 	return &TeammateService{
 		repo:       repo.NewTeammateRepository(db),
 		userClient: userClient,

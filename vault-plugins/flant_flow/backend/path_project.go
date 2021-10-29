@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -19,10 +19,10 @@ import (
 type projectBackend struct {
 	logical.Backend
 	storage       *io.MemoryStore
-	projectClient iam_clients.ProjectClient
+	projectClient iam_client.Projects
 }
 
-func projectPaths(b logical.Backend, storage *io.MemoryStore, projectClient iam_clients.ProjectClient) []*framework.Path {
+func projectPaths(b logical.Backend, storage *io.MemoryStore, projectClient iam_client.Projects) []*framework.Path {
 	bb := &projectBackend{
 		Backend:       b,
 		storage:       storage,

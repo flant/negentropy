@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/fixtures"
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -158,17 +158,17 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return allErrors
 	}
 
-	userclient, err := iam_clients.NewUserClient()
+	userclient, err := iam_client.NewUserClient()
 	if err != nil {
 		return nil, err
 	}
 
-	tenantClient, err := iam_clients.NewTenantClient()
+	tenantClient, err := iam_client.NewTenantClient()
 	if err != nil {
 		return nil, err
 	}
 
-	projectClient, err := iam_clients.NewProjectClient()
+	projectClient, err := iam_client.NewProjectClient()
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	repo "github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -11,12 +11,12 @@ import (
 
 type ClientService struct {
 	repo         *repo.ClientRepository
-	tenantClient iam_clients.TenantClient
+	tenantClient iam_client.Tenants
 	// subtenants
 	childrenDeleters []DeleterByParent
 }
 
-func Clients(db *io.MemoryStoreTxn, tenantClient iam_clients.TenantClient) *ClientService {
+func Clients(db *io.MemoryStoreTxn, tenantClient iam_client.Tenants) *ClientService {
 	return &ClientService{
 		repo:             repo.NewClientRepository(db),
 		tenantClient:     tenantClient,

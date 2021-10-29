@@ -1,16 +1,16 @@
-package iam_clients
+package iam_client
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 )
 
-type ProjectClient interface {
+type Projects interface {
 	Create(client model.Project) (*model.Project, error)
 	Update(client model.Project) (*model.Project, error)
 	Delete(uuid model.ProjectUUID) (bool, error)
 }
 
-func NewProjectClient() (ProjectClient, error) {
+func NewProjectClient() (Projects, error) {
 	return &projectClient{}, nil
 }
 

@@ -1,17 +1,17 @@
-package iam_clients
+package iam_client
 
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-type UserClient interface {
+type Users interface {
 	Create(teammate model.Teammate) (*model.Teammate, error)
 	Update(teammate model.Teammate) (*model.Teammate, error)
 	Delete(uuid iam_model.UserUUID) (bool, error)
 }
 
-func NewUserClient() (UserClient, error) {
+func NewUserClient() (Users, error) {
 	return &userClient{}, nil
 }
 

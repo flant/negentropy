@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/usecase"
@@ -21,11 +21,11 @@ type teammateBackend struct {
 	logical.Backend
 	flantTenantUUID iam_model.TenantUUID
 	storage         *io.MemoryStore
-	userClient      iam_clients.UserClient
+	userClient      iam_client.Users
 }
 
 func teammatePaths(b logical.Backend, storage *io.MemoryStore,
-	flantTenantUUID iam_model.TenantUUID, userClient iam_clients.UserClient) []*framework.Path {
+	flantTenantUUID iam_model.TenantUUID, userClient iam_client.Users) []*framework.Path {
 	bb := &teammateBackend{
 		Backend:         b,
 		flantTenantUUID: flantTenantUUID,

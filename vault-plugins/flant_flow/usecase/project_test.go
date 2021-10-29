@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/fixtures"
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -20,7 +20,7 @@ func createProjects(t *testing.T, repo *ProjectService, projects ...model.Projec
 }
 
 func projectFixture(t *testing.T, store *io.MemoryStore) {
-	pc, _ := iam_clients.NewProjectClient()
+	pc, _ := iam_client.NewProjectClient()
 	tx := store.Txn(true)
 	repo := Projects(tx, pc)
 	createProjects(t, repo, fixtures.Projects()...)
@@ -30,7 +30,7 @@ func projectFixture(t *testing.T, store *io.MemoryStore) {
 
 func Test_ProjectList(t *testing.T) {
 	tx := runFixtures(t, clientFixture, projectFixture).Txn(true)
-	pc, _ := iam_clients.NewProjectClient()
+	pc, _ := iam_client.NewProjectClient()
 	projects, err := Projects(tx, pc).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)

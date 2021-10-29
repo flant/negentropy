@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_clients"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -19,10 +19,10 @@ import (
 type clientBackend struct {
 	logical.Backend
 	storage      *io.MemoryStore
-	tenantClient iam_clients.TenantClient
+	tenantClient iam_client.Tenants
 }
 
-func clientPaths(b logical.Backend, storage *io.MemoryStore, tenantClient iam_clients.TenantClient) []*framework.Path {
+func clientPaths(b logical.Backend, storage *io.MemoryStore, tenantClient iam_client.Tenants) []*framework.Path {
 	bb := &clientBackend{
 		Backend:      b,
 		storage:      storage,
@@ -170,11 +170,11 @@ func (b *clientBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		t, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
+		c, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
 		if err != nil {
 			return false, err
 		}
-		return t != nil, nil
+		return c != nil, nil
 	}
 }
 
@@ -306,7 +306,7 @@ func (b *clientBackend) handleRestore() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 		var fullRestore bool
-		rawFullRestore, ok := data.GetOk("show_archived")
+		rawFullRestore, ok := data.GetOk("full_restore")
 		if ok {
 			fullRestore = rawFullRestore.(bool)
 		}
