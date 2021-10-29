@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,28 +31,9 @@ type Result struct {
 	AuthAUTHFactory time.Duration // auth vault AUTH factory second run
 }
 
-func checkAndUpdateTokenEnv(tokenEnv string, tokenFileName string, prevTokenFileName string) {
-	var prevToken, token string
-	prevTokenBytes, err := ioutil.ReadFile(prevTokenFileName)
-	if err != nil {
-		prevToken = "NOT_SAVED"
-	} else {
-		prevToken = string(prevTokenBytes)
-	}
-	if token = os.Getenv(tokenEnv); token == "" || prevToken == token {
-		data, err := ioutil.ReadFile(tokenFileName)
-		if err != nil {
-			panic(fmt.Errorf("reading token from file %s :%w", tokenFileName, err))
-		}
-		token = string(data)
-	}
-	_ = ioutil.WriteFile(prevTokenFileName, []byte(token), 0o666)
-	_ = os.Setenv(tokenEnv, token)
-}
-
 func main() {
-	checkAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
-	checkAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
+	lib.CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
+	lib.CheckAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
 
 	// to use e2e test libs
 	RegisterFailHandler(Fail)

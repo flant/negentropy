@@ -20,6 +20,7 @@ go mod edit -require github.com/flant/negentropy/vault-plugins/shared@v0.0.1 -re
 go mod edit -require github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0=../../../../vault-plugins/flant_gitops
 go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_iam@v0.0.0=../../../../vault-plugins/flant_iam
 go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0=../../../../vault-plugins/flant_iam_auth
+go mod edit -require github.com/flant/negentropy/vault-plugins/flant_flow@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_flow@v0.0.0=./negentropy/vault-plugins/flant_flow
 patch -p1 < ../001_bucket_count.patch
 patch -p1 < ../002_add_flant_plugins.patch
 patch -p1 < ../003_add_loading_info_to_cfg.patch

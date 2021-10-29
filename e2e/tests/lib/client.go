@@ -2,6 +2,8 @@ package lib
 
 import (
 	"crypto/tls"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -35,18 +37,19 @@ func (t *customHeadersTransport) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 const (
-	defaultBaseURL    = "http://127.0.0.1:8200"
 	IamPluginPath     = "flant_iam"
 	IamAuthPluginPath = "auth/flant_iam_auth"
+	FlowPluginPath    = "flant_flow"
 )
 
 func NewIamVaultClient(token string) *http.Client {
-	return NewVaultClient(GetRootVaultUrl(), token, IamPluginPath)
+	return NewVaultClient(GetRootVaultUrl()+"/v1/", token, IamPluginPath)
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
+	CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
 	token := GetRootRootToken()
-	return NewVaultClient(GetRootVaultUrl()+"/v1/", token, IamPluginPath)
+	return NewIamVaultClient(token)
 }
 
 func NewIamAuthVaultClient(token string) *http.Client {
@@ -54,8 +57,19 @@ func NewIamAuthVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredIamAuthVaultClient() *http.Client {
+	CheckAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
 	token := GetAuthRootToken()
 	return NewIamAuthVaultClient(token)
+}
+
+func NewFlowRootVaultClient(token string) *http.Client {
+	return NewVaultClient(GetRootVaultUrl()+"/v1/", token, FlowPluginPath)
+}
+
+func NewConfiguredFlowRootVaultClient() *http.Client {
+	CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
+	token := GetRootRootToken()
+	return NewFlowRootVaultClient(token)
 }
 
 func NewVaultClient(baseURL string, token string, pluginPath string) *http.Client {
@@ -125,4 +139,23 @@ func GetAuthVaultUrl() string {
 		panic("AUTH_VAULT_URL is empty, need valid URL to access vault")
 	}
 	return u
+}
+
+func CheckAndUpdateTokenEnv(tokenEnv string, tokenFileName string, prevTokenFileName string) {
+	var prevToken, token string
+	prevTokenBytes, err := ioutil.ReadFile(prevTokenFileName)
+	if err != nil {
+		prevToken = "NOT_SAVED"
+	} else {
+		prevToken = string(prevTokenBytes)
+	}
+	if token = os.Getenv(tokenEnv); token == "" || prevToken == token {
+		data, err := ioutil.ReadFile(tokenFileName)
+		if err != nil {
+			panic(fmt.Errorf("reading token from file %s :%w", tokenFileName, err))
+		}
+		token = string(data)
+	}
+	_ = ioutil.WriteFile(prevTokenFileName, []byte(token), 0o666)
+	_ = os.Setenv(tokenEnv, token)
 }

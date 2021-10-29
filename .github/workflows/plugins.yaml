@@ -16,7 +16,7 @@ jobs:
       max-parallel: 6
       fail-fast: false
       matrix:
-        plugin: ["shared", "flant_iam", "flant_iam_auth", "flant_gitops"]
+        plugin: [ "shared", "flant_iam", "flant_iam_auth", "flant_gitops", "flant_flow" ]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
