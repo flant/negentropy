@@ -16,49 +16,64 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-type clientBackend struct {
+type projectBackend struct {
 	logical.Backend
-	storage      *io.MemoryStore
-	tenantClient iam_client.Tenants
+	storage       *io.MemoryStore
+	projectClient iam_client.Projects
 }
 
-func clientPaths(b logical.Backend, storage *io.MemoryStore, tenantClient iam_client.Tenants) []*framework.Path {
-	bb := &clientBackend{
-		Backend:      b,
-		storage:      storage,
-		tenantClient: tenantClient,
+func projectPaths(b logical.Backend, storage *io.MemoryStore, projectClient iam_client.Projects) []*framework.Path {
+	bb := &projectBackend{
+		Backend:       b,
+		storage:       storage,
+		projectClient: projectClient,
 	}
 	return bb.paths()
 }
 
-func (b clientBackend) paths() []*framework.Path {
+func (b projectBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "client",
+			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project",
 			Fields: map[string]*framework.FieldSchema{
+				"client_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a client",
+					Required:    true,
+				},
 				"identifier": {
 					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
+					Description: "Identifier for project",
+					Required:    true,
+				},
+				"service_packs": {
+					Type:        framework.TypeKVPairs,
+					Description: "Service packs",
 					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create client.",
+					Summary:  "Create project.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create client.",
+					Summary:  "Create project.",
 				},
 			},
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "client/privileged",
+			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a project",
+					Required:    true,
+				},
+				"client_uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -68,47 +83,57 @@ func (b clientBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"service_packs": {
+					Type:        framework.TypeKVPairs,
+					Description: "Service packs",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create client with preexistent ID.",
+					Summary:  "Create project with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create client with preexistent ID.",
+					Summary:  "Create project with preexistent ID.",
 				},
 			},
 		},
 		// List
 		{
-			Pattern: "client/?",
+			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/?",
 			Fields: map[string]*framework.FieldSchema{
+				"client_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a client",
+					Required:    true,
+				},
 				"show_archived": {
 					Type:        framework.TypeBool,
-					Description: "Option to list archived clients",
+					Description: "Option to list archived projects",
 					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all client IDs.",
+					Summary:  "Lists all projects IDs.",
 				},
 			},
 		},
 		// Read, update, delete by uuid
 		{
-			Pattern: "client/" + uuid.Pattern("uuid") + "$",
+			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a client",
+					Description: "ID of a project",
 					Required:    true,
 				},
-				"identifier": {
+				"client_uuid": {
 					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
+					Description: "ID of a client",
 					Required:    true,
 				},
 				"resource_version": {
@@ -116,53 +141,64 @@ func (b clientBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
+				"identifier": {
+					Type:        framework.TypeNameString,
+					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"service_packs": {
+					Type:        framework.TypeKVPairs,
+					Description: "Service packs",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the client by ID.",
+					Summary:  "Update the project by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the client by ID.",
+					Summary:  "Retrieve the project by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the client by ID.",
+					Summary:  "Deletes the project by ID.",
 				},
 			},
 		},
 		// Restore
 		{
-			Pattern: "client/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/" + uuid.Pattern("uuid") + "/restore" + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a client",
+					Description: "ID of a user",
 					Required:    true,
 				},
-				"full_restore": {
-					Type:        framework.TypeBool,
-					Description: "Option to restore full client data",
-					Required:    false,
+				"client_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a client",
+					Required:    true,
 				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRestore(),
-					Summary:  "Restore the client by ID.",
+					Summary:  "Restore the project by ID.",
 				},
 			},
 		},
 	}
 }
 
-func (b *clientBackend) handleExistence() framework.ExistenceFunc {
+func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking client existence", "path", req.Path, "id", id, "op", req.Operation)
+		clientID := data.Get("client_uuid").(string)
+		b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
@@ -170,58 +206,93 @@ func (b *clientBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		c, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
+		obj, err := usecase.Projects(tx, b.projectClient).GetByID(id)
 		if err != nil {
 			return false, err
 		}
-		return c != nil, nil
+		exists := obj != nil && obj.TenantUUID == clientID
+		return exists, nil
 	}
 }
 
-func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
+func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("create client", "path", req.Path)
+		b.Logger().Debug("create project", "path", req.Path)
+
 		id := getCreationID(expectID, data)
-		client := &model.Client{
-			Tenant: iam_model.Tenant{
+
+		servicePacks, err := b.getServicePacks(data)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
+		project := &model.Project{
+			Project: iam_model.Project{
 				UUID:       id,
+				TenantUUID: data.Get("client_uuid").(string),
 				Identifier: data.Get("identifier").(string),
 			},
+			ServicePacks: servicePacks,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Clients(tx, b.tenantClient).Create(client); err != nil {
-			msg := "cannot create client"
-			b.Logger().Debug(msg, "err", err.Error())
+		if err := usecase.Projects(tx, b.projectClient).Create(project); err != nil {
+			msg := "cannot create project"
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
+
 		if err := commit(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"client": client}}
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
-func (b *clientBackend) handleUpdate() framework.OperationFunc {
+func (b *projectBackend) getServicePacks(data *framework.FieldData) (map[model.ServicePackName]string, error) {
+	servicePacksRaw := data.Get("service_packs")
+
+	fmt.Printf("servicepacks: %#v ", servicePacksRaw) // TODO REMOVE
+
+	servicePacks, ok := servicePacksRaw.(map[model.ServicePackName]string)
+	if !ok {
+		err := fmt.Errorf("marshalling params: wrong type of param service_packs, cant cast to map[model.ServicePackName]string, passed value:%#v",
+			servicePacksRaw)
+		b.Logger().Error(err.Error())
+		return nil, err
+	}
+	return servicePacks, nil
+}
+
+func (b *projectBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update client", "path", req.Path)
+		b.Logger().Debug("update project", "path", req.Path)
+
+		servicePacks, err := b.getServicePacks(data)
+		if err != nil {
+			return responseErr(req, err)
+		}
+
 		id := data.Get("uuid").(string)
+
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		client := &model.Client{
-			Tenant: iam_model.Tenant{
+		project := &model.Project{
+			Project: iam_model.Project{
 				UUID:       id,
-				Identifier: data.Get("identifier").(string),
+				TenantUUID: data.Get("client_uuid").(string),
 				Version:    data.Get("resource_version").(string),
+				Identifier: data.Get("identifier").(string),
 			},
+			ServicePacks: servicePacks,
 		}
 
-		err := usecase.Clients(tx, b.tenantClient).Update(client)
+		err = usecase.Projects(tx, b.projectClient).Update(project)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -229,20 +300,21 @@ func (b *clientBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"client": client}}
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *clientBackend) handleDelete() framework.OperationFunc {
+func (b *projectBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete client", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+		b.Logger().Debug("delete project", "path", req.Path)
 
 		id := data.Get("uuid").(string)
 
-		err := usecase.Clients(tx, b.tenantClient).Delete(id)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		err := usecase.Projects(tx, b.projectClient).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -254,64 +326,59 @@ func (b *clientBackend) handleDelete() framework.OperationFunc {
 	}
 }
 
-func (b *clientBackend) handleRead() framework.OperationFunc {
+func (b *projectBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read client", "path", req.Path)
+		b.Logger().Debug("read project", "path", req.Path)
+
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(false)
 
-		client, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
+		project, err := usecase.Projects(tx, b.projectClient).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{
-			"client":       client,
-			"full_restore": false, // TODO check if full restore available
-		}}
+		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *clientBackend) handleList() framework.OperationFunc {
+func (b *projectBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("listing clients", "path", req.Path)
+		b.Logger().Debug("list projects", "path", req.Path)
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
+		clientID := data.Get("client_uuid").(string)
 
 		tx := b.storage.Txn(false)
-		clients, err := usecase.Clients(tx, b.tenantClient).List(showArchived)
+
+		projects, err := usecase.Projects(tx, b.projectClient).List(clientID, showArchived)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"clients": clients,
+				"projects": projects,
 			},
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *clientBackend) handleRestore() framework.OperationFunc {
+func (b *projectBackend) handleRestore() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore client", "path", req.Path)
+		b.Logger().Debug("restore project", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		id := data.Get("uuid").(string)
-		var fullRestore bool
-		rawFullRestore, ok := data.GetOk("full_restore")
-		if ok {
-			fullRestore = rawFullRestore.(bool)
-		}
 
-		client, err := usecase.Clients(tx, b.tenantClient).Restore(id, fullRestore)
+		project, err := usecase.Projects(tx, b.projectClient).Restore(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -321,7 +388,7 @@ func (b *clientBackend) handleRestore() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"client": client,
+			"project": project,
 		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}

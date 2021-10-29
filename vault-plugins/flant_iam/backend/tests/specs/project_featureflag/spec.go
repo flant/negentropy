@@ -24,7 +24,7 @@ var _ = Describe("Project feature flags", func() {
 	BeforeSuite(func() {
 		res := TenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
 		tenantID = res.Get("tenant.uuid").String()
-		res = ProjectAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomprojectCreatePayload())
+		res = ProjectAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomProjectCreatePayload())
 		projectID = res.Get("project.uuid").String()
 		res = FeatureFlagAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomFeatureFlagCreatePayload())
 		ffName = res.Get("feature_flag.name").String()

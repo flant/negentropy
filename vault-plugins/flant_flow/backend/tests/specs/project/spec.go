@@ -8,28 +8,28 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/backend/tests/api"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
 	TestAPI   api.TestAPI
-	TenantAPI api.TestAPI
+	ClientAPI api.TestAPI
 )
 
 var _ = Describe("Project", func() {
-	var tenant model.Tenant
+	var client model.Client
 
 	BeforeSuite(func() {
-		tenant = specs.CreateRandomTenant(TenantAPI)
+		client = specs.CreateRandomClient(ClientAPI)
 	}, 1.0)
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
-		createPayload["tenant_uuid"] = tenant.UUID
+		createPayload["tenant_uuid"] = client.UUID
 
 		params := api.Params{
 			"expectStatus": api.ExpectExactStatus(http.StatusCreated),
@@ -45,17 +45,17 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(projectData.Get("resource_version").String()).ToNot(HaveLen(10))
 			},
-			"tenant": tenant.UUID,
+			"client": client.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
 	It("can be read", func() {
-		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+		project := specs.CreateRandomProject(TestAPI, client.UUID)
 		createdData := specs.ConvertToGJSON(project)
 
 		TestAPI.Read(api.Params{
-			"tenant":       project.TenantUUID,
+			"client":       project.TenantUUID,
 			"project":      project.UUID,
 			"expectStatus": api.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
@@ -65,16 +65,16 @@ var _ = Describe("Project", func() {
 	})
 
 	It("can be deleted", func() {
-		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
 		TestAPI.Delete(api.Params{
 			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
-			"tenant":       project.TenantUUID,
+			"client":       project.TenantUUID,
 			"project":      project.UUID,
 		}, nil)
 
 		deletedData := TestAPI.Read(api.Params{
-			"tenant":       project.TenantUUID,
+			"client":       project.TenantUUID,
 			"project":      project.UUID,
 			"expectStatus": api.ExpectExactStatus(http.StatusOK),
 		}, nil)
@@ -82,10 +82,10 @@ var _ = Describe("Project", func() {
 	})
 
 	It("can be listed", func() {
-		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
 		TestAPI.List(api.Params{
-			"tenant":       project.TenantUUID,
+			"client":       project.TenantUUID,
 			"expectStatus": api.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
@@ -96,7 +96,7 @@ var _ = Describe("Project", func() {
 
 	It("can be created with priveleged", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
-		createPayload["tenant_uuid"] = tenant.UUID
+		createPayload["tenant_uuid"] = client.UUID
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
@@ -107,7 +107,7 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Map()).To(HaveKey("uuid"))
 				Expect(projectData.Map()["uuid"].String()).To(Equal(originalUUID))
 			},
-			"tenant": tenant.UUID,
+			"client": client.UUID,
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})

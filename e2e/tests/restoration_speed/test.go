@@ -270,13 +270,14 @@ func readUnsealKeys(file string) []string {
 }
 
 func getContainerByName(dockerCli *client.Client, name string) (*types.Container, error) {
+	name = strings.ReplaceAll(name, "_", "-")
 	containers, err := dockerCli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	for _, c := range containers {
 		for _, n := range c.Names {
-			if n == "/"+name {
+			if strings.ReplaceAll(n, "_", "-") == "/"+name {
 				if c.State != "running" {
 					return nil, fmt.Errorf("container with name %s has state: %s", name, c.State)
 				}

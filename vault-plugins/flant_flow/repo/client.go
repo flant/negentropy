@@ -9,6 +9,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
+const ClientForeignPK = "tenant_uuid"
+
 func ClientSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{

@@ -1,4 +1,4 @@
-package flow
+package auth_flow
 
 import (
 	. "github.com/onsi/ginkgo"

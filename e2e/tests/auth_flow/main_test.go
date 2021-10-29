@@ -1,4 +1,4 @@
-package flow
+package auth_flow
 
 import (
 	"encoding/json"

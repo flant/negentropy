@@ -2,6 +2,7 @@ package specs
 
 import (
 	"encoding/json"
+	"net/url"
 
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
@@ -50,6 +51,22 @@ func ConvertToGJSON(object interface{}) gjson.Result {
 	return gjson.Parse(string(bytes))
 }
 
+func CreateRandomClient(clientsAPI api.TestAPI) model.Client {
+	createPayload := fixtures.RandomClientCreatePayload()
+	var createdData gjson.Result
+	clientsAPI.Create(api.Params{
+		"expectPayload": func(json gjson.Result) {
+			createdData = json
+		},
+	}, nil, createPayload)
+	rawClient := createdData.Get("client")
+	data := []byte(rawClient.String())
+	var client model.Client
+	err := json.Unmarshal(data, &client)
+	Expect(err).ToNot(HaveOccurred())
+	return client
+}
+
 func CreateRandomTeam(teamAPI api.TestAPI) model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	var createdData gjson.Result
@@ -78,6 +95,21 @@ func CreateRandomTeammate(teamateAPI api.TestAPI, teamtID model.TeamUUID) model.
 	err := json.Unmarshal(data, &teammate)
 	Expect(err).ToNot(HaveOccurred())
 	return teammate
+}
+
+func CreateRandomProject(projectAPI api.TestAPI, clientID model.ClientUUID) model.Project {
+	createPayload := fixtures.RandomProjectCreatePayload()
+	createPayload["tenant_uuid"] = clientID
+	params := api.Params{
+		"client": clientID,
+	}
+	createData := projectAPI.Create(params, url.Values{}, createPayload)
+	rawProject := createData.Get("project")
+	data := []byte(rawProject.String())
+	var project model.Project
+	err := json.Unmarshal(data, &project)
+	Expect(err).ToNot(HaveOccurred())
+	return project
 }
 
 //
@@ -155,20 +187,7 @@ func CreateRandomTeammate(teamateAPI api.TestAPI, teamtID model.TeamUUID) model.
 //	}
 // }
 //
-// func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
-//	createPayload := fixtures.RandomGroupCreatePayload()
-//	createPayload["tenant_uuid"] = tenantID
-//	params := api.Params{
-//		"tenant": tenantID,
-//	}
-//	createData := projectAPI.Create(params, url.Values{}, createPayload)
-//	rawProject := createData.Get("project")
-//	data := []byte(rawProject.String())
-//	var project model.Project
-//	err := json.Unmarshal(data, &project)
-//	Expect(err).ToNot(HaveOccurred())
-//	return project
-//}
+
 //
 // func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.RoleBinding {
 //	params := api.Params{

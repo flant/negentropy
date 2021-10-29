@@ -12,8 +12,8 @@ import (
 
 func Test_teammateCRUD(t *testing.T) {
 	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
-	teammate.TeamAPI = lib.NewTeamAPI(flowRootClient)
-	teammate.TestAPI = lib.NewTeammateAPI(flowRootClient)
+	teammate.TeamAPI = lib.NewFlowTeamAPI(flowRootClient)
+	teammate.TestAPI = lib.NewFlowTeammateAPI(flowRootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Teammate")
 }
