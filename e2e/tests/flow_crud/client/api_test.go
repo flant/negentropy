@@ -14,5 +14,5 @@ func Test_clientCRUD(t *testing.T) {
 	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
 	client.TestAPI = lib.NewFlowClientAPI(flowRootClient)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Client")
+	RunSpecs(t, "CRUD flant_flow: Client")
 }

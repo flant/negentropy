@@ -178,6 +178,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		teammatePaths(b, storage, fixtures.TeammateUUID1, userclient),
 		clientPaths(b, storage, tenantClient),
 		projectPaths(b, storage, projectClient),
+		contactPaths(b, storage, userclient),
 		// tokenController.ApiPaths(),
 	)
 

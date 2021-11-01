@@ -143,6 +143,10 @@ func NewProjectAPI(b *logical.Backend) TestAPI {
 	return &BackendBasedAPI{backend: b, url: &url2.ProjectEndpointBuilder{}}
 }
 
+func NewContactAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ContactEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

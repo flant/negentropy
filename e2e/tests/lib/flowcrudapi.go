@@ -13,6 +13,7 @@ var (
 	_ URLBuilder = (*url2.TeammateEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.ClientEndpointBuilder)(nil)
 	_ URLBuilder = (*url2.ProjectEndpointBuilder)(nil)
+	_ URLBuilder = (*url2.ContactEndpointBuilder)(nil)
 )
 
 func NewFlowTeamAPI(client *http.Client) TestAPI {
@@ -27,6 +28,10 @@ func NewFlowClientAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.ClientEndpointBuilder{}}
 }
 
-func NewFlowProjectClientAPI(client *http.Client) TestAPI {
+func NewFlowProjectAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.ProjectEndpointBuilder{}}
+}
+
+func NewFlowContactAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ContactEndpointBuilder{}}
 }

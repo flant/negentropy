@@ -3,7 +3,7 @@
   "info": {
     "title": "HashiCorp Vault API",
     "description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
-    "version": "1.7.1",
+    "version": "1.9.0",
     "license": {
       "name": "Mozilla Public License 2.0",
       "url": "https://www.mozilla.org/en-US/MPL/2.0"
@@ -726,13 +726,515 @@
                   }
                 },
                 "required": [
+                  "uuid",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/contact": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all contacts IDs.",
+        "operationId": "getFlant_flowClientClient_uuidContact",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/contact/privileged": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create contact with preexistent ID.",
+        "operationId": "postFlant_flowClientClient_uuidContactPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "description": "credentials per projectUUID, allowed values: \"contact\", \"authorized_contact\", \"representative\", \"plenipotentiary\"",
+                    "format": "kvpairs"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a contact",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid",
+                  "mobile_phone",
+                  "credentials",
+                  "additional_emails",
+                  "additional_phones",
+                  "first_name",
+                  "last_name",
                   "identifier",
+                  "display_name",
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/contact/{uuid}": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a contact",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the contact by ID",
+        "operationId": "getFlant_flowClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the contact by ID",
+        "operationId": "postFlant_flowClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "description": "credentials per projectUUID, allowed values: \"contact\", \"authorized_contact\", \"representative\", \"plenipotentiary\"",
+                    "format": "kvpairs"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "display_name",
+                  "credentials",
+                  "first_name",
+                  "last_name",
+                  "identifier",
+                  "email",
+                  "mobile_phone",
+                  "additional_emails",
+                  "additional_phones",
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the contact by ID",
+        "operationId": "deleteFlant_flowClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/contact/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a contact",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the contact by ID.",
+        "operationId": "postFlant_flowClientClient_uuidContactUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/project": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all projects IDs.",
+        "operationId": "getFlant_flowClientClient_uuidProject",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/project/privileged": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create project with preexistent ID.",
+        "operationId": "postFlant_flowClientClient_uuidProjectPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "service_packs": {
+                    "type": "object",
+                    "description": "Service packs",
+                    "format": "kvpairs"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a project",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "service_packs",
                   "uuid"
                 ]
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/project/{uuid}": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the project by ID.",
+        "operationId": "getFlant_flowClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the project by ID.",
+        "operationId": "postFlant_flowClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  },
+                  "service_packs": {
+                    "type": "object",
+                    "description": "Service packs",
+                    "format": "kvpairs"
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier",
+                  "service_packs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the project by ID.",
+        "operationId": "deleteFlant_flowClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_flow/client/{client_uuid}/project/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the project by ID.",
+        "operationId": "postFlant_flowClientClient_uuidProjectUuidRestore",
+        "tags": [
+          "secrets"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1032,16 +1534,16 @@
                   }
                 },
                 "required": [
-                  "mobile_phone",
-                  "first_name",
-                  "email",
-                  "uuid",
-                  "display_name",
-                  "additional_phones",
-                  "last_name",
-                  "identifier",
                   "additional_emails",
-                  "role_at_team"
+                  "additional_phones",
+                  "uuid",
+                  "email",
+                  "role_at_team",
+                  "identifier",
+                  "display_name",
+                  "mobile_phone",
+                  "last_name",
+                  "first_name"
                 ]
               }
             }
@@ -1157,16 +1659,16 @@
                   }
                 },
                 "required": [
-                  "additional_emails",
-                  "mobile_phone",
-                  "resource_version",
-                  "display_name",
-                  "first_name",
                   "last_name",
+                  "additional_emails",
                   "additional_phones",
-                  "identifier",
+                  "display_name",
                   "email",
-                  "role_at_team"
+                  "first_name",
+                  "mobile_phone",
+                  "role_at_team",
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -2535,6 +3037,103 @@
         }
       }
     },
+    "/identity/oidc/assignment": {
+      "description": "List OIDC assignments",
+      "get": {
+        "operationId": "getIdentityOidcAssignment",
+        "tags": [
+          "identity"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/identity/oidc/assignment/{name}": {
+      "description": "CRUD operations for OIDC assignments.",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the assignment",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "operationId": "getIdentityOidcAssignmentName",
+        "tags": [
+          "identity"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "operationId": "postIdentityOidcAssignmentName",
+        "tags": [
+          "identity"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entities": {
+                    "type": "array",
+                    "description": "Comma separated string or array of identity entity names",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "groups": {
+                    "type": "array",
+                    "description": "Comma separated string or array of identity group names",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteIdentityOidcAssignmentName",
+        "tags": [
+          "identity"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/identity/oidc/config": {
       "description": "OIDC configuration",
       "get": {
@@ -2859,6 +3458,97 @@
       "delete": {
         "summary": "CRUD operations on OIDC Roles",
         "operationId": "deleteIdentityOidcRoleName",
+        "tags": [
+          "identity"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/identity/oidc/scope": {
+      "description": "List OIDC scopes",
+      "get": {
+        "operationId": "getIdentityOidcScope",
+        "tags": [
+          "identity"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/identity/oidc/scope/{name}": {
+      "description": "CRUD operations for OIDC scopes.",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the scope",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "operationId": "getIdentityOidcScopeName",
+        "tags": [
+          "identity"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "operationId": "postIdentityOidcScopeName",
+        "tags": [
+          "identity"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "The description of the scope"
+                  },
+                  "template": {
+                    "type": "string",
+                    "description": "The template string to use for the scope. This may be in string-ified JSON or base64 format."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteIdentityOidcScopeName",
         "tags": [
           "identity"
         ],
@@ -4010,6 +4700,30 @@
         }
       }
     },
+    "/sys/config/reload/{subsystem}": {
+      "parameters": [
+        {
+          "name": "subsystem",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Reload the given subsystem",
+        "operationId": "postSysConfigReloadSubsystem",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/sys/config/state/sanitized": {
       "get": {
         "summary": "Return a sanitized version of the Vault server configuration.",
@@ -4480,7 +5194,7 @@
       "description": "Count of active entities in this Vault cluster."
     },
     "/sys/internal/counters/requests": {
-      "description": "Count of requests seen by this Vault cluster over time."
+      "description": "Currently unsupported. Previously, count of requests seen by this Vault cluster over time."
     },
     "/sys/internal/counters/tokens": {
       "description": "Count of active tokens in this Vault cluster."
@@ -4586,6 +5300,37 @@
       "get": {
         "summary": "Returns the high availability status and current leader instance of Vault.",
         "operationId": "getSysLeader",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/leases": {
+      "description": "List leases associated with this Vault cluster",
+      "x-vault-sudo": true,
+      "get": {
+        "summary": "List leases associated with this Vault cluster",
+        "operationId": "getSysLeases",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sys/leases/count": {
+      "description": "Count of leases associated with this Vault cluster",
+      "get": {
+        "summary": "Count of leases associated with this Vault cluster",
+        "operationId": "getSysLeasesCount",
         "tags": [
           "system"
         ],
@@ -6778,8 +7523,8 @@
                     "format": "seconds"
                   },
                   "max_operations": {
-                    "type": "integer",
-                    "description": "The number of encryption operations performed before the barrier key is automatically rotated."
+                    "description": "The number of encryption operations performed before the barrier key is automatically rotated.",
+                    "format": "unknown"
                   }
                 }
               }

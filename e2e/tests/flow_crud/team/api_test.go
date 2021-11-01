@@ -14,5 +14,5 @@ func Test_teamCRUD(t *testing.T) {
 	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
 	team.TestAPI = lib.NewFlowTeamAPI(flowRootClient)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Team")
+	RunSpecs(t, "CRUD flant_flow: Team")
 }
