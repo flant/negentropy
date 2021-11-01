@@ -35,9 +35,9 @@ func (b projectBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/project",
 			Fields: map[string]*framework.FieldSchema{
-				"client_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -66,14 +66,14 @@ func (b projectBackend) paths() []*framework.Path {
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/privileged",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/project/privileged",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a project",
 					Required:    true,
 				},
-				"client_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -102,9 +102,9 @@ func (b projectBackend) paths() []*framework.Path {
 		},
 		// List
 		{
-			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/?",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/project/?",
 			Fields: map[string]*framework.FieldSchema{
-				"client_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -124,14 +124,14 @@ func (b projectBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by uuid
 		{
-			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/" + uuid.Pattern("uuid") + "$",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/project/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a project",
 					Required:    true,
 				},
-				"client_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -170,14 +170,14 @@ func (b projectBackend) paths() []*framework.Path {
 		},
 		// Restore
 		{
-			Pattern: "client/" + uuid.Pattern("client_uuid") + "/project/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/project/" + uuid.Pattern("uuid") + "/restore" + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a user",
 					Required:    true,
 				},
-				"client_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
 					Description: "ID of a client",
 					Required:    true,
@@ -197,7 +197,7 @@ func (b projectBackend) paths() []*framework.Path {
 func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		clientID := data.Get("client_uuid").(string)
+		clientID := data.Get(clientUUIDKey).(string)
 		b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
@@ -229,7 +229,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		project := &model.Project{
 			Project: iam_model.Project{
 				UUID:       id,
-				TenantUUID: data.Get("client_uuid").(string),
+				TenantUUID: data.Get(clientUUIDKey).(string),
 				Identifier: data.Get("identifier").(string),
 			},
 			ServicePacks: servicePacks,
@@ -285,7 +285,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 		project := &model.Project{
 			Project: iam_model.Project{
 				UUID:       id,
-				TenantUUID: data.Get("client_uuid").(string),
+				TenantUUID: data.Get(clientUUIDKey).(string),
 				Version:    data.Get("resource_version").(string),
 				Identifier: data.Get("identifier").(string),
 			},
@@ -352,7 +352,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
-		clientID := data.Get("client_uuid").(string)
+		clientID := data.Get(clientUUIDKey).(string)
 
 		tx := b.storage.Txn(false)
 

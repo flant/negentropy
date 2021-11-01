@@ -9,9 +9,6 @@ type Teammate struct {
 
 	TeamUUID   TeamUUID   `json:"team_uuid"`
 	RoleAtTeam RoleAtTeam `json:"role_at_team"`
-
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
 }
 
 func (u *Teammate) IsDeleted() bool {

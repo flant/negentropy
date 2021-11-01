@@ -20,6 +20,7 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		TeamSchema(),
 		TeammateSchema(),
 		ProjectSchema(),
+		ContactSchema(),
 	}
 
 	schema := &memdb.DBSchema{

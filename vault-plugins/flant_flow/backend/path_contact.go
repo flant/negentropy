@@ -4,42 +4,39 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
-	"github.com/flant/negentropy/vault-plugins/flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-type teammateBackend struct {
+type contactBackend struct {
 	logical.Backend
-	flantTenantUUID iam_model.TenantUUID
-	storage         *io.MemoryStore
-	userClient      iam_client.Users
+	storage    *io.MemoryStore
+	userClient iam_client.Users
 }
 
-func teammatePaths(b logical.Backend, storage *io.MemoryStore,
-	flantTenantUUID iam_model.TenantUUID, userClient iam_client.Users) []*framework.Path {
-	bb := &teammateBackend{
-		Backend:         b,
-		flantTenantUUID: flantTenantUUID,
-		storage:         storage,
-		userClient:      userClient,
+func contactPaths(b logical.Backend, storage *io.MemoryStore, userClient iam_client.Users) []*framework.Path {
+	bb := &contactBackend{
+		Backend:    b,
+		storage:    storage,
+		userClient: userClient,
 	}
 	return bb.paths()
 }
 
-func teammateBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+func baseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
 	fs := map[string]*framework.FieldSchema{
-		"team_uuid": {
+		clientUUIDKey: {
 			Type:        framework.TypeNameString,
-			Description: "ID of a team",
+			Description: "ID of a client",
 			Required:    true,
 		},
 		"identifier": {
@@ -82,11 +79,11 @@ func teammateBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) m
 			Description: "additional_phones",
 			Required:    true,
 		},
-		"role_at_team": {
-			Type:          framework.TypeString,
-			Description:   "role at team",
-			Required:      true,
-			AllowedValues: model.AllowedRolesAtTeam,
+		"credentials": {
+			Type: framework.TypeKVPairs,
+			Description: "credentials per projectUUID, allowed values: " +
+				strings.TrimSuffix(fmt.Sprintf("%#v", model.AllowedContactRoles)[9:], "}"),
+			Required: true,
 		},
 	}
 	for fieldName, fieldSchema := range extraFields {
@@ -98,73 +95,74 @@ func teammateBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) m
 	return fs
 }
 
-func (b teammateBackend) paths() []*framework.Path {
+func (b contactBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
-			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate",
-			Fields:  teammateBaseAndExtraFields(nil),
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/contact",
+			Fields:  baseAndExtraFields(nil),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create teammate.",
+					Summary:  "Create contact.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
-					Summary:  "Create teammate.",
+					Summary:  "Create contact.",
 				},
 			},
 		},
 		// Creation with known uuid in advance
 		{
-			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/privileged",
-			Fields: teammateBaseAndExtraFields(map[string]*framework.FieldSchema{
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/contact/privileged",
+			Fields: baseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a teammate",
+					Description: "ID of a contact",
 					Required:    true,
 				},
 			}),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create teammate with preexistent ID.",
+					Summary:  "Create contact with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
-					Summary:  "Create teammate with preexistent ID.",
+					Summary:  "Create contact with preexistent ID.",
 				},
 			},
 		},
 		// List
 		{
-			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/?",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/contact/?",
 			Fields: map[string]*framework.FieldSchema{
-				"team_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
-					Description: "ID of a team",
+					Description: "ID of a client",
 					Required:    true,
 				},
 				"show_archived": {
 					Type:        framework.TypeBool,
-					Description: "Option to list archived teammates",
+					Description: "Option to list archived contacts",
 					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleList(),
-					Summary:  "Lists all teammates IDs.",
+					Summary:  "Lists all contacts IDs.",
 				},
 			},
 		},
 		// Read, update, delete by uuid
 		{
-			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/" + uuid.Pattern("uuid") + "$",
-			Fields: teammateBaseAndExtraFields(map[string]*framework.FieldSchema{
+
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/contact/" + uuid.Pattern("uuid") + "$",
+			Fields: baseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a teammate",
+					Description: "ID of a contact",
 					Required:    true,
 				},
 				"resource_version": {
@@ -177,30 +175,30 @@ func (b teammateBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleUpdate(),
-					Summary:  "Update the teammate by ID",
+					Summary:  "Update the contact by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead(),
-					Summary:  "Retrieve the teammate by ID",
+					Summary:  "Retrieve the contact by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
-					Summary:  "Deletes the teammate by ID",
+					Summary:  "Deletes the contact by ID",
 				},
 			},
 		},
 		// Restore
 		{
-			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/" + uuid.Pattern("uuid") + "/restore" + "$",
+			Pattern: "client/" + uuid.Pattern(clientUUIDKey) + "/contact/" + uuid.Pattern("uuid") + "/restore" + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a teammate",
+					Description: "ID of a contact",
 					Required:    true,
 				},
-				"team_uuid": {
+				clientUUIDKey: {
 					Type:        framework.TypeNameString,
-					Description: "ID of a team",
+					Description: "ID of a client",
 					Required:    true,
 				},
 			},
@@ -208,18 +206,23 @@ func (b teammateBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRestore(),
-					Summary:  "Restore the teammate by ID.",
+					Summary:  "Restore the contact by ID.",
 				},
 			},
 		},
 	}
 }
 
-func (b *teammateBackend) handleExistence() framework.ExistenceFunc {
+// neverExisting  is a useful existence check handler to always trigger create operation
+func neverExisting(context.Context, *logical.Request, *framework.FieldData) (bool, error) {
+	return false, nil
+}
+
+func (b *contactBackend) handleExistence() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		id := data.Get("uuid").(string)
-		teamID := data.Get(repo.TeamForeignPK).(string)
-		b.Logger().Debug("checking teammate existence", "path", req.Path, "id", id, "op", req.Operation)
+		clientID := data.Get(clientUUIDKey).(string)
+		b.Logger().Debug("checking contact existence", "path", req.Path, "id", id, "op", req.Operation)
 
 		if !uuid.IsValid(id) {
 			return false, fmt.Errorf("id must be valid UUIDv4")
@@ -227,24 +230,24 @@ func (b *teammateBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Teammates(tx, b.userClient).GetByID(id)
+		obj, err := usecase.Contacts(tx, clientID, b.userClient).GetByID(id)
 		if err != nil {
 			return false, err
 		}
-		exists := obj != nil && obj.TeamUUID == teamID
+		exists := obj != nil && obj.TenantUUID == clientID
 		return exists, nil
 	}
 }
 
-func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
+func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("create teammate", "path", req.Path)
+		b.Logger().Debug("create contact", "path", req.Path)
 		id := getCreationID(expectID, data)
-		teamID := data.Get(repo.TeamForeignPK).(string)
-		teammate := &model.Teammate{
+		clientID := data.Get(clientUUIDKey).(string)
+		contact := &model.Contact{
 			User: iam_model.User{
 				UUID:             id,
-				TenantUUID:       b.flantTenantUUID,
+				TenantUUID:       clientID,
 				Identifier:       data.Get("identifier").(string),
 				FirstName:        data.Get("first_name").(string),
 				LastName:         data.Get("last_name").(string),
@@ -255,15 +258,14 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 				AdditionalPhones: data.Get("additional_phones").([]string),
 				Origin:           model.OriginFlow,
 			},
-			TeamUUID:   teamID,
-			RoleAtTeam: data.Get("role_at_team").(string),
+			Credentials: data.Get("credentials").(map[string]string),
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teammates(tx, b.userClient).Create(teammate); err != nil {
-			msg := "cannot create teammate"
+		if err := usecase.Contacts(tx, clientID, b.userClient).Create(contact); err != nil {
+			msg := "cannot create contact"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
@@ -271,23 +273,23 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
+		resp := &logical.Response{Data: map[string]interface{}{"contact": contact}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 
-func (b *teammateBackend) handleUpdate() framework.OperationFunc {
+func (b *contactBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update teammate", "path", req.Path)
+		b.Logger().Debug("update contact", "path", req.Path)
 		id := data.Get("uuid").(string)
-		teamID := data.Get(repo.TeamForeignPK).(string)
+		clientID := data.Get(clientUUIDKey).(string)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		teammate := &model.Teammate{
+		contact := &model.Contact{
 			User: iam_model.User{
 				UUID:             id,
-				TenantUUID:       b.flantTenantUUID,
+				TenantUUID:       clientID,
 				Identifier:       data.Get("identifier").(string),
 				FirstName:        data.Get("first_name").(string),
 				LastName:         data.Get("last_name").(string),
@@ -299,11 +301,10 @@ func (b *teammateBackend) handleUpdate() framework.OperationFunc {
 				Version:          data.Get("version").(string),
 				Origin:           model.OriginFlow,
 			},
-			TeamUUID:   teamID,
-			RoleAtTeam: data.Get("role_at_team").(string),
+			Credentials: data.Get("credentials").(map[string]string),
 		}
 
-		err := usecase.Teammates(tx, b.userClient).Update(teammate)
+		err := usecase.Contacts(tx, clientID, b.userClient).Update(contact)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -311,20 +312,22 @@ func (b *teammateBackend) handleUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
+		resp := &logical.Response{Data: map[string]interface{}{"contact": contact}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *teammateBackend) handleDelete() framework.OperationFunc {
+func (b *contactBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete teammate", "path", req.Path)
+		b.Logger().Debug("delete contact", "path", req.Path)
 		id := data.Get("uuid").(string)
+		clientID := data.Get(clientUUIDKey).(string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
+
 		// TODO pass origin to use in client
-		err := usecase.Teammates(tx, b.userClient).Delete(id)
+		err := usecase.Contacts(tx, clientID, b.userClient).Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -336,57 +339,60 @@ func (b *teammateBackend) handleDelete() framework.OperationFunc {
 	}
 }
 
-func (b *teammateBackend) handleRead() framework.OperationFunc {
+func (b *contactBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read teammate", "path", req.Path)
+		b.Logger().Debug("read contact", "path", req.Path)
 		id := data.Get("uuid").(string)
+		clientID := data.Get(clientUUIDKey).(string)
 
 		tx := b.storage.Txn(false)
 
-		teammate, err := usecase.Teammates(tx, b.userClient).GetByID(id)
+		contact, err := usecase.Contacts(tx, clientID, b.userClient).GetByID(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
+		resp := &logical.Response{Data: map[string]interface{}{"contact": contact}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *teammateBackend) handleList() framework.OperationFunc {
+func (b *contactBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list teammates", "path", req.Path)
+		b.Logger().Debug("list contacts", "path", req.Path)
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
+		clientID := data.Get(clientUUIDKey).(string)
 
 		tx := b.storage.Txn(false)
 
-		teammates, err := usecase.Teammates(tx, b.userClient).List(showArchived)
+		contacts, err := usecase.Contacts(tx, clientID, b.userClient).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"teammates": teammates,
+				"contacts": contacts,
 			},
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 
-func (b *teammateBackend) handleRestore() framework.OperationFunc {
+func (b *contactBackend) handleRestore() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore teammate", "path", req.Path)
+		b.Logger().Debug("restore contact", "path", req.Path)
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		id := data.Get("uuid").(string)
+		clientID := data.Get(clientUUIDKey).(string)
 
-		teammate, err := usecase.Teammates(tx, b.userClient).Restore(id)
+		contact, err := usecase.Contacts(tx, clientID, b.userClient).Restore(id)
 		if err != nil {
 			return responseErr(req, err)
 		}
@@ -396,7 +402,7 @@ func (b *teammateBackend) handleRestore() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"teammate": teammate,
+			"contact": contact,
 		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}

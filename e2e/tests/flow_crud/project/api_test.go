@@ -13,7 +13,7 @@ import (
 func Test_projectCRUD(t *testing.T) {
 	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
 	project.ClientAPI = lib.NewFlowClientAPI(flowRootClient)
-	project.TestAPI = lib.NewFlowProjectClientAPI(flowRootClient)
+	project.TestAPI = lib.NewFlowProjectAPI(flowRootClient)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Project")
+	RunSpecs(t, "CRUD flant_flow: Project")
 }

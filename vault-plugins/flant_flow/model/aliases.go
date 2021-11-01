@@ -2,6 +2,8 @@ package model
 
 import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
+var OriginFlow iam_model.ObjectOrigin = "flow"
+
 type (
 	TeamUUID        = string
 	RoleAtTeam      = string
@@ -9,6 +11,7 @@ type (
 	UnixTime        = int64
 	ServicePackName = string
 	ProjectUUID     = string
+	ContactUUID     = string
 )
 
 // Team types
@@ -43,4 +46,15 @@ var (
 	Deckhouse  ServicePackName = "Deckhouse"
 	Okmeter    ServicePackName = "Okmeter"
 	Consulting ServicePackName = "Consulting"
+)
+
+// Contact roles
+type ContactRole = string
+
+var (
+	RegularContact      ContactRole = "contact"
+	AuthorizedContact   ContactRole = "authorized_contact"
+	Representative      ContactRole = "representative"
+	Plenipotentiary     ContactRole = "plenipotentiary"
+	AllowedContactRoles             = []ContactRole{RegularContact, AuthorizedContact, Representative, Plenipotentiary}
 )
