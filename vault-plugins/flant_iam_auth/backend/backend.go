@@ -128,7 +128,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	}
 
 	if backentutils.IsLoading(conf) {
-		logger.Info("second run Factory, apply kafka operations on MemoryStore")
+		logger.Info("final run Factory, apply kafka operations on MemoryStore")
 
 		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, self.NewObjectHandler(entityApi, conf.Logger), conf.Logger))
 		storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, root.NewObjectHandler(conf.Logger), conf.Logger))
@@ -146,14 +146,16 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 		storage.RunKafkaSourceMainLoops()
 
-		if jwksIDGetter == nil {
-			jwksIDGetter = mb.GetEncryptionPublicKeyStrict
-		}
 	} else {
 		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
 	}
 
 	b.storage = storage
+
+	if jwksIDGetter == nil {
+		jwksIDGetter = mb.GetEncryptionPublicKeyStrict
+	}
+
 	b.jwtController = njwt.NewJwtController(
 		storage,
 		jwksIDGetter,

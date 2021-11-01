@@ -11,8 +11,9 @@ const loadingKey = "FLANT_PLUGIN_LOADING_KEY"
 // b.config.Config["FLANT_PLUGIN_LOADING_KEY"] = "true"
 // insert at original L52 vault/builtin/plugin/backend.go original:
 // conf.Config["FLANT_PLUGIN_LOADING_KEY"] = "false"
+// if unmodified vault is used, expected to got "", so check for != false
 func IsLoading(config *logical.BackendConfig) bool {
-	if v, ok := config.Config[loadingKey]; ok && v == "true" {
+	if v := config.Config[loadingKey]; v != "false" {
 		return true
 	}
 	return false
