@@ -93,7 +93,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	}
 
 	if backentutils.IsLoading(conf) {
-		logger.Info("second run Factory, apply kafka operations on MemoryStore")
+		logger.Info("final run Factory, apply kafka operations on MemoryStore")
 
 		// add here sources
 
