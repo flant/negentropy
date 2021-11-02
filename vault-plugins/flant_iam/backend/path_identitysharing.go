@@ -51,11 +51,46 @@ func (b identitySharingBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(false),
 					Summary:  "Create identity sharing.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate,
+					Callback: b.handleCreate(false),
+					Summary:  "Create identity sharing.",
+				},
+			},
+		},
+		// Creation with known uuid in advance
+		{
+			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/identity_sharing/privileged",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+				"destination_tenant_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a destination tenant",
+					Required:    true,
+				},
+				"groups": {
+					Type:        framework.TypeStringSlice,
+					Description: "ID of sharing groups",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleCreate(true),
+					Summary:  "Create identity sharing.",
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleCreate(true),
 					Summary:  "Create identity sharing.",
 				},
 			},
@@ -117,35 +152,39 @@ func (b identitySharingBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *identitySharingBackend) handleCreate(ctx context.Context, req *logical.Request,
-	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("create identity_sharing", "path", req.Path)
-	sourceTenant := data.Get("tenant_uuid").(string)
-	destTenant := data.Get("destination_tenant_uuid").(string)
-	groups := data.Get("groups").([]string)
+func (b *identitySharingBackend) handleCreate(expectID bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request,
+		data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("create identity_sharing", "path", req.Path)
+		id := getCreationID(expectID, data)
 
-	tx := b.storage.Txn(true)
-	defer tx.Abort()
+		sourceTenant := data.Get("tenant_uuid").(string)
+		destTenant := data.Get("destination_tenant_uuid").(string)
+		groups := data.Get("groups").([]string)
 
-	is := &model.IdentitySharing{
-		UUID:                  uuid.New(),
-		SourceTenantUUID:      sourceTenant,
-		DestinationTenantUUID: destTenant,
-		Groups:                groups,
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		is := &model.IdentitySharing{
+			UUID:                  id,
+			SourceTenantUUID:      sourceTenant,
+			DestinationTenantUUID: destTenant,
+			Groups:                groups,
+		}
+
+		if err := usecase.IdentityShares(tx).Create(is); err != nil {
+			msg := "cannot create identity sharing"
+			b.Logger().Debug(msg, "err", err.Error())
+			return logical.ErrorResponse(msg), nil
+		}
+
+		if err := commit(tx, b.Logger()); err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": is}}
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
-
-	if err := usecase.IdentityShares(tx).Create(is); err != nil {
-		msg := "cannot create identity sharing"
-		b.Logger().Debug(msg, "err", err.Error())
-		return logical.ErrorResponse(msg), nil
-	}
-
-	if err := commit(tx, b.Logger()); err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": is}}
-	return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 }
 
 func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Request,

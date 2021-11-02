@@ -14,5 +14,5 @@ func Test_identitySharingCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TenantAPI = api.NewTenantAPI(&backend)
 	TestAPI = api.NewIdentitySharingAPI(&backend)
-	RunSpecs(t, "CRUD: IdentitySharing")
+	RunSpecs(t, "CRUD flant_iam: IdentitySharing")
 }
