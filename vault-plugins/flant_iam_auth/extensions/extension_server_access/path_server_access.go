@@ -168,6 +168,8 @@ func (b *ServerAccessBackend) Paths() []*framework.Path {
 
 func (b *ServerAccessBackend) handleConfig() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Info("handleConfig started")
+		defer b.Logger().Info("handleConfig exit")
 		rawRoleForSSHAccess := data.Get("role_for_ssh_access")
 
 		err := req.Storage.Put(ctx, &logical.StorageEntry{
@@ -187,6 +189,8 @@ func (b *ServerAccessBackend) handleConfig() framework.OperationFunc {
 // safe path is served with tenantID and projectID
 func (b *ServerAccessBackend) queryServer() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Info("queryServer started")
+		defer b.Logger().Info("queryServer exit")
 		var tenantID, projectID string
 		var serverNames []string
 
@@ -295,6 +299,8 @@ func filterByProjects(servers []*ext_model.Server,
 
 func (b *ServerAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Info("handleReadPosixUsers started")
+		defer b.Logger().Info("handleReadPosixUsers exit")
 		tenantID := data.Get("tenant_uuid").(string)
 		// projectID := data.Get("project_uuid").(string) // TODO: use it in resolver
 		serverID := data.Get("server_uuid").(string)

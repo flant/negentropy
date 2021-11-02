@@ -69,6 +69,8 @@ func (b *serverConfigureBackend) configurePaths() []*framework.Path {
 
 func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Info("handleConfig started")
+		defer b.Logger().Info("handleConfig exit")
 		if !liveConfig.isConfigured() && data.Get("last_allocated_uid") == nil {
 			return responseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
 		}
@@ -94,7 +96,7 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-
+		b.Logger().Info("handleConfig normal finish")
 		return logical.RespondWithStatusCode(nil, req, http.StatusOK)
 	}
 }

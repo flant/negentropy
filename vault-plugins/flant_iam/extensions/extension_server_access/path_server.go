@@ -221,6 +221,8 @@ func (b *serverBackend) paths() []*framework.Path {
 
 func (b *serverBackend) handleRegister() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleRegister started")
+		defer b.Logger().Debug("handleRegister exit")
 		if !liveConfig.isConfigured() {
 			err := errors.New("backend not yet configured")
 			return logical.ErrorResponse(err.Error()), err
@@ -251,14 +253,14 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			data.Get("identifier").(string), labels, annotations, config.RolesForServers)
 		if err != nil {
 			msg := "cannot create server"
-			b.Logger().Debug(msg, "err", err.Error())
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), err
 		}
 
 		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"
-			b.Logger().Debug(msg, "err", err.Error())
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), err
 		}
 
@@ -272,6 +274,8 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 
 func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleFingerprintRead started")
+		defer b.Logger().Debug("handleFingerprintRead exit")
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
 		repo := repo.NewServerRepository(tx)
@@ -279,7 +283,7 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
-			b.Logger().Debug("err", err.Error())
+			b.Logger().Error("err", err.Error())
 			return responseErr(req, err)
 		}
 
@@ -295,10 +299,12 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 
 func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleFingerprintUpdate started")
+		defer b.Logger().Debug("handleFingerprintUpdate exit")
 		fingerprintRaw, ok := data.GetOk("fingerprint")
 		if !ok {
 			err := errors.New("fingerprint is not provided or is invalid")
-			b.Logger().Debug("err", err.Error())
+			b.Logger().Error("err", err.Error())
 			return responseErr(req, err)
 		}
 
@@ -311,7 +317,7 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
-			b.Logger().Debug("err", err.Error())
+			b.Logger().Error("err", err.Error())
 			return responseErr(req, err)
 		}
 
@@ -320,7 +326,7 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		err = repo.Update(server)
 		if err != nil {
 			err := fmt.Errorf("cannot update server: %s", err)
-			b.Logger().Debug("err", err.Error())
+			b.Logger().Error("err", err.Error())
 			return responseErr(req, err)
 		}
 
@@ -336,6 +342,8 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 
 func (b *serverBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleRead started")
+		defer b.Logger().Debug("handleRead exit")
 		tx := b.storage.Txn(false)
 		defer tx.Abort()
 		repo := repo.NewServerRepository(tx)
@@ -343,7 +351,7 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 		server, err := repo.GetByUUID(data.Get("server_uuid").(string))
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
-			b.Logger().Debug("err", err.Error())
+			b.Logger().Error("err", err.Error())
 			return responseErr(req, err)
 		}
 
@@ -359,6 +367,8 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 
 func (b *serverBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleUpdate started")
+		defer b.Logger().Debug("handleUpdate exit")
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 		repo := repo.NewServerRepository(tx)
@@ -392,7 +402,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"
-			b.Logger().Debug(msg, "err", err.Error())
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 
@@ -403,6 +413,8 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 
 func (b *serverBackend) handleDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleDelete started")
+		defer b.Logger().Debug("handleDelete exit")
 		id := data.Get("server_uuid").(string)
 
 		tx := b.storage.Txn(true)
@@ -417,7 +429,7 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"
-			b.Logger().Debug(msg, "err", err.Error())
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 
@@ -427,6 +439,8 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 func (b *serverBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleList started")
+		defer b.Logger().Debug("handleList exit")
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		projectID := data.Get(iam_repo.ProjectForeignPK).(string)
 
@@ -450,6 +464,8 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 
 func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("handleConnectionInfoUpdate started")
+		defer b.Logger().Debug("handleConnectionInfoUpdate exit")
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 		repo := repo.NewServerRepository(tx)
@@ -475,7 +491,7 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 		err = tx.Commit()
 		if err != nil {
 			msg := "cannot commit transaction"
-			b.Logger().Debug(msg, "err", err.Error())
+			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
 
