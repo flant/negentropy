@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -84,7 +83,7 @@ func (b replicaBackend) handleReplicaList(ctx context.Context, req *logical.Requ
 	var replicaNames []string
 	iter, err := tx.Get(model.ReplicaType, iam_repo.PK)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	for {
 		raw := iter.Next()
@@ -121,7 +120,7 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	pb, _ := pem.Decode([]byte(publicKeyStr))
 	pk, err := x509.ParsePKCS1PublicKey(pb.Bytes)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 	}
 
 	r := &model.Replica{
@@ -134,17 +133,17 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	defer tx.Abort()
 	err = tx.Insert(model.ReplicaType, r)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	// create topic for replica
 	err = b.createTopicForReplica(ctx, replicaName)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	b.addReplicaToReplications(*r)
@@ -158,11 +157,10 @@ func (b replicaBackend) handleReplicaRead(ctx context.Context, req *logical.Requ
 	tx := b.storage.Txn(false)
 	raw, err := tx.First(model.ReplicaType, iam_repo.PK, replicaName)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	if raw == nil {
-		rr := logical.ErrorResponse("replica not found")
-		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		return backentutils.ResponseErrMessage(req, "replica not found", http.StatusNotFound)
 	}
 
 	// Respond
@@ -194,26 +192,25 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 
 	raw, err := tx.First(model.ReplicaType, iam_repo.PK, replicaName)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	if raw == nil {
-		rr := logical.ErrorResponse("replica not found")
-		return logical.RespondWithStatusCode(rr, req, http.StatusNotFound)
+		return backentutils.ResponseErrMessage(req, "replica not found", http.StatusNotFound)
 	}
 
 	// Delete
 	err = tx.Delete(model.ReplicaType, raw)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit changes: %v", err)
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	replica := raw.(*model.Replica)
 	err = b.deleteTopicForReplica(ctx, replica.Name)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	b.removeReplicaFromReplications(*replica)
@@ -228,7 +225,7 @@ func (b replicaBackend) addReplicaToReplications(replica model.Replica) {
 	case kafka_destination.MetadataTopicType:
 		b.storage.AddKafkaDestination(kafka_destination.NewMetadataKafkaDestination(b.storage.GetKafkaBroker(), replica))
 	default:
-		log.Println("unknown replica type: ", replica.Name, replica.TopicType)
+		b.Logger().Debug("unknown replica type", "replicaName", replica.Name, "topicType", replica.TopicType)
 	}
 }
 

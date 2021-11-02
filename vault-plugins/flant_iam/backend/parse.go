@@ -3,26 +3,8 @@ package backend
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/framework"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
-
-func getCreationID(expectID bool, data *framework.FieldData) string {
-	var id string
-
-	if expectID {
-		// for privileged access
-		id = data.Get("uuid").(string)
-	}
-
-	if id == "" {
-		id = uuid.New()
-	}
-
-	return id
-}
 
 func parseMembers(rawList interface{}) ([]model.MemberNotation, error) {
 	members := make([]model.MemberNotation, 0)

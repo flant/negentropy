@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -156,7 +157,10 @@ func (b *identitySharingBackend) handleCreate(expectID bool) framework.Operation
 	return func(ctx context.Context, req *logical.Request,
 		data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create identity_sharing", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
 
 		sourceTenant := data.Get("tenant_uuid").(string)
 		destTenant := data.Get("destination_tenant_uuid").(string)
@@ -172,14 +176,14 @@ func (b *identitySharingBackend) handleCreate(expectID bool) framework.Operation
 			Groups:                groups,
 		}
 
-		if err := usecase.IdentityShares(tx).Create(is); err != nil {
+		if err = usecase.IdentityShares(tx).Create(is); err != nil {
 			msg := "cannot create identity sharing"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg, "err", err.Error())
+			return backentutils.ResponseErrMessage(req, msg+":"+err.Error(), http.StatusBadRequest)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": is}}
@@ -202,10 +206,8 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 
 	list, err := usecase.IdentityShares(tx).List(sourceTenant, showArchived)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
-
-	_ = commit(tx, b.Logger())
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
@@ -227,7 +229,6 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 	if err != nil {
 		return responseErr(req, err)
 	}
-	_ = commit(tx, b.Logger())
 
 	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": identitySharing}}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
@@ -245,8 +246,8 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 	if err != nil {
 		return responseErr(req, err)
 	}
-	if err := commit(tx, b.Logger()); err != nil {
-		return nil, err
+	if err = commit(tx, b.Logger()); err != nil {
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
