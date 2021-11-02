@@ -107,6 +107,6 @@ var _ = Describe("Identity sharing", func() {
 			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
 			"uuid":                    originalUUID,
 		}
-		createdData = TestAPI.Create(params, url.Values{}, data)
+		createdData = TestAPI.CreatePrivileged(params, url.Values{}, data)
 	})
 })
