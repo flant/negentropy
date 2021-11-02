@@ -13,5 +13,5 @@ func Test_roleCRUD(t *testing.T) {
 	backend := api.TestBackend()
 	TestAPI = api.NewRoleAPI(&backend)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Role")
+	RunSpecs(t, "CRUD flant_iam: Role")
 }

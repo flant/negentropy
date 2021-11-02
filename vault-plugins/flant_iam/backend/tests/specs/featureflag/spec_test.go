@@ -13,5 +13,5 @@ func Test_featureFlagCRUD(t *testing.T) {
 	RegisterFailHandler(Fail)
 	backend := api.TestBackend()
 	TestAPI = api.NewFeatureFlagAPI(&backend)
-	RunSpecs(t, "CRUD: Feature Flag")
+	RunSpecs(t, "CRUD flant_iam: Feature Flag")
 }

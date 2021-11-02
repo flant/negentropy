@@ -15,5 +15,5 @@ func Test_tenantFeatureFlagCRUD(t *testing.T) {
 	FeatureFlagAPI = api.NewFeatureFlagAPI(&backend)
 	TestAPI = api.NewTenantFeatureFlagAPI(&backend)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Tenant Feature Flags")
+	RunSpecs(t, "CRUD flant_iam: Tenant Feature Flags")
 }
