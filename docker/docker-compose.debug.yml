@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile.vault-debug
     volumes:
-      - "./infra/common/vault/vault/bin/vault:/bin/vault"
+      - "../infra/common/vault/vault/bin/vault:/bin/vault"
       - "./vault/vault-root.hcl:/etc/vault.hcl"
     ports:
       - 2346:2345
