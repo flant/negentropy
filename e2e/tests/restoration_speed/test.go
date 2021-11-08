@@ -32,9 +32,6 @@ type Result struct {
 }
 
 func main() {
-	lib.CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
-	lib.CheckAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
-
 	// to use e2e test libs
 	RegisterFailHandler(Fail)
 	defer GinkgoRecover()
