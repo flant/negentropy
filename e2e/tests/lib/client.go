@@ -2,8 +2,6 @@ package lib
 
 import (
 	"crypto/tls"
-	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -47,7 +45,6 @@ func NewIamVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredIamVaultClient() *http.Client {
-	CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
 	token := GetRootRootToken()
 	return NewIamVaultClient(token)
 }
@@ -57,7 +54,6 @@ func NewIamAuthVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredIamAuthVaultClient() *http.Client {
-	CheckAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
 	token := GetAuthRootToken()
 	return NewIamAuthVaultClient(token)
 }
@@ -67,7 +63,6 @@ func NewFlowRootVaultClient(token string) *http.Client {
 }
 
 func NewConfiguredFlowRootVaultClient() *http.Client {
-	CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
 	token := GetRootRootToken()
 	return NewFlowRootVaultClient(token)
 }
@@ -139,23 +134,4 @@ func GetAuthVaultUrl() string {
 		panic("AUTH_VAULT_URL is empty, need valid URL to access vault")
 	}
 	return u
-}
-
-func CheckAndUpdateTokenEnv(tokenEnv string, tokenFileName string, prevTokenFileName string) {
-	var prevToken, token string
-	prevTokenBytes, err := ioutil.ReadFile(prevTokenFileName)
-	if err != nil {
-		prevToken = "NOT_SAVED"
-	} else {
-		prevToken = string(prevTokenBytes)
-	}
-	if token = os.Getenv(tokenEnv); token == "" || prevToken == token {
-		data, err := ioutil.ReadFile(tokenFileName)
-		if err != nil {
-			panic(fmt.Errorf("reading token from file %s :%w", tokenFileName, err))
-		}
-		token = string(data)
-	}
-	_ = ioutil.WriteFile(prevTokenFileName, []byte(token), 0o666)
-	_ = os.Setenv(tokenEnv, token)
 }
