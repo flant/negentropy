@@ -32,9 +32,6 @@ type Result struct {
 }
 
 func main() {
-	lib.CheckAndUpdateTokenEnv("ROOT_VAULT_TOKEN", "/tmp/root_token", "/tmp/prev_root_token")
-	lib.CheckAndUpdateTokenEnv("AUTH_VAULT_TOKEN", "/tmp/auth_token", "/tmp/prev_auth_token")
-
 	// to use e2e test libs
 	RegisterFailHandler(Fail)
 	defer GinkgoRecover()
@@ -228,13 +225,13 @@ func (s *Suite) BeforeSuite() {
 	dieOnErr(err)
 
 	s.rootVault = NewVault(s.dockerCli,
-		"negentropy_vault_root_1",
+		"vault-root",
 		"ROOT_VAULT_URL",
 		"ROOT_VAULT_TOKEN",
 		"/tmp/vault_root_operator_output")
 
 	s.authVault = NewVault(s.dockerCli,
-		"negentropy_vault_auth_1",
+		"vault-auth",
 		"AUTH_VAULT_URL",
 		"AUTH_VAULT_TOKEN",
 		"/tmp/vault_auth_operator_output")

@@ -1,11 +1,31 @@
 #!/usr/bin/env bash
 
+set -e
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -d|--debug)
+    export DEBUG="true"
+    ;;
+    *)
+    echo "Unknown parameter $1"; exit 1
+    ;;
+  esac
+  shift
+done
+
+export COMPOSE_PROJECT_NAME=negentropy
+
 function docker-exec() {
-  docker-compose -f docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
+  if [[ $DEBUG == "true" ]]; then
+    docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.debug.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
+  else
+    docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
+  fi
 }
 
 function init-vault() {
-  docker-exec "vault_root" "vault operator init" > /tmp/vault_root_operator_output
+  docker-exec "vault-root" "vault operator init" > /tmp/vault_root_operator_output
   ROOT_VAULT_OPERATOR_OUTPUT=$(cat /tmp/vault_root_operator_output)
   ROOT_VAULT_TOKEN=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Initial Root Token:" | sed 's/.*: *//')
   ROOT_VAULT_UNSEAL_KEY_1=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 1:" | sed 's/.*: *//')
@@ -14,7 +34,7 @@ function init-vault() {
   ROOT_VAULT_UNSEAL_KEY_4=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 4:" | sed 's/.*: *//')
   ROOT_VAULT_UNSEAL_KEY_5=$(echo "$ROOT_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 5:" | sed 's/.*: *//')
 
-  docker-exec "vault_auth" "vault operator init" > /tmp/vault_auth_operator_output
+  docker-exec "vault-auth" "vault operator init" > /tmp/vault_auth_operator_output
   AUTH_VAULT_OPERATOR_OUTPUT=$(cat /tmp/vault_auth_operator_output)
   AUTH_VAULT_TOKEN=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Initial Root Token:" | sed 's/.*: *//')
   AUTH_VAULT_UNSEAL_KEY_1=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 1:" | sed 's/.*: *//')
@@ -23,20 +43,20 @@ function init-vault() {
   AUTH_VAULT_UNSEAL_KEY_4=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 4:" | sed 's/.*: *//')
   AUTH_VAULT_UNSEAL_KEY_5=$(echo "$AUTH_VAULT_OPERATOR_OUTPUT" | grep "Unseal Key 5:" | sed 's/.*: *//')
 
-  docker-exec "vault_root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_1" > /dev/null 2>&1
-  docker-exec "vault_root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_2" > /dev/null 2>&1
-  docker-exec "vault_root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_3" > /dev/null 2>&1
+  docker-exec "vault-root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_1" > /dev/null 2>&1
+  docker-exec "vault-root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_2" > /dev/null 2>&1
+  docker-exec "vault-root" "vault operator unseal $ROOT_VAULT_UNSEAL_KEY_3" > /dev/null 2>&1
 
-  docker-exec "vault_auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_1" > /dev/null 2>&1
-  docker-exec "vault_auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_2" > /dev/null 2>&1
-  docker-exec "vault_auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_3" > /dev/null 2>&1
+  docker-exec "vault-auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_1" > /dev/null 2>&1
+  docker-exec "vault-auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_2" > /dev/null 2>&1
+  docker-exec "vault-auth" "vault operator unseal $AUTH_VAULT_UNSEAL_KEY_3" > /dev/null 2>&1
 
   echo ROOT_VAULT_TOKEN is $ROOT_VAULT_TOKEN
   echo AUTH_VAULT_TOKEN is $AUTH_VAULT_TOKEN
 }
 
 function check-vault() {
-  vault="vault_$1"
+  vault="vault-$1"
   docker-exec "$vault" "until vault status &> /dev/null; do sleep 1; done"
 }
 
@@ -44,105 +64,103 @@ function activate-plugin() {
   plugin="$1"
 
   # flant_iam_auth is auth plugin, so for it need to use different enable command
-  if [ $plugin == "flant_iam_auth" ]; then
-      VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault auth enable -path=$plugin $plugin"
-      VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault auth enable -path=$plugin $plugin"
-  # flant_iam only needs on root source vault
-  elif [ $plugin == "flant_iam" ]; then
-      VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
-  elif [ $plugin == "flant_flow" ]; then
-      VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
+  if [[ $plugin == "flant_iam_auth" ]]; then
+    VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault auth enable -path=$plugin $plugin"
+    VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault auth enable -path=$plugin $plugin"
+  # flant_iam and flant_flow only needs on root source vault
+  elif [[ $plugin == "flant_iam" || $plugin == "flant_flow" ]]; then
+    VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault secrets enable -path=$plugin $plugin"
   else
-      VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault secrets enable -path=$plugin $plugin"
-      VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault secrets enable -path=$plugin $plugin"
+    VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault secrets enable -path=$plugin $plugin"
+    VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault secrets enable -path=$plugin $plugin"
   fi
 }
 
 function connect_plugins() {
   # prepare flant_iam on root source vault
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write -force flant_iam/kafka/generate_csr" > /dev/null 2>&1
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_pubkey=$(docker-exec "vault_root" "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write -force flant_iam/kafka/generate_csr" > /dev/null 2>&1
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write flant_iam/kafka/configure_access kafka_endpoints=kafka:9092"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_pubkey=$(docker-exec "vault-root" "vault read flant_iam/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
   # prepare flant_iam_auth on root source vault
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write -force auth/flant_iam_auth/kafka/generate_csr" > /dev/null 2>&1
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_auth_pubkey=$(docker-exec "vault_root" "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write -force auth/flant_iam_auth/kafka/generate_csr" > /dev/null 2>&1
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_auth_pubkey=$(docker-exec "vault-root" "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
   # prepare flant_iam_auth on auth vault
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write -force auth/flant_iam_auth/kafka/generate_csr" > /dev/null 2>&1
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_auth_pubkey=$(docker-exec "vault_auth" "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write -force auth/flant_iam_auth/kafka/generate_csr" > /dev/null 2>&1
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write auth/flant_iam_auth/kafka/configure_access kafka_endpoints=kafka:9092"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_auth_pubkey=$(docker-exec "vault-auth" "vault read auth/flant_iam_auth/kafka/public_key" | grep public_key | awk '{$1=""; print $0}' | sed 's/^ *//g')
 
   # configure flant_iam on root source vault
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/kafka/configure self_topic_name=root_source peers_public_keys=\"$root_auth_pubkey\",\"$auth_auth_pubkey\""
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write flant_iam/kafka/configure self_topic_name=root_source peers_public_keys=\"$root_auth_pubkey\",\"$auth_auth_pubkey\""
 
   # create replica for root source vault flant_iam_auth
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$root_auth_pubkey\""
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write flant_iam/replica/auth-1 type=Vault public_key=\"$root_auth_pubkey\""
 
   # create replica for auth vault flant_iam_auth
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write flant_iam/replica/auth-2 type=Vault public_key=\"$auth_auth_pubkey\""
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write flant_iam/replica/auth-2 type=Vault public_key=\"$auth_auth_pubkey\""
 
   # configure flant_iam_auth on root source vault
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" \
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" \
     "vault write auth/flant_iam_auth/kafka/configure peers_public_keys=\"$root_pubkey\" self_topic_name=auth-source.auth-1 root_topic_name=root_source.auth-1 root_public_key=\"$root_pubkey\""
 
   # configure flant_iam_auth on auth vault
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" \
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" \
     "vault write auth/flant_iam_auth/kafka/configure peers_public_keys=\"$root_pubkey\" self_topic_name=auth-source.auth-2 root_topic_name=root_source.auth-2 root_public_key=\"$root_pubkey\""
 }
 
 function initialize() {
   # configure server_access on root source vault
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" \
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" \
     "vault write flant_iam/configure_extension/server_access roles_for_servers=servers role_for_ssh_access=ssh name=ssh delete_expired_password_seeds_after=1000000 expire_password_seed_after_reveal_in=1000000 last_allocated_uid=10000 --format=json"
   # TODO: why we configure this in root source vault?
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
 
   # configure server_access on auth vault
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write auth/flant_iam_auth/configure_extension/server_access role_for_ssh_access=ssh name=ssh --format=json"
 
   # enable jwt
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write -force flant_iam/jwt/enable" > /dev/null 2>&1
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write -force flant_iam/jwt/enable" > /dev/null 2>&1
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write -force auth/flant_iam_auth/jwt/enable" > /dev/null 2>&1
 
   # create policy
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec 'vault_root' 'cat <<'EOF' > full.hcl
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec 'vault-root' 'cat <<'EOF' > full.hcl
 path "*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 EOF'
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault_auth' 'cat <<'EOF' > full.hcl
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault-auth' 'cat <<'EOF' > full.hcl
 path "*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 EOF'
 
   # enable approle
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault auth enable approle"
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault auth enable approle"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault auth enable approle"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault auth enable approle"
 
   # load policy
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault policy write full full.hcl"
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault policy write full full.hcl"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault policy write full full.hcl"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault policy write full full.hcl"
 
   # configure approle
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_secretID=$(docker-exec "vault_root" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_roleID=$(docker-exec "vault_root" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_secretID=$(docker-exec "vault_auth" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_roleID=$(docker-exec "vault_auth" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_secretID=$(docker-exec "vault-root" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN root_roleID=$(docker-exec "vault-root" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write auth/approle/role/full secret_id_ttl=15m token_ttl=1000s token_policies=full"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_secretID=$(docker-exec "vault-auth" "vault write -format=json -f auth/approle/role/full/secret-id" | jq -r '.data.secret_id')
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN auth_roleID=$(docker-exec "vault-auth" "vault read -format=json auth/approle/role/full/role-id" | jq -r '.data.role_id')
 
   # renew root token
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault token create -orphan -policy=root -field=token" > /tmp/root_token
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault token create -orphan -policy=root -field=token" > /tmp/auth_token
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault token create -orphan -policy=root -field=token" > /tmp/root_token
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault token create -orphan -policy=root -field=token" > /tmp/auth_token
   export ROOT_VAULT_TOKEN="$(cat /tmp/root_token)"
   export AUTH_VAULT_TOKEN="$(cat /tmp/auth_token)"
 
   # configure self-access
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/flant_iam_auth/configure_vault_access \
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write auth/flant_iam_auth/configure_vault_access \
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
@@ -151,7 +169,7 @@ EOF'
     secret_id=\"$root_secretID\" \
     role_id=\"$root_roleID\" \
     vault_api_ca=\"\""
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/flant_iam_auth/configure_vault_access \
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write auth/flant_iam_auth/configure_vault_access \
     vault_addr=\"http://127.0.0.1:8200\" \
     vault_tls_server_name=\"vault_host\" \
     role_name=\"full\" \
@@ -162,19 +180,19 @@ EOF'
     vault_api_ca=\"\""
 
   # configure multipass
-  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault_root" "vault write auth/flant_iam_auth/auth_method/multipass \
+  VAULT_TOKEN=$ROOT_VAULT_TOKEN docker-exec "vault-root" "vault write auth/flant_iam_auth/auth_method/multipass \
     token_ttl=\"30m\" \
     token_policies=\"full\" \
     token_no_default_policy=true \
     method_type=\"multipass_jwt\""
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault_auth" "vault write auth/flant_iam_auth/auth_method/multipass \
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec "vault-auth" "vault write auth/flant_iam_auth/auth_method/multipass \
     token_ttl=\"30m\" \
     token_policies=\"full\" \
     token_no_default_policy=true \
     method_type=\"multipass_jwt\""
 
   # configure ssh plugin on auth vault only
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault_auth' 'vault write ssh/config/ca \
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault-auth' 'vault write ssh/config/ca \
 	  private_key="-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEA0/G1wVnF9ufvio1W1XBAD51EU6UP+p0otMVfpap/7DgkyZY0
 WEzJNFGxmR271VdnnWGKYApAyjlhfXheYaY5j2rMmKLJFTCc/X2ntfnJfqZsnJxk
@@ -205,7 +223,7 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
           public_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDT8bXBWcX25++KjVbVcEAPnURTpQ/6nSi0xV+lqn/sOCTJljRYTMk0UbGZHbvVV2edYYpgCkDKOWF9eF5hpjmPasyYoskVMJz9fae1+cl+pmycnGTZLspg0r59Nr/77ryja2KkllY4CXc7zlmu/R+316VgzpWPyR4007lIZl28BAahbdfKJ/jNppkVZL413rSFZ5gTBlMIVmZq1pUvOBtahMrH2KDvWdg0UJWh5qjyHxifC+Lv3vHWlKqwLrgJFQ859V4sbfTqht41Xwt80nkKSA7yOL4FnxFwxJq5DSJb5yGTYntv3TYlwmlZmL3Jg14S3aQzW80IbVuRwnDfwv0l"
 '
 
-  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault_auth' 'vault write ssh/roles/signer - <<"EOF"
+  VAULT_TOKEN=$AUTH_VAULT_TOKEN docker-exec 'vault-auth' 'vault write ssh/roles/signer - <<"EOF"
 {
   "allow_user_certificates": true,
   "algorithm_signer": "rsa-sha2-256",
@@ -223,21 +241,22 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
 EOF"' > /dev/null 2>&1
 }
 
-docker run --rm -v $(pwd):/app -w /app/infra/common/vault golang:1.16.8-alpine sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh"
+if [[ $DEBUG == "true" ]]; then
+  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.debug.yml up -d
+  echo "DEBUG: run you debug tools and connect to dlv servers at both vaults"
+  while true; do
+    read -p "Are you ready? (Y/n) " ANSWER;
+      if [[ -z "$ANSWER" ]]; then ANSWER=Y; fi
+      case $ANSWER in
+          [Yy]* ) break;;
+          [Nn]* ) exit 1;;
+      esac
+  done
+else
+  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml up -d
+fi
 
-docker-compose -f docker-compose.yml up -d minio
-
-while true; do
-  docker run --rm --network=negentropy_default --entrypoint=sh minio/mc -c "mc config host add minio http://minio:9000 minio minio123 && mc mb minio/vault-root && mc mb minio/vault-auth"
-  status=$?
-  if [ $status -eq 0 ]; then
-    break
-  fi
-done
-
-docker-compose -f docker-compose.yml up -d
-
-echo "DEBUG: sleep for 5s"
+echo "DEBUG: sleep for 5s while containers starts"
 sleep 5
 
 init-vault
@@ -248,7 +267,7 @@ do
   check-vault "$v"
 done
 
-plugins=(flant_iam flant_iam_auth ssh flant_flow)
+plugins=(flant_iam flant_iam_auth flant_flow ssh)
 for i in "${plugins[@]}"
 do
   activate-plugin "$i"
