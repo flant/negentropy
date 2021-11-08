@@ -81,7 +81,7 @@ var _ = Describe("Identity sharing", func() {
 		Expect(deletedISData.Get("identity_sharing.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		t1 := specs.CreateRandomTenant(TenantAPI)
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)

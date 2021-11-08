@@ -41,19 +41,14 @@ func ResponseErrMessage(req *logical.Request, message string, status int) (*logi
 }
 
 func GetCreationID(expectID bool, data *framework.FieldData) (string, error) {
-	var id string
-
 	if expectID {
 		// for privileged access
-		id = data.Get("uuid").(string)
+		id := data.Get("uuid").(string)
 		if id == "" {
-			return "", fmt.Errorf("uuid is requered")
+			return "", fmt.Errorf("uuid is required")
 		}
+		return id, nil
 	}
 
-	if id == "" {
-		id = uuid.New()
-	}
-
-	return id, nil
+	return uuid.New(), nil
 }

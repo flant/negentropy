@@ -84,7 +84,7 @@ var _ = Describe("User", func() {
 		}, url.Values{})
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomUserCreatePayload()
 		originalUUID := createPayload["uuid"]
 		createPayload["tenant_uuid"] = tenant.UUID
