@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -77,7 +78,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	kb.broker.PluginConfig.SelfTopicName = topicName.(string)
 	err := kb.broker.CreateTopic(ctx, kb.broker.PluginConfig.SelfTopicName, nil)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	var peerKeys []*rsa.PublicKey
@@ -89,7 +90,7 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 			kb.logger.Debug(fmt.Sprintf("Peers pub keys %s", pksTrimmed))
 			pub, err := utils.ParsePubkey(pksTrimmed)
 			if err != nil {
-				return nil, err
+				return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 			}
 			peerKeys = append(peerKeys, pub)
 		}
@@ -108,17 +109,17 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	}
 	err = kb.broker.CreateTopic(ctx, "jwks", jwksConfig)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	d, err := json.Marshal(kb.broker.PluginConfig)
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	err = req.Storage.Put(ctx, &logical.StorageEntry{Key: kafka.PluginConfigPath, Value: d, SealWrap: true})
 	if err != nil {
-		return nil, err
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
 	kb.broker.CheckConfig()

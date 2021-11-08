@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -187,8 +188,8 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding_approval": roleBindingApproval}}
@@ -208,8 +209,8 @@ func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -247,7 +248,7 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 
 		rolebindingApprovals, err := usecase.RoleBindingApprovals(tx).List(rbID, showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{

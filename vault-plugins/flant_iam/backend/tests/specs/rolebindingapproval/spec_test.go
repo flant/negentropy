@@ -16,5 +16,5 @@ func Test_rolebindingApprovalCRUD(t *testing.T) {
 	RoleBindingAPI = api.NewRoleBindingAPI(&backend)
 	TestAPI = api.NewRoleBindingApprovalAPI(&backend)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Role binding approval")
+	RunSpecs(t, "CRUD flant_iam: Role binding approval")
 }

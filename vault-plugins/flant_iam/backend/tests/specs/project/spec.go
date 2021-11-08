@@ -94,7 +94,7 @@ var _ = Describe("Project", func() {
 		}, url.Values{})
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = tenant.UUID
 		originalUUID := uuid.New()

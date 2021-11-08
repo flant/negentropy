@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -423,7 +424,11 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create user", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
+
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 		user := &model.User{
 			UUID:             id,
@@ -442,13 +447,13 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Users(tx, tenantID).Create(user); err != nil {
+		if err = usecase.Users(tx, tenantID).Create(user); err != nil {
 			msg := "cannot create user"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg, "err", err.Error())
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
@@ -483,8 +488,8 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
@@ -505,8 +510,8 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -545,7 +550,7 @@ func (b *userBackend) handleList() framework.OperationFunc {
 
 		users, err := usecase.Users(tx, tenantID).List(showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{
@@ -571,8 +576,8 @@ func (b *userBackend) handleRestore() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -612,8 +617,8 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -641,8 +646,8 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(nil, nil, http.StatusNoContent)
 	}

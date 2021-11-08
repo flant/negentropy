@@ -126,7 +126,7 @@ var _ = Describe("Client", func() {
 		TestAPI.List(api.Params{}, url.Values{})
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID

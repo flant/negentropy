@@ -80,4 +80,33 @@ var _ = Describe("Identity sharing", func() {
 		}, nil)
 		Expect(deletedISData.Get("identity_sharing.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
+
+	It("can be created with privileged", func() {
+		t1 := specs.CreateRandomTenant(TenantAPI)
+		sourceTenantID = t1.UUID
+		t2 := specs.CreateRandomTenant(TenantAPI)
+		targetTenantID = t2.UUID
+
+		originalUUID := uuid.New()
+
+		params := api.Params{
+			"expectPayload": func(json gjson.Result) {
+				is := json.Get("identity_sharing")
+
+				Expect(is.Map()).To(HaveKey("uuid"))
+				Expect(is.Map()["uuid"].String()).To(Equal(originalUUID))
+				Expect(is.Map()).To(HaveKey("source_tenant_uuid"))
+				Expect(is.Map()).To(HaveKey("destination_tenant_uuid"))
+				Expect(is.Map()).To(HaveKey("groups"))
+				Expect(is.Get("groups").Array()).To(HaveLen(3))
+			},
+			"tenant": sourceTenantID,
+		}
+		data := map[string]interface{}{
+			"destination_tenant_uuid": targetTenantID,
+			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
+			"uuid":                    originalUUID,
+		}
+		createdData = TestAPI.CreatePrivileged(params, url.Values{}, data)
+	})
 })

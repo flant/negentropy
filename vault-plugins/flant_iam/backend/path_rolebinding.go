@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -244,19 +245,22 @@ func (b *roleBindingBackend) handleExistence() framework.ExistenceFunc {
 func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create role_binding", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
 
 		ttl := data.Get("ttl").(int)
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -274,13 +278,13 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.RoleBindings(tx).Create(roleBinding); err != nil {
+		if err = usecase.RoleBindings(tx).Create(roleBinding); err != nil {
 			msg := fmt.Sprintf("cannot create role binding:%s", err)
-			b.Logger().Debug(msg)
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg)
+			return backentutils.ResponseErrMessage(req, msg, http.StatusBadRequest)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
@@ -298,15 +302,15 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 		if len(members) == 0 {
-			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		roleBinding := &model.RoleBinding{
@@ -328,8 +332,8 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
@@ -349,8 +353,8 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -388,7 +392,7 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 
 		roleBindings, err := usecase.RoleBindings(tx).List(tenantID, showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{

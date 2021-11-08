@@ -16,5 +16,5 @@ func Test_userMultipassCRUD(t *testing.T) {
 	TestAPI = api.NewUserMultipassAPI(&backend)
 	ConfigAPI = api.NewBackendBasedConfigAPI(&backend, &storage)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: User Multipass")
+	RunSpecs(t, "CRUD flant_iam: User Multipass")
 }
