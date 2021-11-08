@@ -133,7 +133,7 @@ var _ = Describe("Team", func() {
 		TestAPI.List(api.Params{}, url.Values{})
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomTeamCreatePayload()
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID

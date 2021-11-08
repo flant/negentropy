@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -447,12 +448,16 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create service_account", "path", req.Path)
 		var (
-			id         = getCreationID(expectID, data)
+			id, err    = backentutils.GetCreationID(expectID, data)
 			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 
 			ttl    = data.Get("token_ttl").(int)
 			maxttl = data.Get("token_max_ttl").(int)
 		)
+
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
 
 		serviceAccount := &model.ServiceAccount{
 			UUID:        id,
@@ -468,13 +473,13 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Create(serviceAccount); err != nil {
+		if err = usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Create(serviceAccount); err != nil {
 			msg := "cannot create service account"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg, "err", err.Error())
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
@@ -512,8 +517,8 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
@@ -536,8 +541,8 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -578,7 +583,7 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 		serviceAccounts, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).List(showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{
@@ -623,8 +628,8 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -652,8 +657,8 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
 	}
@@ -745,8 +750,8 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		// Includes sensitive data here
@@ -777,8 +782,8 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
 	}

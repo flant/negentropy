@@ -10,6 +10,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -58,7 +59,7 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 		enabledByDefault := data.Get("enabled_for_new_projects").(bool)
 
 		if featureFlagName == "" {
-			return nil, logical.CodedError(http.StatusBadRequest, "feature_flag_name required")
+			return backentutils.ResponseErrMessage(req, "feature_flag_name required", http.StatusBadRequest)
 		}
 
 		tff := model.TenantFeatureFlag{
@@ -74,8 +75,8 @@ func (b *tenantBackend) handleFeatureFlagBinding() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
@@ -89,7 +90,7 @@ func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 		featureFlagName := data.Get("feature_flag_name").(string)
 
 		if featureFlagName == "" {
-			return nil, logical.CodedError(http.StatusBadRequest, "feature_flag_name required")
+			return backentutils.ResponseErrMessage(req, "feature_flag_name required", http.StatusBadRequest)
 		}
 
 		tx := b.storage.Txn(true)
@@ -100,8 +101,8 @@ func (b *tenantBackend) handleFeatureFlagDelete() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}

@@ -19,6 +19,6 @@ func (b *IdentitySharingEndpointBuilder) Collection(params Params, query url.Val
 	return path.Join("tenant", params["tenant"].(string), "identity_sharing") + "/?" + query.Encode()
 }
 
-func (b *IdentitySharingEndpointBuilder) Privileged(_ Params, query url.Values) string {
-	panic("this path is not allowed")
+func (b *IdentitySharingEndpointBuilder) Privileged(params Params, query url.Values) string {
+	return path.Join("tenant", params["tenant"].(string), "identity_sharing", "privileged") + "?" + query.Encode()
 }

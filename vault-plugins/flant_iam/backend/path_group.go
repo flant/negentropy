@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -196,15 +197,20 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create group", "path", req.Path)
 		var (
-			id         = getCreationID(expectID, data)
+			id, err    = backentutils.GetCreationID(expectID, data)
 			tenantUUID = data.Get(iam_repo.TenantForeignPK).(string)
 		)
+
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
+
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 		if len(members) == 0 {
-			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -218,13 +224,13 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Groups(tx, tenantUUID).Create(group); err != nil {
+		if err = usecase.Groups(tx, tenantUUID).Create(group); err != nil {
 			msg := "cannot create group"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
@@ -242,10 +248,10 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 		if len(members) == 0 {
-			return responseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 
 		group := &model.Group{
@@ -264,8 +270,8 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"group": group}}
@@ -288,8 +294,8 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -328,7 +334,7 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 
 		groups, err := repo.List(tenantID, showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{

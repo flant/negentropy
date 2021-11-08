@@ -10,6 +10,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -115,11 +116,11 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 
 		if err := usecase.Featureflags(tx).Create(featureFlag); err != nil {
 			msg := "cannot create feature flag"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg, "err", err.Error())
+			return backentutils.ResponseErrMessage(req, msg, http.StatusInternalServerError)
 		}
 		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"feature_flag": featureFlag}}
@@ -140,8 +141,8 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -160,7 +161,7 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 
 		list, err := usecase.Featureflags(tx).List(showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{

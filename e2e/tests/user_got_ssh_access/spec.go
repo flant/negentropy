@@ -38,8 +38,8 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 		DescribeTable("cli ssh command variations",
 			func(buildCliCmd func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string) {
 				d := testServerAndClientSuite
-				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-					"/tmp/flint files doesn't exist before start")
+				// Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+				//	"/tmp/flint files doesn't exist before start")
 
 				runningCliCmd := buildCliCmd(cfg)
 				sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
@@ -31,19 +32,14 @@ func isJwtEnabled(tx *io.MemoryStoreTxn, controller *jwt.Controller) error {
 func responseErr(req *logical.Request, err error) (*logical.Response, error) {
 	switch err {
 	case model.ErrNotFound:
-		return responseErrMessage(req, err.Error(), http.StatusNotFound)
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusNotFound)
 	case model.ErrBadVersion:
-		return responseErrMessage(req, err.Error(), http.StatusConflict)
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusConflict)
 	case model.ErrBadOrigin, errJwtDisabled:
-		return responseErrMessage(req, err.Error(), http.StatusForbidden)
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusForbidden)
 	default:
 		return nil, err
 	}
-}
-
-func responseErrMessage(req *logical.Request, message string, status int) (*logical.Response, error) {
-	rr := logical.ErrorResponse(message)
-	return logical.RespondWithStatusCode(rr, req, status)
 }
 
 // commit wraps the committing and error logging

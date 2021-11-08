@@ -14,5 +14,5 @@ func Test_userCRUD(t *testing.T) {
 	TestAPI = api.NewUserAPI(&backend)
 	TenantAPI = api.NewTenantAPI(&backend)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: User")
+	RunSpecs(t, "CRUD flant_iam: User")
 }

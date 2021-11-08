@@ -10,6 +10,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -238,7 +239,11 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create tenant", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+		}
+
 		tenant := &model.Tenant{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
@@ -247,13 +252,13 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Tenants(tx).Create(tenant); err != nil {
+		if err = usecase.Tenants(tx).Create(tenant); err != nil {
 			msg := "cannot create tenant"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			b.Logger().Error(msg, "err", err.Error())
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
@@ -278,8 +283,8 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"tenant": tenant}}
@@ -299,8 +304,8 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 		if err != nil {
 			return responseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -339,7 +344,7 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		tenants, err := usecase.Tenants(tx).List(showArchived)
 		if err != nil {
-			return nil, err
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{
@@ -369,8 +374,8 @@ func (b *tenantBackend) handleRestore() framework.OperationFunc {
 			return responseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = commit(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{

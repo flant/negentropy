@@ -90,7 +90,7 @@ var _ = Describe("Contact", func() {
 		}, url.Values{})
 	})
 
-	It("can be created with priveleged", func() {
+	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomContactCreatePayload()
 		originalUUID := createPayload["uuid"]
 		createPayload["client_uuid"] = client.UUID
