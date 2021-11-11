@@ -14,7 +14,7 @@ const (
 	TenantUUIDServiceAccountIdIndex = "tenant_uuid_service_account_id"
 )
 
-func ServiceAccountSchema() *memdb.DBSchema {
+func ServiceAccountSchema() map[string]*memdb.TableSchema {
 	var tenantUUIDServiceAccountIdIndexer []memdb.Indexer
 
 	tenantUUIDIndexer := &memdb.StringFieldIndex{
@@ -29,36 +29,34 @@ func ServiceAccountSchema() *memdb.DBSchema {
 	}
 	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, groupIdIndexer)
 
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ServiceAccountType: {
-				Name: model.ServiceAccountType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+	return map[string]*memdb.TableSchema{
+		model.ServiceAccountType: {
+			Name: model.ServiceAccountType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					fullIdentifierIndex: {
-						Name: fullIdentifierIndex,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "FullIdentifier",
-							Lowercase: true,
-						},
+				},
+				fullIdentifierIndex: {
+					Name: fullIdentifierIndex,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "FullIdentifier",
+						Lowercase: true,
 					},
-					TenantUUIDServiceAccountIdIndex: {
-						Name:    TenantUUIDServiceAccountIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
-					},
+				},
+				TenantUUIDServiceAccountIdIndex: {
+					Name:    TenantUUIDServiceAccountIdIndex,
+					Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
 				},
 			},
 		},

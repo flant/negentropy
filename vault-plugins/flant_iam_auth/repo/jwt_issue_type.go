@@ -3,30 +3,28 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func JWTIssueTypeSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.JWTIssueTypeType: {
-				Name: model.JWTIssueTypeType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func JWTIssueTypeSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.JWTIssueTypeType: {
+			Name: model.JWTIssueTypeType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				ID: {
+					Name:   ID,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					ByName: {
-						Name: ByName,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+				},
+				ByName: {
+					Name: ByName,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Name",
 					},
 				},
 			},

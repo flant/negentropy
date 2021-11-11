@@ -9,18 +9,16 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func FeatureFlagSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.FeatureFlagType: {
-				Name: model.FeatureFlagType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+func FeatureFlagSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.FeatureFlagType: {
+			Name: model.FeatureFlagType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Name",
 					},
 				},
 			},

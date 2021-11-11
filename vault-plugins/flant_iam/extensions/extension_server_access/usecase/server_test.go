@@ -12,6 +12,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -49,7 +50,7 @@ func Test_List(t *testing.T) {
 		Identifier:  "test",
 	}
 
-	memdb, _ := io.NewMemoryStore(repo.ServerSchema(), nil, hclog.NewNullLogger())
+	memdb, _ := io.NewMemoryStore(&memdb.DBSchema{Tables: repo.ServerSchema()}, nil, hclog.NewNullLogger())
 	tx := memdb.Txn(true)
 	err := tx.Insert(ext_model.ServerType, server)
 	require.NoError(t, err)

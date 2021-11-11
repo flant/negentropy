@@ -13,6 +13,7 @@ import (
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func GetStorage(t *testing.T, config *logical.BackendConfig) *sharedio.MemoryStore {
@@ -20,7 +21,7 @@ func GetStorage(t *testing.T, config *logical.BackendConfig) *sharedio.MemorySto
 	require.NoError(t, err)
 	schema, err := model.GetSchema(false)
 	require.NoError(t, err)
-	storage, err := sharedio.NewMemoryStore(schema, mb, hclog.NewNullLogger())
+	storage, err := sharedio.NewMemoryStore(&memdb.DBSchema{Tables: schema}, mb, hclog.NewNullLogger())
 
 	return storage
 }

@@ -16,38 +16,36 @@ const (
 	ArchivedAtIndex    = "archived_at_index"
 )
 
-func RoleSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.RoleType: {
-				Name: model.RoleType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+func RoleSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.RoleType: {
+			Name: model.RoleType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Name",
 					},
-					RoleScopeIndex: {
-						Name: RoleScopeIndex,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Scope",
-						},
+				},
+				RoleScopeIndex: {
+					Name: RoleScopeIndex,
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Scope",
 					},
-					IncludedRolesIndex: {
-						Name:         IncludedRolesIndex,
-						AllowMissing: true,
-						Unique:       false,
-						Indexer:      includedRolesIndexer{},
-					},
-					ArchivedAtIndex: {
-						Name:         ArchivedAtIndex,
-						AllowMissing: false,
-						Unique:       false,
-						Indexer: &memdb.IntFieldIndex{
-							Field: "ArchivingTimestamp",
-						},
+				},
+				IncludedRolesIndex: {
+					Name:         IncludedRolesIndex,
+					AllowMissing: true,
+					Unique:       false,
+					Indexer:      includedRolesIndexer{},
+				},
+				ArchivedAtIndex: {
+					Name:         ArchivedAtIndex,
+					AllowMissing: false,
+					Unique:       false,
+					Indexer: &memdb.IntFieldIndex{
+						Field: "ArchivingTimestamp",
 					},
 				},
 			},

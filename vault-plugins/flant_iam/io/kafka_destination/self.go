@@ -1,10 +1,9 @@
 package kafka_destination
 
 import (
-	"github.com/hashicorp/go-memdb"
-
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type SelfKafkaDestination struct {
@@ -37,7 +36,7 @@ func (mkd *SelfKafkaDestination) ProcessObject(_ *io.MemoryStore, _ *memdb.Txn, 
 	return []kafka.Message{msg}, nil
 }
 
-func (mkd *SelfKafkaDestination) ProcessObjectDelete(ms *io.MemoryStore, txn *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
+func (mkd *SelfKafkaDestination) ProcessObjectDelete(ms *io.MemoryStore, _ *memdb.Txn, obj io.MemoryStorableObject) ([]kafka.Message, error) {
 	msg, err := mkd.simpleObjectDeleteKafker(mkd.mb.PluginConfig.SelfTopicName, obj, mkd.mb.EncryptionPrivateKey())
 	if err != nil {
 		return nil, err

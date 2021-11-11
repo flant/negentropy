@@ -9,37 +9,35 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func UserSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.UserType: {
-				Name: model.UserType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func UserSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.UserType: {
+			Name: model.UserType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Version",
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Identifier",
-						},
+				},
+				"identifier": {
+					Name: "identifier",
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Identifier",
 					},
 				},
 			},

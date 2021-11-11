@@ -5,7 +5,8 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type MsgDecoded struct {

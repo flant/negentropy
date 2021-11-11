@@ -3,7 +3,7 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -11,32 +11,30 @@ import (
 
 const ClientForeignPK = "tenant_uuid"
 
-func ClientSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ClientType: {
-				Name: model.ClientType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func ClientSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.ClientType: {
+			Name: model.ClientType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					"identifier": {
-						Name:   "identifier",
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "Identifier",
-							Lowercase: true,
-						},
+				},
+				"identifier": {
+					Name:   "identifier",
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field:     "Identifier",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Version",
 					},
 				},
 			},

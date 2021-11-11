@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
-
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 // HandleServerAccessObjects try to handle kafka messages as ServerAccess objects

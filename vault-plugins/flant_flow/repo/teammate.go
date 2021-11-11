@@ -3,45 +3,43 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func TeammateSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.TeammateType: {
-				Name: model.TeammateType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func TeammateSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.TeammateType: {
+			Name: model.TeammateType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					"identifier": {
-						Name:   "identifier",
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "Identifier",
-							Lowercase: true,
-						},
+				},
+				"identifier": {
+					Name:   "identifier",
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field:     "Identifier",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Version",
 					},
-					TeamForeignPK: {
-						Name: TeamForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "TeamUUID",
-						},
+				},
+				TeamForeignPK: {
+					Name: TeamForeignPK,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "TeamUUID",
 					},
 				},
 			},

@@ -24,6 +24,7 @@ import (
 	sharedjwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 var _ logical.Factory = Factory
@@ -92,12 +93,12 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := iam_repo.GetSchema()
+	iamSchema, err := iam_repo.GetSchema()
 	if err != nil {
 		return nil, err
 	}
 
-	schema, err = ext_repo.MergeSchema(schema)
+	schema, err := memdb.MergeDBSchemas(iamSchema, &memdb.DBSchema{Tables: ext_repo.ServerSchema()})
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -11,32 +11,30 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-func EntitySchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.EntityType: {
-				Name: model.EntityType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func EntitySchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.EntityType: {
+			Name: model.EntityType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				ID: {
+					Name:   ID,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					ByUserID: {
-						Name:   ByUserID,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "UserId",
-						},
+				},
+				ByUserID: {
+					Name:   ByUserID,
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "UserId",
 					},
-					ByName: {
-						Name:   ByName,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+				},
+				ByName: {
+					Name:   ByName,
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Name",
 					},
 				},
 			},
