@@ -9,12 +9,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type MultipassGenerationKafkaDestination struct {

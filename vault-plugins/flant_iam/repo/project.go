@@ -11,37 +11,35 @@ import (
 
 const ProjectForeignPK = "project_uuid"
 
-func ProjectSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ProjectType: {
-				Name: model.ProjectType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func ProjectSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.ProjectType: {
+			Name: model.ProjectType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Version",
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Identifier",
-						},
+				},
+				"identifier": {
+					Name: "identifier",
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Identifier",
 					},
 				},
 			},

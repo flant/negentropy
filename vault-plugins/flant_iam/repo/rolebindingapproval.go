@@ -9,32 +9,30 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func RoleBindingApprovalSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.RoleBindingApprovalType: {
-				Name: model.RoleBindingApprovalType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.RoleBindingApprovalType: {
+			Name: model.RoleBindingApprovalType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					RoleBindingForeignPK: {
-						Name: RoleBindingForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "RoleBindingUUID",
-							Lowercase: true,
-						},
+				},
+				RoleBindingForeignPK: {
+					Name: RoleBindingForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "RoleBindingUUID",
+						Lowercase: true,
 					},
 				},
 			},

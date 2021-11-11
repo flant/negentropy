@@ -1,10 +1,13 @@
 package repo
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 func Test_RoleDbSchema(t *testing.T) {
-	schema := RoleSchema()
-	if err := schema.Validate(); err != nil {
+	if err := (&memdb.DBSchema{Tables: RoleSchema()}).Validate(); err != nil {
 		t.Fatalf("role schema is invalid: %v", err)
 	}
 }

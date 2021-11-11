@@ -3,11 +3,12 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -17,14 +18,14 @@ const (
 	ByUserID = "user_id"
 )
 
-func mergeSchema() (*memdb.DBSchema, error) {
+func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 	jwtSchema, err := jwt_model.GetSchema(false)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := EntitySchema()
-	others := []*memdb.DBSchema{
+	others := []map[string]*hcmemdb.TableSchema{
+		EntitySchema(),
 		EntityAliasSchema(),
 		AuthSourceSchema(),
 		AuthMethodSchema(),
@@ -47,19 +48,39 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		jwtSchema,
 	}
 
-	for _, o := range others {
-		for name, table := range o.Tables {
-			if _, ok := schema.Tables[name]; ok {
+	allTables := map[string]*memdb.TableSchema{}
+
+	for _, tables := range others {
+		for name, table := range tables {
+			if _, ok := allTables[name]; ok {
 				return nil, fmt.Errorf("table %q already there", name)
 			}
-			schema.Tables[name] = table
+			allTables[name] = table
 		}
 	}
-	return schema, nil
+	return allTables, nil
 }
 
 func GetSchema() (*memdb.DBSchema, error) {
-	return mergeSchema()
+	tables, err := mergeTables()
+	if err != nil {
+		return nil, err
+	}
+	schema := &memdb.DBSchema{
+		Tables: tables,
+		// TODO fill it
+		MandatoryForeignKeys: nil,
+		// TODO fill it
+		CascadeDeletes: nil,
+		// TODO fill it
+		CheckingRelations: nil,
+	}
+
+	err = schema.Validate()
+	if err != nil {
+		return nil, err
+	}
+	return schema, nil
 }
 
 func NewResourceVersion() string {

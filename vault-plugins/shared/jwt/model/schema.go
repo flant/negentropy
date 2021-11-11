@@ -3,27 +3,27 @@ package model
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 )
 
-func GetSchema(onlyJwks bool) (*memdb.DBSchema, error) {
-	schema := JWKSSchema()
+func GetSchema(onlyJwks bool) (map[string]*hcmemdb.TableSchema, error) {
+	result := JWKSSchema()
 	if onlyJwks {
-		return schema, nil
+		return result, nil
 	}
 
-	others := []*memdb.DBSchema{
+	others := []map[string]*hcmemdb.TableSchema{
 		ConfigSchema(),
 		StateSchema(),
 	}
 
-	for _, o := range others {
-		for name, table := range o.Tables {
-			if _, ok := schema.Tables[name]; ok {
+	for _, tables := range others {
+		for name, table := range tables {
+			if _, ok := result[name]; ok {
 				return nil, fmt.Errorf("table %q already there", name)
 			}
-			schema.Tables[name] = table
+			result[name] = table
 		}
 	}
-	return schema, nil
+	return result, nil
 }

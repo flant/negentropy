@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
@@ -19,68 +19,66 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func ServerSchema() *memdb.DBSchema {
-	var serverIdentifierMultiIndexer []memdb.Indexer
+func ServerSchema() map[string]*hcmemdb.TableSchema {
+	var serverIdentifierMultiIndexer []hcmemdb.Indexer
 
-	tenantUUIDIndex := &memdb.StringFieldIndex{
+	tenantUUIDIndex := &hcmemdb.StringFieldIndex{
 		Field:     "TenantUUID",
 		Lowercase: true,
 	}
 	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, tenantUUIDIndex)
 
-	projectUUIDIndex := &memdb.StringFieldIndex{
+	projectUUIDIndex := &hcmemdb.StringFieldIndex{
 		Field:     "ProjectUUID",
 		Lowercase: true,
 	}
 	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, projectUUIDIndex)
 
-	serverIdentifierIndex := &memdb.StringFieldIndex{
+	serverIdentifierIndex := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
 	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, serverIdentifierIndex)
 
-	var tenantProjectMultiIndexer []memdb.Indexer
+	var tenantProjectMultiIndexer []hcmemdb.Indexer
 	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, tenantUUIDIndex)
 	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, projectUUIDIndex)
 
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			ext_model.ServerType: {
-				Name: ext_model.ServerType,
-				Indexes: map[string]*memdb.IndexSchema{
-					iam_repo.PK: {
-						Name:   iam_repo.PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+	return map[string]*hcmemdb.TableSchema{
+		ext_model.ServerType: {
+			Name: ext_model.ServerType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				iam_repo.PK: {
+					Name:   iam_repo.PK,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					iam_repo.TenantForeignPK: {
-						Name: iam_repo.TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				iam_repo.TenantForeignPK: {
+					Name: iam_repo.TenantForeignPK,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					iam_repo.ProjectForeignPK: {
-						Name: iam_repo.ProjectForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "ProjectUUID",
-							Lowercase: true,
-						},
+				},
+				iam_repo.ProjectForeignPK: {
+					Name: iam_repo.ProjectForeignPK,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field:     "ProjectUUID",
+						Lowercase: true,
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.CompoundIndex{
-							Indexes: serverIdentifierMultiIndexer,
-						},
+				},
+				"identifier": {
+					Name: "identifier",
+					Indexer: &hcmemdb.CompoundIndex{
+						Indexes: serverIdentifierMultiIndexer,
 					},
-					"tenant_project": {
-						Name: "tenant_project",
-						Indexer: &memdb.CompoundIndex{
-							Indexes: tenantProjectMultiIndexer,
-						},
+				},
+				"tenant_project": {
+					Name: "tenant_project",
+					Indexer: &hcmemdb.CompoundIndex{
+						Indexes: tenantProjectMultiIndexer,
 					},
 				},
 			},
@@ -146,7 +144,7 @@ func (r *ServerRepository) Delete(uuid string) error {
 
 func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server, error) {
 	var (
-		iter memdb.ResultIterator
+		iter hcmemdb.ResultIterator
 		err  error
 	)
 

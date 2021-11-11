@@ -3,7 +3,7 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -16,52 +16,50 @@ const (
 	BySourceId        = "source_id"
 )
 
-func EntityAliasSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.EntityAliasType: {
-				Name: model.EntityAliasType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func EntityAliasSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.EntityAliasType: {
+			Name: model.EntityAliasType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				ID: {
+					Name:   ID,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					EntityAliasSource: {
-						Name: EntityAliasSource,
-						Indexer: &memdb.CompoundIndex{
-							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{
-									Field: "UserId",
-								},
+				},
+				EntityAliasSource: {
+					Name: EntityAliasSource,
+					Indexer: &hcmemdb.CompoundIndex{
+						Indexes: []hcmemdb.Indexer{
+							&hcmemdb.StringFieldIndex{
+								Field: "UserId",
+							},
 
-								&memdb.StringFieldIndex{
-									Field: "SourceId",
-								},
+							&hcmemdb.StringFieldIndex{
+								Field: "SourceId",
 							},
 						},
 					},
-					ByName: {
-						Name: ByName,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "SourceId",
-						},
+				},
+				ByName: {
+					Name: ByName,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "SourceId",
 					},
+				},
 
-					BySourceId: {
-						Name: BySourceId,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+				BySourceId: {
+					Name: BySourceId,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Name",
 					},
+				},
 
-					ByUserID: {
-						Name: ByUserID,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "UserId",
-						},
+				ByUserID: {
+					Name: ByUserID,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "UserId",
 					},
 				},
 			},

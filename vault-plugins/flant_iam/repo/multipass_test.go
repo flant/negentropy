@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func Test_MultipassDbSchema(t *testing.T) {
-	schema := MultipassSchema()
-	if err := schema.Validate(); err != nil {
+	if err := (&memdb.DBSchema{Tables: MultipassSchema()}).Validate(); err != nil {
 		t.Fatalf("multipass schema is invalid: %v", err)
 	}
 }

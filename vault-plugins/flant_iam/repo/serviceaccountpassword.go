@@ -9,25 +9,23 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func ServiceAccountPasswordSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ServiceAccountPasswordType: {
-				Name: model.ServiceAccountPasswordType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func ServiceAccountPasswordSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.ServiceAccountPasswordType: {
+			Name: model.ServiceAccountPasswordType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					OwnerForeignPK: {
-						Name: OwnerForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "OwnerUUID",
-							Lowercase: true,
-						},
+				},
+				OwnerForeignPK: {
+					Name: OwnerForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "OwnerUUID",
+						Lowercase: true,
 					},
 				},
 			},

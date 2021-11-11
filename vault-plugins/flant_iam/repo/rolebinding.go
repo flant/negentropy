@@ -20,7 +20,7 @@ const (
 	TenantUUIDRoleBindingIdIndex     = "tenant_uuid_role_binding_id"
 )
 
-func RoleBindingSchema() *memdb.DBSchema {
+func RoleBindingSchema() map[string]*memdb.TableSchema {
 	var tenantUUIDRoleBindingIdIndexer []memdb.Indexer
 
 	tenantUUIDIndexer := &memdb.StringFieldIndex{
@@ -35,67 +35,65 @@ func RoleBindingSchema() *memdb.DBSchema {
 	}
 	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, groupIdIndexer)
 
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.RoleBindingType: {
-				Name: model.RoleBindingType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+	return map[string]*memdb.TableSchema{
+		model.RoleBindingType: {
+			Name: model.RoleBindingType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					UserInRoleBindingIndex: {
-						Name:         UserInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Users",
-						},
+				},
+				UserInRoleBindingIndex: {
+					Name:         UserInRoleBindingIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Users",
 					},
-					ServiceAccountInRoleBindingIndex: {
-						Name:         ServiceAccountInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "ServiceAccounts",
-						},
+				},
+				ServiceAccountInRoleBindingIndex: {
+					Name:         ServiceAccountInRoleBindingIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "ServiceAccounts",
 					},
-					GroupInRoleBindingIndex: {
-						Name:         GroupInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Groups",
-						},
+				},
+				GroupInRoleBindingIndex: {
+					Name:         GroupInRoleBindingIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Groups",
 					},
-					ProjectInRoleBindingIndex: {
-						Name:         ProjectInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Projects",
-						},
+				},
+				ProjectInRoleBindingIndex: {
+					Name:         ProjectInRoleBindingIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Projects",
 					},
-					RoleInRoleBindingIndex: {
-						Name:         RoleInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer:      &roleInRoleBindingIndexer{},
-					},
-					TenantUUIDRoleBindingIdIndex: {
-						Name:    TenantUUIDRoleBindingIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
-					},
+				},
+				RoleInRoleBindingIndex: {
+					Name:         RoleInRoleBindingIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer:      &roleInRoleBindingIndexer{},
+				},
+				TenantUUIDRoleBindingIdIndex: {
+					Name:    TenantUUIDRoleBindingIdIndex,
+					Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
 				},
 			},
 		},

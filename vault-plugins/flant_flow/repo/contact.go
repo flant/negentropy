@@ -3,43 +3,41 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func ContactSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ContactType: {
-				Name: model.ContactType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func ContactSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model.ContactType: {
+			Name: model.ContactType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					ClientForeignPK: {
-						Name: ClientForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				ClientForeignPK: {
+					Name: ClientForeignPK,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Version",
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Identifier",
-						},
+				},
+				"identifier": {
+					Name: "identifier",
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "Identifier",
 					},
 				},
 			},

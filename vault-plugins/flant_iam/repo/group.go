@@ -19,7 +19,7 @@ const (
 
 type GroupObjectType string
 
-func GroupSchema() *memdb.DBSchema {
+func GroupSchema() map[string]*memdb.TableSchema {
 	var tenantUUIDGroupIdIndexer []memdb.Indexer
 
 	tenantUUIDIndexer := &memdb.StringFieldIndex{
@@ -34,53 +34,51 @@ func GroupSchema() *memdb.DBSchema {
 	}
 	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, groupIdIndexer)
 
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.GroupType: {
-				Name: model.GroupType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+	return map[string]*memdb.TableSchema{
+		model.GroupType: {
+			Name: model.GroupType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					UserInGroupIndex: {
-						Name:         UserInGroupIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Users",
-						},
+				},
+				UserInGroupIndex: {
+					Name:         UserInGroupIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Users",
 					},
-					ServiceAccountInGroupIndex: {
-						Name:         ServiceAccountInGroupIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "ServiceAccounts",
-						},
+				},
+				ServiceAccountInGroupIndex: {
+					Name:         ServiceAccountInGroupIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "ServiceAccounts",
 					},
-					GroupInGroupIndex: {
-						Name:         GroupInGroupIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Groups",
-						},
+				},
+				GroupInGroupIndex: {
+					Name:         GroupInGroupIndex,
+					Unique:       false,
+					AllowMissing: true,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Groups",
 					},
-					TenantUUIDGroupIdIndex: {
-						Name:    TenantUUIDGroupIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
-					},
+				},
+				TenantUUIDGroupIdIndex: {
+					Name:    TenantUUIDGroupIdIndex,
+					Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
 				},
 			},
 		},

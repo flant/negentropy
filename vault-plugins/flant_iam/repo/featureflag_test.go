@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func Test_FeatureFlagMarshalling(t *testing.T) {
@@ -30,8 +31,7 @@ func Test_FeatureFlagMarshalling(t *testing.T) {
 }
 
 func Test_FeatureFlagDbSchema(t *testing.T) {
-	schema := FeatureFlagSchema()
-	if err := schema.Validate(); err != nil {
+	if err := (&memdb.DBSchema{Tables: FeatureFlagSchema()}).Validate(); err != nil {
 		t.Fatalf("tenant schema is invalid: %v", err)
 	}
 }

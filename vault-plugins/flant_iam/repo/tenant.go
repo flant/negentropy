@@ -13,32 +13,30 @@ const (
 	TenantForeignPK = "tenant_uuid"
 )
 
-func TenantSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.TenantType: {
-				Name: model.TenantType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func TenantSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.TenantType: {
+			Name: model.TenantType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					"identifier": {
-						Name:   "identifier",
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "Identifier",
-							Lowercase: true,
-						},
+				},
+				"identifier": {
+					Name:   "identifier",
+					Unique: true,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "Identifier",
+						Lowercase: true,
 					},
-					"version": {
-						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Version",
-						},
+				},
+				"version": {
+					Name: "version",
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Version",
 					},
 				},
 			},

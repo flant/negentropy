@@ -3,9 +3,8 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
-
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -15,13 +14,13 @@ const (
 	PK = "id"
 )
 
-func mergeSchema() (*memdb.DBSchema, error) {
+func mergeTables() (map[string]*memdb.TableSchema, error) {
 	jwtSchema, err := model.GetSchema(false)
 	if err != nil {
 		return nil, err
 	}
 
-	included := []*memdb.DBSchema{
+	included := []map[string]*memdb.TableSchema{
 		TenantSchema(),
 		UserSchema(),
 		ReplicaSchema(),
@@ -35,35 +34,42 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		MultipassSchema(),
 		ServiceAccountPasswordSchema(),
 		IdentitySharingSchema(),
-
+		//
 		jwtSchema,
 	}
 
-	schema := &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{},
-	}
+	tables := map[string]*memdb.TableSchema{}
 
-	for _, s := range included {
-		for name, table := range s.Tables {
-			if _, ok := schema.Tables[name]; ok {
+	for _, partialTables := range included {
+		for name, table := range partialTables {
+			if _, ok := tables[name]; ok {
 				return nil, fmt.Errorf("table %q already there", name)
 			}
-			schema.Tables[name] = table
+			tables[name] = table
 		}
 	}
 
-	err = schema.Validate()
 	if err != nil {
 		return nil, err
 	}
-	return schema, nil
+	return tables, nil
 }
 
 func GetSchema() (*memdb.DBSchema, error) {
-	schema, err := mergeSchema()
+	tables, err := mergeTables()
 	if err != nil {
 		return nil, err
 	}
+	schema := &memdb.DBSchema{
+		Tables: tables,
+		// TODO fill it
+		MandatoryForeignKeys: nil,
+		// TODO fill it
+		CascadeDeletes: nil,
+		// TODO fill it
+		CheckingRelations: nil,
+	}
+
 	err = schema.Validate()
 	if err != nil {
 		return nil, err

@@ -15,37 +15,35 @@ const (
 	GroupUUIDIdentitySharingIndex = "group_in_identity_sharing_index"
 )
 
-func IdentitySharingSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.IdentitySharingType: {
-				Name: model.IdentitySharingType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func IdentitySharingSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.IdentitySharingType: {
+			Name: model.IdentitySharingType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					SourceTenantUUIDIndex: {
-						Name: SourceTenantUUIDIndex,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "SourceTenantUUID",
-						},
+				},
+				SourceTenantUUIDIndex: {
+					Name: SourceTenantUUIDIndex,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "SourceTenantUUID",
 					},
-					DestinationTenantUUIDIndex: {
-						Name: DestinationTenantUUIDIndex,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "DestinationTenantUUID",
-						},
+				},
+				DestinationTenantUUIDIndex: {
+					Name: DestinationTenantUUIDIndex,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "DestinationTenantUUID",
 					},
-					GroupUUIDIdentitySharingIndex: {
-						Name:   GroupUUIDIdentitySharingIndex,
-						Unique: false,
-						Indexer: &memdb.StringSliceFieldIndex{
-							Field: "Groups",
-						},
+				},
+				GroupUUIDIdentitySharingIndex: {
+					Name:   GroupUUIDIdentitySharingIndex,
+					Unique: false,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field: "Groups",
 					},
 				},
 			},

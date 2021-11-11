@@ -13,32 +13,30 @@ const (
 	OwnerForeignPK = "owner_uuid"
 )
 
-func MultipassSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.MultipassType: {
-				Name: model.MultipassType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func MultipassSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.MultipassType: {
+			Name: model.MultipassType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					TenantForeignPK: {
-						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TenantUUID",
-							Lowercase: true,
-						},
+				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
 					},
-					OwnerForeignPK: {
-						Name: OwnerForeignPK,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "OwnerUUID",
-							Lowercase: true,
-						},
+				},
+				OwnerForeignPK: {
+					Name: OwnerForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "OwnerUUID",
+						Lowercase: true,
 					},
 				},
 			},

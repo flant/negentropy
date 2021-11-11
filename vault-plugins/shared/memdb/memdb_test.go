@@ -426,7 +426,7 @@ func Test_validateExistenceIndexesFail(t *testing.T) {
 	err := validateExistenceIndexes(rels, testTables())
 
 	require.Error(t, err)
-	require.Equal(t, "index named 'no_index' not found at table 'parent', passed as relation to field 'ParentID' of table 't1'", err.Error())
+	require.Equal(t, "index named \"no_index\" not found at table \"parent\", passed as relation to field \"ParentID\" of table \"t1\"", err.Error())
 }
 
 func Test_validateCyclicFailForChildrenRels(t *testing.T) {

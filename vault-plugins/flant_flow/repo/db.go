@@ -3,8 +3,9 @@ package repo
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -14,8 +15,8 @@ const (
 	PK = "id"
 )
 
-func mergeSchema() (*memdb.DBSchema, error) {
-	included := []*memdb.DBSchema{
+func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
+	included := []map[string]*hcmemdb.TableSchema{
 		ClientSchema(),
 		TeamSchema(),
 		TeammateSchema(),
@@ -23,31 +24,35 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		ContactSchema(),
 	}
 
-	schema := &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{},
-	}
+	allTables := map[string]*hcmemdb.TableSchema{}
 
-	for _, s := range included {
-		for name, table := range s.Tables {
-			if _, ok := schema.Tables[name]; ok {
-				return nil, fmt.Errorf("table %q already there", name)
+	for _, tables := range included {
+		for name, table := range tables {
+			if _, found := allTables[name]; found {
+				return nil, fmt.Errorf("%w: table %q already there", memdb.ErrMergeSchema, name)
 			}
-			schema.Tables[name] = table
+			allTables[name] = table
 		}
 	}
 
-	err := schema.Validate()
-	if err != nil {
-		return nil, err
-	}
-	return schema, nil
+	return allTables, nil
 }
 
 func GetSchema() (*memdb.DBSchema, error) {
-	schema, err := mergeSchema()
+	tables, err := mergeTables()
 	if err != nil {
 		return nil, err
 	}
+	schema := &memdb.DBSchema{
+		Tables: tables,
+		// TODO fill it
+		MandatoryForeignKeys: nil,
+		// TODO fill it
+		CascadeDeletes: nil,
+		// TODO fill it
+		CheckingRelations: nil,
+	}
+
 	err = schema.Validate()
 	if err != nil {
 		return nil, err

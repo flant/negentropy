@@ -6,26 +6,24 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-func ReplicaSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model.ReplicaType: {
-				Name: model.ReplicaType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Name",
-						},
+func ReplicaSchema() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		model.ReplicaType: {
+			Name: model.ReplicaType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.StringFieldIndex{
+						Field: "Name",
 					},
-					"type": {
-						Name:   "type",
-						Unique: false,
-						Indexer: &memdb.StringFieldIndex{
-							Field:     "TopicType",
-							Lowercase: true,
-						},
+				},
+				"type": {
+					Name:   "type",
+					Unique: false,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TopicType",
+						Lowercase: true,
 					},
 				},
 			},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -35,8 +36,7 @@ func Test_ClientMarshalling(t *testing.T) {
 }
 
 func Test_ClientDbSchema(t *testing.T) {
-	schema := ClientSchema()
-	if err := schema.Validate(); err != nil {
+	if err := (&memdb.DBSchema{Tables: ClientSchema()}).Validate(); err != nil {
 		t.Fatalf("tenant schema is invalid: %v", err)
 	}
 }
