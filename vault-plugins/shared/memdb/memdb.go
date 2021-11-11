@@ -50,18 +50,6 @@ type DBSchema struct {
 	CheckingRelations map[dataType][]Relation
 }
 
-type Archivable interface {
-	Archive(timeStamp UnixTime, archivingHash int64)
-	Restore()
-	Archived() bool
-	ArchiveMarks() (timeStamp UnixTime, archivingHash int64)
-}
-
-type ArchivableImpl struct {
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
-}
-
 type MemDB struct {
 	*hcmemdb.MemDB
 
@@ -93,24 +81,6 @@ type (
 	fieldName = string
 	indexName = string
 )
-
-func (a *ArchivableImpl) Archive(timeStamp UnixTime, hash int64) {
-	a.ArchivingTimestamp = timeStamp
-	a.ArchivingHash = hash
-}
-
-func (a *ArchivableImpl) Restore() {
-	a.ArchivingTimestamp = 0
-	a.ArchivingHash = 0
-}
-
-func (a *ArchivableImpl) Archived() bool {
-	return a.ArchivingTimestamp != 0
-}
-
-func (a *ArchivableImpl) ArchiveMarks() (timeStamp UnixTime, archivingHash int64) {
-	return a.ArchivingTimestamp, a.ArchivingHash
-}
 
 func (s *DBSchema) Validate() error {
 	if err := (&hcmemdb.DBSchema{Tables: s.Tables}).Validate(); err != nil {
