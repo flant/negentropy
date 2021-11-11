@@ -5,29 +5,49 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 )
 
+// Exported constants, vars and Types
+
+// PK is a mandatory index for all tables at hc/go-memdb
 const PK = "id"
-
-type (
-	dataType  = string
-	fieldName = string
-	indexName = string
-	UnixTime  = int64
-)
 
 var (
 	ErrForeignKey       = fmt.Errorf("foreign key error")
 	ErrNotEmptyRelation = fmt.Errorf("not empty relation error")
 	ErrNotArchivable    = fmt.Errorf("not archivable object")
 	ErrInvalidSchema    = fmt.Errorf("invalid DBSchema")
+	ErrMergeSchema      = fmt.Errorf("merging DBSchema")
+)
+
+type (
+	// UnixTime used as timestamp at ArchivingTimestamp
+	UnixTime = int64
+
+	// TableSchema synonym for replacing original type at code
+	TableSchema = hcmemdb.TableSchema
 )
 
 type Relation struct {
 	OriginalDataTypeFieldName     fieldName
 	RelatedDataType               dataType
 	RelatedDataTypeFieldIndexName indexName
+}
+
+type DBSchema struct {
+	Tables map[string]*TableSchema
+	// check at Insert
+	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
+	MandatoryForeignKeys map[dataType][]Relation
+	// use at CascadeDelete
+	// check at Delete, deleting fails if any of relation is not empty
+	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
+	CascadeDeletes map[dataType][]Relation
+	// check at CascadeDelete and Delete, deleting fails if any of relation is not empty
+	// prohibited to place the same Relation into CascadeDeletes and CheckingRelations
+	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
+	CheckingRelations map[dataType][]Relation
 }
 
 type Archivable interface {
@@ -41,6 +61,38 @@ type ArchivableImpl struct {
 	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
 	ArchivingHash      int64    `json:"archiving_hash"`
 }
+
+type MemDB struct {
+	*hcmemdb.MemDB
+
+	schema *DBSchema
+}
+
+type Txn struct {
+	*hcmemdb.Txn
+
+	schema *DBSchema
+}
+
+func NewMemDB(schema *DBSchema) (*MemDB, error) {
+	if err := schema.Validate(); err != nil {
+		return nil, err
+	}
+	db, err := hcmemdb.NewMemDB(&hcmemdb.DBSchema{Tables: schema.Tables})
+	if err != nil {
+		return nil, err
+	}
+	return &MemDB{
+		MemDB:  db,
+		schema: schema,
+	}, nil
+}
+
+type (
+	dataType  = string
+	fieldName = string
+	indexName = string
+)
 
 func (a *ArchivableImpl) Archive(timeStamp UnixTime, hash int64) {
 	a.ArchivingTimestamp = timeStamp
@@ -60,23 +112,8 @@ func (a *ArchivableImpl) ArchiveMarks() (timeStamp UnixTime, archivingHash int64
 	return a.ArchivingTimestamp, a.ArchivingHash
 }
 
-type DBSchema struct {
-	*memdb.DBSchema
-	// check at Insert
-	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
-	MandatoryForeignKeys map[dataType][]Relation
-	// use at CascadeDelete
-	// check at Delete, deleting fails if any of relation is not empty
-	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
-	CascadeDeletes map[dataType][]Relation
-	// check at CascadeDelete and Delete, deleting fails if any of relation is not empty
-	// prohibited to place the same Relation into CascadeDeletes and CheckingRelations
-	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
-	CheckingRelations map[dataType][]Relation
-}
-
-func (s *DBSchema) validate() error {
-	if err := s.DBSchema.Validate(); err != nil {
+func (s *DBSchema) Validate() error {
+	if err := (&hcmemdb.DBSchema{Tables: s.Tables}).Validate(); err != nil {
 		return fmt.Errorf("%w:%s", ErrInvalidSchema, err)
 	}
 	if err := validateForeignKeys(s.MandatoryForeignKeys); err != nil {
@@ -86,7 +123,7 @@ func (s *DBSchema) validate() error {
 	if err != nil {
 		return fmt.Errorf("%w:%s", ErrInvalidSchema, err)
 	}
-	err = validateExistenceIndexes(allChildRelations, s.DBSchema)
+	err = validateExistenceIndexes(allChildRelations, s.Tables)
 	if err != nil {
 		return fmt.Errorf("%w:%s", ErrInvalidSchema, err)
 	}
@@ -189,16 +226,16 @@ loop:
 	return nil
 }
 
-func validateExistenceIndexes(rels map[dataType]map[Relation]struct{}, schema *memdb.DBSchema) error {
+func validateExistenceIndexes(rels map[dataType]map[Relation]struct{}, tables map[string]*hcmemdb.TableSchema) error {
 	for dt, rsSet := range rels {
 		for r := range rsSet {
-			if _, ok := schema.Tables[r.RelatedDataType]; !ok {
-				return fmt.Errorf("table %s is absent in memdb.DBSchema", dt)
+			if _, ok := tables[r.RelatedDataType]; !ok {
+				return fmt.Errorf("table %s is absent in DBSchema", dt)
 			} else {
-				if _, ok := schema.Tables[r.RelatedDataType].Indexes[r.RelatedDataTypeFieldIndexName]; ok {
+				if _, ok := tables[r.RelatedDataType].Indexes[r.RelatedDataTypeFieldIndexName]; ok {
 					break
 				}
-				return fmt.Errorf("index named '%s' not found at table '%s', passed as relation to field '%s' of table '%s'",
+				return fmt.Errorf("index named %q not found at table %q, passed as relation to field %q of table %q",
 					r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName, dt)
 			}
 		}
@@ -242,18 +279,6 @@ func checkRsMapForRepeating(allRels map[dataType]map[Relation]struct{},
 		}
 	}
 	return allRels, nil
-}
-
-type MemDB struct {
-	*memdb.MemDB
-
-	schema *DBSchema
-}
-
-type Txn struct {
-	*memdb.Txn
-
-	schema *DBSchema
 }
 
 func (m *MemDB) Txn(write bool) *Txn {
@@ -384,15 +409,14 @@ func (t *Txn) checkForeignKey(checkedFieldValue interface{}, key Relation) error
 		return fmt.Errorf("%w related record %#v is not archivable", ErrNotArchivable, relatedRecord)
 	}
 	if relatedRecord == nil || a.Archived() {
-		return fmt.Errorf("FK violation: '%s' not found at table '%s' at index '%s'",
+		return fmt.Errorf("FK violation: %q not found at table %q at index %q",
 			checkedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
 	}
 	return nil
 }
 
 func (t *Txn) checkCascadeDeletesAndCheckingRelations(table string, obj interface{}) error {
-	rels := append(t.schema.CascadeDeletes[table],
-		t.schema.CheckingRelations[table]...)
+	rels := append(t.schema.CascadeDeletes[table], t.schema.CheckingRelations[table]...) //nolint:gocritic
 	return t.processRelations(rels, obj, t.checkRelationShouldBeEmpty, ErrNotEmptyRelation)
 }
 
@@ -438,7 +462,7 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 		return fmt.Errorf("getting related record:%w", err)
 	}
 	if relatedRecord != nil {
-		return fmt.Errorf("relation should be empty: '%s' found at table '%s' by index '%s'",
+		return fmt.Errorf("relation should be empty: %q found at table %q by index %q",
 			checkedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
 	}
 	return nil
@@ -454,7 +478,7 @@ func (t *Txn) deleteChild(parentObjectFiledValue interface{}, key Relation) erro
 	}
 	err = t.CascadeDelete(key.RelatedDataType, relatedRecord)
 	if err != nil {
-		return fmt.Errorf("deleting related record: at table '%s' by index '%s', value '%s'",
+		return fmt.Errorf("deleting related record: at table %q by index %q, value %q",
 			key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
 	}
 	return nil
@@ -471,7 +495,7 @@ func (t *Txn) archiveChild(archivingTimeStamp int64, archivingHash int64) func(o
 		}
 		err = t.CascadeArchive(key.RelatedDataType, relatedRecord, archivingTimeStamp, archivingHash)
 		if err != nil {
-			return fmt.Errorf("archiving related record: at table '%s' by index '%s', value '%s'",
+			return fmt.Errorf("archiving related record: at table %q by index %q, value %q",
 				key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
 		}
 		return nil
@@ -496,23 +520,50 @@ func (t *Txn) restoreChild(archivingTimestamp UnixTime, archivingHash int64) fun
 		}
 		err = t.CascadeRestore(key.RelatedDataType, relatedRecord)
 		if err != nil {
-			return fmt.Errorf("restoring related record: at table '%s' by index '%s', value '%s'",
+			return fmt.Errorf("restoring related record: at table %q by index %q, value %q",
 				key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
 		}
 		return nil
 	}
 }
 
-func NewMemDB(schema *DBSchema) (*MemDB, error) {
-	if err := schema.validate(); err != nil {
-		return nil, err
+func MergeDBSchemas(schemas ...*DBSchema) (*DBSchema, error) {
+	tables := map[string]*hcmemdb.TableSchema{}
+
+	for i := range schemas {
+		for name, table := range schemas[i].Tables {
+			if _, found := tables[name]; found {
+				return nil, fmt.Errorf("%w:table %q already there", ErrMergeSchema, name)
+			}
+			tables[name] = table
+		}
 	}
-	db, err := memdb.NewMemDB(schema.DBSchema)
+
+	type mapRelations = map[dataType][]Relation
+
+	mergeRelationFunc := func(getRelationsFunc func(*DBSchema) mapRelations, schemas ...*DBSchema) map[dataType][]Relation {
+		allRels := map[dataType][]Relation{}
+		for _, schema := range schemas {
+			for name, rels := range getRelationsFunc(schema) {
+				if prevRels, found := allRels[name]; found {
+					rels = append(prevRels, rels...)
+				}
+				allRels[name] = rels
+			}
+		}
+		return allRels
+	}
+
+	result := DBSchema{
+		Tables:               tables,
+		MandatoryForeignKeys: mergeRelationFunc(func(s *DBSchema) mapRelations { return s.MandatoryForeignKeys }, schemas...),
+		CascadeDeletes:       mergeRelationFunc(func(s *DBSchema) mapRelations { return s.CascadeDeletes }, schemas...),
+		CheckingRelations:    mergeRelationFunc(func(s *DBSchema) mapRelations { return s.CheckingRelations }, schemas...),
+	}
+
+	err := result.Validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w:%s", ErrMergeSchema, err.Error())
 	}
-	return &MemDB{
-		MemDB:  db,
-		schema: schema,
-	}, nil
+	return &result, nil
 }

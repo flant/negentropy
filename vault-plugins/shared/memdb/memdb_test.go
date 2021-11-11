@@ -9,7 +9,7 @@ import (
 
 func prepareTxn(t *testing.T) *Txn {
 	schema := &DBSchema{
-		DBSchema: testSchema(),
+		Tables: testTables(),
 		MandatoryForeignKeys: map[dataType][]Relation{
 			childType1: {{
 				"ParentUUID", parentType, PK,
@@ -423,7 +423,7 @@ func Test_validateExistenceIndexesFail(t *testing.T) {
 		}: {}},
 	}
 
-	err := validateExistenceIndexes(rels, testSchema())
+	err := validateExistenceIndexes(rels, testTables())
 
 	require.Error(t, err)
 	require.Equal(t, "index named 'no_index' not found at table 'parent', passed as relation to field 'ParentID' of table 't1'", err.Error())
@@ -431,7 +431,7 @@ func Test_validateExistenceIndexesFail(t *testing.T) {
 
 func Test_validateCyclicFailForChildrenRels(t *testing.T) {
 	schema := &DBSchema{
-		DBSchema: testSchema(),
+		Tables: testTables(),
 		CascadeDeletes: map[dataType][]Relation{
 			parentType: {{
 				"UUID", childType2, parentTypeForeignKey,
@@ -444,7 +444,7 @@ func Test_validateCyclicFailForChildrenRels(t *testing.T) {
 		},
 	}
 
-	err := schema.validate()
+	err := schema.Validate()
 
 	require.ErrorIs(t, err, ErrInvalidSchema)
 }
@@ -483,54 +483,52 @@ type child2 struct {
 	Identifier string `json:"identifier"`
 }
 
-func testSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			parentType: {
-				Name: parentType,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func testTables() map[string]*memdb.TableSchema {
+	return map[string]*memdb.TableSchema{
+		parentType: {
+			Name: parentType,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
 				},
 			},
-			childType1: {
-				Name: childType1,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+		},
+		childType1: {
+			Name: childType1,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					parentTypeForeignKey: {
-						Name: parentTypeForeignKey,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "ParentUUID",
-						},
+				},
+				parentTypeForeignKey: {
+					Name: parentTypeForeignKey,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "ParentUUID",
 					},
 				},
 			},
-			childType2: {
-				Name: childType2,
-				Indexes: map[string]*memdb.IndexSchema{
-					PK: {
-						Name:   PK,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+		},
+		childType2: {
+			Name: childType2,
+			Indexes: map[string]*memdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					parentTypeForeignKey: {
-						Name: parentTypeForeignKey,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "ParentUUID",
-						},
+				},
+				parentTypeForeignKey: {
+					Name: parentTypeForeignKey,
+					Indexer: &memdb.UUIDFieldIndex{
+						Field: "ParentUUID",
 					},
 				},
 			},
