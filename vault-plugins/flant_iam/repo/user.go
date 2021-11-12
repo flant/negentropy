@@ -3,43 +3,57 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func UserSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.UserType: {
-			Name: model.UserType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "UUID",
+func UserSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.UserType: {
+				Name: model.UserType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					TenantForeignPK: {
+						Name: TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
+					"version": {
+						Name: "version",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Version",
+						},
+					},
+					"identifier": {
+						Name: "identifier",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Identifier",
+						},
 					},
 				},
-				TenantForeignPK: {
-					Name: TenantForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
-					},
-				},
-				"version": {
-					Name: "version",
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Version",
-					},
-				},
-				"identifier": {
-					Name: "identifier",
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Identifier",
-					},
-				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.UserType: {{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK}},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.UserType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: UserInGroupIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: UserInRoleBindingIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: UserInRoleBindingApprovalIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
 			},
 		},
 	}
@@ -88,17 +102,38 @@ func (r *UserRepository) Update(user *model.User) error {
 	return r.save(user)
 }
 
-func (r *UserRepository) Delete(id model.UserUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *UserRepository) CascadeDelete(id model.UserUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	user, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if user.IsDeleted() {
+	if user.Archived() {
 		return model.ErrIsArchived
 	}
-	user.ArchivingTimestamp = archivingTimestamp
-	user.ArchivingHash = archivingHash
-	return r.Update(user)
+	return r.db.CascadeArchive(model.UserType, user, archivingTimestamp, archivingTimestamp)
+}
+
+func (r *UserRepository) CleanChildrenSliceIndexes(id model.UserUUID) error {
+	user, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.CleanChildrenSliceIndexes(model.UserType, user)
+}
+
+func (r *UserRepository) CascadeRestore(id model.UserUUID) (*model.User, error) {
+	user, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if !user.Archived() {
+		return nil, model.ErrIsNotArchived
+	}
+	err = r.db.CascadeRestore(model.UserType, user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (r *UserRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.User, error) {

@@ -9,7 +9,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-const GroupInRoleBindingApprovalIndex = "group_in_role_binding_aaproval"
+const (
+	GroupInRoleBindingApprovalIndex = "group_in_role_binding_approval"
+	UserInRoleBindingApprovalIndex  = "user_in_role_binding_approval"
+)
 
 func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
 	return map[string]*memdb.TableSchema{
@@ -41,6 +44,13 @@ func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
 					Name: GroupInRoleBindingApprovalIndex,
 					Indexer: &memdb.StringSliceFieldIndex{
 						Field:     "Groups",
+						Lowercase: true,
+					},
+				},
+				UserInRoleBindingApprovalIndex: {
+					Name: UserInRoleBindingApprovalIndex,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field:     "Users",
 						Lowercase: true,
 					},
 				},

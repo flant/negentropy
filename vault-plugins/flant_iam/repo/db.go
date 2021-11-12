@@ -25,7 +25,7 @@ func mergeTables() (map[string]*memdb.TableSchema, error) {
 		// ProjectSchema(),
 		// GroupSchema(),
 
-		UserSchema(),
+		// UserSchema(),
 		ReplicaSchema(),
 		FeatureFlagSchema(),
 		ServiceAccountSchema(),
@@ -75,6 +75,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		TenantSchema(),
 		ProjectSchema(),
 		GroupSchema(),
+		UserSchema(),
 	)
 	if err != nil {
 		return nil, err

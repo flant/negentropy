@@ -11,8 +11,6 @@ type UserService struct {
 
 	tenantRepo *iam_repo.TenantRepository
 	usersRepo  *iam_repo.UserRepository
-
-	childrenDeleters []DeleterByParent
 }
 
 func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
@@ -21,10 +19,6 @@ func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
 
 		tenantRepo: iam_repo.NewTenantRepository(db),
 		usersRepo:  iam_repo.NewUserRepository(db),
-
-		childrenDeleters: []DeleterByParent{
-			MultipassDeleter(db),
-		},
 	}
 }
 
@@ -92,13 +86,13 @@ func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error
 	if user.Origin != origin {
 		return model.ErrBadOrigin
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
 
-	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
+	err = s.usersRepo.CleanChildrenSliceIndexes(id)
+	if err != nil {
 		return err
 	}
-
-	return s.usersRepo.Delete(id, archivingTimestamp, archivingHash)
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return s.usersRepo.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *UserService) SetExtension(ext *model.Extension) error {
@@ -126,5 +120,5 @@ func (s *UserService) UnsetExtension(origin model.ObjectOrigin, uuid model.UserU
 }
 
 func (s *UserService) Restore(id model.UserUUID) (*model.User, error) {
-	return s.usersRepo.Restore(id)
+	return s.usersRepo.CascadeRestore(id)
 }

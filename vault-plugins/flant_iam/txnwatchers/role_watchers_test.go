@@ -9,6 +9,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -257,8 +258,7 @@ func getTestMemoryStorage(t *testing.T, fixtureFunc func(t *testing.T, txn *io.M
 	// Create db with some entities.
 	schema, err := repo.GetSchema()
 	require.NoError(t, err)
-	schema.CascadeDeletes = nil
-	schema.MandatoryForeignKeys = nil
+	schema = memdb.DropRelations(schema)
 	mem, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 

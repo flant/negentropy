@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
@@ -20,7 +22,7 @@ func CreateTestStorage(t *testing.T) *io.MemoryStore {
 	require.NoError(t, err)
 
 	schema, err := repo.GetSchema()
-	schema.MandatoryForeignKeys = nil
+	schema = memdb.DropRelations(schema)
 	require.NoError(t, err)
 
 	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())

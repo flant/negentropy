@@ -32,7 +32,7 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
 
-		iam_repo.UserSchema(),
+		// iam_repo.UserSchema(),
 		// iam_repo.TenantSchema(),
 		// iam_repo.ProjectSchema(),
 		iam_repo.ServiceAccountSchema(),
@@ -78,9 +78,10 @@ func GetSchema() (*memdb.DBSchema, error) {
 
 	schema, err := memdb.MergeDBSchemas(
 		interimSchema,
-		iam_repo.TenantSchema(),
-		iam_repo.ProjectSchema(),
-		iam_repo.GroupSchema(),
+		memdb.DropRelations(iam_repo.TenantSchema()),
+		memdb.DropRelations(iam_repo.ProjectSchema()),
+		memdb.DropRelations(iam_repo.GroupSchema()),
+		memdb.DropRelations(iam_repo.UserSchema()),
 	)
 	if err != nil {
 		return nil, err
