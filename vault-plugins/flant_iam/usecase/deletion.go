@@ -71,12 +71,12 @@ func PasswordDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	)
 }
 
-func GroupDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewGroupRepository(tx),
-		// TODO clean group references from rolebindings and groups in other tenants
-	)
-}
+//func GroupDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewGroupRepository(tx),
+//		// TODO clean group references from rolebindings and groups in other tenants
+//	)
+//}
 
 func RoleBindingApprovalDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
@@ -91,11 +91,11 @@ func RoleBindingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	)
 }
 
-func ProjectDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewProjectRepository(tx),
-	)
-}
+//func ProjectDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewProjectRepository(tx),
+//	)
+//}
 
 func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(

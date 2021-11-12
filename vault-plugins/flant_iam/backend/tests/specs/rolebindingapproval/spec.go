@@ -15,6 +15,7 @@ import (
 
 var (
 	TenantAPI      api.TestAPI
+	ProjectAPI     api.TestAPI
 	RoleAPI        api.TestAPI
 	RoleBindingAPI api.TestAPI
 	TestAPI        api.TestAPI

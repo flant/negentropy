@@ -59,7 +59,7 @@ func Test_GetByID(t *testing.T) {
 	group, err := repository.GetByID(fixtures.GroupUUID1)
 
 	require.NoError(t, err)
-	group1 := fixtures.Groups()[0]
+	group1 := fixtures.Groups()[1]
 	group1.Members = appendMembers(makeMemberNotations(model.UserType, group1.Users),
 		makeMemberNotations(model.ServiceAccountType, group1.ServiceAccounts),
 		makeMemberNotations(model.GroupType, group1.Groups))

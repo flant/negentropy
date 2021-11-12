@@ -28,6 +28,13 @@ func ServiceAccountPasswordSchema() map[string]*memdb.TableSchema {
 						Lowercase: true,
 					},
 				},
+				TenantForeignPK: {
+					Name: TenantForeignPK,
+					Indexer: &memdb.StringFieldIndex{
+						Field:     "TenantUUID",
+						Lowercase: true,
+					},
+				},
 			},
 		},
 	}

@@ -9,6 +9,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
+const GroupInRoleBindingApprovalIndex = "group_in_role_binding_aaproval"
+
 func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
 	return map[string]*memdb.TableSchema{
 		model.RoleBindingApprovalType: {
@@ -32,6 +34,13 @@ func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
 					Name: RoleBindingForeignPK,
 					Indexer: &memdb.StringFieldIndex{
 						Field:     "RoleBindingUUID",
+						Lowercase: true,
+					},
+				},
+				GroupInRoleBindingApprovalIndex: {
+					Name: GroupInRoleBindingApprovalIndex,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field:     "Groups",
 						Lowercase: true,
 					},
 				},

@@ -21,13 +21,14 @@ func mergeTables() (map[string]*memdb.TableSchema, error) {
 	}
 
 	included := []map[string]*memdb.TableSchema{
-		TenantSchema(),
+		// TenantSchema(),
+		// ProjectSchema(),
+		// GroupSchema(),
+
 		UserSchema(),
 		ReplicaSchema(),
-		ProjectSchema(),
 		FeatureFlagSchema(),
 		ServiceAccountSchema(),
-		GroupSchema(),
 		RoleSchema(),
 		RoleBindingSchema(),
 		RoleBindingApprovalSchema(),
@@ -60,7 +61,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	schema := &memdb.DBSchema{
+	interimSchema := &memdb.DBSchema{
 		Tables: tables,
 		// TODO fill it
 		MandatoryForeignKeys: nil,
@@ -69,8 +70,12 @@ func GetSchema() (*memdb.DBSchema, error) {
 		// TODO fill it
 		CheckingRelations: nil,
 	}
-
-	err = schema.Validate()
+	schema, err := memdb.MergeDBSchemas(
+		interimSchema,
+		TenantSchema(),
+		ProjectSchema(),
+		GroupSchema(),
+	)
 	if err != nil {
 		return nil, err
 	}

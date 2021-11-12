@@ -257,6 +257,8 @@ func getTestMemoryStorage(t *testing.T, fixtureFunc func(t *testing.T, txn *io.M
 	// Create db with some entities.
 	schema, err := repo.GetSchema()
 	require.NoError(t, err)
+	schema.CascadeDeletes = nil
+	schema.MandatoryForeignKeys = nil
 	mem, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 

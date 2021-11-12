@@ -33,11 +33,11 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		MultipassGenerationNumberSchema(),
 
 		iam_repo.UserSchema(),
-		iam_repo.TenantSchema(),
-		iam_repo.ProjectSchema(),
+		// iam_repo.TenantSchema(),
+		// iam_repo.ProjectSchema(),
 		iam_repo.ServiceAccountSchema(),
 		iam_repo.FeatureFlagSchema(),
-		iam_repo.GroupSchema(),
+		// iam_repo.GroupSchema(),
 		iam_repo.RoleSchema(),
 		iam_repo.RoleBindingSchema(),
 		iam_repo.RoleBindingApprovalSchema(),
@@ -66,7 +66,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	schema := &memdb.DBSchema{
+	interimSchema := &memdb.DBSchema{
 		Tables: tables,
 		// TODO fill it
 		MandatoryForeignKeys: nil,
@@ -76,7 +76,12 @@ func GetSchema() (*memdb.DBSchema, error) {
 		CheckingRelations: nil,
 	}
 
-	err = schema.Validate()
+	schema, err := memdb.MergeDBSchemas(
+		interimSchema,
+		iam_repo.TenantSchema(),
+		iam_repo.ProjectSchema(),
+		iam_repo.GroupSchema(),
+	)
 	if err != nil {
 		return nil, err
 	}

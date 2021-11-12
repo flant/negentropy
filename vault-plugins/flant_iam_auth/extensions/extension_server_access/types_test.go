@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 
@@ -11,7 +13,6 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -81,8 +82,9 @@ func TestUserToPosix(t *testing.T) {
 		Version:    uuid.New(),
 		Identifier: "tenant2",
 	}
-
-	st, _ := io.NewMemoryStore(&memdb.DBSchema{Tables: iam_repo.TenantSchema()}, nil, hclog.NewNullLogger())
+	schema, err := iam_repo.GetSchema()
+	require.NoError(t, err)
+	st, _ := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	tx := st.Txn(true)
 	_ = tx.Insert(iam_model.TenantType, tenant2)
 	_ = tx.Commit()

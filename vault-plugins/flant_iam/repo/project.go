@@ -3,46 +3,52 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const ProjectForeignPK = "project_uuid"
 
-func ProjectSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.ProjectType: {
-			Name: model.ProjectType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "UUID",
+func ProjectSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.ProjectType: {
+				Name: model.ProjectType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
 					},
-				},
-				TenantForeignPK: {
-					Name: TenantForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
+					TenantForeignPK: {
+						Name: TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
 					},
-				},
-				"version": {
-					Name: "version",
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Version",
+					"version": {
+						Name: "version",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Version",
+						},
 					},
-				},
-				"identifier": {
-					Name: "identifier",
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Identifier",
+					"identifier": {
+						Name: "identifier",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Identifier",
+						},
 					},
 				},
 			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.ProjectType: {{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK}},
 		},
 	}
 }
@@ -95,12 +101,10 @@ func (r *ProjectRepository) Delete(id model.ProjectUUID, archivingTimestamp mode
 	if err != nil {
 		return err
 	}
-	if project.IsDeleted() {
+	if project.Archived() {
 		return model.ErrIsArchived
 	}
-	project.ArchivingTimestamp = archivingTimestamp
-	project.ArchivingHash = archivingHash
-	return r.Update(project)
+	return r.db.Archive(model.ProjectType, project, archivingTimestamp, archivingHash)
 }
 
 func (r *ProjectRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.Project, error) {
@@ -175,12 +179,10 @@ func (r *ProjectRepository) Restore(id model.ProjectUUID) (*model.Project, error
 	if err != nil {
 		return nil, err
 	}
-	if project.ArchivingTimestamp == 0 {
+	if project.Archived() {
 		return nil, model.ErrIsNotArchived
 	}
-	project.ArchivingTimestamp = 0
-	project.ArchivingHash = 0
-	err = r.Update(project)
+	err = r.db.Restore(model.ProjectType, project)
 	if err != nil {
 		return nil, err
 	}

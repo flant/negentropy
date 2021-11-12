@@ -20,6 +20,7 @@ func CreateTestStorage(t *testing.T) *io.MemoryStore {
 	require.NoError(t, err)
 
 	schema, err := repo.GetSchema()
+	schema.MandatoryForeignKeys = nil
 	require.NoError(t, err)
 
 	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())
