@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 
@@ -10,7 +11,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-const ProjectForeignPK = "project_uuid"
+const (
+	ProjectForeignPK          = "project_uuid"
+	FeatureFlagInProjectIndex = "feature_flag_in_project"
+)
 
 func ProjectSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
@@ -42,6 +46,24 @@ func ProjectSchema() *memdb.DBSchema {
 						Name: "identifier",
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
+						},
+					},
+					FeatureFlagInProjectIndex: {
+						Name:         FeatureFlagInProjectIndex,
+						AllowMissing: true,
+						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+							Field: "FeatureFlags",
+							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
+								obj, ok := customTypeValue.(model.FeatureFlag)
+								if !ok {
+									obj, ok := customTypeValue.(*model.FeatureFlag)
+									if !ok {
+										return nil, fmt.Errorf("need FeatureFlag or *FeatureFlag, actual:%T", customTypeValue)
+									}
+									return []byte(obj.Name), nil
+								}
+								return []byte(obj.Name), nil
+							},
 						},
 					},
 				},

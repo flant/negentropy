@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	TenantForeignPK = "tenant_uuid"
+	TenantForeignPK          = "tenant_uuid"
+	FeatureFlagInTenantIndex = "feature_flag_in_tenant"
 )
 
 func TenantSchema() *memdb.DBSchema {
@@ -39,6 +41,24 @@ func TenantSchema() *memdb.DBSchema {
 						Name: "version",
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Version",
+						},
+					},
+					FeatureFlagInTenantIndex: {
+						Name:         FeatureFlagInTenantIndex,
+						AllowMissing: true,
+						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+							Field: "FeatureFlags",
+							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
+								obj, ok := customTypeValue.(model.TenantFeatureFlag)
+								if !ok {
+									obj, ok := customTypeValue.(*model.TenantFeatureFlag)
+									if !ok {
+										return nil, fmt.Errorf("need TenantFeatureFlag or *TenantFeatureFlag, actual:%T", customTypeValue)
+									}
+									return []byte(obj.Name), nil
+								}
+								return []byte(obj.Name), nil
+							},
 						},
 					},
 				},

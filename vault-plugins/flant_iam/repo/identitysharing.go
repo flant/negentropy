@@ -40,8 +40,7 @@ func IdentitySharingSchema() map[string]*memdb.TableSchema {
 					},
 				},
 				GroupUUIDIdentitySharingIndex: {
-					Name:   GroupUUIDIdentitySharingIndex,
-					Unique: false,
+					Name: GroupUUIDIdentitySharingIndex,
 					Indexer: &memdb.StringSliceFieldIndex{
 						Field: "Groups",
 					},

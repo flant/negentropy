@@ -36,7 +36,7 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		// iam_repo.TenantSchema(),
 		// iam_repo.ProjectSchema(),
 		iam_repo.ServiceAccountSchema(),
-		iam_repo.FeatureFlagSchema(),
+		// iam_repo.FeatureFlagSchema(),
 		// iam_repo.GroupSchema(),
 		iam_repo.RoleSchema(),
 		iam_repo.RoleBindingSchema(),
@@ -82,6 +82,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		memdb.DropRelations(iam_repo.ProjectSchema()),
 		memdb.DropRelations(iam_repo.GroupSchema()),
 		memdb.DropRelations(iam_repo.UserSchema()),
+		memdb.DropRelations(iam_repo.FeatureFlagSchema()),
 	)
 	if err != nil {
 		return nil, err
