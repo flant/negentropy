@@ -254,6 +254,13 @@ func (t *Txn) processRelations(relations []Relation, obj interface{},
 }
 
 func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Relation) error {
+	var err error
+	if key.BuildRelatedCustomType != nil {
+		checkedFieldValue, err = key.BuildRelatedCustomType(checkedFieldValue)
+		if err != nil {
+			return fmt.Errorf("using BuildRelatedCustomType:%w", err)
+		}
+	}
 	relatedRecord, err := t.First(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, checkedFieldValue)
 	if err != nil {
 		return fmt.Errorf("getting related record:%w", err)
@@ -268,6 +275,10 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) error {
 	if key.indexIsSliceFieldIndex {
 		return nil
+	}
+	if key.BuildRelatedCustomType != nil {
+		// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
+		return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
 	}
 	iter, err := t.Get(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
 	if err != nil {
@@ -293,6 +304,11 @@ func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) e
 
 func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) func(originObjectFieldValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
+		if key.BuildRelatedCustomType != nil {
+			// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
+			return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
+		}
+
 		if key.indexIsSliceFieldIndex {
 			return nil
 		}
@@ -324,6 +340,10 @@ func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) fun
 
 func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) func(parentObjectFiledValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
+		if key.BuildRelatedCustomType != nil {
+			// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
+			return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
+		}
 		if key.indexIsSliceFieldIndex {
 			return nil
 		}
@@ -355,16 +375,19 @@ func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) 
 
 // CleanChildrenSliceIndexes remove link to obj from children slice fields
 func (t *Txn) CleanChildrenSliceIndexes(table string, obj interface{}) error {
-	cleanChildrenSlicesHandler := func(parentObjectFiledValue interface{}, key Relation) error {
-		var parentObjectFiledValueStr string
+	cleanChildrenSlicesHandler := func(parentObjectFieldValue interface{}, key Relation) error {
+		if key.BuildRelatedCustomType != nil {
+			return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
+		}
+		var parentObjectFieldValueStr string
 		var ok bool
 		if !key.indexIsSliceFieldIndex {
 			return nil
 		}
-		if parentObjectFiledValueStr, ok = parentObjectFiledValue.(string); !ok {
-			return fmt.Errorf("wrong type of parentObjectFiledValue:%T", parentObjectFiledValue)
+		if parentObjectFieldValueStr, ok = parentObjectFieldValue.(string); !ok {
+			return fmt.Errorf("wrong type of parentObjectFieldValue:%T", parentObjectFieldValue)
 		}
-		iter, err := t.Get(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
+		iter, err := t.Get(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFieldValue)
 		if err != nil {
 			return fmt.Errorf("getting related record:%w", err)
 		}
@@ -386,7 +409,7 @@ func (t *Txn) CleanChildrenSliceIndexes(table string, obj interface{}) error {
 			}
 			newVals := []string{}
 			for _, v := range vals {
-				if v != parentObjectFiledValueStr {
+				if v != parentObjectFieldValueStr {
 					newVals = append(newVals, v)
 				}
 			}
