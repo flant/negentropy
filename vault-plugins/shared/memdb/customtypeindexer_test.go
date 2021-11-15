@@ -27,6 +27,7 @@ type c struct {
 const (
 	testTable     = "test_table"
 	childrenIndex = "children_index"
+	childTable    = "childTable"
 )
 
 func getTXN(t *testing.T) *Txn {
@@ -74,6 +75,35 @@ func getTXN(t *testing.T) *Txn {
 					},
 				},
 			},
+			childTable: {
+				Name: childTable,
+				Indexes: map[string]*memdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "UUID",
+						},
+					},
+				},
+			},
+		},
+		CascadeDeletes: map[dataType][]Relation{
+			childTable: {{
+				OriginalDataTypeFieldName:     "UUID",
+				RelatedDataType:               testTable,
+				RelatedDataTypeFieldIndexName: childrenIndex,
+				BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
+					v, ok := originalFieldValue.(string)
+					if !ok {
+						return nil, fmt.Errorf("wrong type arg")
+					}
+					return &c{
+						UUID:    v,
+						NotUUID: "",
+					}, nil
+				},
+			}},
 		},
 	}
 	db, err := NewMemDB(schema)
@@ -122,7 +152,7 @@ func Test_InsertCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
+func getTxnWithData(t *testing.T) *Txn {
 	txn := getTXN(t)
 	err := txn.Insert(testTable, &b{
 		ID:       a{"u1", "nu1"},
@@ -142,11 +172,15 @@ func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 		Children: []c{{"u12", "nu12"}, {"u13", "nu13"}},
 	})
 	require.NoError(t, err)
+	return txn
+}
+
+func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
+	txn := getTxnWithData(t)
 
 	iter, err := txn.Get(testTable, childrenIndex, &c{"u12", "nu12"})
 
 	require.NoError(t, err)
-
 	r1 := iter.Next()
 	require.NotEmpty(t, r1)
 	b1 := r1.(*b)
@@ -157,4 +191,28 @@ func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 	require.Equal(t, "n3", b2.Name)
 	r3 := iter.Next()
 	require.Empty(t, r3)
+}
+
+func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
+	txn := getTxnWithData(t)
+	child := &c{"u12", "nu12"}
+	iter, err := txn.Get(testTable, childrenIndex, child)
+	require.NoError(t, err)
+	r1 := iter.Next()
+	require.NotEmpty(t, r1)
+	b1 := r1.(*b)
+	require.Equal(t, "n1", b1.Name)
+	r2 := iter.Next()
+	require.NotEmpty(t, r2)
+	b2 := r2.(*b)
+	require.Equal(t, "n3", b2.Name)
+	r3 := iter.Next()
+	require.Empty(t, r3)
+	err = txn.Insert(childTable, child)
+	require.NoError(t, err)
+
+	err = txn.Delete(childTable, child)
+
+	require.Error(t, err)
+	require.Equal(t, "delete:relation should be empty: &{\"u12\" \"\"} found at table \"test_table\" by index \"children_index\":not empty relation error", err.Error())
 }

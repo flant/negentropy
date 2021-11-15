@@ -23,8 +23,41 @@ type Relation struct {
 	RelatedDataType           dataType
 	// Only StringFieldIndex or StringSliceFieldIndex
 	RelatedDataTypeFieldIndexName indexName
-	// mark as StringSliceFieldIndex
+	// mark as StringSliceFieldIndex or CustomTypeSliceFieldIndex
 	indexIsSliceFieldIndex bool
+	// buildRelatedCustomType build from fieldValue object for using as an arg for index search
+	BuildRelatedCustomType func(originalFieldValue interface{}) (customTypeValue interface{}, err error)
+}
+
+func (r *Relation) MapKey() RelationKey {
+	return RelationKey{
+		OriginalDataTypeFieldName:     r.OriginalDataTypeFieldName,
+		RelatedDataType:               r.RelatedDataType,
+		RelatedDataTypeFieldIndexName: r.OriginalDataTypeFieldName,
+	}
+}
+
+func (r *Relation) validateBuildRelatedCustomType(shouldBeNil bool) error {
+	if shouldBeNil {
+		if r.BuildRelatedCustomType != nil {
+			return fmt.Errorf("index named %q at table %q, passed as relation to field %q should not have BuildRelatedCustomType",
+				r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName)
+		}
+		return nil
+	} else {
+		if r.BuildRelatedCustomType == nil {
+			return fmt.Errorf("index named %q at table %q, passed as relation to field %q of table should have BuildRelatedCustomType",
+				r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName)
+		}
+	}
+	return nil
+}
+
+// RelationKey represents Relation as struct can be used as a map key
+type RelationKey struct {
+	OriginalDataTypeFieldName     fieldName
+	RelatedDataType               dataType
+	RelatedDataTypeFieldIndexName indexName
 }
 
 type DBSchema struct {
@@ -77,18 +110,18 @@ func (s *DBSchema) Validate() error {
 // 3) only 'id' as RelatedDataTypeFieldIndexName
 func validateForeignKeys(fks map[dataType][]Relation) error {
 	type childDataType = dataType
-	rels := map[dataType]map[Relation]struct{}{}
+	rels := map[dataType]map[RelationKey]struct{}{}
 	for d, keys := range fks {
 		ks, ok := rels[d]
 		if !ok {
-			ks = map[Relation]struct{}{}
+			ks = map[RelationKey]struct{}{}
 		}
 		for _, key := range keys {
 			if key.RelatedDataTypeFieldIndexName != PK {
 				return fmt.Errorf("invalid RelatedDataTypeFieldIndexName:%s in FK:%#v of table %s",
 					key.RelatedDataTypeFieldIndexName, key, d)
 			}
-			ks[key] = struct{}{}
+			ks[key.MapKey()] = struct{}{}
 		}
 		rels[d] = ks
 	}
@@ -103,13 +136,13 @@ func validateForeignKeys(fks map[dataType][]Relation) error {
 }
 
 // validateCyclic checks absence of cyclic dependencies between tables
-func validateCyclic(topDataType dataType, rels map[dataType]map[Relation]struct{}) error {
+func validateCyclic(topDataType dataType, rels map[dataType]map[RelationKey]struct{}) error {
 	type dependency struct {
 		parentType     dataType
 		curIdx         int
 		childDataTypes []dataType
 	}
-	childDataTypesFunc := func(parentDataType dataType, rels map[dataType]map[Relation]struct{}) []dataType {
+	childDataTypesFunc := func(parentDataType dataType, rels map[dataType]map[RelationKey]struct{}) []dataType {
 		mapResult := map[dataType]struct{}{}
 		for r := range rels[parentDataType] {
 			// allow self-links
@@ -177,12 +210,27 @@ func (s *DBSchema) validateExistenceIndexes() error {
 					if index, ok := ts.Indexes[r.RelatedDataTypeFieldIndexName]; ok {
 						switch index.Indexer.(type) {
 						case *hcmemdb.StringFieldIndex:
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+								return fmt.Errorf("table %s:%w", dt, err)
+							}
 						case *hcmemdb.UUIDFieldIndex:
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+								return fmt.Errorf("table %s:%w", dt, err)
+							}
 						case *CustomTypeFieldIndexer:
+							if err := rs[i].validateBuildRelatedCustomType(false); err != nil {
+								return fmt.Errorf("table %s:%w", dt, err)
+							}
 						case *hcmemdb.StringSliceFieldIndex:
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+								return fmt.Errorf("table %s:%w", dt, err)
+							}
 							r.indexIsSliceFieldIndex = true
 							rs[i] = r
 						case *CustomTypeSliceFieldIndexer:
+							if err := rs[i].validateBuildRelatedCustomType(false); err != nil {
+								return fmt.Errorf("table %s:%w", dt, err)
+							}
 							r.indexIsSliceFieldIndex = true
 							rs[i] = r
 						default:
@@ -210,8 +258,8 @@ func (s *DBSchema) validateExistenceIndexes() error {
 
 // validateUniquenessChildRelations checks uniqueness for CascadeDeletes and CheckingRelations
 // returns united map of relations
-func (s *DBSchema) validateUniquenessChildRelations() (map[dataType]map[Relation]struct{}, error) {
-	allRels := map[dataType]map[Relation]struct{}{}
+func (s *DBSchema) validateUniquenessChildRelations() (map[dataType]map[RelationKey]struct{}, error) {
+	allRels := map[dataType]map[RelationKey]struct{}{}
 	allRels, err := checkRsMapForRepeating(allRels, s.CascadeDeletes)
 	if err != nil {
 		return nil, fmt.Errorf("validateUniquenessChildRelations:%w", err)
@@ -225,20 +273,20 @@ func (s *DBSchema) validateUniquenessChildRelations() (map[dataType]map[Relation
 
 // checks ForRepeating checks repeating of relations
 // returns map of relation
-func checkRsMapForRepeating(allRels map[dataType]map[Relation]struct{},
-	rsMap map[dataType][]Relation) (map[dataType]map[Relation]struct{}, error) {
+func checkRsMapForRepeating(allRels map[dataType]map[RelationKey]struct{},
+	rsMap map[dataType][]Relation) (map[dataType]map[RelationKey]struct{}, error) {
 	for d, rs := range rsMap {
 		if rels, ok := allRels[d]; ok {
 			for _, r := range rs {
-				if _, rep := rels[r]; rep {
+				if _, rep := rels[r.MapKey()]; rep {
 					return nil, fmt.Errorf("relation %#v is repeated for %s dataType", r, d)
 				}
-				rels[r] = struct{}{}
+				rels[r.MapKey()] = struct{}{}
 			}
 		} else {
-			rels := map[Relation]struct{}{}
+			rels := map[RelationKey]struct{}{}
 			for _, r := range rs {
-				rels[r] = struct{}{}
+				rels[r.MapKey()] = struct{}{}
 			}
 			allRels[d] = rels
 		}

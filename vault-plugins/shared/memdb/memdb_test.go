@@ -361,11 +361,11 @@ func Test_CascadeRestoreOKJustWithRightTimeStampAndHash(t *testing.T) {
 }
 
 func Test_validateCyclicOK(t *testing.T) {
-	rels := map[dataType]map[Relation]struct{}{
-		"t1": {Relation{RelatedDataType: "t2"}: {}},
-		"t2": {Relation{RelatedDataType: "t3"}: {}, Relation{RelatedDataType: "t4"}: {}},
-		"t3": {Relation{RelatedDataType: "t4"}: {}},
-		"t4": {Relation{RelatedDataType: "t5"}: {}},
+	rels := map[dataType]map[RelationKey]struct{}{
+		"t1": {RelationKey{RelatedDataType: "t2"}: {}},
+		"t2": {RelationKey{RelatedDataType: "t3"}: {}, RelationKey{RelatedDataType: "t4"}: {}},
+		"t3": {RelationKey{RelatedDataType: "t4"}: {}},
+		"t4": {RelationKey{RelatedDataType: "t5"}: {}},
 	}
 
 	err := validateCyclic("t1", rels)
@@ -374,12 +374,12 @@ func Test_validateCyclicOK(t *testing.T) {
 }
 
 func Test_validateCyclicFail(t *testing.T) {
-	rels := map[dataType]map[Relation]struct{}{
-		"t1": {Relation{RelatedDataType: "t2"}: {}},
-		"t2": {Relation{RelatedDataType: "t3"}: {}, Relation{RelatedDataType: "t6"}: {}},
-		"t3": {Relation{RelatedDataType: "t4"}: {}},
-		"t4": {Relation{RelatedDataType: "t5"}: {}},
-		"t5": {Relation{RelatedDataType: "t1"}: {}},
+	rels := map[dataType]map[RelationKey]struct{}{
+		"t1": {RelationKey{RelatedDataType: "t2"}: {}},
+		"t2": {RelationKey{RelatedDataType: "t3"}: {}, RelationKey{RelatedDataType: "t6"}: {}},
+		"t3": {RelationKey{RelatedDataType: "t4"}: {}},
+		"t4": {RelationKey{RelatedDataType: "t5"}: {}},
+		"t5": {RelationKey{RelatedDataType: "t1"}: {}},
 	}
 
 	err := validateCyclic("t1", rels)
@@ -396,7 +396,7 @@ func Test_validateForeignKeysFail(t *testing.T) {
 	err := validateForeignKeys(rels)
 
 	require.Error(t, err)
-	require.Equal(t, "invalid RelatedDataTypeFieldIndexName:not_id in FK:memdb.Relation{OriginalDataTypeFieldName:\"\", RelatedDataType:\"\", RelatedDataTypeFieldIndexName:\"not_id\", indexIsSliceFieldIndex:false} of table t1", err.Error())
+	require.Equal(t, "invalid RelatedDataTypeFieldIndexName:not_id in FK:memdb.Relation{OriginalDataTypeFieldName:\"\", RelatedDataType:\"\", RelatedDataTypeFieldIndexName:\"not_id\", indexIsSliceFieldIndex:false, BuildRelatedCustomType:(func(interface {}) (interface {}, error))(nil)} of table t1", err.Error())
 }
 
 func Test_validateUniquenessChildRelationsFail(t *testing.T) {
@@ -416,7 +416,7 @@ func Test_validateUniquenessChildRelationsFail(t *testing.T) {
 	_, err := schema.validateUniquenessChildRelations()
 
 	require.Error(t, err)
-	require.Equal(t, "validateUniquenessChildRelations:relation memdb.Relation{OriginalDataTypeFieldName:\"UUID\", RelatedDataType:\"child2\", RelatedDataTypeFieldIndexName:\"parent_uuid\", indexIsSliceFieldIndex:false} is repeated for parent dataType", err.Error())
+	require.Equal(t, "validateUniquenessChildRelations:relation memdb.Relation{OriginalDataTypeFieldName:\"UUID\", RelatedDataType:\"child2\", RelatedDataTypeFieldIndexName:\"parent_uuid\", indexIsSliceFieldIndex:false, BuildRelatedCustomType:(func(interface {}) (interface {}, error))(nil)} is repeated for parent dataType", err.Error())
 }
 
 func Test_validateExistenceIndexesFail(t *testing.T) {
