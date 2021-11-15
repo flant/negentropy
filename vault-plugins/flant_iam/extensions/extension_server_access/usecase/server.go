@@ -327,7 +327,12 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = s.serviceAccountRepo.Delete(sa.UUID, archivingTime, archivingHash)
+	err = s.serviceAccountRepo.CleanChildrenSliceIndexes(sa.UUID)
+	if err != nil {
+		return err
+	}
+
+	err = s.serviceAccountRepo.CascadeDelete(sa.UUID, archivingTime, archivingHash)
 	if err != nil {
 		return err
 	}

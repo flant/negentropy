@@ -59,17 +59,17 @@ func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp mod
 	return nil
 }
 
-func MultipassDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewMultipassRepository(tx),
-	)
-}
-
-func PasswordDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewServiceAccountPasswordRepository(tx),
-	)
-}
+// func MultipassDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewMultipassRepository(tx),
+//	)
+// }
+//
+// func PasswordDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewServiceAccountPasswordRepository(tx),
+//	)
+// }
 
 func RoleBindingApprovalDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	return NewChildrenDeleter(
@@ -84,21 +84,21 @@ func RoleBindingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	)
 }
 
-func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewIdentitySharingRepository(tx),
-		// TODO clean identity sharings where the tenant is the destination
-	)
-}
+// func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewIdentitySharingRepository(tx),
+//		// TODO clean identity sharings where the tenant is the destination
+//	)
+// }
 
-func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewServiceAccountRepository(tx),
-		MultipassDeleter(tx),
-		PasswordDeleter(tx),
-		// TODO clean SA references from rolebindings and groups in other tenants
-	)
-}
+// func ServiceAccountDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewServiceAccountRepository(tx),
+//		MultipassDeleter(tx),
+//		PasswordDeleter(tx),
+//		// TODO clean SA references from rolebindings and groups in other tenants
+//	)
+// }
 
 func ArchivingLabel() (model.UnixTime, int64) {
 	archivingTime := time.Now().Unix()

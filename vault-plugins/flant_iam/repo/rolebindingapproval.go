@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	GroupInRoleBindingApprovalIndex = "group_in_role_binding_approval"
-	UserInRoleBindingApprovalIndex  = "user_in_role_binding_approval"
+	GroupInRoleBindingApprovalIndex          = "group_in_role_binding_approval"
+	UserInRoleBindingApprovalIndex           = "user_in_role_binding_approval"
+	ServiceAccountInRoleBindingApprovalIndex = "service_account_in_role_binding_approval"
 )
 
 func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
@@ -51,6 +52,13 @@ func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
 					Name: UserInRoleBindingApprovalIndex,
 					Indexer: &memdb.StringSliceFieldIndex{
 						Field:     "Users",
+						Lowercase: true,
+					},
+				},
+				ServiceAccountInRoleBindingApprovalIndex: {
+					Name: ServiceAccountInRoleBindingApprovalIndex,
+					Indexer: &memdb.StringSliceFieldIndex{
+						Field:     "ServiceAccounts",
 						Lowercase: true,
 					},
 				},

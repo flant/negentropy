@@ -2,11 +2,15 @@ package model
 
 import (
 	"time"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const ServiceAccountType = "service_account" // also, memdb schema name
 
 type ServiceAccount struct {
+	memdb.ArchivableImpl
+
 	UUID           ServiceAccountUUID `json:"uuid"` // PK
 	TenantUUID     TenantUUID         `json:"tenant_uuid"`
 	Version        string             `json:"resource_version"`
@@ -19,13 +23,7 @@ type ServiceAccount struct {
 
 	Origin ObjectOrigin `json:"origin"`
 
-	Extensions         map[ObjectOrigin]*Extension `json:"-"`
-	ArchivingTimestamp UnixTime                    `json:"archiving_timestamp"`
-	ArchivingHash      int64                       `json:"archiving_hash"`
-}
-
-func (s *ServiceAccount) IsDeleted() bool {
-	return s.ArchivingTimestamp != 0
+	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
 func (s *ServiceAccount) ObjType() string {
