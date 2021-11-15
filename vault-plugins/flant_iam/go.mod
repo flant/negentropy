@@ -6,7 +6,6 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.6.1
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
-	github.com/google/uuid v1.2.0
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/hashicorp/go-multierror v1.1.0
