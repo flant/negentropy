@@ -178,7 +178,11 @@ func (s *DBSchema) validateExistenceIndexes() error {
 						switch index.Indexer.(type) {
 						case *hcmemdb.StringFieldIndex:
 						case *hcmemdb.UUIDFieldIndex:
+						case *CustomTypeFieldIndexer:
 						case *hcmemdb.StringSliceFieldIndex:
+							r.indexIsSliceFieldIndex = true
+							rs[i] = r
+						case *CustomTypeSliceFieldIndexer:
 							r.indexIsSliceFieldIndex = true
 							rs[i] = r
 						default:
