@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"

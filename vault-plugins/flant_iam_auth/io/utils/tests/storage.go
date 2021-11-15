@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/require"
@@ -13,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func CreateTestStorage(t *testing.T) *io.MemoryStore {
