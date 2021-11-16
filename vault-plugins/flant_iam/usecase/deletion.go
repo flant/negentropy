@@ -77,12 +77,12 @@ func RoleBindingApprovalDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 	)
 }
 
-func RoleBindingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
-	return NewChildrenDeleter(
-		repo.NewRoleBindingRepository(tx),
-		RoleBindingApprovalDeleter(tx),
-	)
-}
+// func RoleBindingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
+//	return NewChildrenDeleter(
+//		repo.NewRoleBindingRepository(tx),
+//		RoleBindingApprovalDeleter(tx),
+//	)
+// }
 
 // func NewIdentitySharingDeleter(tx *io.MemoryStoreTxn) *ChildrenDeleter {
 //	return NewChildrenDeleter(

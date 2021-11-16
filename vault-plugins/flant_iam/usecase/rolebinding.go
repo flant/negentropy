@@ -92,7 +92,7 @@ func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBind
 		return model.ErrBadOrigin
 	}
 	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *RoleBindingService) SetExtension(ext *model.Extension) error {

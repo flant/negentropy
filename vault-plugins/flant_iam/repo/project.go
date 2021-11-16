@@ -72,6 +72,9 @@ func ProjectSchema() *memdb.DBSchema {
 		MandatoryForeignKeys: map[string][]memdb.Relation{
 			model.ProjectType: {{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK}},
 		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.ProjectType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: ProjectInRoleBindingIndex}},
+		},
 	}
 }
 

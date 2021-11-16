@@ -102,7 +102,22 @@ func RoleSchema() *memdb.DBSchema {
 						if name, ok = originalFieldValue.(string); !ok {
 							return nil, fmt.Errorf("need string type, got: %T", originalFieldValue)
 						}
-						return &model.IncludedRole{
+						return model.IncludedRole{
+							Name: name,
+						}, nil
+					},
+				},
+				{
+					OriginalDataTypeFieldName:     "Name",
+					RelatedDataType:               model.RoleBindingType,
+					RelatedDataTypeFieldIndexName: RoleInRoleBindingIndex,
+					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
+						var name string
+						var ok bool
+						if name, ok = originalFieldValue.(string); !ok {
+							return nil, fmt.Errorf("need string type, got: %T", originalFieldValue)
+						}
+						return model.BoundRole{
 							Name: name,
 						}, nil
 					},

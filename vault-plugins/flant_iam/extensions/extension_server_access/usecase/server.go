@@ -376,7 +376,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == iam_model.OriginServerAccess {
-				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err
 				}
@@ -392,7 +392,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == iam_model.OriginServerAccess {
-				err := s.roleBindingRepo.Delete(rb.UUID, archivingTime, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTime, archivingHash)
 				if err != nil {
 					return err
 				}
