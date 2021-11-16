@@ -3,42 +3,50 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
 	OwnerForeignPK = "owner_uuid"
 )
 
-func MultipassSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.MultipassType: {
-			Name: model.MultipassType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "UUID",
+func MultipassSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.MultipassType: {
+				Name: model.MultipassType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					TenantForeignPK: {
+						Name: TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
+					OwnerForeignPK: {
+						Name: OwnerForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "OwnerUUID",
+							Lowercase: true,
+						},
 					},
 				},
-				TenantForeignPK: {
-					Name: TenantForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
-					},
-				},
-				OwnerForeignPK: {
-					Name: OwnerForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "OwnerUUID",
-						Lowercase: true,
-					},
-				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.MultipassType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
 	}
@@ -92,12 +100,10 @@ func (r *MultipassRepository) Delete(id model.MultipassUUID, archivingTimestamp 
 	if err != nil {
 		return err
 	}
-	if multipass.IsDeleted() {
+	if multipass.Archived() {
 		return model.ErrIsArchived
 	}
-	multipass.ArchivingTimestamp = archivingTimestamp
-	multipass.ArchivingHash = archivingHash
-	return r.Update(multipass)
+	return r.db.Archive(model.MultipassType, multipass, archivingTimestamp, archivingHash)
 }
 
 func (r *MultipassRepository) List(ownerUUID model.OwnerUUID, showArchived bool) ([]*model.Multipass, error) {

@@ -28,7 +28,7 @@ func (m *Multipass) GetWithGeneration(uuid string) (*iam_model.Multipass, *model
 		return nil, nil, err
 	}
 
-	if multipass == nil || multipass.IsDeleted() {
+	if multipass == nil || multipass.Archived() {
 		return nil, nil, fmt.Errorf("not found multipass")
 	}
 

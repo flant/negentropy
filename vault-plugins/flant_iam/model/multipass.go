@@ -37,10 +37,6 @@ type Multipass struct {
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
 }
 
-func (m *Multipass) IsDeleted() bool {
-	return m.ArchivingTimestamp != 0
-}
-
 func (m *Multipass) ObjType() string {
 	return MultipassType
 }
