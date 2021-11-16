@@ -13,6 +13,9 @@ import (
 func Test_rolebindingApprovalCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	rolebindingapproval.TenantAPI = lib.NewTenantAPI(rootClient)
+	rolebindingapproval.UserAPI = lib.NewUserAPI(rootClient)
+	rolebindingapproval.ServiceAccountAPI = lib.NewServiceAccountAPI(rootClient)
+	rolebindingapproval.GroupAPI = lib.NewGroupAPI(rootClient)
 	rolebindingapproval.RoleAPI = lib.NewRoleAPI(rootClient)
 	rolebindingapproval.RoleBindingAPI = lib.NewRoleBindingAPI(rootClient)
 	rolebindingapproval.TestAPI = lib.NewRoleBindingApprovalAPI(rootClient)

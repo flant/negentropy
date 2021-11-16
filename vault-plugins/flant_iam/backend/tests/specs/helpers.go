@@ -253,3 +253,18 @@ func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, servi
 	Expect(err).ToNot(HaveOccurred())
 	return multipass, createData.Get("token").String()
 }
+
+func CreateServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.TenantUUID) model.ServiceAccount {
+	createPayload := fixtures.RandomServiceAccountCreatePayload()
+	createPayload["tenant_uuid"] = tenantUUID
+	params := api.Params{
+		"tenant": tenantUUID,
+	}
+	createData := serviceAccountAPI.Create(params, url.Values{}, createPayload)
+	rawServiceAccount := createData.Get("service_account")
+	data := []byte(rawServiceAccount.String())
+	var serviceAccount model.ServiceAccount
+	err := json.Unmarshal(data, &serviceAccount)
+	Expect(err).ToNot(HaveOccurred())
+	return serviceAccount
+}

@@ -10,24 +10,37 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
-	TenantAPI      api.TestAPI
-	ProjectAPI     api.TestAPI
-	RoleAPI        api.TestAPI
-	RoleBindingAPI api.TestAPI
-	TestAPI        api.TestAPI
+	TenantAPI         api.TestAPI
+	UserAPI           api.TestAPI
+	ServiceAccountAPI api.TestAPI
+	GroupAPI          api.TestAPI
+	ProjectAPI        api.TestAPI
+	RoleAPI           api.TestAPI
+	RoleBindingAPI    api.TestAPI
+	TestAPI           api.TestAPI
 )
 
 var _ = Describe("Role binding approval", func() {
-	var tenantID, roleBindingID string
+	var (
+		tenant model.Tenant
+		user   model.User
+		sa     model.ServiceAccount
+		group  model.Group
+	)
+
+	var roleBindingID string
 	BeforeSuite(func() {
 		specs.CreateRoles(RoleAPI, fixtures.Roles()...)
-		res := TenantAPI.Create(nil, url.Values{}, fixtures.RandomTenantCreatePayload())
-		tenantID = res.Get("tenant.uuid").String()
-		res = RoleBindingAPI.Create(api.Params{"tenant": tenantID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		tenant = specs.CreateRandomTenant(TenantAPI)
+		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
+		sa = specs.CreateServiceAccount(ServiceAccountAPI, tenant.UUID)
+		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
+		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
 		roleBindingID = res.Get("role_binding.uuid").String()
 	})
 
@@ -43,16 +56,16 @@ var _ = Describe("Role binding approval", func() {
 				Expect(ap.Get("group_uuids").Array()).To(HaveLen(1))
 				Expect(ap.Get("service_account_uuids").Array()).To(HaveLen(1))
 			},
-			"tenant":       tenantID,
+			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"uuid":         uuid.New(),
 		}
 
 		data := map[string]interface{}{
 			"required_votes":   3,
-			"users":            []string{uuid.New()},
-			"groups":           []string{uuid.New()},
-			"service_accounts": []string{uuid.New()},
+			"users":            []string{user.UUID},
+			"groups":           []string{group.UUID},
+			"service_accounts": []string{sa.UUID},
 		}
 
 		createdData := TestAPI.Create(params, url.Values{}, data)
@@ -62,7 +75,7 @@ var _ = Describe("Role binding approval", func() {
 	It("can be read", func() {
 		TestAPI.Read(api.Params{
 			"uuid":         createdRB.Get("uuid").String(),
-			"tenant":       tenantID,
+			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"expectPayload": func(json gjson.Result) {
 				Expect(createdRB).To(Equal(json.Get("role_binding_approval")))
@@ -73,13 +86,13 @@ var _ = Describe("Role binding approval", func() {
 	It("can be deleted", func() {
 		TestAPI.Delete(api.Params{
 			"uuid":         createdRB.Get("uuid").String(),
-			"tenant":       tenantID,
+			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 		}, nil)
 
 		deletedRBData := TestAPI.Read(api.Params{
 			"uuid":         createdRB.Get("uuid").String(),
-			"tenant":       tenantID,
+			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)

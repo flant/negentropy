@@ -187,6 +187,10 @@ func NewServerAPI(b *logical.Backend, s *logical.Storage) TestAPI {
 	return &BackendBasedAPI{backend: b, url: &url2.ServerEndpointBuilder{}, storage: s}
 }
 
+func NewServiceAccountAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ServiceAccountEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

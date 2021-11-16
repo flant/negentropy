@@ -40,7 +40,7 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		// iam_repo.GroupSchema(),
 		// iam_repo.RoleSchema(),
 		// iam_repo.RoleBindingSchema(),
-		iam_repo.RoleBindingApprovalSchema(),
+		// iam_repo.RoleBindingApprovalSchema(),
 		iam_repo.MultipassSchema(),
 		iam_repo.ServiceAccountPasswordSchema(),
 		iam_repo.IdentitySharingSchema(),
@@ -86,6 +86,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		memdb.DropRelations(iam_repo.ServiceAccountSchema()),
 		memdb.DropRelations(iam_repo.RoleSchema()),
 		memdb.DropRelations(iam_repo.RoleBindingSchema()),
+		memdb.DropRelations(iam_repo.RoleBindingApprovalSchema()),
 	)
 	if err != nil {
 		return nil, err

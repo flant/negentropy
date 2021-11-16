@@ -3,10 +3,11 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -15,53 +16,64 @@ const (
 	ServiceAccountInRoleBindingApprovalIndex = "service_account_in_role_binding_approval"
 )
 
-func RoleBindingApprovalSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.RoleBindingApprovalType: {
-			Name: model.RoleBindingApprovalType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "UUID",
+func RoleBindingApprovalSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.RoleBindingApprovalType: {
+				Name: model.RoleBindingApprovalType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					TenantForeignPK: {
+						Name: TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
+					RoleBindingForeignPK: {
+						Name: RoleBindingForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "RoleBindingUUID",
+							Lowercase: true,
+						},
+					},
+					GroupInRoleBindingApprovalIndex: {
+						Name: GroupInRoleBindingApprovalIndex,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field:     "Groups",
+							Lowercase: true,
+						},
+					},
+					UserInRoleBindingApprovalIndex: {
+						Name: UserInRoleBindingApprovalIndex,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field:     "Users",
+							Lowercase: true,
+						},
+					},
+					ServiceAccountInRoleBindingApprovalIndex: {
+						Name: ServiceAccountInRoleBindingApprovalIndex,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field:     "ServiceAccounts",
+							Lowercase: true,
+						},
 					},
 				},
-				TenantForeignPK: {
-					Name: TenantForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
-					},
-				},
-				RoleBindingForeignPK: {
-					Name: RoleBindingForeignPK,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "RoleBindingUUID",
-						Lowercase: true,
-					},
-				},
-				GroupInRoleBindingApprovalIndex: {
-					Name: GroupInRoleBindingApprovalIndex,
-					Indexer: &memdb.StringSliceFieldIndex{
-						Field:     "Groups",
-						Lowercase: true,
-					},
-				},
-				UserInRoleBindingApprovalIndex: {
-					Name: UserInRoleBindingApprovalIndex,
-					Indexer: &memdb.StringSliceFieldIndex{
-						Field:     "Users",
-						Lowercase: true,
-					},
-				},
-				ServiceAccountInRoleBindingApprovalIndex: {
-					Name: ServiceAccountInRoleBindingApprovalIndex,
-					Indexer: &memdb.StringSliceFieldIndex{
-						Field:     "ServiceAccounts",
-						Lowercase: true,
-					},
-				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.RoleBindingApprovalType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Users", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Groups", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "ServiceAccounts", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "RoleBindingUUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
 	}
@@ -116,7 +128,7 @@ func (r *RoleBindingApprovalRepository) Delete(id model.RoleBindingApprovalUUID,
 	if err != nil {
 		return err
 	}
-	if appr.IsDeleted() {
+	if appr.Archived() {
 		return model.ErrIsArchived
 	}
 	appr.ArchivingTimestamp = archivingTimestamp
