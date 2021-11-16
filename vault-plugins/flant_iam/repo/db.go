@@ -31,7 +31,7 @@ func mergeTables() (map[string]*memdb.TableSchema, error) {
 		// RoleBindingSchema(),
 		// RoleBindingApprovalSchema(),
 		// MultipassSchema(),
-		ServiceAccountPasswordSchema(),
+		// ServiceAccountPasswordSchema(),
 		IdentitySharingSchema(),
 		ReplicaSchema(),
 		//
@@ -81,6 +81,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		RoleBindingSchema(),
 		RoleBindingApprovalSchema(),
 		MultipassSchema(),
+		ServiceAccountPasswordSchema(),
 	)
 	if err != nil {
 		return nil, err

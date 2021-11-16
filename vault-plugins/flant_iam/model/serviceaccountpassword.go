@@ -2,11 +2,15 @@ package model
 
 import (
 	"time"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const ServiceAccountPasswordType = "service_account_password" // also, memdb schema name
 
 type ServiceAccountPassword struct {
+	memdb.ArchivableImpl
+
 	UUID       ServiceAccountPasswordUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID                 `json:"tenant_uuid"`
 	OwnerUUID  OwnerUUID                  `json:"owner_uuid"`
@@ -20,13 +24,6 @@ type ServiceAccountPassword struct {
 	ValidTill int64         `json:"valid_till"` // calculates from TTL on creation
 
 	Secret string `json:"secret,omitempty" sensitive:""` // generates on creation
-
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
-}
-
-func (s *ServiceAccountPassword) IsDeleted() bool {
-	return s.ArchivingTimestamp != 0
 }
 
 func (s *ServiceAccountPassword) ObjType() string {
