@@ -2,8 +2,13 @@
 
 set -e
 
+PLUGINS_DIR="$(realpath $(dirname "$0"))/vault-plugins"
+AUTHD_DIR="$(realpath $(dirname "$0"))/authd"
+CLI_DIR="$(realpath $(dirname "$0"))/cli"
+SERVER_ACCESSD_DIR="$(realpath $(dirname "$0"))/server-access"
+NSS_DIR="$(realpath $(dirname "$0"))/server-access/server-access-nss"
+
 function build_plugin() {
-  PLUGINS_DIR="$(realpath $(dirname "$0"))/vault-plugins"
   PLUGIN_NAME="$1"
   local EXTRA_MOUNT
 
@@ -28,8 +33,6 @@ function build_plugin() {
 }
 
 function build_authd() {
-  AUTHD_DIR="$(realpath $(dirname "$0"))/authd"
-
   echo "Building authd"
 
   mkdir -p $AUTHD_DIR/build
@@ -46,8 +49,6 @@ function build_authd() {
 }
 
 function build_cli() {
-  CLI_DIR="$(realpath $(dirname "$0"))/cli"
-
   echo "Building cli"
 
   mkdir -p $CLI_DIR/build
@@ -56,6 +57,7 @@ function build_cli() {
   docker run --rm \
     -w /go/src/app/cli \
     -v $PLUGINS_DIR:/go/src/app/vault-plugins \
+    -v $AUTHD_DIR:/go/src/app/authd \
     -v $CLI_DIR/build:/src/build \
     -v $CLI_DIR:/go/src/app/cli \
     -v /tmp/cli-build:/go/pkg/mod \
@@ -65,8 +67,6 @@ function build_cli() {
 }
 
 function build_server_accessd() {
-  SERVER_ACCESSD_DIR="$(realpath $(dirname "$0"))/server-access"
-
   echo "Building server-accessd"
 
   mkdir -p $SERVER_ACCESSD_DIR/flant-server-accessd/build
@@ -74,6 +74,7 @@ function build_server_accessd() {
 
   docker run --rm \
     -w /go/src/server-accessd \
+    -v $AUTHD_DIR:/go/src/authd \
     -v $SERVER_ACCESSD_DIR/flant-server-accessd/build:/src/build \
     -v $SERVER_ACCESSD_DIR:/go/src/server-accessd \
     -v /tmp/server-accessd-build:/go/pkg/mod \
@@ -83,8 +84,6 @@ function build_server_accessd() {
 }
 
 function build_nss() {
-  NSS_DIR="$(realpath $(dirname "$0"))/server-access/server-access-nss"
-
   echo "Building nss"
 
   mkdir -p $NSS_DIR/build

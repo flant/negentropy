@@ -3,7 +3,7 @@ module github.com/flant/server-access
 go 1.16
 
 require (
-	github.com/flant/negentropy/authd v0.0.0-20210716120208-94659ebc4f9c
+	github.com/flant/negentropy/authd v0.0.0
 	github.com/gojuno/minimock/v3 v3.0.8
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/hashicorp/vault/api v1.1.0
@@ -13,4 +13,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210415154028-4f45737414dc // indirect
 	sigs.k8s.io/yaml v1.2.0
+)
+
+replace (
+        github.com/flant/negentropy/authd v0.0.0 => ../authd
 )
