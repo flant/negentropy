@@ -1,5 +1,7 @@
 package model
 
+import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+
 const RoleType = "role" // also, memdb schema name
 
 type RoleScope string
@@ -10,6 +12,8 @@ const (
 )
 
 type Role struct {
+	memdb.ArchivableImpl
+
 	Name  RoleName  `json:"name"`
 	Scope RoleScope `json:"scope"`
 
@@ -19,18 +23,12 @@ type Role struct {
 	RequireOneOfFeatureFlags []FeatureFlagName `json:"require_one_of_feature_flags"`
 	IncludedRoles            []IncludedRole    `json:"included_roles"`
 
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
 	// FIXME add version?
 }
 
 type IncludedRole struct {
 	Name            RoleName `json:"name"`
 	OptionsTemplate string   `json:"options_template"`
-}
-
-func (r *Role) IsDeleted() bool {
-	return r.ArchivingTimestamp != 0
 }
 
 func (r *Role) ObjType() string {

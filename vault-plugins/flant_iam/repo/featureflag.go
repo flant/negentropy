@@ -57,6 +57,9 @@ func FeatureFlagSchema() *memdb.DBSchema {
 						}, nil
 					},
 				},
+				{
+					OriginalDataTypeFieldName: "Name", RelatedDataType: model.RoleType, RelatedDataTypeFieldIndexName: FeatureFlagInRoleIndex,
+				},
 			},
 		},
 	}

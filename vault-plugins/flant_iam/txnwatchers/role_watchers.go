@@ -305,7 +305,7 @@ func GetParentRolesForRole(txn *io.MemoryStoreTxn, role model.RoleName) ([]model
 	for {
 		visitedNow := make(map[model.RoleName]struct{})
 		for _, roleName := range searchRoles {
-			iter, err := txn.Get(model.RoleType, iam_repo.IncludedRolesIndex, roleName)
+			iter, err := txn.Get(model.RoleType, iam_repo.IncludedRolesIndex, &model.IncludedRole{Name: roleName})
 			if err != nil {
 				return nil, err
 			}

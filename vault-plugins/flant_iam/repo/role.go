@@ -4,48 +4,107 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
-	IncludedRolesIndex = "included_roles_index"
-	RoleScopeIndex     = "scope"
-	ArchivedAtIndex    = "archived_at_index"
+	IncludedRolesIndex     = "included_roles_index"
+	RoleScopeIndex         = "scope"
+	FeatureFlagInRoleIndex = "feature_flag_in_role_index"
 )
 
-func RoleSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.RoleType: {
-			Name: model.RoleType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Name",
+func RoleSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.RoleType: {
+				Name: model.RoleType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Name",
+						},
+					},
+					RoleScopeIndex: {
+						Name: RoleScopeIndex,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Scope",
+						},
+					},
+					IncludedRolesIndex: {
+						Name:         IncludedRolesIndex,
+						AllowMissing: true,
+						Unique:       false,
+						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+							Field: "IncludedRoles",
+							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
+								obj, ok := customTypeValue.(model.IncludedRole)
+								if !ok {
+									obj, ok := customTypeValue.(*model.IncludedRole)
+									if !ok {
+										return nil, fmt.Errorf("need IncludedRole or *IncludedRole, actual:%T", customTypeValue)
+									}
+									return []byte(obj.Name), nil
+								}
+								return []byte(obj.Name), nil
+							},
+						},
+					},
+					FeatureFlagInRoleIndex: {
+						Name:         FeatureFlagInRoleIndex,
+						AllowMissing: true,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field: "RequireOneOfFeatureFlags",
+						},
 					},
 				},
-				RoleScopeIndex: {
-					Name: RoleScopeIndex,
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Scope",
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.RoleType: {
+				{
+					OriginalDataTypeFieldName:     "RequireOneOfFeatureFlags",
+					RelatedDataType:               model.FeatureFlagType,
+					RelatedDataTypeFieldIndexName: PK,
+				},
+				{
+					OriginalDataTypeFieldName:     "IncludedRoles",
+					RelatedDataType:               model.RoleType,
+					RelatedDataTypeFieldIndexName: PK,
+					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
+						var roleName string
+						if obj, ok := originalFieldValue.(model.IncludedRole); ok {
+							roleName = obj.Name
+						} else if obj, ok := customTypeValue.(*model.IncludedRole); ok {
+							roleName = obj.Name
+						} else {
+							return nil, fmt.Errorf("need IncludedRole or *IncludedRole, actual:%T", originalFieldValue)
+						}
+						return roleName, nil
 					},
 				},
-				IncludedRolesIndex: {
-					Name:         IncludedRolesIndex,
-					AllowMissing: true,
-					Unique:       false,
-					Indexer:      includedRolesIndexer{},
-				},
-				ArchivedAtIndex: {
-					Name:         ArchivedAtIndex,
-					AllowMissing: false,
-					Unique:       false,
-					Indexer: &memdb.IntFieldIndex{
-						Field: "ArchivingTimestamp",
+			},
+		},
+		CheckingRelations: map[string][]memdb.Relation{
+			model.RoleType: {
+				{
+					OriginalDataTypeFieldName:     "Name",
+					RelatedDataType:               model.RoleType,
+					RelatedDataTypeFieldIndexName: IncludedRolesIndex,
+					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
+						var name string
+						var ok bool
+						if name, ok = originalFieldValue.(string); !ok {
+							return nil, fmt.Errorf("need string type, got: %T", originalFieldValue)
+						}
+						return &model.IncludedRole{
+							Name: name,
+						}, nil
 					},
 				},
 			},
@@ -133,7 +192,7 @@ func (r *RoleRepository) Delete(roleID model.RoleName, archivingTimestamp model.
 	if err != nil {
 		return err
 	}
-	if role.IsDeleted() {
+	if role.Archived() {
 		return model.ErrIsArchived
 	}
 	role.ArchivingTimestamp = archivingTimestamp
@@ -177,7 +236,7 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 }
 
 func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[model.RoleName]struct{}, error) {
-	iter, err := r.db.Get(model.RoleType, IncludedRolesIndex, roleID)
+	iter, err := r.db.Get(model.RoleType, IncludedRolesIndex, &model.IncludedRole{Name: roleID})
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +260,7 @@ func (r *RoleRepository) FindAllIncludingRoles(roleID model.RoleName) (map[model
 	if err != nil {
 		return nil, err
 	}
-	if role.IsDeleted() {
+	if role.Archived() {
 		return result, nil
 	}
 	currentSet := map[model.RoleName]struct{}{roleID: {}}
@@ -222,34 +281,4 @@ func (r *RoleRepository) FindAllIncludingRoles(roleID model.RoleName) (map[model
 		currentSet = nextSet
 	}
 	return result, nil
-}
-
-type includedRolesIndexer struct{}
-
-func (_ includedRolesIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, model.ErrNeedSingleArgument
-	}
-	arg, ok := args[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("argument must be a string: %#v", args[0])
-	}
-	// Add the null character as a terminator
-	arg += "\x00"
-	return []byte(arg), nil
-}
-
-func (_ includedRolesIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
-	role, ok := raw.(*model.Role)
-	if !ok {
-		return false, nil, fmt.Errorf("format error: need Role type, actual passed %#v", raw)
-	}
-	result := [][]byte{}
-	for i := range role.IncludedRoles {
-		result = append(result, []byte(role.IncludedRoles[i].Name+"\x00"))
-	}
-	if len(result) == 0 {
-		return false, nil, nil
-	}
-	return true, result, nil
 }
