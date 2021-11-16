@@ -91,6 +91,10 @@ func (s *ServerService) Create(
 			Identifier: nameForTenantLevelObjects(tenant.Identifier),
 			Origin:     iam_model.OriginServerAccess,
 		}
+		err := s.groupRepo.Create(group)
+		if err != nil {
+			return "", "", err
+		}
 	}
 
 	// create RoleBinding for each role
