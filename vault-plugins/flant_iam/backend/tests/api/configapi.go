@@ -12,6 +12,7 @@ type ConfigAPI interface {
 	EnableJWT()
 	GenerateCSR()
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
+	ConfigureExtensionServerAccess(params map[string]interface{})
 }
 
 type backendBasedConfigAPI struct {
@@ -37,6 +38,13 @@ func (b *backendBasedConfigAPI) EnableJWT() {
 	_, err := b.request(logical.UpdateOperation, "jwt/enable",
 		map[string]interface{}{},
 		map[string]interface{}{})
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionServerAccess(params map[string]interface{}) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/server_access",
+		map[string]interface{}{},
+		params)
 	Expect(err).ToNot(HaveOccurred())
 }
 
