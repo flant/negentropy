@@ -188,6 +188,14 @@ func (t *Txn) checkForeignKey(allowedArchivingTimeStamp UnixTime, allowedArchivi
 
 func (t *Txn) checkSingleValueOfForeignKey(singleCheckedFieldValue interface{}, key Relation,
 	allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
+	var err error
+	if key.BuildRelatedCustomType != nil {
+		singleCheckedFieldValue, err = key.BuildRelatedCustomType(singleCheckedFieldValue)
+		if err != nil {
+			return fmt.Errorf("mapping: %w", err)
+		}
+	}
+
 	relatedRecord, err := t.First(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, singleCheckedFieldValue)
 	if err != nil {
 		return fmt.Errorf("getting related record:%w", err)

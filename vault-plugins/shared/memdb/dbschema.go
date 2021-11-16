@@ -199,7 +199,7 @@ loop:
 
 // validateExistenceIndexes check existenceIndexes at tables, and fill indexIsSliceFieldIndex
 func (s *DBSchema) validateExistenceIndexes() error {
-	checkRelation := func(mapRels *map[dataType][]Relation) error {
+	checkRelation := func(mapRels *map[dataType][]Relation, childrenRelations bool) error {
 		tables := s.Tables
 		for dt, rs := range *mapRels {
 			for i := 0; i < len(rs); i++ {
@@ -210,25 +210,25 @@ func (s *DBSchema) validateExistenceIndexes() error {
 					if index, ok := ts.Indexes[r.RelatedDataTypeFieldIndexName]; ok {
 						switch index.Indexer.(type) {
 						case *hcmemdb.StringFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
 								return fmt.Errorf("table %s:%w", dt, err)
 							}
 						case *hcmemdb.UUIDFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
 								return fmt.Errorf("table %s:%w", dt, err)
 							}
 						case *CustomTypeFieldIndexer:
-							if err := rs[i].validateBuildRelatedCustomType(false); err != nil {
+							if err := rs[i].validateBuildRelatedCustomType(false); err != nil && childrenRelations {
 								return fmt.Errorf("table %s:%w", dt, err)
 							}
 						case *hcmemdb.StringSliceFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil {
+							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
 								return fmt.Errorf("table %s:%w", dt, err)
 							}
 							r.indexIsSliceFieldIndex = true
 							rs[i] = r
 						case *CustomTypeSliceFieldIndexer:
-							if err := rs[i].validateBuildRelatedCustomType(false); err != nil {
+							if err := rs[i].validateBuildRelatedCustomType(false); err != nil && childrenRelations {
 								return fmt.Errorf("table %s:%w", dt, err)
 							}
 							r.indexIsSliceFieldIndex = true
@@ -248,8 +248,9 @@ func (s *DBSchema) validateExistenceIndexes() error {
 		}
 		return nil
 	}
-	for _, rs := range []*map[dataType][]Relation{&s.MandatoryForeignKeys, &s.CascadeDeletes, &s.CheckingRelations} {
-		if err := checkRelation(rs); err != nil {
+	chlidrenRels := []bool{false, true, true}
+	for i, rs := range []*map[dataType][]Relation{&s.MandatoryForeignKeys, &s.CascadeDeletes, &s.CheckingRelations} {
+		if err := checkRelation(rs, chlidrenRels[i]); err != nil {
 			return err
 		}
 	}
