@@ -33,7 +33,7 @@ func (r *Relation) MapKey() RelationKey {
 	return RelationKey{
 		OriginalDataTypeFieldName:     r.OriginalDataTypeFieldName,
 		RelatedDataType:               r.RelatedDataType,
-		RelatedDataTypeFieldIndexName: r.OriginalDataTypeFieldName,
+		RelatedDataTypeFieldIndexName: r.RelatedDataTypeFieldIndexName,
 	}
 }
 
