@@ -3,7 +3,8 @@ package memdb
 import (
 	"fmt"
 	"reflect"
-	"strings"
+
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 )
@@ -231,13 +232,16 @@ func (t *Txn) checkCheckingRelations(table string, obj interface{}) error {
 }
 
 // implement main loop checking relations
+// for each r from relations, will be executed relationHandler
 func (t *Txn) processRelations(relations []Relation, obj interface{},
-	relationHandler func(originObjectFieldValue interface{}, key Relation) error, relationHandlerError error) error {
+	relationHandler func(originObjectFieldValue interface{}, key Relation) error,
+	relationHandlerError error) error {
+
 	valueIface := reflect.ValueOf(obj)
 	if valueIface.Type().Kind() != reflect.Ptr {
 		return fmt.Errorf("obj `%s` is not ptr", valueIface.Type())
 	}
-	msgs := []string{}
+	errorCollector := utils.ErrorCollector{}
 	for _, key := range relations {
 		field := valueIface.Elem().FieldByName(key.OriginalDataTypeFieldName)
 		if !field.IsValid() {
@@ -245,18 +249,11 @@ func (t *Txn) processRelations(relations []Relation, obj interface{},
 		}
 		checkedFieldValue := field.Interface()
 		if err := relationHandler(checkedFieldValue, key); err != nil {
-			msgs = append(msgs, err.Error())
+			errorCollector.Collect(err)
 		}
 	}
-	builder := strings.Builder{}
-	if len(msgs) != 0 {
-		for _, msg := range msgs {
-			if builder.Len() != 0 {
-				builder.WriteString(";")
-			}
-			builder.WriteString(msg)
-		}
-		return fmt.Errorf(builder.String()+":%w", relationHandlerError)
+	if !errorCollector.Empty() {
+		return fmt.Errorf("%w:%s", relationHandlerError, errorCollector.Error())
 	}
 	return nil
 }

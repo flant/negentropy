@@ -9,7 +9,6 @@ type CustomTypeFieldIndexer struct {
 	// Field represents the field of the object passed to actual table
 	Field string
 	// FromCustomType convert customTypeValue into []byte, used for writing and searching at index tree
-	// be sure, to process customType and customTypePTR
 	FromCustomType func(customTypeValue interface{}) ([]byte, error)
 }
 
@@ -68,7 +67,6 @@ type CustomTypeSliceFieldIndexer struct {
 	// Field represents the field of the object passed to actual table
 	Field string
 	// FromCustomType convert customTypeValue into []byte, used for writing and searching at index tree
-	// be sure, to process customType and customTypePTR
 	FromCustomType func(customTypeValue interface{}) ([]byte, error)
 }
 

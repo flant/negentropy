@@ -44,11 +44,7 @@ func getTXN(t *testing.T) *Txn {
 							FromCustomType: func(raw interface{}) ([]byte, error) {
 								obj, ok := raw.(a)
 								if !ok {
-									obj, ok := raw.(*a)
-									if !ok {
-										return nil, fmt.Errorf("wrong type")
-									}
-									return []byte(obj.UUID), nil
+									return nil, fmt.Errorf("need 'a', got %T", raw)
 								}
 								return []byte(obj.UUID), nil
 							},
@@ -63,11 +59,7 @@ func getTXN(t *testing.T) *Txn {
 							FromCustomType: func(raw interface{}) ([]byte, error) {
 								obj, ok := raw.(c)
 								if !ok {
-									obj, ok := raw.(*c)
-									if !ok {
-										return nil, fmt.Errorf("wrong type")
-									}
-									return []byte(obj.UUID), nil
+									return nil, fmt.Errorf("need 'c', got %T", raw)
 								}
 								return []byte(obj.UUID), nil
 							},
@@ -98,7 +90,7 @@ func getTXN(t *testing.T) *Txn {
 					if !ok {
 						return nil, fmt.Errorf("wrong type arg")
 					}
-					return &c{
+					return c{
 						UUID:    v,
 						NotUUID: "",
 					}, nil
@@ -131,7 +123,7 @@ func Test_FirstCustomTypeFieldIndexer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	obj, err := txn.First(testTable, PK, &a{"u1", "u2"})
+	obj, err := txn.First(testTable, PK, a{"u1", "u2"})
 
 	require.NoError(t, err)
 	require.Equal(t, &b{
@@ -178,7 +170,7 @@ func getTxnWithData(t *testing.T) *Txn {
 func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 	txn := getTxnWithData(t)
 
-	iter, err := txn.Get(testTable, childrenIndex, &c{"u12", "nu12"})
+	iter, err := txn.Get(testTable, childrenIndex, c{"u12", "nu12"})
 
 	require.NoError(t, err)
 	r1 := iter.Next()
@@ -195,7 +187,7 @@ func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 
 func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
 	txn := getTxnWithData(t)
-	child := &c{"u12", "nu12"}
+	child := c{"u12", "nu12"}
 	iter, err := txn.Get(testTable, childrenIndex, child)
 	require.NoError(t, err)
 	r1 := iter.Next()
@@ -208,11 +200,11 @@ func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
 	require.Equal(t, "n3", b2.Name)
 	r3 := iter.Next()
 	require.Empty(t, r3)
-	err = txn.Insert(childTable, child)
+	err = txn.Insert(childTable, &child)
 	require.NoError(t, err)
 
-	err = txn.Delete(childTable, child)
+	err = txn.Delete(childTable, &child)
 
 	require.Error(t, err)
-	require.Equal(t, "delete:relation should be empty: &{\"u12\" \"\"} found at table \"test_table\" by index \"children_index\":not empty relation error", err.Error())
+	require.Equal(t, err.Error(), "delete:not empty relation error:relation should be empty: {\"u12\" \"\"} found at table \"test_table\" by index \"children_index\"")
 }
