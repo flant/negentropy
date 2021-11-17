@@ -3,10 +3,9 @@ package repo
 import (
 	"fmt"
 
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
-
 	hcmemdb "github.com/hashicorp/go-memdb"
 
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
