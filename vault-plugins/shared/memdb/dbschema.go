@@ -44,11 +44,9 @@ func (r *Relation) validateBuildRelatedCustomType(shouldBeNil bool) error {
 				r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName)
 		}
 		return nil
-	} else {
-		if r.BuildRelatedCustomType == nil {
-			return fmt.Errorf("index named %q at table %q, passed as relation to field %q of table should have BuildRelatedCustomType",
-				r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName)
-		}
+	} else if r.BuildRelatedCustomType == nil {
+		return fmt.Errorf("index named %q at table %q, passed as relation to field %q of table should have BuildRelatedCustomType",
+			r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName)
 	}
 	return nil
 }

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
-
 	hcmemdb "github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var (
