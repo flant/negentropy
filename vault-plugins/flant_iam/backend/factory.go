@@ -98,7 +98,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemas(iamSchema, &memdb.DBSchema{Tables: ext_repo.ServerSchema()})
+	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema())
 	if err != nil {
 		return nil, err
 	}

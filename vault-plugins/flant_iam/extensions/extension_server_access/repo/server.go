@@ -17,9 +17,10 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func ServerSchema() map[string]*hcmemdb.TableSchema {
+func ServerSchema() *memdb.DBSchema {
 	var serverIdentifierMultiIndexer []hcmemdb.Indexer
 
 	tenantUUIDIndex := &hcmemdb.StringFieldIndex{
@@ -44,44 +45,57 @@ func ServerSchema() map[string]*hcmemdb.TableSchema {
 	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, tenantUUIDIndex)
 	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, projectUUIDIndex)
 
-	return map[string]*hcmemdb.TableSchema{
-		ext_model.ServerType: {
-			Name: ext_model.ServerType,
-			Indexes: map[string]*hcmemdb.IndexSchema{
-				iam_repo.PK: {
-					Name:   iam_repo.PK,
-					Unique: true,
-					Indexer: &hcmemdb.UUIDFieldIndex{
-						Field: "UUID",
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			ext_model.ServerType: {
+				Name: ext_model.ServerType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					iam_repo.PK: {
+						Name:   iam_repo.PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
 					},
-				},
-				iam_repo.TenantForeignPK: {
-					Name: iam_repo.TenantForeignPK,
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
+					iam_repo.TenantForeignPK: {
+						Name: iam_repo.TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
 					},
-				},
-				iam_repo.ProjectForeignPK: {
-					Name: iam_repo.ProjectForeignPK,
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field:     "ProjectUUID",
-						Lowercase: true,
+					iam_repo.ProjectForeignPK: {
+						Name: iam_repo.ProjectForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "ProjectUUID",
+							Lowercase: true,
+						},
 					},
-				},
-				"identifier": {
-					Name: "identifier",
-					Indexer: &hcmemdb.CompoundIndex{
-						Indexes: serverIdentifierMultiIndexer,
+					"identifier": {
+						Name: "identifier",
+						Indexer: &hcmemdb.CompoundIndex{
+							Indexes: serverIdentifierMultiIndexer,
+						},
 					},
-				},
-				"tenant_project": {
-					Name: "tenant_project",
-					Indexer: &hcmemdb.CompoundIndex{
-						Indexes: tenantProjectMultiIndexer,
+					"tenant_project": {
+						Name: "tenant_project",
+						Indexer: &hcmemdb.CompoundIndex{
+							Indexes: tenantProjectMultiIndexer,
+						},
 					},
 				},
 			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			ext_model.ServerType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: iam_model.TenantType, RelatedDataTypeFieldIndexName: iam_repo.PK},
+				{OriginalDataTypeFieldName: "ProjectUUID", RelatedDataType: iam_model.ProjectType, RelatedDataTypeFieldIndexName: iam_repo.PK},
+				// {OriginalDataTypeFieldName: "MultipassUUID", RelatedDataType: iam_model.MultipassType, RelatedDataTypeFieldIndexName: iam_repo.PK}, may have not multipass
+			},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			iam_model.TenantType:  {{OriginalDataTypeFieldName: "UUID", RelatedDataType: ext_model.ServerType, RelatedDataTypeFieldIndexName: iam_repo.TenantForeignPK}},
+			iam_model.ProjectType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: ext_model.ServerType, RelatedDataTypeFieldIndexName: iam_repo.ProjectForeignPK}},
 		},
 	}
 }
@@ -134,12 +148,15 @@ func (r *ServerRepository) Update(server *ext_model.Server) error {
 	return r.db.Insert(ext_model.ServerType, server)
 }
 
-func (r *ServerRepository) Delete(uuid string) error {
+func (r *ServerRepository) Delete(uuid string, archivingTimestamp iam_model.UnixTime, archivingHash int64) error {
 	server, err := r.GetByUUID(uuid)
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(ext_model.ServerType, server)
+	if server.Archived() {
+		return iam_model.ErrIsArchived
+	}
+	return r.db.Archive(ext_model.ServerType, server, archivingTimestamp, archivingHash)
 }
 
 func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server, error) {

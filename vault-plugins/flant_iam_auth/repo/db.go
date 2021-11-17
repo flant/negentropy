@@ -3,9 +3,10 @@ package repo
 import (
 	"fmt"
 
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+
 	hcmemdb "github.com/hashicorp/go-memdb"
 
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
@@ -31,20 +32,6 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		AuthMethodSchema(),
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
-
-		// iam_repo.UserSchema(),
-		// iam_repo.TenantSchema(),
-		// iam_repo.ProjectSchema(),
-		// iam_repo.ServiceAccountSchema(),
-		// iam_repo.FeatureFlagSchema(),
-		// iam_repo.GroupSchema(),
-		// iam_repo.RoleSchema(),
-		// iam_repo.RoleBindingSchema(),
-		// iam_repo.RoleBindingApprovalSchema(),
-		// iam_repo.MultipassSchema(),
-		// iam_repo.ServiceAccountPasswordSchema(),
-		// iam_repo.IdentitySharingSchema(),
-		ext_repo.ServerSchema(),
 		jwtSchema,
 	}
 
@@ -66,18 +53,11 @@ func GetSchema() (*memdb.DBSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	interimSchema := &memdb.DBSchema{
-		Tables: tables,
-		// TODO fill it
-		MandatoryForeignKeys: nil,
-		// TODO fill it
-		CascadeDeletes: nil,
-		// TODO fill it
-		CheckingRelations: nil,
-	}
 
 	schema, err := memdb.MergeDBSchemas(
-		interimSchema,
+		&memdb.DBSchema{
+			Tables: tables,
+		},
 		memdb.DropRelations(iam_repo.TenantSchema()),
 		memdb.DropRelations(iam_repo.ProjectSchema()),
 		memdb.DropRelations(iam_repo.GroupSchema()),
@@ -90,6 +70,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		memdb.DropRelations(iam_repo.MultipassSchema()),
 		memdb.DropRelations(iam_repo.ServiceAccountPasswordSchema()),
 		memdb.DropRelations(iam_repo.IdentitySharingSchema()),
+		memdb.DropRelations(ext_repo.ServerSchema()),
 	)
 	if err != nil {
 		return nil, err

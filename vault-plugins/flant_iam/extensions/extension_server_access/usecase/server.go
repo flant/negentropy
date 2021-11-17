@@ -3,7 +3,6 @@ package usecase
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
@@ -291,8 +290,7 @@ func (s *ServerService) Update(server *model.Server) error {
 }
 
 func (s *ServerService) Delete(serverUUID string) error {
-	archivingTime := time.Now().Unix()
-	archivingHash := rand.Int63n(archivingTime)
+	archivingTimestamp, archivingHash := usecase.ArchivingLabel()
 
 	server, err := s.serverRepo.GetByUUID(serverUUID)
 	if err != nil {
@@ -309,14 +307,14 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	multipassService := usecase.ServiceAccountMultipasses(s.tx, iam_model.OriginServerAccess, tenant.UUID, server.UUID)
+	multipassService := usecase.ServiceAccountMultipasses(s.tx, iam_model.OriginServerAccess, tenant.UUID, server.MultipassUUID)
 
 	mp, err := multipassService.GetByID(server.MultipassUUID)
 	if err != nil {
 		return err
 	}
 
-	err = multipassService.CascadeDelete(mp.UUID, archivingTime, archivingHash)
+	err = multipassService.CascadeDelete(mp.UUID, archivingTimestamp, archivingHash)
 	if err != nil {
 		return err
 	}
@@ -336,7 +334,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = s.serviceAccountRepo.CascadeDelete(sa.UUID, archivingTime, archivingHash)
+	err = s.serviceAccountRepo.CascadeDelete(sa.UUID, archivingTimestamp, archivingHash)
 	if err != nil {
 		return err
 	}
@@ -367,7 +365,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 
 		if groupToDelete != nil {
-			err := s.groupRepo.Delete(groupToDelete.UUID, archivingTime, archivingHash)
+			err := s.groupRepo.Delete(groupToDelete.UUID, archivingTimestamp, archivingHash)
 			if err != nil {
 				return err
 			}
@@ -380,7 +378,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == iam_model.OriginServerAccess {
-				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTime, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
 				if err != nil {
 					return err
 				}
@@ -396,15 +394,14 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == iam_model.OriginServerAccess {
-				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTime, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	}
-
-	return s.serverRepo.Delete(server.UUID)
+	return s.serverRepo.Delete(server.UUID, archivingTimestamp, archivingHash)
 }
 
 func nameForTenantLevelObjects(tenantID string) string {

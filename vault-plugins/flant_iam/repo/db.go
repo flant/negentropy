@@ -3,7 +3,7 @@ package repo
 import (
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -15,24 +15,12 @@ const (
 )
 
 func mergeTables() (map[string]*memdb.TableSchema, error) {
-	jwtSchema, err := model.GetSchema(false)
+	jwtSchema, err := jwt.GetSchema(false)
 	if err != nil {
 		return nil, err
 	}
 
 	included := []map[string]*memdb.TableSchema{
-		// TenantSchema(),
-		// ProjectSchema(),
-		// GroupSchema(),
-		// UserSchema(),
-		// FeatureFlagSchema(),
-		// ServiceAccountSchema(),
-		// RoleSchema(),
-		// RoleBindingSchema(),
-		// RoleBindingApprovalSchema(),
-		// MultipassSchema(),
-		// ServiceAccountPasswordSchema(),
-		// IdentitySharingSchema(),
 		ReplicaSchema(),
 		//
 		jwtSchema,
@@ -60,17 +48,8 @@ func GetSchema() (*memdb.DBSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	interimSchema := &memdb.DBSchema{
-		Tables: tables,
-		// TODO fill it
-		MandatoryForeignKeys: nil,
-		// TODO fill it
-		CascadeDeletes: nil,
-		// TODO fill it
-		CheckingRelations: nil,
-	}
 	schema, err := memdb.MergeDBSchemas(
-		interimSchema,
+		&memdb.DBSchema{Tables: tables},
 		TenantSchema(),
 		ProjectSchema(),
 		GroupSchema(),

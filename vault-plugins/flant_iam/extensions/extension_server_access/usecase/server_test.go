@@ -9,6 +9,7 @@ import (
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	iam_fixtures "github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -41,18 +42,28 @@ func Test_Register(t *testing.T) {
 */
 
 func Test_List(t *testing.T) {
-	tenant := uuid.New()
-	project := uuid.New()
+	iamSchema, err := iam_repo.GetSchema()
+	require.NoError(t, err)
+	schema, err := memdb.MergeDBSchemas(iamSchema, repo.ServerSchema())
+	require.NoError(t, err)
+	memdb, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
+	require.NoError(t, err)
+	tx := memdb.Txn(true)
+	tenant := iam_fixtures.Tenants()[0]
+	err = tx.Insert(iam_model.TenantType, &tenant)
+	require.NoError(t, err)
+	project := iam_fixtures.Projects()[0]
+	project.TenantUUID = tenant.UUID
+	project.Version = "v1"
+	err = tx.Insert(iam_model.ProjectType, &project)
+	require.NoError(t, err)
 	server := &ext_model.Server{
 		UUID:        uuid.New(),
-		TenantUUID:  tenant,
-		ProjectUUID: project,
+		TenantUUID:  tenant.UUID,
+		ProjectUUID: project.UUID,
 		Identifier:  "test",
 	}
-
-	memdb, _ := io.NewMemoryStore(&memdb.DBSchema{Tables: repo.ServerSchema()}, nil, hclog.NewNullLogger())
-	tx := memdb.Txn(true)
-	err := tx.Insert(ext_model.ServerType, server)
+	err = tx.Insert(ext_model.ServerType, server)
 	require.NoError(t, err)
 	_ = tx.Commit()
 
@@ -61,21 +72,21 @@ func Test_List(t *testing.T) {
 	repo := repo.NewServerRepository(tx)
 
 	t.Run("find by tenant and project", func(t *testing.T) {
-		list, err := repo.List(tenant, project)
+		list, err := repo.List(tenant.UUID, project.UUID)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
 	})
 
 	t.Run("find by tenant", func(t *testing.T) {
-		list, err := repo.List(tenant, "")
+		list, err := repo.List(tenant.UUID, "")
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
 	})
 
 	t.Run("find by project", func(t *testing.T) {
-		list, err := repo.List("", project)
+		list, err := repo.List("", project.UUID)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
