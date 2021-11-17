@@ -3,10 +3,11 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -15,36 +16,45 @@ const (
 	GroupUUIDIdentitySharingIndex = "group_in_identity_sharing_index"
 )
 
-func IdentitySharingSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.IdentitySharingType: {
-			Name: model.IdentitySharingType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "UUID",
+func IdentitySharingSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.IdentitySharingType: {
+				Name: model.IdentitySharingType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					SourceTenantUUIDIndex: {
+						Name: SourceTenantUUIDIndex,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "SourceTenantUUID",
+						},
+					},
+					DestinationTenantUUIDIndex: {
+						Name: DestinationTenantUUIDIndex,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "DestinationTenantUUID",
+						},
+					},
+					GroupUUIDIdentitySharingIndex: {
+						Name: GroupUUIDIdentitySharingIndex,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field: "Groups",
+						},
 					},
 				},
-				SourceTenantUUIDIndex: {
-					Name: SourceTenantUUIDIndex,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "SourceTenantUUID",
-					},
-				},
-				DestinationTenantUUIDIndex: {
-					Name: DestinationTenantUUIDIndex,
-					Indexer: &memdb.UUIDFieldIndex{
-						Field: "DestinationTenantUUID",
-					},
-				},
-				GroupUUIDIdentitySharingIndex: {
-					Name: GroupUUIDIdentitySharingIndex,
-					Indexer: &memdb.StringSliceFieldIndex{
-						Field: "Groups",
-					},
-				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.IdentitySharingType: {
+				{OriginalDataTypeFieldName: "SourceTenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "DestinationTenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Groups", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
 	}
@@ -99,12 +109,10 @@ func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
 	if err != nil {
 		return err
 	}
-	if sh.IsDeleted() {
+	if sh.Archived() {
 		return model.ErrIsArchived
 	}
-	sh.ArchivingTimestamp = archivingTimestamp
-	sh.ArchivingHash = archivingHash
-	return r.Update(sh)
+	return r.db.Archive(model.IdentitySharingType, sh, archivingTimestamp, archivingHash)
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
@@ -120,7 +128,7 @@ func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchiv
 			break
 		}
 		obj := raw.(*model.IdentitySharing)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || !obj.Archived() {
 			list = append(list, obj)
 		}
 	}
