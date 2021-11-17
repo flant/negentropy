@@ -128,21 +128,28 @@ func validateForeignKeys(fks map[dataType][]Relation) error {
 	for d := range rels {
 		err := validateCyclic(d, rels)
 		if err != nil {
-			return fmt.Errorf("cyclic rependency: %s",
+			return fmt.Errorf("сyclic dependency: %s",
 				err.Error())
 		}
 	}
 	return nil
 }
 
+// dependency is a one level of relations of evaluated dataType
+// used as element of recursive stack
+type dependency struct {
+	// processed datatype, at lvl=0, it is  topDataType
+	parentType dataType
+	// all direct children of parentType
+	directChildrenDataTypes []dataType
+	// used as a pointer to currently processed at next level parentType
+	currentChildIdx int
+}
+
 // validateCyclic checks absence of cyclic dependencies between tables
 func validateCyclic(topDataType dataType, rels map[dataType]map[RelationKey]struct{}) error {
-	type dependency struct {
-		parentType     dataType
-		curIdx         int
-		childDataTypes []dataType
-	}
-	childDataTypesFunc := func(parentDataType dataType, rels map[dataType]map[RelationKey]struct{}) []dataType {
+	// findChildrenDataTypes extracts from rels all direct children relations for parentDataType
+	findChildrenDataTypes := func(parentDataType dataType, rels map[dataType]map[RelationKey]struct{}) []dataType {
 		mapResult := map[dataType]struct{}{}
 		for r := range rels[parentDataType] {
 			// allow self-links
@@ -156,45 +163,48 @@ func validateCyclic(topDataType dataType, rels map[dataType]map[RelationKey]stru
 		}
 		return result
 	}
+
 	deps := make([]dependency, len(rels)+1)
 	deps[0] = dependency{
-		parentType:     topDataType,
-		curIdx:         0,
-		childDataTypes: childDataTypesFunc(topDataType, rels),
+		parentType:              topDataType,
+		currentChildIdx:         0,
+		directChildrenDataTypes: findChildrenDataTypes(topDataType, rels),
 	}
-	l := 0
-loop:
-	for deps[l].curIdx < len(deps[l].childDataTypes) || l != 0 {
-		curIdx := deps[l].curIdx
+	lvl := 0
+	for lvl != 0 || deps[0].currentChildIdx < len(deps[0].directChildrenDataTypes) {
+		curIdx := deps[lvl].currentChildIdx
 		switch {
-		case curIdx >= len(deps[l].childDataTypes):
-			l--
-			deps[l].curIdx++
-			continue loop
-		case deps[l].childDataTypes[curIdx] == topDataType:
-			// create chain
-			chainBuilder := strings.Builder{}
-			for i := 0; i <= l; i++ {
-				if chainBuilder.Len() != 0 {
-					chainBuilder.WriteString("=>")
-				}
-				chainBuilder.WriteString(deps[i].parentType)
-			}
-			chainBuilder.WriteString("=>" + deps[0].parentType)
-			return fmt.Errorf("dependencies chain:%s", chainBuilder.String())
-		case len(rels[deps[l].childDataTypes[curIdx]]) > 0:
-			curType := deps[l].childDataTypes[curIdx]
-			l++
-			deps[l] = dependency{
-				parentType:     curType,
-				curIdx:         0,
-				childDataTypes: childDataTypesFunc(curType, rels),
+		case curIdx >= len(deps[lvl].directChildrenDataTypes):
+			lvl--
+			deps[lvl].currentChildIdx++
+			continue
+		case deps[lvl].directChildrenDataTypes[curIdx] == topDataType:
+			return fmt.Errorf("dependencies chain:%s", formatChain(deps[0:lvl+1]))
+		case len(rels[deps[lvl].directChildrenDataTypes[curIdx]]) > 0:
+			curType := deps[lvl].directChildrenDataTypes[curIdx]
+			lvl++
+			deps[lvl] = dependency{
+				parentType:              curType,
+				currentChildIdx:         0,
+				directChildrenDataTypes: findChildrenDataTypes(curType, rels),
 			}
 		default:
-			deps[l].curIdx++
+			deps[lvl].currentChildIdx++
 		}
 	}
 	return nil
+}
+
+func formatChain(deps []dependency) string {
+	stringBuilder := strings.Builder{}
+	for _, d := range deps {
+		if stringBuilder.Len() != 0 {
+			stringBuilder.WriteString("=>")
+		}
+		stringBuilder.WriteString(d.parentType)
+	}
+	stringBuilder.WriteString("=>" + deps[0].parentType)
+	return stringBuilder.String()
 }
 
 // validateExistenceIndexes check existenceIndexes at tables, and fill indexIsSliceFieldIndex
@@ -203,51 +213,18 @@ func (s *DBSchema) validateExistenceIndexes() error {
 		tables := s.Tables
 		for dt, rs := range *mapRels {
 			for i := 0; i < len(rs); i++ {
-				r := rs[i]
-				if ts, ok := tables[r.RelatedDataType]; !ok {
-					return fmt.Errorf("table %s is absent in DBSchema", dt)
-				} else {
-					if index, ok := ts.Indexes[r.RelatedDataTypeFieldIndexName]; ok {
-						switch index.Indexer.(type) {
-						case *hcmemdb.StringFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
-								return fmt.Errorf("table %s:%w", dt, err)
-							}
-						case *hcmemdb.UUIDFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
-								return fmt.Errorf("table %s:%w", dt, err)
-							}
-						case *CustomTypeFieldIndexer:
-							if err := rs[i].validateBuildRelatedCustomType(false); err != nil && childrenRelations {
-								return fmt.Errorf("table %s:%w", dt, err)
-							}
-						case *hcmemdb.StringSliceFieldIndex:
-							if err := rs[i].validateBuildRelatedCustomType(true); err != nil && childrenRelations {
-								return fmt.Errorf("table %s:%w", dt, err)
-							}
-							r.indexIsSliceFieldIndex = true
-							rs[i] = r
-						case *CustomTypeSliceFieldIndexer:
-							if err := rs[i].validateBuildRelatedCustomType(false); err != nil && childrenRelations {
-								return fmt.Errorf("table %s:%w", dt, err)
-							}
-							r.indexIsSliceFieldIndex = true
-							rs[i] = r
-						default:
-							return fmt.Errorf("index named %q at table %q, passed as relation to field %q of table "+
-								"%q has inapropriate type (allowed: StringFieldIndex,UUIDFieldIndex, StringSliceFieldIndex)",
-								r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName, dt)
-						}
-					} else {
-						return fmt.Errorf("index named %q not found at table %q, passed as relation to field %q of table %q",
-							r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName, dt)
-					}
+				relation := &rs[i]
+				r, err := verifyIndex(dt, tables, relation, childrenRelations)
+				if err != nil {
+					return err
 				}
+				rs[i] = *r
 			}
 			(*mapRels)[dt] = rs
 		}
 		return nil
 	}
+
 	chlidrenRels := []bool{false, true, true}
 	for i, rs := range []*map[dataType][]Relation{&s.MandatoryForeignKeys, &s.CascadeDeletes, &s.CheckingRelations} {
 		if err := checkRelation(rs, chlidrenRels[i]); err != nil {
@@ -255,6 +232,48 @@ func (s *DBSchema) validateExistenceIndexes() error {
 		}
 	}
 	return nil
+}
+
+func verifyIndex(dt dataType, tables map[string]*TableSchema, r *Relation, childrenRelations bool) (*Relation, error) {
+	if ts, ok := tables[r.RelatedDataType]; !ok {
+		return nil, fmt.Errorf("table %s is absent in DBSchema", dt)
+	} else {
+		if index, ok := ts.Indexes[r.RelatedDataTypeFieldIndexName]; ok {
+			switch index.Indexer.(type) {
+			case *hcmemdb.StringFieldIndex:
+				if err := r.validateBuildRelatedCustomType(true); err != nil && childrenRelations {
+					return nil, fmt.Errorf("table %s:%w", dt, err)
+				}
+			case *hcmemdb.UUIDFieldIndex:
+				if err := r.validateBuildRelatedCustomType(true); err != nil && childrenRelations {
+					return nil, fmt.Errorf("table %s:%w", dt, err)
+				}
+			case *CustomTypeFieldIndexer:
+				if err := r.validateBuildRelatedCustomType(false); err != nil && childrenRelations {
+					return nil, fmt.Errorf("table %s:%w", dt, err)
+				}
+			case *hcmemdb.StringSliceFieldIndex:
+				if err := r.validateBuildRelatedCustomType(true); err != nil && childrenRelations {
+					return nil, fmt.Errorf("table %s:%w", dt, err)
+				}
+				r.indexIsSliceFieldIndex = true
+			case *CustomTypeSliceFieldIndexer:
+				if err := r.validateBuildRelatedCustomType(false); err != nil && childrenRelations {
+					return nil, fmt.Errorf("table %s:%w", dt, err)
+				}
+				r.indexIsSliceFieldIndex = true
+			default:
+				return nil, fmt.Errorf("index named %q at table %q, passed as relation to field %q of table "+
+					"%q has inapropriate type (allowed: StringFieldIndex,UUIDFieldIndex, StringSliceFieldIndex, "+
+					"CustomTypeSliceFieldIndexer, CustomTypeFieldIndexer)",
+					r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName, dt)
+			}
+		} else {
+			return nil, fmt.Errorf("index named %q not found at table %q, passed as relation to field %q of table %q",
+				r.RelatedDataTypeFieldIndexName, r.RelatedDataType, r.OriginalDataTypeFieldName, dt)
+		}
+	}
+	return r, nil
 }
 
 // validateUniquenessChildRelations checks uniqueness for CascadeDeletes and CheckingRelations
