@@ -19,11 +19,6 @@ const (
 )
 
 func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
-	jwtSchema, err := jwt_model.GetSchema(false)
-	if err != nil {
-		return nil, err
-	}
-
 	others := []map[string]*hcmemdb.TableSchema{
 		EntitySchema(),
 		EntityAliasSchema(),
@@ -31,7 +26,6 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		AuthMethodSchema(),
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
-		jwtSchema,
 	}
 
 	allTables := map[string]*memdb.TableSchema{}
@@ -53,6 +47,11 @@ func GetSchema() (*memdb.DBSchema, error) {
 		return nil, err
 	}
 
+	jwtSchema, err := jwt_model.GetSchema(false)
+	if err != nil {
+		return nil, err
+	}
+
 	schema, err := memdb.MergeDBSchemas(
 		&memdb.DBSchema{
 			Tables: tables,
@@ -70,6 +69,8 @@ func GetSchema() (*memdb.DBSchema, error) {
 		memdb.DropRelations(iam_repo.ServiceAccountPasswordSchema()),
 		memdb.DropRelations(iam_repo.IdentitySharingSchema()),
 		memdb.DropRelations(ext_repo.ServerSchema()),
+
+		jwtSchema,
 	)
 	if err != nil {
 		return nil, err

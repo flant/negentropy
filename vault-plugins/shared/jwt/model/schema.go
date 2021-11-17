@@ -4,26 +4,28 @@ import (
 	"fmt"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func GetSchema(onlyJwks bool) (map[string]*hcmemdb.TableSchema, error) {
-	result := JWKSSchema()
+func GetSchema(onlyJwks bool) (*memdb.DBSchema, error) {
+	allTables := JWKSTables()
 	if onlyJwks {
-		return result, nil
+		return &memdb.DBSchema{Tables: allTables}, nil
 	}
 
-	others := []map[string]*hcmemdb.TableSchema{
-		ConfigSchema(),
-		StateSchema(),
+	otherTables := []map[string]*hcmemdb.TableSchema{
+		ConfigTables(),
+		StateTables(),
 	}
 
-	for _, tables := range others {
+	for _, tables := range otherTables {
 		for name, table := range tables {
-			if _, ok := result[name]; ok {
+			if _, ok := allTables[name]; ok {
 				return nil, fmt.Errorf("table %q already there", name)
 			}
-			result[name] = table
+			allTables[name] = table
 		}
 	}
-	return result, nil
+	return &memdb.DBSchema{Tables: allTables}, nil
 }

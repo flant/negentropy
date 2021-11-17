@@ -1,29 +1,32 @@
 package repo
 
 import (
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func ReplicaSchema() map[string]*memdb.TableSchema {
-	return map[string]*memdb.TableSchema{
-		model.ReplicaType: {
-			Name: model.ReplicaType,
-			Indexes: map[string]*memdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &memdb.StringFieldIndex{
-						Field: "Name",
+func ReplicaSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.ReplicaType: {
+				Name: model.ReplicaType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Name",
+						},
 					},
-				},
-				"type": {
-					Name:   "type",
-					Unique: false,
-					Indexer: &memdb.StringFieldIndex{
-						Field:     "TopicType",
-						Lowercase: true,
+					"type": {
+						Name:   "type",
+						Unique: false,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TopicType",
+							Lowercase: true,
+						},
 					},
 				},
 			},

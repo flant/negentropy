@@ -39,7 +39,7 @@ func (p *JWKS) ObjId() string {
 	return p.ID
 }
 
-func JWKSSchema() map[string]*hcmemdb.TableSchema {
+func JWKSTables() map[string]*hcmemdb.TableSchema {
 	return map[string]*hcmemdb.TableSchema{
 		JWKSType: {
 			Name: JWKSType,

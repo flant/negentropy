@@ -45,7 +45,7 @@ type StateRepo struct {
 	storeKey string
 }
 
-func StateSchema() map[string]*hcmemdb.TableSchema {
+func StateTables() map[string]*hcmemdb.TableSchema {
 	return map[string]*hcmemdb.TableSchema{
 		JWTStateType: {
 			Name: JWTStateType,

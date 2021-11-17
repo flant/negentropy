@@ -13,7 +13,7 @@ import (
 )
 
 func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
-	store, err := io.NewMemoryStore(&memdb.DBSchema{Tables: model.ConfigSchema()}, nil, hclog.NewNullLogger())
+	store, err := io.NewMemoryStore(&memdb.DBSchema{Tables: model.ConfigTables()}, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 	txn := store.Txn(true)
 

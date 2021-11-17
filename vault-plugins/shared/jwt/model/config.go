@@ -46,7 +46,7 @@ type ConfigRepo struct {
 	storeKey string
 }
 
-func ConfigSchema() map[string]*hcmemdb.TableSchema {
+func ConfigTables() map[string]*hcmemdb.TableSchema {
 	return map[string]*hcmemdb.TableSchema{
 		JWTConfigType: {
 			Name: JWTConfigType,
