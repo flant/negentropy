@@ -56,11 +56,7 @@ func ProjectSchema() *memdb.DBSchema {
 							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
 								obj, ok := customTypeValue.(model.FeatureFlag)
 								if !ok {
-									obj, ok := customTypeValue.(*model.FeatureFlag)
-									if !ok {
-										return nil, fmt.Errorf("need FeatureFlag or *FeatureFlag, actual:%T", customTypeValue)
-									}
-									return []byte(obj.Name), nil
+									return nil, fmt.Errorf("need FeatureFlag, actual:%T", customTypeValue)
 								}
 								return []byte(obj.Name), nil
 							},

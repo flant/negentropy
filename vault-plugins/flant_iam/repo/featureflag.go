@@ -37,7 +37,7 @@ func FeatureFlagSchema() *memdb.DBSchema {
 						if name, ok = in.(string); !ok {
 							return nil, fmt.Errorf("need string type, got: %T", in)
 						}
-						return &model.FeatureFlag{
+						return model.FeatureFlag{
 							Name: name,
 						}, nil
 					},
@@ -50,7 +50,7 @@ func FeatureFlagSchema() *memdb.DBSchema {
 						if name, ok = in.(string); !ok {
 							return nil, fmt.Errorf("need string type, got: %T", in)
 						}
-						return &model.TenantFeatureFlag{
+						return model.TenantFeatureFlag{
 							FeatureFlag: model.FeatureFlag{
 								Name: name,
 							},
