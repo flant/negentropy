@@ -16,6 +16,7 @@ var (
 	ErrInvalidSchema      = fmt.Errorf("invalid DBSchema")
 	ErrMergeSchema        = fmt.Errorf("merging DBSchema")
 	ErrClearingChildSlice = fmt.Errorf("cleaning child StringSlice field")
+	ErrNotPtr             = fmt.Errorf("not pointer passed")
 )
 
 type MemDB struct {
@@ -52,120 +53,120 @@ func (m *MemDB) Txn(write bool) *Txn {
 	return &Txn{Txn: mTxn, schema: m.schema}
 }
 
-func (t *Txn) Insert(table string, obj interface{}) error {
-	return t.insert(table, obj, 0, 0)
+func (t *Txn) Insert(table string, objPtr interface{}) error {
+	return t.insert(table, objPtr, 0, 0)
 }
 
 // insert provide Insert operation into memdb with checking MandatoryForeignKey,
 // insertion successful, if related records exists and aren't archived, or archived with suitable marks
-func (t *Txn) insert(table string, obj interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
-	err := t.checkForeignKeys(table, obj, allowedArchivingTimeStamp, allowedArchivingHash)
+func (t *Txn) insert(table string, objPtr interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
+	err := t.checkForeignKeys(table, objPtr, allowedArchivingTimeStamp, allowedArchivingHash)
 	if err != nil {
 		return fmt.Errorf("insert:%w", err)
 	}
-	return t.Txn.Insert(table, obj)
+	return t.Txn.Insert(table, objPtr)
 }
 
-func (t *Txn) Delete(table string, obj interface{}) error {
-	err := t.checkCascadeDeletesAndCheckingRelations(table, obj)
+func (t *Txn) Delete(table string, objPtr interface{}) error {
+	err := t.checkCascadeDeletesAndCheckingRelations(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("delete:%w", err)
 	}
-	err = t.Txn.Delete(table, obj)
+	err = t.Txn.Delete(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("delete:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) CascadeDelete(table string, obj interface{}) error {
-	err := t.checkCheckingRelations(table, obj)
+func (t *Txn) CascadeDelete(table string, objPtr interface{}) error {
+	err := t.checkCheckingRelations(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeDelete:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], obj, t.deleteChildren, ErrNotEmptyRelation)
+	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.deleteChildren, ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeDelete:%w", err)
 	}
-	err = t.Txn.Delete(table, obj)
+	err = t.Txn.Delete(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeDelete:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) Archive(table string, obj interface{}, archivingTimeStamp int64, archivingHash int64) error {
-	a, ok := obj.(Archivable)
+func (t *Txn) Archive(table string, objPtr interface{}, archivingTimeStamp int64, archivingHash int64) error {
+	a, ok := objPtr.(Archivable)
 	if !ok {
-		return fmt.Errorf("%w:%#v", ErrNotArchivable, obj)
+		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
 	}
-	err := t.checkCascadeDeletesAndCheckingRelations(table, obj)
+	err := t.checkCascadeDeletesAndCheckingRelations(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("archive:%w", err)
 	}
 	a.Archive(archivingTimeStamp, archivingHash)
-	err = t.Insert(table, obj)
+	err = t.Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("archive:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) CascadeArchive(table string, obj interface{}, archivingTimeStamp int64, archivingHash int64) error {
-	a, ok := obj.(Archivable)
+func (t *Txn) CascadeArchive(table string, objPtr interface{}, archivingTimeStamp int64, archivingHash int64) error {
+	a, ok := objPtr.(Archivable)
 	if !ok {
-		return fmt.Errorf("%w:%#v", ErrNotArchivable, obj)
+		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
 	}
-	err := t.checkCheckingRelations(table, obj)
+	err := t.checkCheckingRelations(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], obj, t.archiveChildren(archivingTimeStamp, archivingHash), ErrNotEmptyRelation)
+	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archivingTimeStamp, archivingHash), ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
 	a.Archive(archivingTimeStamp, archivingHash)
-	err = t.Insert(table, obj)
+	err = t.Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) Restore(table string, obj interface{}) error {
-	a, ok := obj.(Archivable)
+func (t *Txn) Restore(table string, objPtr interface{}) error {
+	a, ok := objPtr.(Archivable)
 	if !ok {
-		return fmt.Errorf("%w:%#v", ErrNotArchivable, obj)
+		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
 	}
 	a.Restore()
-	err := t.Insert(table, obj)
+	err := t.Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("restore:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) CascadeRestore(table string, obj interface{}) error {
-	a, ok := obj.(Archivable)
+func (t *Txn) CascadeRestore(table string, objPtr interface{}) error {
+	a, ok := objPtr.(Archivable)
 	if !ok {
-		return fmt.Errorf("%w:%#v", ErrNotArchivable, obj)
+		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
 	}
 	timeStamp, archivingHash := a.ArchiveMarks()
 	a.Restore()
-	err := t.insert(table, obj, timeStamp, archivingHash)
+	err := t.insert(table, objPtr, timeStamp, archivingHash)
 	if err != nil {
 		return fmt.Errorf("cascadeRestore:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], obj, t.restoreChildren(timeStamp, archivingHash), ErrNotEmptyRelation)
+	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.restoreChildren(timeStamp, archivingHash), ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeRestore:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) checkForeignKeys(table string, obj interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
+func (t *Txn) checkForeignKeys(table string, objPtr interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
 	keys := t.schema.MandatoryForeignKeys[table]
-	return t.processRelations(keys, obj, t.checkForeignKey(allowedArchivingTimeStamp, allowedArchivingHash), ErrForeignKey)
+	return t.processRelations(keys, objPtr, t.checkForeignKey(allowedArchivingTimeStamp, allowedArchivingHash), ErrForeignKey)
 }
 
 // checkForeignKey supports Slice as a field type
@@ -187,6 +188,7 @@ func (t *Txn) checkForeignKey(allowedArchivingTimeStamp UnixTime, allowedArchivi
 	}
 }
 
+// singleCheckedFieldValue should not be pointer
 func (t *Txn) checkSingleValueOfForeignKey(singleCheckedFieldValue interface{}, key Relation,
 	allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
 	var err error
@@ -221,23 +223,22 @@ func (t *Txn) checkSingleValueOfForeignKey(singleCheckedFieldValue interface{}, 
 	return nil
 }
 
-func (t *Txn) checkCascadeDeletesAndCheckingRelations(table string, obj interface{}) error {
+func (t *Txn) checkCascadeDeletesAndCheckingRelations(table string, objPtr interface{}) error {
 	rels := append(t.schema.CascadeDeletes[table], t.schema.CheckingRelations[table]...) //nolint:gocritic
-	return t.processRelations(rels, obj, t.checkRelationShouldBeEmpty, ErrNotEmptyRelation)
+	return t.processRelations(rels, objPtr, t.checkRelationShouldBeEmpty, ErrNotEmptyRelation)
 }
 
-func (t *Txn) checkCheckingRelations(table string, obj interface{}) error {
+func (t *Txn) checkCheckingRelations(table string, objPtr interface{}) error {
 	rels := t.schema.CheckingRelations[table]
-	return t.processRelations(rels, obj, t.checkRelationShouldBeEmpty, ErrNotEmptyRelation)
+	return t.processRelations(rels, objPtr, t.checkRelationShouldBeEmpty, ErrNotEmptyRelation)
 }
 
 // implement main loop checking relations
-// for each r from relations, will be executed relationHandler
-func (t *Txn) processRelations(relations []Relation, obj interface{},
+// for each relation from relations, will be executed relationHandler
+func (t *Txn) processRelations(relations []Relation, objPtr interface{},
 	relationHandler func(originObjectFieldValue interface{}, key Relation) error,
 	relationHandlerError error) error {
-
-	valueIface := reflect.ValueOf(obj)
+	valueIface := reflect.ValueOf(objPtr)
 	if valueIface.Type().Kind() != reflect.Ptr {
 		return fmt.Errorf("obj `%s` is not ptr", valueIface.Type())
 	}
@@ -258,6 +259,7 @@ func (t *Txn) processRelations(relations []Relation, obj interface{},
 	return nil
 }
 
+// checkedFieldValue should not be pointer
 func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Relation) error {
 	var err error
 	if key.BuildRelatedCustomType != nil {
@@ -277,6 +279,7 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 	return nil
 }
 
+// parentObjectFiledValue should not be pointer
 func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) error {
 	if key.indexIsSliceFieldIndex {
 		return nil
@@ -307,6 +310,7 @@ func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) e
 	return nil
 }
 
+// originObjectFieldValue should not be pointer
 func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) func(originObjectFieldValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
@@ -343,6 +347,7 @@ func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) fun
 	}
 }
 
+// parentObjectFiledValue should not be pointer
 func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) func(parentObjectFiledValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
@@ -379,7 +384,8 @@ func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) 
 }
 
 // CleanChildrenSliceIndexes remove link to obj from children slice fields
-func (t *Txn) CleanChildrenSliceIndexes(table string, obj interface{}) error {
+func (t *Txn) CleanChildrenSliceIndexes(table string, objPtr interface{}) error {
+	// TODO is it a objPtr?
 	cleanChildrenSlicesHandler := func(parentObjectFieldValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
 			return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
@@ -427,9 +433,17 @@ func (t *Txn) CleanChildrenSliceIndexes(table string, obj interface{}) error {
 		return nil
 	}
 
-	err := t.processRelations(t.schema.CascadeDeletes[table], obj, cleanChildrenSlicesHandler, ErrNotEmptyRelation)
+	err := t.processRelations(t.schema.CascadeDeletes[table], objPtr, cleanChildrenSlicesHandler, ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cleanChildrenSliceIndexes:%w", err)
 	}
 	return nil
+}
+
+func checkPtrAndReturnIndirect(objPtr interface{}) (obj interface{}, err error) {
+	valueIface := reflect.ValueOf(objPtr)
+	if valueIface.Type().Kind() != reflect.Ptr {
+		return nil, fmt.Errorf("%w:%T", ErrNotPtr, objPtr)
+	}
+	return reflect.Indirect(valueIface).Interface(), nil
 }
