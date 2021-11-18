@@ -45,11 +45,7 @@ func RoleSchema() *memdb.DBSchema {
 							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
 								obj, ok := customTypeValue.(model.IncludedRole)
 								if !ok {
-									obj, ok := customTypeValue.(*model.IncludedRole)
-									if !ok {
-										return nil, fmt.Errorf("need IncludedRole or *IncludedRole, actual:%T", customTypeValue)
-									}
-									return []byte(obj.Name), nil
+									return nil, fmt.Errorf("need IncludedRole, actual:%T", customTypeValue)
 								}
 								return []byte(obj.Name), nil
 							},
@@ -77,15 +73,11 @@ func RoleSchema() *memdb.DBSchema {
 					RelatedDataType:               model.RoleType,
 					RelatedDataTypeFieldIndexName: PK,
 					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
-						var roleName string
-						if obj, ok := originalFieldValue.(model.IncludedRole); ok {
-							roleName = obj.Name
-						} else if obj, ok := customTypeValue.(*model.IncludedRole); ok {
-							roleName = obj.Name
-						} else {
-							return nil, fmt.Errorf("need IncludedRole or *IncludedRole, actual:%T", originalFieldValue)
+						obj, ok := originalFieldValue.(model.IncludedRole)
+						if !ok {
+							return nil, fmt.Errorf("need IncludedRole, actual:%T", originalFieldValue)
 						}
-						return roleName, nil
+						return obj.Name, nil
 					},
 				},
 			},
@@ -97,9 +89,8 @@ func RoleSchema() *memdb.DBSchema {
 					RelatedDataType:               model.RoleType,
 					RelatedDataTypeFieldIndexName: IncludedRolesIndex,
 					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
-						var name string
-						var ok bool
-						if name, ok = originalFieldValue.(string); !ok {
+						name, ok := originalFieldValue.(string)
+						if !ok {
 							return nil, fmt.Errorf("need string type, got: %T", originalFieldValue)
 						}
 						return model.IncludedRole{
@@ -112,9 +103,8 @@ func RoleSchema() *memdb.DBSchema {
 					RelatedDataType:               model.RoleBindingType,
 					RelatedDataTypeFieldIndexName: RoleInRoleBindingIndex,
 					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
-						var name string
-						var ok bool
-						if name, ok = originalFieldValue.(string); !ok {
+						name, ok := originalFieldValue.(string)
+						if !ok {
 							return nil, fmt.Errorf("need string type, got: %T", originalFieldValue)
 						}
 						return model.BoundRole{
@@ -251,7 +241,7 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 }
 
 func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[model.RoleName]struct{}, error) {
-	iter, err := r.db.Get(model.RoleType, IncludedRolesIndex, &model.IncludedRole{Name: roleID})
+	iter, err := r.db.Get(model.RoleType, IncludedRolesIndex, model.IncludedRole{Name: roleID})
 	if err != nil {
 		return nil, err
 	}
