@@ -8,7 +8,7 @@ import (
 	"path"
 	"time"
 
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/flant/negentropy/cli/internal/model"
-	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 )

@@ -150,7 +150,7 @@ sleep 5
 
 check-vault
 
-plugins=(flant_iam flant_iam_auth flant_flow ssh)
+plugins=(flant_iam flant_iam_auth ssh)
 for i in "${plugins[@]}"
 do
   activate-plugin "$i"

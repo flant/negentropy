@@ -5,7 +5,7 @@ import (
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
