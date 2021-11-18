@@ -489,6 +489,27 @@ func Test_CleanChildrenSliceIndexes(t *testing.T) {
 	require.Equal(t, []string{u2, u3}, ch3.Parents)
 }
 
+func Test_checkPtrAndReturnIndirect(t *testing.T) {
+	var a int = 100
+	var objPtr interface{} = &a
+	var intObj interface{} = a
+
+	obj, err := checkPtrAndReturnIndirect(objPtr)
+
+	require.NoError(t, err)
+	require.IsType(t, intObj, obj)
+}
+
+func Test_checkPtrAndReturnIndirectFail(t *testing.T) {
+	var a int = 100
+	var notObjPtr interface{} = a
+
+	obj, err := checkPtrAndReturnIndirect(notObjPtr)
+
+	require.ErrorIs(t, err, ErrNotPtr)
+	require.Empty(t, obj)
+}
+
 const (
 	u1 = "00000000-0000-0000-0000-000000000001"
 	u2 = "00000000-0000-0000-0000-000000000002"
