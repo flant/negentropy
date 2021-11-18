@@ -5,13 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stretchr/testify/require"
 
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-const path = "test.json"
+const testPath = "test.json"
 
 var (
 	cache = Cache{
@@ -79,7 +81,7 @@ func Test_clearOverdue(t *testing.T) {
 }
 
 func Test_SaveToFile(t *testing.T) {
-	err := deleteFileIfExists(path)
+	err := deleteFileIfExists(testPath)
 	require.NoError(t, err)
 	c := cache
 	c.Update(list)
@@ -90,15 +92,15 @@ func Test_SaveToFile(t *testing.T) {
 	require.NotEmpty(t, c.projectsTimestamps)
 	require.NotEmpty(t, c.serversTimestamps)
 
-	err = c.SaveToFile(path)
+	err = c.SaveToFile(testPath)
 
 	require.NoError(t, err)
-	require.FileExists(t, path)
-	deleteFileIfExists(path)
+	require.FileExists(t, testPath)
+	deleteFileIfExists(testPath)
 }
 
 func Test_ReadFromFile(t *testing.T) {
-	err := deleteFileIfExists(path)
+	err := deleteFileIfExists(testPath)
 	require.NoError(t, err)
 	c := cache
 	c.Update(list)
@@ -108,18 +110,18 @@ func Test_ReadFromFile(t *testing.T) {
 	require.NotEmpty(t, c.tenantsTimestamps)
 	require.NotEmpty(t, c.projectsTimestamps)
 	require.NotEmpty(t, c.serversTimestamps)
-	err = c.SaveToFile(path)
+	err = c.SaveToFile(testPath)
 	require.NoError(t, err)
-	require.FileExists(t, path)
+	require.FileExists(t, testPath)
 
-	c2, err := ReadFromFile(path, time.Second*6)
+	c2, err := ReadFromFile(testPath, time.Second*6)
 
 	require.NoError(t, err)
 	require.Equal(t, c2.Tenants, list.Tenants)
 	require.Equal(t, c2.Projects, list.Projects)
 	require.Equal(t, c2.Servers, list.Servers)
 	require.Equal(t, c2.ttl, time.Second*6)
-	deleteFileIfExists(path)
+	deleteFileIfExists(testPath)
 }
 
 func deleteFileIfExists(path string) error {
@@ -127,4 +129,21 @@ func deleteFileIfExists(path string) error {
 		return nil
 	}
 	return os.Remove(path)
+}
+
+func Test_TryReadCacheFromFilePermissions(t *testing.T) {
+	// No preparations
+
+	_, err := TryReadCacheFromFile("./A/B/test.json", 100*time.Millisecond)
+
+	assert.NoError(t, err)
+	fi, err := os.Stat("./A/B")
+	assert.NoError(t, err)
+	perm := fi.Mode().String()
+	assert.Equal(t, "drwx------", perm)
+	fi, err = os.Stat("./A")
+	assert.NoError(t, err)
+	perm = fi.Mode().String()
+	assert.Equal(t, "drwx------", perm)
+	os.RemoveAll("./A/B")
 }

@@ -80,7 +80,7 @@ func TryReadCacheFromFile(filePath string, ttl time.Duration) (*Cache, error) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		dirPath := path.Dir(filePath)
 		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-			err = os.MkdirAll(dirPath, 0o644) // Create path
+			err = os.MkdirAll(dirPath, 0o700) // Create testPath
 			if err != nil {
 				return nil, fmt.Errorf("tryReadCacheFromFile, creating dirs: %w", err)
 			}
