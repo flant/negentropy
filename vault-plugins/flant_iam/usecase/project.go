@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -36,10 +37,10 @@ func (s *ProjectService) Update(project *model.Project) error {
 
 	// Validate
 	if stored.TenantUUID != project.TenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Version != project.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	project.Version = repo.NewResourceVersion()
 

@@ -16,6 +16,7 @@ import (
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -120,7 +121,7 @@ func (r *ServerRepository) GetByUUID(id string) (*ext_model.Server, error) {
 		return nil, err
 	}
 	if raw == nil {
-		return nil, iam_model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 
 	server := raw.(*ext_model.Server)
@@ -133,7 +134,7 @@ func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*ext_m
 		return nil, err
 	}
 	if raw == nil {
-		return nil, iam_model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 
 	server := raw.(*ext_model.Server)
@@ -154,7 +155,7 @@ func (r *ServerRepository) Delete(uuid string, archivingTimestamp iam_model.Unix
 		return err
 	}
 	if server.Archived() {
-		return iam_model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(ext_model.ServerType, server, archivingTimestamp, archivingHash)
 }

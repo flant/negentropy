@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -39,10 +40,10 @@ func (s *GroupService) Create(group *model.Group) error {
 	}
 
 	if group.Version != "" {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	if group.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	group.Version = iam_repo.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
@@ -66,13 +67,13 @@ func (s *GroupService) Update(group *model.Group) error {
 
 	// Validate
 	if stored.TenantUUID != s.tenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Origin != group.Origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	if stored.Version != group.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 
 	tenant, err := s.tenantsRepo.GetByID(s.tenantUUID)
@@ -106,7 +107,7 @@ func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) err
 		return err
 	}
 	if group.Origin != origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	err = s.repo.CleanChildrenSliceIndexes(id)
 	if err != nil {

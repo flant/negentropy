@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -74,7 +75,7 @@ func (r *MultipassRepository) GetRawByID(id model.MultipassUUID) (interface{}, e
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -101,7 +102,7 @@ func (r *MultipassRepository) Delete(id model.MultipassUUID, archivingTimestamp 
 		return err
 	}
 	if multipass.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(model.MultipassType, multipass, archivingTimestamp, archivingHash)
 }

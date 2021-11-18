@@ -8,15 +8,16 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/specs"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 )
 
 var (
-	TestAPI   api.TestAPI
-	ClientAPI api.TestAPI
+	TestAPI   testapi.TestAPI
+	ClientAPI testapi.TestAPI
 )
 
 var _ = Describe("Contact", func() {
@@ -28,7 +29,7 @@ var _ = Describe("Contact", func() {
 		createPayload := fixtures.RandomContactCreatePayload()
 		createPayload["client_uuid"] = client.UUID
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				contactData := json.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))
@@ -51,13 +52,13 @@ var _ = Describe("Contact", func() {
 
 	It("can be read", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
-		createdData := specs.ConvertToGJSON(contact)
+		createdData := iam_specs.ConvertToGJSON(contact)
 
-		TestAPI.Read(api.Params{
+		TestAPI.Read(testapi.Params{
 			"client":  contact.TenantUUID,
 			"contact": contact.UUID,
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(createdData, json.Get("contact"), "extensions")
+				iam_specs.IsSubsetExceptKeys(createdData, json.Get("contact"), "extensions")
 			},
 		}, nil)
 	})
@@ -65,15 +66,15 @@ var _ = Describe("Contact", func() {
 	It("can be deleted", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 
-		TestAPI.Delete(api.Params{
+		TestAPI.Delete(testapi.Params{
 			"client":  contact.TenantUUID,
 			"contact": contact.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(api.Params{
+		deletedData := TestAPI.Read(testapi.Params{
 			"client":       contact.TenantUUID,
 			"contact":      contact.UUID,
-			"expectStatus": api.ExpectExactStatus(200),
+			"expectStatus": testapi.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("contact.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
@@ -81,11 +82,11 @@ var _ = Describe("Contact", func() {
 	It("can be listed", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 
-		TestAPI.List(api.Params{
+		TestAPI.List(testapi.Params{
 			"client": contact.TenantUUID,
 			"expectPayload": func(json gjson.Result) {
-				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("contacts").Array(),
-					specs.ConvertToGJSON(contact), "extensions")
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("contacts").Array(),
+					iam_specs.ConvertToGJSON(contact), "extensions")
 			},
 		}, url.Values{})
 	})
@@ -95,7 +96,7 @@ var _ = Describe("Contact", func() {
 		originalUUID := createPayload["uuid"]
 		createPayload["client_uuid"] = client.UUID
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				contactData := json.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))

@@ -14,6 +14,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/txnwatchers"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -144,7 +145,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 			}
 			repo := iam_repo.NewGroupRepository(txn)
 			oldGroup, err := repo.GetByID(newGroup.UUID)
-			if err == iam_model.ErrNotFound {
+			if err == consts.ErrNotFound {
 				err = nil
 				oldGroup = &iam_model.Group{}
 			}
@@ -178,7 +179,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 			}
 			repo := iam_repo.NewRoleBindingRepository(txn)
 			oldRoleBinding, err := repo.GetByID(newRoleBinding.UUID)
-			if err == iam_model.ErrNotFound {
+			if err == consts.ErrNotFound {
 				err = nil
 				oldRoleBinding = &iam_model.RoleBinding{}
 			}
@@ -213,7 +214,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 			}
 			repo := iam_repo.NewRoleRepository(txn)
 			oldRole, err := repo.GetByID(newRole.Name)
-			if err == iam_model.ErrNotFound {
+			if err == consts.ErrNotFound {
 				err = nil
 				oldRole = &iam_model.Role{}
 			}

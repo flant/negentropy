@@ -8,13 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/specs"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-var TestAPI api.TestAPI
+var TestAPI testapi.TestAPI
 
 var _ = Describe("Client", func() {
 	Describe("payload", func() {
@@ -23,7 +23,7 @@ var _ = Describe("Client", func() {
 				payload := fixtures.RandomClientCreatePayload()
 				payload["identifier"] = identifier
 
-				params := api.Params{"expectStatus": api.ExpectStatus(statusCodeCondition)}
+				params := testapi.Params{"expectStatus": testapi.ExpectStatus(statusCodeCondition)}
 
 				TestAPI.Create(params, nil, payload)
 			},
@@ -38,7 +38,7 @@ var _ = Describe("Client", func() {
 	It("can be created", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				clientData := json.Get("client")
 				Expect(clientData.Map()).To(HaveKey("uuid"))
@@ -55,16 +55,16 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(api.Params{
+		TestAPI.Create(testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
 		}, nil, createPayload)
 
-		TestAPI.Read(api.Params{
+		TestAPI.Read(testapi.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(createdData, json, "full_restore")
+				iam_specs.IsSubsetExceptKeys(createdData, json, "full_restore")
 			},
 		}, nil)
 	})
@@ -73,7 +73,7 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(api.Params{
+		TestAPI.Create(testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
@@ -84,17 +84,17 @@ var _ = Describe("Client", func() {
 		// updatePayload["identifier"] = createdData.Get("client.uuid").String()
 
 		var updateData gjson.Result
-		TestAPI.Update(api.Params{
+		TestAPI.Update(testapi.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				updateData = json
 			},
 		}, nil, updatePayload)
 
-		TestAPI.Read(api.Params{
+		TestAPI.Read(testapi.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+				iam_specs.IsSubsetExceptKeys(updateData, json, "full_restore")
 			},
 		}, nil)
 	})
@@ -103,27 +103,27 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(api.Params{
+		TestAPI.Create(testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
 		}, nil, createPayload)
 
-		TestAPI.Delete(api.Params{
+		TestAPI.Delete(testapi.Params{
 			"client": createdData.Get("client.uuid").String(),
 		}, nil)
 
-		deletedClientData := TestAPI.Read(api.Params{
+		deletedClientData := TestAPI.Read(testapi.Params{
 			"client":       createdData.Get("client.uuid").String(),
-			"expectStatus": api.ExpectExactStatus(200),
+			"expectStatus": testapi.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedClientData.Get("client.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
 	It("can be listed", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
-		TestAPI.Create(api.Params{}, url.Values{}, createPayload)
-		TestAPI.List(api.Params{}, url.Values{})
+		TestAPI.Create(testapi.Params{}, url.Values{}, createPayload)
+		TestAPI.List(testapi.Params{}, url.Values{})
 	})
 
 	It("can be created with privileged", func() {
@@ -131,7 +131,7 @@ var _ = Describe("Client", func() {
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				clientData := json.Get("client")
 				Expect(clientData.Map()).To(HaveKey("uuid"))

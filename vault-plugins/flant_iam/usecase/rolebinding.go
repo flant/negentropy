@@ -5,6 +5,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -27,10 +28,10 @@ func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	// Validate
 	if rb.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	if rb.Version != "" {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	rb.Version = iam_repo.NewResourceVersion()
 
@@ -52,7 +53,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	// Validate
 	if rb.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 
 	// Validate tenant relation
@@ -61,7 +62,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 		return err
 	}
 	if stored.TenantUUID != rb.TenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 
 	// Refill data
@@ -89,7 +90,7 @@ func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBind
 		return err
 	}
 	if roleBinding.Origin != origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	archivingTimestamp, archivingHash := ArchivingLabel()
 	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)

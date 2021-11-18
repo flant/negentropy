@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -155,7 +156,7 @@ func (r *RoleBindingRepository) GetRawByID(id model.RoleBindingUUID) (interface{
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -186,7 +187,7 @@ func (r *RoleBindingRepository) CascadeDelete(id model.RoleBindingUUID, archivin
 		return err
 	}
 	if rb.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.CascadeArchive(model.RoleBindingType, rb, archivingTimestamp, archivingHash)
 }
@@ -270,7 +271,7 @@ func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	roleBinding := raw.(*model.RoleBinding)
 	return roleBinding, nil

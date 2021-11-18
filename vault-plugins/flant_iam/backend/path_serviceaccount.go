@@ -14,6 +14,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -416,7 +417,7 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 }
 
 func errExistenseVerdict(err error) (bool, error) {
-	if err == model.ErrNotFound {
+	if err == consts.ErrNotFound {
 		return false, nil
 	}
 	if err != nil {

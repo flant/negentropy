@@ -1,5 +1,7 @@
 package model
 
+import "github.com/flant/negentropy/vault-plugins/shared/consts"
+
 type ObjectOrigin string
 
 const (
@@ -11,5 +13,5 @@ func ValidateOrigin(origin ObjectOrigin) error {
 	if origin == OriginIAM || origin == OriginServerAccess {
 		return nil
 	}
-	return ErrBadOrigin
+	return consts.ErrBadOrigin
 }

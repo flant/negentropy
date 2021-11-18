@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -28,7 +29,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	// Validate
 
 	if stored.Version != updated.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	updated.Version = iam_repo.NewResourceVersion()
 

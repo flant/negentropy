@@ -2,7 +2,7 @@ package model
 
 import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
-const ContactType = "user" // also, memdb schema name
+const ContactType = "contact" // also, memdb schema name
 
 type Contact struct {
 	iam_model.User

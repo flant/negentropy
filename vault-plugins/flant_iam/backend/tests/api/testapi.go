@@ -17,6 +17,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend"
 	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/url"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 )
 
 type Params = map[string]interface{}
@@ -38,9 +39,9 @@ type PathBuilder interface {
 }
 
 type BackendBasedAPI struct {
-	url     PathBuilder
-	backend *logical.Backend
-	storage *logical.Storage
+	Url     PathBuilder
+	Backend *logical.Backend
+	Storage *logical.Storage
 }
 
 func (b *BackendBasedAPI) request(operation logical.Operation, url string, params Params, payload interface{}) gjson.Result {
@@ -56,14 +57,18 @@ func (b *BackendBasedAPI) request(operation logical.Operation, url string, param
 		Data:      p,
 	}
 
-	if b.storage != nil {
-		request.Storage = *b.storage
+	if b.Storage != nil {
+		request.Storage = *b.Storage
 	}
 
-	resp, requestErr := (*b.backend).HandleRequest(context.Background(), request)
+	resp, requestErr := (*b.Backend).HandleRequest(context.Background(), request)
 
 	if requestErr != nil {
-		statusCodeInt := 500
+		statusCodeInt := backentutils.MapErrorToHTTPStatusCode(requestErr)
+		if statusCodeInt == 0 {
+			statusCodeInt = 500
+		}
+
 		By(fmt.Sprintf("%d | Payload: %v", statusCodeInt, payload),
 			func() {
 				if expectStatus, ok := params["expectStatus"]; ok {
@@ -107,88 +112,88 @@ func (b *BackendBasedAPI) request(operation logical.Operation, url string, param
 
 func (b *BackendBasedAPI) Create(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(201))
-	return b.request(logical.CreateOperation, b.url.OneCreate(params, query), params, payload)
+	return b.request(logical.CreateOperation, b.Url.OneCreate(params, query), params, payload)
 }
 
 func (b *BackendBasedAPI) CreatePrivileged(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(201))
-	return b.request(logical.CreateOperation, b.url.Privileged(params, query), params, payload)
+	return b.request(logical.CreateOperation, b.Url.Privileged(params, query), params, payload)
 }
 
 func (b *BackendBasedAPI) Read(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
-	return b.request(logical.ReadOperation, b.url.One(params, query), params, nil)
+	return b.request(logical.ReadOperation, b.Url.One(params, query), params, nil)
 }
 
 func (b *BackendBasedAPI) Update(params Params, query url.Values, payload interface{}) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
-	return b.request(logical.UpdateOperation, b.url.One(params, query), params, payload)
+	return b.request(logical.UpdateOperation, b.Url.One(params, query), params, payload)
 }
 
 func (b *BackendBasedAPI) Delete(params Params, query url.Values) {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(204))
-	b.request(logical.DeleteOperation, b.url.One(params, query), params, nil)
+	b.request(logical.DeleteOperation, b.Url.One(params, query), params, nil)
 }
 
 func (b *BackendBasedAPI) List(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
-	return b.request(logical.ReadOperation, b.url.Collection(params, query), params, nil)
+	return b.request(logical.ReadOperation, b.Url.Collection(params, query), params, nil)
 }
 
 func NewRoleAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.RoleEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.RoleEndpointBuilder{}}
 }
 
 func NewFeatureFlagAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.FeatureFlagEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.FeatureFlagEndpointBuilder{}}
 }
 
 func NewTenantAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.TenantEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.TenantEndpointBuilder{}}
 }
 
 func NewIdentitySharingAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.IdentitySharingEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.IdentitySharingEndpointBuilder{}}
 }
 
 func NewRoleBindingAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.RoleBindingEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.RoleBindingEndpointBuilder{}}
 }
 
 func NewRoleBindingApprovalAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.RoleBindingApprovalEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.RoleBindingApprovalEndpointBuilder{}}
 }
 
 func NewTenantFeatureFlagAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.TenantFeatureFlagEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.TenantFeatureFlagEndpointBuilder{}}
 }
 
 func NewUserAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.UserEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.UserEndpointBuilder{}}
 }
 
 func NewGroupAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.GroupEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.GroupEndpointBuilder{}}
 }
 
 func NewUserMultipassAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.UserMultipassEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.UserMultipassEndpointBuilder{}}
 }
 
 func NewProjectAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.ProjectEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.ProjectEndpointBuilder{}}
 }
 
 func NewProjectFeatureFlagAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.ProjectFeatureFlagEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.ProjectFeatureFlagEndpointBuilder{}}
 }
 
 func NewServerAPI(b *logical.Backend, s *logical.Storage) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.ServerEndpointBuilder{}, storage: s}
+	return &BackendBasedAPI{Backend: b, Url: &url2.ServerEndpointBuilder{}, Storage: s}
 }
 
 func NewServiceAccountAPI(b *logical.Backend) TestAPI {
-	return &BackendBasedAPI{backend: b, url: &url2.ServiceAccountEndpointBuilder{}}
+	return &BackendBasedAPI{Backend: b, Url: &url2.ServiceAccountEndpointBuilder{}}
 }
 
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
@@ -240,7 +245,10 @@ func TestBackend() logical.Backend {
 	config := logical.TestBackendConfig()
 	testPhisicalBackend, _ := inmem.NewInmemHA(map[string]string{}, config.Logger)
 	config.StorageView = logical.NewStorageView(logical.NewLogicalStorage(testPhisicalBackend), "")
-	b, _ := backend.Factory(context.Background(), config)
+	b, err := backend.Factory(context.Background(), config)
+	if err != nil {
+		panic(err)
+	}
 	return b
 }
 
@@ -248,6 +256,9 @@ func TestBackendWithStorage() (logical.Backend, logical.Storage) {
 	config := logical.TestBackendConfig()
 	testPhisicalBackend, _ := inmem.NewInmemHA(map[string]string{}, config.Logger)
 	config.StorageView = logical.NewStorageView(logical.NewLogicalStorage(testPhisicalBackend), "")
-	b, _ := backend.Factory(context.Background(), config)
+	b, err := backend.Factory(context.Background(), config)
+	if err != nil {
+		panic(err)
+	}
 	return b, config.StorageView
 }

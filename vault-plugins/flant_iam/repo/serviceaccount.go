@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -101,7 +102,7 @@ func (r *ServiceAccountRepository) GetRawByID(id model.ServiceAccountUUID) (inte
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -129,7 +130,7 @@ func (r *ServiceAccountRepository) CascadeDelete(id model.ServiceAccountUUID,
 		return err
 	}
 	if sa.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.CascadeArchive(model.ServiceAccountType, sa, archivingTimestamp, archivingHash)
 }
@@ -148,7 +149,7 @@ func (r *ServiceAccountRepository) CascadeRestore(id model.ServiceAccountUUID) (
 		return nil, err
 	}
 	if !sa.Archived() {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.UserType, sa)
 	if err != nil {
@@ -230,7 +231,7 @@ func (r *ServiceAccountRepository) GetByIdentifier(tenantUUID, identifier string
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw.(*model.ServiceAccount), err
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -159,7 +160,7 @@ func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, er
 	}
 
 	if mp.OwnerType != r.ownerType {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	safeMp := iam_repo.OmitSensitive(mp).(model.Multipass)
 	return &safeMp, nil
@@ -204,7 +205,7 @@ func (r *MultipassService) validateContext() error {
 			return err
 		}
 		if owner.TenantUUID != r.tenantUUID {
-			return model.ErrNotFound
+			return consts.ErrNotFound
 		}
 	}
 
@@ -214,7 +215,7 @@ func (r *MultipassService) validateContext() error {
 			return err
 		}
 		if owner.TenantUUID != r.tenantUUID {
-			return model.ErrNotFound
+			return consts.ErrNotFound
 		}
 	}
 

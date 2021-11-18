@@ -15,6 +15,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -55,7 +56,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	var fullId string
 
 	user, err := a.UserRepo.GetByID(uuid)
-	if err != nil && !errors.Is(err, iam.ErrNotFound) {
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return nil, err
 	}
 
@@ -68,7 +69,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 		a.Logger.Debug(fmt.Sprintf("Not found user for %s uuid. Try find service account", uuid))
 		var sa *iam.ServiceAccount
 		sa, err = a.SaRepo.GetByID(uuid)
-		if err != nil && errors.Is(err, iam.ErrNotFound) {
+		if err != nil && errors.Is(err, consts.ErrNotFound) {
 			return nil, fmt.Errorf("not found iam entity %s", uuid)
 		}
 		if err != nil {

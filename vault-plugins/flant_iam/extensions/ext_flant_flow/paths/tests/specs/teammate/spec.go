@@ -7,15 +7,16 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/specs"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 )
 
 var (
-	TestAPI api.TestAPI
-	TeamAPI api.TestAPI
+	TestAPI testapi.TestAPI
+	TeamAPI testapi.TestAPI
 )
 
 var _ = Describe("Teammate", func() {
@@ -27,7 +28,7 @@ var _ = Describe("Teammate", func() {
 		createPayload := fixtures.RandomTeammateCreatePayload()
 		createPayload["team_uuid"] = team.UUID
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))
@@ -49,13 +50,13 @@ var _ = Describe("Teammate", func() {
 
 	It("can be read", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
-		createdData := specs.ConvertToGJSON(teammate)
+		createdData := iam_specs.ConvertToGJSON(teammate)
 
-		TestAPI.Read(api.Params{
+		TestAPI.Read(testapi.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(createdData, json.Get("teammate"), "extensions")
+				iam_specs.IsSubsetExceptKeys(createdData, json.Get("teammate"), "extensions")
 			},
 		}, nil)
 	})
@@ -63,15 +64,15 @@ var _ = Describe("Teammate", func() {
 	It("can be deleted", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
 
-		TestAPI.Delete(api.Params{
+		TestAPI.Delete(testapi.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(api.Params{
+		deletedData := TestAPI.Read(testapi.Params{
 			"team":         teammate.TeamUUID,
 			"teammate":     teammate.UUID,
-			"expectStatus": api.ExpectExactStatus(200),
+			"expectStatus": testapi.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("teammate.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
@@ -79,11 +80,11 @@ var _ = Describe("Teammate", func() {
 	It("can be listed", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
 
-		TestAPI.List(api.Params{
+		TestAPI.List(testapi.Params{
 			"team": teammate.TeamUUID,
 			"expectPayload": func(json gjson.Result) {
-				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teammates").Array(),
-					specs.ConvertToGJSON(teammate), "extensions")
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teammates").Array(),
+					iam_specs.ConvertToGJSON(teammate), "extensions")
 			},
 		}, url.Values{})
 	})
@@ -93,7 +94,7 @@ var _ = Describe("Teammate", func() {
 		originalUUID := createPayload["uuid"]
 		createPayload["team_uuid"] = team.UUID
 
-		params := api.Params{
+		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))

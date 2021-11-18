@@ -10,6 +10,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -72,7 +73,7 @@ func (s *ServerService) Create(
 	}
 
 	rawServer, err := s.serverRepo.GetByID(tenantUUID, projectUUID, serverID)
-	if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return "", "", err
 	}
 	if rawServer != nil {
@@ -80,7 +81,7 @@ func (s *ServerService) Create(
 	}
 
 	group, getGroupErr := s.groupRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-	if getGroupErr != nil && !errors.Is(getGroupErr, iam_model.ErrNotFound) {
+	if getGroupErr != nil && !errors.Is(getGroupErr, consts.ErrNotFound) {
 		return "", "", err
 	}
 	if group == nil {
@@ -100,7 +101,7 @@ func (s *ServerService) Create(
 	for _, roleName := range roles {
 		role, err := s.roleService.Get(roleName)
 		if err != nil {
-			return "", "", err
+			return "", "", fmt.Errorf("roleService.Get(%q):%w", roleName, err)
 		}
 
 		switch role.Scope {
@@ -124,7 +125,7 @@ func (s *ServerService) Create(
 
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
+		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return "", "", err
 		}
 
@@ -154,7 +155,7 @@ func (s *ServerService) Create(
 
 		// TODO: update existing
 		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
+		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return "", "", err
 		}
 
@@ -177,7 +178,7 @@ func (s *ServerService) Create(
 	}
 
 	serviceAccount, err := s.serviceAccountRepo.GetByIdentifier(tenantUUID, nameForServerRelatedProjectLevelObjects(project.Identifier, serverID))
-	if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return "", "", err
 	}
 
@@ -214,7 +215,7 @@ func (s *ServerService) Create(
 
 	groupService := usecase.Groups(s.tx, tenantUUID)
 
-	if errors.Is(getGroupErr, iam_model.ErrNotFound) {
+	if errors.Is(getGroupErr, consts.ErrNotFound) {
 		err := groupService.Create(group)
 		if err != nil {
 			return "", "", err
@@ -259,7 +260,7 @@ func (s *ServerService) Update(server *model.Server) error {
 	}
 
 	if stored.TenantUUID != server.TenantUUID {
-		return iam_model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	server.Version = iam_repo.NewResourceVersion()
 
@@ -360,7 +361,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 
 	if !serversPresentInProject {
 		groupToDelete, err := s.groupRepo.GetByIdentifier(tenant.UUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, iam_model.ErrNotFound) {
+		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return err
 		}
 

@@ -8,16 +8,17 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/api"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/specs"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
-	TestAPI   api.TestAPI
-	ClientAPI api.TestAPI
+	TestAPI   testapi.TestAPI
+	ClientAPI testapi.TestAPI
 )
 
 var _ = Describe("Project", func() {
@@ -31,8 +32,8 @@ var _ = Describe("Project", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = client.UUID
 
-		params := api.Params{
-			"expectStatus": api.ExpectExactStatus(http.StatusCreated),
+		params := testapi.Params{
+			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))
@@ -52,14 +53,14 @@ var _ = Describe("Project", func() {
 
 	It("can be read", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
-		createdData := specs.ConvertToGJSON(project)
+		createdData := iam_specs.ConvertToGJSON(project)
 
-		TestAPI.Read(api.Params{
+		TestAPI.Read(testapi.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": api.ExpectExactStatus(http.StatusOK),
+			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(createdData, json.Get("project"))
+				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"))
 			},
 		}, nil)
 	})
@@ -67,16 +68,16 @@ var _ = Describe("Project", func() {
 	It("can be deleted", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
-		TestAPI.Delete(api.Params{
-			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+		TestAPI.Delete(testapi.Params{
+			"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(api.Params{
+		deletedData := TestAPI.Read(testapi.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": api.ExpectExactStatus(http.StatusOK),
+			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 		}, nil)
 		Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
@@ -84,12 +85,12 @@ var _ = Describe("Project", func() {
 	It("can be listed", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
-		TestAPI.List(api.Params{
+		TestAPI.List(testapi.Params{
 			"client":       project.TenantUUID,
-			"expectStatus": api.ExpectExactStatus(http.StatusOK),
+			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
-				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
-					specs.ConvertToGJSON(project))
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
+					iam_specs.ConvertToGJSON(project))
 			},
 		}, url.Values{})
 	})
@@ -100,8 +101,8 @@ var _ = Describe("Project", func() {
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
-		params := api.Params{
-			"expectStatus": api.ExpectExactStatus(http.StatusCreated),
+		params := testapi.Params{
+			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))

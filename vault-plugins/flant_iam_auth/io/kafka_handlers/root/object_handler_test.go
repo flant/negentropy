@@ -14,6 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/utils/tests"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
@@ -482,7 +483,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 
 			txn := store.Txn(false)
 			o, err := c.get(txn, c.obj.ObjId())
-			require.ErrorIs(t, err, iam_model.ErrNotFound, "should delete iam entity")
+			require.ErrorIs(t, err, consts.ErrNotFound, "should delete iam entity")
 
 			o, err = c.get(txn, c.objStale.ObjId())
 			require.NoError(t, err)
@@ -592,7 +593,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 
 			tx := store.Txn(false)
 			ie, err := c.get(tx, objUUID)
-			require.ErrorIs(t, err, iam_model.ErrNotFound)
+			require.ErrorIs(t, err, consts.ErrNotFound)
 			require.Nil(t, ie)
 
 			e, err := repo.NewEntityRepo(tx).GetByUserId(objUUID)

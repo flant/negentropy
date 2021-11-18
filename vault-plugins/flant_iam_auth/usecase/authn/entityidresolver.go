@@ -12,6 +12,7 @@ import (
 	entity_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -71,7 +72,7 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 	r.logger.Debug(fmt.Sprintf("catch multipass owner UUID: %s, try to find user", iamEntity.UserId))
 
 	user, err := iam_repo.NewUserRepository(txn).GetByID(iamEntity.UserId)
-	if err != nil && !errors.Is(err, iam.ErrNotFound) {
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return nil, fmt.Errorf("finding user by id:%w", err)
 	}
 	if err == nil {
@@ -83,10 +84,10 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 	} else {
 		r.logger.Debug("Not found user, try to find service_account")
 		sa, err := iam_repo.NewServiceAccountRepository(txn).GetByID(iamEntity.UUID)
-		if err != nil && !errors.Is(err, iam.ErrNotFound) {
+		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return nil, fmt.Errorf("finding service_account by id:%w", err)
 		}
-		if errors.Is(err, iam.ErrNotFound) {
+		if errors.Is(err, consts.ErrNotFound) {
 			r.logger.Debug("Not found neither user nor service_account")
 			return nil, err
 		}
@@ -101,7 +102,7 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn,
 	storage logical.Storage) (map[iam.TenantUUID]struct{}, error) {
 	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn, storage)
-	if errors.Is(err, iam.ErrNotFound) {
+	if errors.Is(err, consts.ErrNotFound) {
 		return map[iam.TenantUUID]struct{}{}, nil
 	}
 	if err != nil {
@@ -159,7 +160,7 @@ func (r entityIDResolver) AvailableTenantsByEntityID(entityID EntityID, txn *io.
 func (r entityIDResolver) AvailableProjectsByEntityID(entityID EntityID, txn *io.MemoryStoreTxn,
 	storage logical.Storage) (map[iam.ProjectUUID]struct{}, error) {
 	entityIDOwner, err := r.RevealEntityIDOwner(entityID, txn, storage)
-	if errors.Is(err, iam.ErrNotFound) {
+	if errors.Is(err, consts.ErrNotFound) {
 		return map[iam.ProjectUUID]struct{}{}, nil
 	}
 	if err != nil {

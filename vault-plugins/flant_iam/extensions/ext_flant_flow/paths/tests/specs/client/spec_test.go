@@ -6,11 +6,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/backend/tests/api"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/api"
 )
 
 func Test_clientCRUD(t *testing.T) {
-	backend := api.TestBackend()
+	backend := testapi.TestBackend()
 	TestAPI = api.NewClientAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Tenant")

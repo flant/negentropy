@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	ext_flant_flow "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/io"
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
@@ -98,7 +99,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema())
+	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema(), ext_flant_flow.FlantFlowDBSchema())
 	if err != nil {
 		return nil, err
 	}
@@ -227,6 +228,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		ext_server_access.ServerConfigurePaths(b, storage),
 
 		tokenController.ApiPaths(),
+
+		ext_flant_flow.FlantFlowPaths(conf, storage),
 	)
 
 	b.Clean = func(context.Context) {

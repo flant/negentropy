@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -69,7 +70,7 @@ func (r *ServiceAccountPasswordsService) validateContext() error {
 		return err
 	}
 	if owner.TenantUUID != r.tenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 
 	return nil

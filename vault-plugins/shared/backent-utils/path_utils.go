@@ -43,20 +43,27 @@ func ResponseErrMessage(req *logical.Request, message string, status int) (*logi
 }
 
 func ResponseErr(req *logical.Request, err error) (*logical.Response, error) {
-	switch err {
-	case consts.ErrNoUUID:
-		return ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
-	case consts.ErrNotFound:
-		return ResponseErrMessage(req, err.Error(), http.StatusNotFound)
-	case consts.ErrBadVersion:
-		return ResponseErrMessage(req, err.Error(), http.StatusConflict)
-	case consts.ErrBadOrigin, consts.ErrJwtDisabled:
-		return ResponseErrMessage(req, err.Error(), http.StatusForbidden)
-	case consts.ErrJwtControllerError:
-		return ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
-	default:
+	statusCode := MapErrorToHTTPStatusCode(err)
+	if statusCode == 0 {
 		return nil, err
 	}
+	return ResponseErrMessage(req, err.Error(), statusCode)
+}
+
+func MapErrorToHTTPStatusCode(err error) int {
+	switch err {
+	case consts.ErrNoUUID, consts.ErrIsArchived:
+		return http.StatusBadRequest
+	case consts.ErrNotFound:
+		return http.StatusNotFound
+	case consts.ErrBadVersion:
+		return http.StatusConflict
+	case consts.ErrBadOrigin, consts.ErrJwtDisabled:
+		return http.StatusForbidden
+	case consts.ErrJwtControllerError:
+		return http.StatusInternalServerError
+	}
+	return 0
 }
 
 func GetCreationID(expectID bool, data *framework.FieldData) (string, error) {

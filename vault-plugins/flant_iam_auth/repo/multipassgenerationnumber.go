@@ -5,8 +5,8 @@ import (
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -72,7 +72,7 @@ func (r *MultipassGenerationNumberRepository) Update(updated *model2.MultipassGe
 	}
 
 	if raw == nil {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 
 	// Update
@@ -91,7 +91,7 @@ func (r *MultipassGenerationNumberRepository) delete(id string) error {
 	}
 
 	if mp == nil {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 
 	return r.db.Delete(model2.MultipassGenerationNumberType, mp)

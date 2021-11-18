@@ -1,4 +1,4 @@
-package backend
+package paths
 
 import (
 	"context"
@@ -19,19 +19,19 @@ import (
 )
 
 type teammateBackend struct {
-	logical.Backend
+	*flantFlowExtension
 	flantTenantUUID iam_model.TenantUUID
 	storage         *io.MemoryStore
 	userClient      iam_client.Users
 }
 
-func teammatePaths(b logical.Backend, storage *io.MemoryStore,
+func teammatePaths(e *flantFlowExtension, storage *io.MemoryStore,
 	flantTenantUUID iam_model.TenantUUID, userClient iam_client.Users) []*framework.Path {
 	bb := &teammateBackend{
-		Backend:         b,
-		flantTenantUUID: flantTenantUUID,
-		storage:         storage,
-		userClient:      userClient,
+		flantFlowExtension: e,
+		flantTenantUUID:    flantTenantUUID,
+		storage:            storage,
+		userClient:         userClient,
 	}
 	return bb.paths()
 }

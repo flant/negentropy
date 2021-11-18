@@ -1,4 +1,4 @@
-package backend
+package paths
 
 import (
 	"context"
@@ -19,16 +19,16 @@ import (
 )
 
 type contactBackend struct {
-	logical.Backend
+	*flantFlowExtension
 	storage    *io.MemoryStore
 	userClient iam_client.Users
 }
 
-func contactPaths(b logical.Backend, storage *io.MemoryStore, userClient iam_client.Users) []*framework.Path {
+func contactPaths(e *flantFlowExtension, storage *io.MemoryStore, userClient iam_client.Users) []*framework.Path {
 	bb := &contactBackend{
-		Backend:    b,
-		storage:    storage,
-		userClient: userClient,
+		flantFlowExtension: e,
+		storage:            storage,
+		userClient:         userClient,
 	}
 	return bb.paths()
 }

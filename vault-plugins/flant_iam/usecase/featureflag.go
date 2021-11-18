@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -170,7 +171,7 @@ func (s *ProjectFeatureFlagService) Add(featureFlag model.FeatureFlag) (*model.P
 		return nil, err
 	}
 	if project.TenantUUID != s.tenantUUID {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 
 	for _, pff := range project.FeatureFlags {
@@ -196,7 +197,7 @@ func (s *ProjectFeatureFlagService) Delete(featureFlagName string) (*model.Proje
 	}
 
 	if project.TenantUUID != s.tenantUUID {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 
 	for i, pff := range project.FeatureFlags {
