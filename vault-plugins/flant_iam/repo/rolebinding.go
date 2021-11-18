@@ -95,11 +95,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
 								obj, ok := customTypeValue.(model.BoundRole)
 								if !ok {
-									obj, ok := customTypeValue.(*model.BoundRole)
-									if !ok {
-										return nil, fmt.Errorf("need BoundRole or *BoundRole, actual:%T", customTypeValue)
-									}
-									return []byte(obj.Name), nil
+									return nil, fmt.Errorf("need BoundRole, actual:%T", customTypeValue)
 								}
 								return []byte(obj.Name), nil
 							},
@@ -122,15 +118,11 @@ func RoleBindingSchema() *memdb.DBSchema {
 				{
 					OriginalDataTypeFieldName: "Roles", RelatedDataType: model.RoleType, RelatedDataTypeFieldIndexName: PK,
 					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
-						var roleName string
-						if obj, ok := originalFieldValue.(model.BoundRole); ok {
-							roleName = obj.Name
-						} else if obj, ok := customTypeValue.(*model.BoundRole); ok {
-							roleName = obj.Name
-						} else {
-							return nil, fmt.Errorf("need BoundRole or *BoundRole, actual:%T", originalFieldValue)
+						obj, ok := originalFieldValue.(model.BoundRole)
+						if !ok {
+							return nil, fmt.Errorf("need BoundRole, actual:%T", originalFieldValue)
 						}
-						return roleName, nil
+						return obj.Name, nil
 					},
 				},
 			},

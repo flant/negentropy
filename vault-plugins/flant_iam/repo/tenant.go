@@ -51,11 +51,7 @@ func TenantSchema() *memdb.DBSchema {
 							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
 								obj, ok := customTypeValue.(model.TenantFeatureFlag)
 								if !ok {
-									obj, ok := customTypeValue.(*model.TenantFeatureFlag)
-									if !ok {
-										return nil, fmt.Errorf("need TenantFeatureFlag or *TenantFeatureFlag, actual:%T", customTypeValue)
-									}
-									return []byte(obj.Name), nil
+									return nil, fmt.Errorf("need TenantFeatureFlag, actual:%T", customTypeValue)
 								}
 								return []byte(obj.Name), nil
 							},
