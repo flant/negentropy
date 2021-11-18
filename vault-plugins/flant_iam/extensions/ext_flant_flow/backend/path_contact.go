@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -242,7 +243,10 @@ func (b *contactBackend) handleExistence() framework.ExistenceFunc {
 func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create contact", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
 		clientID := data.Get(clientUUIDKey).(string)
 		contact := &model.Contact{
 			User: iam_model.User{
@@ -269,7 +273,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -306,9 +310,9 @@ func (b *contactBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Contacts(tx, clientID, b.userClient).Update(contact)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -329,9 +333,9 @@ func (b *contactBackend) handleDelete() framework.OperationFunc {
 		// TODO pass origin to use in client
 		err := usecase.Contacts(tx, clientID, b.userClient).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -349,7 +353,7 @@ func (b *contactBackend) handleRead() framework.OperationFunc {
 
 		contact, err := usecase.Contacts(tx, clientID, b.userClient).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"contact": contact}}
@@ -394,10 +398,10 @@ func (b *contactBackend) handleRestore() framework.OperationFunc {
 
 		contact, err := usecase.Contacts(tx, clientID, b.userClient).Restore(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

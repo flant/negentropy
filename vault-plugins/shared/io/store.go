@@ -390,3 +390,13 @@ func (ms *MemoryStore) Close() {
 	ms.removeAllKafkaSources()
 	ms.kafkaConnection.Close()
 }
+
+// commit wraps the committing and error logging
+func CommitWithLog(txn *MemoryStoreTxn, logger hclog.Logger) error {
+	err := txn.Commit()
+	if err != nil {
+		logger.Error("failed to commit", "err", err)
+		return fmt.Errorf("request failed, try again")
+	}
+	return nil
+}

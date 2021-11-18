@@ -52,21 +52,6 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 type ExtensionInitializationFunc func(ctx context.Context, initRequest *logical.InitializationRequest, storage *sharedio.MemoryStore) error
 
-func initializer(storage *sharedio.MemoryStore) func(ctx context.Context, initRequest *logical.InitializationRequest) error {
-	return func(ctx context.Context, initRequest *logical.InitializationRequest) error {
-		initFuncs := []ExtensionInitializationFunc{}
-
-		for _, f := range initFuncs {
-			err := f(ctx, initRequest, storage)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-}
-
 func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
@@ -109,15 +94,6 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 	} else {
 		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
 	}
-
-	b.InitializeFunc = initializer(storage)
-
-	// tokenController := sharedjwt.NewJwtController(
-	//	storage,
-	//	mb.GetEncryptionPublicKeyStrict,
-	//	conf.Logger,
-	//	time.Now,
-	// )
 
 	b.PeriodicFunc = func(ctx context.Context, request *logical.Request) error {
 		periodicLogger := conf.Logger.Named("Periodic")

@@ -223,7 +223,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -250,9 +250,9 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Projects(tx).Update(project)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -272,9 +272,9 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Projects(tx).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -292,7 +292,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		project, err := usecase.Projects(tx).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
@@ -314,7 +314,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 
 		projects, err := usecase.Projects(tx).List(tenantID, showArchived)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{
@@ -336,10 +336,10 @@ func (b *projectBackend) handleRestore() framework.OperationFunc {
 
 		project, err := usecase.Projects(tx).Restore(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 

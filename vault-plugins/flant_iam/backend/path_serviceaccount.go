@@ -478,7 +478,7 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -515,9 +515,9 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Update(serviceAccount)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -539,9 +539,9 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -561,7 +561,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 		serviceAccount, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"service_account": serviceAccount}}
@@ -605,7 +605,7 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 
 		// Check that the feature is available
 		if err := isJwtEnabled(tx, b.tokenController); err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		var (
@@ -625,10 +625,10 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).
 			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -654,10 +654,10 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 
 		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
@@ -676,7 +676,7 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 
 		mp, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": iam_repo.OmitSensitive(mp)}}
@@ -699,7 +699,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{
@@ -739,7 +739,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 		var err error
 		pass.Secret, err = generatePassword()
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		tx := b.storage.Txn(true)
@@ -747,10 +747,10 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 		err = usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Create(pass)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -779,10 +779,10 @@ func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 
 		err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusNoContent)
@@ -802,7 +802,7 @@ func (b *serviceAccountBackend) handlePasswordRead() framework.OperationFunc {
 
 		pass, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"password": iam_repo.OmitSensitive(pass)}}
@@ -827,7 +827,7 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 
 		passwords, err := usecase.ServiceAccountPasswords(tx, tenantUUID, ownerUUID).List(showArchived)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{

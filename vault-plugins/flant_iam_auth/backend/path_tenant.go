@@ -139,7 +139,7 @@ func (b *flantIamAuthBackend) readTenant(ctx context.Context, req *logical.Reque
 
 	tenant, err := iam_usecase.Tenants(tx).GetByID(id)
 	if err != nil {
-		return responseErr(req, err)
+		return backentutils.ResponseErr(req, err)
 	}
 
 	resp := &logical.Response{Data: map[string]interface{}{
@@ -157,7 +157,7 @@ func (b *flantIamAuthBackend) readProject(ctx context.Context, req *logical.Requ
 
 	project, err := iam_usecase.Projects(tx).GetByID(id)
 	if err != nil {
-		return responseErr(req, err)
+		return backentutils.ResponseErr(req, err)
 	}
 
 	resp := &logical.Response{Data: map[string]interface{}{

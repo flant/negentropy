@@ -119,7 +119,7 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, msg, http.StatusInternalServerError)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -138,10 +138,10 @@ func (b *featureFlagBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Featureflags(tx).Delete(name)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 

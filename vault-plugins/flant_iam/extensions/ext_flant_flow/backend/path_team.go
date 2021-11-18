@@ -10,6 +10,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -204,7 +205,10 @@ func (b *teamBackend) handleExistence() framework.ExistenceFunc {
 func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create team", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
 		team := &model.Team{
 			UUID:           id,
 			Identifier:     data.Get("identifier").(string),
@@ -220,7 +224,7 @@ func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -245,9 +249,9 @@ func (b *teamBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Teams(tx).Update(team)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -266,9 +270,9 @@ func (b *teamBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Teams(tx).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -285,7 +289,7 @@ func (b *teamBackend) handleRead() framework.OperationFunc {
 
 		team, err := usecase.Teams(tx).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -335,10 +339,10 @@ func (b *teamBackend) handleRestore() framework.OperationFunc {
 
 		team, err := usecase.Teams(tx).Restore(id, fullRestore)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

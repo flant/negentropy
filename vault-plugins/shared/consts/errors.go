@@ -1,4 +1,4 @@
-package model
+package consts
 
 import "fmt"
 
@@ -12,4 +12,7 @@ var (
 	ErrBadProjectScopeRole = fmt.Errorf("project_scoped_role is not allowed")
 	ErrIsArchived          = fmt.Errorf("entity is archived")
 	ErrIsNotArchived       = fmt.Errorf("entity is not archived")
+	ErrNoUUID              = fmt.Errorf("uuid is required")
+	ErrJwtDisabled         = fmt.Errorf("JWT is disabled")
+	ErrJwtControllerError  = fmt.Errorf("JWT controller error")
 )

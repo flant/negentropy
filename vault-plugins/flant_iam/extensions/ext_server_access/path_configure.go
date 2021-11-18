@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -72,7 +73,7 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 		b.Logger().Info("handleConfig started")
 		defer b.Logger().Info("handleConfig exit")
 		if !liveConfig.isConfigured() && data.Get("last_allocated_uid") == nil {
-			return responseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
+			return backentutils.ResponseErr(req, errors.New(`"last_allocated_uid" not provided and config in storage is missing`))
 		}
 
 		var newServerAccessConfig ServerAccessConfig
@@ -94,7 +95,7 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 
 		err := liveConfig.SetServerAccessConfig(ctx, req.Storage, &newServerAccessConfig)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 		b.Logger().Info("handleConfig normal finish")
 		return logical.RespondWithStatusCode(nil, req, http.StatusOK)

@@ -14,6 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/usecase"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -284,12 +285,12 @@ func (b *serverBackend) handleFingerprintRead() framework.OperationFunc {
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Error("err", err.Error())
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		err = commit(tx, b.Logger())
+		err = io.CommitWithLog(tx, b.Logger())
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"fingerprint": server.Fingerprint}}
@@ -305,7 +306,7 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		if !ok {
 			err := errors.New("fingerprint is not provided or is invalid")
 			b.Logger().Error("err", err.Error())
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		fingerprint := fingerprintRaw.(string)
@@ -318,7 +319,7 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Error("err", err.Error())
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		server.Fingerprint = fingerprint
@@ -327,12 +328,12 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 		if err != nil {
 			err := fmt.Errorf("cannot update server: %s", err)
 			b.Logger().Error("err", err.Error())
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		err = commit(tx, b.Logger())
+		err = io.CommitWithLog(tx, b.Logger())
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"fingerprint": server.Fingerprint}}
@@ -352,12 +353,12 @@ func (b *serverBackend) handleRead() framework.OperationFunc {
 		if err != nil {
 			err := fmt.Errorf("cannot get server from db: %s", err)
 			b.Logger().Error("err", err.Error())
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		err = commit(tx, b.Logger())
+		err = io.CommitWithLog(tx, b.Logger())
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"server": server}}
@@ -396,7 +397,7 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 
 		err := repo.Update(server)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -423,7 +424,7 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 		err := service.Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		err = tx.Commit()
@@ -472,7 +473,7 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 		serverUUID := data.Get("server_uuid").(string)
 		server, err := repo.GetByUUID(serverUUID)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 		connectionInfo := model.ConnectionInfo{
 			Hostname:     data.Get("hostname").(string),
@@ -485,7 +486,7 @@ func (b *serverBackend) handleConnectionInfoUpdate() framework.OperationFunc {
 		server.ConnectionInfo = connectionInfo
 		err = repo.Update(server)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		err = tx.Commit()

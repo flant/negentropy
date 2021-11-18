@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -66,7 +67,7 @@ func (r *TeamRepository) GetRawByID(id model.TeamUUID) (interface{}, error) {
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -93,7 +94,7 @@ func (r *TeamRepository) Delete(id model.TeamUUID, archivingTimestamp model.Unix
 		return err
 	}
 	if team.IsDeleted() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	team.ArchivingTimestamp = archivingTimestamp
 	team.ArchivingHash = archivingHash
@@ -172,7 +173,7 @@ func (r *TeamRepository) Restore(id model.TeamUUID) (*model.Team, error) {
 		return nil, err
 	}
 	if team.ArchivingTimestamp == 0 {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	team.ArchivingTimestamp = 0
 	team.ArchivingHash = 0

@@ -186,9 +186,9 @@ func (b *roleBindingApprovalBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.RoleBindingApprovals(tx).Update(roleBindingApproval)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -207,9 +207,9 @@ func (b *roleBindingApprovalBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.RoleBindingApprovals(tx).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -226,7 +226,7 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 
 		roleBindingApproval, err := usecase.RoleBindingApprovals(tx).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding_approval": roleBindingApproval}}

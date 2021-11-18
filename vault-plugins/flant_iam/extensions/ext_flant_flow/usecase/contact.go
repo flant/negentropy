@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -34,7 +35,7 @@ func (s *ContactService) Create(contact *model.Contact) error {
 	contact.Version = iam_repo.NewResourceVersion()
 	contact.FullIdentifier = contact.Identifier + "@" + client.Identifier
 	if contact.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	return s.contactsRepo.Create(contact)
 }
@@ -55,13 +56,13 @@ func (s *ContactService) Update(contact *model.Contact) error {
 
 	// Validate
 	if stored.TenantUUID != s.clientUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Version != contact.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	if stored.Origin != contact.Origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 
 	client, err := s.clientRepo.GetByID(s.clientUUID)

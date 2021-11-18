@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -68,7 +69,7 @@ func (r *ContactRepository) GetRawByID(id model.ContactUUID) (interface{}, error
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -95,7 +96,7 @@ func (r *ContactRepository) Delete(id model.ContactUUID, archivingTimestamp mode
 		return err
 	}
 	if contact.IsDeleted() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	contact.ArchivingTimestamp = archivingTimestamp
 	contact.ArchivingHash = archivingHash
@@ -175,7 +176,7 @@ func (r *ContactRepository) Restore(id model.ContactUUID) (*model.Contact, error
 		return nil, err
 	}
 	if contact.ArchivingTimestamp == 0 {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	contact.ArchivingTimestamp = 0
 	contact.ArchivingHash = 0

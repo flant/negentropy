@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -40,10 +41,10 @@ func (s *ProjectService) Update(project *model.Project) error {
 
 	// Validate
 	if stored.TenantUUID != project.TenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Version != project.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	project.Version = repo.NewResourceVersion()
 	// TODO verify servicepacks

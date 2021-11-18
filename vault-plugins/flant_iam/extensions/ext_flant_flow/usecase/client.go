@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -38,7 +39,7 @@ func (s *ClientService) Update(updated *model.Client) error {
 	// Validate
 
 	if stored.Version != updated.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	updated.Version = repo.NewResourceVersion()
 

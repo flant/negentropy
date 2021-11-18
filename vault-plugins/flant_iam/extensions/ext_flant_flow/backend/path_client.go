@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -181,7 +182,10 @@ func (b *clientBackend) handleExistence() framework.ExistenceFunc {
 func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create client", "path", req.Path)
-		id := getCreationID(expectID, data)
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
 		client := &model.Client{
 			Tenant: iam_model.Tenant{
 				UUID:       id,
@@ -197,7 +201,7 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -223,9 +227,9 @@ func (b *clientBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Clients(tx, b.tenantClient).Update(client)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -244,9 +248,9 @@ func (b *clientBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Clients(tx, b.tenantClient).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -263,7 +267,7 @@ func (b *clientBackend) handleRead() framework.OperationFunc {
 
 		client, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -313,10 +317,10 @@ func (b *clientBackend) handleRestore() framework.OperationFunc {
 
 		client, err := usecase.Clients(tx, b.tenantClient).Restore(id, fullRestore)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

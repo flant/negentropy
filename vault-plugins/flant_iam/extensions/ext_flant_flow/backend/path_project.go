@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -219,11 +220,13 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create project", "path", req.Path)
 
-		id := getCreationID(expectID, data)
-
+		id, err := backentutils.GetCreationID(expectID, data)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
 		servicePacks, err := b.getServicePacks(data)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		project := &model.Project{
@@ -244,7 +247,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return logical.ErrorResponse(msg), nil
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -274,7 +277,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 		servicePacks, err := b.getServicePacks(data)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		id := data.Get("uuid").(string)
@@ -294,9 +297,9 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 
 		err = usecase.Projects(tx, b.projectClient).Update(project)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -316,9 +319,9 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Projects(tx, b.projectClient).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -336,7 +339,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		project, err := usecase.Projects(tx, b.projectClient).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
@@ -380,10 +383,10 @@ func (b *projectBackend) handleRestore() framework.OperationFunc {
 
 		project, err := usecase.Projects(tx, b.projectClient).Restore(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 

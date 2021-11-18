@@ -5,6 +5,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -45,7 +46,7 @@ func (s *TeammateService) Update(updated *model.Teammate) error {
 	// Validate
 
 	if stored.Version != updated.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	updated.Version = repo.NewResourceVersion()
 

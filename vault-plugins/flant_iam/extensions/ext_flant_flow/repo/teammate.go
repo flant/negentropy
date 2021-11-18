@@ -7,6 +7,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -69,7 +70,7 @@ func (r *TeammateRepository) GetRawByID(id iam_model.UserUUID) (interface{}, err
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -96,7 +97,7 @@ func (r *TeammateRepository) Delete(id iam_model.UserUUID, archivingTimestamp mo
 		return err
 	}
 	if teammate.IsDeleted() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	teammate.ArchivingTimestamp = archivingTimestamp
 	teammate.ArchivingHash = archivingHash
@@ -175,7 +176,7 @@ func (r *TeammateRepository) Restore(id iam_model.UserUUID) (*model.Teammate, er
 		return nil, err
 	}
 	if teammate.ArchivingTimestamp == 0 {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	teammate.ArchivingTimestamp = 0
 	teammate.ArchivingHash = 0

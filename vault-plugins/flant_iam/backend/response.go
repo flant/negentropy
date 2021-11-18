@@ -1,53 +1,18 @@
 package backend
 
 import (
-	"fmt"
-	"net/http"
-
-	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/logical"
-
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
-)
-
-var (
-	errJwtDisabled        = fmt.Errorf("JWT is disabled")
-	errJwtControllerError = fmt.Errorf("JWT controller error")
 )
 
 func isJwtEnabled(tx *io.MemoryStoreTxn, controller *jwt.Controller) error {
 	isEnabled, err := controller.IsEnabled(tx)
 	if err != nil {
-		return errJwtControllerError
+		return consts.ErrJwtControllerError
 	}
 	if !isEnabled {
-		return errJwtDisabled
-	}
-	return nil
-}
-
-func responseErr(req *logical.Request, err error) (*logical.Response, error) {
-	switch err {
-	case model.ErrNotFound:
-		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusNotFound)
-	case model.ErrBadVersion:
-		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusConflict)
-	case model.ErrBadOrigin, errJwtDisabled:
-		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusForbidden)
-	default:
-		return nil, err
-	}
-}
-
-// commit wraps the committing and error logging
-func commit(tx *io.MemoryStoreTxn, logger log.Logger) error {
-	err := tx.Commit()
-	if err != nil {
-		logger.Error("failed to commit", "err", err)
-		return fmt.Errorf("request failed, try again")
+		return consts.ErrJwtDisabled
 	}
 	return nil
 }
