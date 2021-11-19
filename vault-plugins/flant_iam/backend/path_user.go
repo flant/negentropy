@@ -13,6 +13,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -441,7 +442,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
-			Origin:           model.OriginIAM,
+			Origin:           consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -481,7 +482,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
-			Origin:           model.OriginIAM,
+			Origin:           consts.OriginIAM,
 		}
 
 		err := usecase.Users(tx, tenantID).Update(user)
@@ -506,7 +507,7 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
+		err := usecase.Users(tx, tenantID).Delete(consts.OriginIAM, id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -611,7 +612,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 		issueFn := jwt.CreateIssueMultipassFunc(b.tokenController, tx)
 		jwtString, multipass, err := usecase.
-			UserMultipasses(tx, model.OriginIAM, tid, uid).
+			UserMultipasses(tx, consts.OriginIAM, tid, uid).
 			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
@@ -641,7 +642,7 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
+		err := usecase.UserMultipasses(tx, consts.OriginIAM, tid, uid).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -663,7 +664,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 		)
 		tx := b.storage.Txn(false)
 
-		mp, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
+		mp, err := usecase.UserMultipasses(tx, consts.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -685,7 +686,7 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
+		multipasses, err := usecase.UserMultipasses(tx, consts.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

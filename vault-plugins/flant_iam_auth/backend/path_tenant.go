@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -137,7 +138,7 @@ func (b *flantIamAuthBackend) readTenant(ctx context.Context, req *logical.Reque
 
 	tx := b.storage.Txn(false)
 
-	tenant, err := iam_usecase.Tenants(tx).GetByID(id)
+	tenant, err := iam_usecase.Tenants(tx, consts.OriginAUTH).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

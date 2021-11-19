@@ -440,7 +440,7 @@ func (b *serviceAccountBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		_, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantID).GetByID(id)
+		_, err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantID).GetByID(id)
 		return errExistenseVerdict(err)
 	}
 }
@@ -468,13 +468,13 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
-			Origin:      model.OriginIAM,
+			Origin:      consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Create(serviceAccount); err != nil {
+		if err = usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).Create(serviceAccount); err != nil {
 			msg := "cannot create service account"
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
@@ -508,13 +508,13 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),
-			Origin:      model.OriginIAM,
+			Origin:      consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Update(serviceAccount)
+		err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).Update(serviceAccount)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -538,7 +538,7 @@ func (b *serviceAccountBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).Delete(id)
+		err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -560,7 +560,7 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		serviceAccount, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).GetByID(id)
+		serviceAccount, err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -582,7 +582,7 @@ func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		serviceAccounts, err := usecase.ServiceAccounts(tx, model.OriginIAM, tenantUUID).List(showArchived)
+		serviceAccounts, err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).List(showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
@@ -623,7 +623,7 @@ func (b *serviceAccountBackend) handleMultipassCreate() framework.OperationFunc 
 		issueFn := jwt.CreateIssueMultipassFunc(b.tokenController, tx)
 
 		jwtString, multipass, err := usecase.
-			ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).
+			ServiceAccountMultipasses(tx, consts.OriginIAM, tid, said).
 			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
@@ -653,7 +653,7 @@ func (b *serviceAccountBackend) handleMultipassDelete() framework.OperationFunc 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, said).Delete(id)
+		err := usecase.ServiceAccountMultipasses(tx, consts.OriginIAM, tid, said).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -675,7 +675,7 @@ func (b *serviceAccountBackend) handleMultipassRead() framework.OperationFunc {
 		)
 		tx := b.storage.Txn(false)
 
-		mp, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
+		mp, err := usecase.ServiceAccountMultipasses(tx, consts.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -698,7 +698,7 @@ func (b *serviceAccountBackend) handleMultipassList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		multipasses, err := usecase.ServiceAccountMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
+		multipasses, err := usecase.ServiceAccountMultipasses(tx, consts.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

@@ -1,6 +1,9 @@
 package model
 
-import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+import (
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const RoleBindingType = "role_binding" // also, memdb schema name
 
@@ -26,9 +29,9 @@ type RoleBinding struct {
 
 	Roles []BoundRole `json:"roles"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions map[consts.ObjectOrigin]*Extension `json:"-"`
 }
 
 type BoundRole struct {

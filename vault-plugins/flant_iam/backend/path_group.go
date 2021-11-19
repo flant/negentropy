@@ -13,6 +13,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -218,7 +219,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -260,7 +261,7 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
@@ -290,7 +291,7 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Groups(tx, tenantUUID).Delete(model.OriginIAM, id)
+		err := usecase.Groups(tx, tenantUUID).Delete(consts.OriginIAM, id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

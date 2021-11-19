@@ -30,7 +30,7 @@ type ServerService struct {
 
 func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 	return &ServerService{
-		tenantService:      usecase.Tenants(tx),
+		tenantService:      usecase.Tenants(tx, consts.OriginServerAccess),
 		projectsService:    usecase.Projects(tx),
 		groupRepo:          iam_repo.NewGroupRepository(tx),
 		serviceAccountRepo: iam_repo.NewServiceAccountRepository(tx),
@@ -89,7 +89,7 @@ func (s *ServerService) Create(
 			UUID:       uuid.New(),
 			TenantUUID: tenant.UUID,
 			Identifier: nameForTenantLevelObjects(tenant.Identifier),
-			Origin:     iam_model.OriginServerAccess,
+			Origin:     consts.OriginServerAccess,
 		}
 		err := s.groupRepo.Create(group)
 		if err != nil {
@@ -134,7 +134,7 @@ func (s *ServerService) Create(
 				UUID:       uuid.New(),
 				Version:    iam_repo.NewResourceVersion(),
 				TenantUUID: tenant.ObjId(),
-				Origin:     iam_model.OriginServerAccess,
+				Origin:     consts.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
 				Groups:     []iam_model.GroupUUID{group.UUID},
 				Roles:      tenantBoundRoles,
@@ -164,7 +164,7 @@ func (s *ServerService) Create(
 				UUID:       uuid.New(),
 				TenantUUID: tenant.ObjId(),
 				Version:    iam_repo.NewResourceVersion(),
-				Origin:     iam_model.OriginServerAccess,
+				Origin:     consts.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
 				Groups:     []iam_model.GroupUUID{group.UUID},
 				Roles:      projectBoundRoles,
@@ -189,7 +189,7 @@ func (s *ServerService) Create(
 			UUID:           uuid.New(),
 			Version:        iam_repo.NewResourceVersion(),
 			TenantUUID:     tenant.ObjId(),
-			Origin:         iam_model.OriginServerAccess,
+			Origin:         consts.OriginServerAccess,
 			Identifier:     saIdentifier,
 			FullIdentifier: iam_repo.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
 		}
@@ -235,7 +235,7 @@ func (s *ServerService) Create(
 		multipassRoleNames = append(multipassRoleNames, projectRole.Name)
 	}
 
-	multipassService := usecase.Multipasses(s.tx, iam_model.OriginServerAccess, iam_model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
+	multipassService := usecase.Multipasses(s.tx, consts.OriginServerAccess, iam_model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
 
 	// TODO: are these valid?
 	multipassJWT, mp, err := multipassService.CreateWithJWT(multipassIssue, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
@@ -308,7 +308,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	multipassService := usecase.ServiceAccountMultipasses(s.tx, iam_model.OriginServerAccess, tenant.UUID, server.MultipassUUID)
+	multipassService := usecase.ServiceAccountMultipasses(s.tx, consts.OriginServerAccess, tenant.UUID, server.MultipassUUID)
 
 	mp, err := multipassService.GetByID(server.MultipassUUID)
 	if err != nil {
@@ -378,7 +378,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 			return err
 		}
 		for _, rb := range rbsInProject {
-			if rb.Origin == iam_model.OriginServerAccess {
+			if rb.Origin == consts.OriginServerAccess {
 				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
 				if err != nil {
 					return err
@@ -394,7 +394,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 			return err
 		}
 		for _, rb := range rbsInProject {
-			if rb.Origin == iam_model.OriginServerAccess {
+			if rb.Origin == consts.OriginServerAccess {
 				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
 				if err != nil {
 					return err

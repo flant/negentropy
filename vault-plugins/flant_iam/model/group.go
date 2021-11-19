@@ -1,6 +1,9 @@
 package model
 
-import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+import (
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const GroupType = "group" // also, memdb schema name
 
@@ -18,9 +21,9 @@ type Group struct {
 	ServiceAccounts []ServiceAccountUUID `json:"-"`
 	Members         []MemberNotation     `json:"members"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions map[consts.ObjectOrigin]*Extension `json:"-"`
 }
 
 func (g *Group) ObjType() string {

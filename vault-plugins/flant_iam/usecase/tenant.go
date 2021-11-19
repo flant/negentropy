@@ -8,15 +8,20 @@ import (
 )
 
 type TenantService struct {
-	repo *iam_repo.TenantRepository
+	repo   *iam_repo.TenantRepository
+	origin consts.ObjectOrigin
 }
 
-func Tenants(db *io.MemoryStoreTxn) *TenantService {
-	return &TenantService{repo: iam_repo.NewTenantRepository(db)}
+func Tenants(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *TenantService {
+	return &TenantService{
+		repo:   iam_repo.NewTenantRepository(db),
+		origin: origin,
+	}
 }
 
 func (s *TenantService) Create(t *model.Tenant) error {
 	t.Version = iam_repo.NewResourceVersion()
+	t.Origin = s.origin
 	return s.repo.Create(t)
 }
 
@@ -25,7 +30,9 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Origin != s.origin {
+		return consts.ErrBadOrigin
+	}
 	// Validate
 
 	if stored.Version != updated.Version {
@@ -39,6 +46,14 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 }
 
 func (s *TenantService) Delete(id model.TenantUUID) error {
+	stored, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if stored.Origin != s.origin {
+		return consts.ErrBadOrigin
+	}
+
 	archivingTimestamp, archivingHash := ArchivingLabel()
 	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
@@ -52,10 +67,16 @@ func (s *TenantService) List(showArchived bool) ([]*model.Tenant, error) {
 }
 
 func (s *TenantService) Restore(id model.TenantUUID, fullRestore bool) (*model.Tenant, error) {
+	stored, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if stored.Origin != s.origin {
+		return nil, consts.ErrBadOrigin
+	}
 	if fullRestore {
 		// TODO check if full restore available
 		return s.repo.CascadeRestore(id)
 	}
-	// TODO Short Restore
 	return s.repo.Restore(id)
 }

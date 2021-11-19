@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 const (
@@ -37,7 +38,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName1,
 				Options: map[string]interface{}{"o1": "data1"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:       RbUUID2,
@@ -52,7 +53,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName1,
 				Options: map[string]interface{}{"o1": "data2"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:            RbUUID3,
@@ -72,7 +73,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName7,
 				Options: map[string]interface{}{"o1": "data4"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:       RbUUID4,
@@ -87,7 +88,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName8,
 				Options: map[string]interface{}{"o1": "data5"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:            RbUUID5,
@@ -102,7 +103,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName1,
 				Options: map[string]interface{}{"o1": "data6"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:            RbUUID6,
@@ -117,7 +118,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName9,
 				Options: map[string]interface{}{"o1": "data7"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:       RbUUID7,
@@ -132,7 +133,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName10,
 				Options: map[string]interface{}{"o1": "data8"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 		{
 			UUID:       RbUUID8,
@@ -147,7 +148,7 @@ func RoleBindings() []model.RoleBinding {
 				Name:    RoleName9,
 				Options: map[string]interface{}{"o1": "data9"},
 			}},
-			Origin: model.OriginIAM,
+			Origin: consts.OriginIAM,
 		},
 	}
 }

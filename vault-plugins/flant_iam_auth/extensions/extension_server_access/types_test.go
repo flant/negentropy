@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -40,9 +41,9 @@ func TestUserToPosix(t *testing.T) {
 		TenantUUID:     tenant1,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
-		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
-			iam_model.OriginServerAccess: {
-				Origin:     iam_model.OriginServerAccess,
+		Extensions: map[consts.ObjectOrigin]*iam_model.Extension{
+			consts.OriginServerAccess: {
+				Origin:     consts.OriginServerAccess,
 				Attributes: attrs1,
 			},
 		},
@@ -69,9 +70,9 @@ func TestUserToPosix(t *testing.T) {
 		TenantUUID:     tenant2ID,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant2",
-		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
-			iam_model.OriginServerAccess: {
-				Origin:     iam_model.OriginServerAccess,
+		Extensions: map[consts.ObjectOrigin]*iam_model.Extension{
+			consts.OriginServerAccess: {
+				Origin:     consts.OriginServerAccess,
 				Attributes: attrs2,
 			},
 		},

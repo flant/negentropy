@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
@@ -32,9 +33,9 @@ type Multipass struct {
 	ValidTill int64  `json:"valid_till"`
 	Salt      string `json:"salt,omitempty" sensitive:""`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions map[consts.ObjectOrigin]*Extension `json:"-"`
 }
 
 func (m *Multipass) ObjType() string {

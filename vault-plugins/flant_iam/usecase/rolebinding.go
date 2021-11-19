@@ -84,7 +84,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	return s.repo.Update(rb)
 }
 
-func (s *RoleBindingService) Delete(origin model.ObjectOrigin, id model.RoleBindingUUID) error {
+func (s *RoleBindingService) Delete(origin consts.ObjectOrigin, id model.RoleBindingUUID) error {
 	roleBinding, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -102,13 +102,13 @@ func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
 		return err
 	}
 	if obj.Extensions == nil {
-		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
+		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	return s.repo.Update(obj)
 }
 
-func (s *RoleBindingService) UnsetExtension(origin model.ObjectOrigin, id model.RoleBindingUUID) error {
+func (s *RoleBindingService) UnsetExtension(origin consts.ObjectOrigin, id model.RoleBindingUUID) error {
 	obj, err := s.repo.GetByID(id)
 	if err != nil {
 		return err

@@ -17,7 +17,7 @@ const (
 
 func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 	included := []map[string]*hcmemdb.TableSchema{
-		ClientSchema(),
+		// ClientSchema(),
 		TeamSchema(),
 		TeammateSchema(),
 		ProjectSchema(),

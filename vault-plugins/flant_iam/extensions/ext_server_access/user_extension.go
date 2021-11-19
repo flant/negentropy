@@ -259,7 +259,7 @@ func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig
 		if err != nil {
 			return fmt.Errorf("checkAndCreateUserExtension: %w", err)
 		}
-		if _, isSet := user.Extensions[iam_model.OriginServerAccess]; !isSet {
+		if _, isSet := user.Extensions[consts.OriginServerAccess]; !isSet {
 			err = repoUserExtension.CreateExtension(user)
 			if err != nil {
 				return fmt.Errorf("creating user extension: %w", err)

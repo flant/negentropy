@@ -11,6 +11,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -160,7 +161,7 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
-	assert.NotContains(t, user.Extensions, model.OriginServerAccess, "should not be an extension")
+	assert.NotContains(t, user.Extensions, consts.OriginServerAccess, "should not be an extension")
 
 	RegisterServerAccessUserExtension(ctx, storage, store)
 	newGroup := *group
@@ -170,10 +171,10 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 	dieOnErr(t, err)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
-	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "UID", "in extension should be UID")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
-	assert.Equal(t, 2, user.Extensions[model.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
+	assert.Contains(t, user.Extensions, consts.OriginServerAccess, "should be an extension")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "UID", "in extension should be UID")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
+	assert.Equal(t, 2, user.Extensions[consts.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
 }
 
 func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
@@ -207,10 +208,10 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
-	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "UID", "in extension should be UID")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
-	assert.Equal(t, 2, user.Extensions[model.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
+	assert.Contains(t, user.Extensions, consts.OriginServerAccess, "should be an extension")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "UID", "in extension should be UID")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
+	assert.Equal(t, 2, user.Extensions[consts.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
 }
 
 func Test_SSHIsAddedToRoleBinding(t *testing.T) {
@@ -248,10 +249,10 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
-	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "UID", "in extension should be UID")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
-	assert.Equal(t, 2, user.Extensions[model.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
+	assert.Contains(t, user.Extensions, consts.OriginServerAccess, "should be an extension")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "UID", "in extension should be UID")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
+	assert.Equal(t, 2, user.Extensions[consts.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
 }
 
 func Test_SSHIsIncludedToRole(t *testing.T) {
@@ -288,8 +289,8 @@ func Test_SSHIsIncludedToRole(t *testing.T) {
 	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
 	dieOnErr(t, err)
-	assert.Contains(t, user.Extensions, model.OriginServerAccess, "should be an extension")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "UID", "in extension should be UID")
-	assert.Contains(t, user.Extensions[model.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
-	assert.Equal(t, 2, user.Extensions[model.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
+	assert.Contains(t, user.Extensions, consts.OriginServerAccess, "should be an extension")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "UID", "in extension should be UID")
+	assert.Contains(t, user.Extensions[consts.OriginServerAccess].Attributes, "passwords", "in extension should be passwords")
+	assert.Equal(t, 2, user.Extensions[consts.OriginServerAccess].Attributes["UID"], "actual UID should be defined as 1")
 }

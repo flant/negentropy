@@ -101,7 +101,7 @@ func (s *GroupService) Update(group *model.Group) error {
 	return s.repo.Update(group)
 }
 
-func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
+func (s *GroupService) Delete(origin consts.ObjectOrigin, id model.GroupUUID) error {
 	group, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -123,13 +123,13 @@ func (s *GroupService) SetExtension(ext *model.Extension) error {
 		return err
 	}
 	if obj.Extensions == nil {
-		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
+		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	return s.repo.Update(obj)
 }
 
-func (s *GroupService) UnsetExtension(origin model.ObjectOrigin, uuid model.GroupUUID) error {
+func (s *GroupService) UnsetExtension(origin consts.ObjectOrigin, uuid model.GroupUUID) error {
 	obj, err := s.repo.GetByID(uuid)
 	if err != nil {
 		return err

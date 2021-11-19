@@ -14,6 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -260,7 +261,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 				AdditionalEmails: data.Get("additional_emails").([]string),
 				MobilePhone:      data.Get("mobile_phone").(string),
 				AdditionalPhones: data.Get("additional_phones").([]string),
-				Origin:           model.OriginFlow,
+				Origin:           consts.OriginFlantFlow,
 			},
 			Credentials: data.Get("credentials").(map[string]string),
 		}
@@ -303,7 +304,7 @@ func (b *contactBackend) handleUpdate() framework.OperationFunc {
 				MobilePhone:      data.Get("mobile_phone").(string),
 				AdditionalPhones: data.Get("additional_phones").([]string),
 				Version:          data.Get("version").(string),
-				Origin:           model.OriginFlow,
+				Origin:           consts.OriginFlantFlow,
 			},
 			Credentials: data.Get("credentials").(map[string]string),
 		}
