@@ -4,11 +4,12 @@ import (
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 func ListAvailableSafeProjects(txn *io.MemoryStoreTxn, tenantID string, acceptedProjects map[iam.ProjectUUID]struct{}) ([]model.SafeProject, error) {
-	projects, err := usecase.Projects(txn).List(tenantID, false)
+	projects, err := usecase.Projects(txn, consts.OriginAUTH).List(tenantID, false)
 	if err != nil {
 		return nil, err
 	}

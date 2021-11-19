@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
@@ -18,15 +17,13 @@ import (
 
 type clientBackend struct {
 	*flantFlowExtension
-	storage      *io.MemoryStore
-	tenantClient iam_client.Tenants
+	storage *io.MemoryStore
 }
 
-func clientPaths(e *flantFlowExtension, storage *io.MemoryStore, tenantClient iam_client.Tenants) []*framework.Path {
+func clientPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
 	bb := &clientBackend{
 		flantFlowExtension: e,
 		storage:            storage,
-		tenantClient:       tenantClient,
 	}
 	return bb.paths()
 }

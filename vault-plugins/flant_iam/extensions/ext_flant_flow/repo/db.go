@@ -20,7 +20,7 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 		// ClientSchema(),
 		TeamSchema(),
 		TeammateSchema(),
-		ProjectSchema(),
+		// ProjectSchema(),
 		ContactSchema(),
 	}
 

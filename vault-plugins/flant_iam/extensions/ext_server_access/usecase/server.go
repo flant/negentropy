@@ -31,7 +31,7 @@ type ServerService struct {
 func NewServerService(tx *io.MemoryStoreTxn) *ServerService {
 	return &ServerService{
 		tenantService:      usecase.Tenants(tx, consts.OriginServerAccess),
-		projectsService:    usecase.Projects(tx),
+		projectsService:    usecase.Projects(tx, consts.OriginServerAccess),
 		groupRepo:          iam_repo.NewGroupRepository(tx),
 		serviceAccountRepo: iam_repo.NewServiceAccountRepository(tx),
 		roleBindingRepo:    iam_repo.NewRoleBindingRepository(tx),

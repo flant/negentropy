@@ -156,7 +156,7 @@ func (b *flantIamAuthBackend) readProject(ctx context.Context, req *logical.Requ
 
 	tx := b.storage.Txn(false)
 
-	project, err := iam_usecase.Projects(tx).GetByID(id)
+	project, err := iam_usecase.Projects(tx, consts.OriginAUTH).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
