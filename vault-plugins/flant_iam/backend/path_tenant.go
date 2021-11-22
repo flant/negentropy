@@ -187,10 +187,10 @@ func (b *tenantBackend) handleListAvailableRoles() framework.OperationFunc {
 
 		available, err := usecase.TenantFeatureFlags(tx, tenantID).AvailableRoles()
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
 		}
 
@@ -257,7 +257,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -281,9 +281,9 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Tenants(tx).Update(tenant)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -302,9 +302,9 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Tenants(tx).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -321,7 +321,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		tenant, err := usecase.Tenants(tx).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
@@ -371,10 +371,10 @@ func (b *tenantBackend) handleRestore() framework.OperationFunc {
 
 		tenant, err := usecase.Tenants(tx).Restore(id, fullRestore)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 

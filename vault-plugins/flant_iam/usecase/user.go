@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -31,7 +32,7 @@ func (s *UserService) Create(user *model.User) error {
 	user.Version = iam_repo.NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 	if user.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	return s.usersRepo.Create(user)
 }
@@ -52,13 +53,13 @@ func (s *UserService) Update(user *model.User) error {
 
 	// Validate
 	if stored.TenantUUID != s.tenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Version != user.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	if stored.Origin != user.Origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 
 	tenant, err := s.tenantRepo.GetByID(s.tenantUUID)
@@ -84,7 +85,7 @@ func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error
 		return err
 	}
 	if user.Origin != origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 
 	err = s.usersRepo.CleanChildrenSliceIndexes(id)

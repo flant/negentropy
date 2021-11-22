@@ -13,7 +13,7 @@ function build_plugin() {
   local EXTRA_MOUNT
 
   echo "Building $PLUGIN_NAME"
-  if [[ $PLUGIN_NAME == "flant_iam_auth" || $PLUGIN_NAME == "flant_flow" ]]; then
+  if [[ $PLUGIN_NAME == "flant_iam_auth" ]]; then
     EXTRA_MOUNT="-v $PLUGINS_DIR/flant_iam:/go/src/app/flant_iam"
   fi
 
@@ -115,7 +115,7 @@ function build_vault() {
 }
 
 function build_all() {
-  plugins=(flant_iam flant_iam_auth flant_flow)
+  plugins=(flant_iam flant_iam_auth)
   for i in "${plugins[@]}"
   do
     build_plugin "$i"
@@ -163,7 +163,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$TARGET" == "plugins" ]; then
-  plugins=(flant_iam flant_iam_auth flant_flow)
+  plugins=(flant_iam flant_iam_auth)
   for i in "${plugins[@]}"
   do
     build_plugin "$i"

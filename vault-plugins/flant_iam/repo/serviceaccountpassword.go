@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -71,7 +72,7 @@ func (r *ServiceAccountPasswordRepository) GetRawByID(id model.ServiceAccountPas
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -99,7 +100,7 @@ func (r *ServiceAccountPasswordRepository) Delete(id model.ServiceAccountPasswor
 		return err
 	}
 	if sap.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(model.ServiceAccountType, sap, archivingTimestamp, archivingHash)
 }

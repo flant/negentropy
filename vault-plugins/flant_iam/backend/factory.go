@@ -12,9 +12,10 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/io"
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/repo"
+	ext_flant_flow "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/io"
+	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -64,7 +65,7 @@ type ExtensionInitializationFunc func(ctx context.Context, initRequest *logical.
 func initializer(storage *sharedio.MemoryStore) func(ctx context.Context, initRequest *logical.InitializationRequest) error {
 	return func(ctx context.Context, initRequest *logical.InitializationRequest) error {
 		initFuncs := []ExtensionInitializationFunc{
-			extension_server_access.InitializeExtensionServerAccess,
+			ext_server_access.InitializeExtensionServerAccess,
 		}
 
 		for _, f := range initFuncs {
@@ -98,7 +99,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema())
+	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema(), ext_flant_flow.FlantFlowDBSchema())
 	if err != nil {
 		return nil, err
 	}
@@ -223,10 +224,12 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		kafkaPaths(b, storage, conf.Logger),
 		identitySharingPaths(b, storage),
 
-		extension_server_access.ServerPaths(b, storage, tokenController),
-		extension_server_access.ServerConfigurePaths(b, storage),
+		ext_server_access.ServerPaths(b, storage, tokenController),
+		ext_server_access.ServerConfigurePaths(b, storage),
 
 		tokenController.ApiPaths(),
+
+		ext_flant_flow.FlantFlowPaths(conf, storage),
 	)
 
 	b.Clean = func(context.Context) {

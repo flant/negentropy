@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"

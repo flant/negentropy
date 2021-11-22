@@ -283,7 +283,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			b.Logger().Error(msg)
 			return backentutils.ResponseErrMessage(req, msg, http.StatusBadRequest)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -330,9 +330,9 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 		err = usecase.RoleBindings(tx).Update(roleBinding)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -351,9 +351,9 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -370,7 +370,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 
 		roleBinding, err := usecase.RoleBindings(tx).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}

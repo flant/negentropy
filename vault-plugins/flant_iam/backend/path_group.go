@@ -229,7 +229,7 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -268,9 +268,9 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 
 		err = usecase.Groups(tx, tenantUUID).Update(group)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -292,9 +292,9 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Groups(tx, tenantUUID).Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -311,7 +311,7 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		repo := iam_repo.NewGroupRepository(tx)
 		group, err := repo.GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"group": group}}

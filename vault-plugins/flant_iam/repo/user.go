@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -81,7 +82,7 @@ func (r *UserRepository) GetRawByID(id model.UserUUID) (interface{}, error) {
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -108,7 +109,7 @@ func (r *UserRepository) CascadeDelete(id model.UserUUID, archivingTimestamp mod
 		return err
 	}
 	if user.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.CascadeArchive(model.UserType, user, archivingTimestamp, archivingTimestamp)
 }
@@ -127,7 +128,7 @@ func (r *UserRepository) CascadeRestore(id model.UserUUID) (*model.User, error) 
 		return nil, err
 	}
 	if !user.Archived() {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.UserType, user)
 	if err != nil {
@@ -209,7 +210,7 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 		return nil, err
 	}
 	if user.ArchivingTimestamp == 0 {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	user.ArchivingTimestamp = 0
 	user.ArchivingHash = 0

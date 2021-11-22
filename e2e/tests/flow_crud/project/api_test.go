@@ -7,13 +7,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
-	"github.com/flant/negentropy/vault-plugins/flant_flow/backend/tests/specs/project"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs/project"
 )
 
 func Test_projectCRUD(t *testing.T) {
-	flowRootClient := lib.NewConfiguredFlowRootVaultClient()
-	project.ClientAPI = lib.NewFlowClientAPI(flowRootClient)
-	project.TestAPI = lib.NewFlowProjectAPI(flowRootClient)
+	rootClient := lib.NewConfiguredIamVaultClient()
+	project.ClientAPI = lib.NewFlowClientAPI(rootClient)
+	project.TestAPI = lib.NewFlowProjectAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Project")
 }

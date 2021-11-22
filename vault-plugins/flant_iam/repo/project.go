@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -96,7 +97,7 @@ func (r *ProjectRepository) GetRawByID(id model.ProjectUUID) (interface{}, error
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -123,7 +124,7 @@ func (r *ProjectRepository) Delete(id model.ProjectUUID, archivingTimestamp mode
 		return err
 	}
 	if project.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(model.ProjectType, project, archivingTimestamp, archivingHash)
 }
@@ -201,7 +202,7 @@ func (r *ProjectRepository) Restore(id model.ProjectUUID) (*model.Project, error
 		return nil, err
 	}
 	if project.Archived() {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.ProjectType, project)
 	if err != nil {

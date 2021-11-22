@@ -2,11 +2,13 @@ package backentutils
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -40,12 +42,36 @@ func ResponseErrMessage(req *logical.Request, message string, status int) (*logi
 	return logical.RespondWithStatusCode(rr, req, status)
 }
 
+func ResponseErr(req *logical.Request, err error) (*logical.Response, error) {
+	statusCode := MapErrorToHTTPStatusCode(err)
+	if statusCode == 0 {
+		return nil, err
+	}
+	return ResponseErrMessage(req, err.Error(), statusCode)
+}
+
+func MapErrorToHTTPStatusCode(err error) int {
+	switch err {
+	case consts.ErrNoUUID, consts.ErrIsArchived:
+		return http.StatusBadRequest
+	case consts.ErrNotFound:
+		return http.StatusNotFound
+	case consts.ErrBadVersion:
+		return http.StatusConflict
+	case consts.ErrBadOrigin, consts.ErrJwtDisabled:
+		return http.StatusForbidden
+	case consts.ErrJwtControllerError:
+		return http.StatusInternalServerError
+	}
+	return 0
+}
+
 func GetCreationID(expectID bool, data *framework.FieldData) (string, error) {
 	if expectID {
 		// for privileged access
 		id := data.Get("uuid").(string)
 		if id == "" {
-			return "", fmt.Errorf("uuid is required")
+			return "", consts.ErrNoUUID
 		}
 		return id, nil
 	}

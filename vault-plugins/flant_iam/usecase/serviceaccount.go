@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -30,10 +31,10 @@ func (s *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 		return err
 	}
 	if sa.Version != "" {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 	if sa.Origin == "" {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	sa.Version = iam_repo.NewResourceVersion()
 	sa.FullIdentifier = iam_repo.CalcServiceAccountFullIdentifier(sa.Identifier, tenant.Identifier)
@@ -70,13 +71,13 @@ func (s *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 
 	// Validate
 	if stored.TenantUUID != s.tenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Origin != sa.Origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 	if stored.Version != sa.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 
 	tenant, err := s.tenantRepo.GetByID(s.tenantUUID)
@@ -109,7 +110,7 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 		return err
 	}
 	if sa.Origin != s.origin {
-		return model.ErrBadOrigin
+		return consts.ErrBadOrigin
 	}
 
 	err = s.repo.CleanChildrenSliceIndexes(id)

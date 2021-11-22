@@ -189,7 +189,7 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 			b.Logger().Debug(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if err := commit(tx, b.Logger()); err != nil {
+		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -214,9 +214,9 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Roles(tx).Update(role)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -236,9 +236,9 @@ func (b *roleBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Roles(tx).Delete(name)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -256,7 +256,7 @@ func (b *roleBackend) handleRead() framework.OperationFunc {
 
 		role, err := usecase.Roles(tx).Get(name)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role": role}}
@@ -310,9 +310,9 @@ func (b *roleBackend) handleInclude() framework.OperationFunc {
 
 		err := usecase.Roles(tx).Include(destName, incl)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -334,9 +334,9 @@ func (b *roleBackend) handleExclude() framework.OperationFunc {
 
 		err := usecase.Roles(tx).Exclude(destName, srcName)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 

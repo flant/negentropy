@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -87,7 +88,7 @@ func (r *FeatureFlagRepository) GetRawByID(id model.FeatureFlagName) (interface{
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -114,7 +115,7 @@ func (r *FeatureFlagRepository) Delete(id model.FeatureFlagName, archivingTimest
 		return err
 	}
 	if ff.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(model.FeatureFlagType, ff, archivingTimestamp, archivingHash)
 }

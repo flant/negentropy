@@ -182,7 +182,7 @@ func (b *identitySharingBackend) handleCreate(expectID bool) framework.Operation
 			return backentutils.ResponseErrMessage(req, msg+":"+err.Error(), http.StatusBadRequest)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -227,7 +227,7 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 
 	identitySharing, err := usecase.IdentityShares(tx).GetByID(id)
 	if err != nil {
-		return responseErr(req, err)
+		return backentutils.ResponseErr(req, err)
 	}
 
 	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": identitySharing}}
@@ -244,9 +244,9 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 
 	err := usecase.IdentityShares(tx).Delete(id)
 	if err != nil {
-		return responseErr(req, err)
+		return backentutils.ResponseErr(req, err)
 	}
-	if err = commit(tx, b.Logger()); err != nil {
+	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 

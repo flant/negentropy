@@ -12,7 +12,7 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
-	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )

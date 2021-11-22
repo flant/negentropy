@@ -3,7 +3,7 @@ package lib
 import (
 	"net/http"
 
-	url2 "github.com/flant/negentropy/vault-plugins/flant_flow/backend/tests/url"
+	url2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/url"
 )
 
 var (

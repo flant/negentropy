@@ -6,6 +6,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -101,7 +102,7 @@ func (r *RoleBindingApprovalRepository) GetRawByID(id model.RoleBindingApprovalU
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -129,7 +130,7 @@ func (r *RoleBindingApprovalRepository) Delete(id model.RoleBindingApprovalUUID,
 		return err
 	}
 	if appr.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	appr.ArchivingTimestamp = archivingTimestamp
 	appr.ArchivingHash = archivingHash
@@ -208,7 +209,7 @@ func (r *RoleBindingApprovalRepository) Sync(_ string, data []byte) error {
 func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *model.RoleBindingApproval) error {
 	stored, err := r.GetByID(ra.UUID)
 	if err != nil {
-		if err == model.ErrNotFound {
+		if err == consts.ErrNotFound {
 			ra.Version = NewResourceVersion()
 			return r.save(ra)
 		}
@@ -228,13 +229,13 @@ func (r *RoleBindingApprovalRepository) UpdateOrCreate(ra *model.RoleBindingAppr
 
 func (r *RoleBindingApprovalRepository) validate(stored, newRa *model.RoleBindingApproval) error {
 	if stored.TenantUUID != newRa.TenantUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.RoleBindingUUID != newRa.RoleBindingUUID {
-		return model.ErrNotFound
+		return consts.ErrNotFound
 	}
 	if stored.Version != newRa.Version {
-		return model.ErrBadVersion
+		return consts.ErrBadVersion
 	}
 
 	return nil

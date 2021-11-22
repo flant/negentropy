@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -139,7 +140,7 @@ func (r *RoleRepository) GetRawByID(roleID model.RoleName) (interface{}, error) 
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -198,7 +199,7 @@ func (r *RoleRepository) Delete(roleID model.RoleName, archivingTimestamp model.
 		return err
 	}
 	if role.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	role.ArchivingTimestamp = archivingTimestamp
 	role.ArchivingHash = archivingHash

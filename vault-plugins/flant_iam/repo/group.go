@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -127,7 +128,7 @@ func (r *GroupRepository) GetRawByID(id model.GroupUUID) (interface{}, error) {
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -158,7 +159,7 @@ func (r *GroupRepository) Delete(id model.GroupUUID, archivingTimestamp model.Un
 		return err
 	}
 	if group.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.Archive(model.GroupType, group, archivingTimestamp, archivingHash)
 }
@@ -250,7 +251,7 @@ func (r *GroupRepository) GetByIdentifier(tenantUUID, identifier string) (*model
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw.(*model.Group), err
 }

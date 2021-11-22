@@ -452,7 +452,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -486,9 +486,9 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 
 		err := usecase.Users(tx, tenantID).Update(user)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -508,9 +508,9 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 
 		err := usecase.Users(tx, tenantID).Delete(model.OriginIAM, id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -528,7 +528,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 		user, err := usecase.Users(tx, tenantID).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"user": user}}
@@ -573,10 +573,10 @@ func (b *userBackend) handleRestore() framework.OperationFunc {
 
 		user, err := usecase.Users(tx, tenantID).Restore(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -595,7 +595,7 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 
 		// Check that the feature is available
 		if err := isJwtEnabled(tx, b.tokenController); err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		var (
@@ -614,10 +614,10 @@ func (b *userBackend) handleMultipassCreate() framework.OperationFunc {
 			UserMultipasses(tx, model.OriginIAM, tid, uid).
 			CreateWithJWT(issueFn, ttl, maxTTL, cidrs, roles, description)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -643,10 +643,10 @@ func (b *userBackend) handleMultipassDelete() framework.OperationFunc {
 
 		err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).Delete(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err = commit(tx, b.Logger()); err != nil {
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 		return logical.RespondWithStatusCode(nil, nil, http.StatusNoContent)
@@ -665,7 +665,7 @@ func (b *userBackend) handleMultipassRead() framework.OperationFunc {
 
 		mp, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).GetByID(id)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 		resp := &logical.Response{Data: map[string]interface{}{"multipass": iam_repo.OmitSensitive(mp)}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
@@ -687,7 +687,7 @@ func (b *userBackend) handleMultipassList() framework.OperationFunc {
 
 		multipasses, err := usecase.UserMultipasses(tx, model.OriginIAM, tid, uid).PublicList(showArchived)
 		if err != nil {
-			return responseErr(req, err)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{

@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -218,7 +219,7 @@ func (r *roleResolver) CheckUserForTenantScopedRole(userUUID model.UserUUID, rol
 		return false, emptyRoleBindingParams, err
 	}
 	if role.Scope == model.RoleScopeProject {
-		return false, emptyRoleBindingParams, model.ErrBadProjectScopeRole
+		return false, emptyRoleBindingParams, consts.ErrBadProjectScopeRole
 	}
 
 	roleBindings, err := r.collectAllRoleBindingsForUser(userUUID)
@@ -287,7 +288,7 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount mod
 		return false, emptyRoleBindingParams, err
 	}
 	if role.Scope == model.RoleScopeProject {
-		return false, emptyRoleBindingParams, model.ErrBadProjectScopeRole
+		return false, emptyRoleBindingParams, consts.ErrBadProjectScopeRole
 	}
 
 	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(serviceAccount)
@@ -360,7 +361,7 @@ func (r *roleResolver) FindMembersWithTenantScopedRole(roleName model.RoleName, 
 		return nil, nil, err
 	}
 	if role.Scope == model.RoleScopeProject {
-		return nil, nil, model.ErrBadProjectScopeRole
+		return nil, nil, consts.ErrBadProjectScopeRole
 	}
 	_, roleBindings, err := r.collectAllRolesAndRoleBindings(roleName)
 	if err != nil {

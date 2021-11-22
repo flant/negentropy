@@ -7,6 +7,7 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -101,7 +102,7 @@ func (r *TenantRepository) GetRawByID(id model.TenantUUID) (interface{}, error) 
 		return nil, err
 	}
 	if raw == nil {
-		return nil, model.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	return raw, nil
 }
@@ -128,7 +129,7 @@ func (r *TenantRepository) CascadeDelete(id model.TenantUUID, archivingTimestamp
 		return err
 	}
 	if tenant.Archived() {
-		return model.ErrIsArchived
+		return consts.ErrIsArchived
 	}
 	return r.db.CascadeArchive(model.TenantType, tenant, archivingTimestamp, archivingHash)
 }
@@ -205,7 +206,7 @@ func (r *TenantRepository) Restore(id model.TenantUUID) (*model.Tenant, error) {
 		return nil, err
 	}
 	if !tenant.Archived() {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.TenantType, tenant)
 	if err != nil {
@@ -220,7 +221,7 @@ func (r *TenantRepository) CascadeRestore(id model.TenantUUID) (*model.Tenant, e
 		return nil, err
 	}
 	if !tenant.Archived() {
-		return nil, model.ErrIsNotArchived
+		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.TenantType, tenant)
 	if err != nil {

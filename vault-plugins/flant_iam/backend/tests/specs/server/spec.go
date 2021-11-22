@@ -74,20 +74,22 @@ var _ = Describe("Server", func() {
 	})
 })
 
-func createRoleForExtServAccess(sshRoleName string) {
+func createRoleForExtServAccess(roleName string) {
 	var roleNotExists bool
 	RoleAPI.Read(api.Params{
-		"name":         sshRoleName,
-		"expectStatus": api.ExpectStatus("%d > 0"),
-		"expectPayload": func(json gjson.Result) {
-			roleNotExists = json.String() == "{\"error\":\"not found\"}"
+		"name": roleName,
+		"expectStatus": func(status int) {
+			if status != 200 {
+				roleNotExists = true
+			}
 		},
 	}, nil)
+
 	if roleNotExists {
 		RoleAPI.Create(api.Params{}, url.Values{},
 			map[string]interface{}{
-				"name":        sshRoleName,
-				"description": sshRoleName,
+				"name":        roleName,
+				"description": roleName,
 				"scope":       model.RoleScopeProject,
 			})
 	}
