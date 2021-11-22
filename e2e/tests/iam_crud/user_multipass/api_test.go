@@ -10,7 +10,7 @@ import (
 	usermultipass "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs/user_multipass"
 )
 
-func Test_tenantCRUD(t *testing.T) {
+func Test_userMultipassCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	usermultipass.TenantAPI = lib.NewTenantAPI(rootClient)
 	usermultipass.UserAPI = lib.NewUserAPI(rootClient)

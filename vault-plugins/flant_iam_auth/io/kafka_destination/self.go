@@ -8,12 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	jwtkafka "github.com/flant/negentropy/vault-plugins/shared/jwt/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type SelfKafkaDestination struct {

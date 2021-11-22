@@ -8,23 +8,10 @@ import (
 
 type TenantService struct {
 	repo *iam_repo.TenantRepository
-
-	// subtenants
-	childrenDeleters []DeleterByParent
 }
 
 func Tenants(db *io.MemoryStoreTxn) *TenantService {
-	return &TenantService{
-		repo: iam_repo.NewTenantRepository(db),
-		childrenDeleters: []DeleterByParent{
-			NewIdentitySharingDeleter(db),
-			UserDeleter(db),
-			ServiceAccountDeleter(db),
-			GroupDeleter(db),
-			RoleBindingDeleter(db),
-			ProjectDeleter(db),
-		},
-	}
+	return &TenantService{repo: iam_repo.NewTenantRepository(db)}
 }
 
 func (s *TenantService) Create(t *model.Tenant) error {
@@ -52,10 +39,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 
 func (s *TenantService) Delete(id model.TenantUUID) error {
 	archivingTimestamp, archivingHash := ArchivingLabel()
-	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
-		return err
-	}
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {
@@ -69,8 +53,7 @@ func (s *TenantService) List(showArchived bool) ([]*model.Tenant, error) {
 func (s *TenantService) Restore(id model.TenantUUID, fullRestore bool) (*model.Tenant, error) {
 	if fullRestore {
 		// TODO check if full restore available
-		// TODO FullRestore
-		return s.repo.Restore(id)
+		return s.repo.CascadeRestore(id)
 	}
 	// TODO Short Restore
 	return s.repo.Restore(id)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 	"gopkg.in/square/go-jose.v2"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -12,7 +12,7 @@ import (
 
 const (
 	JWKSType = "jwks" // also, memdb schema name
-	idKey    = "id"
+	PK       = "id"
 )
 
 type JSONWebKey struct {
@@ -39,18 +39,16 @@ func (p *JWKS) ObjId() string {
 	return p.ID
 }
 
-func JWKSSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			JWKSType: {
-				Name: JWKSType,
-				Indexes: map[string]*memdb.IndexSchema{
-					idKey: {
-						Name:   idKey,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "ID",
-						},
+func JWKSTables() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		JWKSType: {
+			Name: JWKSType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "ID",
 					},
 				},
 			},
@@ -96,7 +94,7 @@ func (r *JWKSRepo) UpdateOwn(keySet *JSONWebKeySet) error {
 }
 
 func (r *JWKSRepo) GetOwn() (*JWKS, error) {
-	jwksRaw, err := r.db.First(r.tableName, idKey, r.publisherId)
+	jwksRaw, err := r.db.First(r.tableName, PK, r.publisherId)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +125,7 @@ func (r *JWKSRepo) GetSet() ([]jose.JSONWebKey, error) {
 }
 
 func (r *JWKSRepo) Iter(action func(*JWKS) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, idKey)
+	iter, err := r.db.Get(r.tableName, PK)
 	if err != nil {
 		return err
 	}

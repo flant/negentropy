@@ -9,11 +9,11 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
-	schema := model.ConfigSchema()
-	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
+	store, err := io.NewMemoryStore(&memdb.DBSchema{Tables: model.ConfigTables()}, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
 	txn := store.Txn(true)
 

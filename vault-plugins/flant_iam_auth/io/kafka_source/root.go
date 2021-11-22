@@ -8,11 +8,11 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/kafka_handlers/root"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RootSourceMsgHandlerFactory func(tx *io.MemoryStoreTxn) root.ModelHandler

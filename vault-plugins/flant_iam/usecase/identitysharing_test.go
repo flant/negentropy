@@ -27,13 +27,6 @@ func identitySharingFixture(t *testing.T, store *io.MemoryStore) {
 	require.NoError(t, err)
 }
 
-func Test_IdentitySharingDbSchema(t *testing.T) {
-	schema := iam_repo.IdentitySharingSchema()
-	if err := schema.Validate(); err != nil {
-		t.Fatalf("identity sharing schema is invalid: %v", err)
-	}
-}
-
 func Test_ListIdentitySharing(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture,
 		identitySharingFixture).Txn(true)

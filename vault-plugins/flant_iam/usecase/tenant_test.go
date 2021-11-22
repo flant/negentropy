@@ -28,7 +28,7 @@ func tenantFixture(t *testing.T, store *io.MemoryStore) {
 }
 
 func Test_TenantList(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
+	tx := runFixtures(t, tenantFixture).Txn(true)
 	repo := iam_repo.NewTenantRepository(tx)
 
 	tenants, err := repo.List(false)

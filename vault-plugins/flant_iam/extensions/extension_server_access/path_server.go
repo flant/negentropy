@@ -419,9 +419,9 @@ func (b *serverBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		repo := repo.NewServerRepository(tx)
+		service := usecase.NewServerService(tx)
 
-		err := repo.Delete(id)
+		err := service.Delete(id)
 		if err != nil {
 			return responseErr(req, err)
 		}

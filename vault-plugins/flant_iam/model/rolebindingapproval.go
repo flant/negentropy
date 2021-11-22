@@ -1,8 +1,12 @@
 package model
 
+import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+
 const RoleBindingApprovalType = "role_binding_approval" // also, memdb schema name
 
 type RoleBindingApproval struct {
+	memdb.ArchivableImpl
+
 	UUID            RoleBindingApprovalUUID `json:"uuid"` // PK
 	TenantUUID      TenantUUID              `json:"tenant_uuid"`
 	RoleBindingUUID RoleBindingUUID         `json:"role_binding_uuid"`
@@ -16,13 +20,6 @@ type RoleBindingApproval struct {
 	RequireMFA    bool `json:"require_mfa"`
 
 	RequireUniqueApprover bool `json:"require_unique_approver"`
-
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
-}
-
-func (r *RoleBindingApproval) IsDeleted() bool {
-	return r.ArchivingTimestamp != 0
 }
 
 func (r *RoleBindingApproval) ObjType() string {

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -45,18 +46,16 @@ type ConfigRepo struct {
 	storeKey string
 }
 
-func ConfigSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			JWTConfigType: {
-				Name: JWTConfigType,
-				Indexes: map[string]*memdb.IndexSchema{
-					idKey: {
-						Name:   idKey,
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "ID",
-						},
+func ConfigTables() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		JWTConfigType: {
+			Name: JWTConfigType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				PK: {
+					Name:   PK,
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "ID",
 					},
 				},
 			},
@@ -81,7 +80,7 @@ func (s *ConfigRepo) Put(config *Config) error {
 }
 
 func (s *ConfigRepo) Get() (*Config, error) {
-	entryRaw, err := s.db.First(JWTConfigType, idKey, s.storeKey)
+	entryRaw, err := s.db.First(JWTConfigType, PK, s.storeKey)
 	if err != nil {
 		return nil, err
 	}

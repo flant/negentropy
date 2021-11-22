@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func CreateTestStorage(t *testing.T) *io.MemoryStore {
@@ -20,6 +21,7 @@ func CreateTestStorage(t *testing.T) *io.MemoryStore {
 	require.NoError(t, err)
 
 	schema, err := repo.GetSchema()
+	schema = memdb.DropRelations(schema)
 	require.NoError(t, err)
 
 	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())

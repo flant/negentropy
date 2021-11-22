@@ -3,9 +3,8 @@ package self
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RestoreFunc func(*memdb.Txn, string, []byte) (bool, error)

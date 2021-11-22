@@ -3,32 +3,30 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func MultipassGenerationNumberSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			model2.MultipassGenerationNumberType: {
-				Name: model2.MultipassGenerationNumberType,
-				Indexes: map[string]*memdb.IndexSchema{
-					ID: {
-						Name:   ID,
-						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
+func MultipassGenerationNumberSchema() map[string]*hcmemdb.TableSchema {
+	return map[string]*hcmemdb.TableSchema{
+		model2.MultipassGenerationNumberType: {
+			Name: model2.MultipassGenerationNumberType,
+			Indexes: map[string]*hcmemdb.IndexSchema{
+				ID: {
+					Name:   ID,
+					Unique: true,
+					Indexer: &hcmemdb.UUIDFieldIndex{
+						Field: "UUID",
 					},
-					"generation_number": {
-						Name:   "generation_number",
-						Unique: true,
-						Indexer: &memdb.IntFieldIndex{
-							Field: "GenerationNumber",
-						},
+				},
+				"generation_number": {
+					Name:   "generation_number",
+					Unique: true,
+					Indexer: &hcmemdb.IntFieldIndex{
+						Field: "GenerationNumber",
 					},
 				},
 			},

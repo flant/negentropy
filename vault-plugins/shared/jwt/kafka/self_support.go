@@ -3,9 +3,8 @@ package kafka
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
-
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func SelfRestoreMessage(txn *memdb.Txn, objType string, data []byte) (handled bool, err error) {

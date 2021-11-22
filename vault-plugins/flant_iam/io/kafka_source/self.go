@@ -8,11 +8,11 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RestoreFunc func(txn *memdb.Txn, objType string, data []byte) (handled bool, err error)

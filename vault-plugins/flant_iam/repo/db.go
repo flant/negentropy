@@ -1,11 +1,8 @@
 package repo
 
 import (
-	"fmt"
-
-	"github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	jwt "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -15,20 +12,18 @@ const (
 	PK = "id"
 )
 
-func mergeSchema() (*memdb.DBSchema, error) {
-	jwtSchema, err := model.GetSchema(false)
+func GetSchema() (*memdb.DBSchema, error) {
+	jwtSchema, err := jwt.GetSchema(false)
 	if err != nil {
 		return nil, err
 	}
-
-	included := []*memdb.DBSchema{
+	schema, err := memdb.MergeDBSchemas(
 		TenantSchema(),
-		UserSchema(),
-		ReplicaSchema(),
 		ProjectSchema(),
+		GroupSchema(),
+		UserSchema(),
 		FeatureFlagSchema(),
 		ServiceAccountSchema(),
-		GroupSchema(),
 		RoleSchema(),
 		RoleBindingSchema(),
 		RoleBindingApprovalSchema(),
@@ -36,35 +31,9 @@ func mergeSchema() (*memdb.DBSchema, error) {
 		ServiceAccountPasswordSchema(),
 		IdentitySharingSchema(),
 
+		ReplicaSchema(),
 		jwtSchema,
-	}
-
-	schema := &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{},
-	}
-
-	for _, s := range included {
-		for name, table := range s.Tables {
-			if _, ok := schema.Tables[name]; ok {
-				return nil, fmt.Errorf("table %q already there", name)
-			}
-			schema.Tables[name] = table
-		}
-	}
-
-	err = schema.Validate()
-	if err != nil {
-		return nil, err
-	}
-	return schema, nil
-}
-
-func GetSchema() (*memdb.DBSchema, error) {
-	schema, err := mergeSchema()
-	if err != nil {
-		return nil, err
-	}
-	err = schema.Validate()
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const MultipassType = "multipass" // also, memdb schema name
@@ -14,6 +16,8 @@ const (
 )
 
 type Multipass struct {
+	memdb.ArchivableImpl
+
 	UUID       MultipassUUID      `json:"uuid"` // PK
 	TenantUUID TenantUUID         `json:"tenant_uuid"`
 	OwnerUUID  OwnerUUID          `json:"owner_uuid"`
@@ -31,13 +35,6 @@ type Multipass struct {
 	Origin ObjectOrigin `json:"origin"`
 
 	Extensions map[ObjectOrigin]*Extension `json:"-"`
-
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
-}
-
-func (m *Multipass) IsDeleted() bool {
-	return m.ArchivingTimestamp != 0
 }
 
 func (m *Multipass) ObjType() string {

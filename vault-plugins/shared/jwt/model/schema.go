@@ -3,27 +3,29 @@ package model
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func GetSchema(onlyJwks bool) (*memdb.DBSchema, error) {
-	schema := JWKSSchema()
+	allTables := JWKSTables()
 	if onlyJwks {
-		return schema, nil
+		return &memdb.DBSchema{Tables: allTables}, nil
 	}
 
-	others := []*memdb.DBSchema{
-		ConfigSchema(),
-		StateSchema(),
+	otherTables := []map[string]*hcmemdb.TableSchema{
+		ConfigTables(),
+		StateTables(),
 	}
 
-	for _, o := range others {
-		for name, table := range o.Tables {
-			if _, ok := schema.Tables[name]; ok {
+	for _, tables := range otherTables {
+		for name, table := range tables {
+			if _, ok := allTables[name]; ok {
 				return nil, fmt.Errorf("table %q already there", name)
 			}
-			schema.Tables[name] = table
+			allTables[name] = table
 		}
 	}
-	return schema, nil
+	return &memdb.DBSchema{Tables: allTables}, nil
 }

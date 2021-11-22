@@ -72,7 +72,7 @@ func (b teamBackend) paths() []*framework.Path {
 				},
 				"identifier": {
 					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
+					Description: "Identifier for team",
 					Required:    true,
 				},
 				"team_type": {

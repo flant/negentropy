@@ -12,8 +12,6 @@ type ServiceAccountService struct {
 
 	repo       *iam_repo.ServiceAccountRepository
 	tenantRepo *iam_repo.TenantRepository
-
-	childrenDeleters []DeleterByParent
 }
 
 func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID) *ServiceAccountService {
@@ -23,11 +21,6 @@ func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model
 
 		repo:       iam_repo.NewServiceAccountRepository(db),
 		tenantRepo: iam_repo.NewTenantRepository(db),
-
-		childrenDeleters: []DeleterByParent{
-			MultipassDeleter(db),
-			PasswordDeleter(db),
-		},
 	}
 }
 
@@ -118,11 +111,13 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 	if sa.Origin != s.origin {
 		return model.ErrBadOrigin
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	if err := deleteChildren(id, s.childrenDeleters, archivingTimestamp, archivingHash); err != nil {
+
+	err = s.repo.CleanChildrenSliceIndexes(id)
+	if err != nil {
 		return err
 	}
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	archivingTimestamp, archivingHash := ArchivingLabel()
+	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
 }
 
 func (s *ServiceAccountService) List(showArchived bool) ([]*model.ServiceAccount, error) {
@@ -151,4 +146,8 @@ func (s *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid s
 	}
 	delete(obj.Extensions, origin)
 	return s.Update(obj)
+}
+
+func (s *ServiceAccountService) CascadeRestore(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
+	return s.repo.CascadeRestore(id)
 }

@@ -3,10 +3,9 @@ package root
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
-
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func HandleRestoreMessagesRootSource(txn *memdb.Txn, objType string, data []byte) error {

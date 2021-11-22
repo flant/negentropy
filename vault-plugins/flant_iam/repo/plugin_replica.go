@@ -1,28 +1,29 @@
 package repo
 
 import (
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func ReplicaSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.ReplicaType: {
 				Name: model.ReplicaType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
 					},
 					"type": {
 						Name:   "type",
 						Unique: false,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "TopicType",
 							Lowercase: true,
 						},

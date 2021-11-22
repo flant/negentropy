@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -21,35 +22,35 @@ const (
 )
 
 func RoleBindingSchema() *memdb.DBSchema {
-	var tenantUUIDRoleBindingIdIndexer []memdb.Indexer
+	var tenantUUIDRoleBindingIdIndexer []hcmemdb.Indexer
 
-	tenantUUIDIndexer := &memdb.StringFieldIndex{
+	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "TenantUUID",
 		Lowercase: true,
 	}
 	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, tenantUUIDIndexer)
 
-	groupIdIndexer := &memdb.StringFieldIndex{
+	groupIdIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
 	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, groupIdIndexer)
 
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.RoleBindingType: {
 				Name: model.RoleBindingType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					TenantForeignPK: {
 						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
 						},
@@ -58,7 +59,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 						Name:         UserInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Users",
 						},
 					},
@@ -66,7 +67,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 						Name:         ServiceAccountInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "ServiceAccounts",
 						},
 					},
@@ -74,7 +75,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 						Name:         GroupInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Groups",
 						},
 					},
@@ -82,22 +83,52 @@ func RoleBindingSchema() *memdb.DBSchema {
 						Name:         ProjectInRoleBindingIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Projects",
 						},
 					},
 					RoleInRoleBindingIndex: {
 						Name:         RoleInRoleBindingIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer:      &roleInRoleBindingIndexer{},
+						AllowMissing: false,
+						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+							Field: "Roles",
+							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
+								obj, ok := customTypeValue.(model.BoundRole)
+								if !ok {
+									return nil, fmt.Errorf("need BoundRole, actual:%T", customTypeValue)
+								}
+								return []byte(obj.Name), nil
+							},
+						},
 					},
 					TenantUUIDRoleBindingIdIndex: {
 						Name:    TenantUUIDRoleBindingIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
 					},
 				},
 			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.RoleBindingType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Users", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Groups", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "ServiceAccounts", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Projects", RelatedDataType: model.ProjectType, RelatedDataTypeFieldIndexName: PK},
+				{
+					OriginalDataTypeFieldName: "Roles", RelatedDataType: model.RoleType, RelatedDataTypeFieldIndexName: PK,
+					BuildRelatedCustomType: func(originalFieldValue interface{}) (customTypeValue interface{}, err error) {
+						obj, ok := originalFieldValue.(model.BoundRole)
+						if !ok {
+							return nil, fmt.Errorf("need BoundRole, actual:%T", originalFieldValue)
+						}
+						return obj.Name, nil
+					},
+				},
+			},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.RoleBindingType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: RoleBindingForeignPK}},
 		},
 	}
 }
@@ -134,7 +165,11 @@ func (r *RoleBindingRepository) GetByID(id model.RoleBindingUUID) (*model.RoleBi
 	if raw == nil {
 		return nil, err
 	}
-	return raw.(*model.RoleBinding), err
+	rb := raw.(*model.RoleBinding)
+	if rb.FixMembers() {
+		err = r.save(rb)
+	}
+	return rb, err
 }
 
 func (r *RoleBindingRepository) Update(rb *model.RoleBinding) error {
@@ -145,17 +180,15 @@ func (r *RoleBindingRepository) Update(rb *model.RoleBinding) error {
 	return r.save(rb)
 }
 
-func (r *RoleBindingRepository) Delete(id model.RoleBindingUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *RoleBindingRepository) CascadeDelete(id model.RoleBindingUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if rb.IsDeleted() {
+	if rb.Archived() {
 		return model.ErrIsArchived
 	}
-	rb.ArchivingTimestamp = archivingTimestamp
-	rb.ArchivingHash = archivingHash
-	return r.Update(rb)
+	return r.db.CascadeArchive(model.RoleBindingType, rb, archivingTimestamp, archivingHash)
 }
 
 func (r *RoleBindingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.RoleBinding, error) {
@@ -171,7 +204,13 @@ func (r *RoleBindingRepository) List(tenantUUID model.TenantUUID, showArchived b
 			break
 		}
 		obj := raw.(*model.RoleBinding)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if obj.FixMembers() {
+			err = r.save(obj)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if !obj.Archived() || showArchived {
 			list = append(list, obj)
 		}
 	}
@@ -237,7 +276,7 @@ func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (
 	return roleBinding, nil
 }
 
-func extractRoleBindings(iter memdb.ResultIterator, showArchived bool) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
+func extractRoleBindings(iter hcmemdb.ResultIterator, showArchived bool) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
 	rbs := map[model.RoleBindingUUID]*model.RoleBinding{}
 	for {
 		raw := iter.Next()
@@ -309,38 +348,8 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForProject(projectUUID mod
 	return extractRoleBindings(iter, false)
 }
 
-// roleInRoleBindingIndexer builds index rb.Roles[i].Name, several indexes for one record
-type roleInRoleBindingIndexer struct{}
-
-func (roleInRoleBindingIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, model.ErrNeedSingleArgument
-	}
-	roleName, ok := args[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("argument must be a string: %#v", args[1])
-	}
-	// Add the null character as a terminator
-	return []byte(roleName + "\x00"), nil
-}
-
-func (roleInRoleBindingIndexer) FromObject(raw interface{}) (bool, [][]byte, error) {
-	rb, ok := raw.(*model.RoleBinding)
-	if !ok {
-		return false, nil, fmt.Errorf("format error: need RoleBinding type, actual passed %#v", raw)
-	}
-	result := [][]byte{}
-	for i := range rb.Roles {
-		result = append(result, []byte(rb.Roles[i].Name+"\x00"))
-	}
-	if len(result) == 0 {
-		return false, nil, nil
-	}
-	return true, result, nil
-}
-
 func (r *RoleBindingRepository) findDirectRoleBindingsForRole(role model.RoleName) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, RoleInRoleBindingIndex, role)
+	iter, err := r.db.Get(model.RoleBindingType, RoleInRoleBindingIndex, model.BoundRole{Name: role})
 	if err != nil {
 		return nil, err
 	}

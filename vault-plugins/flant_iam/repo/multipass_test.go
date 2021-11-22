@@ -10,13 +10,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-func Test_MultipassDbSchema(t *testing.T) {
-	schema := MultipassSchema()
-	if err := schema.Validate(); err != nil {
-		t.Fatalf("multipass schema is invalid: %v", err)
-	}
-}
-
 func Test_MultipassMarshalling(t *testing.T) {
 	flipflopMultipass := func(t *testing.T, token *model.Multipass, includeSensitive bool) *model.Multipass {
 		var res interface{}

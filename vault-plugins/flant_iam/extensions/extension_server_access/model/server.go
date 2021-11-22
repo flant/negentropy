@@ -1,12 +1,18 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const ServerType = "server" // also, memdb schema name
 
 type ServerUUID = string
 
 type Server struct {
+	memdb.ArchivableImpl
+
 	UUID          ServerUUID `json:"uuid"` // ID
 	TenantUUID    string     `json:"tenant_uuid"`
 	ProjectUUID   string     `json:"project_uuid"`

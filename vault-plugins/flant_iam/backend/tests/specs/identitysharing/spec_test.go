@@ -13,6 +13,8 @@ func Test_identitySharingCRUD(t *testing.T) {
 	RegisterFailHandler(Fail)
 	backend := api.TestBackend()
 	TenantAPI = api.NewTenantAPI(&backend)
+	UserAPI = api.NewUserAPI(&backend)
+	GroupAPI = api.NewGroupAPI(&backend)
 	TestAPI = api.NewIdentitySharingAPI(&backend)
 	RunSpecs(t, "CRUD flant_iam: IdentitySharing")
 }

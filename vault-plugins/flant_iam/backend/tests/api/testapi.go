@@ -40,6 +40,7 @@ type PathBuilder interface {
 type BackendBasedAPI struct {
 	url     PathBuilder
 	backend *logical.Backend
+	storage *logical.Storage
 }
 
 func (b *BackendBasedAPI) request(operation logical.Operation, url string, params Params, payload interface{}) gjson.Result {
@@ -48,11 +49,18 @@ func (b *BackendBasedAPI) request(operation logical.Operation, url string, param
 		Expect(ok).To(Equal(true), "definitely need map[string]interface{}")
 	}
 	url = strings.TrimSuffix(url, "?")
-	resp, requestErr := (*b.backend).HandleRequest(context.Background(), &logical.Request{
+
+	request := &logical.Request{
 		Operation: operation,
 		Path:      url,
 		Data:      p,
-	})
+	}
+
+	if b.storage != nil {
+		request.Storage = *b.storage
+	}
+
+	resp, requestErr := (*b.backend).HandleRequest(context.Background(), request)
 
 	if requestErr != nil {
 		statusCodeInt := 500
@@ -173,6 +181,14 @@ func NewProjectAPI(b *logical.Backend) TestAPI {
 
 func NewProjectFeatureFlagAPI(b *logical.Backend) TestAPI {
 	return &BackendBasedAPI{backend: b, url: &url2.ProjectFeatureFlagEndpointBuilder{}}
+}
+
+func NewServerAPI(b *logical.Backend, s *logical.Storage) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ServerEndpointBuilder{}, storage: s}
+}
+
+func NewServiceAccountAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{backend: b, url: &url2.ServiceAccountEndpointBuilder{}}
 }
 
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {

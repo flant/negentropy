@@ -1,8 +1,12 @@
 package model
 
+import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+
 const UserType = "user" // also, memdb schema name
 
 type User struct {
+	memdb.ArchivableImpl
+
 	UUID       UserUUID   `json:"uuid"` // PK
 	TenantUUID TenantUUID `json:"tenant_uuid"`
 	Version    string     `json:"resource_version"`
@@ -23,13 +27,6 @@ type User struct {
 
 	MobilePhone      string   `json:"mobile_phone"`
 	AdditionalPhones []string `json:"additional_phones"`
-
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
-}
-
-func (u *User) IsDeleted() bool {
-	return u.ArchivingTimestamp != 0
 }
 
 func (u *User) ObjType() string {

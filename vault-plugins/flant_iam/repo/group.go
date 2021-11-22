@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -20,35 +21,36 @@ const (
 type GroupObjectType string
 
 func GroupSchema() *memdb.DBSchema {
-	var tenantUUIDGroupIdIndexer []memdb.Indexer
+	var tenantUUIDGroupIdIndexer []hcmemdb.Indexer
 
-	tenantUUIDIndexer := &memdb.StringFieldIndex{
+	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "TenantUUID",
 		Lowercase: true,
 	}
 	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, tenantUUIDIndexer)
 
-	groupIdIndexer := &memdb.StringFieldIndex{
+	groupIdIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
 	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, groupIdIndexer)
 
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.GroupType: {
 				Name: model.GroupType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					TenantForeignPK: {
 						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
 						},
@@ -57,7 +59,7 @@ func GroupSchema() *memdb.DBSchema {
 						Name:         UserInGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Users",
 						},
 					},
@@ -65,7 +67,7 @@ func GroupSchema() *memdb.DBSchema {
 						Name:         ServiceAccountInGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "ServiceAccounts",
 						},
 					},
@@ -73,15 +75,31 @@ func GroupSchema() *memdb.DBSchema {
 						Name:         GroupInGroupIndex,
 						Unique:       false,
 						AllowMissing: true,
-						Indexer: &memdb.StringSliceFieldIndex{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Groups",
 						},
 					},
 					TenantUUIDGroupIdIndex: {
 						Name:    TenantUUIDGroupIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
 					},
 				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.GroupType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Users", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "Groups", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "ServiceAccounts", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: PK},
+			},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.GroupType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: GroupInGroupIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: GroupInRoleBindingIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: GroupInRoleBindingApprovalIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: GroupUUIDIdentitySharingIndex},
 			},
 		},
 	}
@@ -119,7 +137,11 @@ func (r *GroupRepository) GetByID(id model.GroupUUID) (*model.Group, error) {
 	if raw == nil {
 		return nil, err
 	}
-	return raw.(*model.Group), err
+	g := raw.(*model.Group)
+	if g.FixMembers() {
+		err = r.save(g)
+	}
+	return g, err
 }
 
 func (r *GroupRepository) Update(group *model.Group) error {
@@ -135,12 +157,18 @@ func (r *GroupRepository) Delete(id model.GroupUUID, archivingTimestamp model.Un
 	if err != nil {
 		return err
 	}
-	if group.IsDeleted() {
+	if group.Archived() {
 		return model.ErrIsArchived
 	}
-	group.ArchivingTimestamp = archivingTimestamp
-	group.ArchivingHash = archivingHash
-	return r.Update(group)
+	return r.db.Archive(model.GroupType, group, archivingTimestamp, archivingHash)
+}
+
+func (r *GroupRepository) CleanChildrenSliceIndexes(id model.GroupUUID) error {
+	group, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.CleanChildrenSliceIndexes(model.GroupType, group)
 }
 
 func (r *GroupRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.Group, error) {
@@ -156,6 +184,12 @@ func (r *GroupRepository) List(tenantUUID model.TenantUUID, showArchived bool) (
 			break
 		}
 		obj := raw.(*model.Group)
+		if obj.FixMembers() {
+			err = r.save(obj)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if showArchived || obj.ArchivingTimestamp == 0 {
 			list = append(list, obj)
 		}
@@ -335,7 +369,7 @@ func (r *GroupRepository) FindAllMembersForGroup(group *model.Group) (map[model.
 	return r.FindAllMembersFor(group.Users, group.ServiceAccounts, group.Groups)
 }
 
-func extractGroupUUIDs(iter memdb.ResultIterator, showArchived bool) (map[model.GroupUUID]struct{}, error) {
+func extractGroupUUIDs(iter hcmemdb.ResultIterator, showArchived bool) (map[model.GroupUUID]struct{}, error) {
 	ids := map[model.GroupUUID]struct{}{}
 	for {
 		raw := iter.Next()

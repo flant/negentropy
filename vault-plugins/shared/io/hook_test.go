@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func TestHooks(t *testing.T) {
@@ -136,14 +138,14 @@ func (g group) Marshal(_ bool) ([]byte, error) {
 
 func testSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			"user": {
 				Name: "user",
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					"id": {
 						Name:   "id",
 						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "UUID",
 						},
 					},
@@ -151,11 +153,11 @@ func testSchema() *memdb.DBSchema {
 			},
 			"group": {
 				Name: "group",
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					"id": {
 						Name:   "id",
 						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "UUID",
 						},
 					},

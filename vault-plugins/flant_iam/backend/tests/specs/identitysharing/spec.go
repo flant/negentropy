@@ -9,22 +9,31 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
 	TenantAPI api.TestAPI
+	UserAPI   api.TestAPI
+	GroupAPI  api.TestAPI
 	TestAPI   api.TestAPI
 )
 
 var _ = Describe("Identity sharing", func() {
-	var sourceTenantID, targetTenantID string
+	var (
+		sourceTenantID, targetTenantID string
+		user                           model.User
+		group                          model.Group
+	)
 
 	BeforeSuite(func() {
 		t1 := specs.CreateRandomTenant(TenantAPI)
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)
 		targetTenantID = t2.UUID
+		user = specs.CreateRandomUser(UserAPI, targetTenantID)
+		group = specs.CreateRandomGroupWithUser(GroupAPI, sourceTenantID, user.UUID)
 	})
 
 	var createdData gjson.Result
@@ -38,13 +47,13 @@ var _ = Describe("Identity sharing", func() {
 				Expect(is.Map()).To(HaveKey("source_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("destination_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("groups"))
-				Expect(is.Get("groups").Array()).To(HaveLen(3))
+				Expect(is.Get("groups").Array()).To(HaveLen(1))
 			},
 			"tenant": sourceTenantID,
 		}
 		data := map[string]interface{}{
 			"destination_tenant_uuid": targetTenantID,
-			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
+			"groups":                  []string{group.UUID},
 		}
 		createdData = TestAPI.Create(params, url.Values{}, data)
 	})
@@ -86,6 +95,8 @@ var _ = Describe("Identity sharing", func() {
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)
 		targetTenantID = t2.UUID
+		user = specs.CreateRandomUser(UserAPI, targetTenantID)
+		group = specs.CreateRandomGroupWithUser(GroupAPI, sourceTenantID, user.UUID)
 
 		originalUUID := uuid.New()
 
@@ -98,13 +109,13 @@ var _ = Describe("Identity sharing", func() {
 				Expect(is.Map()).To(HaveKey("source_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("destination_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("groups"))
-				Expect(is.Get("groups").Array()).To(HaveLen(3))
+				Expect(is.Get("groups").Array()).To(HaveLen(1))
 			},
 			"tenant": sourceTenantID,
 		}
 		data := map[string]interface{}{
 			"destination_tenant_uuid": targetTenantID,
-			"groups":                  []string{uuid.New(), uuid.New(), uuid.New()},
+			"groups":                  []string{group.UUID},
 			"uuid":                    originalUUID,
 		}
 		createdData = TestAPI.CreatePrivileged(params, url.Values{}, data)

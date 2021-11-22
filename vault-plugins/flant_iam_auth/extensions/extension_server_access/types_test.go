@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/extension_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -80,8 +81,9 @@ func TestUserToPosix(t *testing.T) {
 		Version:    uuid.New(),
 		Identifier: "tenant2",
 	}
-
-	st, _ := io.NewMemoryStore(iam_repo.TenantSchema(), nil, hclog.NewNullLogger())
+	schema, err := iam_repo.GetSchema()
+	require.NoError(t, err)
+	st, _ := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	tx := st.Txn(true)
 	_ = tx.Insert(iam_model.TenantType, tenant2)
 	_ = tx.Commit()

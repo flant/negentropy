@@ -3,10 +3,11 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -15,51 +16,64 @@ const (
 )
 
 func ServiceAccountSchema() *memdb.DBSchema {
-	var tenantUUIDServiceAccountIdIndexer []memdb.Indexer
+	var tenantUUIDServiceAccountIdIndexer []hcmemdb.Indexer
 
-	tenantUUIDIndexer := &memdb.StringFieldIndex{
+	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "TenantUUID",
 		Lowercase: true,
 	}
 	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, tenantUUIDIndexer)
 
-	groupIdIndexer := &memdb.StringFieldIndex{
+	groupIdIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
 	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, groupIdIndexer)
 
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.ServiceAccountType: {
 				Name: model.ServiceAccountType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					TenantForeignPK: {
 						Name: TenantForeignPK,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "TenantUUID",
 							Lowercase: true,
 						},
 					},
 					fullIdentifierIndex: {
-						Name: fullIdentifierIndex,
-						Indexer: &memdb.StringFieldIndex{
+						Name:   fullIdentifierIndex,
+						Unique: true,
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "FullIdentifier",
 							Lowercase: true,
 						},
 					},
 					TenantUUIDServiceAccountIdIndex: {
 						Name:    TenantUUIDServiceAccountIdIndex,
-						Indexer: &memdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
 					},
 				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.ServiceAccountType: {{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK}},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.ServiceAccountType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: ServiceAccountInGroupIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: ServiceAccountInRoleBindingIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: ServiceAccountInRoleBindingApprovalIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountPasswordType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
 			},
 		},
 	}
@@ -108,18 +122,39 @@ func (r *ServiceAccountRepository) Update(sa *model.ServiceAccount) error {
 	return r.save(sa)
 }
 
-func (r *ServiceAccountRepository) Delete(id model.ServiceAccountUUID,
+func (r *ServiceAccountRepository) CascadeDelete(id model.ServiceAccountUUID,
 	archivingTimestamp model.UnixTime, archivingHash int64) error {
 	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if sa.IsDeleted() {
+	if sa.Archived() {
 		return model.ErrIsArchived
 	}
-	sa.ArchivingTimestamp = archivingTimestamp
-	sa.ArchivingHash = archivingHash
-	return r.Update(sa)
+	return r.db.CascadeArchive(model.ServiceAccountType, sa, archivingTimestamp, archivingHash)
+}
+
+func (r *ServiceAccountRepository) CleanChildrenSliceIndexes(id model.ServiceAccountUUID) error {
+	sa, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.CleanChildrenSliceIndexes(model.ServiceAccountType, sa)
+}
+
+func (r *ServiceAccountRepository) CascadeRestore(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
+	sa, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if !sa.Archived() {
+		return nil, model.ErrIsNotArchived
+	}
+	err = r.db.CascadeRestore(model.UserType, sa)
+	if err != nil {
+		return nil, err
+	}
+	return sa, nil
 }
 
 func (r *ServiceAccountRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.ServiceAccount, error) {

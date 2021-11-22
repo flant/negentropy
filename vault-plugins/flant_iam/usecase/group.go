@@ -100,13 +100,6 @@ func (s *GroupService) Update(group *model.Group) error {
 	return s.repo.Update(group)
 }
 
-/*
-TODO Clean from everywhere:
-	* other groups
-	* role_bindings
-	* approvals
-	* identity_sharings
-*/
 func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) error {
 	group, err := s.repo.GetByID(id)
 	if err != nil {
@@ -115,8 +108,11 @@ func (s *GroupService) Delete(origin model.ObjectOrigin, id model.GroupUUID) err
 	if group.Origin != origin {
 		return model.ErrBadOrigin
 	}
+	err = s.repo.CleanChildrenSliceIndexes(id)
+	if err != nil {
+		return err
+	}
 	archivingTimestamp, archivingHash := ArchivingLabel()
-
 	return s.repo.Delete(id, archivingTimestamp, archivingHash)
 }
 

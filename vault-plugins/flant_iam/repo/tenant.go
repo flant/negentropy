@@ -2,46 +2,79 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
-	TenantForeignPK = "tenant_uuid"
+	TenantForeignPK          = "tenant_uuid"
+	FeatureFlagInTenantIndex = "feature_flag_in_tenant"
 )
 
 func TenantSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.TenantType: {
 				Name: model.TenantType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					"identifier": {
 						Name:   "identifier",
 						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "Identifier",
 							Lowercase: true,
 						},
 					},
 					"version": {
 						Name: "version",
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Version",
+						},
+					},
+					FeatureFlagInTenantIndex: {
+						Name:         FeatureFlagInTenantIndex,
+						AllowMissing: true,
+						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+							Field: "FeatureFlags",
+							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
+								obj, ok := customTypeValue.(model.TenantFeatureFlag)
+								if !ok {
+									return nil, fmt.Errorf("need TenantFeatureFlag, actual:%T", customTypeValue)
+								}
+								return []byte(obj.Name), nil
+							},
 						},
 					},
 				},
 			},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.TenantType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: DestinationTenantUUIDIndex},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountPasswordType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ProjectType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+			},
+		},
+		CheckingRelations: map[string][]memdb.Relation{
+			model.TenantType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: SourceTenantUUIDIndex}},
 		},
 	}
 }
@@ -89,17 +122,15 @@ func (r *TenantRepository) Update(tenant *model.Tenant) error {
 	return r.save(tenant)
 }
 
-func (r *TenantRepository) Delete(id model.TenantUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *TenantRepository) CascadeDelete(id model.TenantUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if tenant.IsDeleted() {
+	if tenant.Archived() {
 		return model.ErrIsArchived
 	}
-	tenant.ArchivingTimestamp = archivingTimestamp
-	tenant.ArchivingHash = archivingHash
-	return r.Update(tenant)
+	return r.db.CascadeArchive(model.TenantType, tenant, archivingTimestamp, archivingHash)
 }
 
 func (r *TenantRepository) List(showArchived bool) ([]*model.Tenant, error) {
@@ -115,7 +146,7 @@ func (r *TenantRepository) List(showArchived bool) ([]*model.Tenant, error) {
 			break
 		}
 		obj := raw.(*model.Tenant)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || !obj.Archived() {
 			list = append(list, obj)
 		}
 	}
@@ -173,12 +204,25 @@ func (r *TenantRepository) Restore(id model.TenantUUID) (*model.Tenant, error) {
 	if err != nil {
 		return nil, err
 	}
-	if tenant.ArchivingTimestamp == 0 {
+	if !tenant.Archived() {
 		return nil, model.ErrIsNotArchived
 	}
-	tenant.ArchivingTimestamp = 0
-	tenant.ArchivingHash = 0
-	err = r.Update(tenant)
+	err = r.db.Restore(model.TenantType, tenant)
+	if err != nil {
+		return nil, err
+	}
+	return tenant, nil
+}
+
+func (r *TenantRepository) CascadeRestore(id model.TenantUUID) (*model.Tenant, error) {
+	tenant, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if !tenant.Archived() {
+		return nil, model.ErrIsNotArchived
+	}
+	err = r.db.CascadeRestore(model.TenantType, tenant)
 	if err != nil {
 		return nil, err
 	}

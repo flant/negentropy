@@ -2,26 +2,63 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func FeatureFlagSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.FeatureFlagType: {
 				Name: model.FeatureFlagType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
 					},
+				},
+			},
+		},
+		CheckingRelations: map[string][]memdb.Relation{
+			model.FeatureFlagType: {
+				{
+					OriginalDataTypeFieldName: "Name", RelatedDataType: model.ProjectType, RelatedDataTypeFieldIndexName: FeatureFlagInProjectIndex,
+					BuildRelatedCustomType: func(in interface{}) (interface{}, error) {
+						var name string
+						var ok bool
+						if name, ok = in.(string); !ok {
+							return nil, fmt.Errorf("need string type, got: %T", in)
+						}
+						return model.FeatureFlag{
+							Name: name,
+						}, nil
+					},
+				},
+				{
+					OriginalDataTypeFieldName: "Name", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: FeatureFlagInTenantIndex,
+					BuildRelatedCustomType: func(in interface{}) (interface{}, error) {
+						var name string
+						var ok bool
+						if name, ok = in.(string); !ok {
+							return nil, fmt.Errorf("need string type, got: %T", in)
+						}
+						return model.TenantFeatureFlag{
+							FeatureFlag: model.FeatureFlag{
+								Name: name,
+							},
+						}, nil
+					},
+				},
+				{
+					OriginalDataTypeFieldName: "Name", RelatedDataType: model.RoleType, RelatedDataTypeFieldIndexName: FeatureFlagInRoleIndex,
 				},
 			},
 		},
@@ -76,12 +113,10 @@ func (r *FeatureFlagRepository) Delete(id model.FeatureFlagName, archivingTimest
 	if err != nil {
 		return err
 	}
-	if ff.IsDeleted() {
+	if ff.Archived() {
 		return model.ErrIsArchived
 	}
-	ff.ArchivingTimestamp = archivingTimestamp
-	ff.ArchivingHash = archivingHash
-	return r.Update(ff)
+	return r.db.Archive(model.FeatureFlagType, ff, archivingTimestamp, archivingHash)
 }
 
 func (r *FeatureFlagRepository) List(showArchived bool) ([]*model.FeatureFlag, error) {

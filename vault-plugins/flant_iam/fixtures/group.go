@@ -20,6 +20,14 @@ const (
 func Groups() []model.Group {
 	return []model.Group{
 		{
+			UUID:            GroupUUID3,
+			TenantUUID:      TenantUUID2,
+			Identifier:      "group3",
+			Users:           []string{UserUUID3, UserUUID4},
+			ServiceAccounts: []string{ServiceAccountUUID1},
+			Origin:          model.OriginIAM,
+		},
+		{
 			UUID:            GroupUUID1,
 			TenantUUID:      TenantUUID1,
 			Identifier:      "group1",
@@ -34,14 +42,6 @@ func Groups() []model.Group {
 			Identifier: "group2",
 			Users:      []string{UserUUID1, UserUUID3},
 			Origin:     model.OriginIAM,
-		},
-		{
-			UUID:            GroupUUID3,
-			TenantUUID:      TenantUUID2,
-			Identifier:      "group3",
-			Users:           []string{UserUUID3, UserUUID4},
-			ServiceAccounts: []string{ServiceAccountUUID1},
-			Origin:          model.OriginIAM,
 		},
 		{
 			UUID:            GroupUUID4,

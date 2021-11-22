@@ -3,33 +3,47 @@ package repo
 import (
 	"encoding/json"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func ServiceAccountPasswordSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			model.ServiceAccountPasswordType: {
 				Name: model.ServiceAccountPasswordType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					OwnerForeignPK: {
 						Name: OwnerForeignPK,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "OwnerUUID",
 							Lowercase: true,
 						},
 					},
+					TenantForeignPK: {
+						Name: TenantForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
 				},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.ServiceAccountPasswordType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "OwnerUUID", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
 	}
@@ -84,12 +98,10 @@ func (r *ServiceAccountPasswordRepository) Delete(id model.ServiceAccountPasswor
 	if err != nil {
 		return err
 	}
-	if sap.IsDeleted() {
+	if sap.Archived() {
 		return model.ErrIsArchived
 	}
-	sap.ArchivingTimestamp = archivingTimestamp
-	sap.ArchivingHash = archivingHash
-	return r.Update(sap)
+	return r.db.Archive(model.ServiceAccountType, sap, archivingTimestamp, archivingHash)
 }
 
 func (r *ServiceAccountPasswordRepository) List(ownerUUID model.OwnerUUID,
