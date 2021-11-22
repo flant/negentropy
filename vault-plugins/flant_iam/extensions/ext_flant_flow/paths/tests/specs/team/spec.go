@@ -89,6 +89,7 @@ var _ = Describe("Team", func() {
 		updatePayload := fixtures.RandomTeamCreatePayload()
 		updatePayload["resource_version"] = createdData.Get("team.resource_version").String()
 		updatePayload["identifier"] = createdData.Get("team.uuid").String()
+		updatePayload["team_type"] = createdData.Get("team.team_type").String()
 
 		var updateData gjson.Result
 		TestAPI.Update(testapi.Params{

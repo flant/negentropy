@@ -385,7 +385,6 @@ func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) 
 
 // CleanChildrenSliceIndexes remove link to obj from children slice fields
 func (t *Txn) CleanChildrenSliceIndexes(table string, objPtr interface{}) error {
-	// TODO is it a objPtr?
 	cleanChildrenSlicesHandler := func(parentObjectFieldValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
 			return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
