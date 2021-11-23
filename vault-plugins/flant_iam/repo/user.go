@@ -127,7 +127,7 @@ func (r *UserRepository) CascadeRestore(id model.UserUUID) (*model.User, error) 
 	if err != nil {
 		return nil, err
 	}
-	if !user.Archived() {
+	if user.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.UserType, user)
@@ -150,7 +150,7 @@ func (r *UserRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([
 			break
 		}
 		obj := raw.(*model.User)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}
@@ -209,7 +209,7 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	if user.Timestamp == 0 {
+	if user.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	user.Timestamp = 0

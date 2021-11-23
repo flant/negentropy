@@ -174,7 +174,7 @@ func (r *RoleRepository) List(showArchived bool) ([]*model.Role, error) {
 			break
 		}
 		obj := raw.(*model.Role)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}
@@ -251,7 +251,7 @@ func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[mo
 			break
 		}
 		role := raw.(*model.Role)
-		if role.Timestamp == 0 {
+		if role.NotArchived() {
 			ids[role.Name] = struct{}{}
 		}
 	}

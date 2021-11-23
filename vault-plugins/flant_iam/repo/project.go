@@ -142,7 +142,7 @@ func (r *ProjectRepository) List(tenantUUID model.TenantUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Project)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

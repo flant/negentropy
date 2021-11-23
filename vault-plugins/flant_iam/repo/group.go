@@ -191,7 +191,7 @@ func (r *GroupRepository) List(tenantUUID model.TenantUUID, showArchived bool) (
 				return nil, err
 			}
 		}
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

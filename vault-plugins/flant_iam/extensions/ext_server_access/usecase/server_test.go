@@ -72,28 +72,28 @@ func Test_List(t *testing.T) {
 	repo := repo.NewServerRepository(tx)
 
 	t.Run("find by tenant and project", func(t *testing.T) {
-		list, err := repo.List(tenant.UUID, project.UUID)
+		list, err := repo.List(tenant.UUID, project.UUID, false)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
 	})
 
 	t.Run("find by tenant", func(t *testing.T) {
-		list, err := repo.List(tenant.UUID, "")
+		list, err := repo.List(tenant.UUID, "", false)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
 	})
 
 	t.Run("find by project", func(t *testing.T) {
-		list, err := repo.List("", project.UUID)
+		list, err := repo.List("", project.UUID, false)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])
 	})
 
 	t.Run("full scan list", func(t *testing.T) {
-		list, err := repo.List("", "")
+		list, err := repo.List("", "", false)
 		assert.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, server, list[0])

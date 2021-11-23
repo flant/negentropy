@@ -119,7 +119,7 @@ func (r *ServiceAccountPasswordRepository) List(ownerUUID model.OwnerUUID,
 			break
 		}
 		obj := raw.(*model.ServiceAccountPassword)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

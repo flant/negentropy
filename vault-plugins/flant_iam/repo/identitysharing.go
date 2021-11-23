@@ -129,7 +129,7 @@ func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchiv
 			break
 		}
 		obj := raw.(*model.IdentitySharing)
-		if showArchived || !obj.Archived() {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

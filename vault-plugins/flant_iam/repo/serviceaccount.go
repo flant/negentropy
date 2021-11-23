@@ -148,7 +148,7 @@ func (r *ServiceAccountRepository) CascadeRestore(id model.ServiceAccountUUID) (
 	if err != nil {
 		return nil, err
 	}
-	if !sa.Archived() {
+	if sa.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.UserType, sa)
@@ -171,7 +171,7 @@ func (r *ServiceAccountRepository) List(tenantUUID model.TenantUUID, showArchive
 			break
 		}
 		obj := raw.(*model.ServiceAccount)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

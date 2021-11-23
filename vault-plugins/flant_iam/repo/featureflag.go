@@ -133,7 +133,7 @@ func (r *FeatureFlagRepository) List(showArchived bool) ([]*model.FeatureFlag, e
 			break
 		}
 		obj := raw.(*model.FeatureFlag)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

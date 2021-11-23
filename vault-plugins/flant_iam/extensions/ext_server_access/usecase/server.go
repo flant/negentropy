@@ -341,7 +341,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	serverList, err := s.serverRepo.List(tenant.UUID, "")
+	serverList, err := s.serverRepo.List(tenant.UUID, "", false)
 	if err != nil {
 		return err
 	}

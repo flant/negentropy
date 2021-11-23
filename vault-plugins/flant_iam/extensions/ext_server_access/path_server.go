@@ -448,7 +448,7 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 		tx := b.storage.Txn(false)
 		repo := repo.NewServerRepository(tx)
 
-		list, err := repo.List(tenantID, projectID)
+		list, err := repo.List(tenantID, projectID, false)
 		if err != nil {
 			return nil, err
 		}

@@ -9,6 +9,7 @@ type Archivable interface {
 	Archive(archiveMark ArchiveMark)
 	Restore()
 	Archived() bool
+	NotArchived() bool
 	GetArchiveMark() ArchiveMark
 	Equals(other ArchiveMark) bool
 }
