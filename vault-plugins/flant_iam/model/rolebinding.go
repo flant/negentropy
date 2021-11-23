@@ -8,7 +8,7 @@ import (
 const RoleBindingType = "role_binding" // also, memdb schema name
 
 type RoleBinding struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       RoleBindingUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID      `json:"tenant_uuid"`

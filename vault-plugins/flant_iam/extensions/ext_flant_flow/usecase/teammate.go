@@ -7,6 +7,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 // TODO add work with IAM
@@ -57,8 +58,7 @@ func (s *TeammateService) Update(updated *model.Teammate) error {
 
 func (s *TeammateService) Delete(id iam_model.UserUUID) error {
 	// TODO sync with IAM
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	return s.repo.Delete(id, memdb.NewArchiveMark())
 }
 
 func (s *TeammateService) GetByID(id iam_model.UserUUID) (*model.Teammate, error) {

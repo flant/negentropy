@@ -149,7 +149,7 @@ func (r *ServerRepository) Update(server *ext_model.Server) error {
 	return r.db.Insert(ext_model.ServerType, server)
 }
 
-func (r *ServerRepository) Delete(uuid string, archivingTimestamp iam_model.UnixTime, archivingHash int64) error {
+func (r *ServerRepository) Delete(uuid string, archiveMark memdb.ArchiveMark) error {
 	server, err := r.GetByUUID(uuid)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (r *ServerRepository) Delete(uuid string, archivingTimestamp iam_model.Unix
 	if server.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(ext_model.ServerType, server, archivingTimestamp, archivingHash)
+	return r.db.Archive(ext_model.ServerType, server, archiveMark)
 }
 
 func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server, error) {

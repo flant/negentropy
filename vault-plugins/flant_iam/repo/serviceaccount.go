@@ -124,7 +124,7 @@ func (r *ServiceAccountRepository) Update(sa *model.ServiceAccount) error {
 }
 
 func (r *ServiceAccountRepository) CascadeDelete(id model.ServiceAccountUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+	archiveMark memdb.ArchiveMark) error {
 	sa, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (r *ServiceAccountRepository) CascadeDelete(id model.ServiceAccountUUID,
 	if sa.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.CascadeArchive(model.ServiceAccountType, sa, archivingTimestamp, archivingHash)
+	return r.db.CascadeArchive(model.ServiceAccountType, sa, archiveMark)
 }
 
 func (r *ServiceAccountRepository) CleanChildrenSliceIndexes(id model.ServiceAccountUUID) error {
@@ -171,7 +171,7 @@ func (r *ServiceAccountRepository) List(tenantUUID model.TenantUUID, showArchive
 			break
 		}
 		obj := raw.(*model.ServiceAccount)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}

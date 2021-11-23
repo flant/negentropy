@@ -5,6 +5,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type UserService struct {
@@ -92,8 +93,7 @@ func (s *UserService) Delete(origin consts.ObjectOrigin, id model.UserUUID) erro
 	if err != nil {
 		return err
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.usersRepo.CascadeDelete(id, archivingTimestamp, archivingHash)
+	return s.usersRepo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
 func (s *UserService) SetExtension(ext *model.Extension) error {

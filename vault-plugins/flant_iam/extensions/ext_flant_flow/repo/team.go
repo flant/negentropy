@@ -113,7 +113,7 @@ func (r *TeamRepository) Update(team *model.Team) error {
 	return r.save(team)
 }
 
-func (r *TeamRepository) Delete(id model.TeamUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *TeamRepository) Delete(id model.TeamUUID, archiveMark memdb.ArchiveMark) error {
 	team, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func (r *TeamRepository) Delete(id model.TeamUUID, archivingTimestamp model.Unix
 	if team.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.TeamType, team, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.TeamType, team, archiveMark)
 }
 
 func (r *TeamRepository) List(showArchived bool) ([]*model.Team, error) {
@@ -132,7 +132,7 @@ func (r *TeamRepository) List(showArchived bool) ([]*model.Team, error) {
 
 	list := []*model.Team{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.ArchivingTimestamp == 0 {
+		if showArchived || team.Timestamp == 0 {
 			list = append(list, team)
 		}
 		return true, nil
@@ -151,7 +151,7 @@ func (r *TeamRepository) ListIDs(showArchived bool) ([]model.TeamUUID, error) {
 	}
 	ids := []model.TeamUUID{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.ArchivingTimestamp == 0 {
+		if showArchived || team.Timestamp == 0 {
 			ids = append(ids, team.UUID)
 		}
 		return true, nil
@@ -198,7 +198,7 @@ func (r *TeamRepository) Restore(id model.TeamUUID) (*model.Team, error) {
 	if err != nil {
 		return nil, err
 	}
-	if team.ArchivingTimestamp == 0 {
+	if team.Timestamp == 0 {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.TeamType, team)
@@ -215,7 +215,7 @@ func (r *TeamRepository) ListChildTeamIDs(parentTeamUUID model.TeamUUID, showArc
 	}
 	ids := []model.TeamUUID{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.ArchivingTimestamp == 0 {
+		if showArchived || team.Timestamp == 0 {
 			ids = append(ids, team.UUID)
 		}
 		return true, nil

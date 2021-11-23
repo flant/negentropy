@@ -103,7 +103,7 @@ func (r *UserRepository) Update(user *model.User) error {
 	return r.save(user)
 }
 
-func (r *UserRepository) CascadeDelete(id model.UserUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *UserRepository) CascadeDelete(id model.UserUUID, archiveMark memdb.ArchiveMark) error {
 	user, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func (r *UserRepository) CascadeDelete(id model.UserUUID, archivingTimestamp mod
 	if user.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.CascadeArchive(model.UserType, user, archivingTimestamp, archivingTimestamp)
+	return r.db.CascadeArchive(model.UserType, user, archiveMark)
 }
 
 func (r *UserRepository) CleanChildrenSliceIndexes(id model.UserUUID) error {
@@ -150,7 +150,7 @@ func (r *UserRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([
 			break
 		}
 		obj := raw.(*model.User)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
@@ -209,11 +209,11 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	if user.ArchivingTimestamp == 0 {
+	if user.Timestamp == 0 {
 		return nil, consts.ErrIsNotArchived
 	}
-	user.ArchivingTimestamp = 0
-	user.ArchivingHash = 0
+	user.Timestamp = 0
+	user.Hash = 0
 	err = r.Update(user)
 	if err != nil {
 		return nil, err

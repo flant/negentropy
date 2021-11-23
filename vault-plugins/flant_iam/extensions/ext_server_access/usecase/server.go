@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -291,8 +292,6 @@ func (s *ServerService) Update(server *model.Server) error {
 }
 
 func (s *ServerService) Delete(serverUUID string) error {
-	archivingTimestamp, archivingHash := usecase.ArchivingLabel()
-
 	server, err := s.serverRepo.GetByUUID(serverUUID)
 	if err != nil {
 		return err
@@ -315,7 +314,9 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = multipassService.CascadeDelete(mp.UUID, archivingTimestamp, archivingHash)
+	archiveMark := memdb.NewArchiveMark()
+
+	err = multipassService.CascadeDelete(mp.UUID, archiveMark)
 	if err != nil {
 		return err
 	}
@@ -335,7 +336,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	err = s.serviceAccountRepo.CascadeDelete(sa.UUID, archivingTimestamp, archivingHash)
+	err = s.serviceAccountRepo.CascadeDelete(sa.UUID, archiveMark)
 	if err != nil {
 		return err
 	}
@@ -366,7 +367,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 
 		if groupToDelete != nil {
-			err := s.groupRepo.Delete(groupToDelete.UUID, archivingTimestamp, archivingHash)
+			err := s.groupRepo.Delete(groupToDelete.UUID, archiveMark)
 			if err != nil {
 				return err
 			}
@@ -379,7 +380,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == consts.OriginServerAccess {
-				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archiveMark)
 				if err != nil {
 					return err
 				}
@@ -395,14 +396,14 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 		for _, rb := range rbsInProject {
 			if rb.Origin == consts.OriginServerAccess {
-				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archivingTimestamp, archivingHash)
+				err := s.roleBindingRepo.CascadeDelete(rb.UUID, archiveMark)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	}
-	return s.serverRepo.Delete(server.UUID, archivingTimestamp, archivingHash)
+	return s.serverRepo.Delete(server.UUID, archiveMark)
 }
 
 func nameForTenantLevelObjects(tenantID string) string {

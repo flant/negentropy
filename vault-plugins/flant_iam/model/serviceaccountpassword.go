@@ -9,7 +9,7 @@ import (
 const ServiceAccountPasswordType = "service_account_password" // also, memdb schema name
 
 type ServiceAccountPassword struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       ServiceAccountPasswordUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID                 `json:"tenant_uuid"`

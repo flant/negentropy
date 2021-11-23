@@ -5,6 +5,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type ServiceAccountPasswordsService struct {
@@ -40,8 +41,7 @@ func (r *ServiceAccountPasswordsService) Delete(id model.ServiceAccountPasswordU
 	if err != nil {
 		return err
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return r.repo.Delete(id, archivingTimestamp, archivingHash)
+	return r.repo.Delete(id, memdb.NewArchiveMark())
 }
 
 func (r *ServiceAccountPasswordsService) GetByID(id model.ServiceAccountPasswordUUID) (*model.ServiceAccountPassword, error) {

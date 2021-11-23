@@ -8,7 +8,7 @@ import (
 const UserType = "user" // also, memdb schema name
 
 type User struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       UserUUID   `json:"uuid"` // PK
 	TenantUUID TenantUUID `json:"tenant_uuid"`

@@ -8,6 +8,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func ContactSchema() map[string]*hcmemdb.TableSchema {
@@ -90,7 +91,7 @@ func (r *ContactRepository) Update(contact *model.Contact) error {
 	return r.save(contact)
 }
 
-func (r *ContactRepository) Delete(id model.ContactUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *ContactRepository) Delete(id model.ContactUUID, archiveMark memdb.ArchiveMark) error {
 	contact, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -98,8 +99,8 @@ func (r *ContactRepository) Delete(id model.ContactUUID, archivingTimestamp mode
 	if contact.IsDeleted() {
 		return consts.ErrIsArchived
 	}
-	contact.ArchivingTimestamp = archivingTimestamp
-	contact.ArchivingHash = archivingHash
+	contact.Timestamp = archiveMark.Timestamp
+	contact.Hash = archiveMark.Hash
 	return r.Update(contact)
 }
 
@@ -116,7 +117,7 @@ func (r *ContactRepository) List(clientUUID model.ClientUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Contact)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
@@ -175,11 +176,11 @@ func (r *ContactRepository) Restore(id model.ContactUUID) (*model.Contact, error
 	if err != nil {
 		return nil, err
 	}
-	if contact.ArchivingTimestamp == 0 {
+	if contact.Timestamp == 0 {
 		return nil, consts.ErrIsNotArchived
 	}
-	contact.ArchivingTimestamp = 0
-	contact.ArchivingHash = 0
+	contact.Timestamp = 0
+	contact.Hash = 0
 	err = r.Update(contact)
 	if err != nil {
 		return nil, err

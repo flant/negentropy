@@ -9,6 +9,7 @@ import (
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func TeammateSchema() map[string]*hcmemdb.TableSchema {
@@ -91,7 +92,7 @@ func (r *TeammateRepository) Update(teammate *model.Teammate) error {
 	return r.save(teammate)
 }
 
-func (r *TeammateRepository) Delete(id iam_model.UserUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *TeammateRepository) Delete(id iam_model.UserUUID, archiveMark memdb.ArchiveMark) error {
 	teammate, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -99,8 +100,8 @@ func (r *TeammateRepository) Delete(id iam_model.UserUUID, archivingTimestamp mo
 	if teammate.IsDeleted() {
 		return consts.ErrIsArchived
 	}
-	teammate.ArchivingTimestamp = archivingTimestamp
-	teammate.ArchivingHash = archivingHash
+	teammate.Timestamp = archiveMark.Timestamp
+	teammate.Hash = archiveMark.Hash
 	return r.Update(teammate)
 }
 
@@ -117,7 +118,7 @@ func (r *TeammateRepository) List(showArchived bool) ([]*model.Teammate, error) 
 			break
 		}
 		obj := raw.(*model.Teammate)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
@@ -175,11 +176,11 @@ func (r *TeammateRepository) Restore(id iam_model.UserUUID) (*model.Teammate, er
 	if err != nil {
 		return nil, err
 	}
-	if teammate.ArchivingTimestamp == 0 {
+	if teammate.Timestamp == 0 {
 		return nil, consts.ErrIsNotArchived
 	}
-	teammate.ArchivingTimestamp = 0
-	teammate.ArchivingHash = 0
+	teammate.Timestamp = 0
+	teammate.Hash = 0
 	err = r.Update(teammate)
 	if err != nil {
 		return nil, err

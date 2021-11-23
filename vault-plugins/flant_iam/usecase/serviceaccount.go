@@ -5,6 +5,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type ServiceAccountService struct {
@@ -117,8 +118,7 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 	if err != nil {
 		return err
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
+	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
 func (s *ServiceAccountService) List(showArchived bool) ([]*model.ServiceAccount, error) {

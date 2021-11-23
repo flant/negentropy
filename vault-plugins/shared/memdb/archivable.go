@@ -1,31 +1,54 @@
 package memdb
 
+import (
+	"math/rand"
+	"time"
+)
+
 type Archivable interface {
-	Archive(timeStamp UnixTime, archivingHash int64)
+	Archive(archiveMark ArchiveMark)
 	Restore()
 	Archived() bool
-	ArchiveMarks() (timeStamp UnixTime, archivingHash int64)
+	GetArchiveMark() ArchiveMark
+	Equals(other ArchiveMark) bool
 }
 
-type ArchivableImpl struct {
-	ArchivingTimestamp UnixTime `json:"archiving_timestamp"`
-	ArchivingHash      int64    `json:"archiving_hash"`
+type ArchiveMark struct {
+	Timestamp UnixTime `json:"archiving_timestamp"`
+	Hash      int64    `json:"archiving_hash"`
 }
 
-func (a *ArchivableImpl) Archive(timeStamp UnixTime, hash int64) {
-	a.ArchivingTimestamp = timeStamp
-	a.ArchivingHash = hash
+func (a *ArchiveMark) Archive(archiveMark ArchiveMark) {
+	a.Timestamp = archiveMark.Timestamp
+	a.Hash = archiveMark.Hash
 }
 
-func (a *ArchivableImpl) Restore() {
-	a.ArchivingTimestamp = 0
-	a.ArchivingHash = 0
+func (a *ArchiveMark) Restore() {
+	a.Timestamp = 0
+	a.Hash = 0
 }
 
-func (a *ArchivableImpl) Archived() bool {
-	return a.ArchivingTimestamp != 0
+func (a *ArchiveMark) Archived() bool {
+	return a.Timestamp != 0
 }
 
-func (a *ArchivableImpl) ArchiveMarks() (timeStamp UnixTime, archivingHash int64) {
-	return a.ArchivingTimestamp, a.ArchivingHash
+func (a *ArchiveMark) GetArchiveMark() ArchiveMark {
+	if a == nil {
+		return ArchiveMark{}
+	}
+	return *a
 }
+
+func (a *ArchiveMark) Equals(other ArchiveMark) bool {
+	return a.Timestamp == other.Timestamp && a.Hash == other.Hash
+}
+
+func NewArchiveMark() ArchiveMark {
+	archivingTime := time.Now().Unix()
+	return ArchiveMark{
+		Timestamp: archivingTime,
+		Hash:      rand.Int63n(archivingTime),
+	}
+}
+
+var ActiveRecordMark = ArchiveMark{}

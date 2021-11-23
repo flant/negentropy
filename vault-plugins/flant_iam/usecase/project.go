@@ -5,6 +5,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type ProjectService struct {
@@ -64,8 +65,7 @@ func (s *ProjectService) Delete(id model.ProjectUUID) error {
 		return consts.ErrBadOrigin
 	}
 
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return repo.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
+	return repo.NewProjectRepository(s.db).Delete(id, memdb.NewArchiveMark())
 }
 
 func (s *ProjectService) List(tid model.TenantUUID, showArchived bool) ([]*model.Project, error) {

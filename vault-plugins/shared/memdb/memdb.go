@@ -54,13 +54,13 @@ func (m *MemDB) Txn(write bool) *Txn {
 }
 
 func (t *Txn) Insert(table string, objPtr interface{}) error {
-	return t.insert(table, objPtr, 0, 0)
+	return t.insert(table, objPtr, ActiveRecordMark)
 }
 
 // insert provide Insert operation into memdb with checking MandatoryForeignKey,
 // insertion successful, if related records exists and aren't archived, or archived with suitable marks
-func (t *Txn) insert(table string, objPtr interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
-	err := t.checkForeignKeys(table, objPtr, allowedArchivingTimeStamp, allowedArchivingHash)
+func (t *Txn) insert(table string, objPtr interface{}, allowedArchiveMark ArchiveMark) error {
+	err := t.checkForeignKeys(table, objPtr, allowedArchiveMark)
 	if err != nil {
 		return fmt.Errorf("insert:%w", err)
 	}
@@ -95,7 +95,7 @@ func (t *Txn) CascadeDelete(table string, objPtr interface{}) error {
 	return nil
 }
 
-func (t *Txn) Archive(table string, objPtr interface{}, archivingTimeStamp int64, archivingHash int64) error {
+func (t *Txn) Archive(table string, objPtr interface{}, archiveMark ArchiveMark) error {
 	a, ok := objPtr.(Archivable)
 	if !ok {
 		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
@@ -104,7 +104,7 @@ func (t *Txn) Archive(table string, objPtr interface{}, archivingTimeStamp int64
 	if err != nil {
 		return fmt.Errorf("archive:%w", err)
 	}
-	a.Archive(archivingTimeStamp, archivingHash)
+	a.Archive(archiveMark)
 	err = t.Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("archive:%w", err)
@@ -112,7 +112,7 @@ func (t *Txn) Archive(table string, objPtr interface{}, archivingTimeStamp int64
 	return nil
 }
 
-func (t *Txn) CascadeArchive(table string, objPtr interface{}, archivingTimeStamp int64, archivingHash int64) error {
+func (t *Txn) CascadeArchive(table string, objPtr interface{}, archiveMark ArchiveMark) error {
 	a, ok := objPtr.(Archivable)
 	if !ok {
 		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
@@ -121,11 +121,11 @@ func (t *Txn) CascadeArchive(table string, objPtr interface{}, archivingTimeStam
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archivingTimeStamp, archivingHash), ErrNotEmptyRelation)
+	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archiveMark), ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
-	a.Archive(archivingTimeStamp, archivingHash)
+	a.Archive(archiveMark)
 	err = t.Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
@@ -151,46 +151,46 @@ func (t *Txn) CascadeRestore(table string, objPtr interface{}) error {
 	if !ok {
 		return fmt.Errorf("%w:%#v", ErrNotArchivable, objPtr)
 	}
-	timeStamp, archivingHash := a.ArchiveMarks()
+	archiveMark := a.GetArchiveMark()
 	a.Restore()
-	err := t.insert(table, objPtr, timeStamp, archivingHash)
+	err := t.insert(table, objPtr, archiveMark)
 	if err != nil {
 		return fmt.Errorf("cascadeRestore:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.restoreChildren(timeStamp, archivingHash), ErrNotEmptyRelation)
+	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.restoreChildren(archiveMark), ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeRestore:%w", err)
 	}
 	return nil
 }
 
-func (t *Txn) checkForeignKeys(table string, objPtr interface{}, allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
+func (t *Txn) checkForeignKeys(table string, objPtr interface{}, allowedArchiveMark ArchiveMark) error {
 	keys := t.schema.MandatoryForeignKeys[table]
-	return t.processRelations(keys, objPtr, t.checkForeignKey(allowedArchivingTimeStamp, allowedArchivingHash), ErrForeignKey)
+	return t.processRelations(keys, objPtr, t.checkForeignKey(allowedArchiveMark), ErrForeignKey)
 }
 
 // checkForeignKey supports Slice as a field type
-func (t *Txn) checkForeignKey(allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) func(checkedFieldValue interface{}, key Relation) error {
+func (t *Txn) checkForeignKey(allowedArchiveMark ArchiveMark) func(checkedFieldValue interface{}, key Relation) error {
 	return func(checkedFieldValue interface{}, key Relation) error {
 		switch reflect.TypeOf(checkedFieldValue).Kind() {
 		case reflect.Slice:
 			s := reflect.ValueOf(checkedFieldValue)
 			for i := 0; i < s.Len(); i++ {
-				err := t.checkSingleValueOfForeignKey(s.Index(i).Interface(), key, allowedArchivingTimeStamp, allowedArchivingHash)
+				err := t.checkSingleValueOfForeignKey(s.Index(i).Interface(), key, allowedArchiveMark)
 				if err != nil {
 					return err
 				}
 			}
 			return nil
 		default:
-			return t.checkSingleValueOfForeignKey(checkedFieldValue, key, allowedArchivingTimeStamp, allowedArchivingHash)
+			return t.checkSingleValueOfForeignKey(checkedFieldValue, key, allowedArchiveMark)
 		}
 	}
 }
 
 // singleCheckedFieldValue should not be pointer
 func (t *Txn) checkSingleValueOfForeignKey(singleCheckedFieldValue interface{}, key Relation,
-	allowedArchivingTimeStamp UnixTime, allowedArchivingHash int64) error {
+	allowedArchiveMark ArchiveMark) error {
 	var err error
 	if key.BuildRelatedCustomType != nil {
 		singleCheckedFieldValue, err = key.BuildRelatedCustomType(singleCheckedFieldValue)
@@ -209,14 +209,13 @@ func (t *Txn) checkSingleValueOfForeignKey(singleCheckedFieldValue interface{}, 
 	}
 	a, ok := relatedRecord.(Archivable)
 	if !ok {
-		if allowedArchivingTimeStamp == 0 && allowedArchivingHash == 0 {
+		if ActiveRecordMark.Equals(allowedArchiveMark) {
 			return nil // related record is not archivable, exists, an no need to check
 		} else {
 			return fmt.Errorf("%w related record %#v is not archivable", ErrNotArchivable, relatedRecord)
 		}
 	}
-	s, h := a.ArchiveMarks()
-	if a.Archived() && (s != allowedArchivingTimeStamp || h != allowedArchivingHash) {
+	if a.Archived() && !a.Equals(allowedArchiveMark) {
 		return fmt.Errorf("FK violation: %q not found at table %q at index %q",
 			singleCheckedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
 	}
@@ -311,7 +310,7 @@ func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) e
 }
 
 // originObjectFieldValue should not be pointer
-func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) func(originObjectFieldValue interface{}, key Relation) error {
+func (t *Txn) archiveChildren(archiveMark ArchiveMark) func(originObjectFieldValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
 			// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
@@ -337,7 +336,7 @@ func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) fun
 			if a.Archived() {
 				continue
 			}
-			err = t.CascadeArchive(key.RelatedDataType, relatedRecord, archivingTimeStamp, archivingHash)
+			err = t.CascadeArchive(key.RelatedDataType, relatedRecord, archiveMark)
 			if err != nil {
 				return fmt.Errorf("archiving related record: at table %q by index %q, value %q",
 					key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
@@ -348,7 +347,7 @@ func (t *Txn) archiveChildren(archivingTimeStamp int64, archivingHash int64) fun
 }
 
 // parentObjectFiledValue should not be pointer
-func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) func(parentObjectFiledValue interface{}, key Relation) error {
+func (t *Txn) restoreChildren(allowedArchiveMark ArchiveMark) func(parentObjectFiledValue interface{}, key Relation) error {
 	return func(parentObjectFiledValue interface{}, key Relation) error {
 		if key.BuildRelatedCustomType != nil {
 			// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
@@ -370,7 +369,7 @@ func (t *Txn) restoreChildren(archivingTimestamp UnixTime, archivingHash int64) 
 			if !ok {
 				return fmt.Errorf("%w related record %#v is not archivable", ErrNotArchivable, relatedRecord)
 			}
-			if ts, hs := a.ArchiveMarks(); ts != archivingTimestamp || hs != archivingHash {
+			if !a.Equals(allowedArchiveMark) {
 				continue
 			}
 			err = t.CascadeRestore(key.RelatedDataType, relatedRecord)
@@ -424,7 +423,7 @@ func (t *Txn) CleanChildrenSliceIndexes(table string, objPtr interface{}) error 
 				}
 			}
 			valueIface.Elem().FieldByName(index.Field).Set(reflect.ValueOf(newVals))
-			err := t.insert(key.RelatedDataType, relatedRecord, 0, 0)
+			err := t.insert(key.RelatedDataType, relatedRecord, ActiveRecordMark)
 			if err != nil {
 				return nil
 			}

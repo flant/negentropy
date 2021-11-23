@@ -118,7 +118,7 @@ func (r *ProjectRepository) Update(project *model.Project) error {
 	return r.save(project)
 }
 
-func (r *ProjectRepository) Delete(id model.ProjectUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *ProjectRepository) Delete(id model.ProjectUUID, archiveMark memdb.ArchiveMark) error {
 	project, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func (r *ProjectRepository) Delete(id model.ProjectUUID, archivingTimestamp mode
 	if project.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.ProjectType, project, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.ProjectType, project, archiveMark)
 }
 
 func (r *ProjectRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.Project, error) {
@@ -142,7 +142,7 @@ func (r *ProjectRepository) List(tenantUUID model.TenantUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Project)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}

@@ -12,7 +12,7 @@ type Teammate struct {
 }
 
 func (u *Teammate) IsDeleted() bool {
-	return u.ArchivingTimestamp != 0
+	return u.Timestamp != 0
 }
 
 func (u *Teammate) ObjType() string {

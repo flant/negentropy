@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 func IdentityShares(db *io.MemoryStoreTxn) *IdentitySharingService {
@@ -47,8 +48,7 @@ func (s *IdentitySharingService) Update(is *model.IdentitySharing) error {
 }
 
 func (s *IdentitySharingService) Delete(id model.IdentitySharingUUID) error {
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.sharesRepo.Delete(id, archivingTimestamp, archivingHash)
+	return s.sharesRepo.Delete(id, memdb.NewArchiveMark())
 }
 
 func (s *IdentitySharingService) List(tid model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {

@@ -123,7 +123,7 @@ func (r *TenantRepository) Update(tenant *model.Tenant) error {
 	return r.save(tenant)
 }
 
-func (r *TenantRepository) CascadeDelete(id model.TenantUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *TenantRepository) CascadeDelete(id model.TenantUUID, archiveMark memdb.ArchiveMark) error {
 	tenant, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func (r *TenantRepository) CascadeDelete(id model.TenantUUID, archivingTimestamp
 	if tenant.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.CascadeArchive(model.TenantType, tenant, archivingTimestamp, archivingHash)
+	return r.db.CascadeArchive(model.TenantType, tenant, archiveMark)
 }
 
 func (r *TenantRepository) List(showArchived bool) ([]*model.Tenant, error) {

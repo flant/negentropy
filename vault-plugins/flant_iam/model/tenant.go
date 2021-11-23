@@ -8,7 +8,7 @@ import (
 const TenantType = "tenant" // also, memdb schema name
 
 type Tenant struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       TenantUUID `json:"uuid"` // PK
 	Version    string     `json:"resource_version"`

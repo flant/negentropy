@@ -1,9 +1,6 @@
 package usecase
 
 import (
-	"math/rand"
-	"time"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 )
 
@@ -55,10 +52,4 @@ func (d *ChildrenDeleter) DeleteByParent(parentID string, archivingTimestamp mod
 		}
 	}
 	return nil
-}
-
-func ArchivingLabel() (model.UnixTime, int64) {
-	archivingTime := time.Now().Unix()
-	archivingHash := rand.Int63n(archivingTime)
-	return archivingTime, archivingHash
 }

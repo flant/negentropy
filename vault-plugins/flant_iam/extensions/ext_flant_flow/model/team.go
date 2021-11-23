@@ -8,7 +8,7 @@ import (
 const TeamType = "team" // also, memdb schema name
 
 type Team struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID           TeamUUID `json:"uuid"` // PK
 	Version        string   `json:"resource_version"`

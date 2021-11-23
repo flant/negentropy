@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RoleService struct {
@@ -53,8 +54,7 @@ func (s *RoleService) Delete(roleID model.RoleName) error {
 	//      * approvals,
 	//      * tokens,
 	//      * service account passwords
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return iam_repo.NewRoleRepository(s.db).Delete(roleID, archivingTimestamp, archivingHash)
+	return iam_repo.NewRoleRepository(s.db).Delete(roleID, memdb.NewArchiveMark())
 }
 
 func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole) error {
