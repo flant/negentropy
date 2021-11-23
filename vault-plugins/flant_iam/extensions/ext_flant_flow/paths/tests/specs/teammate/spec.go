@@ -15,17 +15,19 @@ import (
 )
 
 var (
-	TestAPI testapi.TestAPI
-	TeamAPI testapi.TestAPI
+	TestAPI   testapi.TestAPI
+	TeamAPI   testapi.TestAPI
+	TenantAPI testapi.TestAPI
 )
 
 var _ = Describe("Teammate", func() {
 	var team model.Team
 	BeforeSuite(func() {
+		_ = specs.CreateFlantTenant(TenantAPI)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
 	It("can be created", func() {
-		createPayload := fixtures.RandomTeammateCreatePayload()
+		createPayload := fixtures.RandomTeammateCreatePayload(team)
 		createPayload["team_uuid"] = team.UUID
 
 		params := testapi.Params{
@@ -49,7 +51,7 @@ var _ = Describe("Teammate", func() {
 	})
 
 	It("can be read", func() {
-		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
 		createdData := iam_specs.ConvertToGJSON(teammate)
 
 		TestAPI.Read(testapi.Params{
@@ -62,7 +64,7 @@ var _ = Describe("Teammate", func() {
 	})
 
 	It("can be deleted", func() {
-		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
 
 		TestAPI.Delete(testapi.Params{
 			"team":     teammate.TeamUUID,
@@ -78,7 +80,7 @@ var _ = Describe("Teammate", func() {
 	})
 
 	It("can be listed", func() {
-		teammate := specs.CreateRandomTeammate(TestAPI, team.UUID)
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
 
 		TestAPI.List(testapi.Params{
 			"team": teammate.TeamUUID,
@@ -90,7 +92,7 @@ var _ = Describe("Teammate", func() {
 	})
 
 	It("can be created with privileged", func() {
-		createPayload := fixtures.RandomTeammateCreatePayload()
+		createPayload := fixtures.RandomTeammateCreatePayload(team)
 		originalUUID := createPayload["uuid"]
 		createPayload["team_uuid"] = team.UUID
 

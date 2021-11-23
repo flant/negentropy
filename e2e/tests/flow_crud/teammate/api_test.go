@@ -14,6 +14,7 @@ func Test_teammateCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	teammate.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	teammate.TestAPI = lib.NewFlowTeammateAPI(rootClient)
+	teammate.TenantAPI = lib.NewTenantAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Teammate")
 }

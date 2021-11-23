@@ -234,7 +234,7 @@ func (s *DBSchema) validateExistenceIndexes() error {
 
 func verifyIndex(dt dataType, tables map[string]*TableSchema, r *Relation, childrenRelations bool) (*Relation, error) {
 	if ts, ok := tables[r.RelatedDataType]; !ok {
-		return nil, fmt.Errorf("table %s is absent in DBSchema", dt)
+		return nil, fmt.Errorf("table %s is absent in DBSchema", r.RelatedDataType)
 	} else {
 		if index, ok := ts.Indexes[r.RelatedDataTypeFieldIndexName]; ok {
 			switch index.Indexer.(type) {
@@ -312,7 +312,11 @@ func checkRsMapForRepeating(allRels map[dataType]map[RelationKey]struct{},
 	return allRels, nil
 }
 
-func MergeDBSchemas(schemas ...*DBSchema) (*DBSchema, error) {
+func MergeDBSchemasAndValidate(schemas ...*DBSchema) (*DBSchema, error) {
+	return MergeDBSchemas(true, schemas...)
+}
+
+func MergeDBSchemas(validate bool, schemas ...*DBSchema) (*DBSchema, error) {
 	tables := map[string]*hcmemdb.TableSchema{}
 
 	for i := range schemas {
@@ -346,9 +350,11 @@ func MergeDBSchemas(schemas ...*DBSchema) (*DBSchema, error) {
 		CheckingRelations:    mergeRelationFunc(func(s *DBSchema) mapRelations { return s.CheckingRelations }, schemas...),
 	}
 
-	err := result.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("%w:%s", ErrMergeSchema, err.Error())
+	if validate {
+		err := result.Validate()
+		if err != nil {
+			return nil, fmt.Errorf("%w:%s", ErrMergeSchema, err.Error())
+		}
 	}
 	return &result, nil
 }

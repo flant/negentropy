@@ -17,7 +17,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	schema, err := memdb.MergeDBSchemas(
+	schema, err := memdb.MergeDBSchemasAndValidate(
 		TenantSchema(),
 		ProjectSchema(),
 		GroupSchema(),

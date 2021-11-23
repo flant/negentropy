@@ -132,7 +132,7 @@ func (r *TeamRepository) List(showArchived bool) ([]*model.Team, error) {
 
 	list := []*model.Team{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.Timestamp == 0 {
+		if showArchived || !team.Archived() {
 			list = append(list, team)
 		}
 		return true, nil
@@ -151,7 +151,7 @@ func (r *TeamRepository) ListIDs(showArchived bool) ([]model.TeamUUID, error) {
 	}
 	ids := []model.TeamUUID{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.Timestamp == 0 {
+		if showArchived || !team.Archived() {
 			ids = append(ids, team.UUID)
 		}
 		return true, nil
@@ -198,7 +198,7 @@ func (r *TeamRepository) Restore(id model.TeamUUID) (*model.Team, error) {
 	if err != nil {
 		return nil, err
 	}
-	if team.Timestamp == 0 {
+	if !team.Archived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.TeamType, team)
@@ -215,7 +215,7 @@ func (r *TeamRepository) ListChildTeamIDs(parentTeamUUID model.TeamUUID, showArc
 	}
 	ids := []model.TeamUUID{}
 	err = r.Iter(iter, func(team *model.Team) (bool, error) {
-		if showArchived || team.Timestamp == 0 {
+		if showArchived || !team.Archived() {
 			ids = append(ids, team.UUID)
 		}
 		return true, nil

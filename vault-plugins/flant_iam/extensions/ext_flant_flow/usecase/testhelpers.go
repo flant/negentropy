@@ -17,7 +17,7 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 	require.NoError(t, err)
 	iamSchema, err := iam_repo.GetSchema()
 	require.NoError(t, err)
-	schema, err = memdb.MergeDBSchemas(schema, iamSchema)
+	schema, err = memdb.MergeDBSchemasAndValidate(schema, iamSchema)
 
 	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)

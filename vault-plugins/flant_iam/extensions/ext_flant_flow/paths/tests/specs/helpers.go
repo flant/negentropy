@@ -10,7 +10,29 @@ import (
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
+
+func CreateFlantTenant(tenantAPI testapi.TestAPI) iam_model.Tenant {
+	createPayload := map[string]interface{}{
+		"identifier":    "Identifier_FLANT",
+		"version":       "v1",
+		"feature_flags": nil,
+		"uuid":          fixtures.FlantUUID,
+	}
+	var createdData gjson.Result
+	tenantAPI.CreatePrivileged(testapi.Params{
+		"expectPayload": func(json gjson.Result) {
+			createdData = json
+		},
+	}, nil, createPayload)
+	rawTenant := createdData.Get("tenant")
+	data := []byte(rawTenant.String())
+	var tenant iam_model.Tenant
+	err := json.Unmarshal(data, &tenant)
+	Expect(err).ToNot(HaveOccurred())
+	return tenant
+}
 
 func CreateRandomClient(clientsAPI testapi.TestAPI) model.Client {
 	createPayload := fixtures.RandomClientCreatePayload()
@@ -44,15 +66,14 @@ func CreateRandomTeam(teamAPI testapi.TestAPI) model.Team {
 	return team
 }
 
-func CreateRandomTeammate(teamateAPI testapi.TestAPI, teamtID model.TeamUUID) model.Teammate {
-	createPayload := fixtures.RandomTeammateCreatePayload()
-	createPayload["team_uuid"] = teamtID
+func CreateRandomTeammate(teamateAPI testapi.TestAPI, team model.Team) model.FullTeammate {
+	createPayload := fixtures.RandomTeammateCreatePayload(team)
 	createdData := teamateAPI.Create(testapi.Params{
-		"team": teamtID,
+		"team": team.UUID,
 	}, nil, createPayload)
-	rawTemmate := createdData.Get("teammate")
-	data := []byte(rawTemmate.String())
-	var teammate model.Teammate
+	rawTeamate := createdData.Get("teammate")
+	data := []byte(rawTeamate.String())
+	var teammate model.FullTeammate
 	err := json.Unmarshal(data, &teammate)
 	Expect(err).ToNot(HaveOccurred())
 	return teammate

@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
@@ -23,16 +22,14 @@ type teammateBackend struct {
 	*flantFlowExtension
 	flantTenantUUID iam_model.TenantUUID
 	storage         *io.MemoryStore
-	userClient      iam_client.Users
 }
 
 func teammatePaths(e *flantFlowExtension, storage *io.MemoryStore,
-	flantTenantUUID iam_model.TenantUUID, userClient iam_client.Users) []*framework.Path {
+	flantTenantUUID iam_model.TenantUUID) []*framework.Path {
 	bb := &teammateBackend{
 		flantFlowExtension: e,
 		flantTenantUUID:    flantTenantUUID,
 		storage:            storage,
-		userClient:         userClient,
 	}
 	return bb.paths()
 }
@@ -229,7 +226,7 @@ func (b *teammateBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Teammates(tx, b.userClient).GetByID(id)
+		obj, err := usecase.Teammates(tx, b.flantTenantUUID).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -246,7 +243,7 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return backentutils.ResponseErr(req, err)
 		}
 		teamID := data.Get(repo.TeamForeignPK).(string)
-		teammate := &model.Teammate{
+		teammate := &model.FullTeammate{
 			User: iam_model.User{
 				UUID:             id,
 				TenantUUID:       b.flantTenantUUID,
@@ -267,10 +264,11 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teammates(tx, b.userClient).Create(teammate); err != nil {
+		if err := usecase.Teammates(tx, b.flantTenantUUID).Create(teammate); err != nil {
 			msg := "cannot create teammate"
 			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			err = fmt.Errorf("%s:%w", msg, err)
+			return backentutils.ResponseErr(req, err)
 		}
 		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
@@ -289,7 +287,7 @@ func (b *teammateBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		teammate := &model.Teammate{
+		teammate := &model.FullTeammate{
 			User: iam_model.User{
 				UUID:             id,
 				TenantUUID:       b.flantTenantUUID,
@@ -308,7 +306,7 @@ func (b *teammateBackend) handleUpdate() framework.OperationFunc {
 			RoleAtTeam: data.Get("role_at_team").(string),
 		}
 
-		err := usecase.Teammates(tx, b.userClient).Update(teammate)
+		err := usecase.Teammates(tx, b.flantTenantUUID).Update(teammate)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -328,8 +326,7 @@ func (b *teammateBackend) handleDelete() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-		// TODO pass origin to use in client
-		err := usecase.Teammates(tx, b.userClient).Delete(id)
+		err := usecase.Teammates(tx, b.flantTenantUUID).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -348,7 +345,7 @@ func (b *teammateBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		teammate, err := usecase.Teammates(tx, b.userClient).GetByID(id)
+		teammate, err := usecase.Teammates(tx, b.flantTenantUUID).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -368,8 +365,8 @@ func (b *teammateBackend) handleList() framework.OperationFunc {
 		}
 
 		tx := b.storage.Txn(false)
-
-		teammates, err := usecase.Teammates(tx, b.userClient).List(showArchived)
+		teamID := data.Get(repo.TeamForeignPK).(string)
+		teammates, err := usecase.Teammates(tx, b.flantTenantUUID).List(teamID, showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +388,7 @@ func (b *teammateBackend) handleRestore() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 
-		teammate, err := usecase.Teammates(tx, b.userClient).Restore(id)
+		teammate, err := usecase.Teammates(tx, b.flantTenantUUID).Restore(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

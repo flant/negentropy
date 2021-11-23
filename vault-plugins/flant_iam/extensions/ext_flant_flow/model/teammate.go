@@ -1,24 +1,42 @@
 package model
 
-import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const TeammateType = "teammate" // also, memdb schema name
 
-type Teammate struct {
+type FullTeammate struct {
 	iam_model.User
 
 	TeamUUID   TeamUUID   `json:"team_uuid"`
 	RoleAtTeam RoleAtTeam `json:"role_at_team"`
 }
 
-func (u *Teammate) IsDeleted() bool {
-	return u.Timestamp != 0
+type Teammate struct {
+	memdb.ArchiveMark
+	UserUUID   iam_model.UserUUID `json:"user_uuid"`
+	TeamUUID   TeamUUID           `json:"team_uuid"`
+	Version    string             `json:"resource_version"`
+	RoleAtTeam RoleAtTeam         `json:"role_at_team"`
 }
 
 func (u *Teammate) ObjType() string {
-	return TeamType
+	return TeammateType
 }
 
 func (u *Teammate) ObjId() string {
-	return u.UUID
+	return u.UserUUID
+}
+
+func (f *FullTeammate) GetTeammate() *Teammate {
+	if f == nil {
+		return nil
+	}
+	return &Teammate{
+		UserUUID:   f.UUID,
+		TeamUUID:   f.TeamUUID,
+		RoleAtTeam: f.RoleAtTeam,
+	}
 }

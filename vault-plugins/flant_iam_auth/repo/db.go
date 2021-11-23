@@ -52,7 +52,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemas(
+	schema, err := memdb.MergeDBSchemasAndValidate(
 		&memdb.DBSchema{
 			Tables: tables,
 		},

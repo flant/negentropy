@@ -99,7 +99,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemas(iamSchema, ext_repo.ServerSchema(), ext_flant_flow.FlantFlowDBSchema())
+	schema, err := memdb.MergeDBSchemasAndValidate(iamSchema, ext_repo.ServerSchema(), ext_flant_flow.FlantFlowDBSchema())
 	if err != nil {
 		return nil, err
 	}

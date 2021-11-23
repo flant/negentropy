@@ -20,7 +20,10 @@ const (
 	DevopsTeam   = "devops_team"
 )
 
-var AllowedTeamTypes = []interface{}{StandardTeam, DevopsTeam}
+var (
+	AllowedTeamTypes = []interface{}{StandardTeam, DevopsTeam}
+	TeamTypes        = map[string]struct{}{StandardTeam: {}, DevopsTeam: {}}
+)
 
 // Roles at teams
 var (
@@ -36,6 +39,10 @@ var (
 	StardardTeamRoles = map[RoleAtTeam]struct{}{MemberRole: {}, ManagerRole: {}}
 
 	AllowedRolesAtTeam = []interface{}{MemberRole, EngineerRole, ManagerRole, ProjectManagerRole, TeamLeadRole}
+	TeamRoles          = map[string]map[RoleAtTeam]struct{}{
+		StandardTeam: StardardTeamRoles,
+		DevopsTeam:   DevopsTeamRoles,
+	}
 )
 
 // ServicePack names

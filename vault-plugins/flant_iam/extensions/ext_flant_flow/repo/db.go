@@ -19,7 +19,6 @@ func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 	included := []map[string]*hcmemdb.TableSchema{
 		// ClientSchema(),
 
-		TeammateSchema(),
 		// ProjectSchema(),
 		ContactSchema(),
 	}
@@ -53,9 +52,10 @@ func GetSchema() (*memdb.DBSchema, error) {
 		CheckingRelations: nil,
 	}
 
-	schema, err = memdb.MergeDBSchemas(
+	schema, err = memdb.MergeDBSchemas(false,
 		schema,
 		TeamSchema(),
+		TeammateSchema(),
 	)
 	if err != nil {
 		return nil, err

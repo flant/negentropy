@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	FlantUUID = "00000000-0000-0000-0000-000000000088"
+
 	TeammateUUID1 = "00000000-0000-0000-0000-000000000001"
 	TeammateUUID2 = "00000000-0000-0000-0000-000000000002"
 	TeammateUUID3 = "00000000-0000-0000-0000-000000000003"
@@ -19,8 +21,8 @@ const (
 	TeammateUUID5 = "00000000-0000-0000-0000-000000000005"
 )
 
-func Teammates() []model.Teammate {
-	return []model.Teammate{
+func FullTeammates() []model.FullTeammate {
+	return []model.FullTeammate{
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID1,
@@ -28,8 +30,9 @@ func Teammates() []model.Teammate {
 				FullIdentifier: "user1@test",
 				Email:          "user1@mail.com",
 				Origin:         "test",
+				TenantUUID:     FlantUUID,
 			},
-			TeamUUID:   TenantUUID1,
+			TeamUUID:   TeamUUID1,
 			RoleAtTeam: model.EngineerRole,
 		},
 		{
@@ -39,6 +42,7 @@ func Teammates() []model.Teammate {
 				FullIdentifier: "user2@test",
 				Email:          "user2@mail.com",
 				Origin:         "test",
+				TenantUUID:     FlantUUID,
 			},
 			TeamUUID:   TeamUUID2,
 			RoleAtTeam: model.TeamLeadRole,
@@ -50,6 +54,7 @@ func Teammates() []model.Teammate {
 				FullIdentifier: "user3@test",
 				Email:          "user3@mail.com",
 				Origin:         "test",
+				TenantUUID:     FlantUUID,
 			},
 			TeamUUID:   TeamUUID1,
 			RoleAtTeam: model.ProjectManagerRole,
@@ -61,6 +66,7 @@ func Teammates() []model.Teammate {
 				FullIdentifier: "user4@test",
 				Email:          "user4@mail.com",
 				Origin:         "test",
+				TenantUUID:     FlantUUID,
 			},
 			TeamUUID:   TeamUUID3,
 			RoleAtTeam: model.MemberRole,
@@ -72,6 +78,7 @@ func Teammates() []model.Teammate {
 				FullIdentifier: "user4@test",
 				Email:          "user4@mail.com",
 				Origin:         "test",
+				TenantUUID:     FlantUUID,
 			},
 			TeamUUID:   TeamUUID3,
 			RoleAtTeam: model.ManagerRole,
@@ -79,16 +86,45 @@ func Teammates() []model.Teammate {
 	}
 }
 
-func RandomTeammateCreatePayload() map[string]interface{} {
-	teammatesSet := Teammates()
+func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
+	teammatesSet := FullTeammates()
 	rand.Seed(time.Now().UnixNano())
 	sample := teammatesSet[rand.Intn(len(teammatesSet))]
 
 	sample.Identifier = iam_uuid.New()
 	sample.Email = fmt.Sprintf("%s@ex.com", RandomStr())
-
+	sample.TeamUUID = team.UUID
+	var role string
+	for r := range model.TeamRoles[team.TeamType] {
+		role = r
+		break
+	}
+	sample.RoleAtTeam = role
 	bytes, _ := json.Marshal(sample)
 	var payload map[string]interface{}
 	json.Unmarshal(bytes, &payload) //nolint:errcheck
 	return payload
+}
+
+func Teammates() []model.Teammate {
+	fts := FullTeammates()
+	result := make([]model.Teammate, len(fts))
+	for i := range fts {
+		result[i] = model.Teammate{
+			UserUUID:   fts[i].UUID,
+			TeamUUID:   fts[i].TeamUUID,
+			Version:    fts[i].Version,
+			RoleAtTeam: fts[i].RoleAtTeam,
+		}
+	}
+	return result
+}
+
+func Users() []iam_model.User {
+	fts := FullTeammates()
+	result := make([]iam_model.User, len(fts))
+	for i := range fts {
+		result[i] = fts[i].User
+	}
+	return result
 }
