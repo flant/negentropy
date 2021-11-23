@@ -14,6 +14,7 @@ func Test_teammateCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	contact.ClientAPI = lib.NewFlowClientAPI(rootClient)
 	contact.TestAPI = lib.NewFlowContactAPI(rootClient)
+	contact.ProjectAPI = lib.NewFlowProjectAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Contact")
 }

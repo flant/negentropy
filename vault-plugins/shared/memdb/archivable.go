@@ -32,6 +32,10 @@ func (a *ArchiveMark) Archived() bool {
 	return a.Timestamp != 0
 }
 
+func (a *ArchiveMark) NotArchived() bool {
+	return a.Timestamp == 0
+}
+
 func (a *ArchiveMark) GetArchiveMark() ArchiveMark {
 	if a == nil {
 		return ArchiveMark{}

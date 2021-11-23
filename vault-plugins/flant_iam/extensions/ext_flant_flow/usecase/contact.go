@@ -1,97 +1,152 @@
 package usecase
 
 import (
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
-	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type ContactService struct {
-	clientUUID model.ClientUUID
-
-	clientRepo   *iam_repo.ClientRepository
-	contactsRepo *iam_repo.ContactRepository
-	userClient   iam_client.Users
+	clientUUID  model.ClientUUID
+	clientRepo  *repo.ClientRepository
+	projectRepo *iam_repo.ProjectRepository
+	repo        *repo.ContactRepository
+	userService *iam_usecase.UserService
 }
 
-func Contacts(db *io.MemoryStoreTxn, clientUUID model.ClientUUID, userClient iam_client.Users) *ContactService {
+func Contacts(db *io.MemoryStoreTxn, clientUUID model.ClientUUID) *ContactService {
 	return &ContactService{
-		clientUUID: clientUUID,
-
-		clientRepo:   iam_repo.NewClientRepository(db),
-		contactsRepo: iam_repo.NewContactRepository(db),
-		userClient:   userClient,
+		clientUUID:  clientUUID,
+		clientRepo:  repo.NewClientRepository(db),
+		projectRepo: iam_repo.NewProjectRepository(db),
+		repo:        repo.NewContactRepository(db),
+		userService: iam_usecase.Users(db, clientUUID, consts.OriginFlantFlow),
 	}
 }
 
-func (s *ContactService) Create(contact *model.Contact) error {
-	client, err := s.clientRepo.GetByID(s.clientUUID)
+func (s *ContactService) Create(fc *model.FullContact) error {
+	contact := fc.GetContact()
+	if err := s.validateCredentials(contact); err != nil {
+		return err
+	}
+	fc.Version = repo.NewResourceVersion()
+	if err := s.userService.Create(&fc.User); err != nil {
+		return err
+	}
+	contact.Version = fc.Version
+	return s.repo.Create(contact)
+}
+
+func (s *ContactService) Update(updated *model.FullContact) error {
+	contact := updated.GetContact()
+	if err := s.validateCredentials(contact); err != nil {
+		return err
+	}
+	stored, err := s.repo.GetByID(updated.UUID)
 	if err != nil {
 		return err
 	}
-
-	contact.Version = iam_repo.NewResourceVersion()
-	contact.FullIdentifier = contact.Identifier + "@" + client.Identifier
-	if contact.Origin == "" {
-		return consts.ErrBadOrigin
-	}
-	return s.contactsRepo.Create(contact)
-}
-
-func (s *ContactService) GetByID(id model.ContactUUID) (*model.Contact, error) {
-	return s.contactsRepo.GetByID(id)
-}
-
-func (s *ContactService) List(showArchived bool) ([]*model.Contact, error) {
-	return s.contactsRepo.List(s.clientUUID, showArchived)
-}
-
-func (s *ContactService) Update(contact *model.Contact) error {
-	stored, err := s.contactsRepo.GetByID(contact.UUID)
-	if err != nil {
-		return err
-	}
-
-	// Validate
-	if stored.TenantUUID != s.clientUUID {
-		return consts.ErrNotFound
-	}
-	if stored.Version != contact.Version {
+	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
 	}
-	if stored.Origin != contact.Origin {
-		return consts.ErrBadOrigin
-	}
+	updated.Version = repo.NewResourceVersion()
 
-	client, err := s.clientRepo.GetByID(s.clientUUID)
-	if err != nil {
+	if err = s.userService.Update(&updated.User); err != nil {
 		return err
 	}
-
-	// Update
-	contact.TenantUUID = s.clientUUID
-	contact.Version = iam_repo.NewResourceVersion()
-	contact.FullIdentifier = contact.Identifier + "@" + client.Identifier
-
-	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
-	if contact.Extensions == nil {
-		contact.Extensions = stored.Extensions
-	}
-	return s.contactsRepo.Update(contact)
+	contact.Version = updated.Version
+	return s.repo.Update(contact)
 }
 
 func (s *ContactService) Delete(id model.ContactUUID) error {
-	_, err := s.contactsRepo.GetByID(id)
+	err := s.userService.Delete(id)
 	if err != nil {
 		return err
 	}
-
-	return s.contactsRepo.Delete(id, memdb.NewArchiveMark())
+	user, err := s.userService.GetByID(id)
+	if err != nil {
+		return err
+	}
+	archiveMark := user.ArchiveMark
+	return s.repo.Delete(id, archiveMark)
 }
 
-func (s *ContactService) Restore(id model.ContactUUID) (*model.Contact, error) {
-	return s.contactsRepo.Restore(id)
+func (s *ContactService) GetByID(id model.ContactUUID) (*model.FullContact, error) {
+	user, err := s.userService.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	contact, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return makeFullContact(user, contact)
+}
+
+func (s *ContactService) List(showArchived bool) ([]*model.FullContact, error) {
+	cs, err := s.repo.List(s.clientUUID, showArchived)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.FullContact, len(cs))
+	for i := range cs {
+		user, err := s.userService.GetByID(cs[i].UserUUID)
+		if err != nil {
+			return nil, err
+		}
+		result[i], err = makeFullContact(user, cs[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (s *ContactService) Restore(id model.ContactUUID) (*model.FullContact, error) {
+	user, err := s.userService.Restore(id)
+	if err != nil {
+		return nil, err
+	}
+	contact, err := s.repo.Restore(id)
+	if err != nil {
+		return nil, err
+	}
+	return makeFullContact(user, contact)
+}
+
+func (s *ContactService) validateCredentials(contact *model.Contact) error {
+	for projectUUID, contactRole := range contact.Credentials {
+		if err := s.validateProjectUUID(projectUUID); err != nil {
+			return err
+		}
+		if _, ok := model.ContactRoles[contactRole]; !ok {
+			return fmt.Errorf("%w: contact role not allowed: %s", consts.ErrInavlidArg, contactRole)
+		}
+	}
+	return nil
+}
+
+func (s *ContactService) validateProjectUUID(uuid iam.ProjectUUID) error {
+	_, err := s.projectRepo.GetByID(uuid)
+	if errors.Is(err, consts.ErrNotFound) {
+		return fmt.Errorf("%w: project with uuid:%s not found", consts.ErrInavlidArg, uuid)
+	}
+	return err
+}
+
+func makeFullContact(user *iam.User, contact *model.Contact) (*model.FullContact, error) {
+	if user == nil || contact == nil {
+		return nil, consts.ErrNilPointer
+	}
+	return &model.FullContact{
+		User:        *user,
+		Credentials: contact.Credentials,
+	}, nil
 }

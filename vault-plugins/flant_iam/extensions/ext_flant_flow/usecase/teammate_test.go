@@ -14,22 +14,17 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-func createTeammates(t *testing.T, repo *repo.TeammateRepository, teammates ...model.Teammate) {
+func createTeammates(t *testing.T, tx *io.MemoryStoreTxn, teammates ...model.FullTeammate) {
+	userRepo := iam_repo.NewUserRepository(tx)
+	teammateRepo := repo.NewTeammateRepository(tx)
+
 	for _, teammate := range teammates {
 		tmp := teammate
 		tmp.Version = uuid.New()
-		err := repo.Create(&tmp)
-		require.NoError(t, err)
-	}
-}
-
-func createUsers(t *testing.T, tx *io.MemoryStoreTxn, users ...iam_model.User) {
-	repo := iam_repo.NewUserRepository(tx)
-	for _, user := range users {
-		tmp := user
-		tmp.Version = uuid.New()
 		tmp.FullIdentifier = uuid.New()
-		err := repo.Create(&tmp)
+		err := userRepo.Create(&tmp.User)
+		require.NoError(t, err)
+		err = teammateRepo.Create(tmp.GetTeammate())
 		require.NoError(t, err)
 	}
 }
@@ -48,10 +43,7 @@ func createFlantTenant(t *testing.T, tx *io.MemoryStoreTxn) {
 func teammateFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	createFlantTenant(t, tx)
-	createUsers(t, tx, fixtures.Users()...)
-
-	repo := repo.NewTeammateRepository(tx)
-	createTeammates(t, repo, fixtures.Teammates()...)
+	createTeammates(t, tx, fixtures.Teammates()...)
 	err := tx.Commit()
 	require.NoError(t, err)
 }
@@ -68,7 +60,6 @@ func Test_TeammateList(t *testing.T) {
 		ids = append(ids, obj.ObjId())
 	}
 	require.ElementsMatch(t, []string{
-		fixtures.TeammateUUID1, fixtures.TeammateUUID2, fixtures.TeammateUUID3,
-		fixtures.TeammateUUID4, fixtures.TeammateUUID5,
+		fixtures.TeammateUUID1, fixtures.TeammateUUID3,
 	}, ids)
 }

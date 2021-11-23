@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -21,15 +20,13 @@ import (
 
 type contactBackend struct {
 	*flantFlowExtension
-	storage    *io.MemoryStore
-	userClient iam_client.Users
+	storage *io.MemoryStore
 }
 
-func contactPaths(e *flantFlowExtension, storage *io.MemoryStore, userClient iam_client.Users) []*framework.Path {
+func contactPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
 	bb := &contactBackend{
 		flantFlowExtension: e,
 		storage:            storage,
-		userClient:         userClient,
 	}
 	return bb.paths()
 }
@@ -232,7 +229,7 @@ func (b *contactBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Contacts(tx, clientID, b.userClient).GetByID(id)
+		obj, err := usecase.Contacts(tx, clientID).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -249,7 +246,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return backentutils.ResponseErr(req, err)
 		}
 		clientID := data.Get(clientUUIDKey).(string)
-		contact := &model.Contact{
+		contact := &model.FullContact{
 			User: iam_model.User{
 				UUID:             id,
 				TenantUUID:       clientID,
@@ -269,7 +266,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Contacts(tx, clientID, b.userClient).Create(contact); err != nil {
+		if err := usecase.Contacts(tx, clientID).Create(contact); err != nil {
 			msg := "cannot create contact"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -291,7 +288,7 @@ func (b *contactBackend) handleUpdate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		contact := &model.Contact{
+		contact := &model.FullContact{
 			User: iam_model.User{
 				UUID:             id,
 				TenantUUID:       clientID,
@@ -309,7 +306,7 @@ func (b *contactBackend) handleUpdate() framework.OperationFunc {
 			Credentials: data.Get("credentials").(map[string]string),
 		}
 
-		err := usecase.Contacts(tx, clientID, b.userClient).Update(contact)
+		err := usecase.Contacts(tx, clientID).Update(contact)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -332,7 +329,7 @@ func (b *contactBackend) handleDelete() framework.OperationFunc {
 		defer tx.Abort()
 
 		// TODO pass origin to use in client
-		err := usecase.Contacts(tx, clientID, b.userClient).Delete(id)
+		err := usecase.Contacts(tx, clientID).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -352,7 +349,7 @@ func (b *contactBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		contact, err := usecase.Contacts(tx, clientID, b.userClient).GetByID(id)
+		contact, err := usecase.Contacts(tx, clientID).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -374,7 +371,7 @@ func (b *contactBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		contacts, err := usecase.Contacts(tx, clientID, b.userClient).List(showArchived)
+		contacts, err := usecase.Contacts(tx, clientID).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -397,7 +394,7 @@ func (b *contactBackend) handleRestore() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 		clientID := data.Get(clientUUIDKey).(string)
 
-		contact, err := usecase.Contacts(tx, clientID, b.userClient).Restore(id)
+		contact, err := usecase.Contacts(tx, clientID).Restore(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

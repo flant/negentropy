@@ -21,7 +21,7 @@ const (
 	TeammateUUID5 = "00000000-0000-0000-0000-000000000005"
 )
 
-func FullTeammates() []model.FullTeammate {
+func Teammates() []model.FullTeammate {
 	return []model.FullTeammate{
 		{
 			User: iam_model.User{
@@ -87,7 +87,7 @@ func FullTeammates() []model.FullTeammate {
 }
 
 func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
-	teammatesSet := FullTeammates()
+	teammatesSet := Teammates()
 	rand.Seed(time.Now().UnixNano())
 	sample := teammatesSet[rand.Intn(len(teammatesSet))]
 
@@ -104,27 +104,4 @@ func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
 	var payload map[string]interface{}
 	json.Unmarshal(bytes, &payload) //nolint:errcheck
 	return payload
-}
-
-func Teammates() []model.Teammate {
-	fts := FullTeammates()
-	result := make([]model.Teammate, len(fts))
-	for i := range fts {
-		result[i] = model.Teammate{
-			UserUUID:   fts[i].UUID,
-			TeamUUID:   fts[i].TeamUUID,
-			Version:    fts[i].Version,
-			RoleAtTeam: fts[i].RoleAtTeam,
-		}
-	}
-	return result
-}
-
-func Users() []iam_model.User {
-	fts := FullTeammates()
-	result := make([]iam_model.User, len(fts))
-	for i := range fts {
-		result[i] = fts[i].User
-	}
-	return result
 }

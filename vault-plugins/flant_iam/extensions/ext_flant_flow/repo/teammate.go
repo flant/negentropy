@@ -102,11 +102,11 @@ func (r *TeammateRepository) GetByID(id iam_model.UserUUID) (*model.Teammate, er
 }
 
 func (r *TeammateRepository) Update(teammate *model.Teammate) error {
-	teammate, err := r.GetByID(teammate.UserUUID)
+	stored, err := r.GetByID(teammate.UserUUID)
 	if err != nil {
 		return err
 	}
-	if teammate.Archived() {
+	if stored.Archived() {
 		return consts.ErrIsArchived
 	}
 	return r.save(teammate)
@@ -132,7 +132,7 @@ func (r *TeammateRepository) List(teamID model.TeamUUID, showArchived bool) ([]*
 
 	list := []*model.Teammate{}
 	err = r.Iter(iter, func(teammate *model.Teammate) (bool, error) {
-		if showArchived || !teammate.Archived() {
+		if showArchived || teammate.NotArchived() {
 			list = append(list, teammate)
 		}
 		return true, nil
@@ -151,7 +151,7 @@ func (r *TeammateRepository) ListIDs(showArchived bool) ([]iam_model.UserUUID, e
 	}
 	ids := []iam_model.UserUUID{}
 	err = r.Iter(iter, func(teammate *model.Teammate) (bool, error) {
-		if showArchived || !teammate.Archived() {
+		if showArchived || teammate.NotArchived() {
 			ids = append(ids, teammate.UserUUID)
 		}
 		return true, nil
@@ -163,11 +163,6 @@ func (r *TeammateRepository) ListIDs(showArchived bool) ([]iam_model.UserUUID, e
 }
 
 func (r *TeammateRepository) Iter(iter hcmemdb.ResultIterator, action func(*model.Teammate) (bool, error)) error {
-	iter, err := r.db.Get(model.TeammateType, PK)
-	if err != nil {
-		return err
-	}
-
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -201,7 +196,7 @@ func (r *TeammateRepository) Restore(id iam_model.UserUUID) (*model.Teammate, er
 	if err != nil {
 		return nil, err
 	}
-	if !teammate.Archived() {
+	if teammate.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.TeammateType, teammate)

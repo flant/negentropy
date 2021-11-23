@@ -35,8 +35,10 @@ func (f *FullTeammate) GetTeammate() *Teammate {
 		return nil
 	}
 	return &Teammate{
-		UserUUID:   f.UUID,
-		TeamUUID:   f.TeamUUID,
-		RoleAtTeam: f.RoleAtTeam,
+		ArchiveMark: f.ArchiveMark,
+		UserUUID:    f.UUID,
+		TeamUUID:    f.TeamUUID,
+		RoleAtTeam:  f.RoleAtTeam,
+		Version:     f.Version,
 	}
 }

@@ -16,14 +16,16 @@ import (
 )
 
 var (
-	TestAPI   testapi.TestAPI
-	ClientAPI testapi.TestAPI
+	TestAPI    testapi.TestAPI
+	ClientAPI  testapi.TestAPI
+	ProjectAPI testapi.TestAPI
 )
 
 var _ = Describe("Contact", func() {
 	var client model.Client
 	BeforeSuite(func() {
 		client = specs.CreateRandomClient(ClientAPI)
+		specs.TryCreateProjects(ProjectAPI, client.UUID, fixtures.Projects()...)
 	}, 1.0)
 	It("can be created", func() {
 		createPayload := fixtures.RandomContactCreatePayload()
