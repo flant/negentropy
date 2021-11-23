@@ -13,6 +13,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -270,7 +271,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			RequireMFA: data.Get("require_mfa").(bool),
 			Members:    members,
 			Roles:      roles,
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 			Identifier: data.Get("identifier").(string),
 			AnyProject: data.Get("any_project").(bool),
 		}
@@ -321,7 +322,7 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			RequireMFA: data.Get("require_mfa").(bool),
 			Members:    members,
 			Roles:      roles,
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 			AnyProject: data.Get("any_project").(bool),
 		}
 
@@ -349,7 +350,7 @@ func (b *roleBindingBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.RoleBindings(tx).Delete(model.OriginIAM, id)
+		err := usecase.RoleBindings(tx).Delete(consts.OriginIAM, id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

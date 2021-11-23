@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -19,15 +18,13 @@ import (
 
 type projectBackend struct {
 	*flantFlowExtension
-	storage       *io.MemoryStore
-	projectClient iam_client.Projects
+	storage *io.MemoryStore
 }
 
-func projectPaths(e *flantFlowExtension, storage *io.MemoryStore, projectClient iam_client.Projects) []*framework.Path {
+func projectPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
 	bb := &projectBackend{
 		flantFlowExtension: e,
 		storage:            storage,
-		projectClient:      projectClient,
 	}
 	return bb.paths()
 }
@@ -207,7 +204,7 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Projects(tx, b.projectClient).GetByID(id)
+		obj, err := usecase.Projects(tx).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -241,7 +238,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Projects(tx, b.projectClient).Create(project); err != nil {
+		if err := usecase.Projects(tx).Create(project); err != nil {
 			msg := "cannot create project"
 			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -295,7 +292,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 			ServicePacks: servicePacks,
 		}
 
-		err = usecase.Projects(tx, b.projectClient).Update(project)
+		err = usecase.Projects(tx).Update(project)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -317,7 +314,7 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Projects(tx, b.projectClient).Delete(id)
+		err := usecase.Projects(tx).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -337,7 +334,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		project, err := usecase.Projects(tx, b.projectClient).GetByID(id)
+		project, err := usecase.Projects(tx).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -359,7 +356,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		projects, err := usecase.Projects(tx, b.projectClient).List(clientID, showArchived)
+		projects, err := usecase.Projects(tx).List(clientID, showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -381,7 +378,7 @@ func (b *projectBackend) handleRestore() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 
-		project, err := usecase.Projects(tx, b.projectClient).Restore(id)
+		project, err := usecase.Projects(tx).Restore(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

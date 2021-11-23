@@ -79,7 +79,7 @@ func (s *UserService) Update(user *model.User) error {
 	return s.usersRepo.Update(user)
 }
 
-func (s *UserService) Delete(origin model.ObjectOrigin, id model.UserUUID) error {
+func (s *UserService) Delete(origin consts.ObjectOrigin, id model.UserUUID) error {
 	user, err := s.usersRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -102,13 +102,13 @@ func (s *UserService) SetExtension(ext *model.Extension) error {
 		return err
 	}
 	if obj.Extensions == nil {
-		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
+		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	return s.Update(obj)
 }
 
-func (s *UserService) UnsetExtension(origin model.ObjectOrigin, uuid model.UserUUID) error {
+func (s *UserService) UnsetExtension(origin consts.ObjectOrigin, uuid model.UserUUID) error {
 	obj, err := s.GetByID(uuid)
 	if err != nil {
 		return err

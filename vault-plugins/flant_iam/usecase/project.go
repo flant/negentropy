@@ -8,11 +8,12 @@ import (
 )
 
 type ProjectService struct {
-	db *io.MemoryStoreTxn
+	db     *io.MemoryStoreTxn
+	origin consts.ObjectOrigin
 }
 
-func Projects(db *io.MemoryStoreTxn) *ProjectService {
-	return &ProjectService{db: db}
+func Projects(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *ProjectService {
+	return &ProjectService{db: db, origin: origin}
 }
 
 func (s *ProjectService) Create(project *model.Project) error {
@@ -23,6 +24,7 @@ func (s *ProjectService) Create(project *model.Project) error {
 	}
 
 	project.Version = repo.NewResourceVersion()
+	project.Origin = s.origin
 
 	return repo.NewProjectRepository(s.db).Create(project)
 }
@@ -42,6 +44,9 @@ func (s *ProjectService) Update(project *model.Project) error {
 	if stored.Version != project.Version {
 		return consts.ErrBadVersion
 	}
+	if stored.Origin != project.Origin {
+		return consts.ErrBadOrigin
+	}
 	project.Version = repo.NewResourceVersion()
 
 	// Update
@@ -50,6 +55,15 @@ func (s *ProjectService) Update(project *model.Project) error {
 }
 
 func (s *ProjectService) Delete(id model.ProjectUUID) error {
+	repository := repo.NewProjectRepository(s.db)
+	stored, err := repository.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if stored.Origin != s.origin {
+		return consts.ErrBadOrigin
+	}
+
 	archivingTimestamp, archivingHash := ArchivingLabel()
 	return repo.NewProjectRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
 }
@@ -63,5 +77,13 @@ func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) 
 }
 
 func (s *ProjectService) Restore(id model.ProjectUUID) (*model.Project, error) {
+	repository := repo.NewProjectRepository(s.db)
+	stored, err := repository.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if stored.Origin != s.origin {
+		return nil, consts.ErrBadOrigin
+	}
 	return repo.NewProjectRepository(s.db).Restore(id)
 }

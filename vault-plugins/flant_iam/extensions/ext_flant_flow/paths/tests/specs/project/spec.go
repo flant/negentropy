@@ -13,6 +13,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -54,13 +55,13 @@ var _ = Describe("Project", func() {
 	It("can be read", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 		createdData := iam_specs.ConvertToGJSON(project)
-
+		project.Origin = consts.OriginFlantFlow
 		TestAPI.Read(testapi.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
 			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"))
+				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"), "resource_version", "origin")
 			},
 		}, nil)
 	})
@@ -90,7 +91,7 @@ var _ = Describe("Project", func() {
 			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
-					iam_specs.ConvertToGJSON(project))
+					iam_specs.ConvertToGJSON(project), "resource_version", "origin")
 			},
 		}, url.Values{})
 	})

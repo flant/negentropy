@@ -51,21 +51,21 @@ type MultipassService struct {
 	saRepo     *iam_repo.ServiceAccountRepository
 
 	// context
-	origin     model.ObjectOrigin
+	origin     consts.ObjectOrigin
 	ownerType  model.MultipassOwnerType
 	tenantUUID model.TenantUUID
 	ownerUUID  model.OwnerUUID
 }
 
-func UserMultipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID, uid model.OwnerUUID) *MultipassService {
+func UserMultipasses(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, tid model.TenantUUID, uid model.OwnerUUID) *MultipassService {
 	return Multipasses(db, origin, model.MultipassOwnerUser, tid, uid)
 }
 
-func ServiceAccountMultipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID, said model.OwnerUUID) *MultipassService {
+func ServiceAccountMultipasses(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, tid model.TenantUUID, said model.OwnerUUID) *MultipassService {
 	return Multipasses(db, origin, model.MultipassOwnerServiceAccount, tid, said)
 }
 
-func Multipasses(db *io.MemoryStoreTxn, origin model.ObjectOrigin, otype model.MultipassOwnerType, tid model.TenantUUID, oid model.OwnerUUID) *MultipassService {
+func Multipasses(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, otype model.MultipassOwnerType, tid model.TenantUUID, oid model.OwnerUUID) *MultipassService {
 	return &MultipassService{
 		repo:       iam_repo.NewMultipassRepository(db),
 		tenantRepo: iam_repo.NewTenantRepository(db),
@@ -191,7 +191,7 @@ func (r *MultipassService) PublicList(showArchived bool) ([]*model.Multipass, er
 }
 
 func (r *MultipassService) validateContext() error {
-	if err := model.ValidateOrigin(r.origin); err != nil {
+	if err := consts.ValidateOrigin(r.origin); err != nil {
 		return err
 	}
 	_, err := r.tenantRepo.GetByID(r.tenantUUID)
@@ -231,13 +231,13 @@ func (r *MultipassService) SetExtension(ext *model.Extension) error {
 		return err
 	}
 	if obj.Extensions == nil {
-		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
+		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	return r.repo.Update(obj)
 }
 
-func (r *MultipassService) UnsetExtension(origin model.ObjectOrigin, uuid model.MultipassUUID) error {
+func (r *MultipassService) UnsetExtension(origin consts.ObjectOrigin, uuid model.MultipassUUID) error {
 	obj, err := r.repo.GetByID(uuid)
 	if err != nil {
 		return err

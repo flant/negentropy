@@ -7,6 +7,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
@@ -20,7 +21,7 @@ func createProjects(t *testing.T, repo *ProjectService, projects ...model.Projec
 
 func projectFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	repo := Projects(tx)
+	repo := Projects(tx, consts.OriginIAM)
 	createProjects(t, repo, fixtures.Projects()...)
 	err := tx.Commit()
 	require.NoError(t, err)
@@ -29,7 +30,7 @@ func projectFixture(t *testing.T, store *io.MemoryStore) {
 func Test_ProjectList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, projectFixture).Txn(true)
 
-	projects, err := Projects(tx).List(fixtures.TenantUUID1, false)
+	projects, err := Projects(tx, consts.OriginIAM).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

@@ -9,13 +9,13 @@ import (
 
 type ServiceAccountService struct {
 	tenantUUID model.TenantUUID
-	origin     model.ObjectOrigin
+	origin     consts.ObjectOrigin
 
 	repo       *iam_repo.ServiceAccountRepository
 	tenantRepo *iam_repo.TenantRepository
 }
 
-func ServiceAccounts(db *io.MemoryStoreTxn, origin model.ObjectOrigin, tid model.TenantUUID) *ServiceAccountService {
+func ServiceAccounts(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, tid model.TenantUUID) *ServiceAccountService {
 	return &ServiceAccountService{
 		tenantUUID: tid,
 		origin:     origin,
@@ -131,13 +131,13 @@ func (s *ServiceAccountService) SetExtension(ext *model.Extension) error {
 		return err
 	}
 	if obj.Extensions == nil {
-		obj.Extensions = make(map[model.ObjectOrigin]*model.Extension)
+		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
 	return s.Update(obj)
 }
 
-func (s *ServiceAccountService) UnsetExtension(origin model.ObjectOrigin, uuid string) error {
+func (s *ServiceAccountService) UnsetExtension(origin consts.ObjectOrigin, uuid string) error {
 	obj, err := s.GetByID(uuid)
 	if err != nil {
 		return err

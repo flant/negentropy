@@ -8,10 +8,8 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/iam_client"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -19,15 +17,13 @@ import (
 
 type clientBackend struct {
 	*flantFlowExtension
-	storage      *io.MemoryStore
-	tenantClient iam_client.Tenants
+	storage *io.MemoryStore
 }
 
-func clientPaths(e *flantFlowExtension, storage *io.MemoryStore, tenantClient iam_client.Tenants) []*framework.Path {
+func clientPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
 	bb := &clientBackend{
 		flantFlowExtension: e,
 		storage:            storage,
-		tenantClient:       tenantClient,
 	}
 	return bb.paths()
 }
@@ -171,7 +167,7 @@ func (b *clientBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		c, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
+		c, err := usecase.Clients(tx).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -187,16 +183,15 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return backentutils.ResponseErr(req, err)
 		}
 		client := &model.Client{
-			Tenant: iam_model.Tenant{
-				UUID:       id,
-				Identifier: data.Get("identifier").(string),
-			},
+
+			UUID:       id,
+			Identifier: data.Get("identifier").(string),
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Clients(tx, b.tenantClient).Create(client); err != nil {
+		if err := usecase.Clients(tx).Create(client); err != nil {
 			msg := "cannot create client"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -218,14 +213,12 @@ func (b *clientBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		client := &model.Client{
-			Tenant: iam_model.Tenant{
-				UUID:       id,
-				Identifier: data.Get("identifier").(string),
-				Version:    data.Get("resource_version").(string),
-			},
+			UUID:       id,
+			Identifier: data.Get("identifier").(string),
+			Version:    data.Get("resource_version").(string),
 		}
 
-		err := usecase.Clients(tx, b.tenantClient).Update(client)
+		err := usecase.Clients(tx).Update(client)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -246,7 +239,7 @@ func (b *clientBackend) handleDelete() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 
-		err := usecase.Clients(tx, b.tenantClient).Delete(id)
+		err := usecase.Clients(tx).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -265,7 +258,7 @@ func (b *clientBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		client, err := usecase.Clients(tx, b.tenantClient).GetByID(id)
+		client, err := usecase.Clients(tx).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -288,7 +281,7 @@ func (b *clientBackend) handleList() framework.OperationFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		clients, err := usecase.Clients(tx, b.tenantClient).List(showArchived)
+		clients, err := usecase.Clients(tx).List(showArchived)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +308,7 @@ func (b *clientBackend) handleRestore() framework.OperationFunc {
 			fullRestore = rawFullRestore.(bool)
 		}
 
-		client, err := usecase.Clients(tx, b.tenantClient).Restore(id, fullRestore)
+		client, err := usecase.Clients(tx).Restore(id, fullRestore)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

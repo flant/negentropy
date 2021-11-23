@@ -1,6 +1,9 @@
 package model
 
-import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+import (
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const UserType = "user" // also, memdb schema name
 
@@ -11,9 +14,9 @@ type User struct {
 	TenantUUID TenantUUID `json:"tenant_uuid"`
 	Version    string     `json:"resource_version"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"extensions"`
+	Extensions map[consts.ObjectOrigin]*Extension `json:"extensions"`
 
 	Identifier     string `json:"identifier"`
 	FullIdentifier string `json:"full_identifier"` // calculated <identifier>@<tenant_identifier>

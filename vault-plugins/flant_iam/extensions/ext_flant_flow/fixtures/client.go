@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 const (
@@ -15,16 +14,16 @@ const (
 
 func Clients() []model.Client {
 	return []model.Client{
-		{Tenant: iam_model.Tenant{
+		{
 			UUID:       TenantUUID1,
 			Identifier: "tenant1",
 			Version:    "v1",
-		}},
-		{Tenant: iam_model.Tenant{
+		},
+		{
 			UUID:       TenantUUID2,
 			Identifier: "tenant2",
 			Version:    "v1",
-		}},
+		},
 	}
 }
 

@@ -245,10 +245,10 @@ func (r *UserServerAccessRepository) getUID() (int, error) {
 
 func (r *UserServerAccessRepository) CreateExtension(user *iam_model.User) error {
 	if user.Extensions == nil {
-		user.Extensions = map[iam_model.ObjectOrigin]*iam_model.Extension{}
+		user.Extensions = map[consts.ObjectOrigin]*iam_model.Extension{}
 	}
 
-	if _, ok := user.Extensions[iam_model.OriginServerAccess]; ok {
+	if _, ok := user.Extensions[consts.OriginServerAccess]; ok {
 		return nil
 	}
 
@@ -268,8 +268,8 @@ func (r *UserServerAccessRepository) CreateExtension(user *iam_model.User) error
 	}
 	currentUUID := lastUUID + 1
 
-	user.Extensions[iam_model.OriginServerAccess] = &iam_model.Extension{
-		Origin:    iam_model.OriginServerAccess,
+	user.Extensions[consts.OriginServerAccess] = &iam_model.Extension{
+		Origin:    consts.OriginServerAccess,
 		OwnerType: iam_model.ExtensionOwnerTypeUser,
 		OwnerUUID: user.ObjId(),
 		Attributes: map[string]interface{}{
@@ -304,7 +304,7 @@ func (r UserServerAccessRepository) RevealPassword(userUUID, serverUUID string) 
 		return "", err
 	}
 
-	passwordsRaw := user.Extensions[iam_model.OriginServerAccess].Attributes["passwords"]
+	passwordsRaw := user.Extensions[consts.OriginServerAccess].Attributes["passwords"]
 	passwords := passwordsRaw.([]ext_model.UserServerPassword)
 
 	passwords = garbageCollectPasswords(passwords, randomSeed, randomSalt, r.expireSeedAfterRevealIn, r.deleteExpiredPasswordSeedsAfter)

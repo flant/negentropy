@@ -8,37 +8,62 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
-	TeamForeignPK = "team_uuid"
+	TeamForeignPK   = "team_uuid"
+	ParentTeamIndex = "parent_team_uuid"
 )
 
-func TeamSchema() map[string]*hcmemdb.TableSchema {
-	return map[string]*hcmemdb.TableSchema{
-		model.TeamType: {
-			Name: model.TeamType,
-			Indexes: map[string]*hcmemdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &hcmemdb.UUIDFieldIndex{
-						Field: "UUID",
+func TeamSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.TeamType: {
+				Name: model.TeamType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
+					},
+					"identifier": {
+						Name:   "identifier",
+						Unique: true,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "Identifier",
+							Lowercase: true,
+						},
+					},
+					"version": {
+						Name: "version",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Version",
+						},
+					},
+					ParentTeamIndex: {
+						Name:         ParentTeamIndex,
+						AllowMissing: true,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "ParentTeamUUID",
+						},
 					},
 				},
-				"identifier": {
-					Name:   "identifier",
-					Unique: true,
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field:     "Identifier",
-						Lowercase: true,
-					},
+			},
+		},
+		CheckingRelations: map[string][]memdb.Relation{
+			model.TeamType: {
+				{
+					OriginalDataTypeFieldName:     "UUID",
+					RelatedDataType:               model.TeammateType,
+					RelatedDataTypeFieldIndexName: TeamForeignPK,
 				},
-				"version": {
-					Name: "version",
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field: "Version",
-					},
+				{
+					OriginalDataTypeFieldName:     "ParentTeamUUID",
+					RelatedDataType:               model.TeamType,
+					RelatedDataTypeFieldIndexName: ParentTeamIndex,
 				},
 			},
 		},
@@ -93,12 +118,10 @@ func (r *TeamRepository) Delete(id model.TeamUUID, archivingTimestamp model.Unix
 	if err != nil {
 		return err
 	}
-	if team.IsDeleted() {
+	if team.Archived() {
 		return consts.ErrIsArchived
 	}
-	team.ArchivingTimestamp = archivingTimestamp
-	team.ArchivingHash = archivingHash
-	return r.Update(team)
+	return r.db.Archive(model.TeamType, team, archivingTimestamp, archivingHash)
 }
 
 func (r *TeamRepository) List(showArchived bool) ([]*model.Team, error) {
@@ -108,37 +131,40 @@ func (r *TeamRepository) List(showArchived bool) ([]*model.Team, error) {
 	}
 
 	list := []*model.Team{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
+	err = r.Iter(iter, func(team *model.Team) (bool, error) {
+		if showArchived || team.ArchivingTimestamp == 0 {
+			list = append(list, team)
 		}
-		obj := raw.(*model.Team)
-		if showArchived || obj.ArchivingTimestamp == 0 {
-			list = append(list, obj)
-		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	return list, nil
 }
 
 func (r *TeamRepository) ListIDs(showArchived bool) ([]model.TeamUUID, error) {
-	objs, err := r.List(showArchived)
+	iter, err := r.db.Get(model.TeamType, PK)
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]model.TeamUUID, len(objs))
-	for i := range objs {
-		ids[i] = objs[i].ObjId()
+	ids := []model.TeamUUID{}
+	err = r.Iter(iter, func(team *model.Team) (bool, error) {
+		if showArchived || team.ArchivingTimestamp == 0 {
+			ids = append(ids, team.UUID)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	return ids, nil
 }
 
-func (r *TeamRepository) Iter(action func(*model.Team) (bool, error)) error {
-	iter, err := r.db.Get(model.TeamType, PK)
-	if err != nil {
-		return err
-	}
-
+// Iter operate action under each of iter.next() entity
+func (r *TeamRepository) Iter(iter hcmemdb.ResultIterator, action func(*model.Team) (bool, error)) error {
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -175,11 +201,27 @@ func (r *TeamRepository) Restore(id model.TeamUUID) (*model.Team, error) {
 	if team.ArchivingTimestamp == 0 {
 		return nil, consts.ErrIsNotArchived
 	}
-	team.ArchivingTimestamp = 0
-	team.ArchivingHash = 0
-	err = r.Update(team)
+	err = r.db.Restore(model.TeamType, team)
 	if err != nil {
 		return nil, err
 	}
 	return team, nil
+}
+
+func (r *TeamRepository) ListChildTeamIDs(parentTeamUUID model.TeamUUID, showArchived bool) ([]model.TeamUUID, error) {
+	iter, err := r.db.Get(model.TeamType, ParentTeamIndex, parentTeamUUID)
+	if err != nil {
+		return nil, err
+	}
+	ids := []model.TeamUUID{}
+	err = r.Iter(iter, func(team *model.Team) (bool, error) {
+		if showArchived || team.ArchivingTimestamp == 0 {
+			ids = append(ids, team.UUID)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }

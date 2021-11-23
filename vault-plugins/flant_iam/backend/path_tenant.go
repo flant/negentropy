@@ -11,6 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -228,7 +229,7 @@ func (b *tenantBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		t, err := usecase.Tenants(tx).GetByID(id)
+		t, err := usecase.Tenants(tx, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -252,7 +253,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.Tenants(tx).Create(tenant); err != nil {
+		if err = usecase.Tenants(tx, consts.OriginIAM).Create(tenant); err != nil {
 			msg := "cannot create tenant"
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
@@ -279,7 +280,7 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 		}
 
-		err := usecase.Tenants(tx).Update(tenant)
+		err := usecase.Tenants(tx, consts.OriginIAM).Update(tenant)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -300,7 +301,7 @@ func (b *tenantBackend) handleDelete() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 
-		err := usecase.Tenants(tx).Delete(id)
+		err := usecase.Tenants(tx, consts.OriginIAM).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -319,7 +320,7 @@ func (b *tenantBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		tenant, err := usecase.Tenants(tx).GetByID(id)
+		tenant, err := usecase.Tenants(tx, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -342,7 +343,7 @@ func (b *tenantBackend) handleList() framework.OperationFunc {
 		}
 
 		tx := b.storage.Txn(false)
-		tenants, err := usecase.Tenants(tx).List(showArchived)
+		tenants, err := usecase.Tenants(tx, consts.OriginIAM).List(showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
@@ -369,7 +370,7 @@ func (b *tenantBackend) handleRestore() framework.OperationFunc {
 			fullRestore = rawFullRestore.(bool)
 		}
 
-		tenant, err := usecase.Tenants(tx).Restore(id, fullRestore)
+		tenant, err := usecase.Tenants(tx, consts.OriginIAM).Restore(id, fullRestore)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

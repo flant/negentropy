@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -25,7 +26,7 @@ func Groups() []model.Group {
 			Identifier:      "group3",
 			Users:           []string{UserUUID3, UserUUID4},
 			ServiceAccounts: []string{ServiceAccountUUID1},
-			Origin:          model.OriginIAM,
+			Origin:          consts.OriginIAM,
 		},
 		{
 			UUID:            GroupUUID1,
@@ -34,14 +35,14 @@ func Groups() []model.Group {
 			Users:           []string{UserUUID2, UserUUID3},
 			Groups:          []string{GroupUUID3},
 			ServiceAccounts: []string{ServiceAccountUUID1},
-			Origin:          model.OriginIAM,
+			Origin:          consts.OriginIAM,
 		},
 		{
 			UUID:       GroupUUID2,
 			TenantUUID: TenantUUID1,
 			Identifier: "group2",
 			Users:      []string{UserUUID1, UserUUID3},
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 		},
 		{
 			UUID:            GroupUUID4,
@@ -50,14 +51,14 @@ func Groups() []model.Group {
 			Users:           []string{UserUUID2, UserUUID3},
 			Groups:          []string{GroupUUID2, GroupUUID3},
 			ServiceAccounts: []string{ServiceAccountUUID2, ServiceAccountUUID3},
-			Origin:          model.OriginIAM,
+			Origin:          consts.OriginIAM,
 		},
 		{
 			UUID:       GroupUUID5,
 			TenantUUID: TenantUUID1,
 			Identifier: "group5",
 			Groups:     []string{GroupUUID2, GroupUUID1},
-			Origin:     model.OriginIAM,
+			Origin:     consts.OriginIAM,
 		},
 	}
 }

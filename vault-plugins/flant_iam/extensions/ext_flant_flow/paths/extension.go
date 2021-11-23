@@ -35,8 +35,8 @@ func FlantFlowPaths(conf *logical.BackendConfig, storage *sharedio.MemoryStore) 
 	paths := framework.PathAppend(
 		teamPaths(b, storage),
 		teammatePaths(b, storage, fixtures.TeammateUUID1, nil),
-		clientPaths(b, storage, nil),
-		projectPaths(b, storage, nil),
+		clientPaths(b, storage),
+		projectPaths(b, storage),
 		contactPaths(b, storage, nil),
 	)
 

@@ -17,10 +17,10 @@ const (
 
 func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
 	included := []map[string]*hcmemdb.TableSchema{
-		ClientSchema(),
-		TeamSchema(),
+		// ClientSchema(),
+
 		TeammateSchema(),
-		ProjectSchema(),
+		// ProjectSchema(),
 		ContactSchema(),
 	}
 
@@ -53,7 +53,10 @@ func GetSchema() (*memdb.DBSchema, error) {
 		CheckingRelations: nil,
 	}
 
-	err = schema.Validate()
+	schema, err = memdb.MergeDBSchemas(
+		schema,
+		TeamSchema(),
+	)
 	if err != nil {
 		return nil, err
 	}

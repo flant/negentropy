@@ -1,8 +1,8 @@
 package model
 
-import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-
-var OriginFlow iam_model.ObjectOrigin = "flow"
+import (
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+)
 
 type (
 	TeamUUID        = string

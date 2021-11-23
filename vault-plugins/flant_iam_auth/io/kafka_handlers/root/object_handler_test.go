@@ -334,7 +334,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
 				Email:          "user_id@example.com",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 			},
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
 				return iam_repo.NewUserRepository(tx).GetByID(id)
@@ -355,7 +355,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 				Version:        "1",
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,
@@ -509,7 +509,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 				Identifier:     "user_id",
 				FullIdentifier: "user_id@tenant",
 				Email:          "user_id@example.com",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 			},
 			objStale: &iam_model.User{
 				UUID:           utils.UUID(),
@@ -518,7 +518,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 				Identifier:     "user_stale",
 				FullIdentifier: "user_stale@tenant",
 				Email:          "user_stale@example.com",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 			},
 
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
@@ -542,7 +542,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 				Version:        "1",
 				Identifier:     "Sa",
 				FullIdentifier: "user_id@tenant",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,
@@ -554,7 +554,7 @@ func TestRootMessageDispatcherDelete(t *testing.T) {
 				Version:        "1",
 				Identifier:     "sa_stale",
 				FullIdentifier: "sa_stale@tenant",
-				Origin:         iam_model.OriginIAM,
+				Origin:         consts.OriginIAM,
 				CIDRs:          []string{"127.0.0.1/8"},
 				TokenTTL:       3 * time.Second,
 				TokenMaxTTL:    5 * time.Second,

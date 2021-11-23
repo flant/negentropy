@@ -15,6 +15,7 @@ import (
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -420,9 +421,9 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
 		Version:        uuid.New(),
-		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
-			iam_model.OriginServerAccess: {
-				Origin:     iam_model.OriginServerAccess,
+		Extensions: map[consts.ObjectOrigin]*iam_model.Extension{
+			consts.OriginServerAccess: {
+				Origin:     consts.OriginServerAccess,
 				Attributes: attrs,
 			},
 		},
@@ -451,9 +452,9 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 		Identifier:     "serviceacc",
 		FullIdentifier: "serviceacc@tenant1",
 		Version:        uuid.New(),
-		Extensions: map[iam_model.ObjectOrigin]*iam_model.Extension{
-			iam_model.OriginServerAccess: {
-				Origin:     iam_model.OriginServerAccess,
+		Extensions: map[consts.ObjectOrigin]*iam_model.Extension{
+			consts.OriginServerAccess: {
+				Origin:     consts.OriginServerAccess,
 				Attributes: attrs,
 			},
 		},

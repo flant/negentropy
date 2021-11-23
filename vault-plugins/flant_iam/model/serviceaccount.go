@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
@@ -21,9 +22,9 @@ type ServiceAccount struct {
 	TokenTTL       time.Duration      `json:"token_ttl"`
 	TokenMaxTTL    time.Duration      `json:"token_max_ttl"`
 
-	Origin ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin"`
 
-	Extensions map[ObjectOrigin]*Extension `json:"-"`
+	Extensions map[consts.ObjectOrigin]*Extension `json:"-"`
 }
 
 func (s *ServiceAccount) ObjType() string {

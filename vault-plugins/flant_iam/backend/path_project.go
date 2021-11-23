@@ -12,6 +12,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -190,7 +191,7 @@ func (b *projectBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Projects(tx).GetByID(id)
+		obj, err := usecase.Projects(tx, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -217,7 +218,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.Projects(tx).Create(project); err != nil {
+		if err = usecase.Projects(tx, consts.OriginIAM).Create(project); err != nil {
 			msg := "cannot create project"
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
@@ -248,7 +249,7 @@ func (b *projectBackend) handleUpdate() framework.OperationFunc {
 			Identifier: data.Get("identifier").(string),
 		}
 
-		err := usecase.Projects(tx).Update(project)
+		err := usecase.Projects(tx, consts.OriginIAM).Update(project)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -270,7 +271,7 @@ func (b *projectBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Projects(tx).Delete(id)
+		err := usecase.Projects(tx, consts.OriginIAM).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -290,7 +291,7 @@ func (b *projectBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		project, err := usecase.Projects(tx).GetByID(id)
+		project, err := usecase.Projects(tx, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -312,7 +313,7 @@ func (b *projectBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		projects, err := usecase.Projects(tx).List(tenantID, showArchived)
+		projects, err := usecase.Projects(tx, consts.OriginIAM).List(tenantID, showArchived)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -334,7 +335,7 @@ func (b *projectBackend) handleRestore() framework.OperationFunc {
 
 		id := data.Get("uuid").(string)
 
-		project, err := usecase.Projects(tx).Restore(id)
+		project, err := usecase.Projects(tx, consts.OriginIAM).Restore(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

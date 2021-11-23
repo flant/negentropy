@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 type ExtensionOwnerType string
@@ -22,7 +24,7 @@ func (eot ExtensionOwnerType) String() string {
 
 type Extension struct {
 	// Origin is the source where the extension originates from
-	Origin ObjectOrigin `json:""`
+	Origin consts.ObjectOrigin `json:""`
 
 	// OwnerType is the object type to which the extension belongs to, e.g. "User" or "ServiceAccount".
 	OwnerType ExtensionOwnerType `json:""`
