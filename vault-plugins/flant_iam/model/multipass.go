@@ -17,7 +17,7 @@ const (
 )
 
 type Multipass struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       MultipassUUID      `json:"uuid"` // PK
 	TenantUUID TenantUUID         `json:"tenant_uuid"`

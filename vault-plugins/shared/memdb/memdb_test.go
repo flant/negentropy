@@ -56,8 +56,8 @@ func sampleParent() *parent {
 
 func archivedParent() *parent {
 	p := sampleParent()
-	p.ArchivingTimestamp = 99
-	p.ArchivingHash = 99
+	p.Timestamp = 99
+	p.Hash = 99
 	return p
 }
 
@@ -71,8 +71,8 @@ func sampleChild1(parentUUID string) *child1 {
 
 func archivedChild1(parentUUID string) *child1 {
 	c := sampleChild1(parentUUID)
-	c.ArchivingTimestamp = 99
-	c.ArchivingHash = 99
+	c.Timestamp = 99
+	c.Hash = 99
 	return c
 }
 
@@ -86,8 +86,8 @@ func sampleChild2(parentUUID string) *child2 {
 
 func archivedChild2(parentUUID string) *child2 {
 	c := sampleChild2(parentUUID)
-	c.ArchivingTimestamp = 99
-	c.ArchivingHash = 99
+	c.Timestamp = 99
+	c.Hash = 99
 	return c
 }
 
@@ -122,6 +122,11 @@ func checkChild2Existence(t *testing.T, txn *Txn, child2 *child2, shouldExists b
 	} else {
 		require.Empty(t, expectedChild)
 	}
+}
+
+var standardArchiveMark = ArchiveMark{
+	Timestamp: 99,
+	Hash:      99,
 }
 
 func Test_InsertOK(t *testing.T) {
@@ -210,7 +215,7 @@ func Test_CascadeDeleteFailCheckingRelations(t *testing.T) {
 func Test_ArchiveOK(t *testing.T) {
 	txn, _ := prepareTxnWithParent(t)
 
-	err := txn.Archive(parentType, sampleParent(), 99, 99)
+	err := txn.Archive(parentType, sampleParent(), standardArchiveMark)
 
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
@@ -220,7 +225,7 @@ func Test_ArchiveFailNotArchivableObject(t *testing.T) {
 	txn := prepareTxn(t)
 	x := 1
 
-	err := txn.Archive(parentType, &x, 99, 99)
+	err := txn.Archive(parentType, &x, standardArchiveMark)
 
 	require.ErrorIs(t, err, ErrNotArchivable)
 }
@@ -231,7 +236,7 @@ func Test_ArchiveFailCheckingRelations(t *testing.T) {
 	err := txn.Insert(childType1, ch1)
 	require.NoError(t, err)
 
-	err = txn.Archive(parentType, sampleParent(), 99, 99)
+	err = txn.Archive(parentType, sampleParent(), standardArchiveMark)
 
 	require.ErrorIs(t, err, ErrNotEmptyRelation)
 	checkParentExistence(t, txn, sampleParent(), true)
@@ -243,7 +248,7 @@ func Test_ArchiveFailAtCascadeDeletes(t *testing.T) {
 	err := txn.Insert(childType2, ch2)
 	require.NoError(t, err)
 
-	err = txn.Archive(parentType, sampleParent(), 99, 99)
+	err = txn.Archive(parentType, sampleParent(), standardArchiveMark)
 
 	require.ErrorIs(t, err, ErrNotEmptyRelation)
 	checkParentExistence(t, txn, sampleParent(), true)
@@ -255,7 +260,7 @@ func Test_CascadeArchiveOK(t *testing.T) {
 	err := txn.Insert(childType2, ch2)
 	require.NoError(t, err)
 
-	err = txn.CascadeArchive(parentType, sampleParent(), 99, 99)
+	err = txn.CascadeArchive(parentType, sampleParent(), standardArchiveMark)
 
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
@@ -271,7 +276,7 @@ func Test_CascadeArchiveFailCheckingRelations(t *testing.T) {
 	err = txn.Insert(childType1, ch1)
 	require.NoError(t, err)
 
-	err = txn.CascadeArchive(parentType, sampleParent(), 99, 99)
+	err = txn.CascadeArchive(parentType, sampleParent(), standardArchiveMark)
 
 	require.ErrorIs(t, err, ErrNotEmptyRelation)
 	checkParentExistence(t, txn, sampleParent(), true)
@@ -284,7 +289,7 @@ func Test_RestoreOK(t *testing.T) {
 	ch2 := sampleChild2(p.UUID)
 	err := txn.Insert(childType2, ch2)
 	require.NoError(t, err)
-	err = txn.CascadeArchive(parentType, p, 99, 99)
+	err = txn.CascadeArchive(parentType, p, standardArchiveMark)
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
 	checkChild2Existence(t, txn, archivedChild2(p.UUID), true)
@@ -301,7 +306,7 @@ func Test_RestoreFailChildWithoutParent(t *testing.T) {
 	ch2 := sampleChild2(p.UUID)
 	err := txn.Insert(childType2, ch2)
 	require.NoError(t, err)
-	err = txn.CascadeArchive(parentType, p, 99, 99)
+	err = txn.CascadeArchive(parentType, p, standardArchiveMark)
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
 	checkChild2Existence(t, txn, archivedChild2(p.UUID), true)
@@ -318,7 +323,7 @@ func Test_CascadeRestoreOK(t *testing.T) {
 	ch2 := sampleChild2(p.UUID)
 	err := txn.Insert(childType2, ch2)
 	require.NoError(t, err)
-	err = txn.CascadeArchive(parentType, p, 99, 99)
+	err = txn.CascadeArchive(parentType, p, standardArchiveMark)
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
 	checkChild2Existence(t, txn, archivedChild2(p.UUID), true)
@@ -336,18 +341,18 @@ func Test_CascadeRestoreOKJustWithRightTimeStampAndHash(t *testing.T) {
 	ch22.UUID = u4
 	err := txn.Insert(childType2, ch22)
 	require.NoError(t, err)
-	err = txn.Archive(childType2, ch22, 999, 999)
+	err = txn.Archive(childType2, ch22, ArchiveMark{999, 999})
 	require.NoError(t, err)
 	archivedCh22 := sampleChild2(p.UUID)
 	archivedCh22.UUID = u4
-	archivedCh22.ArchivingTimestamp = 999
-	archivedCh22.ArchivingHash = 999
+	archivedCh22.Timestamp = 999
+	archivedCh22.Hash = 999
 	checkChild2Existence(t, txn, archivedCh22, true)
 
 	ch2 := sampleChild2(p.UUID)
 	err = txn.Insert(childType2, ch2)
 	require.NoError(t, err)
-	err = txn.CascadeArchive(parentType, p, 99, 99)
+	err = txn.CascadeArchive(parentType, p, standardArchiveMark)
 	require.NoError(t, err)
 	checkParentExistence(t, txn, archivedParent(), true)
 	checkChild2Existence(t, txn, archivedChild2(p.UUID), true)
@@ -528,27 +533,27 @@ const (
 )
 
 type parent struct {
-	ArchivableImpl
+	ArchiveMark
 	UUID       string `json:"uuid"` // PK
 	Identifier string `json:"identifier"`
 }
 
 type child1 struct {
-	ArchivableImpl
+	ArchiveMark
 	UUID       string `json:"uuid"` // PK
 	ParentUUID string `json:"parent_uuid"`
 	Identifier string `json:"identifier"`
 }
 
 type child2 struct {
-	ArchivableImpl
+	ArchiveMark
 	UUID       string `json:"uuid"` // PK
 	ParentUUID string `json:"parent_uuid"`
 	Identifier string `json:"identifier"`
 }
 
 type child3 struct {
-	ArchivableImpl
+	ArchiveMark
 	UUID    string   `json:"uuid"` // PK
 	Parents []string `json:"parents"`
 }

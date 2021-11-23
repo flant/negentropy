@@ -11,7 +11,7 @@ import (
 const PK = "id"
 
 type (
-	// UnixTime used as timestamp at ArchivingTimestamp
+	// UnixTime used as timestamp at Timestamp
 	UnixTime = int64
 
 	// TableSchema synonym for replacing original type at code

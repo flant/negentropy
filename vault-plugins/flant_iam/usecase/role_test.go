@@ -171,11 +171,20 @@ func Test_excludeRole(t *testing.T) {
 
 func Test_Role_IsArchived(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
-	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
+	err := (&RoleService{tx}).Delete(fixtures.RoleName4)
 	require.NoError(t, err)
 
-	role, err := (&RoleService{tx}).Get(fixtures.RoleName1)
+	role, err := (&RoleService{tx}).Get(fixtures.RoleName4)
 	require.NoError(t, err)
 	require.NotNil(t, role)
-	require.Greater(t, role.ArchivingTimestamp, int64(0))
+	require.Greater(t, role.Timestamp, int64(0))
+}
+
+func Test_DeleteRole_Failed(t *testing.T) {
+	tx := runFixtures(t, roleFixture).Txn(true)
+
+	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
+
+	require.Error(t, err)
+	require.Equal(t, "archive:not empty relation error:relation should be empty: {\"RoleName1\" \"\"} found at table \"role\" by index \"included_roles_index\"", err.Error())
 }

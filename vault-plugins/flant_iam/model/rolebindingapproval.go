@@ -5,7 +5,7 @@ import "github.com/flant/negentropy/vault-plugins/shared/memdb"
 const RoleBindingApprovalType = "role_binding_approval" // also, memdb schema name
 
 type RoleBindingApproval struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID            RoleBindingApprovalUUID `json:"uuid"` // PK
 	TenantUUID      TenantUUID              `json:"tenant_uuid"`

@@ -8,7 +8,7 @@ import (
 const ProjectType = "project" // also, memdb schema name
 
 type Project struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID       ProjectUUID `json:"uuid"` // PK
 	TenantUUID TenantUUID  `json:"tenant_uuid"`

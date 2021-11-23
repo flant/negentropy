@@ -8,6 +8,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type TeamService struct {
@@ -81,8 +82,7 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 	// Check not default for any feature_flag
 	// Delete all child IAM.group & IAM.rolebinding
 
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	return s.repo.Delete(id, memdb.NewArchiveMark())
 }
 
 func (s *TeamService) GetByID(id model.TeamUUID) (*model.Team, error) {

@@ -5,6 +5,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type TenantService struct {
@@ -54,8 +55,7 @@ func (s *TenantService) Delete(id model.TenantUUID) error {
 		return consts.ErrBadOrigin
 	}
 
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.CascadeDelete(id, archivingTimestamp, archivingHash)
+	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
 func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {

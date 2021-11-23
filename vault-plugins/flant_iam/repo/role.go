@@ -174,7 +174,7 @@ func (r *RoleRepository) List(showArchived bool) ([]*model.Role, error) {
 			break
 		}
 		obj := raw.(*model.Role)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
@@ -193,7 +193,7 @@ func (r *RoleRepository) ListIDs(showArchived bool) ([]model.RoleName, error) {
 	return ids, nil
 }
 
-func (r *RoleRepository) Delete(roleID model.RoleName, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *RoleRepository) Delete(roleID model.RoleName, archiveMark memdb.ArchiveMark) error {
 	role, err := r.GetByID(roleID)
 	if err != nil {
 		return err
@@ -201,9 +201,7 @@ func (r *RoleRepository) Delete(roleID model.RoleName, archivingTimestamp model.
 	if role.Archived() {
 		return consts.ErrIsArchived
 	}
-	role.ArchivingTimestamp = archivingTimestamp
-	role.ArchivingHash = archivingHash
-	return r.Update(role)
+	return r.db.Archive(model.RoleType, role, archiveMark)
 }
 
 func (r *RoleRepository) Iter(action func(*model.Role) (bool, error)) error {
@@ -253,7 +251,7 @@ func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[mo
 			break
 		}
 		role := raw.(*model.Role)
-		if role.ArchivingTimestamp == 0 {
+		if role.Timestamp == 0 {
 			ids[role.Name] = struct{}{}
 		}
 	}

@@ -123,8 +123,7 @@ func (r *RoleBindingApprovalRepository) Update(appr *model.RoleBindingApproval) 
 	return r.save(appr)
 }
 
-func (r *RoleBindingApprovalRepository) Delete(id model.RoleBindingApprovalUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *RoleBindingApprovalRepository) Delete(id model.RoleBindingApprovalUUID, archiveMark memdb.ArchiveMark) error {
 	appr, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -132,9 +131,7 @@ func (r *RoleBindingApprovalRepository) Delete(id model.RoleBindingApprovalUUID,
 	if appr.Archived() {
 		return consts.ErrIsArchived
 	}
-	appr.ArchivingTimestamp = archivingTimestamp
-	appr.ArchivingHash = archivingHash
-	return r.Update(appr)
+	return r.db.Archive(model.RoleBindingApprovalType, appr, archiveMark)
 }
 
 func (r *RoleBindingApprovalRepository) List(rbUUID model.RoleBindingUUID,
@@ -151,7 +148,7 @@ func (r *RoleBindingApprovalRepository) List(rbUUID model.RoleBindingUUID,
 			break
 		}
 		obj := raw.(*model.RoleBindingApproval)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}

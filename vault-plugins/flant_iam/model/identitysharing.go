@@ -5,7 +5,7 @@ import "github.com/flant/negentropy/vault-plugins/shared/memdb"
 const IdentitySharingType = "identity_sharing" // also, memdb schema name
 
 type IdentitySharing struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID                  IdentitySharingUUID `json:"uuid"` // PK
 	SourceTenantUUID      TenantUUID          `json:"source_tenant_uuid"`

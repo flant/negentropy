@@ -11,7 +11,7 @@ type Contact struct {
 }
 
 func (c *Contact) IsDeleted() bool {
-	return c.ArchivingTimestamp != 0
+	return c.Timestamp != 0
 }
 
 func (c *Contact) ObjType() string {

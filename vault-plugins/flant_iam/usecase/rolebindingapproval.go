@@ -4,6 +4,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RoleBindingApprovalService struct {
@@ -30,6 +31,5 @@ func (s RoleBindingApprovalService) Update(roleBindingApproval *model.RoleBindin
 }
 
 func (s RoleBindingApprovalService) Delete(id model.RoleBindingApprovalUUID) error {
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return s.repo.Delete(id, archivingTimestamp, archivingHash)
+	return s.repo.Delete(id, memdb.NewArchiveMark())
 }

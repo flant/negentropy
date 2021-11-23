@@ -12,7 +12,7 @@ const (
 )
 
 type Role struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	Name  RoleName  `json:"name"`
 	Scope RoleScope `json:"scope"`

@@ -181,7 +181,7 @@ func (r *RoleBindingRepository) Update(rb *model.RoleBinding) error {
 	return r.save(rb)
 }
 
-func (r *RoleBindingRepository) CascadeDelete(id model.RoleBindingUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *RoleBindingRepository) CascadeDelete(id model.RoleBindingUUID, archiveMark memdb.ArchiveMark) error {
 	rb, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (r *RoleBindingRepository) CascadeDelete(id model.RoleBindingUUID, archivin
 	if rb.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.CascadeArchive(model.RoleBindingType, rb, archivingTimestamp, archivingHash)
+	return r.db.CascadeArchive(model.RoleBindingType, rb, archiveMark)
 }
 
 func (r *RoleBindingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.RoleBinding, error) {
@@ -288,7 +288,7 @@ func extractRoleBindings(iter hcmemdb.ResultIterator, showArchived bool) (map[mo
 		if !ok {
 			return nil, fmt.Errorf("need type RoleBindig, actually passed: %#v", raw)
 		}
-		if !showArchived && rb.ArchivingHash != 0 {
+		if !showArchived && rb.Hash != 0 {
 			continue
 		}
 		rbs[rb.UUID] = rb

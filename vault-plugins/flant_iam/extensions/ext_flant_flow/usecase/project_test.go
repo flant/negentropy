@@ -47,9 +47,9 @@ func Test_ProjectList(t *testing.T) {
 func Test_makeProjectCastingThroughBytes(t *testing.T) {
 	project := &model.Project{
 		Project: iam.Project{
-			ArchivableImpl: memdb.ArchivableImpl{
-				ArchivingTimestamp: 99,
-				ArchivingHash:      999,
+			ArchiveMark: memdb.ArchiveMark{
+				Timestamp: 99,
+				Hash:      999,
 			},
 			UUID:       "u1",
 			TenantUUID: "tuid1",
@@ -83,9 +83,9 @@ func Test_makeProjectCastingThroughBytes(t *testing.T) {
 func Test_makeProjectDirectCasting(t *testing.T) {
 	project := &model.Project{
 		Project: iam.Project{
-			ArchivableImpl: memdb.ArchivableImpl{
-				ArchivingTimestamp: 99,
-				ArchivingHash:      999,
+			ArchiveMark: memdb.ArchiveMark{
+				Timestamp: 99,
+				Hash:      999,
 			},
 			UUID:       "u1",
 			TenantUUID: "tuid1",
@@ -111,9 +111,9 @@ func Test_makeProjectDirectCasting(t *testing.T) {
 func Test_makeProjectDirectCastingEmptyServicePack(t *testing.T) {
 	project := &model.Project{
 		Project: iam.Project{
-			ArchivableImpl: memdb.ArchivableImpl{
-				ArchivingTimestamp: 99,
-				ArchivingHash:      999,
+			ArchiveMark: memdb.ArchiveMark{
+				Timestamp: 99,
+				Hash:      999,
 			},
 			UUID:       "u1",
 			TenantUUID: "tuid1",

@@ -153,7 +153,7 @@ func (r *GroupRepository) Update(group *model.Group) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) Delete(id model.GroupUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *GroupRepository) Delete(id model.GroupUUID, archiveMark memdb.ArchiveMark) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func (r *GroupRepository) Delete(id model.GroupUUID, archivingTimestamp model.Un
 	if group.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.GroupType, group, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.GroupType, group, archiveMark)
 }
 
 func (r *GroupRepository) CleanChildrenSliceIndexes(id model.GroupUUID) error {
@@ -191,7 +191,7 @@ func (r *GroupRepository) List(tenantUUID model.TenantUUID, showArchived bool) (
 				return nil, err
 			}
 		}
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
@@ -381,7 +381,7 @@ func extractGroupUUIDs(iter hcmemdb.ResultIterator, showArchived bool) (map[mode
 		if !ok {
 			return nil, fmt.Errorf("need type Group, actually passed: %#v", raw)
 		}
-		if !showArchived && g.ArchivingHash != 0 {
+		if !showArchived && g.Hash != 0 {
 			continue
 		}
 		ids[g.UUID] = struct{}{}

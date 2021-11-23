@@ -10,6 +10,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwttoken "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -143,9 +144,8 @@ func (r *MultipassService) Delete(id model.MultipassUUID) error {
 	if err != nil {
 		return err
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
 
-	return r.CascadeDelete(id, archivingTimestamp, archivingHash)
+	return r.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
 func (r *MultipassService) GetByID(id model.MultipassUUID) (*model.Multipass, error) {
@@ -250,11 +250,11 @@ func (r *MultipassService) UnsetExtension(origin consts.ObjectOrigin, uuid model
 }
 
 func (r *MultipassService) CascadeDelete(id model.MultipassUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+	archiveMark memdb.ArchiveMark) error {
 	err := r.validateContext()
 	if err != nil {
 		return err
 	}
 
-	return r.repo.Delete(id, archivingTimestamp, archivingHash)
+	return r.repo.Delete(id, archiveMark)
 }

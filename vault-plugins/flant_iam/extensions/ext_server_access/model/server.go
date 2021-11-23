@@ -11,7 +11,7 @@ const ServerType = "server" // also, memdb schema name
 type ServerUUID = string
 
 type Server struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID          ServerUUID `json:"uuid"` // ID
 	TenantUUID    string     `json:"tenant_uuid"`

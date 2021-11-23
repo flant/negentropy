@@ -94,7 +94,7 @@ func (r *ServiceAccountPasswordRepository) Update(sap *model.ServiceAccountPassw
 }
 
 func (r *ServiceAccountPasswordRepository) Delete(id model.ServiceAccountPasswordUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+	archiveMark memdb.ArchiveMark) error {
 	sap, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (r *ServiceAccountPasswordRepository) Delete(id model.ServiceAccountPasswor
 	if sap.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.ServiceAccountType, sap, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.ServiceAccountType, sap, archiveMark)
 }
 
 func (r *ServiceAccountPasswordRepository) List(ownerUUID model.OwnerUUID,
@@ -119,7 +119,7 @@ func (r *ServiceAccountPasswordRepository) List(ownerUUID model.OwnerUUID,
 			break
 		}
 		obj := raw.(*model.ServiceAccountPassword)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}

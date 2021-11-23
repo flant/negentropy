@@ -6,6 +6,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type ContactService struct {
@@ -87,9 +88,8 @@ func (s *ContactService) Delete(id model.ContactUUID) error {
 	if err != nil {
 		return err
 	}
-	archivingTimestamp, archivingHash := ArchivingLabel()
 
-	return s.contactsRepo.Delete(id, archivingTimestamp, archivingHash)
+	return s.contactsRepo.Delete(id, memdb.NewArchiveMark())
 }
 
 func (s *ContactService) Restore(id model.ContactUUID) (*model.Contact, error) {

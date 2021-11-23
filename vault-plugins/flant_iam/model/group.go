@@ -8,7 +8,7 @@ import (
 const GroupType = "group" // also, memdb schema name
 
 type Group struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	UUID           GroupUUID  `json:"uuid"` // PK
 	TenantUUID     TenantUUID `json:"tenant_uuid"`

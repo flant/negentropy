@@ -109,7 +109,7 @@ func (r *FeatureFlagRepository) Update(ff *model.FeatureFlag) error {
 	return r.save(ff)
 }
 
-func (r *FeatureFlagRepository) Delete(id model.FeatureFlagName, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *FeatureFlagRepository) Delete(id model.FeatureFlagName, archiveMark memdb.ArchiveMark) error {
 	ff, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (r *FeatureFlagRepository) Delete(id model.FeatureFlagName, archivingTimest
 	if ff.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.FeatureFlagType, ff, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.FeatureFlagType, ff, archiveMark)
 }
 
 func (r *FeatureFlagRepository) List(showArchived bool) ([]*model.FeatureFlag, error) {
@@ -133,7 +133,7 @@ func (r *FeatureFlagRepository) List(showArchived bool) ([]*model.FeatureFlag, e
 			break
 		}
 		obj := raw.(*model.FeatureFlag)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}

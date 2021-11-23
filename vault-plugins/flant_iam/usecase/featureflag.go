@@ -5,6 +5,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 // FeatureFlagService manages global list of feature_flags
@@ -27,8 +28,7 @@ func (s *FeatureFlagService) List(showArchived bool) ([]*model.FeatureFlag, erro
 func (s *FeatureFlagService) Delete(id model.FeatureFlagName) error {
 	// TODO before the deletion, check
 	// TODO - REMOVE FROM archived
-	archivingTimestamp, archivingHash := ArchivingLabel()
-	return repo.NewFeatureFlagRepository(s.db).Delete(id, archivingTimestamp, archivingHash)
+	return repo.NewFeatureFlagRepository(s.db).Delete(id, memdb.NewArchiveMark())
 }
 
 // TenantFeatureFlagService manages feature_flags for tenants

@@ -105,7 +105,7 @@ func (r *IdentitySharingRepository) Update(sh *model.IdentitySharing) error {
 }
 
 func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
-	archivingTimestamp model.UnixTime, archivingHash int64) error {
+	archiveMark memdb.ArchiveMark) error {
 	sh, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
 	if sh.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.IdentitySharingType, sh, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.IdentitySharingType, sh, archiveMark)
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
@@ -215,7 +215,7 @@ func (r *IdentitySharingRepository) ListDestinationTenantsByGroupUUIDs(groupUUID
 				break
 			}
 			i := raw.(*model.IdentitySharing)
-			if i.ArchivingHash != 0 {
+			if i.Hash != 0 {
 				continue
 			}
 			res[i.DestinationTenantUUID] = struct{}{}

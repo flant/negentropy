@@ -5,7 +5,7 @@ import "github.com/flant/negentropy/vault-plugins/shared/memdb"
 const FeatureFlagType = "feature_flag" // also, memdb schema name
 
 type FeatureFlag struct {
-	memdb.ArchivableImpl
+	memdb.ArchiveMark
 
 	Name FeatureFlagName `json:"name"` // PK
 }

@@ -96,7 +96,7 @@ func (r *MultipassRepository) Update(multipass *model.Multipass) error {
 	return r.save(multipass)
 }
 
-func (r *MultipassRepository) Delete(id model.MultipassUUID, archivingTimestamp model.UnixTime, archivingHash int64) error {
+func (r *MultipassRepository) Delete(id model.MultipassUUID, archiveMark memdb.ArchiveMark) error {
 	multipass, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (r *MultipassRepository) Delete(id model.MultipassUUID, archivingTimestamp 
 	if multipass.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.MultipassType, multipass, archivingTimestamp, archivingHash)
+	return r.db.Archive(model.MultipassType, multipass, archiveMark)
 }
 
 func (r *MultipassRepository) List(ownerUUID model.OwnerUUID, showArchived bool) ([]*model.Multipass, error) {
@@ -120,7 +120,7 @@ func (r *MultipassRepository) List(ownerUUID model.OwnerUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Multipass)
-		if showArchived || obj.ArchivingTimestamp == 0 {
+		if showArchived || obj.Timestamp == 0 {
 			list = append(list, obj)
 		}
 	}
