@@ -396,7 +396,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 
 	repo := ext_repo.NewServerRepository(tx)
 
-	list, err := repo.List(tenantID, projectID)
+	list, err := repo.List(tenantID, projectID, false)
 	if err != nil {
 		return result, err
 	}
@@ -413,7 +413,7 @@ func findServersByLabels(tx *io.MemoryStoreTxn, labelSelector string, tenantID, 
 
 func findServers(tx *io.MemoryStoreTxn, tenantID, projectID string) ([]*ext_model.Server, error) {
 	repo := ext_repo.NewServerRepository(tx)
-	list, err := repo.List(tenantID, projectID)
+	list, err := repo.List(tenantID, projectID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +429,7 @@ func findSeversByNames(tx *io.MemoryStoreTxn, names []string, tenantID, projectI
 	}
 	repo := ext_repo.NewServerRepository(tx)
 
-	list, err := repo.List(tenantID, projectID)
+	list, err := repo.List(tenantID, projectID, false)
 	if err != nil {
 		return result, nil, err
 	}

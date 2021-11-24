@@ -12,10 +12,11 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	ext_flant_flow "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths"
+	ext_ff_io "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/io"
+	ext_ff_paths "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/io"
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
+	ext_sa_io "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/io"
+	ext_sa_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -99,7 +100,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return nil, err
 	}
 
-	schema, err := memdb.MergeDBSchemasAndValidate(iamSchema, ext_repo.ServerSchema(), ext_flant_flow.FlantFlowDBSchema())
+	schema, err := memdb.MergeDBSchemasAndValidate(iamSchema, ext_sa_repo.ServerSchema(), ext_ff_paths.FlantFlowDBSchema())
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,8 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		restoreHandlers := []kafka_source.RestoreFunc{
 			jwtkafka.SelfRestoreMessage,
-			io.HandleServerAccessObjects,
+			ext_sa_io.HandleServerAccessObjects,
+			ext_ff_io.HandleFlantFlowObjects,
 		}
 
 		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))
@@ -229,7 +231,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		tokenController.ApiPaths(),
 
-		ext_flant_flow.FlantFlowPaths(conf, storage),
+		ext_ff_paths.FlantFlowPaths(conf, storage),
 	)
 
 	b.Clean = func(context.Context) {

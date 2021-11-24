@@ -89,7 +89,8 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 
 	// Fill here objects for unmarshalling
 	var inputObject interface{}
-	switch splitted[0] {
+	objectType := splitted[0]
+	switch objectType {
 	case model.ReplicaType:
 		inputObject = &model.Replica{}
 
@@ -139,8 +140,7 @@ func (mks *SelfKafkaSource) restorationHandler(txn *memdb.Txn, msg *kafka.Messag
 		return err
 	}
 
-	table := splitted[0]
-	err = txn.Insert(table, inputObject)
+	err = txn.Insert(objectType, inputObject)
 	if err != nil {
 		return err
 	}
