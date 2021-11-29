@@ -13,14 +13,18 @@ type UserService struct {
 
 	tenantRepo *iam_repo.TenantRepository
 	usersRepo  *iam_repo.UserRepository
+
+	origin consts.ObjectOrigin
 }
 
-func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID) *UserService {
+func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID, origin consts.ObjectOrigin) *UserService {
 	return &UserService{
 		tenantUUID: tenantUUID,
 
 		tenantRepo: iam_repo.NewTenantRepository(db),
 		usersRepo:  iam_repo.NewUserRepository(db),
+
+		origin: origin,
 	}
 }
 
@@ -32,9 +36,8 @@ func (s *UserService) Create(user *model.User) error {
 
 	user.Version = iam_repo.NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
-	if user.Origin == "" {
-		return consts.ErrBadOrigin
-	}
+	user.Origin = s.origin
+
 	return s.usersRepo.Create(user)
 }
 
@@ -59,7 +62,7 @@ func (s *UserService) Update(user *model.User) error {
 	if stored.Version != user.Version {
 		return consts.ErrBadVersion
 	}
-	if stored.Origin != user.Origin {
+	if stored.Origin != s.origin {
 		return consts.ErrBadOrigin
 	}
 
@@ -80,12 +83,12 @@ func (s *UserService) Update(user *model.User) error {
 	return s.usersRepo.Update(user)
 }
 
-func (s *UserService) Delete(origin consts.ObjectOrigin, id model.UserUUID) error {
+func (s *UserService) Delete(id model.UserUUID) error {
 	user, err := s.usersRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if user.Origin != origin {
+	if user.Origin != s.origin {
 		return consts.ErrBadOrigin
 	}
 

@@ -105,7 +105,7 @@ func (t *Txn) Archive(table string, objPtr interface{}, archiveMark ArchiveMark)
 		return fmt.Errorf("archive:%w", err)
 	}
 	a.Archive(archiveMark)
-	err = t.Insert(table, objPtr)
+	err = t.insert(table, objPtr, archiveMark)
 	if err != nil {
 		return fmt.Errorf("archive:%w", err)
 	}
@@ -271,7 +271,11 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 	if err != nil {
 		return fmt.Errorf("getting related record:%w", err)
 	}
-	if relatedRecord != nil {
+	if relatedRecord == nil {
+		return nil
+	}
+	a, ok := relatedRecord.(Archivable)
+	if !ok || !a.Archived() {
 		return fmt.Errorf("relation should be empty: %q found at table %q by index %q",
 			checkedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
 	}

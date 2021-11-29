@@ -13,7 +13,7 @@ func Test_ServerDbSchema(t *testing.T) {
 	iamSchema, err := iam_repo.GetSchema()
 	require.NoError(t, err)
 
-	_, err = memdb.MergeDBSchemas(iamSchema, ServerSchema())
+	_, err = memdb.MergeDBSchemasAndValidate(iamSchema, ServerSchema())
 
 	require.NoError(t, err)
 }

@@ -413,7 +413,7 @@ func (b *userBackend) handleExistence() framework.ExistenceFunc {
 
 		tx := b.storage.Txn(false)
 
-		obj, err := usecase.Users(tx, tenantID).GetByID(id)
+		obj, err := usecase.Users(tx, tenantID, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return false, err
 		}
@@ -442,13 +442,12 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
-			Origin:           consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.Users(tx, tenantID).Create(user); err != nil {
+		if err = usecase.Users(tx, tenantID, consts.OriginIAM).Create(user); err != nil {
 			msg := "cannot create user"
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
@@ -482,10 +481,9 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
-			Origin:           consts.OriginIAM,
 		}
 
-		err := usecase.Users(tx, tenantID).Update(user)
+		err := usecase.Users(tx, tenantID, consts.OriginIAM).Update(user)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -507,7 +505,7 @@ func (b *userBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Users(tx, tenantID).Delete(consts.OriginIAM, id)
+		err := usecase.Users(tx, tenantID, consts.OriginIAM).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -527,7 +525,7 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		user, err := usecase.Users(tx, tenantID).GetByID(id)
+		user, err := usecase.Users(tx, tenantID, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -549,7 +547,7 @@ func (b *userBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(false)
 
-		users, err := usecase.Users(tx, tenantID).List(showArchived)
+		users, err := usecase.Users(tx, tenantID, consts.OriginIAM).List(showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
@@ -572,7 +570,7 @@ func (b *userBackend) handleRestore() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
-		user, err := usecase.Users(tx, tenantID).Restore(id)
+		user, err := usecase.Users(tx, tenantID, consts.OriginIAM).Restore(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

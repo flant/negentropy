@@ -14,6 +14,7 @@ func Test_teammateCRUD(t *testing.T) {
 	backend := testapi.TestBackend()
 	TestAPI = api.NewTeammateAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend)
+	TenantAPI = testapi.NewTenantAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Teammate")
 }

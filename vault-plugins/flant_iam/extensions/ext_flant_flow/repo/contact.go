@@ -117,7 +117,7 @@ func (r *ContactRepository) List(clientUUID model.ClientUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Contact)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || !obj.Archived() {
 			list = append(list, obj)
 		}
 	}
@@ -176,7 +176,7 @@ func (r *ContactRepository) Restore(id model.ContactUUID) (*model.Contact, error
 	if err != nil {
 		return nil, err
 	}
-	if contact.Timestamp == 0 {
+	if !contact.Archived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	contact.Timestamp = 0

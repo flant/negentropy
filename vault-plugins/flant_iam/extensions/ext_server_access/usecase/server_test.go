@@ -44,7 +44,7 @@ func Test_Register(t *testing.T) {
 func Test_List(t *testing.T) {
 	iamSchema, err := iam_repo.GetSchema()
 	require.NoError(t, err)
-	schema, err := memdb.MergeDBSchemas(iamSchema, repo.ServerSchema())
+	schema, err := memdb.MergeDBSchemasAndValidate(iamSchema, repo.ServerSchema())
 	require.NoError(t, err)
 	memdb, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
 	require.NoError(t, err)
