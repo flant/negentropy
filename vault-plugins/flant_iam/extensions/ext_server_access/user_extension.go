@@ -64,7 +64,7 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 		ObjType: iam_model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
 			repo, err := ext_repo.NewUserServerAccessRepository(txn, sac.LastAllocatedUID,
-				sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
+				sac.ExpirePasswordSeedAfterRevealIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
 			if err != nil {
 				return err
 			}
@@ -248,7 +248,7 @@ func checkAndCreateServiceAccountExtension(txn *io.MemoryStoreTxn,
 func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig,
 	users map[iam_model.UserUUID]struct{}, vaultStore logical.Storage) error {
 	repoUserExtension, err := ext_repo.NewUserServerAccessRepository(txn,
-		sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterReveialIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
+		sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterRevealIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
 	if err != nil {
 		return fmt.Errorf("checkAndCreateUserExtension: %w", err)
 	}

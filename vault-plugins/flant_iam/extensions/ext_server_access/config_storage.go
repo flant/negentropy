@@ -3,12 +3,21 @@ package ext_server_access
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
 const serverAccessConfigStorageKey = "iam.extensions.server_access_config"
+
+type ServerAccessConfig struct {
+	RolesForServers                 []string
+	RoleForSSHAccess                string
+	DeleteExpiredPasswordSeedsAfter time.Duration
+	ExpirePasswordSeedAfterRevealIn time.Duration
+	LastAllocatedUID                int
+}
 
 var liveConfig = &mutexedConfig{}
 

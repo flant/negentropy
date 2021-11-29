@@ -87,7 +87,7 @@ func (b *serverConfigureBackend) handleConfig() framework.OperationFunc {
 		newServerAccessConfig.DeleteExpiredPasswordSeedsAfter = time.Duration(rawDeleteExpiredPasswordSeedsAfter.(int))
 
 		rawExpirePasswordSeedAfterRevealIn := data.Get("expire_password_seed_after_reveal_in")
-		newServerAccessConfig.ExpirePasswordSeedAfterReveialIn = time.Duration(rawExpirePasswordSeedAfterRevealIn.(int))
+		newServerAccessConfig.ExpirePasswordSeedAfterRevealIn = time.Duration(rawExpirePasswordSeedAfterRevealIn.(int))
 
 		if rawLastAllocatedUID, ok := data.GetOk("last_allocated_uid"); ok {
 			newServerAccessConfig.LastAllocatedUID = rawLastAllocatedUID.(int)

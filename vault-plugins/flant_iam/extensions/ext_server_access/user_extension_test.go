@@ -152,11 +152,11 @@ func Test_UserIncludesToGroupWithSSH(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	ctx := context.Background()
 	err = liveConfig.SetServerAccessConfig(ctx, storage, &ServerAccessConfig{
-		RolesForServers:                  nil,
-		RoleForSSHAccess:                 roleName1,
-		DeleteExpiredPasswordSeedsAfter:  1000000,
-		ExpirePasswordSeedAfterReveialIn: 1000000,
-		LastAllocatedUID:                 1,
+		RolesForServers:                 nil,
+		RoleForSSHAccess:                roleName1,
+		DeleteExpiredPasswordSeedsAfter: 1000000,
+		ExpirePasswordSeedAfterRevealIn: 1000000,
+		LastAllocatedUID:                1,
 	})
 	repoUser := iam_repo.NewUserRepository(txn)
 	user, err = repoUser.GetByID(user.UUID)
@@ -192,11 +192,11 @@ func Test_UserIsAddedToRoleBindingWithSSH(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	ctx := context.Background()
 	err = liveConfig.SetServerAccessConfig(ctx, storage, &ServerAccessConfig{
-		RolesForServers:                  nil,
-		RoleForSSHAccess:                 roleName1,
-		DeleteExpiredPasswordSeedsAfter:  1000000,
-		ExpirePasswordSeedAfterReveialIn: 1000000,
-		LastAllocatedUID:                 1,
+		RolesForServers:                 nil,
+		RoleForSSHAccess:                roleName1,
+		DeleteExpiredPasswordSeedsAfter: 1000000,
+		ExpirePasswordSeedAfterRevealIn: 1000000,
+		LastAllocatedUID:                1,
 	})
 
 	RegisterServerAccessUserExtension(ctx, storage, store)
@@ -230,11 +230,11 @@ func Test_SSHIsAddedToRoleBinding(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	ctx := context.Background()
 	err = liveConfig.SetServerAccessConfig(ctx, storage, &ServerAccessConfig{
-		RolesForServers:                  nil,
-		RoleForSSHAccess:                 roleName1,
-		DeleteExpiredPasswordSeedsAfter:  1000000,
-		ExpirePasswordSeedAfterReveialIn: 1000000,
-		LastAllocatedUID:                 1,
+		RolesForServers:                 nil,
+		RoleForSSHAccess:                roleName1,
+		DeleteExpiredPasswordSeedsAfter: 1000000,
+		ExpirePasswordSeedAfterRevealIn: 1000000,
+		LastAllocatedUID:                1,
 	})
 
 	RegisterServerAccessUserExtension(ctx, storage, store)
@@ -271,11 +271,11 @@ func Test_SSHIsIncludedToRole(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	ctx := context.Background()
 	err = liveConfig.SetServerAccessConfig(ctx, storage, &ServerAccessConfig{
-		RolesForServers:                  nil,
-		RoleForSSHAccess:                 roleName1,
-		DeleteExpiredPasswordSeedsAfter:  1000000,
-		ExpirePasswordSeedAfterReveialIn: 1000000,
-		LastAllocatedUID:                 1,
+		RolesForServers:                 nil,
+		RoleForSSHAccess:                roleName1,
+		DeleteExpiredPasswordSeedsAfter: 1000000,
+		ExpirePasswordSeedAfterRevealIn: 1000000,
+		LastAllocatedUID:                1,
 	})
 
 	RegisterServerAccessUserExtension(ctx, storage, store)
