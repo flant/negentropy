@@ -211,7 +211,7 @@ func (r *RoleBindingRepository) List(tenantUUID model.TenantUUID, showArchived b
 				return nil, err
 			}
 		}
-		if !obj.Archived() || showArchived {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

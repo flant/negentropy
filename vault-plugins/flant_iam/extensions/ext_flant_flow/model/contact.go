@@ -1,17 +1,24 @@
 package model
 
-import iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+import (
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const ContactType = "contact" // also, memdb schema name
 
-type Contact struct {
+type FullContact struct {
 	iam_model.User
 
 	Credentials map[iam_model.ProjectUUID]ContactRole `json:"credentials"`
 }
 
-func (c *Contact) IsDeleted() bool {
-	return c.Timestamp != 0
+type Contact struct {
+	memdb.ArchiveMark
+	UserUUID    iam_model.UserUUID                    `json:"user_uuid"`
+	TenantUUID  iam_model.TenantUUID                  `json:"tenant_uuid"`
+	Credentials map[iam_model.ProjectUUID]ContactRole `json:"credentials"`
+	Version     string                                `json:"resource_version"`
 }
 
 func (c *Contact) ObjType() string {
@@ -19,5 +26,18 @@ func (c *Contact) ObjType() string {
 }
 
 func (c *Contact) ObjId() string {
-	return c.UUID
+	return c.UserUUID
+}
+
+func (f *FullContact) GetContact() *Contact {
+	if f == nil {
+		return nil
+	}
+	return &Contact{
+		ArchiveMark: f.ArchiveMark,
+		UserUUID:    f.UUID,
+		TenantUUID:  f.TenantUUID,
+		Credentials: f.Credentials,
+		Version:     f.Version,
+	}
 }

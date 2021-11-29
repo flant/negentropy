@@ -120,7 +120,7 @@ func (r *MultipassRepository) List(ownerUUID model.OwnerUUID, showArchived bool)
 			break
 		}
 		obj := raw.(*model.Multipass)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

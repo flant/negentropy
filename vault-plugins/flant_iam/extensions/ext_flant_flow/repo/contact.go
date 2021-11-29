@@ -6,41 +6,61 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func ContactSchema() map[string]*hcmemdb.TableSchema {
-	return map[string]*hcmemdb.TableSchema{
-		model.ContactType: {
-			Name: model.ContactType,
-			Indexes: map[string]*hcmemdb.IndexSchema{
-				PK: {
-					Name:   PK,
-					Unique: true,
-					Indexer: &hcmemdb.UUIDFieldIndex{
-						Field: "UUID",
+func ContactSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.ContactType: {
+				Name: model.ContactType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					PK: {
+						Name:   PK,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UserUUID",
+						},
+					},
+					ClientForeignPK: {
+						Name: ClientForeignPK,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field:     "TenantUUID",
+							Lowercase: true,
+						},
+					},
+					"version": {
+						Name: "version",
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Version",
+						},
 					},
 				},
-				ClientForeignPK: {
-					Name: ClientForeignPK,
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field:     "TenantUUID",
-						Lowercase: true,
-					},
+			},
+		},
+		MandatoryForeignKeys: map[string][]memdb.Relation{
+			model.ContactType: {
+				{
+					OriginalDataTypeFieldName:     "UserUUID",
+					RelatedDataType:               iam_model.UserType,
+					RelatedDataTypeFieldIndexName: PK,
 				},
-				"version": {
-					Name: "version",
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field: "Version",
-					},
+				{
+					OriginalDataTypeFieldName:     "TenantUUID",
+					RelatedDataType:               iam_model.TenantType,
+					RelatedDataTypeFieldIndexName: PK,
 				},
-				"identifier": {
-					Name: "identifier",
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field: "Identifier",
-					},
+			},
+		},
+		CascadeDeletes: map[string][]memdb.Relation{
+			model.ContactType: {
+				{
+					OriginalDataTypeFieldName:     "UserUUID",
+					RelatedDataType:               iam_model.UserType,
+					RelatedDataTypeFieldIndexName: PK,
 				},
 			},
 		},
@@ -84,9 +104,12 @@ func (r *ContactRepository) GetByID(id model.ContactUUID) (*model.Contact, error
 }
 
 func (r *ContactRepository) Update(contact *model.Contact) error {
-	_, err := r.GetByID(contact.UUID)
+	stored, err := r.GetByID(contact.UserUUID)
 	if err != nil {
 		return err
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
 	return r.save(contact)
 }
@@ -96,12 +119,10 @@ func (r *ContactRepository) Delete(id model.ContactUUID, archiveMark memdb.Archi
 	if err != nil {
 		return err
 	}
-	if contact.IsDeleted() {
+	if contact.Archived() {
 		return consts.ErrIsArchived
 	}
-	contact.Timestamp = archiveMark.Timestamp
-	contact.Hash = archiveMark.Hash
-	return r.Update(contact)
+	return r.db.Archive(model.ContactType, contact, archiveMark)
 }
 
 func (r *ContactRepository) List(clientUUID model.ClientUUID, showArchived bool) ([]*model.Contact, error) {
@@ -111,37 +132,37 @@ func (r *ContactRepository) List(clientUUID model.ClientUUID, showArchived bool)
 	}
 
 	list := []*model.Contact{}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
+	err = r.Iter(iter, func(contact *model.Contact) (bool, error) {
+		if showArchived || contact.NotArchived() {
+			list = append(list, contact)
 		}
-		obj := raw.(*model.Contact)
-		if showArchived || !obj.Archived() {
-			list = append(list, obj)
-		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return list, nil
 }
 
-func (r *ContactRepository) ListIDs(clientID model.ClientUUID, showArchived bool) ([]model.ContactUUID, error) {
-	objs, err := r.List(clientID, showArchived)
+func (r *ContactRepository) ListIDs(clientUUID model.ClientUUID, showArchived bool) ([]model.ContactUUID, error) {
+	iter, err := r.db.Get(model.ContactType, ClientForeignPK, clientUUID)
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]model.ContactUUID, len(objs))
-	for i := range objs {
-		ids[i] = objs[i].ObjId()
+	ids := []model.ContactUUID{}
+	err = r.Iter(iter, func(contact *model.Contact) (bool, error) {
+		if showArchived || contact.NotArchived() {
+			ids = append(ids, contact.UserUUID)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return ids, nil
 }
 
-func (r *ContactRepository) Iter(action func(*model.Contact) (bool, error)) error {
-	iter, err := r.db.Get(model.ContactType, PK)
-	if err != nil {
-		return err
-	}
-
+func (r *ContactRepository) Iter(iter hcmemdb.ResultIterator, action func(*model.Contact) (bool, error)) error {
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -176,12 +197,10 @@ func (r *ContactRepository) Restore(id model.ContactUUID) (*model.Contact, error
 	if err != nil {
 		return nil, err
 	}
-	if !contact.Archived() {
-		return nil, consts.ErrIsNotArchived
+	if contact.NotArchived() {
+		return nil, err
 	}
-	contact.Timestamp = 0
-	contact.Hash = 0
-	err = r.Update(contact)
+	err = r.db.CascadeRestore(model.ContactType, contact)
 	if err != nil {
 		return nil, err
 	}

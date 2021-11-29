@@ -13,18 +13,18 @@ import (
 )
 
 type TeammateService struct {
-	tenantUUID  iam_model.TenantUUID
-	repo        *repo.TeammateRepository
-	teamRepo    *repo.TeamRepository
-	userService *iam_usecase.UserService
+	flantTenantUUID iam_model.TenantUUID
+	repo            *repo.TeammateRepository
+	teamRepo        *repo.TeamRepository
+	userService     *iam_usecase.UserService
 }
 
-func Teammates(db *io.MemoryStoreTxn, tenantUUID iam_model.TenantUUID) *TeammateService {
+func Teammates(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeammateService {
 	return &TeammateService{
-		tenantUUID:  tenantUUID,
-		repo:        repo.NewTeammateRepository(db),
-		teamRepo:    repo.NewTeamRepository(db),
-		userService: iam_usecase.Users(db, tenantUUID, consts.OriginFlantFlow),
+		flantTenantUUID: flantTenantUUID,
+		repo:            repo.NewTeammateRepository(db),
+		teamRepo:        repo.NewTeamRepository(db),
+		userService:     iam_usecase.Users(db, flantTenantUUID, consts.OriginFlantFlow),
 	}
 }
 
@@ -45,8 +45,7 @@ func (s *TeammateService) Create(t *model.FullTeammate) error {
 
 func (s *TeammateService) Update(updated *model.FullTeammate) error {
 	teammate := updated.GetTeammate()
-	err := s.validateRole(teammate)
-	if err != nil {
+	if err := s.validateRole(teammate); err != nil {
 		return err
 	}
 	stored, err := s.repo.GetByID(updated.UUID)
@@ -59,6 +58,7 @@ func (s *TeammateService) Update(updated *model.FullTeammate) error {
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
 	}
+
 	updated.Version = repo.NewResourceVersion()
 	err = s.userService.Update(&updated.User)
 	if err != nil {

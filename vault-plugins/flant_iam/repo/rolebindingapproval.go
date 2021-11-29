@@ -148,7 +148,7 @@ func (r *RoleBindingApprovalRepository) List(rbUUID model.RoleBindingUUID,
 			break
 		}
 		obj := raw.(*model.RoleBindingApproval)
-		if showArchived || obj.Timestamp == 0 {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}

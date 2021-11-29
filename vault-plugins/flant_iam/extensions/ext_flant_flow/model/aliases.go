@@ -64,4 +64,5 @@ var (
 	Representative      ContactRole = "representative"
 	Plenipotentiary     ContactRole = "plenipotentiary"
 	AllowedContactRoles             = []ContactRole{RegularContact, AuthorizedContact, Representative, Plenipotentiary}
+	ContactRoles                    = map[ContactRole]struct{}{RegularContact: {}, AuthorizedContact: {}, Representative: {}, Plenipotentiary: {}}
 )

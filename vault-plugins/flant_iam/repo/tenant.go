@@ -147,7 +147,7 @@ func (r *TenantRepository) List(showArchived bool) ([]*model.Tenant, error) {
 			break
 		}
 		obj := raw.(*model.Tenant)
-		if showArchived || !obj.Archived() {
+		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
 	}
@@ -205,7 +205,7 @@ func (r *TenantRepository) Restore(id model.TenantUUID) (*model.Tenant, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !tenant.Archived() {
+	if tenant.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.TenantType, tenant)
@@ -220,7 +220,7 @@ func (r *TenantRepository) CascadeRestore(id model.TenantUUID) (*model.Tenant, e
 	if err != nil {
 		return nil, err
 	}
-	if !tenant.Archived() {
+	if tenant.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.CascadeRestore(model.TenantType, tenant)

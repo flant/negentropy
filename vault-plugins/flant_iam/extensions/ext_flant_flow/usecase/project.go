@@ -69,7 +69,7 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 		if ext := exts[consts.OriginFlantFlow]; ext != nil {
 			if ext.OwnerType == iam.ProjectType && ext.OwnerUUID == project.UUID {
 				var err error
-				servicePacks, err = unpackServicePackCandidate(ext.Attributes["service_packs"])
+				servicePacks, err = unmarshallServicePackCandidate(ext.Attributes["service_packs"])
 				if err != nil {
 					return nil, err
 				}
@@ -83,7 +83,7 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 	}, nil
 }
 
-func unpackServicePackCandidate(servicePacksRaw interface{}) (map[model.ServicePackName]string, error) {
+func unmarshallServicePackCandidate(servicePacksRaw interface{}) (map[model.ServicePackName]string, error) {
 	var servicePacks map[model.ServicePackName]string
 	switch spMap := servicePacksRaw.(type) {
 	// after kafka restoration

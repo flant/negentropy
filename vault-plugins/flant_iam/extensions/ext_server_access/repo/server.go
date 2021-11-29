@@ -160,7 +160,7 @@ func (r *ServerRepository) Delete(uuid string, archiveMark memdb.ArchiveMark) er
 	return r.db.Archive(ext_model.ServerType, server, archiveMark)
 }
 
-func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server, error) {
+func (r *ServerRepository) List(tenantID, projectID string, showArchived bool) ([]*ext_model.Server, error) {
 	var (
 		iter hcmemdb.ResultIterator
 		err  error
@@ -190,7 +190,9 @@ func (r *ServerRepository) List(tenantID, projectID string) ([]*ext_model.Server
 			break
 		}
 		u := raw.(*ext_model.Server)
-		ids = append(ids, u)
+		if showArchived || u.NotArchived() {
+			ids = append(ids, u)
+		}
 	}
 	return ids, nil
 }

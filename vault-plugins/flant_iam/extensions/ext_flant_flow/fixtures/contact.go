@@ -19,8 +19,8 @@ const (
 	UserUUID5 = "00000000-0000-0000-0000-000000000005"
 )
 
-func Contacts() []model.Contact {
-	return []model.Contact{
+func Contacts() []model.FullContact {
+	return []model.FullContact{
 		{
 			User: iam_model.User{
 				UUID:           UserUUID1,

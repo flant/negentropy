@@ -37,7 +37,7 @@ func FlantFlowPaths(conf *logical.BackendConfig, storage *sharedio.MemoryStore) 
 		teammatePaths(b, storage, fixtures.FlantUUID), // TODO fix flantUUID
 		clientPaths(b, storage),
 		projectPaths(b, storage),
-		contactPaths(b, storage, nil),
+		contactPaths(b, storage),
 	)
 
 	return paths
