@@ -113,7 +113,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	logger.Debug("Start Authorize")
 	authzRes, err := authorizator.Authorize(authnRes, method, authSource)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Not authz %v", err))
+		logger.Error(fmt.Sprintf("Not authz, err: %v", err))
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 	}
 

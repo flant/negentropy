@@ -50,6 +50,7 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Field:     "Groups",
 							Lowercase: true,
 						},
+						AllowMissing: true,
 					},
 					UserInRoleBindingApprovalIndex: {
 						Name: UserInRoleBindingApprovalIndex,
@@ -57,6 +58,7 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Field:     "Users",
 							Lowercase: true,
 						},
+						AllowMissing: true,
 					},
 					ServiceAccountInRoleBindingApprovalIndex: {
 						Name: ServiceAccountInRoleBindingApprovalIndex,
@@ -64,6 +66,7 @@ func RoleBindingApprovalSchema() *memdb.DBSchema {
 							Field:     "ServiceAccounts",
 							Lowercase: true,
 						},
+						AllowMissing: true,
 					},
 				},
 			},
