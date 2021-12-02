@@ -1,32 +1,99 @@
 package lib
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+
+	. "github.com/onsi/gomega"
+	"github.com/tidwall/gjson"
+
+	"github.com/flant/negentropy/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-// currently there are no needs to implement real ConfigAPI, as all configs provided by start.sh
+// currently there are no needs to implement some methods ConfigAPI, as some configs provided by start.sh
 
 type ConfigAPI interface {
 	EnableJWT()
 	GenerateCSR()
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
+	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
+	ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string)
+	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 }
 
-type httpClientBasedConfigAPI struct{}
+type httpClientBasedConfigAPI struct {
+	httpVaultClient *http.Client
+}
+
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID) {
+	h.request("POST", "/configure_extension/flant_flow/flant_tenant/"+flantTenantUUID, []int{http.StatusOK, http.StatusBadRequest}, nil)
+}
+
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string) {
+	h.request("POST", "/configure_extension/flant_flow/specific_roles", []int{http.StatusOK},
+		map[string]interface{}{"specific_roles": roles})
+}
+
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {
+	h.request("POST", "/configure_extension/flant_flow/specific_teams", []int{http.StatusOK},
+		map[string]interface{}{"specific_teams": teams})
+}
 
 func (h httpClientBasedConfigAPI) EnableJWT() {
+	// by start.sh
 }
 
 func (h httpClientBasedConfigAPI) GenerateCSR() {
+	// by start.sh
 }
 
 func (h httpClientBasedConfigAPI) ConfigureKafka(certificate string, kafkaEndpoints []string) {
+	// by start.sh
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionServerAccess(params map[string]interface{}) {
+	// by start.sh
 }
 
-func NewHttpClientBasedConfigAPI(_ *http.Client) ConfigAPI {
-	return &httpClientBasedConfigAPI{}
+func NewHttpClientBasedConfigAPI(client *http.Client) ConfigAPI {
+	return &httpClientBasedConfigAPI{httpVaultClient: client}
+}
+
+func (h *httpClientBasedConfigAPI) request(method, url string, expectedStatuses []int, payload interface{}) gjson.Result {
+	var body io.Reader
+	if payload != nil {
+		marshalPayload, err := json.Marshal(payload)
+		Expect(err).ToNot(HaveOccurred())
+
+		body = bytes.NewReader(marshalPayload)
+	}
+
+	req, err := http.NewRequest(method, url, body)
+	Expect(err).ToNot(HaveOccurred())
+
+	resp, err := h.httpVaultClient.Do(req)
+	Expect(err).ToNot(HaveOccurred())
+
+	defer resp.Body.Close()
+	err = fmt.Errorf("wrong response status code: actual:%d, shoud be in :%v", resp.StatusCode, expectedStatuses)
+	for _, s := range expectedStatuses {
+		if s == resp.StatusCode {
+			err = nil
+			break
+		}
+	}
+	Expect(err).ToNot(HaveOccurred())
+
+	data, err := ioutil.ReadAll(resp.Body)
+	Expect(err).ToNot(HaveOccurred())
+
+	json := tools.UnmarshalVaultResponse(data)
+
+	return json
 }

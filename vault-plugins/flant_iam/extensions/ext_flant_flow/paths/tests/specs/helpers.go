@@ -2,7 +2,6 @@ package specs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 
 	. "github.com/onsi/gomega"
@@ -95,8 +94,8 @@ func TryCreateProjects(projectAPI testapi.TestAPI, clientID model.ClientUUID, pr
 		bytes, _ := json.Marshal(project)
 		var payload map[string]interface{}
 		json.Unmarshal(bytes, &payload)                              //nolint:errcheck
-		p, err := createProject(projectAPI, clientID, payload, true) //nolint:errcheck
-		fmt.Printf("%#v\n %#v\n", p, err)
+		_, err := createProject(projectAPI, clientID, payload, true) //nolint:errcheck
+		Expect(err).ToNot(HaveOccurred())
 	}
 }
 
@@ -130,11 +129,11 @@ func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, team
 	return cfg
 }
 
-func BaseConfigureFlantFlow(TenantAPI testapi.TestAPI, _ testapi.TestAPI, ConfigAPI testapi.ConfigAPI) *config.FlantFlowConfig {
-	tenant := iam_specs.CreateRandomTenant(TenantAPI)
-	ConfigAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
+func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, _ testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	tenant := iam_specs.CreateRandomTenant(tenantAPI)
+	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
 	// r1 := iam_specs.CreateRandomRole(RoleAPI)
-	ConfigAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{}) // TODO fil later
+	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{}) // TODO fil later
 
 	return &config.FlantFlowConfig{
 		FlantTenantUUID: tenant.UUID,
