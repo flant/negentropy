@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -10,13 +11,27 @@ import (
 
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-var TestAPI testapi.TestAPI
+var (
+	TestAPI   testapi.TestAPI
+	TenantAPI testapi.TestAPI
+	RoleAPI   testapi.TestAPI
+	TeamAPI   testapi.TestAPI
+	ConfigAPI testapi.ConfigAPI
+)
 
 var _ = Describe("Client", func() {
+	var flantFlowCfg *config.FlantFlowConfig
+	BeforeSuite(func() {
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
+		fmt.Printf("%#v\n", flantFlowCfg)
+	}, 1.0)
+
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {

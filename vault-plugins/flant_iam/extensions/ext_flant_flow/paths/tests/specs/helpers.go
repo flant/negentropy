@@ -9,31 +9,11 @@ import (
 	"github.com/tidwall/gjson"
 
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
-
-func CreateFlantTenant(tenantAPI testapi.TestAPI) iam_model.Tenant {
-	createPayload := map[string]interface{}{
-		"identifier":    "Identifier_FLANT",
-		"version":       "v1",
-		"feature_flags": nil,
-		"uuid":          fixtures.FlantUUID,
-	}
-	var createdData gjson.Result
-	tenantAPI.CreatePrivileged(testapi.Params{
-		"expectPayload": func(json gjson.Result) {
-			createdData = json
-		},
-	}, nil, createPayload)
-	rawTenant := createdData.Get("tenant")
-	data := []byte(rawTenant.String())
-	var tenant iam_model.Tenant
-	err := json.Unmarshal(data, &tenant)
-	Expect(err).ToNot(HaveOccurred())
-	return tenant
-}
 
 func CreateRandomClient(clientsAPI testapi.TestAPI) model.Client {
 	createPayload := fixtures.RandomClientCreatePayload()
@@ -132,4 +112,33 @@ func CreateRandomContact(contactAPI testapi.TestAPI, clientID model.TeamUUID) mo
 	err := json.Unmarshal(data, &contact)
 	Expect(err).ToNot(HaveOccurred())
 	return contact
+}
+
+func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, teamAPI testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, configAPI)
+
+	teamL1 := CreateRandomTeam(teamAPI)
+	teamMk8s := CreateRandomTeam(teamAPI)
+	teamOkmeter := CreateRandomTeam(teamAPI)
+	teams := map[string]string{
+		config.L1:      teamL1.UUID,
+		config.Mk8s:    teamMk8s.UUID,
+		config.Okmeter: teamOkmeter.UUID,
+	}
+	configAPI.ConfigureExtensionFlantFlowSpecificTeams(teams)
+	cfg.SpecificTeams = teams
+	return cfg
+}
+
+func BaseConfigureFlantFlow(TenantAPI testapi.TestAPI, _ testapi.TestAPI, ConfigAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	tenant := iam_specs.CreateRandomTenant(TenantAPI)
+	ConfigAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
+	// r1 := iam_specs.CreateRandomRole(RoleAPI)
+	ConfigAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{}) // TODO fil later
+
+	return &config.FlantFlowConfig{
+		FlantTenantUUID: tenant.UUID,
+		SpecificTeams:   map[string]string{},
+		SpecificRoles:   map[string]string{},
+	}
 }

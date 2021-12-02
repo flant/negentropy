@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -10,6 +11,7 @@ import (
 
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
@@ -20,12 +22,20 @@ import (
 var (
 	TestAPI   testapi.TestAPI
 	ClientAPI testapi.TestAPI
+
+	TenantAPI testapi.TestAPI
+	RoleAPI   testapi.TestAPI
+	TeamAPI   testapi.TestAPI
+	ConfigAPI testapi.ConfigAPI
 )
 
 var _ = Describe("Project", func() {
 	var client model.Client
+	var flantFlowCfg *config.FlantFlowConfig
 
 	BeforeSuite(func() {
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
+		fmt.Printf("%#v\n", flantFlowCfg)
 		client = specs.CreateRandomClient(ClientAPI)
 	}, 1.0)
 

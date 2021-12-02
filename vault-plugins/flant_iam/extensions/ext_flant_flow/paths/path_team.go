@@ -17,13 +17,11 @@ import (
 
 type teamBackend struct {
 	*flantFlowExtension
-	storage *io.MemoryStore
 }
 
-func teamPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
+func teamPaths(e *flantFlowExtension) []*framework.Path {
 	bb := &teamBackend{
 		flantFlowExtension: e,
-		storage:            storage,
 	}
 	return bb.paths()
 }
@@ -53,11 +51,11 @@ func (b teamBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkBaseConfigured(b.handleCreate(false)),
 					Summary:  "Create team.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkBaseConfigured(b.handleCreate(false)),
 					Summary:  "Create team.",
 				},
 			},
@@ -90,11 +88,11 @@ func (b teamBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkBaseConfigured(b.handleCreate(true)),
 					Summary:  "Create team with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkBaseConfigured(b.handleCreate(true)),
 					Summary:  "Create team with preexistent ID.",
 				},
 			},
@@ -111,7 +109,7 @@ func (b teamBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleList(),
+					Callback: b.checkBaseConfigured(b.handleList),
 					Summary:  "Lists all teams IDs.",
 				},
 			},
@@ -141,18 +139,18 @@ func (b teamBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleUpdate(),
+					Callback: b.checkBaseConfigured(b.handleUpdate),
 					Summary:  "Update the team by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead(),
+					Callback: b.checkBaseConfigured(b.handleRead),
 					Summary:  "Retrieve the team by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete(),
+					Callback: b.checkBaseConfigured(b.handleDelete),
 					Summary:  "Deletes the team by ID.",
 				},
 			},
@@ -172,10 +170,10 @@ func (b teamBackend) paths() []*framework.Path {
 					Required:    false,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRestore(),
+					Callback: b.checkBaseConfigured(b.handleRestore),
 					Summary:  "Restore the team by ID.",
 				},
 			},
@@ -183,23 +181,21 @@ func (b teamBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *teamBackend) handleExistence() framework.ExistenceFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking team existence", "path", req.Path, "id", id, "op", req.Operation)
+func (b *teamBackend) handleExistence(_ context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+	id := data.Get("uuid").(string)
+	b.Logger().Debug("checking team existence", "path", req.Path, "id", id, "op", req.Operation)
 
-		if !uuid.IsValid(id) {
-			return false, fmt.Errorf("id must be valid UUIDv4")
-		}
-
-		tx := b.storage.Txn(false)
-
-		t, err := usecase.Teams(tx).GetByID(id)
-		if err != nil {
-			return false, err
-		}
-		return t != nil, nil
+	if !uuid.IsValid(id) {
+		return false, fmt.Errorf("id must be valid UUIDv4")
 	}
+
+	tx := b.storage.Txn(false)
+
+	t, err := usecase.Teams(tx).GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	return t != nil, nil
 }
 
 func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
@@ -233,122 +229,112 @@ func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
 	}
 }
 
-func (b *teamBackend) handleUpdate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update team", "path", req.Path)
-		id := data.Get("uuid").(string)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *teamBackend) handleUpdate(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("update team", "path", req.Path)
+	id := data.Get("uuid").(string)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		team := &model.Team{
-			UUID:           id,
-			Identifier:     data.Get("identifier").(string),
-			ParentTeamUUID: data.Get("parent_team_uuid").(string),
-			Version:        data.Get("resource_version").(string),
-		}
-
-		err := usecase.Teams(tx).Update(team)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"team": team}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	team := &model.Team{
+		UUID:           id,
+		Identifier:     data.Get("identifier").(string),
+		ParentTeamUUID: data.Get("parent_team_uuid").(string),
+		Version:        data.Get("resource_version").(string),
 	}
+
+	err := usecase.Teams(tx).Update(team)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"team": team}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teamBackend) handleDelete() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete team", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *teamBackend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("delete team", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		err := usecase.Teams(tx).Delete(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
+	err := usecase.Teams(tx).Delete(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }
 
-func (b *teamBackend) handleRead() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read team", "path", req.Path)
-		id := data.Get("uuid").(string)
+func (b *teamBackend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("read team", "path", req.Path)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+	tx := b.storage.Txn(false)
 
-		team, err := usecase.Teams(tx).GetByID(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"team":         team,
-			"full_restore": false, // TODO check if full restore available
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	team, err := usecase.Teams(tx).GetByID(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"team":         team,
+		"full_restore": false, // TODO check if full restore available
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teamBackend) handleList() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("listing teams", "path", req.Path)
-		var showArchived bool
-		rawShowArchived, ok := data.GetOk("show_archived")
-		if ok {
-			showArchived = rawShowArchived.(bool)
-		}
-
-		tx := b.storage.Txn(false)
-		teams, err := usecase.Teams(tx).List(showArchived)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"teams": teams,
-			},
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+func (b *teamBackend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("listing teams", "path", req.Path)
+	var showArchived bool
+	rawShowArchived, ok := data.GetOk("show_archived")
+	if ok {
+		showArchived = rawShowArchived.(bool)
 	}
+
+	tx := b.storage.Txn(false)
+	teams, err := usecase.Teams(tx).List(showArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"teams": teams,
+		},
+	}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teamBackend) handleRestore() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore team", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *teamBackend) handleRestore(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("restore team", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
-		var fullRestore bool
-		rawFullRestore, ok := data.GetOk("show_archived")
-		if ok {
-			fullRestore = rawFullRestore.(bool)
-		}
-
-		team, err := usecase.Teams(tx).Restore(id, fullRestore)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"team": team,
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	id := data.Get("uuid").(string)
+	var fullRestore bool
+	rawFullRestore, ok := data.GetOk("show_archived")
+	if ok {
+		fullRestore = rawFullRestore.(bool)
 	}
+
+	team, err := usecase.Teams(tx).Restore(id, fullRestore)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"team": team,
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

@@ -17,5 +17,6 @@ var (
 	ErrJwtControllerError  = fmt.Errorf("JWT controller error")
 	ErrNilPointer          = fmt.Errorf("nil pointer passed")
 	ErrWrongType           = fmt.Errorf("wrong type")
-	ErrInavlidArg          = fmt.Errorf("invalid value of argument")
+	ErrInvalidArg          = fmt.Errorf("invalid value of argument")
+	ErrNotConfigured       = fmt.Errorf("not configured")
 )

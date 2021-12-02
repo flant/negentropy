@@ -1,7 +1,8 @@
 package contact
 
 import (
-	json2 "encoding/json"
+	"encoding/json"
+	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -10,6 +11,7 @@ import (
 
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
@@ -19,11 +21,18 @@ var (
 	TestAPI    testapi.TestAPI
 	ClientAPI  testapi.TestAPI
 	ProjectAPI testapi.TestAPI
+	TenantAPI  testapi.TestAPI
+	RoleAPI    testapi.TestAPI
+	TeamAPI    testapi.TestAPI
+	ConfigAPI  testapi.ConfigAPI
 )
 
 var _ = Describe("Contact", func() {
 	var client model.Client
+	var flantFlowCfg *config.FlantFlowConfig
 	BeforeSuite(func() {
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
+		fmt.Printf("%#v\n", flantFlowCfg)
 		client = specs.CreateRandomClient(ClientAPI)
 		specs.TryCreateProjects(ProjectAPI, client.UUID, fixtures.Projects()...)
 	}, 1.0)
@@ -32,8 +41,8 @@ var _ = Describe("Contact", func() {
 		createPayload["client_uuid"] = client.UUID
 
 		params := testapi.Params{
-			"expectPayload": func(json gjson.Result) {
-				contactData := json.Get("contact")
+			"expectPayload": func(j gjson.Result) {
+				contactData := j.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))
 				Expect(contactData.Map()).To(HaveKey("identifier"))
 				Expect(contactData.Map()).To(HaveKey("full_identifier"))
@@ -43,7 +52,7 @@ var _ = Describe("Contact", func() {
 				Expect(contactData.Get("resource_version").String()).ToNot(HaveLen(10))
 				Expect(contactData.Map()).To(HaveKey("credentials"))
 				gotCreds := contactData.Get("credentials").Map()
-				b, _ := json2.Marshal(createPayload["credentials"])
+				b, _ := json.Marshal(createPayload["credentials"])
 				expectedCreds := gjson.Parse(string(b)).Map()
 				Expect(gotCreds).To(Equal(expectedCreds))
 			},

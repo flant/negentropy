@@ -11,8 +11,11 @@ import (
 )
 
 func Test_teamCRUD(t *testing.T) {
-	backend := testapi.TestBackend()
-	TestAPI = api.NewTeamAPI(&backend)
+	backend, storage := testapi.TestBackendWithStorage()
+	TestAPI = api.NewTeamAPI(&backend, &storage)
+	TenantAPI = testapi.NewTenantAPI(&backend)
+	RoleAPI = testapi.NewRoleAPI(&backend)
+	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Team")
 }
