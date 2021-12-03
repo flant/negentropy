@@ -10,6 +10,2820 @@
     }
   },
   "paths": {
+    "/auth/approle/login": {
+      "description": "Issue a token based on the credentials supplied",
+      "x-vault-unauthenticated": true,
+      "post": {
+        "summary": "Issue a token based on the credentials supplied",
+        "operationId": "postAuthApproleLogin",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the Role. Required to be supplied when the 'bind_secret_id' constraint is set."
+                  },
+                  "secret_id": {
+                    "type": "string",
+                    "description": "SecretID belong to the App role",
+                    "default": ""
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role": {
+      "description": "Lists all the roles registered with the backend.",
+      "get": {
+        "summary": "Lists all the roles registered with the backend.",
+        "operationId": "getAuthApproleRole",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}": {
+      "description": "Register an role with the backend.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Register an role with the backend.",
+        "operationId": "getAuthApproleRoleRole_name",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Register an role with the backend.",
+        "operationId": "postAuthApproleRoleRole_name",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bind_secret_id": {
+                    "type": "boolean",
+                    "description": "Impose secret_id to be presented when logging in using this role. Defaults to 'true'.",
+                    "default": true
+                  },
+                  "bound_cidr_list": {
+                    "type": "array",
+                    "description": "Use \"secret_id_bound_cidrs\" instead.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "deprecated": true
+                  },
+                  "local_secret_ids": {
+                    "type": "boolean",
+                    "description": "If set, the secret IDs generated using this role will be cluster local. This can only be set during role creation and once set, it can't be reset later."
+                  },
+                  "period": {
+                    "type": "integer",
+                    "description": "Use \"token_period\" instead. If this and \"token_period\" are both specified, only \"token_period\" will be used.",
+                    "format": "seconds",
+                    "deprecated": true
+                  },
+                  "policies": {
+                    "type": "array",
+                    "description": "Use \"token_policies\" instead. If this and \"token_policies\" are both specified, only \"token_policies\" will be used.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "deprecated": true
+                  },
+                  "role_id": {
+                    "type": "string",
+                    "description": "Identifier of the role. Defaults to a UUID."
+                  },
+                  "secret_id_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of IP addresses which can perform the login operation.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "secret_id_num_uses": {
+                    "type": "integer",
+                    "description": "Number of times a SecretID can access the role, after which the SecretID will expire. Defaults to 0 meaning that the the secret_id is of unlimited use."
+                  },
+                  "secret_id_ttl": {
+                    "type": "integer",
+                    "description": "Duration in seconds after which the issued SecretID should expire. Defaults to 0, meaning no expiration.",
+                    "format": "seconds"
+                  },
+                  "token_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or JSON list of CIDR blocks. If set, specifies the blocks of IP addresses which are allowed to use the generated token.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Bound CIDRs",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_explicit_max_ttl": {
+                    "type": "integer",
+                    "description": "If set, tokens created via this role carry an explicit maximum TTL. During renewal, the current maximum TTL values of the role and the mount are not checked for changes, and any updates to these values will have no effect on the token being renewed.",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Explicit Maximum TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_max_ttl": {
+                    "type": "integer",
+                    "description": "The maximum lifetime of the generated token",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Maximum TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_no_default_policy": {
+                    "type": "boolean",
+                    "description": "If true, the 'default' policy will not automatically be added to generated tokens",
+                    "x-vault-displayAttrs": {
+                      "name": "Do Not Attach 'default' Policy To Generated Tokens",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_num_uses": {
+                    "type": "integer",
+                    "description": "The maximum number of times a token may be used, a value of zero means unlimited",
+                    "x-vault-displayAttrs": {
+                      "name": "Maximum Uses of Generated Tokens",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_period": {
+                    "type": "integer",
+                    "description": "If set, tokens created via this role will have no max lifetime; instead, their renewal period will be fixed to this value. This takes an integer number of seconds, or a string duration (e.g. \"24h\").",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Period",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_policies": {
+                    "type": "array",
+                    "description": "Comma-separated list of policies",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Policies",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_ttl": {
+                    "type": "integer",
+                    "description": "The initial ttl of the token to generate",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Initial TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_type": {
+                    "type": "string",
+                    "description": "The type of token to generate, service or batch",
+                    "default": "default-service",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Type",
+                      "group": "Tokens"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Register an role with the backend.",
+        "operationId": "deleteAuthApproleRoleRole_name",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/bind-secret-id": {
+      "description": "Impose secret_id to be presented during login using this role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Impose secret_id to be presented during login using this role.",
+        "operationId": "getAuthApproleRoleRole_nameBindSecretId",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Impose secret_id to be presented during login using this role.",
+        "operationId": "postAuthApproleRoleRole_nameBindSecretId",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bind_secret_id": {
+                    "type": "boolean",
+                    "description": "Impose secret_id to be presented when logging in using this role.",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Impose secret_id to be presented during login using this role.",
+        "operationId": "deleteAuthApproleRoleRole_nameBindSecretId",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/bound-cidr-list": {
+      "description": "Deprecated: Comma separated list of CIDR blocks, if set, specifies blocks of IP addresses which can perform the login operation",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Deprecated: Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "getAuthApproleRoleRole_nameBoundCidrList",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Deprecated: Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "postAuthApproleRoleRole_nameBoundCidrList",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bound_cidr_list": {
+                    "type": "array",
+                    "description": "Deprecated: Please use \"secret_id_bound_cidrs\" instead. Comma separated string or list of CIDR blocks. If set, specifies the blocks of IP addresses which can perform the login operation.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deprecated: Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "deleteAuthApproleRoleRole_nameBoundCidrList",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/custom-secret-id": {
+      "description": "Assign a SecretID of choice against the role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Assign a SecretID of choice against the role.",
+        "operationId": "postAuthApproleRoleRole_nameCustomSecretId",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cidr_list": {
+                    "type": "array",
+                    "description": "Comma separated string or list of CIDR blocks enforcing secret IDs to be used from specific set of IP addresses. If 'bound_cidr_list' is set on the role, then the list of CIDR blocks listed here should be a subset of the CIDR blocks listed on the role.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "metadata": {
+                    "type": "string",
+                    "description": "Metadata to be tied to the SecretID. This should be a JSON formatted string containing metadata in key value pairs."
+                  },
+                  "secret_id": {
+                    "type": "string",
+                    "description": "SecretID to be attached to the role."
+                  },
+                  "token_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of IP addresses which can use the returned token. Should be a subset of the token CIDR blocks listed on the role, if any.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/local-secret-ids": {
+      "description": "Enables cluster local secret IDs",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Enables cluster local secret IDs",
+        "operationId": "getAuthApproleRoleRole_nameLocalSecretIds",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/period": {
+      "description": "Updates the value of 'period' on the role",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Updates the value of 'period' on the role",
+        "operationId": "getAuthApproleRoleRole_namePeriod",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Updates the value of 'period' on the role",
+        "operationId": "postAuthApproleRoleRole_namePeriod",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "period": {
+                    "type": "integer",
+                    "description": "Use \"token_period\" instead. If this and \"token_period\" are both specified, only \"token_period\" will be used.",
+                    "format": "seconds",
+                    "deprecated": true
+                  },
+                  "token_period": {
+                    "type": "integer",
+                    "description": "If set, tokens created via this role will have no max lifetime; instead, their renewal period will be fixed to this value. This takes an integer number of seconds, or a string duration (e.g. \"24h\").",
+                    "format": "seconds"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Updates the value of 'period' on the role",
+        "operationId": "deleteAuthApproleRoleRole_namePeriod",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/policies": {
+      "description": "Policies of the role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Policies of the role.",
+        "operationId": "getAuthApproleRoleRole_namePolicies",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Policies of the role.",
+        "operationId": "postAuthApproleRoleRole_namePolicies",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "policies": {
+                    "type": "array",
+                    "description": "Use \"token_policies\" instead. If this and \"token_policies\" are both specified, only \"token_policies\" will be used.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "deprecated": true
+                  },
+                  "token_policies": {
+                    "type": "array",
+                    "description": "Comma-separated list of policies",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Policies of the role.",
+        "operationId": "deleteAuthApproleRoleRole_namePolicies",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/role-id": {
+      "description": "Returns the 'role_id' of the role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Returns the 'role_id' of the role.",
+        "operationId": "getAuthApproleRoleRole_nameRoleId",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Returns the 'role_id' of the role.",
+        "operationId": "postAuthApproleRoleRole_nameRoleId",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role_id": {
+                    "type": "string",
+                    "description": "Identifier of the role. Defaults to a UUID."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id": {
+      "description": "Generate a SecretID against this role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Generate a SecretID against this role.",
+        "operationId": "getAuthApproleRoleRole_nameSecretId",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Generate a SecretID against this role.",
+        "operationId": "postAuthApproleRoleRole_nameSecretId",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cidr_list": {
+                    "type": "array",
+                    "description": "Comma separated string or list of CIDR blocks enforcing secret IDs to be used from specific set of IP addresses. If 'bound_cidr_list' is set on the role, then the list of CIDR blocks listed here should be a subset of the CIDR blocks listed on the role.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "metadata": {
+                    "type": "string",
+                    "description": "Metadata to be tied to the SecretID. This should be a JSON formatted string containing the metadata in key value pairs."
+                  },
+                  "token_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or JSON list of CIDR blocks. If set, specifies the blocks of IP addresses which are allowed to use the generated token.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id-accessor/destroy": {
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "operationId": "postAuthApproleRoleRole_nameSecretIdAccessorDestroy",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id_accessor": {
+                    "type": "string",
+                    "description": "Accessor of the SecretID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAuthApproleRoleRole_nameSecretIdAccessorDestroy",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id-accessor/lookup": {
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "operationId": "postAuthApproleRoleRole_nameSecretIdAccessorLookup",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id_accessor": {
+                    "type": "string",
+                    "description": "Accessor of the SecretID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id-bound-cidrs": {
+      "description": "Comma separated list of CIDR blocks, if set, specifies blocks of IP addresses which can perform the login operation",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "getAuthApproleRoleRole_nameSecretIdBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "postAuthApproleRoleRole_nameSecretIdBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of IP addresses which can perform the login operation.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Comma separated list of CIDR blocks, if set, specifies blocks of IP\naddresses which can perform the login operation",
+        "operationId": "deleteAuthApproleRoleRole_nameSecretIdBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id-num-uses": {
+      "description": "Use limit of the SecretID generated against the role.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Use limit of the SecretID generated against the role.",
+        "operationId": "getAuthApproleRoleRole_nameSecretIdNumUses",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Use limit of the SecretID generated against the role.",
+        "operationId": "postAuthApproleRoleRole_nameSecretIdNumUses",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id_num_uses": {
+                    "type": "integer",
+                    "description": "Number of times a SecretID can access the role, after which the SecretID will expire."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Use limit of the SecretID generated against the role.",
+        "operationId": "deleteAuthApproleRoleRole_nameSecretIdNumUses",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id-ttl": {
+      "description": "Duration in seconds, representing the lifetime of the SecretIDs that are generated against the role using 'role/<role_name>/secret-id' or 'role/<role_name>/custom-secret-id' endpoints.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Duration in seconds, representing the lifetime of the SecretIDs\nthat are generated against the role using 'role/<role_name>/secret-id' or\n'role/<role_name>/custom-secret-id' endpoints.",
+        "operationId": "getAuthApproleRoleRole_nameSecretIdTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Duration in seconds, representing the lifetime of the SecretIDs\nthat are generated against the role using 'role/<role_name>/secret-id' or\n'role/<role_name>/custom-secret-id' endpoints.",
+        "operationId": "postAuthApproleRoleRole_nameSecretIdTtl",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id_ttl": {
+                    "type": "integer",
+                    "description": "Duration in seconds after which the issued SecretID should expire. Defaults to 0, meaning no expiration.",
+                    "format": "seconds"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Duration in seconds, representing the lifetime of the SecretIDs\nthat are generated against the role using 'role/<role_name>/secret-id' or\n'role/<role_name>/custom-secret-id' endpoints.",
+        "operationId": "deleteAuthApproleRoleRole_nameSecretIdTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id/destroy": {
+      "description": "Invalidate an issued secret_id",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Invalidate an issued secret_id",
+        "operationId": "postAuthApproleRoleRole_nameSecretIdDestroy",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id": {
+                    "type": "string",
+                    "description": "SecretID attached to the role."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Invalidate an issued secret_id",
+        "operationId": "deleteAuthApproleRoleRole_nameSecretIdDestroy",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/secret-id/lookup": {
+      "description": "Read the properties of an issued secret_id",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Read the properties of an issued secret_id",
+        "operationId": "postAuthApproleRoleRole_nameSecretIdLookup",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret_id": {
+                    "type": "string",
+                    "description": "SecretID attached to the role."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/token-bound-cidrs": {
+      "description": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of IP addresses which can use the returned token.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of\nIP addresses which can use the returned token.",
+        "operationId": "getAuthApproleRoleRole_nameTokenBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of\nIP addresses which can use the returned token.",
+        "operationId": "postAuthApproleRoleRole_nameTokenBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or JSON list of CIDR blocks. If set, specifies the blocks of IP addresses which are allowed to use the generated token.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Comma separated string or list of CIDR blocks. If set, specifies the blocks of\nIP addresses which can use the returned token.",
+        "operationId": "deleteAuthApproleRoleRole_nameTokenBoundCidrs",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/token-max-ttl": {
+      "description": "Duration in seconds, the maximum lifetime of the tokens issued by using the SecretIDs that were generated against this role, after which the tokens are not allowed to be renewed.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Duration in seconds, the maximum lifetime of the tokens issued by using\nthe SecretIDs that were generated against this role, after which the\ntokens are not allowed to be renewed.",
+        "operationId": "getAuthApproleRoleRole_nameTokenMaxTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Duration in seconds, the maximum lifetime of the tokens issued by using\nthe SecretIDs that were generated against this role, after which the\ntokens are not allowed to be renewed.",
+        "operationId": "postAuthApproleRoleRole_nameTokenMaxTtl",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token_max_ttl": {
+                    "type": "integer",
+                    "description": "The maximum lifetime of the generated token",
+                    "format": "seconds"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Duration in seconds, the maximum lifetime of the tokens issued by using\nthe SecretIDs that were generated against this role, after which the\ntokens are not allowed to be renewed.",
+        "operationId": "deleteAuthApproleRoleRole_nameTokenMaxTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/token-num-uses": {
+      "description": "Number of times issued tokens can be used",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Number of times issued tokens can be used",
+        "operationId": "getAuthApproleRoleRole_nameTokenNumUses",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Number of times issued tokens can be used",
+        "operationId": "postAuthApproleRoleRole_nameTokenNumUses",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token_num_uses": {
+                    "type": "integer",
+                    "description": "The maximum number of times a token may be used, a value of zero means unlimited"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Number of times issued tokens can be used",
+        "operationId": "deleteAuthApproleRoleRole_nameTokenNumUses",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/role/{role_name}/token-ttl": {
+      "description": "Duration in seconds, the lifetime of the token issued by using the SecretID that is generated against this role, before which the token needs to be renewed.",
+      "parameters": [
+        {
+          "name": "role_name",
+          "description": "Name of the role.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Duration in seconds, the lifetime of the token issued by using the SecretID that\nis generated against this role, before which the token needs to be renewed.",
+        "operationId": "getAuthApproleRoleRole_nameTokenTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Duration in seconds, the lifetime of the token issued by using the SecretID that\nis generated against this role, before which the token needs to be renewed.",
+        "operationId": "postAuthApproleRoleRole_nameTokenTtl",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token_ttl": {
+                    "type": "integer",
+                    "description": "The initial ttl of the token to generate",
+                    "format": "seconds"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Duration in seconds, the lifetime of the token issued by using the SecretID that\nis generated against this role, before which the token needs to be renewed.",
+        "operationId": "deleteAuthApproleRoleRole_nameTokenTtl",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/approle/tidy/secret-id": {
+      "description": "Trigger the clean-up of expired SecretID entries.",
+      "post": {
+        "summary": "Trigger the clean-up of expired SecretID entries.",
+        "operationId": "postAuthApproleTidySecretId",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/auth_method": {
+      "description": "Lists all the roles registered with the backend.",
+      "get": {
+        "summary": "Lists all the roles registered with the backend.",
+        "description": "The list will contain the names of the roles.",
+        "operationId": "getAuthFlant_iam_authAuth_method",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/auth_method/{name}": {
+      "description": "Register an authMethodConfig with the backend.",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the authMethodConfig.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Read an existing authMethodConfig.",
+        "operationId": "getAuthFlant_iam_authAuth_methodName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Register an authMethodConfig with the backend.",
+        "description": "A authMethodConfig is required to authenticate with this backend. The authMethodConfig binds\n\t\tJWT token information with token policies and settings.\n\t\tThe bindings, token polices and token settings can all be configured\n\t\tusing this endpoint",
+        "operationId": "postAuthFlant_iam_authAuth_methodName",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allowed_redirect_uris": {
+                    "type": "array",
+                    "description": "Comma-separated list of allowed values for redirect_uri",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bound_audiences": {
+                    "type": "array",
+                    "description": "Comma-separated list of 'aud' claims that are valid for login; any match is sufficient",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bound_claims": {
+                    "type": "object",
+                    "description": "Map of claims/values which must match for login",
+                    "format": "map"
+                  },
+                  "bound_claims_type": {
+                    "type": "string",
+                    "description": "How to interpret values in the map of claims/values (which must match for login): allowed values are 'string' or 'glob'"
+                  },
+                  "bound_subject": {
+                    "type": "string",
+                    "description": "The 'sub' claim that is valid for login. Optional."
+                  },
+                  "claim_mappings": {
+                    "type": "object",
+                    "description": "Mappings of claims (key) that will be copied to a metadata field (value)",
+                    "format": "kvpairs"
+                  },
+                  "clock_skew_leeway": {
+                    "type": "integer",
+                    "description": "Duration in seconds of leeway when validating all claims to account for clock skew. Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.",
+                    "format": "seconds",
+                    "default": 60000000000
+                  },
+                  "expiration_leeway": {
+                    "type": "integer",
+                    "description": "Duration in seconds of leeway when validating expiration of a token to account for clock skew. Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.",
+                    "format": "seconds",
+                    "default": 150
+                  },
+                  "groups_claim": {
+                    "type": "string",
+                    "description": "The claim to use for the Identity group alias names"
+                  },
+                  "max_age": {
+                    "type": "integer",
+                    "description": "Specifies the allowable elapsed time in seconds since the last time the user was actively authenticated.",
+                    "format": "seconds"
+                  },
+                  "method_type": {
+                    "type": "string",
+                    "description": "Type of the authMethodConfig, either 'jwt', 'oidc', 'service_account_password' or 'multipass_jwt'."
+                  },
+                  "not_before_leeway": {
+                    "type": "integer",
+                    "description": "Duration in seconds of leeway when validating not before values of a token to account for clock skew. Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.",
+                    "format": "seconds",
+                    "default": 150
+                  },
+                  "oidc_scopes": {
+                    "type": "array",
+                    "description": "Comma-separated list of OIDC scopes",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "authentification source for method thypes 'jwt' and 'oidc'."
+                  },
+                  "token_bound_cidrs": {
+                    "type": "array",
+                    "description": "Comma separated string or JSON list of CIDR blocks. If set, specifies the blocks of IP addresses which are allowed to use the generated token.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Bound CIDRs",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_explicit_max_ttl": {
+                    "type": "integer",
+                    "description": "If set, tokens created via this role carry an explicit maximum TTL. During renewal, the current maximum TTL values of the role and the mount are not checked for changes, and any updates to these values will have no effect on the token being renewed.",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Explicit Maximum TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_max_ttl": {
+                    "type": "integer",
+                    "description": "The maximum lifetime of the generated token",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Maximum TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_no_default_policy": {
+                    "type": "boolean",
+                    "description": "If true, the 'default' policy will not automatically be added to generated tokens",
+                    "x-vault-displayAttrs": {
+                      "name": "Do Not Attach 'default' Policy To Generated Tokens",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_num_uses": {
+                    "type": "integer",
+                    "description": "The maximum number of times a token may be used, a value of zero means unlimited",
+                    "x-vault-displayAttrs": {
+                      "name": "Maximum Uses of Generated Tokens",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_period": {
+                    "type": "integer",
+                    "description": "If set, tokens created via this role will have no max lifetime; instead, their renewal period will be fixed to this value. This takes an integer number of seconds, or a string duration (e.g. \"24h\").",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Period",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_policies": {
+                    "type": "array",
+                    "description": "Comma-separated list of policies",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Policies",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_ttl": {
+                    "type": "integer",
+                    "description": "The initial ttl of the token to generate",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Initial TTL",
+                      "group": "Tokens"
+                    }
+                  },
+                  "token_type": {
+                    "type": "string",
+                    "description": "The type of token to generate, service or batch",
+                    "default": "default-service",
+                    "x-vault-displayAttrs": {
+                      "name": "Generated Token's Type",
+                      "group": "Tokens"
+                    }
+                  },
+                  "user_claim": {
+                    "type": "string",
+                    "description": "The claim to use for the Identity entity alias name"
+                  },
+                  "verbose_oidc_logging": {
+                    "type": "boolean",
+                    "description": "Log received OIDC tokens and claims when debug-level logging is active. Not recommended in production since sensitive information may be present in OIDC responses."
+                  }
+                },
+                "required": [
+                  "method_type"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an existing authMethodConfig.",
+        "operationId": "deleteAuthFlant_iam_authAuth_methodName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/auth_source": {
+      "get": {
+        "summary": "Delete authentication source.",
+        "description": "The JWT authentication backend validates JWTs (or OIDC) using the configured\ncredentials. If using OIDC Discovery, the URL must be provided, along\nwith (optionally) the CA cert to use for the connection. If performing JWT\nvalidation locally, a set of public keys must be provided.",
+        "operationId": "getAuthFlant_iam_authAuth_source",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/auth_source/{name}": {
+      "description": "Configures the JWT authentication backend.",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "auth source name",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Read authentication source.",
+        "operationId": "getAuthFlant_iam_authAuth_sourceName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Write authentication source name passed name.",
+        "operationId": "postAuthFlant_iam_authAuth_sourceName",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allow_service_accounts": {
+                    "type": "boolean",
+                    "description": "Allow create entity aliases for services accounts fot this source",
+                    "default": false
+                  },
+                  "bound_issuer": {
+                    "type": "string",
+                    "description": "The value against which to match the 'iss' claim in a JWT. Optional."
+                  },
+                  "default_role": {
+                    "type": "string",
+                    "description": "The default authMethodConfig to use if none is provided during login. If not set, a authMethodConfig is required during login.",
+                    "format": "lowercase"
+                  },
+                  "entity_alias_name": {
+                    "type": "string",
+                    "description": "entity alias name source. may be 'email', 'full_identifier', or 'uuid'."
+                  },
+                  "jwks_ca_pem": {
+                    "type": "string",
+                    "description": "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the JWKS URL. If not set, system certificates are used."
+                  },
+                  "jwks_url": {
+                    "type": "string",
+                    "description": "JWKS URL to use to authenticate signatures. Cannot be used with \"oidc_discovery_url\" or \"jwt_validation_pubkeys\"."
+                  },
+                  "jwt_supported_algs": {
+                    "type": "array",
+                    "description": "A list of supported signing algorithms. Defaults to RS256.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "jwt_validation_pubkeys": {
+                    "type": "array",
+                    "description": "A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with \"jwks_url\" or \"oidc_discovery_url\".",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "namespace_in_state": {
+                    "type": "boolean",
+                    "description": "Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in Vault and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.",
+                    "x-vault-displayAttrs": {
+                      "name": "Namespace in OIDC state",
+                      "value": true
+                    }
+                  },
+                  "oidc_client_id": {
+                    "type": "string",
+                    "description": "The OAuth Client ID configured with your OIDC provider."
+                  },
+                  "oidc_client_secret": {
+                    "type": "string",
+                    "description": "The OAuth Client Secret configured with your OIDC provider.",
+                    "x-vault-displayAttrs": {
+                      "sensitive": true
+                    }
+                  },
+                  "oidc_discovery_ca_pem": {
+                    "type": "string",
+                    "description": "The CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used."
+                  },
+                  "oidc_discovery_url": {
+                    "type": "string",
+                    "description": "OIDC Discovery URL, without any .well-known component (base path). Cannot be used with \"jwks_url\" or \"jwt_validation_pubkeys\"."
+                  },
+                  "oidc_response_mode": {
+                    "type": "string",
+                    "description": "The response mode to be used in the OAuth2 request. Allowed values are 'query' and 'form_post'."
+                  },
+                  "oidc_response_types": {
+                    "type": "array",
+                    "description": "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "provider_config": {
+                    "type": "object",
+                    "description": "Provider-specific configuration. Optional.",
+                    "format": "map",
+                    "x-vault-displayAttrs": {
+                      "name": "Provider Config"
+                    }
+                  }
+                },
+                "required": [
+                  "entity_alias_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete authentication source.",
+        "description": "The JWT authentication backend validates JWTs (or OIDC) using the configured\ncredentials. If using OIDC Discovery, the URL must be provided, along\nwith (optionally) the CA cert to use for the connection. If performing JWT\nvalidation locally, a set of public keys must be provided.",
+        "operationId": "deleteAuthFlant_iam_authAuth_sourceName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/configure_extension/server_access": {
+      "post": {
+        "summary": "Register server extension",
+        "operationId": "postAuthFlant_iam_authConfigure_extensionServer_access",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role_for_ssh_access": {
+                    "type": "string",
+                    "description": "Role to use for SSH access",
+                    "default": "ssh"
+                  }
+                },
+                "required": [
+                  "role_for_ssh_access"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/configure_vault_access": {
+      "description": "Configure vault access to itself",
+      "post": {
+        "summary": "Configure vault access to itself",
+        "operationId": "postAuthFlant_iam_authConfigure_vault_access",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approle_mount_point": {
+                    "type": "string",
+                    "description": "Approle mount point for getting new token and renew it"
+                  },
+                  "role_id": {
+                    "type": "string",
+                    "description": "Role id for approle"
+                  },
+                  "role_name": {
+                    "type": "string",
+                    "description": "Role name to vault access"
+                  },
+                  "secret_id": {
+                    "type": "string",
+                    "description": "Secret to access approle"
+                  },
+                  "secret_id_ttl": {
+                    "type": "integer",
+                    "description": "Secret id time to life. Min 120s (2 minutes)",
+                    "format": "seconds"
+                  },
+                  "token_ttl": {
+                    "type": "integer",
+                    "description": "Token id time to life. Min 20s",
+                    "format": "seconds"
+                  },
+                  "vault_addr": {
+                    "type": "string",
+                    "description": "Url for connect to vault api"
+                  },
+                  "vault_cacert": {
+                    "type": "string",
+                    "description": "Vault CA cert using for TLS verification. In PEM format",
+                    "default": "limbo"
+                  },
+                  "vault_tls_server_name": {
+                    "type": "string",
+                    "description": "Connection host. Uses as \"Host\" header in vault client"
+                  }
+                },
+                "required": [
+                  "vault_cacert",
+                  "secret_id",
+                  "vault_tls_server_name",
+                  "token_ttl",
+                  "approle_mount_point",
+                  "role_name",
+                  "vault_addr",
+                  "role_id",
+                  "secret_id_ttl"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/issue/jwt/{name}": {
+      "description": "Issue options as jwt token",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the jwt type",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Update an existing jwt type",
+        "operationId": "postAuthFlant_iam_authIssueJwtName",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "object",
+                    "description": "Options for jwt type sign",
+                    "format": "map"
+                  }
+                },
+                "required": [
+                  "options"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/issue/multipass_jwt/{uuid}": {
+      "description": "Issue multipass jwt token with new generation number",
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "Name of the jwt type",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Update an existing jwt type",
+        "operationId": "postAuthFlant_iam_authIssueMultipass_jwtUuid",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwks": {
+      "description": "Endpoint to expose public keys to check authority of issued tokens.",
+      "x-vault-unauthenticated": true,
+      "get": {
+        "summary": "Endpoint to expose public keys to check authority of issued tokens.",
+        "operationId": "getAuthFlant_iam_authJwks",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt/configure": {
+      "description": "Configure JWT options.",
+      "get": {
+        "summary": "Read JWT issuing status and configuration.",
+        "operationId": "getAuthFlant_iam_authJwtConfigure",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Configure JWT options.",
+        "operationId": "postAuthFlant_iam_authJwtConfigure",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issuer": {
+                    "type": "string",
+                    "description": "Issuer URL to be used in the iss claim of the token. The issuer is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components, but no query or fragment components.",
+                    "default": "https://auth.negentropy.flant.com/"
+                  },
+                  "multipass_audience": {
+                    "type": "string",
+                    "description": "Value of the audience claim.",
+                    "default": "limbo"
+                  },
+                  "preliminary_announce_period": {
+                    "type": "integer",
+                    "description": "Publish the key in advance after specified amount of time.",
+                    "format": "seconds",
+                    "default": "1d"
+                  },
+                  "rotation_period": {
+                    "type": "integer",
+                    "description": "Force rotate public/private key pair.",
+                    "format": "seconds",
+                    "default": "1d"
+                  }
+                },
+                "required": [
+                  "rotation_period",
+                  "preliminary_announce_period",
+                  "issuer",
+                  "multipass_audience"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt/disable": {
+      "description": "Disable JWT issuing.",
+      "post": {
+        "summary": "Disable JWT issuing.",
+        "operationId": "postAuthFlant_iam_authJwtDisable",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt/enable": {
+      "description": "Enable JWT issuing.",
+      "post": {
+        "summary": "Enable JWT issuing.",
+        "operationId": "postAuthFlant_iam_authJwtEnable",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt/rotate_key": {
+      "description": "Force key rotation. Calling this endpoint will rotate keys immediately.",
+      "post": {
+        "summary": "Force key rotation. Calling this endpoint will rotate keys immediately.",
+        "operationId": "postAuthFlant_iam_authJwtRotate_key",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt_type": {
+      "get": {
+        "summary": "Lists all jwt types registered with the backend",
+        "description": "The list will contain the names of the jwt token types.",
+        "operationId": "getAuthFlant_iam_authJwt_type",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/jwt_type/{name}": {
+      "description": "Manage jwt token types",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the jwt type",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Read an existing jwt type",
+        "operationId": "getAuthFlant_iam_authJwt_typeName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update an existing jwt type",
+        "operationId": "postAuthFlant_iam_authJwt_typeName",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "options_schema": {
+                    "type": "string",
+                    "description": "OpenApi schema for validating issuer params"
+                  },
+                  "ttl": {
+                    "type": "integer",
+                    "description": "Time to life (in seconds) for signed jwt token",
+                    "format": "seconds"
+                  }
+                },
+                "required": [
+                  "ttl"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an existing jwt type",
+        "operationId": "deleteAuthFlant_iam_authJwt_typeName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/kafka/configure": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Setup kafka plugin configuration",
+        "operationId": "postAuthFlant_iam_authKafkaConfigure",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "peers_public_keys": {
+                    "type": "array",
+                    "description": "Vault public keys to check signature in JWKS and TokenGenerationNumber topics",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "publish_quota_usage": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "root_public_key": {
+                    "type": "string",
+                    "description": "RootVault public key for replication"
+                  },
+                  "root_topic_name": {
+                    "type": "string",
+                    "description": "RootVault replication topic name"
+                  },
+                  "self_topic_name": {
+                    "type": "string",
+                    "description": "Self restore topic name"
+                  }
+                },
+                "required": [
+                  "self_topic_name",
+                  "root_public_key",
+                  "root_topic_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/kafka/configure_access": {
+      "post": {
+        "summary": "Setup kafka configuration",
+        "operationId": "postAuthFlant_iam_authKafkaConfigure_access",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "certificate": {
+                    "type": "string",
+                    "description": "x509 certificate to establish Kafka TLS connection"
+                  },
+                  "kafka_endpoints": {
+                    "type": "array",
+                    "description": "List of kafka backends. Ex: 192.168.1.1:9093",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "kafka_endpoints"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/kafka/generate_csr": {
+      "parameters": [
+        {
+          "name": "force",
+          "description": "Enforce private key recreation",
+          "in": "query",
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Generate CSR for kafka endpoint",
+        "operationId": "postAuthFlant_iam_authKafkaGenerate_csr",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/kafka/public_key": {
+      "get": {
+        "summary": "Return public key",
+        "operationId": "getAuthFlant_iam_authKafkaPublic_key",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/login": {
+      "description": "Authenticates to Vault using a JWT (or OIDC) token.",
+      "x-vault-unauthenticated": true,
+      "post": {
+        "summary": "Authenticates to Vault using a JWT (or OIDC) token.",
+        "operationId": "postAuthFlant_iam_authLogin",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jwt": {
+                    "type": "string",
+                    "description": "The signed JWT (or multipass jwt) to validate."
+                  },
+                  "method": {
+                    "type": "string",
+                    "description": "The auth method.",
+                    "format": "lowercase"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "description": "Requested roles",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "service_account_password_secret": {
+                    "type": "string",
+                    "description": "Service account password secret. Used for service account password auth"
+                  },
+                  "service_account_password_uuid": {
+                    "type": "string",
+                    "description": "Service account password uuid. Used for service account password auth"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/multipass_owner": {
+      "description": "Provide info about owner of multipass",
+      "get": {
+        "summary": "Authenticates to Vault using a JWT (or OIDC) token.",
+        "operationId": "getAuthFlant_iam_authMultipass_owner",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/oidc/auth_url": {
+      "x-vault-unauthenticated": true,
+      "post": {
+        "summary": "Request an authorization URL to start an OIDC login flow.",
+        "operationId": "postAuthFlant_iam_authOidcAuth_url",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "authMethodName": {
+                    "type": "string",
+                    "description": "The authMethodConfig to issue an OIDC authorization URL against.",
+                    "format": "lowercase"
+                  },
+                  "client_nonce": {
+                    "type": "string",
+                    "description": "Optional client-provided nonce that must match during callback, if present."
+                  },
+                  "redirect_uri": {
+                    "type": "string",
+                    "description": "The OAuth redirect_uri to use in the authorization URL."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/oidc/callback": {
+      "x-vault-unauthenticated": true,
+      "get": {
+        "summary": "Callback endpoint to complete an OIDC login.",
+        "operationId": "getAuthFlant_iam_authOidcCallback",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Callback endpoint to handle form_posts.",
+        "operationId": "postAuthFlant_iam_authOidcCallback",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "client_nonce": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "id_token": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/query_server": {
+      "parameters": [
+        {
+          "name": "labelSelector",
+          "description": "label selector",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Query servers by labels",
+        "operationId": "getAuthFlant_iam_authQuery_server",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant": {
+      "get": {
+        "summary": "List all tenants.",
+        "operationId": "getAuthFlant_iam_authTenant",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{tenant_uuid}/project": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "UUID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "List all projects of a tenant.",
+        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProject",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{tenant_uuid}/project/{project_uuid}/query_server": {
+      "parameters": [
+        {
+          "name": "labelSelector",
+          "description": "label selector",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "names",
+          "description": "server names array",
+          "in": "query",
+          "schema": {
+            "type": "array"
+          }
+        },
+        {
+          "name": "project_uuid",
+          "description": "UUID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "UUID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Query servers in project by names or labels",
+        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectProject_uuidQuery_server",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/posix_users": {
+      "parameters": [
+        {
+          "name": "project_uuid",
+          "description": "UUID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "server_uuid",
+          "description": "UUID of a server",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "UUID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "GET all posix users",
+        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectProject_uuidServerServer_uuidPosix_users",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{tenant_uuid}/project/{uuid}": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the project by ID.",
+        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectUuid",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{tenant_uuid}/query_server": {
+      "parameters": [
+        {
+          "name": "labelSelector",
+          "description": "label selector",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "UUID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Query servers in tenant by labels",
+        "operationId": "getAuthFlant_iam_authTenantTenant_uuidQuery_server",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant_iam_auth/tenant/{uuid}": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the tenant by ID.",
+        "operationId": "getAuthFlant_iam_authTenantUuid",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/auth/token/accessors/": {
       "description": "List token accessors, which can then be be used to iterate and discover their properties or revoke them. Because this can be used to cause a denial of service, this endpoint requires 'sudo' capability in addition to 'list'.",
       "x-vault-sudo": true,
@@ -686,6 +3500,677 @@
         }
       }
     },
+    "/flant_iam/client": {
+      "get": {
+        "summary": "Lists all client IDs.",
+        "operationId": "getFlant_iamClient",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/privileged": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create client with preexistent ID.",
+        "operationId": "postFlant_iamClientPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a client",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "uuid"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/contact": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all contacts IDs.",
+        "operationId": "getFlant_iamClientClient_uuidContact",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/contact/privileged": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create contact with preexistent ID.",
+        "operationId": "postFlant_iamClientClient_uuidContactPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "description": "credentials per projectUUID, allowed values: \"contact\", \"authorized_contact\", \"representative\", \"plenipotentiary\"",
+                    "format": "kvpairs"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a contact",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "email",
+                  "display_name",
+                  "mobile_phone",
+                  "additional_phones",
+                  "additional_emails",
+                  "uuid",
+                  "credentials",
+                  "first_name",
+                  "last_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/contact/{uuid}": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a contact",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the contact by ID",
+        "operationId": "getFlant_iamClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the contact by ID",
+        "operationId": "postFlant_iamClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "description": "credentials per projectUUID, allowed values: \"contact\", \"authorized_contact\", \"representative\", \"plenipotentiary\"",
+                    "format": "kvpairs"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "additional_emails",
+                  "first_name",
+                  "display_name",
+                  "mobile_phone",
+                  "resource_version",
+                  "identifier",
+                  "email",
+                  "additional_phones",
+                  "credentials",
+                  "last_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the contact by ID",
+        "operationId": "deleteFlant_iamClientClient_uuidContactUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/contact/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a contact",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the contact by ID.",
+        "operationId": "postFlant_iamClientClient_uuidContactUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/project": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all projects IDs.",
+        "operationId": "getFlant_iamClientClient_uuidProject",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/project/privileged": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create project with preexistent ID.",
+        "operationId": "postFlant_iamClientClient_uuidProjectPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "service_packs": {
+                    "type": "object",
+                    "description": "Service packs",
+                    "format": "kvpairs"
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a project",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "uuid",
+                  "identifier",
+                  "service_packs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/project/{uuid}": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the project by ID.",
+        "operationId": "getFlant_iamClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the project by ID.",
+        "operationId": "postFlant_iamClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  },
+                  "service_packs": {
+                    "type": "object",
+                    "description": "Service packs",
+                    "format": "kvpairs"
+                  }
+                },
+                "required": [
+                  "resource_version",
+                  "identifier",
+                  "service_packs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the project by ID.",
+        "operationId": "deleteFlant_iamClientClient_uuidProjectUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{client_uuid}/project/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "client_uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the project by ID.",
+        "operationId": "postFlant_iamClientClient_uuidProjectUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{uuid}": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the client by ID.",
+        "operationId": "getFlant_iamClientUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the client by ID.",
+        "operationId": "postFlant_iamClientUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "identifier",
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the client by ID.",
+        "operationId": "deleteFlant_iamClientUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/client/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a client",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the client by ID.",
+        "operationId": "postFlant_iamClientUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "full_restore": {
+                    "type": "boolean",
+                    "description": "Option to restore full client data"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/configure_extension/server_access": {
       "post": {
         "summary": "Register server",
@@ -748,16 +4233,6 @@
         "operationId": "getFlant_iamFeature_flag",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -838,7 +4313,7 @@
                     "description": "Issuer URL to be used in the iss claim of the token. The issuer is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components, but no query or fragment components.",
                     "default": "https://auth.negentropy.flant.com/"
                   },
-                  "own_audience": {
+                  "multipass_audience": {
                     "type": "string",
                     "description": "Value of the audience claim.",
                     "default": "limbo"
@@ -857,10 +4332,10 @@
                   }
                 },
                 "required": [
-                  "own_audience",
+                  "issuer",
+                  "multipass_audience",
                   "rotation_period",
-                  "preliminary_announce_period",
-                  "issuer"
+                  "preliminary_announce_period"
                 ]
               }
             }
@@ -932,6 +4407,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "peers_public_keys": {
+                    "type": "array",
+                    "description": "Vault public keys to check signature in JWKS topic",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
                   "self_topic_name": {
                     "type": "string",
                     "description": "Kafka topic name for this plugin entities"
@@ -1037,16 +4519,6 @@
         "tags": [
           "secrets"
         ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1130,16 +4602,6 @@
         "operationId": "getFlant_iamRole",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -1295,22 +4757,502 @@
         }
       }
     },
+    "/flant_iam/team": {
+      "get": {
+        "summary": "Lists all teams IDs.",
+        "operationId": "getFlant_iamTeam",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/privileged": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create team with preexistent ID.",
+        "operationId": "postFlant_iamTeamPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for team",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "parent_team_uuid": {
+                    "type": "string",
+                    "description": "ID of parent team"
+                  },
+                  "team_type": {
+                    "type": "string",
+                    "description": "Type of team",
+                    "pattern": "\\w([\\w-.]*\\w)?",
+                    "enum": [
+                      "standard_team",
+                      "devops_team"
+                    ]
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a team",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "team_type",
+                  "uuid",
+                  "identifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{team_uuid}/teammate": {
+      "parameters": [
+        {
+          "name": "team_uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all teammates IDs.",
+        "operationId": "getFlant_iamTeamTeam_uuidTeammate",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{team_uuid}/teammate/privileged": {
+      "parameters": [
+        {
+          "name": "team_uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create teammate with preexistent ID.",
+        "operationId": "postFlant_iamTeamTeam_uuidTeammatePrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "role_at_team": {
+                    "type": "string",
+                    "description": "role at team",
+                    "enum": [
+                      "member",
+                      "engineer",
+                      "manager",
+                      "project_manager",
+                      "teamlead"
+                    ]
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a teammate",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "role_at_team",
+                  "identifier",
+                  "last_name",
+                  "mobile_phone",
+                  "additional_phones",
+                  "additional_emails",
+                  "uuid",
+                  "first_name",
+                  "display_name",
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{team_uuid}/teammate/{uuid}": {
+      "parameters": [
+        {
+          "name": "team_uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a teammate",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the teammate by ID",
+        "operationId": "getFlant_iamTeamTeam_uuidTeammateUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the teammate by ID",
+        "operationId": "postFlant_iamTeamTeam_uuidTeammateUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "additional_emails": {
+                    "type": "array",
+                    "description": "additional_emails",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "additional_phones": {
+                    "type": "array",
+                    "description": "additional_phones",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "display_name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "email"
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "first_name"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "last_name"
+                  },
+                  "mobile_phone": {
+                    "type": "string",
+                    "description": "mobile_phone"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  },
+                  "role_at_team": {
+                    "type": "string",
+                    "description": "role at team",
+                    "enum": [
+                      "member",
+                      "engineer",
+                      "manager",
+                      "project_manager",
+                      "teamlead"
+                    ]
+                  }
+                },
+                "required": [
+                  "display_name",
+                  "mobile_phone",
+                  "role_at_team",
+                  "resource_version",
+                  "first_name",
+                  "email",
+                  "additional_phones",
+                  "identifier",
+                  "last_name",
+                  "additional_emails"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the teammate by ID",
+        "operationId": "deleteFlant_iamTeamTeam_uuidTeammateUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{team_uuid}/teammate/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "team_uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a teammate",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the teammate by ID.",
+        "operationId": "postFlant_iamTeamTeam_uuidTeammateUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{uuid}": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the team by ID.",
+        "operationId": "getFlant_iamTeamUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the team by ID.",
+        "operationId": "postFlant_iamTeamUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier team",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "parent_team_uuid": {
+                    "type": "string",
+                    "description": "ID of parent team"
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the team by ID.",
+        "operationId": "deleteFlant_iamTeamUuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/team/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a team",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the team by ID.",
+        "operationId": "postFlant_iamTeamUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "full_restore": {
+                    "type": "boolean",
+                    "description": "Option to restore full team data"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant": {
       "get": {
         "summary": "Lists all tenants IDs.",
         "operationId": "getFlant_iamTenant",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -1443,16 +5385,6 @@
         "tags": [
           "secrets"
         ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1504,9 +5436,9 @@
                   }
                 },
                 "required": [
-                  "members",
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "members"
                 ]
               }
             }
@@ -1629,16 +5561,65 @@
         "tags": [
           "secrets"
         ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/identity_sharing/privileged": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Create identity sharing.",
+        "operationId": "postFlant_iamTenantTenant_uuidIdentity_sharingPrivileged",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "destination_tenant_uuid": {
+                    "type": "string",
+                    "description": "ID of a destination tenant",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "groups": {
+                    "type": "array",
+                    "description": "ID of sharing groups",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "uuid": {
+                    "type": "string",
+                    "description": "ID of a tenant",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  }
+                },
+                "required": [
+                  "destination_tenant_uuid",
+                  "uuid"
+                ]
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -1713,16 +5694,6 @@
         "tags": [
           "secrets"
         ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1768,8 +5739,8 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "uuid"
+                  "uuid",
+                  "identifier"
                 ]
               }
             }
@@ -1778,6 +5749,65 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/feature_flag/{feature_flag_name}": {
+      "parameters": [
+        {
+          "name": "feature_flag_name",
+          "description": "Feature flag's name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "project_uuid",
+          "description": "ID of a project",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Add FeatureFlag to the project.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove FeatureFlag from the project.",
+        "operationId": "deleteFlant_iamTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
           }
         }
       }
@@ -2087,16 +6117,6 @@
         "tags": [
           "secrets"
         ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -2188,6 +6208,42 @@
         }
       }
     },
+    "/flant_iam/tenant/{tenant_uuid}/project/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the project by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidProjectUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/tenant/{tenant_uuid}/role_binding": {
       "parameters": [
         {
@@ -2206,16 +6262,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidRole_binding",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -2250,6 +6296,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "any_project": {
+                    "type": "boolean",
+                    "description": "allow rolebinding for all projects of tenant"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
@@ -2290,12 +6340,49 @@
                   "roles",
                   "ttl",
                   "require_mfa",
+                  "any_project",
                   "uuid"
                 ]
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval": {
+      "parameters": [
+        {
+          "name": "role_binding_uuid",
+          "description": "ID of a roleBinding",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Lists all approvals for role_binding",
+        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApproval",
+        "tags": [
+          "secrets"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -2360,11 +6447,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "groups": {
+                  "approvers": {
                     "type": "array",
-                    "description": "Array of group IDs.",
+                    "description": "Approvers list",
                     "items": {
-                      "type": "string"
+                      "type": "object"
                     }
                   },
                   "require_mfa": {
@@ -2381,23 +6468,15 @@
                     "type": "integer",
                     "description": "Cound of required approves."
                   },
-                  "service_accounts": {
-                    "type": "array",
-                    "description": "Array of service account IDs.",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "users": {
-                    "type": "array",
-                    "description": "Array of user IDs.",
-                    "items": {
-                      "type": "string"
-                    }
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
                   }
                 },
                 "required": [
-                  "required_votes"
+                  "required_votes",
+                  "resource_version",
+                  "approvers"
                 ]
               }
             }
@@ -2469,6 +6548,15 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "any_project": {
+                    "type": "boolean",
+                    "description": "allow rolebinding for all projects of tenant"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "members": {
                     "type": "array",
                     "description": "Members list",
@@ -2498,9 +6586,11 @@
                   }
                 },
                 "required": [
+                  "any_project",
                   "ttl",
                   "require_mfa",
                   "resource_version",
+                  "identifier",
                   "members",
                   "roles"
                 ]
@@ -2545,16 +6635,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidService_account",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -2618,11 +6698,11 @@
                   }
                 },
                 "required": [
+                  "allowed_cidrs",
+                  "token_ttl",
                   "token_max_ttl",
                   "uuid",
-                  "identifier",
-                  "allowed_cidrs",
-                  "token_ttl"
+                  "identifier"
                 ]
               }
             }
@@ -2663,16 +6743,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipass",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -2767,16 +6837,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidPassword",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -2918,11 +6978,11 @@
                   }
                 },
                 "required": [
-                  "token_ttl",
-                  "token_max_ttl",
                   "resource_version",
                   "identifier",
-                  "allowed_cidrs"
+                  "allowed_cidrs",
+                  "token_ttl",
+                  "token_max_ttl"
                 ]
               }
             }
@@ -2965,16 +7025,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidUser",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -3056,13 +7106,13 @@
                 },
                 "required": [
                   "first_name",
-                  "display_name",
-                  "email",
-                  "additional_phones",
-                  "identifier",
                   "mobile_phone",
+                  "identifier",
                   "uuid",
                   "last_name",
+                  "email",
+                  "additional_phones",
+                  "display_name",
                   "additional_emails"
                 ]
               }
@@ -3104,16 +7154,6 @@
         "operationId": "getFlant_iamTenantTenant_uuidUserOwner_uuidMultipass",
         "tags": [
           "secrets"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -3272,15 +7312,15 @@
                   }
                 },
                 "required": [
-                  "additional_phones",
-                  "last_name",
-                  "display_name",
+                  "first_name",
                   "mobile_phone",
-                  "additional_emails",
-                  "email",
-                  "resource_version",
                   "identifier",
-                  "first_name"
+                  "display_name",
+                  "last_name",
+                  "additional_phones",
+                  "email",
+                  "additional_emails",
+                  "resource_version"
                 ]
               }
             }
@@ -3301,6 +7341,42 @@
         "responses": {
           "204": {
             "description": "empty body"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{tenant_uuid}/user/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "tenant_uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "description": "ID of a user",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the user by ID.",
+        "operationId": "postFlant_iamTenantTenant_uuidUserUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -3353,8 +7429,8 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier"
+                  "identifier",
+                  "resource_version"
                 ]
               }
             }
@@ -3398,6 +7474,47 @@
         "tags": [
           "secrets"
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/tenant/{uuid}/restore": {
+      "parameters": [
+        {
+          "name": "uuid",
+          "description": "ID of a tenant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Restore the tenant by ID.",
+        "operationId": "postFlant_iamTenantUuidRestore",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "full_restore": {
+                    "type": "boolean",
+                    "description": "Option to restore full tenant data"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -5105,13 +9222,11 @@
         }
       }
     },
-    "/secret/.*": {},
-    "/secret/config": {
-      "description": "Configures settings for the KV store",
-      "x-vault-createSupported": true,
+    "/ssh/config/ca": {
+      "description": "Set the SSH private key used for signing certificates.",
       "get": {
-        "summary": "Read the backend level settings.",
-        "operationId": "getSecretConfig",
+        "summary": "Set the SSH private key used for signing certificates.",
+        "operationId": "getSshConfigCa",
         "tags": [
           "secrets"
         ],
@@ -5122,8 +9237,8 @@
         }
       },
       "post": {
-        "summary": "Configure backend level settings that are applied to every key in the key-value store.",
-        "operationId": "postSecretConfig",
+        "summary": "Set the SSH private key used for signing certificates.",
+        "operationId": "postSshConfigCa",
         "tags": [
           "secrets"
         ],
@@ -5133,82 +9248,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "cas_required": {
+                  "generate_signing_key": {
                     "type": "boolean",
-                    "description": "If true, the backend will require the cas parameter to be set for each write"
+                    "description": "Generate SSH key pair internally rather than use the private_key and public_key fields.",
+                    "default": true
                   },
-                  "delete_version_after": {
-                    "type": "integer",
-                    "description": "If set, the length of time before a version is deleted. A negative duration disables the use of delete_version_after on all keys. A zero duration clears the current setting. Accepts a Go duration format string.",
-                    "format": "seconds"
+                  "private_key": {
+                    "type": "string",
+                    "description": "Private half of the SSH key that will be used to sign certificates."
                   },
-                  "max_versions": {
-                    "type": "integer",
-                    "description": "The number of versions to keep for each key. Defaults to 10"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/data/{path}": {
-      "description": "Write, Read, and Delete data in the Key-Value Store.",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "get": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "getSecretDataPath",
-        "tags": [
-          "secrets"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "postSecretDataPath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "data": {
-                    "type": "object",
-                    "description": "The contents of the data map will be stored and returned on read.",
-                    "format": "map"
-                  },
-                  "options": {
-                    "type": "object",
-                    "description": "Options for writing a KV entry. Set the \"cas\" value to use a Check-And-Set operation. If not set the write will be allowed. If set to 0 a write will only be allowed if the key doesn’t exist. If the index is non-zero the write will only be allowed if the key’s current version matches the version specified in the cas parameter.",
-                    "format": "map"
-                  },
-                  "version": {
-                    "type": "integer",
-                    "description": "If provided during a read, the value at the version number will be returned"
+                  "public_key": {
+                    "type": "string",
+                    "description": "Public half of the SSH key that will be used to sign certificates."
                   }
                 }
               }
@@ -5222,8 +9273,8 @@
         }
       },
       "delete": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "deleteSecretDataPath",
+        "summary": "Set the SSH private key used for signing certificates.",
+        "operationId": "deleteSshConfigCa",
         "tags": [
           "secrets"
         ],
@@ -5234,113 +9285,212 @@
         }
       }
     },
-    "/secret/delete/{path}": {
-      "description": "Marks one or more versions as deleted in the KV store.",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Marks one or more versions as deleted in the KV store.",
-        "operationId": "postSecretDeletePath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to be archived. The versioned data will not be deleted, but it will no longer be returned in normal get requests.",
-                    "items": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/destroy/{path}": {
-      "description": "Permanently removes one or more versions in the KV store",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Permanently removes one or more versions in the KV store",
-        "operationId": "postSecretDestroyPath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to destroy. Their data will be permanently deleted.",
-                    "items": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/metadata/{path}": {
-      "description": "Configures settings for the KV store",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
+    "/ssh/config/zeroaddress": {
+      "description": "Assign zero address as default CIDR block for select roles.",
       "get": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "getSecretMetadataPath",
+        "summary": "Assign zero address as default CIDR block for select roles.",
+        "operationId": "getSshConfigZeroaddress",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Assign zero address as default CIDR block for select roles.",
+        "operationId": "postSshConfigZeroaddress",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roles": {
+                    "type": "array",
+                    "description": "[Required] Comma separated list of role names which allows credentials to be requested for any IP address. CIDR blocks previously registered under these roles will be ignored.",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Assign zero address as default CIDR block for select roles.",
+        "operationId": "deleteSshConfigZeroaddress",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/ssh/creds/{role}": {
+      "description": "Creates a credential for establishing SSH connection with the remote host.",
+      "parameters": [
+        {
+          "name": "role",
+          "description": "[Required] Name of the role",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Creates a credential for establishing SSH connection with the remote host.",
+        "operationId": "postSshCredsRole",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ip": {
+                    "type": "string",
+                    "description": "[Required] IP of the remote host"
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "[Optional] Username in remote host"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ssh/keys/{key_name}": {
+      "description": "Register a shared private key with Vault.",
+      "parameters": [
+        {
+          "name": "key_name",
+          "description": "[Required] Name of the key",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "post": {
+        "summary": "Register a shared private key with Vault.",
+        "operationId": "postSshKeysKey_name",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "description": "[Required] SSH private key with super user privileges in host"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Register a shared private key with Vault.",
+        "operationId": "deleteSshKeysKey_name",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/ssh/lookup": {
+      "description": "List all the roles associated with the given IP address.",
+      "post": {
+        "summary": "List all the roles associated with the given IP address.",
+        "operationId": "postSshLookup",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ip": {
+                    "type": "string",
+                    "description": "[Required] IP address of remote host"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ssh/public_key": {
+      "description": "Retrieve the public key.",
+      "x-vault-unauthenticated": true,
+      "get": {
+        "summary": "Retrieve the public key.",
+        "operationId": "getSshPublic_key",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ssh/roles": {
+      "description": "Manage the 'roles' that can be created with this backend.",
+      "get": {
+        "summary": "Manage the 'roles' that can be created with this backend.",
+        "operationId": "getSshRoles",
         "tags": [
           "secrets"
         ],
@@ -5359,10 +9509,36 @@
             "description": "OK"
           }
         }
+      }
+    },
+    "/ssh/roles/{role}": {
+      "description": "Manage the 'roles' that can be created with this backend.",
+      "parameters": [
+        {
+          "name": "role",
+          "description": "[Required for all types] Name of the role being created.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Manage the 'roles' that can be created with this backend.",
+        "operationId": "getSshRolesRole",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "post": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "postSecretMetadataPath",
+        "summary": "Manage the 'roles' that can be created with this backend.",
+        "operationId": "postSshRolesRole",
         "tags": [
           "secrets"
         ],
@@ -5372,18 +9548,159 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "cas_required": {
+                  "admin_user": {
+                    "type": "string",
+                    "description": "[Required for Dynamic type] [Not applicable for OTP type] [Not applicable for CA type] Admin user at remote host. The shared key being registered should be for this user and should have root privileges. Everytime a dynamic credential is being generated for other users, Vault uses this admin username to login to remote host and install the generated credential for the other user.",
+                    "x-vault-displayAttrs": {
+                      "name": "Admin Username"
+                    }
+                  },
+                  "algorithm_signer": {
+                    "type": "string",
+                    "description": "When supplied, this value specifies a signing algorithm for the key. Possible values: ssh-rsa, rsa-sha2-256, rsa-sha2-512.",
+                    "x-vault-displayAttrs": {
+                      "name": "Signing Algorithm"
+                    }
+                  },
+                  "allow_bare_domains": {
                     "type": "boolean",
-                    "description": "If true the key will require the cas parameter to be set on all write requests. If false, the backend’s configuration will be used."
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, host certificates that are requested are allowed to use the base domains listed in \"allowed_domains\", e.g. \"example.com\". This is a separate option as in some cases this can be considered a security threat."
                   },
-                  "delete_version_after": {
-                    "type": "integer",
-                    "description": "The length of time before a version is deleted. If not set, the backend's configured delete_version_after is used. Cannot be greater than the backend's delete_version_after. A zero duration clears the current setting. A negative duration will cause an error.",
-                    "format": "seconds"
+                  "allow_host_certificates": {
+                    "type": "boolean",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, certificates are allowed to be signed for use as a 'host'.",
+                    "default": false
                   },
-                  "max_versions": {
+                  "allow_subdomains": {
+                    "type": "boolean",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, host certificates that are requested are allowed to use subdomains of those listed in \"allowed_domains\"."
+                  },
+                  "allow_user_certificates": {
+                    "type": "boolean",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, certificates are allowed to be signed for use as a 'user'.",
+                    "default": false
+                  },
+                  "allow_user_key_ids": {
+                    "type": "boolean",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If true, users can override the key ID for a signed certificate with the \"key_id\" field. When false, the key ID will always be the token display name. The key ID is logged by the SSH server and can be useful for auditing.",
+                    "x-vault-displayAttrs": {
+                      "name": "Allow User Key IDs"
+                    }
+                  },
+                  "allowed_critical_options": {
+                    "type": "string",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] A comma-separated list of critical options that certificates can have when signed. To allow any critical options, set this to an empty string."
+                  },
+                  "allowed_domains": {
+                    "type": "string",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If this option is not specified, client can request for a signed certificate for any valid host. If only certain domains are allowed, then this list enforces it."
+                  },
+                  "allowed_extensions": {
+                    "type": "string",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] A comma-separated list of extensions that certificates can have when signed. To allow any extensions, set this to an empty string."
+                  },
+                  "allowed_user_key_lengths": {
+                    "type": "object",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, allows the enforcement of key types and minimum key sizes to be signed.",
+                    "format": "map"
+                  },
+                  "allowed_users": {
+                    "type": "string",
+                    "description": "[Optional for all types] [Works differently for CA type] If this option is not specified, or is '*', client can request a credential for any valid user at the remote host, including the admin user. If only certain usernames are to be allowed, then this list enforces it. If this field is set, then credentials can only be created for default_user and usernames present in this list. Setting this option will enable all the users with access to this role to fetch credentials for all other usernames in this list. Use with caution. N.B.: with the CA type, an empty list means that no users are allowed; explicitly specify '*' to allow any user."
+                  },
+                  "allowed_users_template": {
+                    "type": "boolean",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] If set, Allowed users can be specified using identity template policies. Non-templated users are also permitted.",
+                    "default": false
+                  },
+                  "cidr_list": {
+                    "type": "string",
+                    "description": "[Optional for Dynamic type] [Optional for OTP type] [Not applicable for CA type] Comma separated list of CIDR blocks for which the role is applicable for. CIDR blocks can belong to more than one role.",
+                    "x-vault-displayAttrs": {
+                      "name": "CIDR List"
+                    }
+                  },
+                  "default_critical_options": {
+                    "type": "object",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] Critical options certificates should have if none are provided when signing. This field takes in key value pairs in JSON format. Note that these are not restricted by \"allowed_critical_options\". Defaults to none.",
+                    "format": "map"
+                  },
+                  "default_extensions": {
+                    "type": "object",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] Extensions certificates should have if none are provided when signing. This field takes in key value pairs in JSON format. Note that these are not restricted by \"allowed_extensions\". Defaults to none.",
+                    "format": "map"
+                  },
+                  "default_user": {
+                    "type": "string",
+                    "description": "[Required for Dynamic type] [Required for OTP type] [Optional for CA type] Default username for which a credential will be generated. When the endpoint 'creds/' is used without a username, this value will be used as default username.",
+                    "x-vault-displayAttrs": {
+                      "name": "Default Username"
+                    }
+                  },
+                  "exclude_cidr_list": {
+                    "type": "string",
+                    "description": "[Optional for Dynamic type] [Optional for OTP type] [Not applicable for CA type] Comma separated list of CIDR blocks. IP addresses belonging to these blocks are not accepted by the role. This is particularly useful when big CIDR blocks are being used by the role and certain parts of it needs to be kept out.",
+                    "x-vault-displayAttrs": {
+                      "name": "Exclude CIDR List"
+                    }
+                  },
+                  "install_script": {
+                    "type": "string",
+                    "description": "[Optional for Dynamic type] [Not-applicable for OTP type] [Not applicable for CA type] Script used to install and uninstall public keys in the target machine. The inbuilt default install script will be for Linux hosts. For sample script, refer the project documentation website."
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "[Required for Dynamic type] [Not applicable for OTP type] [Not applicable for CA type] Name of the registered key in Vault. Before creating the role, use the 'keys/' endpoint to create a named key."
+                  },
+                  "key_bits": {
                     "type": "integer",
-                    "description": "The number of versions to keep. If not set, the backend’s configured max version is used."
+                    "description": "[Optional for Dynamic type] [Not applicable for OTP type] [Not applicable for CA type] Length of the RSA dynamic key in bits. It is 1024 by default or it can be 2048."
+                  },
+                  "key_id_format": {
+                    "type": "string",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] When supplied, this value specifies a custom format for the key id of a signed certificate. The following variables are available for use: '{{token_display_name}}' - The display name of the token used to make the request. '{{role_name}}' - The name of the role signing the request. '{{public_key_hash}}' - A SHA256 checksum of the public key that is being signed.",
+                    "x-vault-displayAttrs": {
+                      "name": "Key ID Format"
+                    }
+                  },
+                  "key_option_specs": {
+                    "type": "string",
+                    "description": "[Optional for Dynamic type] [Not applicable for OTP type] [Not applicable for CA type] Comma separated option specifications which will be prefixed to RSA key in authorized_keys file. Options should be valid and comply with authorized_keys file format and should not contain spaces."
+                  },
+                  "key_type": {
+                    "type": "string",
+                    "description": "[Required for all types] Type of key used to login to hosts. It can be either 'otp', 'dynamic' or 'ca'. 'otp' type requires agent to be installed in remote hosts.",
+                    "enum": [
+                      "otp",
+                      "dynamic",
+                      "ca"
+                    ],
+                    "x-vault-displayAttrs": {
+                      "value": "ca"
+                    }
+                  },
+                  "max_ttl": {
+                    "type": "integer",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] The maximum allowed lease duration",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "Max TTL"
+                    }
+                  },
+                  "port": {
+                    "type": "integer",
+                    "description": "[Optional for Dynamic type] [Optional for OTP type] [Not applicable for CA type] Port number for SSH connection. Default is '22'. Port number does not play any role in creation of OTP. For 'otp' type, this is just a way to inform client about the port number to use. Port number will be returned to client by Vault server along with OTP.",
+                    "x-vault-displayAttrs": {
+                      "value": 22
+                    }
+                  },
+                  "ttl": {
+                    "type": "integer",
+                    "description": "[Not applicable for Dynamic type] [Not applicable for OTP type] [Optional for CA type] The lease duration if no specific lease duration is requested. The lease duration controls the expiration of certificates issued by this backend. Defaults to the value of max_ttl.",
+                    "format": "seconds",
+                    "x-vault-displayAttrs": {
+                      "name": "TTL"
+                    }
                   }
                 }
               }
@@ -5397,8 +9714,8 @@
         }
       },
       "delete": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "deleteSecretMetadataPath",
+        "summary": "Manage the 'roles' that can be created with this backend.",
+        "operationId": "deleteSshRolesRole",
         "tags": [
           "secrets"
         ],
@@ -5409,12 +9726,12 @@
         }
       }
     },
-    "/secret/undelete/{path}": {
-      "description": "Undeletes one or more versions from the KV store.",
+    "/ssh/sign/{role}": {
+      "description": "Request signing an SSH key using a certain role with the provided details.",
       "parameters": [
         {
-          "name": "path",
-          "description": "Location of the secret.",
+          "name": "role",
+          "description": "The desired role with configuration for this request.",
           "in": "path",
           "schema": {
             "type": "string"
@@ -5422,10 +9739,9 @@
           "required": true
         }
       ],
-      "x-vault-createSupported": true,
       "post": {
-        "summary": "Undeletes one or more versions from the KV store.",
-        "operationId": "postSecretUndeletePath",
+        "summary": "Request signing an SSH key using a certain role with the provided details.",
+        "operationId": "postSshSignRole",
         "tags": [
           "secrets"
         ],
@@ -5435,12 +9751,68 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to unarchive. The versions will be restored and their data will be returned on normal get requests.",
-                    "items": {
-                      "type": "integer"
-                    }
+                  "cert_type": {
+                    "type": "string",
+                    "description": "Type of certificate to be created; either \"user\" or \"host\".",
+                    "default": "user"
+                  },
+                  "critical_options": {
+                    "type": "object",
+                    "description": "Critical options that the certificate should be signed for.",
+                    "format": "map"
+                  },
+                  "extensions": {
+                    "type": "object",
+                    "description": "Extensions that the certificate should be signed for.",
+                    "format": "map"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "description": "Key id that the created certificate should have. If not specified, the display name of the token will be used."
+                  },
+                  "public_key": {
+                    "type": "string",
+                    "description": "SSH public key that should be signed."
+                  },
+                  "ttl": {
+                    "type": "integer",
+                    "description": "The requested Time To Live for the SSH certificate; sets the expiration date. If not specified the role default, backend default, or system default TTL is used, in that order. Cannot be later than the role max TTL.",
+                    "format": "seconds"
+                  },
+                  "valid_principals": {
+                    "type": "string",
+                    "description": "Valid principals, either usernames or hostnames, that the certificate should be signed for."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ssh/verify": {
+      "description": "Validate the OTP provided by Vault SSH Agent.",
+      "x-vault-unauthenticated": true,
+      "post": {
+        "summary": "Validate the OTP provided by Vault SSH Agent.",
+        "operationId": "postSshVerify",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "otp": {
+                    "type": "string",
+                    "description": "[Required] One-Time-Key that needs to be validated"
                   }
                 }
               }
@@ -8125,147 +12497,6 @@
       },
       "delete": {
         "operationId": "deleteSysQuotasRateLimitName",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "204": {
-            "description": "empty body"
-          }
-        }
-      }
-    },
-    "/sys/raw": {
-      "description": "Write, Read, and Delete data directly in the Storage backend.",
-      "x-vault-sudo": true,
-      "get": {
-        "summary": "Read the value of the key at the given path.",
-        "operationId": "getSysRaw",
-        "tags": [
-          "system"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Update the value of the key at the given path.",
-        "operationId": "postSysRaw",
-        "tags": [
-          "system"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string"
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete the key with given path.",
-        "operationId": "deleteSysRaw",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "204": {
-            "description": "empty body"
-          }
-        }
-      }
-    },
-    "/sys/raw/{path}": {
-      "description": "Write, Read, and Delete data directly in the Storage backend.",
-      "parameters": [
-        {
-          "name": "path",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-sudo": true,
-      "get": {
-        "summary": "Read the value of the key at the given path.",
-        "operationId": "getSysRawPath",
-        "tags": [
-          "system"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Update the value of the key at the given path.",
-        "operationId": "postSysRawPath",
-        "tags": [
-          "system"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete the key with given path.",
-        "operationId": "deleteSysRawPath",
         "tags": [
           "system"
         ],
