@@ -8,7 +8,7 @@ import (
 type RoleBindingApprovalEndpointBuilder struct{}
 
 func (b *RoleBindingApprovalEndpointBuilder) OneCreate(params Params, query url.Values) string {
-	return path.Join("tenant", params["tenant"].(string), "role_binding", params["role_binding"].(string), "approval", params["uuid"].(string)) + "?" + query.Encode()
+	return path.Join("tenant", params["tenant"].(string), "role_binding", params["role_binding"].(string), "approval") + "?" + query.Encode()
 }
 
 func (b *RoleBindingApprovalEndpointBuilder) One(params Params, query url.Values) string {

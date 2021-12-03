@@ -36,31 +36,5 @@ func (g *Group) ObjId() string {
 
 // FixMembers remove from members invalid links, if some removed, returns true
 func (g *Group) FixMembers() bool {
-	if len(g.Members) == len(g.Users)+len(g.Groups)+len(g.ServiceAccounts) {
-		return false
-	}
-	buildSet := func(uuids []string) map[string]struct{} {
-		result := map[string]struct{}{}
-		for _, uuid := range uuids {
-			result[uuid] = struct{}{}
-		}
-		return result
-	}
-	membersSuperSet := map[string]map[string]struct{}{
-		UserType:           buildSet(g.Users),
-		ServiceAccountType: buildSet(g.ServiceAccounts),
-		GroupType:          buildSet(g.Groups),
-	}
-	newMembers := make([]MemberNotation, 0, len(g.Members))
-
-	fixed := false
-	for _, m := range g.Members {
-		if _, ok := membersSuperSet[m.Type][m.UUID]; ok {
-			newMembers = append(newMembers, m)
-		} else {
-			fixed = true
-		}
-	}
-	g.Members = newMembers
-	return fixed
+	return FixMembers(&g.Members, g.Users, g.Groups, g.ServiceAccounts)
 }

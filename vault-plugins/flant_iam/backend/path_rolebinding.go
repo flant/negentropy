@@ -71,7 +71,7 @@ func rbBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[str
 	}
 	for fieldName, fieldSchema := range extraFields {
 		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
-			panic(fmt.Sprintf("path_contact wrong schema: duplicate field name:%s", fieldName))
+			panic(fmt.Sprintf("path_rolebinding wrong schema: duplicate field name:%s", fieldName))
 		}
 		fs[fieldName] = fieldSchema
 	}
