@@ -109,27 +109,3 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 	apiClient.SetToken(loginRes.ClientToken)
 	return nil
 }
-
-// var twoSeconds = 2 * time.Second
-//
-// func prolongAccessToken(apiClient *api.Client, increment int, logger hclog.Logger) error {
-//	logger = logger.Named("prolongAccessToken")
-//	var err error
-//	for i := 0; i < 5; i++ {
-//		_, err = apiClient.Auth().Token().Renew(apiClient.Token(), increment)
-//
-//		if err != nil {
-//			logger.Warn(fmt.Sprintf("prolong access token:%s, retry in %s", err.Error(), twoSeconds.String()))
-//			time.Sleep(twoSeconds)
-//			continue
-//		}
-//
-//		return nil
-//	}
-//
-//	if err != nil {
-//		return fmt.Errorf("prolong access token falls 5 attempts:%w", err)
-//	}
-//
-//	return nil
-// }
