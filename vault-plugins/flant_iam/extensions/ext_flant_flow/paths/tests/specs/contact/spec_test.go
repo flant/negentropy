@@ -11,10 +11,15 @@ import (
 )
 
 func Test_contactCRUD(t *testing.T) {
-	backend := testapi.TestBackend()
-	TestAPI = api.NewContactAPI(&backend)
-	ClientAPI = api.NewClientAPI(&backend)
-	ProjectAPI = api.NewProjectAPI(&backend)
+	backend, storage := testapi.TestBackendWithStorage()
+	TestAPI = api.NewContactAPI(&backend, &storage)
+	ClientAPI = api.NewClientAPI(&backend, &storage)
+	ProjectAPI = api.NewProjectAPI(&backend, &storage)
+	TenantAPI = testapi.NewTenantAPI(&backend)
+	RoleAPI = testapi.NewRoleAPI(&backend)
+	TeamAPI = api.NewTeamAPI(&backend, &storage)
+	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Contact")
 }

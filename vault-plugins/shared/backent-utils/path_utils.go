@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/pkg/errors"
 
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -51,19 +52,30 @@ func ResponseErr(req *logical.Request, err error) (*logical.Response, error) {
 }
 
 func MapErrorToHTTPStatusCode(err error) int {
-	switch err {
-	case consts.ErrNoUUID, consts.ErrIsArchived:
-		return http.StatusBadRequest
-	case consts.ErrNotFound:
-		return http.StatusNotFound
-	case consts.ErrBadVersion:
-		return http.StatusConflict
-	case consts.ErrBadOrigin, consts.ErrJwtDisabled:
-		return http.StatusForbidden
-	case consts.ErrJwtControllerError:
-		return http.StatusInternalServerError
+	statuses := map[error]int{
+		consts.ErrNoUUID:              http.StatusBadRequest,
+		consts.ErrIsArchived:          http.StatusBadRequest,
+		consts.ErrAlreadyExists:       http.StatusBadRequest,
+		consts.ErrBadProjectScopeRole: http.StatusBadRequest,
+		consts.ErrInvalidArg:          http.StatusBadRequest,
+
+		consts.ErrNotFound: http.StatusNotFound,
+
+		consts.ErrBadVersion: http.StatusConflict,
+
+		consts.ErrBadOrigin:   http.StatusForbidden,
+		consts.ErrJwtDisabled: http.StatusForbidden,
+
+		consts.ErrNotConfigured: http.StatusPreconditionRequired,
+
+		consts.ErrJwtControllerError: http.StatusInternalServerError,
 	}
-	return 0
+	for e, s := range statuses {
+		if errors.Is(err, e) {
+			return s
+		}
+	}
+	return http.StatusInternalServerError
 }
 
 func GetCreationID(expectID bool, data *framework.FieldData) (string, error) {

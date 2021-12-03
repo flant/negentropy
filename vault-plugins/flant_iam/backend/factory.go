@@ -49,7 +49,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 	conf.Logger = baseLogger
 
-	b, err := newBackend(conf)
+	b, err := newBackend(ctx, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func initializer(storage *sharedio.MemoryStore) func(ctx context.Context, initRe
 	}
 }
 
-func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
+func newBackend(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	b := &framework.Backend{
 		Help:        strings.TrimSpace(commonHelp),
 		BackendType: logical.TypeLogical,
@@ -209,6 +209,11 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 		return allErrors
 	}
 
+	flantFlowPaths, err := ext_ff_paths.FlantFlowPaths(ctx, conf, storage)
+	if err != nil {
+		return nil, err
+	}
+
 	b.Paths = framework.PathAppend(
 		tenantPaths(b, storage),
 
@@ -231,7 +236,7 @@ func newBackend(conf *logical.BackendConfig) (logical.Backend, error) {
 
 		tokenController.ApiPaths(),
 
-		ext_ff_paths.FlantFlowPaths(conf, storage),
+		flantFlowPaths,
 	)
 
 	b.Clean = func(context.Context) {

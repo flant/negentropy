@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/vault/sdk/logical"
 	. "github.com/onsi/gomega"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 type ConfigAPI interface {
@@ -13,6 +15,9 @@ type ConfigAPI interface {
 	GenerateCSR()
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
+	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
+	ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string)
+	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 }
 
 type backendBasedConfigAPI struct {
@@ -45,6 +50,27 @@ func (b *backendBasedConfigAPI) ConfigureExtensionServerAccess(params map[string
 	_, err := b.request(logical.UpdateOperation, "configure_extension/server_access",
 		map[string]interface{}{},
 		params)
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/flant_tenant/"+flantTenantUUID,
+		map[string]interface{}{},
+		map[string]interface{}{})
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/specific_roles",
+		map[string]interface{}{},
+		map[string]interface{}{"specific_roles": roles})
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/specific_teams",
+		map[string]interface{}{},
+		map[string]interface{}{"specific_teams": teams})
 	Expect(err).ToNot(HaveOccurred())
 }
 

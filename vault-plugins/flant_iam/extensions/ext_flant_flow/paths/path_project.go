@@ -18,13 +18,11 @@ import (
 
 type projectBackend struct {
 	*flantFlowExtension
-	storage *io.MemoryStore
 }
 
-func projectPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
+func projectPaths(e *flantFlowExtension) []*framework.Path {
 	bb := &projectBackend{
 		flantFlowExtension: e,
-		storage:            storage,
 	}
 	return bb.paths()
 }
@@ -53,11 +51,11 @@ func (b projectBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create project.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create project.",
 				},
 			},
@@ -89,11 +87,11 @@ func (b projectBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create project with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create project with preexistent ID.",
 				},
 			},
@@ -115,7 +113,7 @@ func (b projectBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleList(),
+					Callback: b.checkConfigured(b.handleList),
 					Summary:  "Lists all projects IDs.",
 				},
 			},
@@ -150,18 +148,18 @@ func (b projectBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleUpdate(),
+					Callback: b.checkConfigured(b.handleUpdate),
 					Summary:  "Update the project by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead(),
+					Callback: b.checkConfigured(b.handleRead),
 					Summary:  "Retrieve the project by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete(),
+					Callback: b.checkConfigured(b.handleDelete),
 					Summary:  "Deletes the project by ID.",
 				},
 			},
@@ -181,10 +179,10 @@ func (b projectBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRestore(),
+					Callback: b.checkConfigured(b.handleRestore),
 					Summary:  "Restore the project by ID.",
 				},
 			},
@@ -192,25 +190,23 @@ func (b projectBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *projectBackend) handleExistence() framework.ExistenceFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		id := data.Get("uuid").(string)
-		clientID := data.Get(clientUUIDKey).(string)
-		b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
+func (b *projectBackend) handleExistence(_ context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+	id := data.Get("uuid").(string)
+	clientID := data.Get(clientUUIDKey).(string)
+	b.Logger().Debug("checking project existence", "path", req.Path, "id", id, "op", req.Operation)
 
-		if !uuid.IsValid(id) {
-			return false, fmt.Errorf("id must be valid UUIDv4")
-		}
-
-		tx := b.storage.Txn(false)
-
-		obj, err := usecase.Projects(tx).GetByID(id)
-		if err != nil {
-			return false, err
-		}
-		exists := obj != nil && obj.TenantUUID == clientID
-		return exists, nil
+	if !uuid.IsValid(id) {
+		return false, fmt.Errorf("id must be valid UUIDv4")
 	}
+
+	tx := b.storage.Txn(false)
+
+	obj, err := usecase.Projects(tx).GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	exists := obj != nil && obj.TenantUUID == clientID
+	return exists, nil
 }
 
 func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
@@ -268,128 +264,118 @@ func (b *projectBackend) getServicePacks(data *framework.FieldData) (map[model.S
 	return servicePacks, nil
 }
 
-func (b *projectBackend) handleUpdate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update project", "path", req.Path)
+func (b *projectBackend) handleUpdate(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("update project", "path", req.Path)
 
-		servicePacks, err := b.getServicePacks(data)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		id := data.Get("uuid").(string)
-
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
-
-		project := &model.Project{
-			Project: iam_model.Project{
-				UUID:       id,
-				TenantUUID: data.Get(clientUUIDKey).(string),
-				Version:    data.Get("resource_version").(string),
-				Identifier: data.Get("identifier").(string),
-			},
-			ServicePacks: servicePacks,
-		}
-
-		err = usecase.Projects(tx).Update(project)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	servicePacks, err := b.getServicePacks(data)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	id := data.Get("uuid").(string)
+
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
+
+	project := &model.Project{
+		Project: iam_model.Project{
+			UUID:       id,
+			TenantUUID: data.Get(clientUUIDKey).(string),
+			Version:    data.Get("resource_version").(string),
+			Identifier: data.Get("identifier").(string),
+		},
+		ServicePacks: servicePacks,
+	}
+
+	err = usecase.Projects(tx).Update(project)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *projectBackend) handleDelete() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete project", "path", req.Path)
+func (b *projectBackend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("delete project", "path", req.Path)
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		err := usecase.Projects(tx).Delete(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
+	err := usecase.Projects(tx).Delete(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }
 
-func (b *projectBackend) handleRead() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read project", "path", req.Path)
+func (b *projectBackend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("read project", "path", req.Path)
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+	tx := b.storage.Txn(false)
 
-		project, err := usecase.Projects(tx).GetByID(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	project, err := usecase.Projects(tx).GetByID(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *projectBackend) handleList() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list projects", "path", req.Path)
-		var showArchived bool
-		rawShowArchived, ok := data.GetOk("show_archived")
-		if ok {
-			showArchived = rawShowArchived.(bool)
-		}
-		clientID := data.Get(clientUUIDKey).(string)
-
-		tx := b.storage.Txn(false)
-
-		projects, err := usecase.Projects(tx).List(clientID, showArchived)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"projects": projects,
-			},
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+func (b *projectBackend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("list projects", "path", req.Path)
+	var showArchived bool
+	rawShowArchived, ok := data.GetOk("show_archived")
+	if ok {
+		showArchived = rawShowArchived.(bool)
 	}
+	clientID := data.Get(clientUUIDKey).(string)
+
+	tx := b.storage.Txn(false)
+
+	projects, err := usecase.Projects(tx).List(clientID, showArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"projects": projects,
+		},
+	}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *projectBackend) handleRestore() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore project", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *projectBackend) handleRestore(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("restore project", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		project, err := usecase.Projects(tx).Restore(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"project": project,
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	project, err := usecase.Projects(tx).Restore(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"project": project,
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

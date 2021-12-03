@@ -27,7 +27,7 @@ func (s *TeamService) Create(t *model.Team) error {
 		return err
 	}
 	if _, allowed := model.TeamTypes[t.TeamType]; !allowed {
-		return fmt.Errorf("%w: %s is not allowed", consts.ErrInavlidArg, t.TeamType)
+		return fmt.Errorf("%w: %s is not allowed", consts.ErrInvalidArg, t.TeamType)
 	}
 	t.Version = repo.NewResourceVersion()
 	return s.repo.Create(t)
@@ -37,7 +37,7 @@ func (s *TeamService) validateParentTeamUUID(t *model.Team) error {
 	if t.ParentTeamUUID != "" {
 		_, err := s.repo.GetByID(t.ParentTeamUUID)
 		if errors.Is(err, consts.ErrNotFound) {
-			return fmt.Errorf("%w: parent_team_uuid must be valid team uuid or empty", consts.ErrInavlidArg)
+			return fmt.Errorf("%w: parent_team_uuid must be valid team uuid or empty", consts.ErrInvalidArg)
 		}
 		if err != nil {
 			return err
@@ -78,7 +78,7 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 		return err
 	}
 	if len(children) > 0 {
-		return fmt.Errorf("%w: has child teams: %v", consts.ErrInavlidArg, children)
+		return fmt.Errorf("%w: has child teams: %v", consts.ErrInvalidArg, children)
 	}
 	// TODO:
 	// Check no teammates - checked by memdb engine

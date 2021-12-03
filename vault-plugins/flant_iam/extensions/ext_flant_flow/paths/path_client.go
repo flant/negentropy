@@ -17,13 +17,11 @@ import (
 
 type clientBackend struct {
 	*flantFlowExtension
-	storage *io.MemoryStore
 }
 
-func clientPaths(e *flantFlowExtension, storage *io.MemoryStore) []*framework.Path {
+func clientPaths(e *flantFlowExtension) []*framework.Path {
 	bb := &clientBackend{
 		flantFlowExtension: e,
-		storage:            storage,
 	}
 	return bb.paths()
 }
@@ -42,11 +40,11 @@ func (b clientBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create client.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create client.",
 				},
 			},
@@ -68,11 +66,11 @@ func (b clientBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create client with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create client with preexistent ID.",
 				},
 			},
@@ -89,7 +87,7 @@ func (b clientBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleList(),
+					Callback: b.checkConfigured(b.handleList),
 					Summary:  "Lists all client IDs.",
 				},
 			},
@@ -114,18 +112,18 @@ func (b clientBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleUpdate(),
+					Callback: b.checkConfigured(b.handleUpdate),
 					Summary:  "Update the client by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead(),
+					Callback: b.checkConfigured(b.handleRead),
 					Summary:  "Retrieve the client by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete(),
+					Callback: b.checkConfigured(b.handleDelete),
 					Summary:  "Deletes the client by ID.",
 				},
 			},
@@ -145,10 +143,10 @@ func (b clientBackend) paths() []*framework.Path {
 					Required:    false,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRestore(),
+					Callback: b.checkConfigured(b.handleRestore),
 					Summary:  "Restore the client by ID.",
 				},
 			},
@@ -156,23 +154,21 @@ func (b clientBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *clientBackend) handleExistence() framework.ExistenceFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		id := data.Get("uuid").(string)
-		b.Logger().Debug("checking client existence", "path", req.Path, "id", id, "op", req.Operation)
+func (b *clientBackend) handleExistence(_ context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+	id := data.Get("uuid").(string)
+	b.Logger().Debug("checking client existence", "path", req.Path, "id", id, "op", req.Operation)
 
-		if !uuid.IsValid(id) {
-			return false, fmt.Errorf("id must be valid UUIDv4")
-		}
-
-		tx := b.storage.Txn(false)
-
-		c, err := usecase.Clients(tx).GetByID(id)
-		if err != nil {
-			return false, err
-		}
-		return c != nil, nil
+	if !uuid.IsValid(id) {
+		return false, fmt.Errorf("id must be valid UUIDv4")
 	}
+
+	tx := b.storage.Txn(false)
+
+	c, err := usecase.Clients(tx).GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	return c != nil, nil
 }
 
 func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
@@ -205,121 +201,111 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 	}
 }
 
-func (b *clientBackend) handleUpdate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update client", "path", req.Path)
-		id := data.Get("uuid").(string)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *clientBackend) handleUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("update client", "path", req.Path)
+	id := data.Get("uuid").(string)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		client := &model.Client{
-			UUID:       id,
-			Identifier: data.Get("identifier").(string),
-			Version:    data.Get("resource_version").(string),
-		}
-
-		err := usecase.Clients(tx).Update(client)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"client": client}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	client := &model.Client{
+		UUID:       id,
+		Identifier: data.Get("identifier").(string),
+		Version:    data.Get("resource_version").(string),
 	}
+
+	err := usecase.Clients(tx).Update(client)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"client": client}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *clientBackend) handleDelete() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete client", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *clientBackend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("delete client", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		err := usecase.Clients(tx).Delete(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
+	err := usecase.Clients(tx).Delete(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }
 
-func (b *clientBackend) handleRead() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read client", "path", req.Path)
-		id := data.Get("uuid").(string)
+func (b *clientBackend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("read client", "path", req.Path)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+	tx := b.storage.Txn(false)
 
-		client, err := usecase.Clients(tx).GetByID(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"client":       client,
-			"full_restore": false, // TODO check if full restore available
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	client, err := usecase.Clients(tx).GetByID(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"client":       client,
+		"full_restore": false, // TODO check if full restore available
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *clientBackend) handleList() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("listing clients", "path", req.Path)
-		var showArchived bool
-		rawShowArchived, ok := data.GetOk("show_archived")
-		if ok {
-			showArchived = rawShowArchived.(bool)
-		}
-
-		tx := b.storage.Txn(false)
-		clients, err := usecase.Clients(tx).List(showArchived)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"clients": clients,
-			},
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+func (b *clientBackend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("listing clients", "path", req.Path)
+	var showArchived bool
+	rawShowArchived, ok := data.GetOk("show_archived")
+	if ok {
+		showArchived = rawShowArchived.(bool)
 	}
+
+	tx := b.storage.Txn(false)
+	clients, err := usecase.Clients(tx).List(showArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"clients": clients,
+		},
+	}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *clientBackend) handleRestore() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore client", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *clientBackend) handleRestore(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("restore client", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
-		var fullRestore bool
-		rawFullRestore, ok := data.GetOk("full_restore")
-		if ok {
-			fullRestore = rawFullRestore.(bool)
-		}
-
-		client, err := usecase.Clients(tx).Restore(id, fullRestore)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"client": client,
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	id := data.Get("uuid").(string)
+	var fullRestore bool
+	rawFullRestore, ok := data.GetOk("full_restore")
+	if ok {
+		fullRestore = rawFullRestore.(bool)
 	}
+
+	client, err := usecase.Clients(tx).Restore(id, fullRestore)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"client": client,
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

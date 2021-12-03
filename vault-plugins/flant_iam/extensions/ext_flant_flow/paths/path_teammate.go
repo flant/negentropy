@@ -20,16 +20,11 @@ import (
 
 type teammateBackend struct {
 	*flantFlowExtension
-	flantTenantUUID iam_model.TenantUUID
-	storage         *io.MemoryStore
 }
 
-func teammatePaths(e *flantFlowExtension, storage *io.MemoryStore,
-	flantTenantUUID iam_model.TenantUUID) []*framework.Path {
+func teammatePaths(e *flantFlowExtension) []*framework.Path {
 	bb := &teammateBackend{
 		flantFlowExtension: e,
-		flantTenantUUID:    flantTenantUUID,
-		storage:            storage,
 	}
 	return bb.paths()
 }
@@ -105,11 +100,11 @@ func (b teammateBackend) paths() []*framework.Path {
 			Fields:  teammateBaseAndExtraFields(nil),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkBaseConfigured(b.handleCreate(false)),
 					Summary:  "Create teammate.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(false),
+					Callback: b.checkBaseConfigured(b.handleCreate(false)),
 					Summary:  "Create teammate.",
 				},
 			},
@@ -126,11 +121,11 @@ func (b teammateBackend) paths() []*framework.Path {
 			}),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkBaseConfigured(b.handleCreate(true)),
 					Summary:  "Create teammate with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleCreate(true),
+					Callback: b.checkBaseConfigured(b.handleCreate(true)),
 					Summary:  "Create teammate with preexistent ID.",
 				},
 			},
@@ -152,7 +147,7 @@ func (b teammateBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleList(),
+					Callback: b.checkBaseConfigured(b.handleList),
 					Summary:  "Lists all teammates IDs.",
 				},
 			},
@@ -172,18 +167,18 @@ func (b teammateBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			}),
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleUpdate(),
+					Callback: b.checkBaseConfigured(b.handleUpdate),
 					Summary:  "Update the teammate by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRead(),
+					Callback: b.checkBaseConfigured(b.handleRead),
 					Summary:  "Retrieve the teammate by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDelete(),
+					Callback: b.checkBaseConfigured(b.handleDelete),
 					Summary:  "Deletes the teammate by ID",
 				},
 			},
@@ -203,10 +198,10 @@ func (b teammateBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 			},
-			ExistenceCheck: b.handleExistence(),
+			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRestore(),
+					Callback: b.checkBaseConfigured(b.handleRestore),
 					Summary:  "Restore the teammate by ID.",
 				},
 			},
@@ -214,25 +209,23 @@ func (b teammateBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *teammateBackend) handleExistence() framework.ExistenceFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-		id := data.Get("uuid").(string)
-		teamID := data.Get(repo.TeamForeignPK).(string)
-		b.Logger().Debug("checking teammate existence", "path", req.Path, "id", id, "op", req.Operation)
+func (b *teammateBackend) handleExistence(_ context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+	id := data.Get("uuid").(string)
+	teamID := data.Get(repo.TeamForeignPK).(string)
+	b.Logger().Debug("checking teammate existence", "path", req.Path, "id", id, "op", req.Operation)
 
-		if !uuid.IsValid(id) {
-			return false, fmt.Errorf("id must be valid UUIDv4")
-		}
-
-		tx := b.storage.Txn(false)
-
-		obj, err := usecase.Teammates(tx, b.flantTenantUUID).GetByID(id)
-		if err != nil {
-			return false, err
-		}
-		exists := obj != nil && obj.TeamUUID == teamID
-		return exists, nil
+	if !uuid.IsValid(id) {
+		return false, fmt.Errorf("id must be valid UUIDv4")
 	}
+
+	tx := b.storage.Txn(false)
+
+	obj, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	exists := obj != nil && obj.TeamUUID == teamID
+	return exists, nil
 }
 
 func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
@@ -246,7 +239,7 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 		teammate := &model.FullTeammate{
 			User: iam_model.User{
 				UUID:             id,
-				TenantUUID:       b.flantTenantUUID,
+				TenantUUID:       b.getLiveConfig().FlantTenantUUID,
 				Identifier:       data.Get("identifier").(string),
 				FirstName:        data.Get("first_name").(string),
 				LastName:         data.Get("last_name").(string),
@@ -264,7 +257,7 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teammates(tx, b.flantTenantUUID).Create(teammate); err != nil {
+		if err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Create(teammate); err != nil {
 			msg := "cannot create teammate"
 			b.Logger().Debug(msg, "err", err.Error())
 			err = fmt.Errorf("%s:%w", msg, err)
@@ -279,127 +272,117 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 	}
 }
 
-func (b *teammateBackend) handleUpdate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("update teammate", "path", req.Path)
-		id := data.Get("uuid").(string)
-		teamID := data.Get(repo.TeamForeignPK).(string)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("update teammate", "path", req.Path)
+	id := data.Get("uuid").(string)
+	teamID := data.Get(repo.TeamForeignPK).(string)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		teammate := &model.FullTeammate{
-			User: iam_model.User{
-				UUID:             id,
-				TenantUUID:       b.flantTenantUUID,
-				Identifier:       data.Get("identifier").(string),
-				FirstName:        data.Get("first_name").(string),
-				LastName:         data.Get("last_name").(string),
-				DisplayName:      data.Get("display_name").(string),
-				Email:            data.Get("email").(string),
-				AdditionalEmails: data.Get("additional_emails").([]string),
-				MobilePhone:      data.Get("mobile_phone").(string),
-				AdditionalPhones: data.Get("additional_phones").([]string),
-				Version:          data.Get("version").(string),
-				Origin:           consts.OriginFlantFlow,
-			},
-			TeamUUID:   teamID,
-			RoleAtTeam: data.Get("role_at_team").(string),
-		}
-
-		err := usecase.Teammates(tx, b.flantTenantUUID).Update(teammate)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	teammate := &model.FullTeammate{
+		User: iam_model.User{
+			UUID:             id,
+			TenantUUID:       b.getLiveConfig().FlantTenantUUID,
+			Identifier:       data.Get("identifier").(string),
+			FirstName:        data.Get("first_name").(string),
+			LastName:         data.Get("last_name").(string),
+			DisplayName:      data.Get("display_name").(string),
+			Email:            data.Get("email").(string),
+			AdditionalEmails: data.Get("additional_emails").([]string),
+			MobilePhone:      data.Get("mobile_phone").(string),
+			AdditionalPhones: data.Get("additional_phones").([]string),
+			Version:          data.Get("version").(string),
+			Origin:           consts.OriginFlantFlow,
+		},
+		TeamUUID:   teamID,
+		RoleAtTeam: data.Get("role_at_team").(string),
 	}
+
+	err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Update(teammate)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teammateBackend) handleDelete() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete teammate", "path", req.Path)
-		id := data.Get("uuid").(string)
+func (b *teammateBackend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("delete teammate", "path", req.Path)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
-		err := usecase.Teammates(tx, b.flantTenantUUID).Delete(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
+	err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Delete(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }
 
-func (b *teammateBackend) handleRead() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("read teammate", "path", req.Path)
-		id := data.Get("uuid").(string)
+func (b *teammateBackend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("read teammate", "path", req.Path)
+	id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+	tx := b.storage.Txn(false)
 
-		teammate, err := usecase.Teammates(tx, b.flantTenantUUID).GetByID(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"teammate": teammate}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teammateBackend) handleList() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list teammates", "path", req.Path)
-		var showArchived bool
-		rawShowArchived, ok := data.GetOk("show_archived")
-		if ok {
-			showArchived = rawShowArchived.(bool)
-		}
-
-		tx := b.storage.Txn(false)
-		teamID := data.Get(repo.TeamForeignPK).(string)
-		teammates, err := usecase.Teammates(tx, b.flantTenantUUID).List(teamID, showArchived)
-		if err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"teammates": teammates,
-			},
-		}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+func (b *teammateBackend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("list teammates", "path", req.Path)
+	var showArchived bool
+	rawShowArchived, ok := data.GetOk("show_archived")
+	if ok {
+		showArchived = rawShowArchived.(bool)
 	}
+
+	tx := b.storage.Txn(false)
+	teamID := data.Get(repo.TeamForeignPK).(string)
+	teammates, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).List(teamID, showArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"teammates": teammates,
+		},
+	}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
-func (b *teammateBackend) handleRestore() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("restore teammate", "path", req.Path)
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
+func (b *teammateBackend) handleRestore(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("restore teammate", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
 
-		id := data.Get("uuid").(string)
+	id := data.Get("uuid").(string)
 
-		teammate, err := usecase.Teammates(tx, b.flantTenantUUID).Restore(id)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
-		}
-
-		resp := &logical.Response{Data: map[string]interface{}{
-			"teammate": teammate,
-		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Restore(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
+
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"teammate": teammate,
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

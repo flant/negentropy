@@ -53,7 +53,7 @@ func (s *TeammateService) Update(updated *model.FullTeammate) error {
 		return err
 	}
 	if stored.RoleAtTeam != updated.RoleAtTeam {
-		return fmt.Errorf("%w: role_at_team ", consts.ErrInavlidArg)
+		return fmt.Errorf("%w: role_at_team ", consts.ErrInvalidArg)
 	}
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
@@ -128,13 +128,13 @@ func (s *TeammateService) Restore(id iam_model.UserUUID) (*model.FullTeammate, e
 func (s *TeammateService) validateRole(t *model.Teammate) error {
 	team, err := s.teamRepo.GetByID(t.TeamUUID)
 	if errors.Is(err, consts.ErrNotFound) {
-		return fmt.Errorf("%w: team with uuid:%s not found", consts.ErrInavlidArg, t.TeamUUID)
+		return fmt.Errorf("%w: team with uuid:%s not found", consts.ErrInvalidArg, t.TeamUUID)
 	}
 	if err != nil {
 		return err
 	}
 	if _, ok := model.TeamRoles[team.TeamType][t.RoleAtTeam]; !ok {
-		return fmt.Errorf("%w: role %s is not allowed for %s team", consts.ErrInavlidArg, t.RoleAtTeam, team.TeamType)
+		return fmt.Errorf("%w: role %s is not allowed for %s team", consts.ErrInvalidArg, t.RoleAtTeam, team.TeamType)
 	}
 	return nil
 }

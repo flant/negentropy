@@ -11,9 +11,14 @@ import (
 )
 
 func Test_projectCRUD(t *testing.T) {
-	backend := testapi.TestBackend()
-	TestAPI = api.NewProjectAPI(&backend)
-	ClientAPI = api.NewClientAPI(&backend)
+	backend, storage := testapi.TestBackendWithStorage()
+	TestAPI = api.NewProjectAPI(&backend, &storage)
+	ClientAPI = api.NewClientAPI(&backend, &storage)
+	TenantAPI = testapi.NewTenantAPI(&backend)
+	RoleAPI = testapi.NewRoleAPI(&backend)
+	TeamAPI = api.NewTeamAPI(&backend, &storage)
+	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Project")
 }

@@ -127,7 +127,7 @@ func (s *ContactService) validateCredentials(contact *model.Contact) error {
 			return err
 		}
 		if _, ok := model.ContactRoles[contactRole]; !ok {
-			return fmt.Errorf("%w: contact role not allowed: %s", consts.ErrInavlidArg, contactRole)
+			return fmt.Errorf("%w: contact role not allowed: %s", consts.ErrInvalidArg, contactRole)
 		}
 	}
 	return nil
@@ -136,7 +136,7 @@ func (s *ContactService) validateCredentials(contact *model.Contact) error {
 func (s *ContactService) validateProjectUUID(uuid iam.ProjectUUID) error {
 	_, err := s.projectRepo.GetByID(uuid)
 	if errors.Is(err, consts.ErrNotFound) {
-		return fmt.Errorf("%w: project with uuid:%s not found", consts.ErrInavlidArg, uuid)
+		return fmt.Errorf("%w: project with uuid:%s not found", consts.ErrInvalidArg, uuid)
 	}
 	return err
 }

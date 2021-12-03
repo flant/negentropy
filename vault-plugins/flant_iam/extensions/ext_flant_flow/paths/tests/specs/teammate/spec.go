@@ -1,6 +1,7 @@
 package teammate
 
 import (
+	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -9,6 +10,7 @@ import (
 
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
@@ -18,12 +20,17 @@ var (
 	TestAPI   testapi.TestAPI
 	TeamAPI   testapi.TestAPI
 	TenantAPI testapi.TestAPI
+	ConfigAPI testapi.ConfigAPI
 )
 
 var _ = Describe("Teammate", func() {
-	var team model.Team
+	var (
+		team         model.Team
+		flantFlowCfg *config.FlantFlowConfig
+	)
 	BeforeSuite(func() {
-		_ = specs.CreateFlantTenant(TenantAPI)
+		flantFlowCfg = specs.BaseConfigureFlantFlow(TenantAPI, TeamAPI, ConfigAPI)
+		fmt.Printf("%#v\n", flantFlowCfg)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
 	It("can be created", func() {

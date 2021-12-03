@@ -11,10 +11,12 @@ import (
 )
 
 func Test_teammateCRUD(t *testing.T) {
-	backend := testapi.TestBackend()
-	TestAPI = api.NewTeammateAPI(&backend)
-	TeamAPI = api.NewTeamAPI(&backend)
+	backend, storage := testapi.TestBackendWithStorage()
+	TestAPI = api.NewTeammateAPI(&backend, &storage)
+	TeamAPI = api.NewTeamAPI(&backend, &storage)
 	TenantAPI = testapi.NewTenantAPI(&backend)
+	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Teammate")
 }

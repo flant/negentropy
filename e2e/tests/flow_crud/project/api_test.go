@@ -14,6 +14,11 @@ func Test_projectCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	project.ClientAPI = lib.NewFlowClientAPI(rootClient)
 	project.TestAPI = lib.NewFlowProjectAPI(rootClient)
+	project.TenantAPI = lib.NewTenantAPI(rootClient)
+	project.RoleAPI = lib.NewRoleAPI(rootClient)
+	project.TeamAPI = lib.NewFlowTeamAPI(rootClient)
+	project.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Project")
 }
