@@ -160,8 +160,8 @@ func ProjectFeatureFlags(tx *io.MemoryStoreTxn, tenantID model.TenantUUID, proje
 	}
 }
 
-func (s *ProjectFeatureFlagService) Add(featureFlag model.FeatureFlag) (*model.Project, error) {
-	_, err := s.ffRepo.GetByID(featureFlag.Name)
+func (s *ProjectFeatureFlagService) Add(featureFlagName model.FeatureFlagName) (*model.Project, error) {
+	_, err := s.ffRepo.GetByID(featureFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -175,17 +175,17 @@ func (s *ProjectFeatureFlagService) Add(featureFlag model.FeatureFlag) (*model.P
 	}
 
 	for _, pff := range project.FeatureFlags {
-		if pff.Name == featureFlag.Name {
+		if pff == featureFlagName {
 			return project, nil
 		}
 	}
 
-	project.FeatureFlags = append(project.FeatureFlags, featureFlag)
+	project.FeatureFlags = append(project.FeatureFlags, featureFlagName)
 
 	return project, s.projectRepo.Update(project)
 }
 
-func (s *ProjectFeatureFlagService) Delete(featureFlagName string) (*model.Project, error) {
+func (s *ProjectFeatureFlagService) Delete(featureFlagName model.FeatureFlagName) (*model.Project, error) {
 	ff, err := s.ffRepo.GetByID(featureFlagName)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (s *ProjectFeatureFlagService) Delete(featureFlagName string) (*model.Proje
 	}
 
 	for i, pff := range project.FeatureFlags {
-		if pff.Name == ff.Name {
+		if pff == ff.Name {
 			project.FeatureFlags = append(project.FeatureFlags[:i], project.FeatureFlags[i+1:]...)
 			// update
 			return project, s.projectRepo.Update(project)

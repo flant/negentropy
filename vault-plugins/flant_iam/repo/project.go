@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
 
@@ -52,22 +51,18 @@ func ProjectSchema() *memdb.DBSchema {
 					FeatureFlagInProjectIndex: {
 						Name:         FeatureFlagInProjectIndex,
 						AllowMissing: true,
-						Indexer: &memdb.CustomTypeSliceFieldIndexer{
+						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "FeatureFlags",
-							FromCustomType: func(customTypeValue interface{}) ([]byte, error) {
-								obj, ok := customTypeValue.(model.FeatureFlag)
-								if !ok {
-									return nil, fmt.Errorf("need FeatureFlag, actual:%T", customTypeValue)
-								}
-								return []byte(obj.Name), nil
-							},
 						},
 					},
 				},
 			},
 		},
 		MandatoryForeignKeys: map[string][]memdb.Relation{
-			model.ProjectType: {{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK}},
+			model.ProjectType: {
+				{OriginalDataTypeFieldName: "TenantUUID", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "FeatureFlags", RelatedDataType: model.FeatureFlagType, RelatedDataTypeFieldIndexName: PK},
+			},
 		},
 		CascadeDeletes: map[string][]memdb.Relation{
 			model.ProjectType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: ProjectInRoleBindingIndex}},

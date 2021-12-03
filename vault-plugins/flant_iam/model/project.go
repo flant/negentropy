@@ -15,7 +15,7 @@ type Project struct {
 	Version    string      `json:"resource_version"`
 	Identifier string      `json:"identifier"`
 
-	FeatureFlags []FeatureFlag `json:"feature_flags"`
+	FeatureFlags []FeatureFlagName `json:"feature_flags"`
 
 	Origin consts.ObjectOrigin `json:"origin"`
 
