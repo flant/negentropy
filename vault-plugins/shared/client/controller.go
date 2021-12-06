@@ -154,15 +154,20 @@ func (c *VaultClientController) renewToken(storage logical.Storage) error {
 func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
 	logger := c.logger.Named("renew")
 	apiClient, err := c.APIClient(r.Storage)
-	if err != nil && errors.Is(err, ErrNotInit) {
+	if errors.Is(err, ErrNotInit) {
 		logger.Warn("not init client nothing to renew")
 		return nil
+	}
+	if err != nil {
+		logger.Error(fmt.Sprintf("getting apiClient:%v", err))
+		return err
 	}
 
 	// always renew current token
 	err = c.renewToken(r.Storage)
 	if err != nil {
 		logger.Error(fmt.Sprintf("not prolong lease %v", err))
+		return err
 	} else {
 		logger.Info("token prolong success")
 	}

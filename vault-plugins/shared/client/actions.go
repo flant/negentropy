@@ -99,6 +99,12 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 }
 
 func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger hclog.Logger) error {
+	if apiClient == nil {
+		return fmt.Errorf("apiClient is nil")
+	}
+	if curConf == nil {
+		return fmt.Errorf("curConf is nil")
+	}
 	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	loginRes, err := appRoleCli.Login()
