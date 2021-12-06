@@ -31,48 +31,59 @@ func roleBindingPaths(b logical.Backend, storage *io.MemoryStore) []*framework.P
 	return bb.paths()
 }
 
+func rbBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fs := map[string]*framework.FieldSchema{
+		"tenant_uuid": {
+			Type:        framework.TypeNameString,
+			Description: "ID of a tenant",
+			Required:    true,
+		},
+		"identifier": {
+			Type:        framework.TypeNameString,
+			Description: "Identifier for humans and machines",
+			Required:    true,
+		},
+		"members": {
+			Type:        framework.TypeSlice,
+			Description: "Members list",
+			Required:    true,
+		},
+		"roles": {
+			Type:        framework.TypeSlice,
+			Description: "Roles list",
+			Required:    true,
+		},
+		"ttl": {
+			Type:        framework.TypeDurationSecond,
+			Description: "TTL in seconds",
+			Required:    true,
+		},
+		"require_mfa": {
+			Type:        framework.TypeBool,
+			Description: "Requires multi-factor authentication",
+			Required:    true,
+		},
+		"any_project": {
+			Type:        framework.TypeBool,
+			Description: "allow rolebinding for all projects of tenant",
+			Required:    true,
+		},
+	}
+	for fieldName, fieldSchema := range extraFields {
+		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
+			panic(fmt.Sprintf("path_rolebinding wrong schema: duplicate field name:%s", fieldName))
+		}
+		fs[fieldName] = fieldSchema
+	}
+	return fs
+}
+
 func (b roleBindingBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding",
-			Fields: map[string]*framework.FieldSchema{
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
-					Required:    true,
-				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"members": {
-					Type:        framework.TypeSlice,
-					Description: "Members list",
-					Required:    true,
-				},
-				"roles": {
-					Type:        framework.TypeSlice,
-					Description: "Roles list",
-					Required:    true,
-				},
-				"ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "TTL in seconds",
-					Required:    true,
-				},
-				"require_mfa": {
-					Type:        framework.TypeBool,
-					Description: "Requires multi-factor authentication",
-					Required:    true,
-				},
-				"any_project": {
-					Type:        framework.TypeBool,
-					Description: "allow rolebinding for all projects of tenant",
-					Required:    true,
-				},
-			},
+			Fields:  rbBaseAndExtraFields(nil),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
@@ -87,48 +98,13 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		// Creation with known uuid in advance
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/privileged",
-			Fields: map[string]*framework.FieldSchema{
+			Fields: rbBaseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a roleBinding",
 					Required:    true,
 				},
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
-					Required:    true,
-				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"members": {
-					Type:        framework.TypeSlice,
-					Description: "Members list",
-					Required:    true,
-				},
-				"roles": {
-					Type:        framework.TypeSlice,
-					Description: "Roles list",
-					Required:    true,
-				},
-				"ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "TTL in seconds",
-					Required:    true,
-				},
-				"require_mfa": {
-					Type:        framework.TypeBool,
-					Description: "Requires multi-factor authentication",
-					Required:    true,
-				},
-				"any_project": {
-					Type:        framework.TypeBool,
-					Description: "allow rolebinding for all projects of tenant",
-					Required:    true,
-				},
-			},
+			}),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
@@ -165,15 +141,10 @@ func (b roleBindingBackend) paths() []*framework.Path {
 		// Read, update, delete by uuid
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/role_binding/" + uuid.Pattern("uuid") + "$",
-			Fields: map[string]*framework.FieldSchema{
+			Fields: rbBaseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a roleBinding",
-					Required:    true,
-				},
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
 					Required:    true,
 				},
 				"resource_version": {
@@ -181,27 +152,7 @@ func (b roleBindingBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
-				"members": {
-					Type:        framework.TypeSlice,
-					Description: "Members list",
-					Required:    true,
-				},
-				"roles": {
-					Type:        framework.TypeSlice,
-					Description: "Roles list",
-					Required:    true,
-				},
-				"ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "TTL in seconds",
-					Required:    true,
-				},
-				"require_mfa": {
-					Type:        framework.TypeBool,
-					Description: "Requires multi-factor authentication",
-					Required:    true,
-				},
-			},
+			}),
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{

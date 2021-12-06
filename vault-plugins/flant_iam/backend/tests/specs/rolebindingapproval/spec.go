@@ -1,6 +1,7 @@
 package rolebindingapproval
 
 import (
+	"encoding/json"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -47,29 +48,38 @@ var _ = Describe("Role binding approval", func() {
 	var createdRB gjson.Result
 
 	It("can be created", func() {
+		approvers := []map[string]interface{}{
+			{"type": "user", "uuid": user.UUID},
+			{"type": "service_account", "uuid": sa.UUID},
+			{"type": "group", "uuid": group.UUID},
+		}
+
+		data := map[string]interface{}{
+			"required_votes": 3,
+			"approvers":      approvers,
+		}
+
 		params := api.Params{
-			"expectStatus": api.ExpectExactStatus(200),
-			"expectPayload": func(json gjson.Result) {
-				ap := json.Get("role_binding_approval")
+			"expectStatus": api.ExpectExactStatus(201),
+			"expectPayload": func(js gjson.Result) {
+				ap := js.Get("approval")
 				Expect(ap.Get("required_votes").Int()).To(BeEquivalentTo(3))
-				Expect(ap.Get("user_uuids").Array()).To(HaveLen(1))
-				Expect(ap.Get("group_uuids").Array()).To(HaveLen(1))
-				Expect(ap.Get("service_account_uuids").Array()).To(HaveLen(1))
+				Expect(ap.Get("approvers").Array()).To(HaveLen(3))
+				Expect(ap.Get("approvers").Array()).To(HaveLen(3))
+
+				approversBytes, err := json.Marshal(approvers)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(ap.Get("approvers").Array()).To(Equal(gjson.ParseBytes(approversBytes).Array()))
+				println("Hello!")
 			},
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"uuid":         uuid.New(),
 		}
 
-		data := map[string]interface{}{
-			"required_votes":   3,
-			"users":            []string{user.UUID},
-			"groups":           []string{group.UUID},
-			"service_accounts": []string{sa.UUID},
-		}
-
 		createdData := TestAPI.Create(params, url.Values{}, data)
-		createdRB = createdData.Get("role_binding_approval")
+		createdRB = createdData.Get("approval")
 	})
 
 	It("can be read", func() {
@@ -78,7 +88,7 @@ var _ = Describe("Role binding approval", func() {
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"expectPayload": func(json gjson.Result) {
-				Expect(createdRB).To(Equal(json.Get("role_binding_approval")))
+				Expect(createdRB).To(Equal(json.Get("approval")))
 			},
 		}, nil)
 	})
@@ -96,6 +106,6 @@ var _ = Describe("Role binding approval", func() {
 			"role_binding": roleBindingID,
 			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
-		Expect(deletedRBData.Get("role_binding_approval.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+		Expect(deletedRBData.Get("approval.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 })

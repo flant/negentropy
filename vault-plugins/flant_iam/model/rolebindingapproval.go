@@ -15,6 +15,7 @@ type RoleBindingApproval struct {
 	Users           []UserUUID           `json:"user_uuids"`
 	Groups          []GroupUUID          `json:"group_uuids"`
 	ServiceAccounts []ServiceAccountUUID `json:"service_account_uuids"`
+	Approvers       []MemberNotation     `json:"approvers"`
 
 	RequiredVotes int  `json:"required_votes"`
 	RequireMFA    bool `json:"require_mfa"`
@@ -28,4 +29,9 @@ func (r *RoleBindingApproval) ObjType() string {
 
 func (r *RoleBindingApproval) ObjId() string {
 	return r.UUID
+}
+
+// FixApprovers remove from members invalid links, if some removed, returns true
+func (r *RoleBindingApproval) FixApprovers() bool {
+	return FixMembers(&r.Approvers, r.Users, r.Groups, r.ServiceAccounts)
 }

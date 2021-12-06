@@ -115,7 +115,11 @@ func (r *RoleBindingApprovalRepository) GetByID(id model.RoleBindingApprovalUUID
 	if raw == nil {
 		return nil, err
 	}
-	return raw.(*model.RoleBindingApproval), err
+	rba := raw.(*model.RoleBindingApproval)
+	if rba.FixApprovers() {
+		err = r.save(rba)
+	}
+	return rba, err
 }
 
 func (r *RoleBindingApprovalRepository) Update(appr *model.RoleBindingApproval) error {
@@ -151,6 +155,12 @@ func (r *RoleBindingApprovalRepository) List(rbUUID model.RoleBindingUUID,
 			break
 		}
 		obj := raw.(*model.RoleBindingApproval)
+		if obj.FixApprovers() {
+			err = r.save(obj)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if showArchived || obj.NotArchived() {
 			list = append(list, obj)
 		}
