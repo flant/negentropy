@@ -32,16 +32,6 @@ func FeatureFlagSchema() *memdb.DBSchema {
 			model.FeatureFlagType: {
 				{
 					OriginalDataTypeFieldName: "Name", RelatedDataType: model.ProjectType, RelatedDataTypeFieldIndexName: FeatureFlagInProjectIndex,
-					BuildRelatedCustomType: func(in interface{}) (interface{}, error) {
-						var name string
-						var ok bool
-						if name, ok = in.(string); !ok {
-							return nil, fmt.Errorf("need string type, got: %T", in)
-						}
-						return model.FeatureFlag{
-							Name: name,
-						}, nil
-					},
 				},
 				{
 					OriginalDataTypeFieldName: "Name", RelatedDataType: model.TenantType, RelatedDataTypeFieldIndexName: FeatureFlagInTenantIndex,

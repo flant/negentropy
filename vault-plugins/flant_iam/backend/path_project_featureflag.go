@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
@@ -61,14 +60,10 @@ func (b *projectBackend) handleFeatureFlagBinding() framework.OperationFunc {
 			return nil, logical.CodedError(http.StatusBadRequest, "feature_flag_name required")
 		}
 
-		ff := model.FeatureFlag{
-			Name: featureFlagName,
-		}
-
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Add(ff)
+		project, err := usecase.ProjectFeatureFlags(tx, tenantID, projectID).Add(featureFlagName)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}

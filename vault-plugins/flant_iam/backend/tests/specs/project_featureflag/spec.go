@@ -55,7 +55,7 @@ var _ = Describe("Project feature flags", func() {
 			"expectPayload": func(json gjson.Result) {
 				ffArr := json.Get("project.feature_flags").Array()
 				Expect(ffArr).To(HaveLen(1))
-				Expect(ffArr[0].Get("name").String()).To(Equal(ffName))
+				Expect(ffArr[0].String()).To(Equal(ffName))
 			},
 		}, nil)
 	})
