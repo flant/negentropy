@@ -52,7 +52,7 @@ func (s RoleBindingApprovalService) Create(rba *model.RoleBindingApproval) error
 
 func (s RoleBindingApprovalService) Update(rba *model.RoleBindingApproval) error {
 	if rba.UUID == "" {
-		return fmt.Errorf("%w: uuid should be passed", consts.ErrInavlidArg)
+		return fmt.Errorf("%w: uuid should be passed", consts.ErrInvalidArg)
 	}
 	subj, err := s.approverFetcher.Fetch(rba.Approvers)
 	if err != nil {
