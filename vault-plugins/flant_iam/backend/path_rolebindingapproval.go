@@ -284,10 +284,14 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true) // need writable for fixing approvers
+		defer tx.Abort()
 
 		roleBindingApproval, err := usecase.RoleBindingApprovals(tx).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"approval": roleBindingApproval}}
@@ -306,9 +310,13 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 		rbID := data.Get(iam_repo.RoleBindingForeignPK).(string)
 
 		tx := b.storage.Txn(true) // need writable for fixing approvers
+		defer tx.Abort()
 
 		rolebindingApprovals, err := usecase.RoleBindingApprovals(tx).List(rbID, showArchived)
 		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
