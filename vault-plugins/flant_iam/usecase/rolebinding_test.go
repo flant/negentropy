@@ -126,6 +126,8 @@ func Test_RoleBindingListAfterDeleteUser(t *testing.T) {
 	tx := db.Txn(true)
 	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)
 	require.NoError(t, err)
+	err = tx.Commit()
+	require.NoError(t, err)
 
 	tx = db.Txn(true)
 	rbs, err := RoleBindings(tx).List(fixtures.TenantUUID1, false)
@@ -142,6 +144,8 @@ func Test_RoleBindingListAfterDeleteUserFail(t *testing.T) {
 		roleBindingFixture)
 	tx := db.Txn(true)
 	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)
+	require.NoError(t, err)
+	err = tx.Commit()
 	require.NoError(t, err)
 
 	tx = db.Txn(false)

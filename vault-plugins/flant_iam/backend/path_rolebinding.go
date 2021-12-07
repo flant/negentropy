@@ -319,10 +319,14 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		tx := b.storage.Txn(true) // need writable for fixing members
+		defer tx.Abort()
 
 		roleBinding, err := usecase.RoleBindings(tx).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
@@ -341,9 +345,13 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true) // need writable for fixing members
+		defer tx.Abort()
 
 		roleBindings, err := usecase.RoleBindings(tx).List(tenantID, showArchived)
 		if err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
 
