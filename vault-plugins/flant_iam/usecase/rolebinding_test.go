@@ -119,3 +119,34 @@ func Test_FindDirectRoleBindingsForProject(t *testing.T) {
 	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID4, fixtures.RbUUID5},
 		roleBindingsUUIDsFromMap(rbsMap))
 }
+
+func Test_RoleBindingListAfterDeleteUser(t *testing.T) {
+	db := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture)
+	tx := db.Txn(true)
+	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)
+	require.NoError(t, err)
+
+	tx = db.Txn(true)
+	rbs, err := RoleBindings(tx).List(fixtures.TenantUUID1, false)
+
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{
+		fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID4, fixtures.RbUUID5,
+		fixtures.RbUUID6, fixtures.RbUUID7, fixtures.RbUUID8,
+	}, roleBindingsUUIDSFromSlice(rbs))
+}
+
+func Test_RoleBindingListAfterDeleteUserFail(t *testing.T) {
+	db := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+		roleBindingFixture)
+	tx := db.Txn(true)
+	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)
+	require.NoError(t, err)
+
+	tx = db.Txn(false)
+	_, err = RoleBindings(tx).List(fixtures.TenantUUID1, false)
+
+	require.Error(t, err)
+	require.Equal(t, "cannot insert in read-only transaction", err.Error())
+}
