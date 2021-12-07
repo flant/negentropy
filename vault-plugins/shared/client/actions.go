@@ -99,6 +99,12 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 }
 
 func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger hclog.Logger) error {
+	if apiClient == nil {
+		return fmt.Errorf("apiClient is nil")
+	}
+	if curConf == nil {
+		return fmt.Errorf("curConf is nil")
+	}
 	appRoleCli := newAccessClient(apiClient, curConf, logger).AppRole()
 
 	loginRes, err := appRoleCli.Login()
@@ -109,27 +115,3 @@ func loginAndSetToken(apiClient *api.Client, curConf *vaultAccessConfig, logger 
 	apiClient.SetToken(loginRes.ClientToken)
 	return nil
 }
-
-// var twoSeconds = 2 * time.Second
-//
-// func prolongAccessToken(apiClient *api.Client, increment int, logger hclog.Logger) error {
-//	logger = logger.Named("prolongAccessToken")
-//	var err error
-//	for i := 0; i < 5; i++ {
-//		_, err = apiClient.Auth().Token().Renew(apiClient.Token(), increment)
-//
-//		if err != nil {
-//			logger.Warn(fmt.Sprintf("prolong access token:%s, retry in %s", err.Error(), twoSeconds.String()))
-//			time.Sleep(twoSeconds)
-//			continue
-//		}
-//
-//		return nil
-//	}
-//
-//	if err != nil {
-//		return fmt.Errorf("prolong access token falls 5 attempts:%w", err)
-//	}
-//
-//	return nil
-// }

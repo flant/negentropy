@@ -28,7 +28,7 @@ func (c *vaultAccessConfig) IsNeedToRenewSecretID(now time.Time) (bool, int) {
 		return true, 0
 	}
 
-	limit := math.Ceil(float64(c.SecretIDTTTLSec) * 0.8)
+	limit := math.Ceil(float64(c.SecretIDTTTLSec) * 0.1) // needs to have long live SecretID
 	diff := now.Sub(c.LastRenewTime).Seconds()
 
 	return diff > limit, int(limit) - int(diff)

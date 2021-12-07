@@ -10,11 +10,13 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 var (
-	ErrNotSetConf = fmt.Errorf("access configuration does not set")
-	ErrNotInit    = fmt.Errorf("client not init")
+	ErrNotSetConf = fmt.Errorf("%w:vault access configuration does not set", consts.ErrNotConfigured)
+	ErrNotInit    = fmt.Errorf("vault access client not init")
 )
 
 type VaultClientController struct {
@@ -135,20 +137,16 @@ func (c *VaultClientController) ReInit(storage logical.Storage) error {
 	return err
 }
 
-// func (c *VaultClientController) renewLease(storage logical.Storage) error {
-//	c.logger.Info("Run renew lease")
-//	clientAPI, err := c.APIClient(storage)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = prolongAccessToken(clientAPI, 120, c.logger)
-//	if err != nil {
-//		return err
-//	}
-//	c.logger.Info(" prolong")
-//	return nil
-// }
+func (c *VaultClientController) renewToken(storage logical.Storage) error {
+	c.logger.Info("renew vault access token")
+
+	err := loginAndSetToken(c.apiClient, c.cfg, c.logger)
+	if err != nil {
+		return err
+	}
+	c.logger.Info("vault access token is renewed")
+	return nil
+}
 
 // OnPeriodical must be called in periodical function
 // if store don't contains configuration it may return ErrNotSetConf error
@@ -156,18 +154,23 @@ func (c *VaultClientController) ReInit(storage logical.Storage) error {
 func (c *VaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
 	logger := c.logger.Named("renew")
 	apiClient, err := c.APIClient(r.Storage)
-	if err != nil && errors.Is(err, ErrNotInit) {
+	if errors.Is(err, ErrNotInit) {
 		logger.Warn("not init client nothing to renew")
 		return nil
 	}
+	if err != nil {
+		logger.Error(fmt.Sprintf("getting apiClient:%v", err))
+		return err
+	}
 
 	// always renew current token
-	// err = c.renewLease(r.Storage)
-	// if err != nil {
-	//	logger.Error(fmt.Sprintf("not prolong lease %v", err))
-	// } else {
-	//	logger.Info("token prolong success")
-	// }
+	err = c.renewToken(r.Storage)
+	if err != nil {
+		logger.Error(fmt.Sprintf("not prolong lease %v", err))
+		return err
+	} else {
+		logger.Info("token prolong success")
+	}
 
 	store := newAccessConfigStorage(r.Storage)
 
