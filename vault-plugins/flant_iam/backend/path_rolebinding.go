@@ -318,7 +318,7 @@ func (b *roleBindingBackend) handleRead() framework.OperationFunc {
 		b.Logger().Debug("read role_binding", "path", req.Path)
 		id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing members
 
 		roleBinding, err := usecase.RoleBindings(tx).GetByID(id)
 		if err != nil {
@@ -340,7 +340,7 @@ func (b *roleBindingBackend) handleList() framework.OperationFunc {
 		}
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing members
 
 		roleBindings, err := usecase.RoleBindings(tx).List(tenantID, showArchived)
 		if err != nil {

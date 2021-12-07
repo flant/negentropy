@@ -283,7 +283,7 @@ func (b *roleBindingApprovalBackend) handleRead() framework.OperationFunc {
 		b.Logger().Debug("read role_binding_approval", "path", req.Path)
 		id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing approvers
 
 		roleBindingApproval, err := usecase.RoleBindingApprovals(tx).GetByID(id)
 		if err != nil {
@@ -305,7 +305,7 @@ func (b *roleBindingApprovalBackend) handleList() framework.OperationFunc {
 		}
 		rbID := data.Get(iam_repo.RoleBindingForeignPK).(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing approvers
 
 		rolebindingApprovals, err := usecase.RoleBindingApprovals(tx).List(rbID, showArchived)
 		if err != nil {

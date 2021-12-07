@@ -308,7 +308,7 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 		b.Logger().Debug("read group", "path", req.Path)
 		id := data.Get("uuid").(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing members
 		repo := iam_repo.NewGroupRepository(tx)
 		group, err := repo.GetByID(id)
 		if err != nil {
@@ -330,7 +330,7 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 		}
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
-		tx := b.storage.Txn(false)
+		tx := b.storage.Txn(true) // need writable for fixing members
 		repo := iam_repo.NewGroupRepository(tx)
 
 		groups, err := repo.List(tenantID, showArchived)
