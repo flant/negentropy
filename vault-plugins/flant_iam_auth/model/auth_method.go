@@ -15,10 +15,11 @@ const (
 )
 
 const (
-	MethodTypeJWT        = "jwt"
-	MethodTypeOIDC       = "oidc"
-	MethodTypeMultipass  = "multipass_jwt"
-	MethodTypeSAPassword = "service_account_password"
+	MethodTypeJWT         = "jwt"
+	MethodTypeOIDC        = "oidc"
+	MethodTypeMultipass   = "multipass_jwt"
+	MethodTypeSAPassword  = "service_account_password"
+	MethodTypeAccessToken = "access_token"
 )
 
 type AuthMethod struct {

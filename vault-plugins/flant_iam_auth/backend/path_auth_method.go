@@ -23,7 +23,7 @@ import (
 
 var reservedMetadata = []string{"flantIamAuthMethod"}
 
-var authMethodTypes = []string{model.MethodTypeMultipass, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword}
+var authMethodTypes = []string{model.MethodTypeMultipass, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeAccessToken}
 
 func pathAuthMethodList(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -51,14 +51,14 @@ func pathAuthMethod(b *flantIamAuthBackend) *framework.Path {
 			},
 			"method_type": {
 				Type: framework.TypeString,
-				Description: fmt.Sprintf("Type of the authMethodConfig, either '%s', '%s', '%s' or '%s'.",
-					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeMultipass),
+				Description: fmt.Sprintf("Type of the authMethodConfig, either '%s', '%s', '%s' , '%s' or '%s'.",
+					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeMultipass, model.MethodTypeAccessToken),
 				Required: true,
 			},
 			"source": {
 				Type: framework.TypeString,
-				Description: fmt.Sprintf("authentification source for method thypes '%s' and '%s'.",
-					model.MethodTypeJWT, model.MethodTypeOIDC),
+				Description: fmt.Sprintf("authentification source for method thypes '%s', '%s' or '%s'.",
+					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeAccessToken),
 			},
 
 			"expiration_leeway": {
@@ -320,7 +320,7 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 	}
 
 	// verify source for source based (not own)
-	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC) {
+	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeAccessToken) {
 		if method.Source != "" && method.Source != sourceName {
 			return logical.ErrorResponse("can not change source"), nil
 		}
@@ -339,6 +339,9 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 		}
 		if methodType == model.MethodTypeOIDC && !(authType == model.AuthSourceOIDCFlow || authType == model.AuthSourceOIDCDiscovery) {
 			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need OIDC based source", sourceName)), nil
+		}
+		if methodType == model.MethodTypeAccessToken && !(authType == model.AuthSourceOIDCDiscovery) {
+			return logical.ErrorResponse(fmt.Sprintf("incorrect source '%s': need oidc_discovery_url based source", sourceName)), nil
 		}
 
 		method.Source = sourceName
@@ -600,7 +603,8 @@ func verifySourceAndRelToType(methodType string, data *framework.FieldData) (str
 		sourceName = sourceNameRaw.(string)
 	}
 
-	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC) && sourceName == "" {
+	if model.IsAuthMethod(methodType, model.MethodTypeJWT, model.MethodTypeOIDC,
+		model.MethodTypeAccessToken) && sourceName == "" {
 		return "", logical.ErrorResponse("missing source"), nil
 	}
 

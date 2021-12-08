@@ -13,8 +13,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
 	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/accesstoken"
 	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	multipass2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/multipass"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
 )
@@ -24,14 +26,14 @@ type AuthenticatorFactory struct {
 	jwtController *njwt.Controller
 
 	l          sync.RWMutex
-	validators map[string]*hcjwt.Validator
+	validators map[string]jwt2.JwtValidator
 }
 
 func NewAuthenticatorFactory(jwtController *njwt.Controller, parentLogger hclog.Logger) *AuthenticatorFactory {
 	return &AuthenticatorFactory{
 		logger:        parentLogger.Named("Login"),
 		jwtController: jwtController,
-		validators:    map[string]*hcjwt.Validator{},
+		validators:    map[string]jwt2.JwtValidator{},
 	}
 }
 
@@ -39,7 +41,7 @@ func (f *AuthenticatorFactory) Reset() {
 	f.l.Lock()
 	defer f.l.Unlock()
 
-	f.validators = map[string]*hcjwt.Validator{}
+	f.validators = map[string]jwt2.JwtValidator{}
 }
 
 func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
@@ -49,6 +51,9 @@ func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *mod
 
 	case model.MethodTypeMultipass:
 		return f.multipass(ctx, method, txn)
+
+	case model.MethodTypeAccessToken:
+		return f.jwt(ctx, method, txn)
 	}
 
 	f.logger.Warn(fmt.Sprintf("unsupported auth method %s", method.MethodType))
@@ -74,7 +79,7 @@ func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod
 		return nil, nil, err
 	}
 
-	jwtValidator, err := f.jwtValidator(ctx, method.Name, authSource)
+	jwtValidator, err := f.jwtValidator(ctx, method, authSource)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -116,7 +121,7 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 	f.logger.Debug("Got jwt config")
 
 	authSource := model.GetMultipassSourceForLogin(jwtConf, keys)
-	jwtValidator, err := f.jwtValidator(ctx, method.Name, authSource)
+	jwtValidator, err := f.jwtValidator(ctx, method, authSource)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,18 +145,27 @@ func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.Auth
 }
 
 // jwtValidator returns a new JWT validator based on the provided config.
-func (f *AuthenticatorFactory) jwtValidator(ctx context.Context, methodName string, config *model.AuthSource) (*hcjwt.Validator, error) {
+func (f *AuthenticatorFactory) jwtValidator(ctx context.Context, method *model.AuthMethod, config *model.AuthSource) (jwt2.JwtValidator, error) {
 	f.l.Lock()
 	defer f.l.Unlock()
 
-	if v, ok := f.validators[methodName]; ok {
+	if v, ok := f.validators[method.Name]; ok {
 		return v, nil
+	}
+
+	if method.MethodType == model.MethodTypeAccessToken {
+		validator, err := accesstoken.NewAccessTokenValidator(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("%w: access token validator configuration error: %s", consts.ErrNotConfigured, err.Error())
+		}
+		f.validators[method.Name] = validator
+		return validator, nil
 	}
 
 	var err error
 	var keySet hcjwt.KeySet
 
-	// Configure the key set for the validator
+	// Configure the key set for the pure jwt validator
 	switch config.AuthType() {
 	case model.AuthSourceJWKS:
 		keySet, err = hcjwt.NewJSONWebKeySet(ctx, config.JWKSURL, config.JWKSCAPEM)
@@ -160,22 +174,23 @@ func (f *AuthenticatorFactory) jwtValidator(ctx context.Context, methodName stri
 	case model.AuthSourceOIDCDiscovery:
 		keySet, err = hcjwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 	default:
-		return nil, fmt.Errorf("unsupported config type")
+		return nil, fmt.Errorf("%w: unsupported config type", consts.ErrNotConfigured)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("keyset configuration error: %w", err)
+		return nil, fmt.Errorf("%w: keyset configuration error: %s", consts.ErrNotConfigured, err.Error())
 	}
 
 	validator, err := hcjwt.NewValidator(keySet)
 	if err != nil {
-		return nil, fmt.Errorf("JWT validator configuration error: %w", err)
+		return nil, fmt.Errorf("%w: JWT validator configuration error: %s", consts.ErrNotConfigured, err.Error())
 	}
 
 	// not cache multipass validator
 	// TODO flush cache when update JWKS
+	// TODO flush cache when update authsource (ie CAPEM)
 	if config.UUID != model.MultipassSourceUUID {
-		f.validators[methodName] = validator
+		f.validators[method.Name] = validator
 	}
 
 	return validator, nil
