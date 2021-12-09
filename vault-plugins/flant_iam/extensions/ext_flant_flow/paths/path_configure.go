@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -75,8 +76,8 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"specific_teams": {
 					Type: framework.TypeKVPairs,
-					Description: fmt.Sprintf("Mapping some specific keys to flan_flow.TeamUUID, mandatory keys:%v",
-						config.MandatorySpecificRoles),
+					Description: fmt.Sprintf("Mapping some specific keys to flant_flow.TeamUUID, mandatory keys:%v",
+						config.MandatorySpecificTeams),
 					Required: true,
 				},
 			},
@@ -117,6 +118,10 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Contex
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	rolesMap := data.Get("specific_roles").(map[string]string)
+	if len(rolesMap) == 0 {
+		return backentutils.ResponseErr(req,
+			fmt.Errorf("%w: mandatory param 'specific_roles' not passed, or is empty", consts.ErrInvalidArg))
+	}
 	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, rolesMap)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
@@ -134,6 +139,10 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificTeams(ctx context.Contex
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	teamsMap := data.Get("specific_teams").(map[string]string)
+	if len(teamsMap) == 0 {
+		return backentutils.ResponseErr(req,
+			fmt.Errorf("%w: mandatory param 'specific_teams' not passed, or is empty", consts.ErrInvalidArg))
+	}
 	cfg, err := usecase.Config(txn).UpdateSpecificTeams(ctx, req.Storage, teamsMap)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)

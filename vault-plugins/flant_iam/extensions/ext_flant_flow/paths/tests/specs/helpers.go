@@ -129,11 +129,11 @@ func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, team
 	return cfg
 }
 
-func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, _ testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, roleAPI testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	tenant := iam_specs.CreateRandomTenant(tenantAPI)
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
-	// r1 := iam_specs.CreateRandomRole(RoleAPI)
-	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{}) // TODO fil later
+	r1 := iam_specs.CreateRandomRole(roleAPI)
+	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{"todo_in_future": r1.Name}) // TODO fil later
 
 	return &config.FlantFlowConfig{
 		FlantTenantUUID: tenant.UUID,

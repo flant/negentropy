@@ -4171,6 +4171,101 @@
         }
       }
     },
+    "/flant_iam/configure_extension/flant_flow/flant_tenant/{flant_tenant_uuid}": {
+      "parameters": [
+        {
+          "name": "flant_tenant_uuid",
+          "description": "ID of a tenant which is Flant",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Set Flant uuid",
+        "operationId": "postFlant_iamConfigure_extensionFlant_flowFlant_tenantFlant_tenant_uuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/configure_extension/flant_flow/specific_roles": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Set specific iam.roles for flant_flow extension",
+        "operationId": "postFlant_iamConfigure_extensionFlant_flowSpecific_roles",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "specific_roles": {
+                    "type": "object",
+                    "description": "Mapping some specific keys to iam.RoleName, mandatory keys:[]",
+                    "format": "kvpairs"
+                  }
+                },
+                "required": [
+                  "specific_roles"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant_iam/configure_extension/flant_flow/specific_teams": {
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Set specific teams for flant_flow extension",
+        "operationId": "postFlant_iamConfigure_extensionFlant_flowSpecific_teams",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "specific_teams": {
+                    "type": "object",
+                    "description": "Mapping some specific keys to flant_flow.TeamUUID, mandatory keys:[L1 mk8s Okmeter]",
+                    "format": "kvpairs"
+                  }
+                },
+                "required": [
+                  "specific_teams"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/flant_iam/configure_extension/server_access": {
       "post": {
         "summary": "Register server",
@@ -9222,6 +9317,355 @@
         }
       }
     },
+    "/secret/.*": {},
+    "/secret/config": {
+      "description": "Configures settings for the KV store",
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Read the backend level settings.",
+        "operationId": "getSecretConfig",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Configure backend level settings that are applied to every key in the key-value store.",
+        "operationId": "postSecretConfig",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cas_required": {
+                    "type": "boolean",
+                    "description": "If true, the backend will require the cas parameter to be set for each write"
+                  },
+                  "delete_version_after": {
+                    "type": "integer",
+                    "description": "If set, the length of time before a version is deleted. A negative duration disables the use of delete_version_after on all keys. A zero duration clears the current setting. Accepts a Go duration format string.",
+                    "format": "seconds"
+                  },
+                  "max_versions": {
+                    "type": "integer",
+                    "description": "The number of versions to keep for each key. Defaults to 10"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/secret/data/{path}": {
+      "description": "Write, Read, and Delete data in the Key-Value Store.",
+      "parameters": [
+        {
+          "name": "path",
+          "description": "Location of the secret.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Write, Read, and Delete data in the Key-Value Store.",
+        "operationId": "getSecretDataPath",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Write, Read, and Delete data in the Key-Value Store.",
+        "operationId": "postSecretDataPath",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "object",
+                    "description": "The contents of the data map will be stored and returned on read.",
+                    "format": "map"
+                  },
+                  "options": {
+                    "type": "object",
+                    "description": "Options for writing a KV entry. Set the \"cas\" value to use a Check-And-Set operation. If not set the write will be allowed. If set to 0 a write will only be allowed if the key doesn’t exist. If the index is non-zero the write will only be allowed if the key’s current version matches the version specified in the cas parameter.",
+                    "format": "map"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "description": "If provided during a read, the value at the version number will be returned"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Write, Read, and Delete data in the Key-Value Store.",
+        "operationId": "deleteSecretDataPath",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/secret/delete/{path}": {
+      "description": "Marks one or more versions as deleted in the KV store.",
+      "parameters": [
+        {
+          "name": "path",
+          "description": "Location of the secret.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Marks one or more versions as deleted in the KV store.",
+        "operationId": "postSecretDeletePath",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versions": {
+                    "type": "array",
+                    "description": "The versions to be archived. The versioned data will not be deleted, but it will no longer be returned in normal get requests.",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/secret/destroy/{path}": {
+      "description": "Permanently removes one or more versions in the KV store",
+      "parameters": [
+        {
+          "name": "path",
+          "description": "Location of the secret.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Permanently removes one or more versions in the KV store",
+        "operationId": "postSecretDestroyPath",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versions": {
+                    "type": "array",
+                    "description": "The versions to destroy. Their data will be permanently deleted.",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/secret/metadata/{path}": {
+      "description": "Configures settings for the KV store",
+      "parameters": [
+        {
+          "name": "path",
+          "description": "Location of the secret.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "get": {
+        "summary": "Configures settings for the KV store",
+        "operationId": "getSecretMetadataPath",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Configures settings for the KV store",
+        "operationId": "postSecretMetadataPath",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cas_required": {
+                    "type": "boolean",
+                    "description": "If true the key will require the cas parameter to be set on all write requests. If false, the backend’s configuration will be used."
+                  },
+                  "delete_version_after": {
+                    "type": "integer",
+                    "description": "The length of time before a version is deleted. If not set, the backend's configured delete_version_after is used. Cannot be greater than the backend's delete_version_after. A zero duration clears the current setting. A negative duration will cause an error.",
+                    "format": "seconds"
+                  },
+                  "max_versions": {
+                    "type": "integer",
+                    "description": "The number of versions to keep. If not set, the backend’s configured max version is used."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Configures settings for the KV store",
+        "operationId": "deleteSecretMetadataPath",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/secret/undelete/{path}": {
+      "description": "Undeletes one or more versions from the KV store.",
+      "parameters": [
+        {
+          "name": "path",
+          "description": "Location of the secret.",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Undeletes one or more versions from the KV store.",
+        "operationId": "postSecretUndeletePath",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versions": {
+                    "type": "array",
+                    "description": "The versions to unarchive. The versions will be restored and their data will be returned on normal get requests.",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/ssh/config/ca": {
       "description": "Set the SSH private key used for signing certificates.",
       "get": {
@@ -12497,6 +12941,147 @@
       },
       "delete": {
         "operationId": "deleteSysQuotasRateLimitName",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/sys/raw": {
+      "description": "Write, Read, and Delete data directly in the Storage backend.",
+      "x-vault-sudo": true,
+      "get": {
+        "summary": "Read the value of the key at the given path.",
+        "operationId": "getSysRaw",
+        "tags": [
+          "system"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the value of the key at the given path.",
+        "operationId": "postSysRaw",
+        "tags": [
+          "system"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete the key with given path.",
+        "operationId": "deleteSysRaw",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
+    "/sys/raw/{path}": {
+      "description": "Write, Read, and Delete data directly in the Storage backend.",
+      "parameters": [
+        {
+          "name": "path",
+          "in": "path",
+          "schema": {
+            "type": "string"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-sudo": true,
+      "get": {
+        "summary": "Read the value of the key at the given path.",
+        "operationId": "getSysRawPath",
+        "tags": [
+          "system"
+        ],
+        "parameters": [
+          {
+            "name": "list",
+            "description": "Return a list if `true`",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the value of the key at the given path.",
+        "operationId": "postSysRawPath",
+        "tags": [
+          "system"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete the key with given path.",
+        "operationId": "deleteSysRawPath",
         "tags": [
           "system"
         ],

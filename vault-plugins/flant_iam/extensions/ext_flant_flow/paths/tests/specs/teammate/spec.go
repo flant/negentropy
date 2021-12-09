@@ -19,6 +19,7 @@ import (
 var (
 	TestAPI   testapi.TestAPI
 	TeamAPI   testapi.TestAPI
+	RoleAPI   testapi.TestAPI
 	TenantAPI testapi.TestAPI
 	ConfigAPI testapi.ConfigAPI
 )
@@ -29,7 +30,7 @@ var _ = Describe("Teammate", func() {
 		flantFlowCfg *config.FlantFlowConfig
 	)
 	BeforeSuite(func() {
-		flantFlowCfg = specs.BaseConfigureFlantFlow(TenantAPI, TeamAPI, ConfigAPI)
+		flantFlowCfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
