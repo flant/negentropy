@@ -13,8 +13,12 @@ import (
 	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 )
 
+type JwtValidator interface {
+	Validate(ctx context.Context, token string, expected jwt.Expected) (allClaims map[string]interface{}, err error)
+}
+
 type Authenticator struct {
-	JwtValidator *jwt.Validator
+	JwtValidator JwtValidator
 	AuthMethod   *model.AuthMethod
 	AuthSource   *model.AuthSource
 	Logger       log.Logger

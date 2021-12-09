@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -18,7 +17,7 @@ import (
 )
 
 type Authenticator struct {
-	JwtValidator *jwt.Validator
+	JwtValidator jwt2.JwtValidator
 
 	MultipassService *auth_usecase.Multipass
 
