@@ -7,17 +7,20 @@ import (
 	"errors"
 	"time"
 
-	"gopkg.in/square/go-jose.v2"
-
 	"github.com/caos/oidc/pkg/oidc"
 	"github.com/caos/oidc/pkg/op"
+	"gopkg.in/square/go-jose.v2"
 )
+
+type sub = string
 
 type AuthStorage struct {
 	key *rsa.PrivateKey
+
+	UserExtraData map[sub]map[string]interface{}
 }
 
-func NewAuthStorage() op.Storage {
+func NewAuthStorage() *AuthStorage {
 	reader := rand.Reader
 	bitSize := 2048
 	key, err := rsa.GenerateKey(reader, bitSize)
@@ -25,7 +28,8 @@ func NewAuthStorage() op.Storage {
 		panic(err)
 	}
 	return &AuthStorage{
-		key: key,
+		key:           key,
+		UserExtraData: map[sub]map[string]interface{}{},
 	}
 }
 
@@ -38,6 +42,7 @@ type AuthRequest struct {
 	ClientID      string
 	CodeChallenge *oidc.CodeChallenge
 	State         string
+	Subject       string
 }
 
 func (a *AuthRequest) GetACR() string {
@@ -108,7 +113,10 @@ func (a *AuthRequest) GetState() string {
 }
 
 func (a *AuthRequest) GetSubject() string {
-	return "sub"
+	if a.Subject == "" {
+		return "undefined"
+	}
+	return a.Subject
 }
 
 func (a *AuthRequest) Done() bool {
@@ -240,12 +248,15 @@ func (s *AuthStorage) AuthorizeClientIDSecret(_ context.Context, id string, _ st
 	return nil
 }
 
-func (s *AuthStorage) SetUserinfoFromToken(ctx context.Context, userinfo oidc.UserInfoSetter, _, _, _ string) error {
+func (s *AuthStorage) SetUserinfoFromToken(ctx context.Context, userinfo oidc.UserInfoSetter, tokenID, subject, origin string) error {
+	userinfo.SetSubject(subject)
+	for k, v := range s.UserExtraData[subject] {
+		userinfo.AppendClaims(k, v)
+	}
 	return s.SetUserinfoFromScopes(ctx, userinfo, "", "", []string{})
 }
 
 func (s *AuthStorage) SetUserinfoFromScopes(ctx context.Context, userinfo oidc.UserInfoSetter, _, _ string, _ []string) error {
-	userinfo.SetSubject(a.GetSubject())
 	userinfo.SetAddress(oidc.NewUserInfoAddress("Test 789\nPostfach 2", "", "", "", "", ""))
 	userinfo.SetEmail("test", true)
 	userinfo.SetPhone("0791234567", true)

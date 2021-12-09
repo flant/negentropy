@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/caos/oidc/pkg/crypto"
@@ -18,6 +19,7 @@ import (
 )
 
 func main() {
+	os.Setenv("CAOS_OIDC_DEV", "1")
 	ctx := context.Background()
 	port := "9998"
 	config := &op.Config{
@@ -35,7 +37,8 @@ func main() {
 	router := handler.HttpHandler().(*mux.Router)
 	router.Methods("GET").Path("/login").HandlerFunc(HandleLogin)
 	router.Methods("POST").Path("/login").HandlerFunc(HandleCallback)
-	router.Methods("GET").Path("/custom_token").HandlerFunc(CustomTokenCreater(handler.Signer().Signer()))
+	router.Methods("GET").Path("/custom_id_token").HandlerFunc(CustomIdTokenCreater(handler.Signer().Signer()))
+	router.Methods("GET").Path("/custom_access_token").HandlerFunc(CustomAccessTokenCreater(storage, handler))
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: router,
@@ -47,7 +50,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func CustomTokenCreater(signer jose.Signer) func(http.ResponseWriter, *http.Request) {
+func CustomIdTokenCreater(signer jose.Signer) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		values := r.URL.Query()
 
@@ -96,6 +99,38 @@ func CustomTokenCreater(signer jose.Signer) func(http.ResponseWriter, *http.Requ
 			panic(err)
 		}
 		w.Write([]byte(idToken))
+	}
+}
+
+func CustomAccessTokenCreater(storage *mock.AuthStorage, provider op.OpenIDProvider) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		values := r.URL.Query()
+		subject := "subject_" + time.Now().String()
+
+		storage.UserExtraData[subject] = map[string]interface{}{}
+		for k, v := range values {
+			if len(v) == 1 {
+				storage.UserExtraData[subject][k] = v[0]
+			} else {
+				storage.UserExtraData[subject][k] = v
+			}
+		}
+
+		createAccessToken := true
+		authorizer := provider
+		authReq := &mock.AuthRequest{
+			Subject:  subject,
+			ClientID: "aud666",
+		}
+
+		client, err := storage.GetClientByClientID(r.Context(), authReq.GetClientID())
+
+		resp, err := op.CreateTokenResponse(r.Context(), authReq, client, authorizer, createAccessToken, "", "")
+		if err != nil {
+			panic(err)
+		}
+
+		w.Write([]byte(resp.AccessToken))
 	}
 }
 
