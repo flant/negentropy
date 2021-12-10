@@ -7,6 +7,7 @@ AUTHD_DIR="$(realpath $(dirname "$0"))/authd"
 CLI_DIR="$(realpath $(dirname "$0"))/cli"
 SERVER_ACCESSD_DIR="$(realpath $(dirname "$0"))/server-access"
 NSS_DIR="$(realpath $(dirname "$0"))/server-access/server-access-nss"
+OIDC_MOCK_DIR="$(realpath $(dirname "$0"))/e2e/tests/lib/oidc_mock"
 
 function build_plugin() {
   PLUGIN_NAME="$1"
@@ -97,6 +98,21 @@ function build_nss() {
              cp target/release/libnss_flantauth.so build/libnss_flantauth.so.2"
 }
 
+function build_oidc_mock() {
+  echo "Building oidc-mock"
+
+  mkdir -p $OIDC_MOCK_DIR/build
+  mkdir -p /tmp/oidc-mock-build
+
+  docker run --rm \
+    -w /go/src/oidc-mock \
+    -v $OIDC_MOCK_DIR/build:/src/build \
+    -v $OIDC_MOCK_DIR:/go/src/oidc-mock \
+    -v /tmp/oidc-mock-build:/go/pkg/mod \
+    golang:1.16-alpine \
+    go build -o /src/build/oidc-mock cmd/server.go
+}
+
 function build_vault() {
   local EXTRA_MOUNT
 
@@ -124,6 +140,7 @@ function build_all() {
   build_cli
   build_server_accessd
   build_nss
+  build_oidc_mock
   build_vault
 }
 
@@ -147,6 +164,10 @@ while [[ $# -gt 0 ]]; do
     ;;
     nss)
     TARGET="nss"
+    break
+    ;;
+    oidc-mock)
+    TARGET="oidc-mock"
     break
     ;;
     vault)
@@ -184,6 +205,10 @@ fi
 
 if [ "$TARGET" == "nss" ]; then
   build_nss
+fi
+
+if [ "$TARGET" == "oidc-mock" ]; then
+  build_oidc_mock
 fi
 
 if [ "$TARGET" == "vault" ]; then
