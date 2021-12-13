@@ -20,6 +20,10 @@
 
 infra/**/packer_cache
 infra/**/output
+
+.terraform
+.terraform.lock.hcl
+env_vars
 variables.pkrvars.hcl
 
 # Plugins
