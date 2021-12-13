@@ -28,7 +28,7 @@ services:
     volumes:
       - "../authd/build:/opt/authd/bin"
       - "../cli/build:/opt/cli/bin"
-    command: [ "sleep", "infinity" ]
+    command: sleep infinity
     depends_on:
       - vault
 

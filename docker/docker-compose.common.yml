@@ -51,6 +51,15 @@ services:
       kafka:
         condition: service_healthy
 
+  oidc-mock:
+    image: alpine:3.14.2
+    container_name: oidc-mock
+    ports:
+      - "9998:9998"
+    volumes:
+      - "../e2e/tests/lib/oidc_mock/build/oidc-mock:/oidc-mock"
+    command: /oidc-mock
+
 networks:
   default:
     name: negentropy
