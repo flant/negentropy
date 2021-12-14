@@ -1,17 +1,10 @@
-from typing import Tuple
-
-from vault import Vault
-import requests
+from consts import FLANT_IAM, FLANT_IAM_AUTH, ROOT_FLANT_IAM_SELF_TOPIC, negentropy_plugins
+from vault import Vault, check_response
 
 PublicKey = str
 VaultName = str
 PluginName = str
 
-FLANT_IAM = "flant_iam"
-FLANT_IAM_AUTH = "flant_iam_auth"
-ROOT_FLANT_IAM_SELF_TOPIC = "root_source"
-
-negentropy_plugins = [FLANT_IAM, FLANT_IAM_AUTH]
 
 class Plugin:
     """ The Plugin class represents plugin of negentropy"""
@@ -27,14 +20,6 @@ class Plugin:
         self.plugin_public_key = plugin_public_key
         self.self_topic_name = None  # not configured yet
         self.root_topic_name = None  # not configured yet
-
-
-def check_response(resp: requests.Response, expected_status_code: int = 200) -> requests.Response:
-    """ raise an exception if returned status code doesn't match expected"""
-    if resp.status_code != expected_status_code:
-        raise Exception(
-            "expected {}, got {}, response body:\n {}".format(expected_status_code, resp.status_code, resp.text))
-    return resp
 
 
 def collect_all_not_flant_iam_keys(plugins: list[Plugin]) -> list[PublicKey]:
@@ -91,7 +76,7 @@ def flant_iam_kafka_configure(vault: Vault, peers_pub_keys: list[PublicKey]):
     """flant_iam_kafka_configure configures flant_iam, getting public keys of all others plugins of all others vaults"""
     check_response(
         vault.write_to_plugin(plugin=FLANT_IAM, path="kafka/configure",
-                              body={
+                              json={
                                   "self_topic_name": ROOT_FLANT_IAM_SELF_TOPIC,
                                   "peers_public_keys": peers_pub_keys
                               }))
@@ -100,6 +85,10 @@ def flant_iam_kafka_configure(vault: Vault, peers_pub_keys: list[PublicKey]):
 ReplicaName = str
 ReplicaType = str
 PluginPublicKey = PublicKey
+
+
+def synonym_name_by_plugin_name(plugin_name: str) -> str:
+    return "auth" if plugin_name == FLANT_IAM_AUTH else plugin_name
 
 
 def flant_iam_replicas_configure(master_vault: Vault, plugins: list[Plugin]) -> list[Plugin]:
@@ -114,13 +103,14 @@ def flant_iam_replicas_configure(master_vault: Vault, plugins: list[Plugin]) -> 
         else:
             idx = plugin_counter.get(plugin.name) + 1 if plugin_counter.get(plugin.name) else 1
             plugin_counter[plugin.name] = idx
-            replica_name = plugin.name + "-" + str(idx)  # auth-1 TODO
-            plugin.self_topic_name = plugin.name + "-source." + replica_name  # auth-source.auth-1
+            synonym = synonym_name_by_plugin_name(plugin.name)
+            replica_name = synonym + "-" + str(idx)  # auth-1
+            plugin.self_topic_name = synonym + "-source." + replica_name  # auth-source.auth-1
             plugin.root_topic_name = ROOT_FLANT_IAM_SELF_TOPIC + "." + replica_name  # root_source.auth-1
             check_response(
                 master_vault.write_to_plugin(plugin=FLANT_IAM, path="replica/" + replica_name,
                                              # flant_iam/replica/auth-1
-                                             body={
+                                             json={
                                                  "type": "Vault",
                                                  "public_key": plugin.plugin_public_key
                                              }))
@@ -130,7 +120,7 @@ def flant_iam_replicas_configure(master_vault: Vault, plugins: list[Plugin]) -> 
 
 def plugin_kafka_configure(vault: Vault, plugin: Plugin, root_flant_iam_public_key: PublicKey):
     check_response(
-        vault.write_to_plugin(plugin=plugin.name, path="kafka/configure", body={
+        vault.write_to_plugin(plugin=plugin.name, path="kafka/configure", json={
             "peers_public_keys": root_flant_iam_public_key,
             "self_topic_name": plugin.self_topic_name,  # "auth-source.auth-1"
             "root_topic_name": plugin.root_topic_name,  # "root_source.auth-1",
@@ -147,7 +137,7 @@ def find_key_by_plugin_and_vault_name(plugins: list[Plugin], root_vault_name: Va
                                                                                       plugins))
 
 
-def connect_plugins(vaults: list[Vault], kafka_endpoints: str):
+def connect_plugins(vaults: list[Vault], kafka_endpoints: str) -> list[Plugin]:
     """ connect negentropy plugins to kafka """
     """ THE MAIN FUNCTION """
     plugins = []
@@ -176,3 +166,4 @@ def connect_plugins(vaults: list[Vault], kafka_endpoints: str):
             vault = vaults_dict[plugin.vault_name]
             plugin_kafka_configure(vault, plugin, root_flant_iam_public_key)
     print("plugin_kafka_configure is done")
+    return plugins
