@@ -9,14 +9,14 @@ on:
 jobs:
   plugins:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GOFLAGS: -mod=readonly
     strategy:
       max-parallel: 6
       fail-fast: false
       matrix:
-        plugin: [ "shared", "flant_iam", "flant_iam_auth", "flant_gitops" ]
+        plugin: [ "shared", "flant_iam", "flant_iam_auth" ]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
