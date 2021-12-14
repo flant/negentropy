@@ -17,14 +17,6 @@ done
 
 export COMPOSE_PROJECT_NAME=negentropy
 
-function docker-exec() {
-  if [[ $DEBUG == "true" ]]; then
-    docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.debug.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
-  else
-    docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml exec -e VAULT_TOKEN=${VAULT_TOKEN:-root} -T $1 sh -c "${@:2}"
-  fi
-}
-
 if [[ $DEBUG == "true" ]]; then
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.debug.yml up -d
   echo "DEBUG: run you debug tools and connect to dlv servers at both vaults"
@@ -42,6 +34,8 @@ else
   sleep 5
 fi
 
+python --version
+python3 --version
 pip install virtualenv
 virtualenv scripts/e2e
 source scripts/e2e/bin/activate
