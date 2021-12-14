@@ -18,7 +18,7 @@ var testServerAndClientSuite test_server_and_client_preparing.Suite
 
 var flantIamSuite flant_iam_preparing.Suite
 
-var cfg flant_iam_preparing.CheckingSSHConnectionEnvironment
+var cfg flant_iam_preparing.CheckingEnvironment
 
 var _ = BeforeSuite(func() {
 	testServerAndClientSuite.BeforeSuite()
@@ -36,7 +36,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 	Describe("cli ssh running", func() {
 		testCounter := 1
 		DescribeTable("cli ssh command variations",
-			func(buildCliCmd func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string) {
+			func(buildCliCmd func(cfg flant_iam_preparing.CheckingEnvironment) string) {
 				d := testServerAndClientSuite
 				// Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
 				//	"/tmp/flint files doesn't exist before start")
@@ -75,11 +75,11 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					"/tmp/flint is empty  after closing cli")
 			},
 			Entry("[-t XXX --all-projects]",
-				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s --all-projects\n", cfg.Tenant.Identifier)
 				}),
 			Entry("[--all-tenants --all-projects -l system=ubuntu20]",
-				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					var labelSelector string
 					for k, v := range cfg.ServerLabels {
 						labelSelector = k + "=" + v
@@ -88,12 +88,12 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants --all-projects -l %s\n", labelSelector)
 				}),
 			Entry("[--all-tenants -p XXX  test-server]",
-				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", cfg.Project.Identifier,
 						cfg.TestServerIdentifier)
 				}),
 			Entry(" [-t XXX -p YYY]",
-				func(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) string {
+				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", cfg.Tenant.Identifier, cfg.Project.Identifier)
 				}),
 		)

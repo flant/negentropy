@@ -1,7 +1,8 @@
 import hvac
 import time
+import datetime
 import requests
-from  json import dumps
+from json import dumps
 
 from hvac import exceptions
 
@@ -138,7 +139,7 @@ class Vault:
             'X-Vault-Token': self.token,
             'Content-Type': 'application/json',
         }
-        request_timestamp = time.time()
+        request_timestamp = str(datetime.datetime.now())[:19]
         response = requests.request(method, url, headers=headers, data=payload)
 
         self.request_log.append({"request": {
@@ -146,7 +147,7 @@ class Vault:
             "method": method,
             "url": url,
             "payload": payload},
-            "response": response})
+            "response": (str(datetime.datetime.now())[:19], response.status_code, response.text)})
 
         return response
 
@@ -173,11 +174,11 @@ class Vault:
                                                           policy='path "*" {capabilities = ["create", "read", "update", "delete", "list"]}'
                                                           ), 204)
         # approle, secretID & roleID
-        print("enable approle/role.full, getting secret_is and role_id")
+        print("enable approle/role/full, getting secret_is and role_id")
         self.enable_approle()
         check_response(
             self.vault_client.auth.approle.create_or_update_approle(role_name="full", mount_point="approle",
-                                                                    secret_id_ttl="5m", token_ttl="120s",
+                                                                    secret_id_ttl="15m", token_ttl="180s",
                                                                     token_policies=["full"]), 204)
         role_id = self.vault_client.auth.approle.read_role_id(role_name="full", mount_point="approle").get("data").get(
             "role_id")
@@ -191,7 +192,7 @@ class Vault:
                     "vault_addr": "http://127.0.0.1:8200",
                     "vault_tls_server_name": "vault_host",
                     "role_name": "full",
-                    "secret_id_ttl": "5m",
+                    "secret_id_ttl": "15m",
                     "approle_mount_point": "/auth/approle/",
                     "role_id": role_id,
                     "secret_id": secret_id,
@@ -263,5 +264,34 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
                     "ttl": "5m0s"
                 }), 204)
 
-# "default_extensions": "{\"permit-agent-forwarding\": \"\",\"permit-pty\":\"\"}",
-# "default_extensions": [{"permit-agent-forwarding": "11221", "permit-pty": "11111"}],
+    def marshall(self) -> dict:
+        return {
+            "name": self.name,
+            "token": self.token,
+            "url": self.url,
+            "plugin_names": self.plugin_names,
+            "keys": self.keys
+        }
+
+    def connect_oidc(self, oidc_url):
+        # create auth source
+        if FLANT_IAM_AUTH in self.plugin_names:
+            print("creating auth source 'oidc-mock' for vault '{}', at {}".format(self.name, self.url))
+            check_response(
+                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_source/oidc-mock", json={
+                    "oidc_discovery_url": oidc_url,
+                    "default_role": "demo",
+                    "entity_alias_name": "full_identifier",
+                }), 204)
+        # create auth method
+        if FLANT_IAM_AUTH in self.plugin_names:
+            print("creating auth method 'oidc-mock-access-token' for vault '{}', at {}".format(self.name, self.url))
+            check_response(
+                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/oidc-mock-access-token", json={
+                    "method_type": "access_token",
+                    "source": "oidc-mock",
+                    "bound_audiences": ["aud666"],
+                    "user_claim": "uuid",
+                    "token_policies": "full",
+                    "token_no_default_policy": True
+                }), 200)
