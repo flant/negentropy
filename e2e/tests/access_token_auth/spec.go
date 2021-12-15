@@ -24,22 +24,49 @@ var _ = Describe("Process of running access through access_token", func() {
 	flantIamSuite.BeforeSuite()
 	cfg := flantIamSuite.PrepareForAccessTokenTesting()
 
-	Describe("fail with invalid token", func() {
+	It("fail with invalid token", func() {
 		fakeToken := "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vb2lkYy1tb2NrOjk5OTgiLCJzdWIiOiJzdWJqZWN0XzIwMjEtMTItMTQgMTI6MjM6NDQuMTY0MjgyODQzICswMDAwIFVUQyBtPSsyODYzLjAxMTY2MTY5MyIsImF1ZCI6WyJhdWQ2NjYiXSwianRpIjoiaWQiLCJleHAiOjE2Mzk0ODQ5MjQsImlhdCI6MTYzOTQ4NDYyNCwibmJmIjoxNjM5NDg0NjI0LCJwcml2YXRlX2NsYWltIjoidGVzdCJ9.Mg9U-UciCjqqEeuu6SOKTfs36SpqciHM2ailkyWsVc0oSKxDQObivMPTtV04rD0PIqNe7Dp-2dmr9xqvfX8nFv-_TWthM-lhsknquPW-okM616KZf9lzjI08ZhzT1zksJYAu7Pz0dqSYYvirnu4MU3dPxmG16kzwwmhF13G01Is8s820wEkVgwWzi3FWJvu18cliovGd_5rwd4_hdDwKT3a_mfNEw8e7ZVC-l3irzmOstD56vsnwfOfprtKDUbnlOY9dDBd82gQ0jU7i8iLsQyYAJUrQb-uK0AX22fyIg-MFtj-TXUQF9PJ-3sOR4VrItu6Re65ZCZc0NvVvqbRv5w"
 		login(false, map[string]interface{}{"method": "oidc-mock-access-token", "jwt": fakeToken})
 	})
-	Describe("fail with valid access_token issued by oidc, invalid user uuid", func() {
+	It("fail with valid access_token issued by oidc, with invalid user uuid", func() {
 		accessToken, err := getAccessToken("00000001-0001-4001-A001-000000000001")
 		Expect(err).ToNot(HaveOccurred())
 		login(false, map[string]interface{}{"method": "oidc-mock-access-token", "jwt": accessToken})
 	})
-	Describe("getting VST against valid jwt of vaild user", func() {
+	Context("getting VST against valid jwt of vaild user", func() {
 		accessToken, err := getAccessToken(cfg.User.UUID)
 		Expect(err).ToNot(HaveOccurred())
 		time.Sleep(time.Second * 5)
 		vst := login(true, map[string]interface{}{"method": "oidc-mock-access-token", "jwt": accessToken}).ClientToken
-		Describe("getting access to tenant list at auth vault", func() {
+		It("getting access to tenant list at auth vault", func() {
 			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(statusCode).To(Equal(200))
+			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
+		})
+		It("permission denied to read tenant at auth vault", func() {
+			_, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/"+cfg.Tenant.UUID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(statusCode).To(Equal(403))
+		})
+	})
+	Context("getting VST with flant_iam against valid jwt of vaild user", func() {
+		accessToken, err := getAccessToken(cfg.User.UUID)
+		Expect(err).ToNot(HaveOccurred())
+		vst := login(true, map[string]interface{}{
+			"method": "oidc-mock-access-token", "jwt": accessToken,
+			"roles": []map[string]interface{}{
+				{"role": "flant_iam"},
+			},
+		}).ClientToken
+		It("getting access to tenant list at auth vault", func() {
+			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(statusCode).To(Equal(200))
+			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
+		})
+		It("getting access  to read tenant at auth vault", func() {
+			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/"+cfg.Tenant.UUID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
