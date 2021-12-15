@@ -1,4 +1,7 @@
 import json
+
+from typing import List
+
 from server_access_ext import ServerAccessExtension
 from plugins import connect_plugins
 from vault import Vault
@@ -6,7 +9,7 @@ from plugins import find_master_root_vault
 from flant_iam import create_role_if_not_exists
 
 
-def initialize_server_access(vaults: list[Vault]):
+def initialize_server_access(vaults: List[Vault]):
     """ Initialize extension server-access """
     master_vault = find_master_root_vault(vaults)
     create_role_if_not_exists(master_vault, "ssh")
@@ -16,14 +19,14 @@ def initialize_server_access(vaults: list[Vault]):
     server_access_extension.configure_extension_at_vaults()
 
 
-def write_tokens_files(vaults: list[Vault]):
+def write_tokens_files(vaults: List[Vault]):
     for vault in vaults:
         f = open("/tmp/" + vault.name + "_token", "w")
         f.write(vault.token)
         f.close()
 
 
-def write_vaults_state_to_file(vaults: list[Vault]):
+def write_vaults_state_to_file(vaults: List[Vault]):
     file = open("/tmp/vaults", "w")
     out = []
     for v in vaults:
@@ -32,7 +35,7 @@ def write_vaults_state_to_file(vaults: list[Vault]):
     file.close
 
 
-def read_vaults_from_file() -> list[Vault]:
+def read_vaults_from_file() -> List[Vault]:
     file = open("/tmp/vaults", "r")
     s = file.read()
     file.close()

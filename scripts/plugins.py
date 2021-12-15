@@ -1,3 +1,5 @@
+from typing import List, Dict
+
 from consts import FLANT_IAM, FLANT_IAM_AUTH, ROOT_FLANT_IAM_SELF_TOPIC, negentropy_plugins
 from vault import Vault, check_response
 
@@ -22,7 +24,7 @@ class Plugin:
         self.root_topic_name = None  # not configured yet
 
 
-def collect_all_not_flant_iam_keys(plugins: list[Plugin]) -> list[PublicKey]:
+def collect_all_not_flant_iam_keys(plugins: List[Plugin]) -> List[PublicKey]:
     """ collect_all_not_flant_iam_keys collects all not flant_iam keys """
     result = []
     for plugin in plugins:
@@ -31,13 +33,13 @@ def collect_all_not_flant_iam_keys(plugins: list[Plugin]) -> list[PublicKey]:
     return result
 
 
-def vaults_by_name(vaults: list[Vault]) -> dict[VaultName, Vault]:
+def vaults_by_name(vaults: List[Vault]) -> Dict[VaultName, Vault]:
     """ map list to dict """
     return {vault.name: vault for vault in vaults}
 
 
 def configure_pubkeys_and_replicas_at_master_root_vault(master_root_vault: Vault,
-                                                        plugins: list[Plugin]) -> list[Plugin]:
+                                                        plugins: List[Plugin]) -> List[Plugin]:
     """ configure pubkeys and replicas, returns updated plugins"""
     flant_iam_kafka_configure(master_root_vault, collect_all_not_flant_iam_keys(plugins))
     return flant_iam_replicas_configure(master_root_vault, plugins)
@@ -64,7 +66,7 @@ def connect_kafka_and_generate_key(vault: Vault, plugin: PluginName, kafka_endpo
     return pk
 
 
-def find_master_root_vault(vaults: list[Vault]) -> Vault:
+def find_master_root_vault(vaults: List[Vault]) -> Vault:
     """ returns master root vault (now it is just first vault with flant_iam onboard) """
     for vault in vaults:
         if FLANT_IAM in vault.plugin_names:
@@ -72,7 +74,7 @@ def find_master_root_vault(vaults: list[Vault]) -> Vault:
     raise Exception("there is no vaults with flant_iam onboard in passed: {}".format(vaults))
 
 
-def flant_iam_kafka_configure(vault: Vault, peers_pub_keys: list[PublicKey]):
+def flant_iam_kafka_configure(vault: Vault, peers_pub_keys: List[PublicKey]):
     """flant_iam_kafka_configure configures flant_iam, getting public keys of all others plugins of all others vaults"""
     check_response(
         vault.write_to_plugin(plugin=FLANT_IAM, path="kafka/configure",
@@ -91,7 +93,7 @@ def synonym_name_by_plugin_name(plugin_name: str) -> str:
     return "auth" if plugin_name == FLANT_IAM_AUTH else plugin_name
 
 
-def flant_iam_replicas_configure(master_vault: Vault, plugins: list[Plugin]) -> list[Plugin]:
+def flant_iam_replicas_configure(master_vault: Vault, plugins: List[Plugin]) -> List[Plugin]:
     """ flant_iam_replicas_configure provide configuring flant_iam & kafka topics for data replication """
     result = []
     plugin_counter = dict()
@@ -128,7 +130,7 @@ def plugin_kafka_configure(vault: Vault, plugin: Plugin, root_flant_iam_public_k
         }))
 
 
-def find_key_by_plugin_and_vault_name(plugins: list[Plugin], root_vault_name: VaultName) -> PublicKey:
+def find_key_by_plugin_and_vault_name(plugins: List[Plugin], root_vault_name: VaultName) -> PublicKey:
     for plugin in plugins:
         if plugin.vault_name == root_vault_name and plugin.name == FLANT_IAM:
             return plugin.plugin_public_key
@@ -137,7 +139,7 @@ def find_key_by_plugin_and_vault_name(plugins: list[Plugin], root_vault_name: Va
                                                                                       plugins))
 
 
-def connect_plugins(vaults: list[Vault], kafka_endpoints: str) -> list[Plugin]:
+def connect_plugins(vaults: List[Vault], kafka_endpoints: str) -> List[Plugin]:
     """ connect negentropy plugins to kafka """
     """ THE MAIN FUNCTION """
     plugins = []
@@ -160,7 +162,7 @@ def connect_plugins(vaults: list[Vault], kafka_endpoints: str) -> list[Plugin]:
     vaults_dict = vaults_by_name(vaults)
     print("start plugin_kafka_configure for plugins:")
     for plugin in plugins:
-        print("\t vault:{}".format(vault.name))
+        print("\t vault:{}".format(plugin.vault_name))
         if plugin.name != FLANT_IAM:
             print("\t\tplugin:{}".format(plugin.name))
             vault = vaults_dict[plugin.vault_name]

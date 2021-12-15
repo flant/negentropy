@@ -1,3 +1,5 @@
+from typing import List
+
 from vault import Vault, check_response
 from consts import FLANT_IAM, negentropy_plugins
 
@@ -5,8 +7,8 @@ from consts import FLANT_IAM, negentropy_plugins
 class ServerAccessExtension:
     def __init__(
             self,
-            vaults: list[Vault],
-            roles_for_servers: list[str] = ["servers"],
+            vaults: List[Vault],
+            roles_for_servers: List[str] = ["servers"],
             role_for_ssh_access: str = "ssh",
             delete_expired_password_seeds_after: int = 1000000,
             expire_password_seed_after_reveal_in: int = 1000000,
@@ -24,7 +26,7 @@ class ServerAccessExtension:
         :param vault: vault instance for configuring extension
         :type vault: Vault        
         :param roles_for_servers: list of roles, which are suitable for using in server_access at servers  
-        :type roles_for_servers: list[str]
+        :type roles_for_servers: List[str]
         :param role_for_ssh_access: role for user(service_account) to get access to servers
         :type role_for_ssh_access: str
         :param delete_expired_password_seeds_after: 

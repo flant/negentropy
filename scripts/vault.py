@@ -5,6 +5,7 @@ import requests
 from json import dumps
 
 from hvac import exceptions
+from typing import List
 
 from consts import negentropy_plugins, FLANT_IAM_AUTH
 
@@ -19,6 +20,24 @@ def check_response(resp: requests.Response, expected_status_code: int = 200) -> 
     return resp
 
 
+def remove_suffix(s: str, suffix: str) -> str:
+    if suffix == "":
+        return s
+    if s.endswith(suffix):
+        return s[0:-len(suffix)]
+    else:
+        return s
+
+
+def remove_prefix(s: str, prefix: str) -> str:
+    if prefix == "":
+        return s
+    if s.startswith(prefix):
+        return s[len(prefix):]
+    else:
+        return s
+
+
 class Vault:
     """The Vault class for Negentropy vault control."""
 
@@ -27,8 +46,8 @@ class Vault:
             name: str,
             url: str,
             token: str,
-            plugin_names: list[str],
-            keys: list[str] = None,
+            plugin_names: List[str],
+            keys: List[str] = None,
     ):
         """Creates a new Vault instance.
         :param name: original name of vault.
@@ -38,9 +57,9 @@ class Vault:
         :param token: Authentication token to include in requests sent to Vault.
         :type token: str
         :param plugin_names: Valid names of negentropy plugins
-        :type plugin_names: list[str]
+        :type plugin_names: List[str]
         :param keys: shamir keys for unsealing vault
-        :type keys: list[str]
+        :type keys: List[str]
         """
         self.name = name
         self.token = token
@@ -95,7 +114,7 @@ class Vault:
         print("run activate_plugins for '{}' vault ".format(self.name))
         auths = set(self.vault_client.sys.list_auth_methods().keys())
         secrets = set(self.vault_client.sys.list_mounted_secrets_engines().keys())
-        active_plugins = {name.removesuffix("/") for name in auths.union(secrets)}
+        active_plugins = {remove_suffix(name, "/") for name in auths.union(secrets)}
         for p in self.plugin_names:
             if p in active_plugins:
                 print("plugin '{}' already activated at '{}' vault".format(p, self.name))
@@ -132,7 +151,7 @@ class Vault:
             raise Exception("vault '{}': has not '{}' plugin".format(self.name, plugin))
         url = self.vault_client.url + "/v1" + \
               ("/auth/" if plugin in auth_plugins else "/") + \
-              plugin + "/" + path.removeprefix(plugin)
+              plugin + "/" + remove_prefix(path, plugin)
 
         payload = dumps(json)
         headers = {
@@ -215,7 +234,7 @@ class Vault:
                     "method_type": "multipass_jwt"
                 }))
 
-    def configure_ssh_ca(self, vault_names: list[str]):
+    def configure_ssh_ca(self, vault_names: List[str]):
         if self.name in vault_names and "ssh" in self.plugin_names:
             print("writing ssh/config/ca")
             try:
