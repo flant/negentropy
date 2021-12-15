@@ -46,7 +46,8 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *
 	}
 }
 
-func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
+func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
+	roleClaims []RoleClaim) (*logical.Auth, error) {
 	uuid := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", uuid))
 
@@ -59,7 +60,6 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return nil, err
 	}
-
 	if user != nil {
 		fullId = user.FullIdentifier
 		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", fullId, uuid))
@@ -103,6 +103,19 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	authzRes.EntityID = entityId
 
 	method.PopulateTokenAuth(authzRes)
+	// TODO  REMAKE IT !!!
+	flantIam := false
+	for _, rc := range roleClaims {
+		if rc.Role == "flant_iam" {
+			flantIam = true
+			break
+		}
+	}
+	if flantIam {
+		authzRes.Policies = append(authzRes.Policies, "full")
+	}
+	// TODO  REMAKE IT !!!
+
 	authzRes.InternalData["flantIamAuthMethod"] = method.Name
 
 	a.Logger.Debug(fmt.Sprintf("Token auth populated %s", fullId))
@@ -116,6 +129,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for sa here
+	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  sa.FullIdentifier,
 		InternalData: map[string]interface{}{},
@@ -124,6 +138,7 @@ func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *m
 
 func (a *Authorizator) authorizeUser(user *iam.User, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for user here
+	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  user.FullIdentifier,
 		InternalData: map[string]interface{}{},

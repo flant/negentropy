@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -12,6 +13,7 @@ import (
 
 	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	authz2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 func pathLogin(b *flantIamAuthBackend) *framework.Path {
@@ -74,6 +76,11 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse("missing method"), nil
 	}
 
+	roleClaims, err := getRoleClaims(d)
+	if err != nil {
+		return nil, fmt.Errorf("%w:parsing roles:%s", consts.ErrInvalidArg, err.Error())
+	}
+
 	txn := b.storage.Txn(false)
 	repo := repo2.NewAuthMethodRepo(txn)
 	method, err := repo.Get(methodName)
@@ -111,7 +118,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	authorizator := authz2.NewAutorizator(txn, vaultClient, b.accessorGetter, logger)
 
 	logger.Debug("Start Authorize")
-	authzRes, err := authorizator.Authorize(authnRes, method, authSource)
+	authzRes, err := authorizator.Authorize(authnRes, method, authSource, roleClaims)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Not authz, err: %v", err))
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
@@ -124,6 +131,22 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	return &logical.Response{
 		Auth: authzRes,
 	}, nil
+}
+
+func getRoleClaims(d *framework.FieldData) ([]authz2.RoleClaim, error) {
+	if roleMaps, ok := d.Get("roles").([]interface{}); ok {
+		result := []authz2.RoleClaim{}
+		data, err := json.Marshal(roleMaps)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, &result)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	return nil, nil
 }
 
 func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
