@@ -23,6 +23,7 @@ var _ = Describe("Process of running access through access_token", func() {
 	var flantIamSuite flant_iam_preparing.Suite
 	flantIamSuite.BeforeSuite()
 	cfg := flantIamSuite.PrepareForAccessTokenTesting()
+	time.Sleep(time.Second * 5)
 
 	It("fail with invalid token", func() {
 		fakeToken := "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vb2lkYy1tb2NrOjk5OTgiLCJzdWIiOiJzdWJqZWN0XzIwMjEtMTItMTQgMTI6MjM6NDQuMTY0MjgyODQzICswMDAwIFVUQyBtPSsyODYzLjAxMTY2MTY5MyIsImF1ZCI6WyJhdWQ2NjYiXSwianRpIjoiaWQiLCJleHAiOjE2Mzk0ODQ5MjQsImlhdCI6MTYzOTQ4NDYyNCwibmJmIjoxNjM5NDg0NjI0LCJwcml2YXRlX2NsYWltIjoidGVzdCJ9.Mg9U-UciCjqqEeuu6SOKTfs36SpqciHM2ailkyWsVc0oSKxDQObivMPTtV04rD0PIqNe7Dp-2dmr9xqvfX8nFv-_TWthM-lhsknquPW-okM616KZf9lzjI08ZhzT1zksJYAu7Pz0dqSYYvirnu4MU3dPxmG16kzwwmhF13G01Is8s820wEkVgwWzi3FWJvu18cliovGd_5rwd4_hdDwKT3a_mfNEw8e7ZVC-l3irzmOstD56vsnwfOfprtKDUbnlOY9dDBd82gQ0jU7i8iLsQyYAJUrQb-uK0AX22fyIg-MFtj-TXUQF9PJ-3sOR4VrItu6Re65ZCZc0NvVvqbRv5w"
@@ -36,7 +37,7 @@ var _ = Describe("Process of running access through access_token", func() {
 	Context("getting VST against valid jwt of vaild user", func() {
 		accessToken, err := getAccessToken(cfg.User.UUID)
 		Expect(err).ToNot(HaveOccurred())
-		time.Sleep(time.Second * 5)
+
 		vst := login(true, map[string]interface{}{"method": "oidc-mock-access-token", "jwt": accessToken}).ClientToken
 		It("getting access to tenant list at auth vault", func() {
 			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")

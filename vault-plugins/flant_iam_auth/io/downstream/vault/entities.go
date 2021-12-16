@@ -10,26 +10,27 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 const maxElapsedTime = 5 * time.Second
 
-func backOffSettings() backoff.BackOff {
+func BackOffSettings() backoff.BackOff {
 	backoffRequest := backoff.NewExponentialBackOff()
 	backoffRequest.MaxElapsedTime = maxElapsedTime
 	return backoffRequest
 }
 
 type VaultEntityDownstreamApi struct {
-	getClient           io.BackoffClientGetter
+	vaultClientProvider client.VaultClientController
 	mountAccessorGetter *MountAccessorGetter
 	logger              log.Logger
 }
 
-func NewVaultEntityDownstreamApi(getClient io.BackoffClientGetter, mountAccessorGetter *MountAccessorGetter, parenatLogger log.Logger) *VaultEntityDownstreamApi {
+func NewVaultEntityDownstreamApi(vaultClientProvider client.VaultClientController, mountAccessorGetter *MountAccessorGetter, parenatLogger log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
-		getClient:           getClient,
+		vaultClientProvider: vaultClientProvider,
 		mountAccessorGetter: mountAccessorGetter,
 		logger:              parenatLogger.Named("VaultIdentityClient"),
 	}
@@ -78,14 +79,10 @@ func (a *VaultEntityDownstreamApi) ProcessEntity(txn *io.MemoryStoreTxn, entity 
 	if err != nil {
 		return nil, err
 	}
-	clientApi, err := a.getClient()
-	if err != nil {
-		return nil, err
-	}
 
 	action := io.NewVaultApiAction(func() error {
 		a.logger.Debug(fmt.Sprintf("Creating vault entity with name %s", entity.Name), "name", entity.Name)
-		err := api.NewIdentityAPIWithBackOff(clientApi, backOffSettings).EntityApi().Create(entity.Name)
+		err = api.NewIdentityAPIWithBackOff(a.vaultClientProvider, BackOffSettings).EntityApi().Create(entity.Name)
 		if err != nil {
 			a.logger.Error(fmt.Sprintf("Cannot create vault entity with name %s: %v", entity.Name, err), "name", entity.Name, "err", err)
 			return err
@@ -140,13 +137,8 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(txn *io.MemoryStoreTxn, en
 		return nil, err
 	}
 
-	apiClient, err := a.getClient()
-	if err != nil {
-		return nil, err
-	}
-
 	// getting entity id through vault api (with backoff)
-	identityApi := api.NewIdentityAPIWithBackOff(apiClient, backOffSettings)
+	identityApi := api.NewIdentityAPIWithBackOff(a.vaultClientProvider, BackOffSettings)
 
 	entityId, err := identityApi.EntityApi().GetID(entity.Name)
 	if err != nil {
@@ -216,14 +208,9 @@ func (a *VaultEntityDownstreamApi) createEntityAliasInMemoryStoreIfNotExists(txn
 }
 
 func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(txn *io.MemoryStoreTxn, entityName string) ([]io.DownstreamAPIAction, error) {
-	apiClient, err := a.getClient()
-	if err != nil {
-		return nil, err
-	}
-
 	action := io.NewVaultApiAction(func() error {
 		a.logger.Debug(fmt.Sprintf("Deleting entity with name %s", entityName), "entityName", entityName)
-		err := api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).EntityApi().DeleteByName(entityName)
+		err := api.NewIdentityAPIWithBackOff(a.vaultClientProvider, BackOffSettings).EntityApi().DeleteByName(entityName)
 		if err != nil {
 			a.logger.Error(fmt.Sprintf("Can not delete entity %s: %v", entityName, err), "entityName", entityName, "err", err)
 			return err
@@ -238,11 +225,6 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(txn *io.MemoryStoreTxn, e
 }
 
 func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(txn *io.MemoryStoreTxn, entityAliasName string) ([]io.DownstreamAPIAction, error) {
-	apiClient, err := a.getClient()
-	if err != nil {
-		return nil, err
-	}
-
 	// getting mount accessor - identifer for mount point plugin
 	mountAccessor, err := a.mountAccessorGetter.MountAccessor()
 	if err != nil {
@@ -251,7 +233,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(txn *io.MemoryStoreT
 
 	action := io.NewVaultApiAction(func() error {
 		a.logger.Debug(fmt.Sprintf("Deleting entity alias a with name %s", entityAliasName), "eaName", entityAliasName)
-		err := api.NewIdentityAPIWithBackOff(apiClient, backOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
+		err := api.NewIdentityAPIWithBackOff(a.vaultClientProvider, BackOffSettings).AliasApi().DeleteByName(entityAliasName, mountAccessor)
 		if err != nil {
 			a.logger.Error(fmt.Sprintf("Can not delete entity alias %s: %v", entityAliasName, err), "eaName", entityAliasName, "err", err)
 			return err

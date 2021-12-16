@@ -62,14 +62,14 @@ func (vs *VaultSession) makeRequest(method, requestPath string, params url.Value
 	return buf.Bytes(), nil
 }
 
-func (vs *VaultSession) getTenants() ([]auth.SafeTenant, error) {
+func (vs *VaultSession) getTenants() ([]iam.Tenant, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil)
 	if err != nil {
 		return nil, err
 	}
 	var vaultTenantsResponse struct {
 		Data struct {
-			Tenants []auth.SafeTenant `json:"tenants"`
+			Tenants []iam.Tenant `json:"tenants"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(vaultTenantsResponseBytes, &vaultTenantsResponse)

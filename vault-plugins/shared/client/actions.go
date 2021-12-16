@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
@@ -47,7 +48,7 @@ func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	return client, nil
 }
 
-func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessConfigStorage,
+func genNewSecretID(ctx context.Context, apiClient *api.Client, storage logical.Storage,
 	accessConf *vaultAccessConfig, logger hclog.Logger) error {
 	// login with current secret id if no login current
 	if apiClient.Token() == "" {
@@ -70,7 +71,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, store *accessCon
 	accessConf.SecretID = newSecretID
 	accessConf.LastRenewTime = time.Now()
 
-	err = store.PutConfig(ctx, accessConf)
+	err = PutVaultClientConfig(ctx, accessConf, storage)
 	if err != nil {
 		return err
 	}

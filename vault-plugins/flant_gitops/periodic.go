@@ -68,7 +68,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		b.Logger().Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
 	}
 
-	apiConfig, err := b.AccessVaultController.GetApiConfig(ctx, req.Storage)
+	apiConfig, err := b.AccessVaultClientProvider.GetApiConfig(ctx, req.Storage)
 	if err != nil {
 		return fmt.Errorf("unable to get Vault API config: %s", err)
 	}
@@ -330,7 +330,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 func (b *backend) performWrappedVaultRequest(ctx context.Context, storage logical.Storage,
 	vaultReq *vaultRequest) (string, error) {
-	apiClient, err := b.AccessVaultController.APIClient(storage)
+	apiClient, err := b.AccessVaultClientProvider.APIClient(storage)
 	if err != nil {
 		return "", fmt.Errorf("unable to get Vault API Client for %q Vault request: %s", vaultReq.Name, err)
 	}

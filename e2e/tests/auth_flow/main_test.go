@@ -21,6 +21,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault"
 	flant_vault_api "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 func Test(t *testing.T) {
@@ -248,7 +249,7 @@ var _ = BeforeSuite(func() {
 	rootVaultAddr := lib.GetRootVaultUrl()
 	iamClientWithRoot = configure.GetClientWithToken(rootVaultToken, rootVaultAddr)
 
-	identityApi = flant_vault_api.NewIdentityAPI(iamAuthClientWithRoot, hclog.NewNullLogger())
+	identityApi = flant_vault_api.NewIdentityAPI(&client.MockVaultClientController{Client: iamAuthClientWithRoot}, hclog.NewNullLogger())
 
 	role := configure.CreateGoodRole(iamAuthClientWithRoot)
 
@@ -281,9 +282,7 @@ var _ = BeforeSuite(func() {
 		"token_no_default_policy": true,
 	})
 
-	mountAccessorId, err = vault.NewMountAccessorGetter(func() (*api.Client, error) {
-		return iamAuthClientWithRoot, nil
-	}, "flant_iam_auth/").MountAccessor()
+	mountAccessorId, err = vault.NewMountAccessorGetter(&client.MockVaultClientController{Client: iamAuthClientWithRoot}, "flant_iam_auth/").MountAccessor()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mountAccessorId).ToNot(BeEmpty())
 })
