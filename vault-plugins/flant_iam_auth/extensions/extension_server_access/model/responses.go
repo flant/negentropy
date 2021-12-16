@@ -13,11 +13,6 @@ type Project struct {
 	Identifier string `json:"identifier"`
 }
 
-type SafeTenant struct {
-	UUID    string `json:"uuid"`
-	Version string `json:"version"`
-}
-
 type SafeServer struct {
 	UUID        string `json:"uuid"`
 	Version     string `json:"resource_version"`

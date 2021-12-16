@@ -85,7 +85,7 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 	}
 }
 
-// UNSAFE : only uuids and versions in response
+// TOO UNSAFE: full information for tennants
 func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	txn := b.storage.Txn(false)
 	defer txn.Abort()
@@ -97,7 +97,7 @@ func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Requ
 		return backentutils.ResponseErrMessage(req, fmt.Sprintf("collect acceptedTenants: %s", err.Error()), http.StatusInternalServerError)
 	}
 
-	tenants, err := usecase.ListAvailableSafeTenants(txn, acceptedTenants)
+	tenants, err := usecase.ListAvailableUnSafeTenants(txn, acceptedTenants)
 	if err != nil {
 		return backentutils.ResponseErrMessage(req, fmt.Sprintf("collect tenants: %s", err.Error()), http.StatusInternalServerError)
 	}
