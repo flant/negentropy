@@ -55,7 +55,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			Storage:    storage,
 			Connection: &logical.Connection{},
 		}
-		if err := b.AccessVaultController.OnPeriodical(context.Background(), req); err != nil {
+		if err := b.AccessVaultClientProvider.OnPeriodical(context.Background(), req); err != nil {
 			panic(err.Error())
 		}
 	}()

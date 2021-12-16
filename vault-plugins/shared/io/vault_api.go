@@ -1,11 +1,5 @@
 package io
 
-import (
-	"github.com/hashicorp/vault/api"
-)
-
-type BackoffClientGetter func() (*api.Client, error)
-
 type VaultApiAction struct {
 	op func() error
 }

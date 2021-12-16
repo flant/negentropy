@@ -3,26 +3,25 @@ package vault
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/api"
 
-	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 type MountAccessorGetter struct {
-	clientGetter func() (*api.Client, error)
-	path         string
+	vaultClientProvider client.VaultClientController
+	path                string
 
 	mutex    sync.Mutex
 	accessor string
 }
 
-func NewMountAccessorGetter(clientGetter io.BackoffClientGetter, path string) *MountAccessorGetter {
+func NewMountAccessorGetter(vaultClientProvider client.VaultClientController, path string) *MountAccessorGetter {
 	return &MountAccessorGetter{
-		path:         path,
-		clientGetter: clientGetter,
+		path:                path,
+		vaultClientProvider: vaultClientProvider,
 	}
 }
 
@@ -36,20 +35,17 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 		return a.accessor, nil
 	}
 
-	client, err := a.clientGetter()
-	if err != nil {
-		return "", err
-	}
-
 	var authLists map[string]*api.AuthMount
-	backoffRequest := backoff.NewExponentialBackOff()
-	backoffRequest.MaxElapsedTime = 5 * time.Second
-	err = backoff.Retry(func() error {
+	backoffRequest := BackOffSettings()
+	err := backoff.Retry(func() error {
 		var err error
+		client, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return nil
+		}
 		authLists, err = client.Sys().ListAuth()
 		return err
 	}, backoffRequest)
-
 	if err != nil {
 		return "", err
 	}

@@ -12,7 +12,11 @@ type AliasAPI struct {
 
 func (a *AliasAPI) Create(name string, entityID string, accessor string) error {
 	op := func() error {
-		_, err := a.clientApi.Logical().Write("/identity/entity-alias", map[string]interface{}{
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		_, err = vaultClient.Logical().Write("/identity/entity-alias", map[string]interface{}{
 			"name":           name,
 			"canonical_id":   entityID,
 			"mount_accessor": accessor,
@@ -38,8 +42,11 @@ func (a *AliasAPI) DeleteByName(name string, accessor string) error {
 func (a *AliasAPI) DeleteByID(id string) error {
 	path := a.idPath(id)
 	op := func() error {
-		var err error
-		_, err = a.clientApi.Logical().Delete(path)
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		_, err = vaultClient.Logical().Delete(path)
 		return err
 	}
 
@@ -49,8 +56,11 @@ func (a *AliasAPI) DeleteByID(id string) error {
 func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, error) {
 	var resp *api.Secret
 	op := func() error {
-		var err error
-		resp, err = a.clientApi.Logical().Write("/identity/lookup/entity", map[string]interface{}{
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		resp, err = vaultClient.Logical().Write("/identity/lookup/entity", map[string]interface{}{
 			"alias_name":           name,
 			"alias_mount_accessor": accessor,
 		})
@@ -101,8 +111,11 @@ func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, erro
 func (a *AliasAPI) FindAliasByName(name string, accessor string) (map[string]interface{}, error) {
 	var resp *api.Secret
 	op := func() error {
-		var err error
-		resp, err = a.clientApi.Logical().Write("/identity/lookup/entity", map[string]interface{}{
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		resp, err = vaultClient.Logical().Write("/identity/lookup/entity", map[string]interface{}{
 			"alias_name":           name,
 			"alias_mount_accessor": accessor,
 		})

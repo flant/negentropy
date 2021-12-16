@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
@@ -81,8 +80,8 @@ type flantIamAuthBackend struct {
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
 
-	jwtController         *njwt.Controller
-	accessVaultController *client.VaultClientController
+	jwtController       *njwt.Controller
+	accessVaultProvider client.VaultClientController
 
 	storage *sharedio.MemoryStore
 
@@ -106,7 +105,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	b.accessVaultController = client.NewVaultClientController(conf.Logger)
+	b.accessVaultProvider = client.NewVaultClientController(conf.Logger)
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
@@ -115,12 +114,9 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	if err != nil {
 		return nil, err
 	}
-	clientGetter := func() (*api.Client, error) {
-		return b.accessVaultController.APIClient(conf.StorageView)
-	}
 
-	b.accessorGetter = vault.NewMountAccessorGetter(clientGetter, "flant_iam_auth/")
-	entityApi := vault.NewVaultEntityDownstreamApi(clientGetter, b.accessorGetter, conf.Logger)
+	b.accessorGetter = vault.NewMountAccessorGetter(b.accessVaultProvider, "flant_iam_auth/")
+	entityApi := vault.NewVaultEntityDownstreamApi(b.accessVaultProvider, b.accessorGetter, conf.Logger)
 
 	storage, err := sharedio.NewMemoryStore(schema, mb, conf.Logger)
 	if err != nil {
@@ -182,8 +178,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			periodicLogger.Debug(fmt.Sprintf("%s OnPeriodical was successful run", controllerName))
 		}
 
-		run("accessVaultController", func() error {
-			return b.accessVaultController.OnPeriodical(ctx, request)
+		run("accessVaultProvider", func() error {
+			return b.accessVaultProvider.OnPeriodical(ctx, request)
 		})
 
 		run("jwtController", func() error {
@@ -249,7 +245,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			b.jwtController.ApiPaths(),
 
 			[]*framework.Path{
-				client.PathConfigure(b.accessVaultController),
+				client.PathConfigure(b.accessVaultProvider),
 			},
 			pathOIDC(b),
 			kafkaPaths(b, storage, conf.Logger),
@@ -279,7 +275,7 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 		return err
 	}
 
-	b.entityIDResolver, err = authn.NewEntityIDResolver(b.Backend.Logger(), b.accessVaultController)
+	b.entityIDResolver, err = authn.NewEntityIDResolver(b.Backend.Logger(), b.accessVaultProvider)
 	if err != nil {
 		return err
 	}

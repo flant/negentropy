@@ -12,7 +12,11 @@ type EntityAPI struct {
 
 func (a *EntityAPI) Create(name string) error {
 	op := func() error {
-		_, err := a.clientApi.Logical().Write("/identity/entity", map[string]interface{}{
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		_, err = vaultClient.Logical().Write("/identity/entity", map[string]interface{}{
 			"name": name,
 		})
 		return err
@@ -23,7 +27,11 @@ func (a *EntityAPI) Create(name string) error {
 func (a *EntityAPI) DeleteByName(name string) error {
 	path := a.entityPath(name)
 	op := func() error {
-		_, err := a.clientApi.Logical().Delete(path)
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		_, err = vaultClient.Logical().Delete(path)
 		return err
 	}
 	return a.callOp(op)
@@ -31,19 +39,21 @@ func (a *EntityAPI) DeleteByName(name string) error {
 
 func (a *EntityAPI) GetID(name string) (string, error) {
 	var resp *api.Secret
-	var err error
 
 	path := a.entityPath(name)
 	op := func() error {
-		resp, err = a.clientApi.Logical().Read(path)
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		resp, err = vaultClient.Logical().Read(path)
 		if resp == nil {
 			return fmt.Errorf("empty response in op")
 		}
 		return err
 	}
 
-	err = a.callOp(op)
-
+	err := a.callOp(op)
 	if err != nil {
 		return "", fmt.Errorf("callOp:%w", err)
 	}
@@ -64,16 +74,18 @@ func (a *EntityAPI) GetID(name string) (string, error) {
 
 func (a *EntityAPI) GetByName(name string) (map[string]interface{}, error) {
 	var resp *api.Secret
-	var err error
 
 	path := a.entityPath(name)
 	op := func() error {
-		resp, err = a.clientApi.Logical().Read(path)
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+		resp, err = vaultClient.Logical().Read(path)
 		return err
 	}
 
-	err = a.callOp(op)
-
+	err := a.callOp(op)
 	if err != nil {
 		return nil, err
 	}
@@ -90,16 +102,19 @@ func (a *EntityAPI) entityPath(name string) string {
 
 func (a *EntityAPI) GetByID(entityID string) (map[string]interface{}, error) {
 	var resp *api.Secret
-	var err error
 
 	path := fmt.Sprintf("/identity/entity/id/%s", entityID)
 	op := func() error {
-		resp, err = a.clientApi.Logical().Read(path)
+		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		if err != nil {
+			return err
+		}
+
+		resp, err = vaultClient.Logical().Read(path)
 		return err
 	}
 
-	err = a.callOp(op)
-
+	err := a.callOp(op)
 	if err != nil {
 		return nil, err
 	}

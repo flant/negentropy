@@ -23,7 +23,7 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 // Simple backend for test purposes (treat it like an example)
 type exampleBackend struct {
 	*framework.Backend
-	accessVaultController *client.VaultClientController
+	accessVaultController client.VaultClientController
 }
 
 func backend() *exampleBackend {

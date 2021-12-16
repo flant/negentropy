@@ -2,20 +2,18 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/vault/sdk/logical"
+
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
-type accessConfigStorage struct {
-	parent logical.Storage
-}
-
-func newAccessConfigStorage(parent logical.Storage) *accessConfigStorage {
-	return &accessConfigStorage{parent: parent}
-}
-
-func (s *accessConfigStorage) GetConfig(ctx context.Context) (*vaultAccessConfig, error) {
-	raw, err := s.parent.Get(ctx, storagePath)
+func GetVaultClientConfig(ctx context.Context, storage logical.Storage) (*vaultAccessConfig, error) {
+	if storage == nil {
+		return nil, fmt.Errorf("%w: storage", consts.ErrNilPointer)
+	}
+	raw, err := storage.Get(ctx, storagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -31,11 +29,14 @@ func (s *accessConfigStorage) GetConfig(ctx context.Context) (*vaultAccessConfig
 	return config, nil
 }
 
-func (s *accessConfigStorage) PutConfig(ctx context.Context, conf *vaultAccessConfig) error {
+func PutVaultClientConfig(ctx context.Context, conf *vaultAccessConfig, storage logical.Storage) error {
+	if storage == nil {
+		return fmt.Errorf("%w: storage", consts.ErrNilPointer)
+	}
 	entry, err := logical.StorageEntryJSON(storagePath, conf)
 	if err != nil {
 		return err
 	}
 
-	return s.parent.Put(ctx, entry)
+	return storage.Put(ctx, entry)
 }

@@ -3,26 +3,27 @@ package api
 import (
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
+
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
 type IdentityAPI struct {
-	clientApi     *api.Client
-	backoffGetter func() backoff.BackOff
-	logger        hclog.Logger
+	vaultClientProvider client.VaultClientController
+	backoffGetter       func() backoff.BackOff
+	logger              hclog.Logger
 }
 
-func NewIdentityAPI(clientApi *api.Client, logger hclog.Logger) *IdentityAPI {
+func NewIdentityAPI(vaultClientProvider client.VaultClientController, logger hclog.Logger) *IdentityAPI {
 	return &IdentityAPI{
-		clientApi: clientApi,
-		logger:    logger,
+		vaultClientProvider: vaultClientProvider,
+		logger:              logger,
 	}
 }
 
-func NewIdentityAPIWithBackOff(clientApi *api.Client, backoffGetter func() backoff.BackOff) *IdentityAPI {
+func NewIdentityAPIWithBackOff(vaultClientProvider client.VaultClientController, backoffGetter func() backoff.BackOff) *IdentityAPI {
 	return &IdentityAPI{
-		clientApi:     clientApi,
-		backoffGetter: backoffGetter,
+		vaultClientProvider: vaultClientProvider,
+		backoffGetter:       backoffGetter,
 	}
 }
 
