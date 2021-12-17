@@ -2,6 +2,7 @@ package access_token_auth
 
 import (
 	_ "embed"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 )
 
-var authVaultAddr string = os.Getenv("AUTH_VAULT_URL")
+var rootVaultAddr string = os.Getenv("ROOT_VAULT_URL")
 
 var _ = Describe("Process of running access through access_token", func() {
 	var flantIamSuite flant_iam_preparing.Suite
@@ -40,13 +41,13 @@ var _ = Describe("Process of running access through access_token", func() {
 
 		vst := login(true, map[string]interface{}{"method": "oidc-mock-access-token", "jwt": accessToken}).ClientToken
 		It("getting access to tenant list at auth vault", func() {
-			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
+			resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
 		})
 		It("permission denied to read tenant at auth vault", func() {
-			_, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/"+cfg.Tenant.UUID)
+			_, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamPluginPath+"/tenant/"+cfg.Tenant.UUID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(403))
 		})
@@ -57,17 +58,18 @@ var _ = Describe("Process of running access through access_token", func() {
 		vst := login(true, map[string]interface{}{
 			"method": "oidc-mock-access-token", "jwt": accessToken,
 			"roles": []map[string]interface{}{
-				{"role": "flant_iam"},
+				{"role": "iam_read", "tenant_uuid": cfg.Tenant.UUID},
 			},
 		}).ClientToken
+		fmt.Printf("VST=%s", vst)
 		It("getting access to tenant list at auth vault", func() {
-			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
+			resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
 		})
 		It("getting access  to read tenant at auth vault", func() {
-			resp, err, statusCode := makeRequest(vst, "GET", authVaultAddr, lib.IamAuthPluginPath+"/tenant/"+cfg.Tenant.UUID)
+			resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamPluginPath+"/tenant/"+cfg.Tenant.UUID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 			Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
@@ -76,7 +78,7 @@ var _ = Describe("Process of running access through access_token", func() {
 })
 
 func login(positiveCase bool, params map[string]interface{}) *api.SecretAuth {
-	cl := configure.GetClientWithToken("", authVaultAddr)
+	cl := configure.GetClientWithToken("", rootVaultAddr)
 	cl.ClearToken()
 
 	secret, err := cl.Logical().Write(lib.IamAuthPluginPath+"/login", params)

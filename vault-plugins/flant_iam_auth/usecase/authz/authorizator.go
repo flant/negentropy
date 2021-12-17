@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -107,18 +108,10 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	authzRes.EntityID = entityId
 
 	method.PopulateTokenAuth(authzRes)
-	// TODO  REMAKE IT !!!
-	flantIam := false
-	for _, rc := range roleClaims {
-		if rc.Role == "flant_iam" {
-			flantIam = true
-			break
-		}
+	err = a.addDynamicRoles(authzRes, roleClaims, uuid)
+	if err != nil {
+		return nil, err
 	}
-	if flantIam {
-		authzRes.Policies = append(authzRes.Policies, "full")
-	}
-	// TODO  REMAKE IT !!!
 
 	authzRes.InternalData["flantIamAuthMethod"] = method.Name
 
@@ -129,6 +122,74 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	a.Logger.Debug(fmt.Sprintf("Authn data populated %s", fullId))
 
 	return authzRes, nil
+}
+
+func (a *Authorizator) addDynamicRoles(authzRes *logical.Auth, roleClaims []RoleClaim, userUUID iam.UserUUID) error {
+	for _, rc := range roleClaims {
+		var policy Policy
+		switch {
+		case rc.Role == "iam_read" && rc.TenantUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, userUUID),
+				Rules: []Rule{{
+					Path: "flant_iam/tenant/" + rc.TenantUUID + "*",
+					Read: true,
+					List: true,
+				}},
+			}
+
+		case rc.Role == "iam_write" && rc.TenantUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, userUUID),
+				Rules: []Rule{{
+					Path:   "flant_iam/tenant/" + rc.TenantUUID + "*",
+					Read:   true,
+					List:   true,
+					Create: true,
+					Update: true,
+					Delete: true,
+				}},
+			}
+
+		case rc.Role == "iam_read_all":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_by_%s", rc.Role, userUUID),
+				Rules: []Rule{{
+					Path: "flant_iam/*",
+					Read: true,
+					List: true,
+				}},
+			}
+
+		case rc.Role == "iam_write_all":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_by_%s", rc.Role, userUUID),
+				Rules: []Rule{{
+					Path:   "flant_iam/*",
+					Read:   true,
+					List:   true,
+					Create: true,
+					Update: true,
+					Delete: true,
+				}},
+			}
+		}
+		if policy.Name != "" {
+			backoffFiveSeconds := vault.BackOffSettings()
+			err := backoff.Retry(func() error {
+				client, err := a.vaultClientProvider.APIClient(nil)
+				if err != nil {
+					return err
+				}
+				return client.Sys().PutPolicy(policy.Name, policy.PolicyRules())
+			}, backoffFiveSeconds)
+			if err != nil {
+				return fmt.Errorf("put policy %s:%w", policy.Name, err)
+			}
+			authzRes.Policies = append(authzRes.Policies, policy.Name)
+		}
+	}
+	return nil
 }
 
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
