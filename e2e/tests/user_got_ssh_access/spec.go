@@ -25,7 +25,7 @@ var _ = BeforeSuite(func() {
 	flantIamSuite.BeforeSuite()
 	Describe("configuring system", func() {
 		cfg = flantIamSuite.PrepareForSSHTesting()
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 20)
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
 
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
