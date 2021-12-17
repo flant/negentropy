@@ -175,14 +175,13 @@ func (a *Authorizator) addDynamicRoles(authzRes *logical.Auth, roleClaims []Role
 			}
 		}
 		if policy.Name != "" {
-			backoffFiveSeconds := vault.BackOffSettings()
 			err := backoff.Retry(func() error {
 				client, err := a.vaultClientProvider.APIClient(nil)
 				if err != nil {
 					return err
 				}
 				return client.Sys().PutPolicy(policy.Name, policy.PolicyRules())
-			}, backoffFiveSeconds)
+			}, io.FiveSecondsBackoff())
 			if err != nil {
 				return fmt.Errorf("put policy %s:%w", policy.Name, err)
 			}
