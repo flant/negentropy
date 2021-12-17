@@ -26,7 +26,7 @@ func NewObjectHandler(parentLogger hclog.Logger) *ObjectHandler {
 
 func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User) error {
 	l := h.logger
-	l.Debug("Handle new user. Create entity object", user.FullIdentifier)
+	l.Debug("Handle new user. Create entity object", "identifier", user.FullIdentifier)
 	entityRepo := repo.NewEntityRepo(txn)
 	authSourceRepo := repo.NewAuthSourceRepo(txn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
@@ -35,16 +35,16 @@ func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User)
 	if err != nil {
 		return err
 	}
-	l.Debug("Entity object created for user", user.FullIdentifier)
+	l.Debug("Entity object created for user", "identifier", user.FullIdentifier)
 
 	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
-		l.Debug("Create entity alias for user and source", user.FullIdentifier, source.Name)
+		l.Debug("Create entity alias for user and source", "identifier", user.FullIdentifier, "source", source.Name)
 		err := eaRepo.CreateForUser(user, source)
 		if err != nil {
 			return false, err
 		}
 
-		l.Debug("Entity alias for user and source created", user.FullIdentifier, source.Name)
+		l.Debug("Entity alias for user and source created", "identifier", user.FullIdentifier, "source", source.Name)
 		return true, nil
 	})
 

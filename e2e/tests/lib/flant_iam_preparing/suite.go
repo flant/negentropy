@@ -24,7 +24,7 @@ type Suite struct {
 	// IamAuthVaultClient *http.Client
 }
 
-type CheckingSSHConnectionEnvironment struct {
+type CheckingEnvironment struct {
 	Tenant               model.Tenant
 	User                 model.User
 	Project              model.Project
@@ -44,25 +44,29 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
-func (st *Suite) PrepareForSSHTesting() CheckingSSHConnectionEnvironment {
+func (st *Suite) PrepareForAccessTokenTesting() CheckingEnvironment {
+	var result CheckingEnvironment
+	// create some tenant
+	result.Tenant = specs.CreateRandomTenant(lib.NewTenantAPI(st.IamVaultClient))
+	fmt.Printf("Created tenant:%#v\n", result.Tenant)
+	// create some user at the tenant
+	result.User = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.Tenant.UUID)
+	fmt.Printf("Created user:%#v\n", result.User)
+	return result
+}
+
+func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	const (
 		sshRole              = "ssh"
 		testServerIdentifier = "test-server"
 		serverRole           = "servers"
 	)
 
-	var result CheckingSSHConnectionEnvironment
-	// create some tenant
-	result.Tenant = specs.CreateRandomTenant(lib.NewTenantAPI(st.IamVaultClient))
-	fmt.Printf("Created tenant:%#v\n", result.Tenant)
+	result := st.PrepareForAccessTokenTesting()
 
 	// create some project
 	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
 	fmt.Printf("Created project:%#v\n", result.Project)
-
-	// create some user at the tenant
-	result.User = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.Tenant.UUID)
-	fmt.Printf("Created user:%#v\n", result.User)
 
 	// create a group with the user
 	result.Group = specs.CreateRandomGroupWithUser(lib.NewGroupAPI(st.IamVaultClient), result.User.TenantUUID, result.User.UUID)

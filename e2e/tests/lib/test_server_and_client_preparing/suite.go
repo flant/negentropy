@@ -80,7 +80,7 @@ var serverSocketCFG string
 //go:embed server_main.yaml
 var serverMainCFGTPL string
 
-func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) {
+func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
 	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.authdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_server should have authd")
 
@@ -157,7 +157,7 @@ var clientSocketCFG string
 //go:embed client_main.yaml
 var clientMainCFGTPL string
 
-func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingSSHConnectionEnvironment) {
+func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
 	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.authdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "TestClient should have authd")
 

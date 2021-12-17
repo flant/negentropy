@@ -19,7 +19,7 @@ var testServerAndClientSuite test_server_and_client_preparing.Suite
 
 var flantIamSuite flant_iam_preparing.Suite
 
-type Cfg = flant_iam_preparing.CheckingSSHConnectionEnvironment
+type Cfg = flant_iam_preparing.CheckingEnvironment
 
 var cfg Cfg
 

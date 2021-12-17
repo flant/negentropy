@@ -22,8 +22,12 @@ func main() {
 	os.Setenv("CAOS_OIDC_DEV", "1")
 	ctx := context.Background()
 	port := "9998"
+	issuer := os.Getenv("ISSUER")
+	if issuer == "" {
+		issuer = "http://oidc-mock:9998"
+	}
 	config := &op.Config{
-		Issuer:    "http://localhost:9998/",
+		Issuer:    issuer,
 		CryptoKey: sha256.Sum256([]byte("test")),
 	}
 	storage := mock.NewAuthStorage()
