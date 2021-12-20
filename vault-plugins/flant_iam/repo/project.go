@@ -196,7 +196,7 @@ func (r *ProjectRepository) Restore(id model.ProjectUUID) (*model.Project, error
 	if err != nil {
 		return nil, err
 	}
-	if project.Archived() {
+	if project.NotArchived() {
 		return nil, consts.ErrIsNotArchived
 	}
 	err = r.db.Restore(model.ProjectType, project)

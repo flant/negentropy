@@ -29,6 +29,7 @@ type TestAPI interface {
 	Update(Params, url.Values, interface{}) gjson.Result
 	Delete(Params, url.Values)
 	List(Params, url.Values) gjson.Result
+	Restore(Params, url.Values) gjson.Result
 }
 
 type PathBuilder interface {
@@ -138,6 +139,18 @@ func (b *BackendBasedAPI) Delete(params Params, query url.Values) {
 func (b *BackendBasedAPI) List(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
 	return b.request(logical.ReadOperation, b.Url.Collection(params, query), params, nil)
+}
+
+func (b *BackendBasedAPI) Restore(params Params, query url.Values) gjson.Result {
+	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
+	oneUrlWithParams := b.Url.One(params, query)
+	parts := strings.Split(oneUrlWithParams, "?")
+	url := parts[0] + "/restore"
+	if len(parts) > 1 && parts[1] != "" {
+		url = url + "?" + query.Encode()
+	}
+	emptyPayload := map[string]interface{}{}
+	return b.request(logical.UpdateOperation, url, params, emptyPayload)
 }
 
 func NewRoleAPI(b *logical.Backend) TestAPI {
