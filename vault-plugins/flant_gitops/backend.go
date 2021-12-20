@@ -16,8 +16,8 @@ import (
 
 type backend struct {
 	*framework.Backend
-	TasksManager          *tasks_manager.Manager
-	AccessVaultController *client.VaultClientController
+	TasksManager              *tasks_manager.Manager
+	AccessVaultClientProvider client.VaultClientController
 
 	LastPeriodicTaskUUID string
 }
@@ -43,8 +43,8 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 func newBackend(conf *logical.BackendConfig) (*backend, error) {
 	b := &backend{
-		TasksManager:          tasks_manager.NewManager(),
-		AccessVaultController: client.NewVaultClientController(hclog.Default()),
+		TasksManager:              tasks_manager.NewManager(),
+		AccessVaultClientProvider: client.NewVaultClientController(hclog.Default()),
 	}
 
 	b.Backend = &framework.Backend{
@@ -52,7 +52,7 @@ func newBackend(conf *logical.BackendConfig) (*backend, error) {
 		Help:        backendHelp,
 
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
-			if err := b.AccessVaultController.OnPeriodical(ctx, req); err != nil {
+			if err := b.AccessVaultClientProvider.OnPeriodical(ctx, req); err != nil {
 				return err
 			}
 
@@ -74,7 +74,7 @@ func newBackend(conf *logical.BackendConfig) (*backend, error) {
 			git.CredentialsPaths(),
 			pgp.Paths(),
 			[]*framework.Path{
-				client.PathConfigure(b.AccessVaultController),
+				client.PathConfigure(b.AccessVaultClientProvider),
 			},
 		),
 	}

@@ -17,12 +17,13 @@ import (
 	vault_identity "github.com/flant/negentropy/vault-plugins/flant_iam_auth/io/downstream/vault/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	client2 "github.com/flant/negentropy/vault-plugins/shared/client"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, *api.Client, error) {
+func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, client2.VaultClientController, error) {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		return nil, nil, nil, err
@@ -49,15 +50,13 @@ func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, *api.Client
 
 	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())
 
-	getClient := func() (*api.Client, error) {
-		return client, nil
-	}
+	clientProvicer := &client2.MockVaultClientController{Client: client}
 
 	return &VaultEntityDownstreamApi{
-		getClient:           getClient,
-		mountAccessorGetter: NewMountAccessorGetter(getClient, "token/"),
+		vaultClientProvider: clientProvicer,
+		mountAccessorGetter: NewMountAccessorGetter(clientProvicer, "token/"),
 		logger:              hclog.NewNullLogger(),
-	}, storage, client, nil
+	}, storage, clientProvicer, nil
 }
 
 func skipNoneDev(t *testing.T) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
-	hcapi "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -15,6 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	authn2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
+	"github.com/flant/negentropy/vault-plugins/shared/client"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
@@ -25,13 +25,13 @@ type Authorizator struct {
 	EntityRepo *repo.EntityRepo
 	EaRepo     *repo.EntityAliasRepo
 
-	IdentityApi   *api.IdentityAPI
 	MountAccessor *vault.MountAccessorGetter
 
-	Logger hclog.Logger
+	Logger              hclog.Logger
+	vaultClientProvider client.VaultClientController
 }
 
-func NewAutorizator(txn *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
+func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultClientController, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
 	return &Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 
@@ -41,12 +41,17 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClient *hcapi.Client, aGetter *
 		EaRepo:     repo.NewEntityAliasRepo(txn),
 		EntityRepo: repo.NewEntityRepo(txn),
 
-		MountAccessor: aGetter,
-		IdentityApi:   api.NewIdentityAPI(vaultClient, logger.Named("LoginIdentityApi")),
+		MountAccessor:       aGetter,
+		vaultClientProvider: vaultClientController,
 	}
 }
 
-func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
+func (a *Authorizator) identityApi() *api.IdentityAPI {
+	return api.NewIdentityAPI(a.vaultClientProvider, a.Logger.Named("LoginIdentityApi"))
+}
+
+func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
+	roleClaims []RoleClaim) (*logical.Auth, error) {
 	uuid := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", uuid))
 
@@ -59,7 +64,6 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	if err != nil && !errors.Is(err, consts.ErrNotFound) {
 		return nil, err
 	}
-
 	if user != nil {
 		fullId = user.FullIdentifier
 		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", fullId, uuid))
@@ -103,6 +107,19 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	authzRes.EntityID = entityId
 
 	method.PopulateTokenAuth(authzRes)
+	// TODO  REMAKE IT !!!
+	flantIam := false
+	for _, rc := range roleClaims {
+		if rc.Role == "flant_iam" {
+			flantIam = true
+			break
+		}
+	}
+	if flantIam {
+		authzRes.Policies = append(authzRes.Policies, "full")
+	}
+	// TODO  REMAKE IT !!!
+
 	authzRes.InternalData["flantIamAuthMethod"] = method.Name
 
 	a.Logger.Debug(fmt.Sprintf("Token auth populated %s", fullId))
@@ -116,6 +133,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for sa here
+	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  sa.FullIdentifier,
 		InternalData: map[string]interface{}{},
@@ -124,6 +142,7 @@ func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *m
 
 func (a *Authorizator) authorizeUser(user *iam.User, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for user here
+	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  user.FullIdentifier,
 		InternalData: map[string]interface{}{},
@@ -188,7 +207,7 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 
 	a.Logger.Debug(fmt.Sprintf("Got entity alias from db %s", uuid))
 
-	entityId, err := a.IdentityApi.EntityApi().GetID(entity.Name)
+	entityId, err := a.identityApi().EntityApi().GetID(entity.Name)
 	if err != nil {
 		return nil, "", fmt.Errorf("getting entity_id:%w", err)
 	}
@@ -204,7 +223,7 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 		return nil, "", err
 	}
 
-	eaId, err := a.IdentityApi.AliasApi().FindAliasIDByName(ea.Name, accessorId)
+	eaId, err := a.identityApi().AliasApi().FindAliasIDByName(ea.Name, accessorId)
 	if err != nil {
 		return nil, "", err
 	}

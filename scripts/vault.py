@@ -1,15 +1,15 @@
-import hvac
-import time
 import datetime
-import requests
+import time
 from json import dumps
-
-from hvac import exceptions
 from typing import List
+
+import hvac
+import requests
+from hvac import exceptions
 
 from consts import negentropy_plugins, FLANT_IAM_AUTH
 
-auth_plugins = {"flant_iam_auth"}
+auth_plugins = {FLANT_IAM_AUTH}
 
 
 def check_response(resp: requests.Response, expected_status_code: int = 200) -> requests.Response:
@@ -185,7 +185,6 @@ class Vault:
                     ))
 
     def configure_self_access_for_flant_iam_auth(self):
-        pass
         # create full policy
         print("create/update full policy")
         check_response(
@@ -293,6 +292,13 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
         }
 
     def connect_oidc(self, oidc_url):
+        # create list_tenants policy
+        print("create/update list_tenants policy")
+        check_response(
+            self.vault_client.sys.create_or_update_policy(name="list_tenants",
+                                                          policy='path "' + 'auth/' + FLANT_IAM_AUTH + '/tenant/' +
+                                                                 '" {capabilities = ["list"]}'
+                                                          ), 204)
         # create auth source
         if FLANT_IAM_AUTH in self.plugin_names:
             print("creating auth source 'oidc-mock' for vault '{}', at {}".format(self.name, self.url))
@@ -311,6 +317,6 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
                     "source": "oidc-mock",
                     "bound_audiences": ["aud666"],
                     "user_claim": "uuid",
-                    "token_policies": "full",
+                    "token_policies": "list_tenants",
                     "token_no_default_policy": True
                 }), 200)

@@ -12,7 +12,7 @@ import (
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 )
 
-func PathConfigure(c *VaultClientController) *framework.Path {
+func PathConfigure(c VaultClientController) *framework.Path {
 	return &framework.Path{
 		Pattern: `configure_vault_access$`,
 
@@ -67,12 +67,12 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: c.handleConfigureVaultAccess,
+				Callback: c.HandleConfigureVaultAccess,
 				Summary:  configureVaultAccessSynopsis,
 			},
 
 			logical.AliasLookaheadOperation: &framework.PathOperation{
-				Callback: c.handleConfigureVaultAccess,
+				Callback: c.HandleConfigureVaultAccess,
 			},
 		},
 
@@ -80,7 +80,7 @@ func PathConfigure(c *VaultClientController) *framework.Path {
 	}
 }
 
-func (c *VaultClientController) handleConfigureVaultAccess(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &vaultAccessConfig{}
 	var errResp *logical.Response
 
