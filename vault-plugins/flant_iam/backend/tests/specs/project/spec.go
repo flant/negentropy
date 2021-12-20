@@ -111,4 +111,26 @@ var _ = Describe("Project", func() {
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
+
+	It("can be restored", func() {
+		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+		TestAPI.Delete(api.Params{
+			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+			"tenant":       project.TenantUUID,
+			"project":      project.UUID,
+		}, nil)
+		deletedData := TestAPI.Read(api.Params{
+			"tenant":       project.TenantUUID,
+			"project":      project.UUID,
+			"expectStatus": api.ExpectExactStatus(http.StatusOK),
+		}, nil)
+		Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+
+		restoreData := TestAPI.Restore(api.Params{
+			"tenant":       project.TenantUUID,
+			"project":      project.UUID,
+			"expectStatus": api.ExpectExactStatus(http.StatusOK),
+		}, nil)
+		Expect(restoreData.Get("project.archiving_timestamp").Int()).To(Equal(int64(0)))
+	})
 })

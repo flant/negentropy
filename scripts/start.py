@@ -1,12 +1,11 @@
 import json
-
 from typing import List
 
-from server_access_ext import ServerAccessExtension
-from plugins import connect_plugins
-from vault import Vault
-from plugins import find_master_root_vault
 from flant_iam import create_role_if_not_exists
+from plugins import connect_plugins
+from plugins import find_master_root_vault
+from server_access_ext import ServerAccessExtension
+from vault import Vault
 
 
 def initialize_server_access(vaults: List[Vault]):
@@ -117,5 +116,3 @@ if __name__ == "__main__":
             f.write(str(line) + "\n")
         f.write("\n\n")
     f.close()
-    vaults = read_vaults_from_file()
-    print(vaults)

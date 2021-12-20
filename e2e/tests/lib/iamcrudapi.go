@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,6 +24,7 @@ type TestAPI interface {
 	Update(tools.Params, url.Values, interface{}) gjson.Result
 	Delete(tools.Params, url.Values)
 	List(tools.Params, url.Values) gjson.Result
+	Restore(tools.Params, url.Values) gjson.Result
 }
 
 type URLBuilder interface {
@@ -113,6 +115,17 @@ func (b *BuilderBasedAPI) List(params tools.Params, query url.Values) gjson.Resu
 	// query.Set("list", "true")
 	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
 	return b.request(http.MethodGet, "/"+b.url.Collection(params, query), params, nil)
+}
+
+func (b *BuilderBasedAPI) Restore(params tools.Params, query url.Values) gjson.Result {
+	tools.AddIfNotExists(&params, "expectStatus", tools.ExpectExactStatus(200))
+	oneUrlWithParams := b.url.One(params, query)
+	parts := strings.Split(oneUrlWithParams, "?")
+	url := parts[0] + "/restore"
+	if len(parts) > 1 && parts[1] != "" {
+		url = url + "?" + query.Encode()
+	}
+	return b.request(http.MethodPut, "/"+url, params, nil)
 }
 
 func NewTenantAPI(client *http.Client) TestAPI {
