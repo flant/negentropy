@@ -188,7 +188,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 			}
 			return sks.processMessage(source, store, msgDecoded)
 		}
-		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
 			panic(err)
 		}

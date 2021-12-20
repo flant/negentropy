@@ -180,7 +180,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 			}
 			return rk.processMessage(source, store, msgDecoded)
 		}
-		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
 			panic(err)
 		}

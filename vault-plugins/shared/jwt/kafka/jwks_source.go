@@ -161,7 +161,7 @@ func (rk *JWKSKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCons
 		operation := func() error {
 			return rk.processMessage(source, store, msgDecoded)
 		}
-		err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
 			panic(err)
 		}

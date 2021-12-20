@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/api"
 
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type MountAccessorGetter struct {
@@ -36,7 +37,6 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 	}
 
 	var authLists map[string]*api.AuthMount
-	backoffRequest := BackOffSettings()
 	err := backoff.Retry(func() error {
 		var err error
 		client, err := a.vaultClientProvider.APIClient(nil)
@@ -45,7 +45,7 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 		}
 		authLists, err = client.Sys().ListAuth()
 		return err
-	}, backoffRequest)
+	}, io.FiveSecondsBackoff())
 	if err != nil {
 		return "", err
 	}
