@@ -226,9 +226,7 @@ class Vault:
         if FLANT_IAM_AUTH in self.plugin_names:
             check_response(
                 self.vault_client.sys.create_or_update_policy(name="rotate_multipass",
-                                                              policy="""path "auth/flant_iam_auth/issue/multipass_jwt" {capabilities = ["update"]}
-                                                                        path "identity/oidc/token/myrole" {capabilities = ["update"]}"""
-                                                              # TODO remove this path
+                                                              policy="""path "auth/flant_iam_auth/issue/multipass_jwt/*" {capabilities = ["update"]}"""
                                                               ), 204)
 
             print("writing auth/flant_iam_auth/auth_method/multipass")
