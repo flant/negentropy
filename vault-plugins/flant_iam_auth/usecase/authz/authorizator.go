@@ -108,7 +108,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	authzRes.EntityID = entityId
 
 	method.PopulateTokenAuth(authzRes)
-	err = a.addDynamicRoles(authzRes, roleClaims, uuid)
+	err = a.addDynamicPolicies(authzRes, roleClaims, uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,19 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	return authzRes, nil
 }
 
-func (a *Authorizator) addDynamicRoles(authzRes *logical.Auth, roleClaims []RoleClaim, userUUID iam.UserUUID) error {
+func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []RoleClaim, userUUID iam.UserUUID) error {
+	extraPolicies := buildPolicies(roleClaims, userUUID)
+	if err := a.createDynamicPolicies(extraPolicies); err != nil {
+		return err
+	}
+	for _, p := range extraPolicies {
+		authzRes.Policies = append(authzRes.Policies, p.Name)
+	}
+	return nil
+}
+
+func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
+	var result []Policy
 	for _, rc := range roleClaims {
 		var policy Policy
 		switch {
@@ -173,22 +185,44 @@ func (a *Authorizator) addDynamicRoles(authzRes *logical.Auth, roleClaims []Role
 					Delete: true,
 				}},
 			}
-		}
-		if policy.Name != "" {
-			err := backoff.Retry(func() error {
-				client, err := a.vaultClientProvider.APIClient(nil)
-				if err != nil {
-					return err
-				}
-				return client.Sys().PutPolicy(policy.Name, policy.PolicyRules())
-			}, io.FiveSecondsBackoff())
-			if err != nil {
-				return fmt.Errorf("put policy %s:%w", policy.Name, err)
+
+		case rc.Role == "servers":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_by_%s", rc.Role, userUUID),
+				Rules: []Rule{{
+					Path: "auth/flant_iam_auth/tenant/*",
+					Read: true,
+					List: true,
+				}},
 			}
-			authzRes.Policies = append(authzRes.Policies, policy.Name)
+
+		case rc.Role == "ssh":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_by_%s", rc.Role, userUUID),
+				Rules: []Rule{
+					{
+						Path:   "ssh/sign/signer",
+						Update: true,
+					}, {
+						Path: "auth/flant_iam_auth/multipass_owner",
+						Read: true,
+					}, {
+						Path: "auth/flant_iam_auth/query_server", // TODO
+						Read: true,
+					}, {
+						Path: "auth/flant_iam_auth/tenant/*", // TODO  split for tenant_list and others
+						Read: true,
+						List: true,
+					},
+				},
+			}
+		}
+
+		if policy.Name != "" {
+			result = append(result, policy)
 		}
 	}
-	return nil
+	return result
 }
 
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
@@ -299,4 +333,20 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 		MountAccessor: accessorId,
 		Name:          ea.Name,
 	}, entityId, nil
+}
+
+func (a *Authorizator) createDynamicPolicies(policies []Policy) error {
+	for _, p := range policies {
+		err := backoff.Retry(func() error {
+			client, err := a.vaultClientProvider.APIClient(nil)
+			if err != nil {
+				return err
+			}
+			return client.Sys().PutPolicy(p.Name, p.PolicyRules())
+		}, io.FiveSecondsBackoff())
+		if err != nil {
+			return fmt.Errorf("put policy %s:%w", p.Name, err)
+		}
+	}
+	return nil
 }
