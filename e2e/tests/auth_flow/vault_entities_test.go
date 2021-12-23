@@ -27,7 +27,7 @@ func assertEntityAliases(o io.MemoryStorableObject) {
 var _ = Describe("Entity and entity aliases", func() {
 	Context("creating user", func() {
 		It("creates one entity and entity aliases for sources", func() {
-			user := createUser()
+			user, _, _ := PrepareUserAndMultipass(true)
 
 			assertEntity(user.FullIdentifier)
 			assertEntityAliases(user)
@@ -36,7 +36,7 @@ var _ = Describe("Entity and entity aliases", func() {
 
 	Context("creating service account", func() {
 		It("creates one entity and entity aliases for sources", func() {
-			sa := createServiceAccount()
+			sa, _, _ := PrepareSAAndMultipass(true)
 
 			assertEntity(sa.FullIdentifier)
 			assertEntityAliases(sa)

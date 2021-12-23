@@ -63,6 +63,60 @@ func uuidFromResp(resp *api.Secret, entityKey, key string) string {
 	return resp.Data[entityKey].(map[string]interface{})[key].(string)
 }
 
+func PrepareUserAndMultipass(waitKafkaByTryLogin bool) (user *iam.User, multipass *iam.Multipass, multipassJWT string) {
+	user = createUser()
+	multipass, multipassJWT = createMultipass("user", user.TenantUUID, user.UUID)
+
+	if waitKafkaByTryLogin {
+		// try login 5 sec
+		cl := configure.GetClientWithToken("", authVaultAddr)
+		cl.ClearToken()
+		var err error
+		for attempt := 0; attempt < 50; attempt++ {
+			_, err = cl.Logical().Write(lib.IamAuthPluginPath+"/login", map[string]interface{}{
+				"method": "multipass",
+				"jwt":    multipassJWT,
+			})
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		// sleep 5 sec
+		time.Sleep(time.Second * 5)
+	}
+	return
+}
+
+func PrepareSAAndMultipass(waitKafkaByTryLogin bool) (serviceAccount *iam.ServiceAccount, multipass *iam.Multipass, multipassJWT string) {
+	serviceAccount = createServiceAccount()
+	multipass, multipassJWT = createMultipass("service_account", serviceAccount.TenantUUID, serviceAccount.UUID)
+
+	if waitKafkaByTryLogin {
+		// try login 5 sec
+		cl := configure.GetClientWithToken("", authVaultAddr)
+		cl.ClearToken()
+		var err error
+		for attempt := 0; attempt < 50; attempt++ {
+			_, err = cl.Logical().Write(lib.IamAuthPluginPath+"/login", map[string]interface{}{
+				"method": "multipass",
+				"jwt":    multipassJWT,
+			})
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		// sleep 5 sec
+		time.Sleep(time.Second * 5)
+	}
+	return
+}
+
 func createUser() *iam.User {
 	tenantRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant", fixtures.RandomTenantCreatePayload())
 	Expect(err).ToNot(HaveOccurred())
@@ -80,11 +134,7 @@ func createUser() *iam.User {
 	Expect(err).ToNot(HaveOccurred())
 	err = json.Unmarshal(js, &userObj)
 	Expect(err).ToNot(HaveOccurred())
-
-	// need wait for sync with iam_auth
-	// todo need waitFor function?
-	time.Sleep(5 * time.Second)
-
+	// no wait!
 	return &userObj
 }
 
@@ -121,8 +171,8 @@ func getJwks() *jose.JSONWebKeySet {
 	return &keySet
 }
 
-func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
-	maRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant/"+user.TenantUUID+"/user/"+user.UUID+"/multipass", tools.ToMap(multipass.GetPayload()))
+func createMultipass(ownerType string, ownerTenantUUID iam.TenantUUID, ownerUUID iam.OwnerUUID) (*iam.Multipass, string) {
+	maRaw, err := iamClientWithRoot.Logical().Write(lib.IamPluginPath+"/tenant/"+ownerTenantUUID+"/"+ownerType+"/"+ownerUUID+"/multipass", tools.ToMap(multipass.GetPayload()))
 	Expect(err).ToNot(HaveOccurred())
 
 	maObj := iam.Multipass{}
@@ -134,11 +184,7 @@ func createUserMultipass(user *iam.User) (*iam.Multipass, string) {
 	// todo verify is jwt
 	token := maRaw.Data["token"].(string)
 	Expect(token).ToNot(BeEmpty())
-
-	// need wait for sync with iam_auth
-	// todo need waitFor function?
-	time.Sleep(5 * time.Second)
-
+	// no wait!
 	return &maObj, token
 }
 
@@ -159,11 +205,7 @@ func createServiceAccount() *iam.ServiceAccount {
 	Expect(err).ToNot(HaveOccurred())
 	err = json.Unmarshal(js, &saObj)
 	Expect(err).ToNot(HaveOccurred())
-
-	// need wait for sync with iam_auth
-	// todo need waitFor function?
-	time.Sleep(5 * time.Second)
-
+	// no wait!
 	return &saObj
 }
 
