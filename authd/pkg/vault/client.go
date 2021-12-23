@@ -9,6 +9,8 @@ import (
 
 	"github.com/hashicorp/vault/api"
 	"github.com/sirupsen/logrus"
+
+	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 )
 
 type Client struct {
@@ -40,7 +42,7 @@ func NewClient(addr string) *Client {
 // LoginWithJWT use JWT to auth in Vault and get session token.
 //
 // Also it follows redirects and return last used server in Data map of api.Secret object.
-func (c *Client) LoginWithJWT(ctx context.Context, jwt string) (*api.Secret, error) {
+func (c *Client) LoginWithJWTAndClaims(ctx context.Context, jwt string, claimedRoles []v1.RoleWithClaim) (*api.Secret, error) {
 	cfg := api.DefaultConfig()
 	cfg.Address = c.PrepareServerAddr(c.Server)
 	cl, err := NewRedirectSaverClient(cfg)
@@ -55,6 +57,10 @@ func (c *Client) LoginWithJWT(ctx context.Context, jwt string) (*api.Secret, err
 		"method": "multipass",
 		"jwt":    jwt,
 	}
+	if len(claimedRoles) > 0 {
+		opts["roles"] = claimedRoles
+	}
+
 	if err := req.SetJSONBody(opts); err != nil {
 		return nil, err
 	}
@@ -83,10 +89,15 @@ func (c *Client) CheckPendingLogin(token string) (interface{}, error) {
 	return nil, nil
 }
 
+// login use JWT to auth in Vault and get session token.
+func (c *Client) login(ctx context.Context, jwt string) (*api.Secret, error) {
+	return c.LoginWithJWTAndClaims(ctx, jwt, nil)
+}
+
 // RefreshJWT opens a new session with vault using current JWT
 // and obtains a new, "refreshed" JWT.
 func (c *Client) RefreshJWT(ctx context.Context, jwt string) (string, error) {
-	secret, err := c.LoginWithJWT(ctx, jwt)
+	secret, err := c.login(ctx, jwt)
 	if err != nil {
 		return "", err
 	}

@@ -33,7 +33,7 @@ func NewLoginHandler(authdConfig *config.AuthdConfig, authdSocketConfig *config.
 
 // ServeHTTP does some magic behind the /v1/login.
 func (l *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var loginRequest = new(api.LoginRequest)
+	loginRequest := new(api.LoginRequest)
 	ServeJSON(w, r, loginRequest, func(ctx context.Context) (interface{}, int, error) {
 		loginRequest.ServerType = chi.URLParam(r, "serverType")
 		return l.HandleLogin(ctx, loginRequest)
@@ -62,9 +62,11 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 
 	var response interface{}
 
+	claimedRoles := l.claimedRoles(request)
+
 	if request.Type == api.LoginRequestDefault || request.Type == api.LoginRequestSpecific {
 		log.Debugf(ctx)("LoginWithJWT")
-		response, err = vaultClient.LoginWithJWT(ctx, token)
+		response, err = vaultClient.LoginWithJWTAndClaims(ctx, token, claimedRoles)
 	}
 	if request.Type == api.LoginRequestPending {
 		log.Debugf(ctx)("CheckPendingLogin")
@@ -76,4 +78,18 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 	}
 
 	return response, http.StatusOK, nil
+}
+
+// claimedRoles returns all roles specified at config, if '*' is requested
+func (l *LoginHandler) claimedRoles(request *api.LoginRequest) []api.RoleWithClaim {
+	claimedRoles := request.Roles
+	if len(claimedRoles) == 1 && claimedRoles[0].Role == "*" {
+		claimedRoles = []api.RoleWithClaim{}
+		for _, r := range l.AuthdSocketConfig.GetAllowedRoles() {
+			claimedRoles = append(claimedRoles, api.RoleWithClaim{
+				Role: r.Role,
+			})
+		}
+	}
+	return claimedRoles
 }

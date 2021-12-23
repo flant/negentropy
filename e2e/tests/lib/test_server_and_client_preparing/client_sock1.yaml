@@ -5,7 +5,4 @@ path: authd.sock
 #group: wheel
 mode: 0777
 allowedRole:
-  - role: iam.view
-  - role: iam.edit
   - role: ssh
-  - role: servers

@@ -224,11 +224,16 @@ class Vault:
 
     def activate_auth_multipass(self):
         if FLANT_IAM_AUTH in self.plugin_names:
+            check_response(
+                self.vault_client.sys.create_or_update_policy(name="rotate_multipass",
+                                                              policy="""path "auth/flant_iam_auth/issue/multipass_jwt/*" {capabilities = ["update"]}"""
+                                                              ), 204)
+
             print("writing auth/flant_iam_auth/auth_method/multipass")
             check_response(
                 self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/multipass", json={
                     "token_ttl": "30m",
-                    "token_policies": "full",
+                    "token_policies": ["rotate_multipass"],
                     "token_no_default_policy": True,
                     "method_type": "multipass_jwt"
                 }))
