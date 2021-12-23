@@ -2,11 +2,13 @@ package vault
 
 import (
 	"fmt"
-	"github.com/flant/negentropy/authd"
-	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+	"os"
+
 	"github.com/flant/server-access/util"
 	"github.com/hashicorp/vault/api"
-	"os"
+
+	"github.com/flant/negentropy/authd"
+	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 )
 
 type AuthdSettings struct {
@@ -33,7 +35,7 @@ func ClientFromAuthd(settings AuthdSettings) (*api.Client, error) {
 	authdClient := authd.NewAuthdClient(settings.SocketPath)
 
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("*", map[string]string{})).
+		WithRoles(v1.NewRoleWithClaim("*", "")).
 		WithServerType(settings.ServerType)
 
 	err := authdClient.OpenVaultSession(req)
