@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type IdentityAPI struct {
@@ -40,5 +41,5 @@ func (a *IdentityAPI) callOp(op func() error) error {
 		return backoff.Retry(op, a.backoffGetter())
 	}
 
-	return op()
+	return backoff.Retry(op, io.FiveHundredMilisecondsBackoff())
 }
