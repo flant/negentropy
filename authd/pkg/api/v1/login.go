@@ -100,7 +100,7 @@ func (req *LoginRequest) UnmarshalJSON(data []byte) error {
 
 type RoleWithClaim struct {
 	Role  string
-	Claim map[string]string
+	Claim string
 }
 
 // Client helpers
@@ -128,7 +128,7 @@ func (l *LoginRequest) WithPendingLoginUuid(loginUuid string) *LoginRequest {
 	return l
 }
 
-func NewRoleWithClaim(role string, claim map[string]string) RoleWithClaim {
+func NewRoleWithClaim(role string, claim string) RoleWithClaim {
 	return RoleWithClaim{
 		Role:  role,
 		Claim: claim,

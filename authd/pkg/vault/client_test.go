@@ -4,23 +4,64 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/flant/negentropy/authd/pkg/jwt"
 )
 
+// Warning! This test requires a negentropy started with ./start.sh (it rewrites authd/dev/secret/authd.jwt)
 func Test_LoginWithJWT(t *testing.T) {
+	storage := jwt.Storage{Path: "../../dev/secret/authd.jwt"}
+	multipassJWT, err := storage.GetJWT()
+	if err != nil {
+		t.Fatalf("reading multipass should be succesful. error (type %T): %v", err, err)
+	}
+	vcl := NewClient("http://127.0.0.1:8200")
 
-	//token := `eyJhbGciOiJFZERTQSIsImtpZCI6Ijc1ZjQzMDkyLWRlNzAtODM2Mi1kMzIyLTBkMDdjMDlkMTAyZCJ9.eyJhdWQiOiJhdXRoZCIsImV4cCI6MTYxOTI1NzM2NSwiaWF0IjoxNjE5MTcwOTY1LCJpc3MiOiJodHRwczovLzEyNy4wLjAuMTo4MjAwL3YxL2lkZW50aXR5L29pZGMiLCJuYW1lc3BhY2UiOiJyb290Iiwic3ViIjoiOTRkNWQ0M2QtZjViOS1mZWM5LWZhOGMtM2ZmNzExMTQzNzFjIiwidXNlcm5hbWUiOiJlbnRpdHlfODE1Y2JmY2EifQ._rFig3PgSkDCOwil384C6C7Fi97BSYFzUowZ-kiXXIDYahPWVPvHYJBFOhxO8MtTs5-Wyb3_0d_Utl7vfdP5Aw`
-
-	token := `eyJhbGciOiJFZERTQSIsImtpZCI6IjAyNmM1NWI3LWFmZWMtMDIzZi0zYTdlLWUyMDM2MzAyYTZkOSJ9.eyJhdWQiOiJhdXRoZCIsImV4cCI6MTYxOTIxMzI0MSwiaWF0IjoxNjE5MjEzMjExLCJpc3MiOiJodHRwczovLzEyNy4wLjAuMTo4MjAwL3YxL2lkZW50aXR5L29pZGMiLCJuYW1lc3BhY2UiOiJyb290Iiwic3ViIjoiM2JkOTNkMWUtMzIyYi04ZjgxLWNlMjEtNWM4YjI0NjhkYWUxIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciJ9.6tKFiri-cF_Y6SBUCecCprRJ3mSyPbKhWhGVhK8twAtp_0F7PuVhiYom5GURtUri5sLOKl8uYbwcaF3B-0I5Bw`
-
-	vcl := &Client{}
-
-	secret, err := vcl.LoginWithJWT(context.Background(), token)
+	secret, err := vcl.LoginWithJWTAndClaims(context.Background(), multipassJWT, nil)
 
 	if err != nil {
 		t.Fatalf("login should be successful. error (type %T): %v", err, err)
 	}
-
 	if !strings.HasPrefix(secret.Auth.ClientToken, "s.") {
 		t.Fatalf("client token should starts with s., got: '%s'", secret.Auth.ClientToken)
+	}
+}
+
+// Warning! This test requires a negentropy started with ./start.sh (it rewrites authd/dev/secret/authd.jwt)
+func TestClient_RefreshJWT(t *testing.T) {
+	storage := jwt.Storage{Path: "../../dev/secret/authd.jwt"}
+	multipassJWT, err := storage.GetJWT()
+	if err != nil {
+		t.Fatalf("reading multipass should be succesful. error (type %T): %v", err, err)
+	}
+	vcl := NewClient("http://127.0.0.1:8200")
+
+	newMultipassJWT, err := vcl.RefreshJWT(context.TODO(), multipassJWT)
+
+	if err != nil {
+		t.Fatalf("RefreshJWT should be successful. error (type %T): %v", err, err)
+	}
+	oldMultipass, err := jwt.ParseToken(multipassJWT)
+	if err != nil {
+		t.Fatalf("ParseToken should be successful. error (type %T): %v", err, err)
+	}
+	newMultipass, err := jwt.ParseToken(newMultipassJWT)
+	if err != nil {
+		t.Fatalf("ParseToken should be successful. error (type %T): %v", err, err)
+	}
+	if oldMultipass.Payload["sub"] != newMultipass.Payload["sub"] {
+		t.Fatalf("sub should be same, expected %v, got %v", oldMultipass.Payload["sub"], newMultipass.Payload["sub"])
+	}
+	if oldMultipass.Payload["iat"].(float64) >= newMultipass.Payload["iat"].(float64) {
+		t.Fatalf("iat should became greater %v, new: %v", oldMultipass.Payload["iat"], newMultipass.Payload["iat"])
+	}
+	if oldMultipass.Payload["jti"] == newMultipass.Payload["jti"] {
+		t.Fatalf("jti should not be same, old %v, new %v", oldMultipass.Payload["jti"], newMultipass.Payload["jti"])
+	}
+
+	// Store new multipass to repeat tests
+	err = storage.Update(newMultipassJWT)
+	if err != nil {
+		t.Fatalf("Update should be successful. error (type %T): %v", err, err)
 	}
 }

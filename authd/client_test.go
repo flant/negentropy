@@ -7,15 +7,17 @@ import (
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 )
 
-// Warning! This test requires a vault server started with dev/vault.sh
-// and the authd process started with dev/start.sh.
+// Warning! This test requires a negentropy started with ./start.sh (it rewrites authd/dev/secret/authd.jwt)
+// and the authd process started with:
+// from authd folder:
+// go run cmd/authd/main.go --conf-dir=dev/conf
 func Test_Client_LoginAndUseTokenToReceiveOTPForSsh(t *testing.T) {
 	// Socket path is from ./dev/conf/sock1.yaml
 	authdClient := NewAuthdClient("./dev/run/sock1.sock")
 
-	// "host" is a random claim.
+	// "remote.example.com" is a random claim.
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("ssh.creds", map[string]string{"host": "remote.example.com"})).
+		WithRoles(v1.NewRoleWithClaim("ssh", "remote.example.com")).
 		WithServerType(v1.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)
@@ -30,19 +32,13 @@ func Test_Client_LoginAndUseTokenToReceiveOTPForSsh(t *testing.T) {
 
 	fmt.Printf("client token: %s\n", vaultClient.Token())
 
-	// Do some vault stuff...
-	// The code below is not related to authd. This is just an example of simple vault client.
-	// Use 127.0.0.1 as ssh ip. This IP should be within "cidr_list" used for otp_key_role.
-	opts := map[string]interface{}{
-		"ip": "127.0.0.1",
-	}
-	secret, err := vaultClient.SSH().Credential("otp_key_role", opts)
+	s, err := vaultClient.Logical().List("auth/flant_iam_auth/tenant/")
+
 	if err != nil {
-		t.Fatalf("vaultClient should be able to work with requested server: %v", err)
+		t.Fatalf("Should list tenants: %v", err)
 	}
-	otp_key, ok := secret.Data["key"]
-	if !ok {
-		t.Fatalf("vaultClient should return otp for ssh in data['key']")
+
+	if _, ok := s.Data["tenants"]; !ok {
+		t.Fatalf("Should have tenants: %v", s.Data)
 	}
-	fmt.Printf("ssh otp: %s\n", otp_key)
 }

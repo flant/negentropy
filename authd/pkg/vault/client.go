@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+	jwt2 "github.com/flant/negentropy/authd/pkg/jwt"
 )
 
 type Client struct {
@@ -21,7 +22,7 @@ type Client struct {
 
 const (
 	DefaultLoginEndpoint = "/v1/auth/flant_iam_auth/login"
-	ObtainJWTURL         = "/v1/identity/oidc/token/myrole"
+	ObtainJWTURL         = "/v1/auth/flant_iam_auth/issue/multipass_jwt/"
 )
 
 var DefaultScheme = "https"
@@ -117,7 +118,16 @@ func (c *Client) RefreshJWT(ctx context.Context, jwt string) (string, error) {
 	}
 	cl.SetToken(token)
 
-	req := cl.NewRequest("GET", ObtainJWTURL)
+	t, err := jwt2.ParseToken(jwt)
+	if err != nil {
+		return "", err
+	}
+	var uuid string
+	var ok bool
+	if uuid, ok = t.Payload["sub"].(string); !ok {
+		return "", fmt.Errorf("wrong payload, need key='sub', got:%#v", t.Payload)
+	}
+	req := cl.NewRequest("PUT", ObtainJWTURL+uuid)
 
 	resp, err := cl.RawRequestWithContext(ctx, req)
 	if err != nil {

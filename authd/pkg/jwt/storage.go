@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flant/negentropy/authd/pkg/util"
-	"github.com/flant/negentropy/authd/pkg/util/exponential"
 	"io/ioutil"
 	"os"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/flant/negentropy/authd/pkg/util"
+	"github.com/flant/negentropy/authd/pkg/util/exponential"
 )
 
 const (
@@ -79,8 +80,13 @@ func (s *Storage) Load(path string) error {
 // - User gets new token, and update file.
 // - User starts flant open ssh again and authd should load JWT from file again.
 func (s *Storage) GetJWT() (string, error) {
+	var err error
 	s.m.RLock()
-	err := checkTokenExpired(s.token)
+	if s.token == nil {
+		err = fmt.Errorf("nilptr")
+	} else {
+		err = checkTokenExpired(s.token)
+	}
 	s.m.RUnlock()
 	if err != nil {
 		err = s.Load(s.Path)
