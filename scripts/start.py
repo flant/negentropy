@@ -1,4 +1,5 @@
 import json
+from os import path
 from typing import List
 
 from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
@@ -119,14 +120,17 @@ if __name__ == "__main__":
     f.close()
 
     # ============================================================================
-    # prepare user multipass_jwt for authd tests
+    # prepare user multipass_jwt for authd tests, if local run
     # ============================================================================
-    iam_vault = find_master_root_vault(vaults)
-    create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
-    create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000", "00000661-0000-4000-A000-000000000000",
-                           "user_for_authd_tests")
-    multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
-                                      "00000661-0000-4000-A000-000000000000", 3600)
-    file = open("../authd/dev/secret/authd.jwt", "w")
-    file.write(multipass)
-    file.close()
+    multipass_file_path = "../authd/dev/secret/authd.jwt"
+    if path.exists(multipass_file_path):
+        iam_vault = find_master_root_vault(vaults)
+        create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
+        create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                               "00000661-0000-4000-A000-000000000000",
+                               "user_for_authd_tests")
+        multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                          "00000661-0000-4000-A000-000000000000", 3600)
+        file = open(multipass_file_path, "w")
+        file.write(multipass)
+        file.close()
