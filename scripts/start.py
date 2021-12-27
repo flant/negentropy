@@ -1,7 +1,8 @@
 import json
+from os import path
 from typing import List
 
-from flant_iam import create_role_if_not_exists
+from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
 from plugins import connect_plugins
 from plugins import find_master_root_vault
 from server_access_ext import ServerAccessExtension
@@ -61,6 +62,8 @@ if __name__ == "__main__":
 
     oidc_url = "http://oidc-mock:9998"
 
+    # vaults = read_vaults_from_file()
+
     # ============================
     # Initialize vaults and plugins
     # ============================
@@ -104,7 +107,6 @@ if __name__ == "__main__":
         print("----------------------------------------------------------")
         vault.connect_oidc(oidc_url)
 
-
     # ============================================================================
     # logs (only requests done by vault.write_to_plugin or vault.read_from_plugin)
     # ============================================================================
@@ -116,3 +118,19 @@ if __name__ == "__main__":
             f.write(str(line) + "\n")
         f.write("\n\n")
     f.close()
+
+    # ============================================================================
+    # prepare user multipass_jwt for authd tests, if local run
+    # ============================================================================
+    multipass_file_path = "../authd/dev/secret/authd.jwt"
+    if path.exists(multipass_file_path):
+        iam_vault = find_master_root_vault(vaults)
+        create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
+        create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                               "00000661-0000-4000-A000-000000000000",
+                               "user_for_authd_tests")
+        multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                          "00000661-0000-4000-A000-000000000000", 3600)
+        file = open(multipass_file_path, "w")
+        file.write(multipass)
+        file.close()

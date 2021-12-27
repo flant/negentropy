@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase"
@@ -172,7 +173,12 @@ func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *lo
 		Logger:           b.NamedLogger("MultipassNewGen"),
 	}
 
-	token, err := multipassService.IssueNewMultipassGeneration(txn, multipassUUID)
+	vstOwnerType, vstOwnerUUID, err := b.revealVSTOwner(req)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	token, err := multipassService.IssueNewMultipassGeneration(txn, multipassUUID, vstOwnerType, vstOwnerUUID)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -184,4 +190,37 @@ func (b *flantIamAuthBackend) pathIssueMultipassJwt(ctx context.Context, req *lo
 	}
 
 	return resp, nil
+}
+
+func (b *flantIamAuthBackend) revealVSTOwner(req *logical.Request) (iam.MultipassOwnerType, iam.OwnerUUID, error) {
+	entityIDOwner, err := b.entityIDResolver.RevealEntityIDOwner(req.EntityID, b.storage.Txn(false), req.Storage)
+	if err != nil {
+		return "", "", err
+	}
+	var multipassOwnerUUID iam.OwnerUUID
+	var multipassOwnerType iam.MultipassOwnerType
+	switch entityIDOwner.OwnerType {
+	case iam.UserType:
+		{
+			user, ok := entityIDOwner.Owner.(*iam.User)
+			if !ok {
+				return "", "", fmt.Errorf("can't cast, need *model.User, got: %T", entityIDOwner.Owner)
+			}
+			multipassOwnerUUID = user.UUID
+			multipassOwnerType = iam.UserType
+		}
+
+	case iam.ServiceAccountType:
+		{
+			sa, ok := entityIDOwner.Owner.(*iam.ServiceAccount)
+			if !ok {
+				return "", "", fmt.Errorf("can't cast, need *model.ServiceAccount, got: %T", entityIDOwner.Owner)
+			}
+			multipassOwnerUUID = sa.UUID
+			multipassOwnerType = iam.ServiceAccountType
+		}
+	default:
+		return "", "", fmt.Errorf("wrong entityIDOwner.OwnerType:%s", entityIDOwner.OwnerType)
+	}
+	return multipassOwnerType, multipassOwnerUUID, nil
 }

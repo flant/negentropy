@@ -18,6 +18,12 @@ func FiveSecondsBackoff() backoff.BackOff {
 	return backoffRequest
 }
 
+func FiveHundredMilisecondsBackoff() backoff.BackOff {
+	backoffRequest := backoff.NewExponentialBackOff()
+	backoffRequest.MaxElapsedTime = time.Millisecond * 500
+	return backoffRequest
+}
+
 type VaultApiAction struct {
 	op func() error
 }

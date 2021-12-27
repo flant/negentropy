@@ -16,13 +16,10 @@ func Test_GetLogger(t *testing.T) {
 
 	logger.Errorf("azaza")
 
-	Errorf(parentCtx, "azaza")
-
 	// fields
 	subCtx := WithFields(parentCtx, map[string]interface{}{"component": "main", "app": "test"})
-	Errorf(subCtx, "from main")
+	GetLogger(subCtx).Errorf("from sub")
 
 	subSubCtx := WithFields(subCtx, map[string]interface{}{"component": "sub"})
-	Errorf(subSubCtx, "from subsub")
 	GetLogger(subSubCtx).Errorf("from subsub")
 }

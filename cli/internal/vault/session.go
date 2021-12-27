@@ -27,7 +27,7 @@ func NewVaultSession() VaultSession {
 	authdClient := authd.NewAuthdClient("/run/authd.sock")
 
 	req := authdapi.NewLoginRequest().
-		WithRoles(authdapi.NewRoleWithClaim("*", map[string]string{})).
+		WithRoles(authdapi.NewRoleWithClaim("*", "")).
 		WithServerType(authdapi.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)

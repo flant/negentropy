@@ -44,13 +44,16 @@ func (a *EntityAPI) GetID(name string) (string, error) {
 	op := func() error {
 		vaultClient, err := a.vaultClientProvider.APIClient(nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("get APIClient:%w", err)
 		}
 		resp, err = vaultClient.Logical().Read(path)
+		if err != nil {
+			return fmt.Errorf("get entityID by name:%w", err)
+		}
 		if resp == nil {
 			return fmt.Errorf("empty response in op")
 		}
-		return err
+		return nil
 	}
 
 	err := a.callOp(op)

@@ -11,18 +11,17 @@ import (
 
 var _ = Describe("Renewing token", func() {
 	Context("with multipass", func() {
-		var jwtData string
+		var multipassJWT string
 		var user *iam.User
 		var multipass *iam.Multipass
 		var prolongClient *api.Client
 		var token string
 
 		BeforeEach(func() {
-			user = createUser()
-			multipass, jwtData = createUserMultipass(user)
+			user, multipass, multipassJWT = PrepareUserAndMultipass(true)
 			auth := login(true, map[string]interface{}{
 				"method": multipassMethodName,
-				"jwt":    jwtData,
+				"jwt":    multipassJWT,
 			})
 
 			token = auth.ClientToken

@@ -9,6 +9,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	jwt_usecases "github.com/flant/negentropy/vault-plugins/shared/jwt/usecase"
@@ -46,10 +47,14 @@ func (m *Multipass) GetWithGeneration(uuid string) (*iam_model.Multipass, *model
 	return multipass, multipassGen, nil
 }
 
-func (m *Multipass) IssueNewMultipassGeneration(txn *io.MemoryStoreTxn, uuid string) (string, error) {
-	mp, gen, err := m.GetWithGeneration(uuid)
+func (m *Multipass) IssueNewMultipassGeneration(txn *io.MemoryStoreTxn, multipassUUID iam_model.MultipassUUID,
+	ownerType iam_model.MultipassOwnerType, ownerUUID iam_model.OwnerUUID) (string, error) {
+	mp, gen, err := m.GetWithGeneration(multipassUUID)
 	if err != nil {
 		return "", err
+	}
+	if mp.OwnerType != ownerType || mp.OwnerUUID != ownerUUID {
+		return "", consts.ErrNotFound // passed multipass (uuid) belongs to another user
 	}
 
 	nextGen := gen.GenerationNumber + 1

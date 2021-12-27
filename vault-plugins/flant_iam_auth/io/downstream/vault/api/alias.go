@@ -64,15 +64,18 @@ func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, erro
 			"alias_name":           name,
 			"alias_mount_accessor": accessor,
 		})
-		return err
+		if err != nil {
+			return err
+		}
+		if resp == nil {
+			return fmt.Errorf("nil response")
+		}
+		return nil
 	}
 
 	err := a.callOp(op)
 	if err != nil {
-		return "", err
-	}
-	if resp == nil {
-		return "", fmt.Errorf("nil response")
+		return "", fmt.Errorf("FindAliasIDByName:call op error:%w", err)
 	}
 
 	aliasesRaw, ok := resp.Data["aliases"]

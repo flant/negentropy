@@ -1,9 +1,16 @@
 package auth_flow
 
 import (
+	"time"
+
+	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/flant/negentropy/e2e/tests/lib"
+
+	"github.com/flant/negentropy/e2e/tests/lib/configure"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -11,19 +18,19 @@ import (
 
 var _ = Describe("Token issuing", func() {
 	Context("Multipass", func() {
-		var multipassJwt string
 		var user *iam.User
+		var multipassJWT string
 		var multipass *iam.Multipass
+		var client *api.Client
 
 		Context("not issue", func() {
 			It("if multipass is not exists", func() {
-				prolongUserMultipass(false, uuid.New(), iamAuthClientWithRoot) // TODO maybe should check user token
+				prolongUserMultipass(false, uuid.New(), iamAuthClientWithRoot)
 			})
 
 			Context("jwt disabling", func() {
 				BeforeEach(func() {
-					user = createUser()
-					multipass, _ = createUserMultipass(user)
+					_, multipass, _ = PrepareUserAndMultipass(true)
 
 					switchJwt(false)
 				})
@@ -32,8 +39,24 @@ var _ = Describe("Token issuing", func() {
 				})
 
 				It("if jwt is disabled", func() {
-					prolongUserMultipass(false, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
+					prolongUserMultipass(false, multipass.UUID, iamAuthClientWithRoot)
 				})
+			})
+
+			It("if user don't own the multipass", func() {
+				_, _, multipassJWT = PrepareUserAndMultipass(true)
+				client = clientByMultipass(multipassJWT)
+				_, strangersMultipass, _ := PrepareUserAndMultipass(true)
+
+				prolongUserMultipass(false, strangersMultipass.UUID, client)
+			})
+
+			It("if user has been deleted", func() {
+				user, multipass, multipassJWT = PrepareUserAndMultipass(true)
+				client = clientByMultipass(multipassJWT)
+				deleteUser(user)
+
+				prolongUserMultipass(false, multipass.UUID, client)
 			})
 		})
 
@@ -52,12 +75,12 @@ var _ = Describe("Token issuing", func() {
 			}
 
 			JustBeforeEach(func() {
-				user = createUser()
-				multipass, multipassJwt = createUserMultipass(user)
+				_, multipass, multipassJWT = PrepareUserAndMultipass(true)
+				client = clientByMultipass(multipassJWT)
 			})
 
 			It("verifies with jwks", func() {
-				token := prolongUserMultipass(true, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
+				token := prolongUserMultipass(true, multipass.UUID, client)
 
 				parsed, claims := parseToken(token)
 
@@ -82,13 +105,32 @@ var _ = Describe("Token issuing", func() {
 			})
 
 			It("generates new JTI", func() {
-				token := prolongUserMultipass(true, multipass.UUID, iamAuthClientWithRoot) // TODO maybe should check user token
+				token := prolongUserMultipass(true, multipass.UUID, client)
 
 				_, claimsNew := parseToken(token)
-				_, claimsOld := parseToken(multipassJwt)
+				_, claimsOld := parseToken(multipassJWT)
 
 				Expect(claimsNew.ID).ToNot(BeEquivalentTo(claimsOld.ID))
 			})
 		})
 	})
 })
+
+func clientByMultipass(multipassJWT string) *api.Client {
+	auth := login(true, map[string]interface{}{
+		"method": "multipass",
+		"jwt":    multipassJWT,
+	})
+
+	token := auth.ClientToken
+	Expect(token).ToNot(BeEmpty())
+
+	return configure.GetClientWithToken(token, authVaultAddr)
+}
+
+func deleteUser(user *iam.User) {
+	_, err := iamClientWithRoot.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(2 * time.Second)
+}

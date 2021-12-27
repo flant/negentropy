@@ -5,7 +5,7 @@ import (
 )
 
 func Test_GetSchema(t *testing.T) {
-	schemas := []string{"v0", "v1"}
+	schemas := []string{"AuthdConfig/v1", "AuthdSocketConfig/v1"}
 
 	for _, schema := range schemas {
 		s := GetSchema(schema)
