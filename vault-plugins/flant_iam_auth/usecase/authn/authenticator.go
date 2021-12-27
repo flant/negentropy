@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+// Result represents results of applying algorithm relying on auth_method_type and auth_method params on
+// passed login params
 type Result struct {
 	// identifier of service account or user
 	UUID string
@@ -15,12 +17,17 @@ type Result struct {
 
 	// for audit log
 	Metadata map[string]string
+
 	// for renew
 	InternalData map[string]interface{}
 
-	Policies     []string
+	// TODO ???
+	Policies []string
+
+	// TODO ???
 	GroupAliases []string
 
+	// TODO ???
 	Claims map[string]interface{}
 }
 

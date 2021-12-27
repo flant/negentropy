@@ -233,7 +233,8 @@ class Vault:
             check_response(
                 self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/multipass", json={
                     "token_ttl": "30m",
-                    "token_policies": ["rotate_multipass"],
+                    "token_max_ttl": "1440m",
+                    "token_policies": ["rotate_multipass", "token_renew"],
                     "token_no_default_policy": True,
                     "method_type": "multipass_jwt"
                 }))
@@ -321,7 +322,15 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
                     "method_type": "access_token",
                     "source": "oidc-mock",
                     "bound_audiences": ["aud666"],
+                    "token_ttl": "30m",
+                    "token_max_ttl": "1440m",
                     "user_claim": "uuid",
-                    "token_policies": "list_tenants",
+                    "token_policies": ["token_renew", "list_tenants"],
                     "token_no_default_policy": True
                 }), 200)
+
+    def create_token_renew_policy(self):
+        check_response(
+            self.vault_client.sys.create_or_update_policy(name="token_renew",
+                                                          policy="""path "auth/token/lookup-self" {capabilities = ["create", "update", "read"]} path "auth/token/renew-self" {capabilities = ["create", "update", "read"]} """
+                                                          ), 204)
