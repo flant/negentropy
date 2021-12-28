@@ -51,6 +51,13 @@ var _ = Describe("Renewing token", func() {
 				_, err := prolongClient.Auth().Token().Renew(token, 300)
 				Expect(err).To(HaveOccurred())
 			})
+
+			It("after user deleting", func() {
+				deleteUser(user)
+
+				_, err := prolongClient.Auth().Token().Renew(token, 300)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 })

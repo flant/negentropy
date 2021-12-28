@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Rule represents atomic rule for vault policy
 type Rule struct {
 	Path   string
 	Create bool
@@ -14,6 +15,7 @@ type Rule struct {
 	List   bool
 }
 
+// String represents Rule in vault form
 func (r *Rule) String() string {
 	caps := []string{}
 	if r.Create {
@@ -41,6 +43,7 @@ type Policy struct {
 	Rules []Rule
 }
 
+// PolicyRules collects all rules into form using to passed to vault
 func (p *Policy) PolicyRules() string {
 	builder := strings.Builder{}
 	firstElem := true

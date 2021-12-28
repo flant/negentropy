@@ -64,9 +64,9 @@ if __name__ == "__main__":
 
     # vaults = read_vaults_from_file()
 
-    # ============================
-    # Initialize vaults and plugins
-    # ============================
+    # # ============================
+    # # Initialize vaults and plugins
+    # # ============================
     for vault in vaults:
         print("========================================")
         print("vault: {} at {}".format(vault.name, vault.url))
@@ -75,6 +75,7 @@ if __name__ == "__main__":
         vault.init_and_unseal()
         vault.activate_plugins()
         vault.configure_self_access_for_flant_iam_auth()
+        vault.create_token_renew_policy()
 
     write_vaults_state_to_file(vaults)
 
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     # ============================================================================
     # prepare user multipass_jwt for authd tests, if local run
     # ============================================================================
-    multipass_file_path = "../authd/dev/secret/authd.jwt"
+    multipass_file_path = "authd/dev/secret/authd.jwt"
     if path.exists(multipass_file_path):
         iam_vault = find_master_root_vault(vaults)
         create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
@@ -134,3 +135,4 @@ if __name__ == "__main__":
         file = open(multipass_file_path, "w")
         file.write(multipass)
         file.close()
+        print(multipass_file_path + " is updated")

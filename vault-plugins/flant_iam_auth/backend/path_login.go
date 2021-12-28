@@ -13,6 +13,7 @@ import (
 
 	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	authz2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
+	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
@@ -67,7 +68,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	methodName := d.Get("method").(string)
 
 	if methodName == "" {
-		return logical.ErrorResponse("missing method"), nil
+		return backentutils.ResponseErr(req, fmt.Errorf("%w:missing method", consts.ErrInvalidArg))
 	}
 
 	roleClaims, err := getRoleClaims(d)
@@ -144,15 +145,15 @@ func getRoleClaims(d *framework.FieldData) ([]authz2.RoleClaim, error) {
 }
 
 func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	logger := b.NamedLogger("renew")
 	methodName := req.Auth.InternalData["flantIamAuthMethod"].(string)
 	if methodName == "" {
-		return nil, errors.New("failed to fetch role_name during renewal")
+		return nil, errors.New("failed to fetch auth_method during renewal")
 	}
 
-	// Ensure that the Role still exists.
+	// Ensure that the auth_method still exists.
 	txn := b.storage.Txn(false)
-	repo := repo2.NewAuthMethodRepo(txn)
-	method, err := repo.Get(methodName)
+	method, err := repo2.NewAuthMethodRepo(txn).Get(methodName)
 	if err != nil {
 		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate authMethodConfig %s during renewal: {{err}}", methodName), err)
 	}
@@ -174,14 +175,19 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 		return logical.ErrorResponse("Can'not prolong renew"), nil
 	}
 
-	// TODO autorize user here
+	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
 
-	resp := &logical.Response{Auth: req.Auth}
-	resp.Auth.TTL = method.TokenTTL
-	resp.Auth.MaxTTL = method.TokenMaxTTL
-	resp.Auth.Period = method.TokenPeriod
-
-	return resp, nil
+	logger.Debug("Start renew")
+	tokenOwnerType := req.Auth.InternalData["subject_type"].(string)
+	tokenOwnerUUID := req.Auth.InternalData["subject_uuid"].(string)
+	authzRes, err := authorizator.Renew(method, req.Auth, txn, tokenOwnerType, tokenOwnerUUID)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Not renew authz, err: %v", err))
+		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
+	}
+	return &logical.Response{
+		Auth: authzRes,
+	}, nil
 }
 
 const (

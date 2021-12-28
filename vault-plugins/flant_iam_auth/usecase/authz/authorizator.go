@@ -18,6 +18,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type Authorizator struct {
@@ -56,37 +57,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	uuid := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", uuid))
 
-	var authzRes *logical.Auth
-	var err error
-
-	var fullId string
-
-	user, err := a.UserRepo.GetByID(uuid)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return nil, err
-	}
-	if user != nil {
-		fullId = user.FullIdentifier
-		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", fullId, uuid))
-		authzRes, err = a.authorizeUser(user, method, source)
-	} else {
-		// not found user try to found service account
-		a.Logger.Debug(fmt.Sprintf("Not found user for %s uuid. Try find service account", uuid))
-		var sa *iam.ServiceAccount
-		sa, err = a.SaRepo.GetByID(uuid)
-		if err != nil && errors.Is(err, consts.ErrNotFound) {
-			return nil, fmt.Errorf("not found iam entity %s", uuid)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		fullId = sa.FullIdentifier
-
-		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s uuid", fullId, uuid))
-		authzRes, err = a.authorizeServiceAccount(sa, method, source)
-	}
-
+	authzRes, fullId, err := a.authorizeTokenOwner(uuid, method, source)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +79,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	authzRes.EntityID = entityId
 
 	method.PopulateTokenAuth(authzRes)
+
 	err = a.addDynamicPolicies(authzRes, roleClaims, uuid)
 	if err != nil {
 		return nil, err
@@ -122,6 +94,35 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	a.Logger.Debug(fmt.Sprintf("Authn data populated %s", fullId))
 
 	return authzRes, nil
+}
+
+func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod, source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, err error) {
+	user, err := a.UserRepo.GetByID(uuid)
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return nil, "", err
+	}
+	if user != nil && user.NotArchived() {
+		tokenOwnerFullIdentifier = user.FullIdentifier
+		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", tokenOwnerFullIdentifier, uuid))
+		authzRes, err = a.authorizeUser(user, method, source)
+	} else {
+		// not found user try to found service account
+		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", uuid))
+		var sa *iam.ServiceAccount
+		sa, err = a.SaRepo.GetByID(uuid)
+		if (err != nil && errors.Is(err, consts.ErrNotFound)) || sa.Archived() {
+			return nil, "", fmt.Errorf("not found active iam entity %s", uuid)
+		}
+		if err != nil {
+			return nil, "", err
+		}
+
+		tokenOwnerFullIdentifier = sa.FullIdentifier
+
+		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s uuid", tokenOwnerFullIdentifier, uuid))
+		authzRes, err = a.authorizeServiceAccount(sa, method, source)
+	}
+	return authzRes, tokenOwnerFullIdentifier, nil
 }
 
 func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []RoleClaim, userUUID iam.UserUUID) error {
@@ -225,21 +226,23 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 	return result
 }
 
+// authorizeServiceAccount called from authorizeTokenOwner in case token is owned by service_account
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for sa here
 	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  sa.FullIdentifier,
-		InternalData: map[string]interface{}{},
+		InternalData: map[string]interface{}{"subject_type": "service_account", "subject_uuid": sa.UUID},
 	}, nil
 }
 
+// authorizeUser called from authorizeTokenOwner in case token is owned by user
 func (a *Authorizator) authorizeUser(user *iam.User, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for user here
 	// todo collect rba for user
 	return &logical.Auth{
 		DisplayName:  user.FullIdentifier,
-		InternalData: map[string]interface{}{},
+		InternalData: map[string]interface{}{"subject_type": "user", "subject_uuid": user.UUID},
 	}, nil
 }
 
@@ -349,4 +352,30 @@ func (a *Authorizator) createDynamicPolicies(policies []Policy) error {
 		}
 	}
 	return nil
+}
+
+func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn,
+	tokenOwnerType string, tokenOwnerUUID string) (*logical.Auth, error) {
+	// check is user/sa still active
+	var owner memdb.Archivable
+	var err error
+	switch tokenOwnerType {
+	case iam.UserType:
+		owner, err = iam_repo.NewUserRepository(txn).GetByID(tokenOwnerUUID)
+	case iam.ServiceAccountType:
+		owner, err = iam_repo.NewServiceAccountRepository(txn).GetByID(tokenOwnerUUID)
+	default:
+		return nil, fmt.Errorf("wrong type of tokenOwnerType:%s", tokenOwnerType)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if owner.Archived() {
+		return nil, fmt.Errorf("tokenOwner is deleted")
+	}
+	authzRes := *auth
+	authzRes.TTL = method.TokenTTL
+	authzRes.MaxTTL = method.TokenMaxTTL
+	authzRes.Period = method.TokenPeriod
+	return &authzRes, nil
 }
