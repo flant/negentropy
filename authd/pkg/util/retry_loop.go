@@ -118,7 +118,7 @@ func (r *PostponedRetryLoop) handle(ctx context.Context) error {
 		return err
 	}
 	delay := r.Backoff.Delay(r.retries)
-	sleepErr := StoppableSleep(ctx, delay)
+	sleepErr := stoppableSleep(ctx, delay)
 	// Return Canceled error if sleep is interrupted.
 	if sleepErr != nil {
 		return sleepErr
@@ -127,7 +127,7 @@ func (r *PostponedRetryLoop) handle(ctx context.Context) error {
 	return err
 }
 
-func StoppableSleep(ctx context.Context, delay time.Duration) error {
+func stoppableSleep(ctx context.Context, delay time.Duration) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

@@ -26,8 +26,7 @@ type Authd struct {
 
 	Servers []*server.VaultProxy
 
-	stop      chan struct{}
-	refresher *util.PostponedRetryLoop
+	stop chan struct{}
 
 	refreshLoopCtx    context.Context
 	refreshLoopCancel context.CancelFunc

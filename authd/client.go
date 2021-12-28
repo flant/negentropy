@@ -3,14 +3,16 @@ package authd
 import (
 	"context"
 	"fmt"
-	"github.com/flant/negentropy/authd/pkg/vault"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/vault/api"
+
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/authd/pkg/util"
-	"github.com/hashicorp/vault/api"
+	"github.com/flant/negentropy/authd/pkg/util/exponential"
+	"github.com/flant/negentropy/authd/pkg/vault"
 )
 
 /**
@@ -40,7 +42,6 @@ type Client struct {
 	server string
 
 	m               sync.RWMutex // mutex to sync NewVaultClient and token refresher.
-	refresher       *util.PostponedRetryLoop
 	refresherCtx    context.Context
 	refresherCancel context.CancelFunc
 	refresherDone   chan struct{}
@@ -60,20 +61,60 @@ func (c *Client) NewVaultClient() (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.m.RLock()
 	resCl.SetToken(c.token)
+	c.m.RUnlock()
 	return resCl, nil
 }
 
-// TODO refresher for client session token.
+var refreshTime = time.Minute
+
 func (c *Client) StartTokenRefresher(ctx context.Context) {
-	c.refresherDone = make(chan struct{})
-	defer close(c.refresherDone)
-	for {
-		if ctx.Err() != nil {
-			return
-		}
-		time.Sleep(10 * time.Second)
+	if ctx.Err() != nil {
+		return
 	}
+
+	c.refresherDone = make(chan struct{})
+	c.refresherCtx, c.refresherCancel = context.WithCancel(ctx)
+
+	go func() {
+		defer close(c.refresherDone)
+		ticker := time.NewTicker(refreshTime)
+		for {
+			select {
+			case <-ticker.C:
+				tokenRefresher := &util.PostponedRetryLoop{
+					Handler: func(ctx2 context.Context) error {
+						c.m.Lock()
+						defer c.m.Unlock()
+						cfg := api.DefaultConfig()
+						cfg.Address = c.server
+						cl, err := api.NewClient(cfg)
+						if err != nil {
+							return err
+						}
+						cl.SetToken(c.token)
+						TenMinutes := 60 * 10
+						auth, err := cl.Auth().Token().RenewSelf(TenMinutes)
+						if err != nil {
+							return err
+						}
+						if auth == nil {
+							return fmt.Errorf("self_renew token:empty response")
+						}
+						c.token = auth.Auth.ClientToken
+						return nil
+					},
+					Backoff: exponential.NewBackoff(time.Second, time.Minute, 2.0),
+				}
+				tokenRefresher.RunLoop(c.refresherCtx) // nolint:errcheck
+
+			case <-c.refresherCtx.Done():
+				return
+			}
+		}
+	}()
+
 }
 
 func (c *Client) StopTokenRefresher() {
