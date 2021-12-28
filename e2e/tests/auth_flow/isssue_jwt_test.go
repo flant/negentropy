@@ -9,9 +9,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
-
 	"github.com/flant/negentropy/e2e/tests/lib/configure"
-
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -130,6 +128,13 @@ func clientByMultipass(multipassJWT string) *api.Client {
 
 func deleteUser(user *iam.User) {
 	_, err := iamClientWithRoot.Logical().Delete(lib.IamPluginPath + "/tenant/" + user.TenantUUID + "/user/" + user.UUID)
+	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(2 * time.Second)
+}
+
+func deleteServiceAccount(sa *iam.ServiceAccount) {
+	_, err := iamClientWithRoot.Logical().Delete(lib.IamPluginPath + "/tenant/" + sa.TenantUUID + "/service_account/" + sa.UUID)
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(2 * time.Second)
