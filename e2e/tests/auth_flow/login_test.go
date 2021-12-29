@@ -144,6 +144,30 @@ var _ = Describe("Login", func() {
 
 				Expect(auth).To(BeNil())
 			})
+
+			It("doesn't login after delete user", func() {
+				deleteUser(user)
+
+				auth := login(false, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    jwtData,
+				})
+
+				Expect(auth).To(BeNil())
+			})
+
+			It("doesn't login after delete service_account", func() {
+				sa, _, saMultipassJWT := PrepareSAAndMultipass(true)
+				deleteServiceAccount(sa)
+
+				auth := login(false, map[string]interface{}{
+					"method": multipassMethodName,
+					"jwt":    saMultipassJWT,
+				})
+
+				Expect(auth).To(BeNil())
+			})
+
 		})
 
 		Context("multipass prolongation", func() {
