@@ -114,20 +114,15 @@ function build_oidc_mock() {
 }
 
 function build_vault() {
-  local EXTRA_MOUNT
 
   echo "Building vault"
-
-  if [[ $FIRST_ARG == "--debug" || $SECOND_ARG == "--debug" ]]; then
-    EXTRA_MOUNT="-v /tmp/vault_debug_cache:/go/pkg"
-  fi
 
   docker run --rm \
     -w /app/infra/common/vault \
     -v $(pwd):/app \
     $EXTRA_MOUNT \
     golang:1.16.8-alpine \
-    sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh $FIRST_ARG $SECOND_ARG"
+    sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh $ARG"
 }
 
 function build_all() {
@@ -171,8 +166,7 @@ while [[ $# -gt 0 ]]; do
     break
     ;;
     vault)
-    FIRST_ARG="$2"
-    SECOND_ARG="$3"
+    ARG="$2"
     TARGET="vault"
     break
     ;;
