@@ -1,10 +1,6 @@
 package repo
 
 import (
-	"fmt"
-
-	hcmemdb "github.com/hashicorp/go-memdb"
-
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	jwt_model "github.com/flant/negentropy/vault-plugins/shared/jwt/model"
@@ -18,44 +14,22 @@ const (
 	ByUserID = "user_id"
 )
 
-func mergeTables() (map[string]*hcmemdb.TableSchema, error) {
-	others := []map[string]*hcmemdb.TableSchema{
-		EntitySchema(),
-		EntityAliasSchema(),
-		AuthSourceSchema(),
-		AuthMethodSchema(),
-		JWTIssueTypeSchema(),
-		MultipassGenerationNumberSchema(),
-	}
-
-	allTables := map[string]*memdb.TableSchema{}
-
-	for _, tables := range others {
-		for name, table := range tables {
-			if _, ok := allTables[name]; ok {
-				return nil, fmt.Errorf("table %q already there", name)
-			}
-			allTables[name] = table
-		}
-	}
-	return allTables, nil
-}
-
 func GetSchema() (*memdb.DBSchema, error) {
-	tables, err := mergeTables()
-	if err != nil {
-		return nil, err
-	}
-
 	jwtSchema, err := jwt_model.GetSchema(false)
 	if err != nil {
 		return nil, err
 	}
 
 	schema, err := memdb.MergeDBSchemasAndValidate(
-		&memdb.DBSchema{
-			Tables: tables,
-		},
+		// TODO add relations into next schemas
+		EntitySchema(),
+		EntityAliasSchema(),
+		AuthSourceSchema(),
+		AuthMethodSchema(),
+		JWTIssueTypeSchema(),
+		MultipassGenerationNumberSchema(),
+
+		// copy of data from iam, so no needs to checks
 		memdb.DropRelations(iam_repo.TenantSchema()),
 		memdb.DropRelations(iam_repo.ProjectSchema()),
 		memdb.DropRelations(iam_repo.GroupSchema()),

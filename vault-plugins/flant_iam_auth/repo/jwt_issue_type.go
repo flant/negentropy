@@ -7,24 +7,27 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func JWTIssueTypeSchema() map[string]*hcmemdb.TableSchema {
-	return map[string]*hcmemdb.TableSchema{
-		model.JWTIssueTypeType: {
-			Name: model.JWTIssueTypeType,
-			Indexes: map[string]*hcmemdb.IndexSchema{
-				ID: {
-					Name:   ID,
-					Unique: true,
-					Indexer: &hcmemdb.UUIDFieldIndex{
-						Field: "UUID",
+func JWTIssueTypeSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
+			model.JWTIssueTypeType: {
+				Name: model.JWTIssueTypeType,
+				Indexes: map[string]*hcmemdb.IndexSchema{
+					ID: {
+						Name:   ID,
+						Unique: true,
+						Indexer: &hcmemdb.UUIDFieldIndex{
+							Field: "UUID",
+						},
 					},
-				},
-				ByName: {
-					Name: ByName,
-					Indexer: &hcmemdb.StringFieldIndex{
-						Field: "Name",
+					ByName: {
+						Name: ByName,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Name",
+						},
 					},
 				},
 			},
