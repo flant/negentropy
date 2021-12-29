@@ -86,6 +86,7 @@ class Vault:
         print("run init_and_unseal for '{}' vault".format(self.name))
         if self.vault_client.seal_status['initialized']:
             print("vault '{}' already initialized, skip init".format(self.name))
+            self.renew_root_token()  # needs it because of strange rejecting 'root' token
         else:
             resp = self.vault_client.sys.initialize()
             self.keys = resp['keys_base64']
@@ -334,3 +335,11 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
             self.vault_client.sys.create_or_update_policy(name="token_renew",
                                                           policy="""path "auth/token/lookup-self" {capabilities = ["create", "update", "read"]} path "auth/token/renew-self" {capabilities = ["create", "update", "read"]} """
                                                           ), 204)
+
+    def renew_root_token(self):
+        resp = self.vault_client.auth.token.create(policies=['root'], no_parent=True)
+        print("vault '{}': creating new root token".format(self.name))
+        self.token = resp['auth']['client_token']
+        print("vault '{}' new root_token: {}".format(self.name,
+                                                     self.token))  # need it because of strange rejecting root token
+        self.vault_client = hvac.Client(url=self.url, token=self.token)

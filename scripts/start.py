@@ -1,5 +1,6 @@
 import json
-from os import path
+import sys
+from os import path, makedirs
 from typing import List
 
 from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
@@ -53,20 +54,27 @@ def read_vaults_from_file() -> List[Vault]:
 
 
 if __name__ == "__main__":
-    root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="root",
-                       plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
-    auth_vault = Vault(name="auth", url="http://127.0.0.1:8200", token="root",
-                       plugin_names=['flant_iam_auth', 'ssh'])
-
-    vaults = [root_vault, auth_vault]
+    print(sys.argv)
+    if "DEV" in sys.argv:
+        dev_vault = Vault(name="vault_dev", url="http://127.0.0.1:8200", token="root",
+                          plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
+        vaults = [dev_vault]
+        auth_vault_name = dev_vault.name
+    else:
+        root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="root",
+                           plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
+        auth_vault = Vault(name="auth", url="http://127.0.0.1:8200", token="root",
+                           plugin_names=['flant_iam_auth', 'ssh'])
+        vaults = [root_vault, auth_vault]
+        auth_vault_name = auth_vault.name
 
     oidc_url = "http://oidc-mock:9998"
 
     # vaults = read_vaults_from_file()
 
-    # # ============================
-    # # Initialize vaults and plugins
-    # # ============================
+    # ============================
+    # Initialize vaults and plugins
+    # ============================
     for vault in vaults:
         print("========================================")
         print("vault: {} at {}".format(vault.name, vault.url))
@@ -90,7 +98,7 @@ if __name__ == "__main__":
         print("----------------------------------------------------------")
         vault.activate_plugins_jwt()  # need kafka
         vault.activate_auth_multipass()  # need activate jwt
-        vault.configure_ssh_ca([auth_vault.name])  # for using at
+        vault.configure_ssh_ca([auth_vault_name])  # for using at ssh access tests
 
     initialize_server_access(vaults)
 
@@ -121,18 +129,20 @@ if __name__ == "__main__":
     f.close()
 
     # ============================================================================
-    # prepare user multipass_jwt for authd tests, if local run
+    # prepare user multipass_jwt for authd tests
     # ============================================================================
     multipass_file_path = "authd/dev/secret/authd.jwt"
-    if path.exists(multipass_file_path):
-        iam_vault = find_master_root_vault(vaults)
-        create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
-        create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
-                               "00000661-0000-4000-A000-000000000000",
-                               "user_for_authd_tests")
-        multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
-                                          "00000661-0000-4000-A000-000000000000", 3600)
-        file = open(multipass_file_path, "w")
-        file.write(multipass)
-        file.close()
-        print(multipass_file_path + " is updated")
+    multipass_file_folder = multipass_file_path.rsplit("/", 1)[0]
+    if not path.exists(multipass_file_folder):
+        makedirs(multipass_file_folder)
+    iam_vault = find_master_root_vault(vaults)
+    create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
+    create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                           "00000661-0000-4000-A000-000000000000",
+                           "user_for_authd_tests")
+    multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                      "00000661-0000-4000-A000-000000000000", 3600)
+    file = open(multipass_file_path, "w")
+    file.write(multipass)
+    file.close()
+    print(multipass_file_path + " is updated")
