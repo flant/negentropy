@@ -16,40 +16,51 @@ services:
       retries: 5
 
   kafka:
-    image: docker.io/bitnami/kafka:2
+    #    image: docker.io/bitnami/kafka:2
+    #    My own build of kafka of  wurstmeister/kafka-docker
+    image: kafka
     container_name: kafka
     ports:
       - "9093:9093"
-    volumes:
-      - "./kafka/log4j.properties:/bitnami/kafka/config/log4j.properties"
+#    volumes:
+#      - "./kafka/log4j.properties:/bitnami/kafka/config/log4j.properties"
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
-      KAFKA_CFG_LISTENERS: "CLIENT://:9092,EXTERNAL://:9093"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092,EXTERNAL://localhost:9093"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9093
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ADVERTISED_PORT: 9093
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
+#      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
+#      ALLOW_PLAINTEXT_LISTENER: "yes"
+#      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+#      KAFKA_CFG_LISTENERS: "CLIENT://:9092,EXTERNAL://:9093"
+#      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092,EXTERNAL://localhost:9093"
+#      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
     depends_on:
-      zookeeper:
-        condition: service_healthy
-    healthcheck:
-      test:
-        ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - zookeeper
+#    healthcheck:
+#      test:
+#        ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
-  kafdrop:
-    image: obsidiandynamics/kafdrop
-    container_name: kafdrop
-    ports:
-      - "9100:9000"
-    environment:
-      KAFKA_BROKERCONNECT: "kafka:9092"
-      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
-    depends_on:
-      kafka:
-        condition: service_healthy
+#  kafdrop:
+#    image: obsidiandynamics/kafdrop
+#    container_name: kafdrop
+#    ports:
+#      - "9100:9000"
+#    environment:
+#      KAFKA_BROKERCONNECT: "kafka:9092"
+#      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
 
   oidc-mock:
     image: alpine:3.14.2

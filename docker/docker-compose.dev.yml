@@ -3,22 +3,30 @@ version: "3"
 services:
   vault:
     container_name: vault
-    image: vault:1.7.1
+#    image: vault:1.7.1
+    image: tetafro/golang-gcc:1.16-alpine
     volumes:
       - "../vault-plugins/build/:/vault/plugins"
     ports:
       - 8200:8200
+    privileged: true
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
       - VAULT_TOKEN=root
       - VAULT_DEV_ROOT_TOKEN_ID=root
       - VAULT_LOG_LEVEL=debug
-    command: server -dev -dev-plugin-dir=/vault/plugins
+
+      - VAULT_CLIENT_TIMEOUT=120s
+      - VAULT_API_ADDR=http://0.0.0.0:8200
+      - VAULT_ADDRESS=http://0.0.0.0:8200
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOG_FORMAT=json
+    command: /bin/vault server -dev -dev-plugin-dir=/vault/plugins
     cap_add:
       - IPC_LOCK
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
+
 
   test-client:
     container_name: test-client
