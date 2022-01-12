@@ -768,7 +768,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete service_account multipass", "path", req.Path)
+		b.Logger().Debug("delete service_account password", "path", req.Path)
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)

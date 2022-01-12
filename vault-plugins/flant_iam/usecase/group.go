@@ -76,6 +76,9 @@ func (s *GroupService) Update(group *model.Group) error {
 	if stored.Version != group.Version {
 		return consts.ErrBadVersion
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 
 	tenant, err := s.tenantsRepo.GetByID(s.tenantUUID)
 	if err != nil {
@@ -110,6 +113,9 @@ func (s *GroupService) Delete(origin consts.ObjectOrigin, id model.GroupUUID) er
 	if group.Origin != origin {
 		return consts.ErrBadOrigin
 	}
+	if group.Archived() {
+		return consts.ErrIsArchived
+	}
 	err = s.repo.CleanChildrenSliceIndexes(id)
 	if err != nil {
 		return err
@@ -118,27 +124,34 @@ func (s *GroupService) Delete(origin consts.ObjectOrigin, id model.GroupUUID) er
 }
 
 func (s *GroupService) SetExtension(ext *model.Extension) error {
-	obj, err := s.repo.GetByID(ext.OwnerUUID)
+	stored, err := s.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
-	obj.Extensions[ext.Origin] = ext
-	return s.repo.Update(obj)
+	if stored.Extensions == nil {
+		stored.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	}
+	stored.Extensions[ext.Origin] = ext
+	return s.repo.Update(stored)
 }
 
 func (s *GroupService) UnsetExtension(origin consts.ObjectOrigin, uuid model.GroupUUID) error {
-	obj, err := s.repo.GetByID(uuid)
+	stored, err := s.repo.GetByID(uuid)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
+
+	if stored.Extensions == nil {
 		return nil
 	}
-	delete(obj.Extensions, origin)
-	return s.repo.Update(obj)
+	delete(stored.Extensions, origin)
+	return s.repo.Update(stored)
 }
 
 func (s *GroupService) List(tid model.TenantUUID, showArchived bool) ([]*model.Group, error) {

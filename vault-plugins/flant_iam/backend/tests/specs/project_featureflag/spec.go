@@ -1,6 +1,7 @@
 package project_featureflag
 
 import (
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -38,12 +38,7 @@ var _ = Describe("Project feature flags", func() {
 			"feature_flag_name": ffName,
 		}
 
-		data := map[string]interface{}{
-			"required_votes":   3,
-			"users":            []string{uuid.New()},
-			"groups":           []string{uuid.New()},
-			"service_accounts": []string{uuid.New()},
-		}
+		data := map[string]interface{}{}
 
 		_ = TestAPI.Create(params, url.Values{}, data)
 	})
@@ -76,5 +71,22 @@ var _ = Describe("Project feature flags", func() {
 				Expect(ffArr).To(HaveLen(0))
 			},
 		}, nil)
+	})
+
+	Context("after deletion project", func() {
+		It("can't be deleted", func() {
+			ProjectAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       tenantID,
+				"project":      projectID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":            tenantID,
+				"project":           projectID,
+				"feature_flag_name": ffName,
+				"expectStatus":      api.ExpectExactStatus(400),
+			}, nil)
+		})
 	})
 })

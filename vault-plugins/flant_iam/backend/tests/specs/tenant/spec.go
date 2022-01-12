@@ -140,4 +140,33 @@ var _ = Describe("Tenant", func() {
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			tenant := specs.CreateRandomTenant(TestAPI)
+			TestAPI.Delete(api.Params{
+				"tenant": tenant.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       tenant.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			tenant := specs.CreateRandomTenant(TestAPI)
+			TestAPI.Delete(api.Params{
+				"tenant": tenant.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomTenantCreatePayload()
+			updatePayload["resource_version"] = tenant.Version
+			updatePayload["identifier"] = tenant.Identifier
+			TestAPI.Update(api.Params{
+				"tenant":       tenant.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
+	})
 })

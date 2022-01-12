@@ -48,8 +48,7 @@ var _ = Describe("Feature Flag", func() {
 	})
 
 	It("can be listed", func() {
-		createPayload := fixtures.RandomFeatureFlagCreatePayload()
-		TestAPI.Create(api.Params{}, url.Values{}, createPayload)
+		createRandomFeatureFlag(TestAPI)
 		TestAPI.List(api.Params{}, url.Values{})
 	})
 
@@ -68,33 +67,45 @@ var _ = Describe("Feature Flag", func() {
 	})
 
 	It("can be deleted", func() {
-		createPayload := fixtures.RandomFeatureFlagCreatePayload()
-
-		var createdData gjson.Result
-		TestAPI.Create(api.Params{
-			"expectPayload": func(json gjson.Result) {
-				createdData = json
-			},
-		}, nil, createPayload)
+		createdFeatureFlagName := createRandomFeatureFlag(TestAPI)
 
 		TestAPI.Delete(api.Params{
-			"name": createdData.Get("feature_flag.name").String(),
+			"name": createdFeatureFlagName,
 		}, nil)
 
 		TestAPI.List(api.Params{
 			"expectPayload": func(json gjson.Result) {
 				Expect(json.Map()).To(HaveKey("names"))
 
-				expectedName := gjson.Parse(fmt.Sprintf("%q", createdData.Get("name").String()))
+				expectedName := gjson.Parse(fmt.Sprintf("%q", createdFeatureFlagName))
 				Expect(json.Get("names").Array()).ToNot(ContainElement(expectedName))
 			},
 		}, url.Values{})
 	})
 
-	It("when does not exist", func() {
+	It("when does not exist, can't be deleted", func() {
 		TestAPI.Delete(api.Params{
 			"name":         "not-exists",
 			"expectStatus": api.ExpectExactStatus(404),
 		}, nil)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			createdFeatureFlagName := createRandomFeatureFlag(TestAPI)
+			TestAPI.Delete(api.Params{
+				"name": createdFeatureFlagName,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"name":         createdFeatureFlagName,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+	})
 })
+
+func createRandomFeatureFlag(featureFlagAPI api.TestAPI) (featureFlagName string) {
+	resp := featureFlagAPI.Create(api.Params{}, url.Values{}, fixtures.RandomFeatureFlagCreatePayload())
+	return resp.Get("feature_flag.name").String()
+}

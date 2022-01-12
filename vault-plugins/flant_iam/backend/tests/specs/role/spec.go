@@ -116,4 +116,36 @@ var _ = Describe("Role", func() {
 			},
 		}, nil)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			role := specs.CreateRandomRole(TestAPI)
+			TestAPI.Delete(api.Params{
+				"name":         role.Name,
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"name":         role.Name,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			role := specs.CreateRandomRole(TestAPI)
+			TestAPI.Delete(api.Params{
+				"name":         role.Name,
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+			}, nil)
+
+			updatePayload := fixtures.RandomRoleCreatePayload()
+			updatePayload["name"] = role.Name
+			updatePayload["scope"] = role.Scope
+
+			TestAPI.Update(api.Params{
+				"name":         role.Name,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
+	})
 })

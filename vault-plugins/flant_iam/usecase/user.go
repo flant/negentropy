@@ -54,7 +54,9 @@ func (s *UserService) Update(user *model.User) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	// Validate
 	if stored.TenantUUID != s.tenantUUID {
 		return consts.ErrNotFound
@@ -100,27 +102,33 @@ func (s *UserService) Delete(id model.UserUUID) error {
 }
 
 func (s *UserService) SetExtension(ext *model.Extension) error {
-	obj, err := s.GetByID(ext.OwnerUUID)
+	stored, err := s.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
-	obj.Extensions[ext.Origin] = ext
-	return s.Update(obj)
+	if stored.Extensions == nil {
+		stored.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	}
+	stored.Extensions[ext.Origin] = ext
+	return s.Update(stored)
 }
 
 func (s *UserService) UnsetExtension(origin consts.ObjectOrigin, uuid model.UserUUID) error {
-	obj, err := s.GetByID(uuid)
+	stored, err := s.GetByID(uuid)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
+	if stored.Extensions == nil {
 		return nil
 	}
-	delete(obj.Extensions, origin)
-	return s.Update(obj)
+	delete(stored.Extensions, origin)
+	return s.Update(stored)
 }
 
 func (s *UserService) Restore(id model.UserUUID) (*model.User, error) {

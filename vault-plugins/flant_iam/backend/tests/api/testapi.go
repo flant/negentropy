@@ -209,6 +209,14 @@ func NewServiceAccountAPI(b *logical.Backend) TestAPI {
 	return &BackendBasedAPI{Backend: b, Url: &url2.ServiceAccountEndpointBuilder{}}
 }
 
+func NewServiceAccountPasswordAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{Backend: b, Url: &url2.ServiceAccountPasswordEndpointBuilder{}}
+}
+
+func NewServiceAccountMultipassAPI(b *logical.Backend) TestAPI {
+	return &BackendBasedAPI{Backend: b, Url: &url2.ServiceAccountMultipassEndpointBuilder{}}
+}
+
 func ExpectExactStatus(expectedStatus int) func(gotStatus int) {
 	return func(gotStatus int) {
 		Expect(gotStatus).To(Equal(expectedStatus))

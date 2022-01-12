@@ -1,4 +1,4 @@
-package usermultipass
+package serviceaccountmultipass
 
 import (
 	"net/url"
@@ -14,16 +14,18 @@ import (
 )
 
 var (
-	TestAPI   api.TestAPI
-	TenantAPI api.TestAPI
-	UserAPI   api.TestAPI
-	ConfigAPI api.ConfigAPI
+	TestAPI           api.TestAPI
+	TenantAPI         api.TestAPI
+	ServiceAccountAPI api.TestAPI
+	ConfigAPI         api.ConfigAPI
 )
 
-var _ = Describe("User Multipass", func() {
+var _ = Describe("ServiceAccount Multipass", func() {
 	var (
-		tenant model.Tenant
-		user   model.User
+		tenant         model.Tenant
+		serviceAccount model.ServiceAccount
+		multipassData  gjson.Result
+		multipassID    model.MultipassUUID
 	)
 
 	BeforeSuite(func() {
@@ -34,17 +36,17 @@ var _ = Describe("User Multipass", func() {
 		ConfigAPI.EnableJWT()
 
 		tenant = specs.CreateRandomTenant(TenantAPI)
-		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
+		serviceAccount = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
 	}, 1.0)
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomUserMultipassCreatePayload()
 		createPayload["tenant_uuid"] = tenant.UUID
-		createPayload["owner_uuid"] = user.UUID
+		createPayload["owner_uuid"] = serviceAccount.UUID
 
 		params := api.Params{
 			"expectPayload": func(json gjson.Result) {
-				multipassData := json.Get("multipass")
+				multipassData = json.Get("multipass")
 				Expect(multipassData.Map()).To(HaveKey("uuid"))
 				Expect(multipassData.Map()).To(HaveKey("tenant_uuid"))
 				Expect(multipassData.Map()).To(HaveKey("owner_uuid"))
@@ -57,74 +59,60 @@ var _ = Describe("User Multipass", func() {
 				Expect(multipassData.Map()).To(HaveKey("valid_till"))
 				Expect(multipassData.Map()).To(HaveKey("archiving_timestamp"))
 				Expect(multipassData.Map()).To(HaveKey("archiving_hash"))
-				Expect(multipassData.Get("uuid").String()).ToNot(HaveLen(10))
+				Expect(multipassData.Get("uuid").String()).To(HaveLen(36))
+				multipassID = multipassData.Get("uuid").String()
 			},
-			"tenant": tenant.UUID,
-			"user":   user.UUID,
+			"tenant":          tenant.UUID,
+			"service_account": serviceAccount.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
 	It("can be read", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
-		createdData := specs.ConvertToGJSON(multipass)
-
 		TestAPI.Read(api.Params{
-			"tenant":    multipass.TenantUUID,
-			"user":      multipass.OwnerUUID,
-			"multipass": multipass.UUID,
+			"tenant":          tenant.UUID,
+			"service_account": serviceAccount.UUID,
+			"multipass":       multipassID,
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(createdData, json.Get("multipass"), "extensions")
+				specs.IsSubsetExceptKeys(multipassData, json.Get("multipass"))
 			},
 		}, nil)
 	})
 
-	It("can be deleted", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
-
-		TestAPI.Delete(api.Params{
-			"tenant":    multipass.TenantUUID,
-			"user":      multipass.OwnerUUID,
-			"multipass": multipass.UUID,
-		}, nil)
-
-		deletedData := TestAPI.Read(api.Params{
-			"tenant":       multipass.TenantUUID,
-			"user":         multipass.OwnerUUID,
-			"multipass":    multipass.UUID,
-			"expectStatus": api.ExpectExactStatus(200),
-		}, nil)
-		Expect(deletedData.Get("multipass.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
-	})
-
 	It("can be listed", func() {
-		multipass := specs.CreateRandomUserMultipass(TestAPI, user)
-
 		TestAPI.List(api.Params{
-			"tenant": multipass.TenantUUID,
-			"user":   multipass.OwnerUUID,
+			"tenant":          tenant.UUID,
+			"service_account": serviceAccount.UUID,
 			"expectPayload": func(json gjson.Result) {
 				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("multipasses").Array(),
-					specs.ConvertToGJSON(multipass), "extensions")
+					multipassData)
 			},
 		}, url.Values{})
 	})
 
+	It("can be deleted", func() {
+		TestAPI.Delete(api.Params{
+			"tenant":          tenant.UUID,
+			"service_account": serviceAccount.UUID,
+			"multipass":       multipassID,
+		}, nil)
+
+		deletedData := TestAPI.Read(api.Params{
+			"tenant":          tenant.UUID,
+			"service_account": serviceAccount.UUID,
+			"multipass":       multipassID,
+			"expectStatus":    api.ExpectExactStatus(200),
+		}, nil)
+		Expect(deletedData.Get("multipass.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+	})
+
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
-			multipass := specs.CreateRandomUserMultipass(TestAPI, user)
-
 			TestAPI.Delete(api.Params{
-				"tenant":    multipass.TenantUUID,
-				"user":      multipass.OwnerUUID,
-				"multipass": multipass.UUID,
-			}, nil)
-
-			TestAPI.Delete(api.Params{
-				"tenant":       multipass.TenantUUID,
-				"user":         multipass.OwnerUUID,
-				"multipass":    multipass.UUID,
-				"expectStatus": api.ExpectExactStatus(400),
+				"tenant":          tenant.UUID,
+				"service_account": serviceAccount.UUID,
+				"multipass":       multipassID,
+				"expectStatus":    api.ExpectExactStatus(400),
 			}, nil)
 		})
 	})

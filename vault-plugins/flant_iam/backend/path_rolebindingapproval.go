@@ -199,7 +199,7 @@ func (b *roleBindingApprovalBackend) handleCreate() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err = usecase.RoleBindingApprovals(tx).Update(roleBindingApproval)
+		err = usecase.RoleBindingApprovals(tx).Create(roleBindingApproval)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
