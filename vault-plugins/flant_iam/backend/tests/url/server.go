@@ -16,7 +16,7 @@ func (b *ServerEndpointBuilder) OneCreate(params Params, query url.Values) strin
 func (b *ServerEndpointBuilder) One(params Params, query url.Values) string {
 	return path.Join("tenant", params["tenant"].(string),
 		"/project", params["project"].(string),
-		"server", params["uuid"].(string)) + "?" + query.Encode()
+		"server", params["server"].(string)) + "?" + query.Encode()
 }
 
 func (b *ServerEndpointBuilder) Collection(params Params, query url.Values) string {
