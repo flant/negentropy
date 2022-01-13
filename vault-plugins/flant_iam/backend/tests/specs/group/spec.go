@@ -81,20 +81,16 @@ var _ = Describe("Group", func() {
 			"uuid": user.UUID,
 		}
 
-		var updateData gjson.Result
-		TestAPI.Update(api.Params{
+		updateData := TestAPI.Update(api.Params{
 			"tenant": group.TenantUUID,
 			"group":  group.UUID,
-			"expectPayload": func(json gjson.Result) {
-				updateData = json
-			},
 		}, nil, updatePayload)
 
 		TestAPI.Read(api.Params{
 			"tenant": group.TenantUUID,
 			"group":  group.UUID,
 			"expectPayload": func(json gjson.Result) {
-				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+				specs.IsSubsetExceptKeys(updateData.Get("group"), json.Get("group"), "full_restore")
 			},
 		}, nil)
 	})

@@ -16,12 +16,7 @@ import (
 
 func CreateRandomClient(clientsAPI testapi.TestAPI) model.Client {
 	createPayload := fixtures.RandomClientCreatePayload()
-	var createdData gjson.Result
-	clientsAPI.Create(testapi.Params{
-		"expectPayload": func(json gjson.Result) {
-			createdData = json
-		},
-	}, nil, createPayload)
+	createdData := clientsAPI.Create(testapi.Params{}, nil, createPayload)
 	rawClient := createdData.Get("client")
 	data := []byte(rawClient.String())
 	var client model.Client
@@ -32,12 +27,7 @@ func CreateRandomClient(clientsAPI testapi.TestAPI) model.Client {
 
 func CreateRandomTeam(teamAPI testapi.TestAPI) model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
-	var createdData gjson.Result
-	teamAPI.Create(testapi.Params{
-		"expectPayload": func(json gjson.Result) {
-			createdData = json
-		},
-	}, nil, createPayload)
+	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
 	rawTeam := createdData.Get("team")
 	data := []byte(rawTeam.String())
 	var team model.Team

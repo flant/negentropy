@@ -54,8 +54,10 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Map()).To(HaveKey("feature_flags"))
 				Expect(projectData.Map()).To(HaveKey("archiving_timestamp"))
 				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
-				Expect(projectData.Get("uuid").String()).ToNot(HaveLen(10))
-				Expect(projectData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
+				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
+				Expect(projectData.Map()).To(HaveKey("origin"))
+				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 			"client": client.UUID,
 		}
@@ -71,9 +73,35 @@ var _ = Describe("Project", func() {
 			"project":      project.UUID,
 			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"), "resource_version", "origin")
+				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"), "extensions")
 			},
 		}, nil)
+	})
+
+	It("can be listed", func() {
+		project := specs.CreateRandomProject(TestAPI, client.UUID)
+
+		TestAPI.List(testapi.Params{
+			"client":       project.TenantUUID,
+			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
+			"expectPayload": func(json gjson.Result) {
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
+					iam_specs.ConvertToGJSON(project), "extensions")
+			},
+		}, url.Values{})
+	})
+
+	It("can be updated", func() {
+		project := specs.CreateRandomProject(TestAPI, client.UUID)
+
+		updatePayload := fixtures.RandomProjectCreatePayload()
+		updatePayload["tenant_uuid"] = project.TenantUUID
+		updatePayload["resource_version"] = project.Version
+		TestAPI.Update(testapi.Params{
+			"client":       project.TenantUUID,
+			"project":      project.UUID,
+			"expectStatus": testapi.ExpectExactStatus(200),
+		}, nil, updatePayload)
 	})
 
 	It("can be deleted", func() {
@@ -93,19 +121,6 @@ var _ = Describe("Project", func() {
 		Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
-	It("can be listed", func() {
-		project := specs.CreateRandomProject(TestAPI, client.UUID)
-
-		TestAPI.List(testapi.Params{
-			"client":       project.TenantUUID,
-			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
-			"expectPayload": func(json gjson.Result) {
-				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
-					iam_specs.ConvertToGJSON(project), "resource_version", "origin")
-			},
-		}, url.Values{})
-	})
-
 	It("can be created with privileged", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = client.UUID
@@ -122,5 +137,40 @@ var _ = Describe("Project", func() {
 			"client": client.UUID,
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			project := specs.CreateRandomProject(TestAPI, client.UUID)
+			TestAPI.Delete(testapi.Params{
+				"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+			}, nil)
+
+			TestAPI.Delete(testapi.Params{
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			project := specs.CreateRandomProject(TestAPI, client.UUID)
+			TestAPI.Delete(testapi.Params{
+				"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomProjectCreatePayload()
+			updatePayload["tenant_uuid"] = project.TenantUUID
+			updatePayload["resource_version"] = project.Version
+			TestAPI.Update(testapi.Params{
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })

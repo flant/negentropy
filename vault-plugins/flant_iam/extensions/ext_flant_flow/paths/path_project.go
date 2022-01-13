@@ -234,7 +234,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Projects(tx).Create(project); err != nil {
+		if project, err = usecase.Projects(tx).Create(project); err != nil {
 			msg := "cannot create project"
 			b.Logger().Error(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -287,7 +287,7 @@ func (b *projectBackend) handleUpdate(_ context.Context, req *logical.Request, d
 		ServicePacks: servicePacks,
 	}
 
-	err = usecase.Projects(tx).Update(project)
+	project, err = usecase.Projects(tx).Update(project)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

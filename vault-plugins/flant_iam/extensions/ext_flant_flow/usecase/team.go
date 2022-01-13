@@ -55,6 +55,9 @@ func (s *TeamService) Update(updated *model.Team) error {
 	if err != nil {
 		return err
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	updated.TeamType = stored.TeamType // team_type cant't be changed
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion

@@ -295,7 +295,7 @@ func (b *contactBackend) handleUpdate(_ context.Context, req *logical.Request, d
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
-			Version:          data.Get("version").(string),
+			Version:          data.Get("resource_version").(string),
 			Origin:           consts.OriginFlantFlow,
 		},
 		Credentials: data.Get("credentials").(map[string]string),

@@ -14,6 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -59,8 +60,10 @@ var _ = Describe("Client", func() {
 				Expect(clientData.Map()).To(HaveKey("uuid"))
 				Expect(clientData.Map()).To(HaveKey("identifier"))
 				Expect(clientData.Map()).To(HaveKey("resource_version"))
-				Expect(clientData.Get("uuid").String()).ToNot(HaveLen(10))
-				Expect(clientData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(clientData.Get("uuid").String()).To(HaveLen(36))
+				Expect(clientData.Get("resource_version").String()).To(HaveLen(36))
+				Expect(clientData.Map()).To(HaveKey("origin"))
+				Expect(clientData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
@@ -96,7 +99,6 @@ var _ = Describe("Client", func() {
 
 		updatePayload := fixtures.RandomClientCreatePayload()
 		updatePayload["resource_version"] = createdData.Get("client.resource_version").String()
-		// updatePayload["identifier"] = createdData.Get("client.uuid").String()
 
 		var updateData gjson.Result
 		TestAPI.Update(testapi.Params{
@@ -154,5 +156,44 @@ var _ = Describe("Client", func() {
 			},
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			createPayload := fixtures.RandomClientCreatePayload()
+			var createdData gjson.Result
+			TestAPI.Create(testapi.Params{
+				"expectPayload": func(json gjson.Result) {
+					createdData = json
+				},
+			}, nil, createPayload)
+			TestAPI.Delete(testapi.Params{
+				"client": createdData.Get("client.uuid").String(),
+			}, nil)
+
+			TestAPI.Delete(testapi.Params{
+				"client": createdData.Get("client.uuid").String(), "expectStatus": testapi.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			createPayload := fixtures.RandomClientCreatePayload()
+			var createdData gjson.Result
+			TestAPI.Create(testapi.Params{
+				"expectPayload": func(json gjson.Result) {
+					createdData = json
+				},
+			}, nil, createPayload)
+			TestAPI.Delete(testapi.Params{
+				"client": createdData.Get("client.uuid").String(),
+			}, nil)
+
+			updatePayload := fixtures.RandomClientCreatePayload()
+			updatePayload["resource_version"] = createdData.Get("client.resource_version").String()
+			TestAPI.Update(testapi.Params{
+				"client":       createdData.Get("client.uuid").String(),
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })
