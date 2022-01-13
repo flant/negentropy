@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -25,7 +24,8 @@ var _ = BeforeSuite(func() {
 	flantIamSuite.BeforeSuite()
 	Describe("configuring system", func() {
 		cfg = flantIamSuite.PrepareForSSHTesting()
-		time.Sleep(time.Second * 20)
+		err := flantIamSuite.WaitPrepareForSSHTesting(cfg, 40)
+		Expect(err).ToNot(HaveOccurred())
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
 
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
