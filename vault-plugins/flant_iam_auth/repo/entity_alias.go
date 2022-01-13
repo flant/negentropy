@@ -119,6 +119,8 @@ func (r *EntityAliasRepo) Put(source *model.EntityAlias) error {
 	return r.db.Insert(r.tableName, source)
 }
 
+var ErrEmptyEntityAliasName = fmt.Errorf("empty ea name")
+
 func (r *EntityAliasRepo) CreateForUser(user *iam.User, source *model.AuthSource) error {
 	name, err := source.NameForUser(user)
 	if err != nil {
@@ -126,7 +128,8 @@ func (r *EntityAliasRepo) CreateForUser(user *iam.User, source *model.AuthSource
 	}
 
 	if name == "" {
-		return fmt.Errorf("empty ea name for source %s and user %s/%s/%s", source.Name, user.UUID, user.FullIdentifier, user.Email)
+		return fmt.Errorf("%w:for source %s and user {uuid:%q, full_identifier:%q, email:%q}, "+
+			"source EntityAliasName:%s", ErrEmptyEntityAliasName, source.Name, user.UUID, user.FullIdentifier, user.Email, source.EntityAliasName)
 	}
 
 	err = r.putNew(user.UUID, source, name)
