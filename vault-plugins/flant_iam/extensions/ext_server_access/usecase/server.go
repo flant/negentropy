@@ -259,12 +259,17 @@ func (s *ServerService) Update(server *model.Server) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Version != server.Version {
+		return consts.ErrBadVersion
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	if stored.TenantUUID != server.TenantUUID {
 		return consts.ErrNotFound
 	}
 	server.Version = iam_repo.NewResourceVersion()
-
+	server.MultipassUUID = stored.MultipassUUID
 	project, err := s.projectsService.GetByID(server.ProjectUUID)
 	if err != nil {
 		return err

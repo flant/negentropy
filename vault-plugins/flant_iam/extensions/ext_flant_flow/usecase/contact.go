@@ -53,10 +53,12 @@ func (s *ContactService) Update(updated *model.FullContact) error {
 	if err != nil {
 		return err
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
 	}
-	updated.Version = repo.NewResourceVersion()
 
 	if err = s.userService.Update(&updated.User); err != nil {
 		return err

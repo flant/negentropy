@@ -161,5 +161,9 @@ func RandomRoleBindingCreatePayload() map[string]interface{} {
 	bytes, _ := json.Marshal(sample)
 	var payload map[string]interface{}
 	json.Unmarshal(bytes, &payload) //nolint:errcheck
+	delete(payload, "users")
+	delete(payload, "groups")
+	delete(payload, "service_accounts")
+	// payload["members"] = // fill with before created members
 	return payload
 }

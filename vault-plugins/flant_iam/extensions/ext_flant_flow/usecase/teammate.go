@@ -59,7 +59,6 @@ func (s *TeammateService) Update(updated *model.FullTeammate) error {
 		return consts.ErrBadVersion
 	}
 
-	updated.Version = repo.NewResourceVersion()
 	err = s.userService.Update(&updated.User)
 	if err != nil {
 		return err

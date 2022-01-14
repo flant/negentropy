@@ -94,7 +94,7 @@ func repeat(f func() error, maxAttempts int) error {
 		}
 		counter++
 		time.Sleep(time.Second)
-		f()
+		err = f()
 	}
 	return nil
 }

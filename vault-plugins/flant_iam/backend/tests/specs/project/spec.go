@@ -64,6 +64,30 @@ var _ = Describe("Project", func() {
 		}, nil)
 	})
 
+	It("can be updated", func() {
+		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+		updatePayload := fixtures.RandomProjectCreatePayload()
+		updatePayload["tenant_uuid"] = project.TenantUUID
+		updatePayload["resource_version"] = project.Version
+
+		var updateData gjson.Result
+		TestAPI.Update(api.Params{
+			"tenant":  project.TenantUUID,
+			"project": project.UUID,
+			"expectPayload": func(json gjson.Result) {
+				updateData = json
+			},
+		}, nil, updatePayload)
+
+		TestAPI.Read(api.Params{
+			"tenant":  project.TenantUUID,
+			"project": project.UUID,
+			"expectPayload": func(json gjson.Result) {
+				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+			},
+		}, nil)
+	})
+
 	It("can be deleted", func() {
 		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
 
@@ -132,5 +156,40 @@ var _ = Describe("Project", func() {
 			"expectStatus": api.ExpectExactStatus(http.StatusOK),
 		}, nil)
 		Expect(restoreData.Get("project.archiving_timestamp").Int()).To(Equal(int64(0)))
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+			TestAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+			TestAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+			}, nil)
+			updatePayload := fixtures.RandomProjectCreatePayload()
+			updatePayload["tenant_uuid"] = project.TenantUUID
+			updatePayload["resource_version"] = project.Version
+
+			TestAPI.Update(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })

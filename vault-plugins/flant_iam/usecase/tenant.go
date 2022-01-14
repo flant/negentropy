@@ -34,6 +34,10 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	if stored.Origin != s.origin {
 		return consts.ErrBadOrigin
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
+
 	// Validate
 
 	if stored.Version != updated.Version {

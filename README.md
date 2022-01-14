@@ -7,7 +7,7 @@ active development of initial version.
 
 needs:
 
-1) linux or macos system
+1) linux or macos system (only intel processors, for apple_silicone using needs some changes in scripts)
 2) docker
 
 ```shell

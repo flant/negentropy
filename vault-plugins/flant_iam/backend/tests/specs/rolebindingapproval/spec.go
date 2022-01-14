@@ -39,13 +39,14 @@ var _ = Describe("Role binding approval", func() {
 		specs.CreateRoles(RoleAPI, fixtures.Roles()...)
 		tenant = specs.CreateRandomTenant(TenantAPI)
 		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
-		sa = specs.CreateServiceAccount(ServiceAccountAPI, tenant.UUID)
+		sa = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
 		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
 		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
 		roleBindingID = res.Get("role_binding.uuid").String()
 	})
 
-	var createdRB gjson.Result
+	var createdRBA gjson.Result
+	var updatedRBA gjson.Result
 
 	It("can be created", func() {
 		approvers := []map[string]interface{}{
@@ -65,13 +66,10 @@ var _ = Describe("Role binding approval", func() {
 				ap := js.Get("approval")
 				Expect(ap.Get("required_votes").Int()).To(BeEquivalentTo(3))
 				Expect(ap.Get("approvers").Array()).To(HaveLen(3))
-				Expect(ap.Get("approvers").Array()).To(HaveLen(3))
-
 				approversBytes, err := json.Marshal(approvers)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ap.Get("approvers").Array()).To(Equal(gjson.ParseBytes(approversBytes).Array()))
-				println("Hello!")
 			},
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
@@ -79,33 +77,93 @@ var _ = Describe("Role binding approval", func() {
 		}
 
 		createdData := TestAPI.Create(params, url.Values{}, data)
-		createdRB = createdData.Get("approval")
+		createdRBA = createdData.Get("approval")
 	})
 
 	It("can be read", func() {
+		// Created before
 		TestAPI.Read(api.Params{
-			"uuid":         createdRB.Get("uuid").String(),
+			"uuid":         createdRBA.Get("uuid").String(),
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"expectPayload": func(json gjson.Result) {
-				Expect(createdRB).To(Equal(json.Get("approval")))
+				Expect(createdRBA).To(Equal(json.Get("approval")))
 			},
 		}, nil)
 	})
 
+	It("can be updated", func() {
+		// Created before
+		updatePayload := map[string]interface{}{
+			"required_votes": 3,
+			"approvers": []map[string]interface{}{
+				{"type": "service_account", "uuid": sa.UUID},
+				{"type": "group", "uuid": group.UUID},
+			},
+			"resource_version": createdRBA.Get("resource_version").String(),
+		}
+
+		updatedData := TestAPI.Update(api.Params{
+			"tenant":       tenant.UUID,
+			"role_binding": roleBindingID,
+			"uuid":         createdRBA.Get("uuid").String(),
+			"expectPayload": func(js gjson.Result) {
+				ap := js.Get("approval")
+				Expect(ap.Get("required_votes").Int()).To(BeEquivalentTo(3))
+				Expect(ap.Get("approvers").Array()).To(HaveLen(2))
+				approversBytes, err := json.Marshal(updatePayload["approvers"])
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(ap.Get("approvers").Array()).To(Equal(gjson.ParseBytes(approversBytes).Array()))
+			},
+		}, nil, updatePayload)
+		updatedRBA = updatedData.Get("approval")
+	})
+
 	It("can be deleted", func() {
+		// Created before
 		TestAPI.Delete(api.Params{
-			"uuid":         createdRB.Get("uuid").String(),
+			"uuid":         createdRBA.Get("uuid").String(),
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 		}, nil)
 
 		deletedRBData := TestAPI.Read(api.Params{
-			"uuid":         createdRB.Get("uuid").String(),
+			"uuid":         createdRBA.Get("uuid").String(),
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
 			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedRBData.Get("approval.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			// created and deleted before
+			TestAPI.Delete(api.Params{
+				"uuid":         createdRBA.Get("uuid").String(),
+				"tenant":       tenant.UUID,
+				"role_binding": roleBindingID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			// created and deleted before
+			updatePayload := map[string]interface{}{
+				"required_votes": 3,
+				"approvers": []map[string]interface{}{
+					{"type": "group", "uuid": group.UUID},
+				},
+				"resource_version": updatedRBA.Get("resource_version").String(),
+			}
+
+			TestAPI.Update(api.Params{
+				"tenant":       tenant.UUID,
+				"role_binding": roleBindingID,
+				"uuid":         createdRBA.Get("uuid").String(),
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })

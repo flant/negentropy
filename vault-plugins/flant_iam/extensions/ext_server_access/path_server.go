@@ -15,6 +15,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/usecase"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -321,7 +322,9 @@ func (b *serverBackend) handleFingerprintUpdate() framework.OperationFunc {
 			b.Logger().Error("err", err.Error())
 			return backentutils.ResponseErr(req, err)
 		}
-
+		if server.Archived() {
+			return backentutils.ResponseErr(req, consts.ErrIsArchived)
+		}
 		server.Fingerprint = fingerprint
 
 		err = repo.Update(server)
@@ -370,9 +373,6 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("handleUpdate started")
 		defer b.Logger().Debug("handleUpdate exit")
-		tx := b.storage.Txn(true)
-		defer tx.Abort()
-		repo := repo.NewServerRepository(tx)
 
 		var (
 			labels      = make(map[string]string)
@@ -395,7 +395,10 @@ func (b *serverBackend) handleUpdate() framework.OperationFunc {
 			Annotations: annotations,
 		}
 
-		err := repo.Update(server)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		err := usecase.NewServerService(tx).Update(server)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -455,11 +458,11 @@ func (b *serverBackend) handleList() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuids": list,
+				"servers": list,
 			},
 		}
 
-		return resp, nil
+		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }
 

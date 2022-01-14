@@ -12,7 +12,7 @@ func (b *ServiceAccountEndpointBuilder) OneCreate(params Params, query url.Value
 }
 
 func (b *ServiceAccountEndpointBuilder) One(params Params, query url.Values) string {
-	return path.Join("tenant", params["tenant"].(string), "/service_account", params["uuid"].(string)) + "?" + query.Encode()
+	return path.Join("tenant", params["tenant"].(string), "/service_account", params["service_account"].(string)) + "?" + query.Encode()
 }
 
 func (b *ServiceAccountEndpointBuilder) Collection(params Params, query url.Values) string {

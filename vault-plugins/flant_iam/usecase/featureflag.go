@@ -125,7 +125,9 @@ func (s *TenantFeatureFlagService) Delete(featureFlagName string) (*model.Tenant
 	if err != nil {
 		return nil, err
 	}
-
+	if tenant.Archived() {
+		return nil, consts.ErrIsArchived
+	}
 	// TODO remove feature_flag from all nested projects
 	// TODO: deny deleting if role become inaccessible
 
@@ -190,12 +192,13 @@ func (s *ProjectFeatureFlagService) Delete(featureFlagName model.FeatureFlagName
 	if err != nil {
 		return nil, err
 	}
-
 	project, err := s.projectRepo.GetByID(s.projectUUID)
 	if err != nil {
 		return nil, err
 	}
-
+	if project.Archived() {
+		return nil, consts.ErrIsArchived
+	}
 	if project.TenantUUID != s.tenantUUID {
 		return nil, consts.ErrNotFound
 	}

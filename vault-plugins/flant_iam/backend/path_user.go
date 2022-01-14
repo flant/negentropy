@@ -188,7 +188,6 @@ func (b userBackend) paths() []*framework.Path {
 		},
 		// Read, update, delete by uuid
 		{
-
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "$",
 			Fields: map[string]*framework.FieldSchema{
 				"uuid": {

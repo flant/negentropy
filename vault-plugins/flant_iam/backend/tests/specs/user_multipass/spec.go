@@ -109,4 +109,23 @@ var _ = Describe("User Multipass", func() {
 			},
 		}, url.Values{})
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			multipass := specs.CreateRandomUserMultipass(TestAPI, user)
+
+			TestAPI.Delete(api.Params{
+				"tenant":    multipass.TenantUUID,
+				"user":      multipass.OwnerUUID,
+				"multipass": multipass.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       multipass.TenantUUID,
+				"user":         multipass.OwnerUUID,
+				"multipass":    multipass.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+	})
 })

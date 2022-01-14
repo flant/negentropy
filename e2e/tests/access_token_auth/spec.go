@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
@@ -24,7 +23,8 @@ var _ = Describe("Process of running access through access_token", func() {
 	var flantIamSuite flant_iam_preparing.Suite
 	flantIamSuite.BeforeSuite()
 	cfg := flantIamSuite.PrepareForAccessTokenTesting()
-	time.Sleep(time.Second * 5)
+	err := flantIamSuite.WaitPrepareForAccessTokenTesting(cfg, 40)
+	Expect(err).ToNot(HaveOccurred())
 
 	It("fail with invalid token", func() {
 		fakeToken := "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vb2lkYy1tb2NrOjk5OTgiLCJzdWIiOiJzdWJqZWN0XzIwMjEtMTItMTQgMTI6MjM6NDQuMTY0MjgyODQzICswMDAwIFVUQyBtPSsyODYzLjAxMTY2MTY5MyIsImF1ZCI6WyJhdWQ2NjYiXSwianRpIjoiaWQiLCJleHAiOjE2Mzk0ODQ5MjQsImlhdCI6MTYzOTQ4NDYyNCwibmJmIjoxNjM5NDg0NjI0LCJwcml2YXRlX2NsYWltIjoidGVzdCJ9.Mg9U-UciCjqqEeuu6SOKTfs36SpqciHM2ailkyWsVc0oSKxDQObivMPTtV04rD0PIqNe7Dp-2dmr9xqvfX8nFv-_TWthM-lhsknquPW-okM616KZf9lzjI08ZhzT1zksJYAu7Pz0dqSYYvirnu4MU3dPxmG16kzwwmhF13G01Is8s820wEkVgwWzi3FWJvu18cliovGd_5rwd4_hdDwKT3a_mfNEw8e7ZVC-l3irzmOstD56vsnwfOfprtKDUbnlOY9dDBd82gQ0jU7i8iLsQyYAJUrQb-uK0AX22fyIg-MFtj-TXUQF9PJ-3sOR4VrItu6Re65ZCZc0NvVvqbRv5w"

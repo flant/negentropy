@@ -254,7 +254,7 @@ func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, servi
 	return multipass, createData.Get("token").String()
 }
 
-func CreateServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.TenantUUID) model.ServiceAccount {
+func CreateRandomServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.TenantUUID) model.ServiceAccount {
 	createPayload := fixtures.RandomServiceAccountCreatePayload()
 	createPayload["tenant_uuid"] = tenantUUID
 	params := api.Params{

@@ -69,7 +69,9 @@ func (s *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	// Validate
 	if stored.TenantUUID != s.tenantUUID {
 		return consts.ErrNotFound

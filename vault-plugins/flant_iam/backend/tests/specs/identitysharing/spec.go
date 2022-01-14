@@ -27,7 +27,7 @@ var _ = Describe("Identity sharing", func() {
 		group                          model.Group
 	)
 
-	BeforeSuite(func() {
+	BeforeEach(func() {
 		t1 := specs.CreateRandomTenant(TenantAPI)
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)
@@ -69,21 +69,23 @@ var _ = Describe("Identity sharing", func() {
 	})
 
 	It("can be listed", func() {
+		createdISUUID := createIdentitySharing(TestAPI, targetTenantID, group)
 		list := TestAPI.List(api.Params{
 			"tenant": sourceTenantID,
 		}, url.Values{})
 		Expect(list.Get("identity_sharings").Array()).To(HaveLen(1))
-		Expect(list.Get("identity_sharings").Array()[0].Get("uuid").String()).To(BeEquivalentTo(createdData.Get("identity_sharing.uuid").String()))
+		Expect(list.Get("identity_sharings").Array()[0].Get("uuid").String()).To(BeEquivalentTo(createdISUUID))
 	})
 
 	It("can be deleted", func() {
+		createdISUUID := createIdentitySharing(TestAPI, targetTenantID, group)
 		TestAPI.Delete(api.Params{
-			"uuid":   createdData.Get("identity_sharing.uuid").String(),
+			"uuid":   createdISUUID,
 			"tenant": sourceTenantID,
 		}, nil)
 
 		deletedISData := TestAPI.Read(api.Params{
-			"uuid":         createdData.Get("identity_sharing.uuid").String(),
+			"uuid":         createdISUUID,
 			"tenant":       sourceTenantID,
 			"expectStatus": api.ExpectExactStatus(200),
 		}, nil)
@@ -120,4 +122,33 @@ var _ = Describe("Identity sharing", func() {
 		}
 		createdData = TestAPI.CreatePrivileged(params, url.Values{}, data)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			isUUID := createIdentitySharing(TestAPI, targetTenantID, group)
+			TestAPI.Delete(api.Params{
+				"uuid":   isUUID,
+				"tenant": sourceTenantID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"uuid":         isUUID,
+				"tenant":       sourceTenantID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		// NO update path for identity_sharing
+	})
 })
+
+func createIdentitySharing(identitySharingAPI api.TestAPI, targetTenantID string, group model.Group) string {
+	data := map[string]interface{}{
+		"destination_tenant_uuid": targetTenantID,
+		"groups":                  []string{group.UUID},
+	}
+	createdData := identitySharingAPI.Create(api.Params{
+		"tenant": group.TenantUUID,
+	}, url.Values{}, data)
+	return createdData.Get("identity_sharing.uuid").String()
+}
