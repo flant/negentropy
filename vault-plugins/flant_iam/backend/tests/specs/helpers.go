@@ -229,7 +229,7 @@ func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server ext_model.Server
 	return resultServer
 }
 
-// return Mutipass model and JWT
+// CreateServiceAccountMultipass returns Mutipass model and JWT
 func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, serviceAccount model.ServiceAccount, description string,
 	ttl time.Duration, maxTTL time.Duration, roles []model.RoleName) (model.Multipass, string) {
 	createPayload := map[string]interface{}{
@@ -267,4 +267,28 @@ func CreateRandomServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.
 	err := json.Unmarshal(data, &serviceAccount)
 	Expect(err).ToNot(HaveOccurred())
 	return serviceAccount
+}
+
+// CreateServiceAccountPassword returns ServiceAccountPassword model
+func CreateServiceAccountPassword(serviceAccountPasswordAPI api.TestAPI, serviceAccount model.ServiceAccount, description string,
+	ttl time.Duration, roles []model.RoleName) model.ServiceAccountPassword {
+	createPayload := map[string]interface{}{
+		"tenant_uuid": serviceAccount.TenantUUID,
+		"owner_uuid":  serviceAccount.UUID,
+		"description": description,
+		// "allowed_cidrs":"",
+		"allowed_roles": roles,
+		"ttl":           ttl,
+	}
+	params := api.Params{
+		"tenant":          serviceAccount.TenantUUID,
+		"service_account": serviceAccount.UUID,
+	}
+	createData := serviceAccountPasswordAPI.Create(params, url.Values{}, createPayload)
+	rawPass := createData.Get("password")
+	data := []byte(rawPass.String())
+	var password model.ServiceAccountPassword
+	err := json.Unmarshal(data, &password)
+	Expect(err).ToNot(HaveOccurred())
+	return password
 }

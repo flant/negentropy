@@ -110,7 +110,7 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", uuid))
 		var sa *iam.ServiceAccount
 		sa, err = a.SaRepo.GetByID(uuid)
-		if (err != nil && errors.Is(err, consts.ErrNotFound)) || sa.Archived() {
+		if errors.Is(err, consts.ErrNotFound) || sa.Archived() {
 			return nil, "", fmt.Errorf("not found active iam entity %s", uuid)
 		}
 		if err != nil {

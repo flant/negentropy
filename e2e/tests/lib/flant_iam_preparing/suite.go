@@ -28,15 +28,17 @@ type Suite struct {
 }
 
 type CheckingEnvironment struct {
-	Tenant               model.Tenant
-	User                 model.User
-	Project              model.Project
-	Group                model.Group
-	Rolebinding          model.RoleBinding
-	TestServer           specs.ServerRegistrationResult
-	UserJWToken          string
-	ServerLabels         map[string]string
-	TestServerIdentifier string
+	Tenant                 model.Tenant
+	User                   model.User
+	ServiceAccount         model.ServiceAccount
+	ServiceAccountPassword model.ServiceAccountPassword
+	Project                model.Project
+	Group                  model.Group
+	Rolebinding            model.RoleBinding
+	TestServer             specs.ServerRegistrationResult
+	UserJWToken            string
+	ServerLabels           map[string]string
+	TestServerIdentifier   string
 }
 
 func (st *Suite) BeforeSuite() {
@@ -47,11 +49,21 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
-func (st *Suite) PrepareForAccessTokenTesting() CheckingEnvironment {
+func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	var result CheckingEnvironment
 	// create some tenant
 	result.Tenant = specs.CreateRandomTenant(lib.NewTenantAPI(st.IamVaultClient))
 	fmt.Printf("Created tenant:%#v\n", result.Tenant)
+	// create some SA at the tenant for server registration
+	result.ServiceAccount = specs.CreateRandomServiceAccount(lib.NewServiceAccountAPI(st.IamVaultClient), result.Tenant.UUID)
+	fmt.Printf("Created serviceAccount:%#v\n", result.ServiceAccount)
+	// create  SA password for SA login
+	result.ServiceAccountPassword = specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(st.IamVaultClient),
+		result.ServiceAccount, "test", 100*time.Second, []string{"register_server"})
+	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
+	// create some project
+	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
+	fmt.Printf("Created project:%#v\n", result.Project)
 	// create some user at the tenant
 	result.User = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.Tenant.UUID)
 	fmt.Printf("Created user:%#v\n", result.User)
@@ -65,11 +77,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 		serverRole           = "servers"
 	)
 
-	result := st.PrepareForAccessTokenTesting()
-
-	// create some project
-	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
-	fmt.Printf("Created project:%#v\n", result.Project)
+	result := st.PrepareForLoginTesting()
 
 	// create a group with the user
 	result.Group = specs.CreateRandomGroupWithUser(lib.NewGroupAPI(st.IamVaultClient), result.User.TenantUUID, result.User.UUID)
@@ -153,7 +161,7 @@ func (st Suite) WaitPrepareForSSHTesting(cfg CheckingEnvironment, maxAttempts in
 	return repeat(f, maxAttempts)
 }
 
-func (st Suite) WaitPrepareForAccessTokenTesting(cfg CheckingEnvironment, maxAttempts int) error {
+func (st Suite) WaitPrepareForLoginTesting(cfg CheckingEnvironment, maxAttempts int) error {
 	_, multipassJWT := specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
 		cfg.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
 	f := func() error { return tryLoginByMultipassJWTToAuthVault(multipassJWT) }
