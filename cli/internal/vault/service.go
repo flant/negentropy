@@ -3,6 +3,10 @@ package vault
 import (
 	"fmt"
 
+	"github.com/flant/negentropy/cli/pkg"
+
+	"github.com/flant/negentropy/authd"
+	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/model"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -23,11 +27,33 @@ type VaultService interface {
 }
 
 type vaultService struct {
-	vaultSession VaultSession
+	cl pkg.VaultClient
+}
+
+func NewService() VaultService {
+	authdClient := authd.NewAuthdClient("/run/authd.sock")
+
+	req := authdapi.NewLoginRequest().
+		WithRoles(authdapi.NewRoleWithClaim("*", "")).
+		WithServerType(authdapi.AuthServer)
+
+	err := authdClient.OpenVaultSession(req)
+	if err != nil {
+		panic(err)
+	}
+
+	vaultClient, err := authdClient.NewVaultClient()
+	if err != nil {
+		panic(err)
+	}
+
+	return vaultService{
+		cl: pkg.VaultClient{Client: vaultClient},
+	}
 }
 
 func (v vaultService) GetUser() (*auth.User, error) {
-	return v.vaultSession.GetUser()
+	return v.cl.GetUser()
 }
 
 // UpdateServersByFilter use oldServerList as cache and filter for returning synchronized with vault ServerList
@@ -52,11 +78,7 @@ func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, oldServer
 }
 
 func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) ([]byte, error) {
-	return v.vaultSession.SignPublicSSHCertificate(req)
-}
-
-func NewService() VaultService {
-	return vaultService{NewVaultSession()}
+	return v.cl.SignPublicSSHCertificate(req)
 }
 
 func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
@@ -78,7 +100,7 @@ func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilt
 		break // the only one uuid should be presented
 	}
 
-	servers, err := v.vaultSession.GetServersByTenantAndProject(tenantUUID, projectUUID,
+	servers, err := v.cl.GetServersByTenantAndProject(tenantUUID, projectUUID,
 		filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenantAndProject, collecting servers: %w", err)
@@ -124,7 +146,7 @@ func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldSer
 		return nil, fmt.Errorf("updateServerListByTenant, collecting project: %w", err)
 	}
 
-	servers, err := v.vaultSession.GetSafeServersByTenant(tenantUUID, filter.ServerIdentifiers, filter.LabelSelector)
+	servers, err := v.cl.GetSafeServersByTenant(tenantUUID, filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenant, collecting servers: %w", err)
 	}
@@ -155,7 +177,7 @@ func (v vaultService) updateServerListByProject(filter model.ServerFilter, oldSe
 		break // the only one project should be presented
 	}
 
-	servers, err := v.vaultSession.GetServersByTenantAndProject(project.TenantUUID, project.UUID,
+	servers, err := v.cl.GetServersByTenantAndProject(project.TenantUUID, project.UUID,
 		filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByProject, collecting servers: %w", err)
@@ -180,7 +202,7 @@ func (v vaultService) updateServerList(filter model.ServerFilter, oldServerlist 
 	if err != nil {
 		return nil, fmt.Errorf("updateServerList, collecting project: %w", err)
 	}
-	servers, err := v.vaultSession.GetSafeServers(filter.ServerIdentifiers, filter.LabelSelector)
+	servers, err := v.cl.GetSafeServers(filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerList, collecting servers: %w", err)
 	}
@@ -202,7 +224,7 @@ func (v vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ext
 	for _, safeServer := range newServers {
 		if oldS, ok := oldServers[safeServer.UUID]; !ok || oldS.Version != safeServer.Version ||
 			oldS.ConnectionInfo.Hostname == "" || oldS.ConnectionInfo.Port == "" {
-			servers, err := v.vaultSession.GetServersByTenantAndProject(safeServer.TenantUUID, safeServer.ProjectUUID,
+			servers, err := v.cl.GetServersByTenantAndProject(safeServer.TenantUUID, safeServer.ProjectUUID,
 				filter.ServerIdentifiers, filter.LabelSelector)
 			if err != nil {
 				return nil, fmt.Errorf("synchronizeSensitiveData, collecting servers with sensitive data: %w", err)
@@ -222,7 +244,7 @@ func (v vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ext
 func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 	tenantIdentifiers model.StringSet) (map[iam.TenantUUID]iam.Tenant, error) {
 	result := map[iam.TenantUUID]iam.Tenant{}
-	tenants, err := v.vaultSession.getTenants()
+	tenants, err := v.cl.GetTenants()
 	if err != nil {
 		return nil, fmt.Errorf("UpdateTenants: %w", err)
 	}
@@ -231,7 +253,7 @@ func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 
 		if oldTenant, ok := oldTenants[t.UUID]; !ok ||
 			oldTenant.Version != t.Version {
-			tmp, err := v.vaultSession.getTenantByUUID(t.UUID)
+			tmp, err := v.cl.GetTenantByUUID(t.UUID)
 			if err != nil {
 				return nil, fmt.Errorf("UpdateTenants: %w", err)
 			}
@@ -252,7 +274,7 @@ func (v vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project
 	result := map[iam.ProjectUUID]iam.Project{}
 	var projects []auth.SafeProject
 	for tenantUUID := range tenants {
-		ps, err := v.vaultSession.getProjects(tenantUUID)
+		ps, err := v.cl.GetProjects(tenantUUID)
 		if err != nil {
 			return nil, fmt.Errorf("UpdateProjects: %w", err)
 		}
@@ -264,7 +286,7 @@ func (v vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project
 
 		if oldProject, ok := oldProjects[p.UUID]; !ok ||
 			oldProject.Version != p.Version {
-			tmp, err := v.vaultSession.getProjectByUUIDs(p.TenantUUID, p.UUID)
+			tmp, err := v.cl.GetProjectByUUIDs(p.TenantUUID, p.UUID)
 			if err != nil {
 				return nil, fmt.Errorf("UpdateProjects: %w", err)
 			}

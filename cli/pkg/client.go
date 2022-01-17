@@ -1,4 +1,4 @@
-package vault
+package pkg
 
 import (
 	"bytes"
@@ -9,8 +9,6 @@ import (
 
 	vault_api "github.com/hashicorp/vault/api"
 
-	"github.com/flant/negentropy/authd"
-	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/model"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -19,50 +17,31 @@ import (
 )
 
 // wrap requests to vault
-type VaultSession struct {
-	Client *vault_api.Client
+type VaultClient struct {
+	*vault_api.Client // authorized client
 }
 
-func NewVaultSession() VaultSession {
-	authdClient := authd.NewAuthdClient("/run/authd.sock")
-
-	req := authdapi.NewLoginRequest().
-		WithRoles(authdapi.NewRoleWithClaim("*", "")).
-		WithServerType(authdapi.AuthServer)
-
-	err := authdClient.OpenVaultSession(req)
-	if err != nil {
-		panic(err)
-	}
-
-	vaultClient, err := authdClient.NewVaultClient()
-	if err != nil {
-		panic(err)
-	}
-
-	return VaultSession{
-		Client: vaultClient,
-	}
-}
-
-func (vs *VaultSession) makeRequest(method, requestPath string, params url.Values) ([]byte, error) {
-	req := vs.Client.NewRequest(method, requestPath)
+func (vs VaultClient) makeRequest(method, requestPath string, params url.Values) ([]byte, error) {
+	req := vs.NewRequest(method, requestPath)
 	if params != nil {
 		req.Params = params
 	}
 	resp, err := vs.Client.RawRequest(req)
-	defer resp.Body.Close()
-
+	defer resp.Body.Close() // nolint:errcheck
 	if err != nil {
 		return nil, err
 	}
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	return buf.Bytes(), nil
 }
 
-func (vs *VaultSession) getTenants() ([]iam.Tenant, error) {
+func (vs *VaultClient) GetTenants() ([]iam.Tenant, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil)
 	if err != nil {
 		return nil, err
@@ -79,7 +58,7 @@ func (vs *VaultSession) getTenants() ([]iam.Tenant, error) {
 	return vaultTenantsResponse.Data.Tenants, nil
 }
 
-func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) {
+func (vs *VaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) {
 	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil)
 	if err != nil {
@@ -99,41 +78,19 @@ func (vs *VaultSession) getProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProje
 }
 
 // GetServersByTenantAndProject returns server full info
-func (vs *VaultSession) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+func (vs *VaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
 	serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
 
 	requestPath := fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/query_server", tenantUUID, projectUUID)
 
 	servers, err := vs.getServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
-		return nil, fmt.Errorf("VaultSession.GetServersByTenantAndProject: %w", err)
+		return nil, fmt.Errorf("VaultClient.GetServersByTenantAndProject: %w", err)
 	}
 	return servers, nil
 }
 
-//func (vs *VaultSession) GetServerToken(server ext.Server) (string, error) {
-//	vaultServerTokenResponseBytes, err := vs.makeRequest("GET",
-//		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s",
-//			server.TenantUUID, server.ProjectUUID, server.UUID), nil)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	var vaultServerTokenResponse struct {
-//		Data struct {
-//			Token string `json:"token"`
-//		} `json:"data"`
-//	}
-//
-//	err = json.Unmarshal(vaultServerTokenResponseBytes, &vaultServerTokenResponse)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	return vaultServerTokenResponse.Data.Token, nil
-//}
-
-func (vs *VaultSession) GetUser() (*auth.User, error) {
+func (vs *VaultClient) GetUser() (*auth.User, error) {
 	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner", nil)
 	if err != nil {
 		return nil, fmt.Errorf("get_user:%w", err)
@@ -151,7 +108,7 @@ func (vs *VaultSession) GetUser() (*auth.User, error) {
 	return &vaultUserMultipasOwnerResponse.Data.User, nil
 }
 
-func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) ([]byte, error) {
+func (vs *VaultClient) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) ([]byte, error) {
 	var reqMap map[string]interface{}
 	data, _ := json.Marshal(vaultReq)
 	err := json.Unmarshal(data, &reqMap)
@@ -167,28 +124,28 @@ func (vs *VaultSession) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequ
 	return []byte(secret.Data["signed_key"].(string)), nil
 }
 
-func (vs *VaultSession) GetSafeServersByTenant(tenantUUID iam.TenantUUID,
+func (vs *VaultClient) GetSafeServersByTenant(tenantUUID iam.TenantUUID,
 	serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
 	requestPath := fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/query_server", tenantUUID)
 
 	servers, err := vs.getSafeServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
-		return nil, fmt.Errorf("VaultSession.GetServersByTenant: %w", err)
+		return nil, fmt.Errorf("VaultClient.GetServersByTenant: %w", err)
 	}
 	return servers, nil
 }
 
-func (vs *VaultSession) GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+func (vs *VaultClient) GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
 	requestPath := "/v1/auth/flant_iam_auth/query_server"
 	servers, err := vs.getSafeServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
-		return nil, fmt.Errorf("VaultSession.GetServers: %w", err)
+		return nil, fmt.Errorf("VaultClient.GetServers: %w", err)
 	}
 	return servers, nil
 }
 
 // getServers get servers by path, adding params to request
-func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
+func (vs *VaultClient) getServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
 	var vaultServersResponse struct {
 		Data struct {
 			Servers []ext.Server `json:"servers"`
@@ -197,7 +154,7 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 
 	err := vs.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
 	if err != nil {
-		return nil, fmt.Errorf("VaultSession.getServers: %w", err)
+		return nil, fmt.Errorf("VaultClient.getServers: %w", err)
 	}
 
 	servers := vaultServersResponse.Data.Servers
@@ -206,7 +163,7 @@ func (vs *VaultSession) getServers(requestPath string, serverIdentifiers []strin
 }
 
 // queryServers query vault by given path and args, and parse result into given vaultServersResponsePtr
-func (vs *VaultSession) queryServers(requestPath string, serverIdentifiers []string, labelSelector string,
+func (vs *VaultClient) queryServers(requestPath string, serverIdentifiers []string, labelSelector string,
 	vaultServersResponsePtr interface{}) error {
 	if len(serverIdentifiers) > 0 && labelSelector != "" {
 		return fmt.Errorf("queryServers: only serverIdentifiers or labelSelector must be set")
@@ -221,18 +178,18 @@ func (vs *VaultSession) queryServers(requestPath string, serverIdentifiers []str
 
 	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params)
 	if err != nil {
-		return fmt.Errorf("VaultSession.queryServers: %w", err)
+		return fmt.Errorf("VaultClient.queryServers: %w", err)
 	}
 
 	err = json.Unmarshal(vaultServersResponseBytes, vaultServersResponsePtr)
 	if err != nil {
-		return fmt.Errorf("VaultSession.queryServers: %w", err)
+		return fmt.Errorf("VaultClient.queryServers: %w", err)
 	}
 	return nil
 }
 
 // getServers get servers by path, adding params to request, returns SafeServer
-func (vs *VaultSession) getSafeServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+func (vs *VaultClient) getSafeServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
 	var vaultServersResponse struct {
 		Data struct {
 			Servers []auth_ext.SafeServer `json:"servers"`
@@ -241,7 +198,7 @@ func (vs *VaultSession) getSafeServers(requestPath string, serverIdentifiers []s
 
 	err := vs.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
 	if err != nil {
-		return nil, fmt.Errorf("VaultSession.getServers: %w", err)
+		return nil, fmt.Errorf("VaultClient.getServers: %w", err)
 	}
 
 	servers := vaultServersResponse.Data.Servers
@@ -249,7 +206,7 @@ func (vs *VaultSession) getSafeServers(requestPath string, serverIdentifiers []s
 	return servers, nil
 }
 
-func (vs *VaultSession) getTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
+func (vs *VaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getTenantByUUID: %w", err)
@@ -266,7 +223,7 @@ func (vs *VaultSession) getTenantByUUID(tenantUUID string) (*iam.Tenant, error) 
 	return &vaultTenantResponse.Data.Tenant, nil
 }
 
-func (vs *VaultSession) getProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
+func (vs *VaultClient) GetProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
 		"/project/"+projectUUID, nil)
 	if err != nil {
