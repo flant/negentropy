@@ -18,10 +18,10 @@ resource "google_compute_address" "main" {
 
 resource "google_dns_record_set" "main" {
   for_each = { for z in google_compute_address.main : z.name => z }
-  name         = join(".", [substr(each.value.name, -5, -1), "auth.flant-sandbox.flant.com."])
+  name         = join(".", [substr(each.value.name, -5, -1), "auth.negentropy.dev.flant.com."])
   type         = "A"
   ttl          = 300
-  managed_zone = "flant-sandbox"
+  managed_zone = "negentropy"
   rrdatas      = [each.value.address]
 }
 
@@ -136,12 +136,26 @@ resource "google_compute_firewall" "main" {
   target_tags = each.value.tags
 }
 
-#resource "google_dns_record_set" "ptr" {
-#  depends_on   = [google_compute_instance.main]
-#  for_each     = { for i in local.instances : i.name => i }
-#  name         = join(".", [each.value.private_ptr, "10.in-addr-arpa."])
-#  type         = "PTR"
-#  ttl          = 300
-#  managed_zone = "ptr"
-#  rrdatas      = join(".", [regex("[^\\/]*$", google_compute_instance.main[*].id), "negentropy.flant.local"])
-#}
+resource "google_dns_record_set" "kafka" {
+  for_each = {
+    for i in local.instances : i.name => i
+    if i.image_family == "kafka"
+  }
+  name = join(".", [each.value.name, "negentropy.flant.local."])
+  type = "A"
+  ttl = 300
+  managed_zone = "negentropy-flant-local"
+  rrdatas = [each.value.private_static_ip]
+}
+
+resource "google_dns_record_set" "kafka-ptr" {
+  for_each = {
+    for i in local.instances : i.name => i
+    if i.image_family == "kafka"
+  }
+  name = join(".", [each.value.private_ptr, "in-addr.arpa."])
+  type         = "PTR"
+  ttl          = 300
+  managed_zone = "ptr"
+  rrdatas = [join(".", [each.value.name, "negentropy.flant.local."])]
+}

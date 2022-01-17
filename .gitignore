@@ -25,6 +25,7 @@ infra/**/output
 .terraform.lock.hcl
 env_vars
 variables.pkrvars.hcl
+credentials.json
 
 # Plugins
 vault-plugins/build/
