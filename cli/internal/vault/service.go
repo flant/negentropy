@@ -272,7 +272,7 @@ func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 func (v vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project, tenants map[iam.TenantUUID]iam.Tenant,
 	projectIdentifiers model.StringSet) (map[iam.ProjectUUID]iam.Project, error) {
 	result := map[iam.ProjectUUID]iam.Project{}
-	var projects []auth.SafeProject
+	var projects []auth.Project
 	for tenantUUID := range tenants {
 		ps, err := v.cl.GetProjects(tenantUUID)
 		if err != nil {

@@ -27,7 +27,6 @@ var _ = BeforeSuite(func() {
 		err := flantIamSuite.WaitPrepareForSSHTesting(cfg, 40)
 		Expect(err).ToNot(HaveOccurred())
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
-
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
 	})
 }, 1.0)
@@ -43,7 +42,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 
 				runningCliCmd := buildCliCmd(cfg)
 				sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
-					cfg.TestServerIdentifier)
+					cfg.TestServer.Identifier)
 				testFilePath := fmt.Sprintf("/home/%s/test%d.txt", cfg.User.Identifier, testCounter)
 				touchCommand := "touch " + testFilePath
 				fmt.Printf("\n%s\n", runningCliCmd)
@@ -81,7 +80,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Entry("[--all-tenants --all-projects -l system=ubuntu20]",
 				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					var labelSelector string
-					for k, v := range cfg.ServerLabels {
+					for k, v := range cfg.TestServer.Labels {
 						labelSelector = k + "=" + v
 						break // just one pair
 					}
@@ -90,7 +89,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 			Entry("[--all-tenants -p XXX  test-server]",
 				func(cfg flant_iam_preparing.CheckingEnvironment) string {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh --all-tenants -p %s %s\n", cfg.Project.Identifier,
-						cfg.TestServerIdentifier)
+						cfg.TestServer.Identifier)
 				}),
 			Entry(" [-t XXX -p YYY]",
 				func(cfg flant_iam_preparing.CheckingEnvironment) string {

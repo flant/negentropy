@@ -115,7 +115,7 @@ var _ = Describe("Process of running cli get", func() {
 
 				Expect(tmp).To(ContainSubstring("output flag="))
 				Expect(tmp).To(ContainSubstring("servers:"))
-				Expect(tmp).To(ContainSubstring(cfg.Tenant.Identifier + "." + cfg.TestServerIdentifier))
+				Expect(tmp).To(ContainSubstring(cfg.Tenant.Identifier + "." + cfg.TestServer.Identifier))
 			},
 			Entry("/opt/cli/bin/cli get server --all-tenants",
 				func(Cfg) string {
@@ -129,12 +129,12 @@ var _ = Describe("Process of running cli get", func() {
 
 			Entry("/opt/cli/bin/cli -t 1tv -p main get server db-1",
 				func(cfg Cfg) string {
-					return fmt.Sprintf("/opt/cli/bin/cli -t %s -p %s get server %s \n", cfg.Tenant.Identifier, cfg.Project.Identifier, cfg.TestServerIdentifier)
+					return fmt.Sprintf("/opt/cli/bin/cli -t %s -p %s get server %s \n", cfg.Tenant.Identifier, cfg.Project.Identifier, cfg.TestServer.Identifier)
 				}),
 
 			Entry("/opt/cli/bin/cli -t 1tv -p main get server db-1 db-2",
 				func(cfg Cfg) string {
-					return fmt.Sprintf("/opt/cli/bin/cli -t %s -p %s get server %s FAKE_SERVER_ID \n", cfg.Tenant.Identifier, cfg.Project.Identifier, cfg.TestServerIdentifier)
+					return fmt.Sprintf("/opt/cli/bin/cli -t %s -p %s get server %s FAKE_SERVER_ID \n", cfg.Tenant.Identifier, cfg.Project.Identifier, cfg.TestServer.Identifier)
 				}),
 
 			Entry("/opt/cli/bin/cli -t 1tv -p main get server -l XXX",
@@ -177,7 +177,7 @@ func writeLogToFile(output []string, logFilePath string) {
 
 func labelSelector(cfg Cfg) string {
 	var result string
-	for k, v := range cfg.ServerLabels {
+	for k, v := range cfg.TestServer.Labels {
 		result = k + "=" + v
 		break // just one pair
 	}

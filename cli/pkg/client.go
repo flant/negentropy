@@ -14,6 +14,7 @@ import (
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	auth_ext "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 // wrap requests to vault
@@ -21,10 +22,13 @@ type VaultClient struct {
 	*vault_api.Client // authorized client
 }
 
-func (vs VaultClient) makeRequest(method, requestPath string, params url.Values) ([]byte, error) {
+func (vs VaultClient) makeRequest(method, requestPath string, params url.Values, bodyBytes []byte) ([]byte, error) {
 	req := vs.NewRequest(method, requestPath)
 	if params != nil {
 		req.Params = params
+	}
+	if len(bodyBytes) > 0 {
+		req.BodyBytes = bodyBytes
 	}
 	resp, err := vs.Client.RawRequest(req)
 	defer resp.Body.Close() // nolint:errcheck
@@ -42,7 +46,7 @@ func (vs VaultClient) makeRequest(method, requestPath string, params url.Values)
 }
 
 func (vs *VaultClient) GetTenants() ([]iam.Tenant, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil)
+	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -58,15 +62,15 @@ func (vs *VaultClient) GetTenants() ([]iam.Tenant, error) {
 	return vaultTenantsResponse.Data.Tenants, nil
 }
 
-func (vs *VaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.SafeProject, error) {
+func (vs *VaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.Project, error) {
 	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
-		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil)
+		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjects: %w", err)
 	}
 	var vaultProjectsResponse struct {
 		Data struct {
-			Projects []auth.SafeProject `json:"projects"`
+			Projects []auth.Project `json:"projects"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(vaultProjectsResponseBytes, &vaultProjectsResponse)
@@ -91,7 +95,7 @@ func (vs *VaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, p
 }
 
 func (vs *VaultClient) GetUser() (*auth.User, error) {
-	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner", nil)
+	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get_user:%w", err)
 	}
@@ -176,7 +180,7 @@ func (vs *VaultClient) queryServers(requestPath string, serverIdentifiers []stri
 		params = url.Values{"labelSelector": []string{labelSelector}}
 	}
 
-	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params)
+	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params, nil)
 	if err != nil {
 		return fmt.Errorf("VaultClient.queryServers: %w", err)
 	}
@@ -207,7 +211,7 @@ func (vs *VaultClient) getSafeServers(requestPath string, serverIdentifiers []st
 }
 
 func (vs *VaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil)
+	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getTenantByUUID: %w", err)
 	}
@@ -225,7 +229,7 @@ func (vs *VaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
 
 func (vs *VaultClient) GetProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
 	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
-		"/project/"+projectUUID, nil)
+		"/project/"+projectUUID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
 	}
@@ -239,4 +243,101 @@ func (vs *VaultClient) GetProjectByUUIDs(tenantUUID string, projectUUID string) 
 		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
 	}
 	return &vaultProjectResponse.Data.Project, nil
+}
+
+func (vs *VaultClient) GetTenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error) {
+	tenants, err := vs.GetTenants()
+	if err != nil {
+		return nil, err
+	}
+	var tenant *iam.Tenant
+	for _, t := range tenants {
+		if t.Identifier == tenantIdentifier {
+			tenant = &t
+			break
+		}
+	}
+	if tenant == nil {
+		return nil, fmt.Errorf("tenant:%w", consts.ErrNotFound)
+	}
+	return tenant, nil
+}
+
+func (vs *VaultClient) GetProjectByIdentifier(tenantUUID iam.TenantUUID, projectIdentifier string) (*auth.Project, error) {
+	projects, err := vs.GetProjects(tenantUUID)
+	if err != nil {
+		return nil, err
+	}
+	var project *auth.Project
+	for _, p := range projects {
+		if p.Identifier == projectIdentifier {
+			project = &p
+			break
+		}
+	}
+	if project == nil {
+		return nil, fmt.Errorf("project:%w", consts.ErrNotFound)
+	}
+	return project, nil
+}
+
+func (vs *VaultClient) RegisterServer(server ext.Server) (ext.ServerUUID, iam.MultipassJWT, error) {
+	path := fmt.Sprintf("/v1/flant_iam/tenant/%s/project/%s/register_server", server.TenantUUID, server.ProjectUUID)
+	data := map[string]interface{}{
+		"identifier":  server.Identifier,
+		"labels":      server.Labels,
+		"annotations": server.Annotations,
+	}
+	bodyBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", "", err
+	}
+	vaultRegisterServerResponseBytes, err := vs.makeRequest("POST", path, nil, bodyBytes)
+	if err != nil {
+		return "", "", err
+	}
+
+	var vaultRegisterServerResponse struct {
+		Data struct {
+			MultipassJWT string `json:"multipassJWT"`
+			ServerUUID   string `json:"uuid"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(vaultRegisterServerResponseBytes, &vaultRegisterServerResponse)
+	if err != nil {
+		return "", "", fmt.Errorf("RegisterServer: %w", err)
+	}
+
+	return vaultRegisterServerResponse.Data.ServerUUID, vaultRegisterServerResponse.Data.MultipassJWT, nil
+}
+
+func (vs *VaultClient) UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+	serverUUID ext.ServerUUID, connInfo ext.ConnectionInfo) (*ext.Server, error) {
+	path := fmt.Sprintf("/v1/flant_iam/tenant/%s/project/%s/server/%s/connection_info", tenantUUID, projectUUID, serverUUID)
+	data := map[string]interface{}{
+		"hostname":      connInfo.Hostname,
+		"port":          connInfo.Port,
+		"jump_hostname": connInfo.JumpHostname,
+		"jump_port":     connInfo.JumpPort,
+	}
+	bodyBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	updateServerConnectionInfoBytes, err := vs.makeRequest("POST", path, nil, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var updateServerConnectionInfoResponse struct {
+		Data struct {
+			Server ext.Server `json:"server"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(updateServerConnectionInfoBytes, &updateServerConnectionInfoResponse)
+	if err != nil {
+		return nil, fmt.Errorf("RegisterServer: %w", err)
+	}
+
+	return &(updateServerConnectionInfoResponse.Data.Server), nil
 }

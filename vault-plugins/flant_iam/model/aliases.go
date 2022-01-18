@@ -16,4 +16,5 @@ type (
 	ReplicaName                = string
 	OwnerUUID                  = string
 	UnixTime                   = int64
+	MultipassJWT               = string
 )

@@ -107,7 +107,7 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.writeFileToContainer(s.TestServerContainer,
-		"/opt/authd/server-jwt", cfg.TestServer.MultipassJWT)
+		"/opt/authd/server-jwt", cfg.TestServerServiceAccountMultipassJWT)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	s.ExecuteCommandAtContainer(s.TestServerContainer,
@@ -128,7 +128,7 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 
 	acccesdCFG := fmt.Sprintf("tenant: %s\n", cfg.Tenant.UUID) +
 		fmt.Sprintf("project: %s\n", cfg.Project.UUID) +
-		fmt.Sprintf("server: %s\n", cfg.TestServer.ServerUUID) +
+		fmt.Sprintf("server: %s\n", cfg.TestServer.UUID) +
 		"database: /opt/serveraccessd/server-accessd.db\n" +
 		"authdSocketPath: /run/sock1.sock"
 
@@ -146,7 +146,7 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	contentAuthKeysFile := s.ExecuteCommandAtContainer(s.TestServerContainer,
 		[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
 	Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
-	principal := calculatePrincipal(cfg.TestServer.ServerUUID, cfg.User.UUID)
+	principal := calculatePrincipal(cfg.TestServer.UUID, cfg.User.UUID)
 	Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\""+principal+"\" ssh-rsa.{373}"),
 		"content should be specific")
 }
@@ -184,7 +184,7 @@ func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.writeFileToContainer(s.TestClientContainer,
-		"/opt/authd/client-jwt", cfg.UserJWToken)
+		"/opt/authd/client-jwt", cfg.UserMultipassJWT)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	s.ExecuteCommandAtContainer(s.TestClientContainer,

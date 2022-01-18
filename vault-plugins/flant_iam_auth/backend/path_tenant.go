@@ -121,7 +121,7 @@ func (b *flantIamAuthBackend) listProjects(ctx context.Context, req *logical.Req
 			http.StatusInternalServerError)
 	}
 
-	projects, err := usecase.ListAvailableSafeProjects(txn, tenantID, acceptedProjects)
+	projects, err := usecase.ListAvailableProjects(txn, tenantID, acceptedProjects)
 	if err != nil {
 		return backentutils.ResponseErrMessage(req, fmt.Sprintf("collect projects: %s", err.Error()), http.StatusInternalServerError)
 	}

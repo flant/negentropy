@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/vault/api"
@@ -17,7 +16,7 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 )
 
-var rootVaultAddr string = os.Getenv("ROOT_VAULT_URL")
+var rootVaultAddr = lib.GetRootVaultUrl()
 
 var _ = Describe("Process of getting access through:", func() {
 	var flantIamSuite flant_iam_preparing.Suite
