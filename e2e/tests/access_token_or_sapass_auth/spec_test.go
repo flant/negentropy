@@ -1,4 +1,4 @@
-package access_token_auth
+package access_token_or_sapass_auth
 
 import (
 	"testing"

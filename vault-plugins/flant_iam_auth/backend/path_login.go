@@ -24,6 +24,7 @@ func pathLogin(b *flantIamAuthBackend) *framework.Path {
 			"method": {
 				Type:        framework.TypeLowerCaseString,
 				Description: "The auth method.",
+				Required:    true,
 			},
 
 			"jwt": {

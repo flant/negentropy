@@ -1,8 +1,8 @@
-import datetime
 import time
 from json import dumps
 from typing import List
 
+import datetime
 import hvac
 import requests
 from hvac import exceptions
@@ -238,6 +238,18 @@ class Vault:
                     "token_policies": ["rotate_multipass", "token_renew"],
                     "token_no_default_policy": True,
                     "method_type": "multipass_jwt"
+                }))
+
+    def activate_auth_service_account_pass(self):
+        if FLANT_IAM_AUTH in self.plugin_names:
+            print("writing auth/flant_iam_auth/auth_method/sapassword")
+            check_response(
+                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/sapassword", json={
+                    "token_ttl": "30m",
+                    "token_max_ttl": "1440m",
+                    "token_policies": ["list_tenants", "token_renew"],
+                    "token_no_default_policy": True,
+                    "method_type": "service_account_password"
                 }))
 
     def configure_ssh_ca(self, vault_names: List[str]):

@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	MultipassSourceUUID = "4554696c-e53b-11eb-bf72-a7d3a66da383"
-	MultipassSourceName = "_internal_multipass"
+	MultipassSourceUUID          = "4554696c-e53b-11eb-bf72-a7d3a66da383"
+	MultipassSourceName          = "_internal_multipass"
+	ServiceAccountPassSourceUUID = "be4ef289-fe1a-4d91-ad7b-a33c0d792102"
+	ServiceAccountPassSourceName = "_internal_service_account_pass"
 )
 
 func GetMultipassSource() *AuthSource {
@@ -27,6 +29,15 @@ func GetMultipassSourceForLogin(jwtConf *flantjwt.Config, keys []crypto.PublicKe
 	source := GetMultipassSource()
 	source.ParsedJWTPubKeys = keys
 	source.BoundIssuer = jwtConf.Issuer
-
 	return source
+}
+
+func GetServiceAccountPassSource() *AuthSource {
+	return &AuthSource{
+		UUID:                 ServiceAccountPassSourceUUID,
+		Name:                 ServiceAccountPassSourceName,
+		EntityAliasName:      EntityAliasNameFullIdentifier,
+		AllowServiceAccounts: true,
+		OnlyServiceAccounts:  true,
+	}
 }

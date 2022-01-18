@@ -16,6 +16,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/accesstoken"
 	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	multipass2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/multipass"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/serviceaccountpass"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	njwt "github.com/flant/negentropy/vault-plugins/shared/jwt"
@@ -54,6 +55,9 @@ func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *mod
 
 	case model.MethodTypeAccessToken:
 		return f.jwt(ctx, method, txn)
+
+	case model.MethodTypeSAPassword:
+		return f.serviceAccountPass(ctx, method, txn)
 	}
 
 	f.logger.Warn(fmt.Sprintf("unsupported auth method %s", method.MethodType))
@@ -194,4 +198,13 @@ func (f *AuthenticatorFactory) jwtValidator(ctx context.Context, method *model.A
 	}
 
 	return validator, nil
+}
+
+func (f *AuthenticatorFactory) serviceAccountPass(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
+	authSource := model.GetServiceAccountPassSource()
+	return &serviceaccountpass.Authenticator{
+		ServiceAccountPasswordRepo: iam_repo.NewServiceAccountPasswordRepository(txn),
+		AuthMethod:                 method,
+		Logger:                     f.logger.Named("SAPassAutheNticator"),
+	}, authSource, nil
 }

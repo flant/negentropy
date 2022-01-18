@@ -111,10 +111,11 @@ if __name__ == "__main__":
     # configuration for id_token login
     # ================================
     for vault in vaults:
-        print("==========================================================")
-        print("id_token login preparation: vault: {} at {}".format(vault.name, vault.url))
-        print("----------------------------------------------------------")
+        print("==============================================================================")
+        print("id_token and service_account_password login preparation: vault: {} at {}".format(vault.name, vault.url))
+        print("------------------------------------------------------------------------------")
         vault.connect_oidc(oidc_url)
+        vault.activate_auth_service_account_pass()
 
     # ============================================================================
     # logs (only requests done by vault.write_to_plugin or vault.read_from_plugin)
