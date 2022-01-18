@@ -8,21 +8,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func ListAvailableSafeProjects(txn *io.MemoryStoreTxn, tenantID string, acceptedProjects map[iam.ProjectUUID]struct{}) ([]model.SafeProject, error) {
+func ListAvailableProjects(txn *io.MemoryStoreTxn, tenantID string, acceptedProjects map[iam.ProjectUUID]struct{}) ([]model.Project, error) {
 	projects, err := usecase.Projects(txn, consts.OriginAUTH).List(tenantID, false)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]model.SafeProject, 0, len(projects))
+	result := make([]model.Project, 0, len(projects))
 
 	for _, project := range projects {
 		_, projectAcccepted := acceptedProjects[project.UUID]
 		if projectAcccepted {
-			res := model.SafeProject{
+			res := model.Project{
 				UUID:       project.UUID,
 				TenantUUID: project.TenantUUID,
 				Version:    project.Version,
+				Identifier: project.Identifier,
 			}
 			result = append(result, res)
 		}

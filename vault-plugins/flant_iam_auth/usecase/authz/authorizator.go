@@ -217,6 +217,36 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 					},
 				},
 			}
+
+		case rc.Role == "register_server" && rc.TenantUUID != "" && rc.ProjectUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_at_project_%s_of_%s_by_%s", rc.Role, rc.ProjectUUID, rc.TenantUUID, userUUID),
+				Rules: []Rule{
+					{
+						Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/register_server*", rc.TenantUUID, rc.ProjectUUID),
+						Create: true,
+						Update: true,
+					},
+					{
+						Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/server*", rc.TenantUUID, rc.ProjectUUID),
+						Create: true,
+						Read:   true,
+						Update: true,
+						Delete: true,
+						List:   true,
+					},
+				},
+			}
+
+		case rc.Role == "iam_auth_read" && rc.TenantUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, userUUID),
+				Rules: []Rule{{
+					Path: "auth/flant_iam_auth/tenant/" + rc.TenantUUID + "*",
+					Read: true,
+					List: true,
+				}},
+			}
 		}
 
 		if policy.Name != "" {
