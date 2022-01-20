@@ -31,9 +31,9 @@ import (
 type Suite struct {
 	testServerContainerName string
 	testClientContainerName string
-	authdPath               string
+	AuthdPath               string
 	cliPath                 string
-	serverAccessdPath       string
+	ServerAccessdPath       string
 
 	RootVaultInternalURL string
 	AuthVaultInternalURL string
@@ -46,9 +46,9 @@ type Suite struct {
 
 func (s *Suite) BeforeSuite() {
 	// TODO read vars from envs!
-	s.authdPath = "/opt/authd/bin/authd"
+	s.AuthdPath = "/opt/authd/bin/authd"
 	s.cliPath = "/opt/cli/bin/cli"
-	s.serverAccessdPath = "/opt/server-access/bin/server-accessd"
+	s.ServerAccessdPath = "/opt/server-access/bin/server-accessd"
 	s.testServerContainerName = "test-server"
 	s.testClientContainerName = "test-client"
 	s.RootVaultInternalURL = getFromEnv("ROOT_VAULT_INTERNAL_URL")
@@ -75,54 +75,54 @@ func getFromEnv(envName string) string {
 }
 
 //go:embed server_sock1.yaml
-var serverSocketCFG string
+var ServerSocketCFG string
 
 //go:embed server_main.yaml
-var serverMainCFGTPL string
+var ServerMainCFGTPL string
 
 func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
-	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.authdPath, "f")
+	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.AuthdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_server should have authd")
 
-	err = s.CheckFileExistAtContainer(s.TestServerContainer, s.serverAccessdPath, "f")
+	err = s.CheckFileExistAtContainer(s.TestServerContainer, s.ServerAccessdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_server should have server-accessd")
 
 	// Authd can be configured and run at Test_server
-	err = s.createIfNotExistsDirectoryAtContainer(s.TestServerContainer,
+	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
-	t, err := template.New("").Parse(serverMainCFGTPL)
+	t, err := template.New("").Parse(ServerMainCFGTPL)
 	Expect(err).ToNot(HaveOccurred(), "template should be ok")
 	var serverMainCFG bytes.Buffer
 	err = t.Execute(&serverMainCFG, *s)
 	Expect(err).ToNot(HaveOccurred(), "template should be executed")
 
-	err = s.writeFileToContainer(s.TestServerContainer,
+	err = s.WriteFileToContainer(s.TestServerContainer,
 		"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG.String())
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
-	err = s.writeFileToContainer(s.TestServerContainer,
-		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", serverSocketCFG)
+	err = s.WriteFileToContainer(s.TestServerContainer,
+		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", ServerSocketCFG)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
-	err = s.writeFileToContainer(s.TestServerContainer,
+	err = s.WriteFileToContainer(s.TestServerContainer,
 		"/opt/authd/server-jwt", cfg.TestServerServiceAccountMultipassJWT)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	s.ExecuteCommandAtContainer(s.TestServerContainer,
 		[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"}, nil)
 
-	s.killAllInstancesOfProcessAtContainer(s.TestServerContainer, s.authdPath)
-	s.runDaemonAtContainer(s.TestServerContainer, s.authdPath, "server_authd.log")
+	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
+	s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
 	time.Sleep(time.Second)
-	pidAuthd := s.firstProcessPIDAtContainer(s.TestServerContainer, s.authdPath)
+	pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
 	Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 
 	// TODO check content /etc/nsswitch.conf
 
 	// Test_server server_accessd can be configured and run
-	err = s.createIfNotExistsDirectoryAtContainer(s.TestServerContainer,
+	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
 		"/opt/serveraccessd")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
@@ -132,14 +132,14 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 		"database: /opt/serveraccessd/server-accessd.db\n" +
 		"authdSocketPath: /run/sock1.sock"
 
-	err = s.writeFileToContainer(s.TestServerContainer,
+	err = s.WriteFileToContainer(s.TestServerContainer,
 		"/opt/server-access/config.yaml", acccesdCFG)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
-	s.killAllInstancesOfProcessAtContainer(s.TestServerContainer, s.serverAccessdPath)
-	s.runDaemonAtContainer(s.TestServerContainer, s.serverAccessdPath, "server_accessd.log")
+	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.ServerAccessdPath)
+	s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
 	time.Sleep(time.Second)
-	pidServerAccessd := s.firstProcessPIDAtContainer(s.TestServerContainer, s.serverAccessdPath)
+	pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
 	Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
 
 	authKeysFilePath := filepath.Join("/home", cfg.User.Identifier, ".ssh", "authorized_keys")
@@ -158,14 +158,14 @@ var clientSocketCFG string
 var clientMainCFGTPL string
 
 func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
-	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.authdPath, "f")
+	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.AuthdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "TestClient should have authd")
 
 	err = s.CheckFileExistAtContainer(s.TestClientContainer, s.cliPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_сlient should have cli")
 
 	// Authd can be configured and run at Test_server
-	err = s.createIfNotExistsDirectoryAtContainer(s.TestClientContainer,
+	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestClientContainer,
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
@@ -175,25 +175,25 @@ func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	err = t.Execute(&clientMainCFG, *s)
 	Expect(err).ToNot(HaveOccurred(), "template should be executed")
 
-	err = s.writeFileToContainer(s.TestClientContainer,
+	err = s.WriteFileToContainer(s.TestClientContainer,
 		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG.String())
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
-	err = s.writeFileToContainer(s.TestClientContainer,
+	err = s.WriteFileToContainer(s.TestClientContainer,
 		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", clientSocketCFG)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
-	err = s.writeFileToContainer(s.TestClientContainer,
+	err = s.WriteFileToContainer(s.TestClientContainer,
 		"/opt/authd/client-jwt", cfg.UserMultipassJWT)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	s.ExecuteCommandAtContainer(s.TestClientContainer,
 		[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/client-jwt"}, nil)
 
-	s.killAllInstancesOfProcessAtContainer(s.TestClientContainer, s.authdPath)
-	s.runDaemonAtContainer(s.TestClientContainer, s.authdPath, "client_authd.log")
+	s.KillAllInstancesOfProcessAtContainer(s.TestClientContainer, s.AuthdPath)
+	s.RunDaemonAtContainer(s.TestClientContainer, s.AuthdPath, "client_authd.log")
 	time.Sleep(time.Second)
-	pidAuthd := s.firstProcessPIDAtContainer(s.TestClientContainer, s.authdPath)
+	pidAuthd := s.FirstProcessPIDAtContainer(s.TestClientContainer, s.AuthdPath)
 	Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 }
 
@@ -245,10 +245,10 @@ func (s *Suite) CheckFileExistAtContainer(container *types.Container, path strin
 	return fmt.Errorf("unexpected output checking file exists: %s", text)
 }
 
-func (s *Suite) createIfNotExistsDirectoryAtContainer(container *types.Container, path string) error {
+func (s *Suite) CreateIfNotExistsDirectoryAtContainer(container *types.Container, path string) error {
 	lastSeparator := strings.LastIndex(path, string(os.PathSeparator))
 	if lastSeparator != 0 {
-		err := s.createIfNotExistsDirectoryAtContainer(container, path[0:lastSeparator])
+		err := s.CreateIfNotExistsDirectoryAtContainer(container, path[0:lastSeparator])
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func (s *Suite) createIfNotExistsDirectoryAtContainer(container *types.Container
 	return fmt.Errorf("unexpected output creating directory: %s", text)
 }
 
-func (s *Suite) writeFileToContainer(container *types.Container, path string, content string) error {
+func (s *Suite) WriteFileToContainer(container *types.Container, path string, content string) error {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -304,6 +304,35 @@ func (s *Suite) writeFileToContainer(container *types.Container, path string, co
 	}
 	Expect(err).ToNot(HaveOccurred(), "error response reading at container")
 	return fmt.Errorf("unexpected output creating directory: %s", text)
+}
+
+func (s *Suite) DeleteFileAtContainer(container *types.Container, filePath string) error {
+	err := s.CheckFileExistAtContainer(container, filePath, "f")
+	if err != nil {
+		return nil
+	}
+	ctx := context.Background()
+	config := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+		Cmd:          []string{"/bin/bash", "-c", "rm  " + filePath},
+	}
+
+	IDResp, err := s.dockerCli.ContainerExecCreate(ctx, container.ID, config)
+	Expect(err).ToNot(HaveOccurred(), "error execution at container")
+
+	resp, err := s.dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
+	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
+	defer resp.Close()
+
+	text, err := resp.Reader.ReadString('\n')
+	if err != nil && err.Error() == "EOF" {
+		fmt.Printf("file  %s was deleted  at container  %s \n", filePath, container.Names)
+		return nil
+	}
+	Expect(err).ToNot(HaveOccurred(), "error response reading at container")
+	return fmt.Errorf("unexpected output deleting file: %s", text)
 }
 
 func (s *Suite) ExecuteCommandAtContainer(container *types.Container, cmd []string, extraInputToSTDIN []string) []string {
@@ -362,9 +391,9 @@ func (s *Suite) killProcessAtContainer(container *types.Container, processPid in
 	Expect(err).ToNot(HaveOccurred(), "error attaching execution at container")
 }
 
-func (s *Suite) killAllInstancesOfProcessAtContainer(container *types.Container, processPath string) {
+func (s *Suite) KillAllInstancesOfProcessAtContainer(container *types.Container, processPath string) {
 	for {
-		pid := s.firstProcessPIDAtContainer(container, processPath)
+		pid := s.FirstProcessPIDAtContainer(container, processPath)
 		if pid == 0 {
 			break
 		}
@@ -372,7 +401,7 @@ func (s *Suite) killAllInstancesOfProcessAtContainer(container *types.Container,
 	}
 }
 
-func (s *Suite) firstProcessPIDAtContainer(container *types.Container, processPath string) int {
+func (s *Suite) FirstProcessPIDAtContainer(container *types.Container, processPath string) int {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -409,7 +438,7 @@ func (s *Suite) firstProcessPIDAtContainer(container *types.Container, processPa
 	return 0
 }
 
-func (s *Suite) runDaemonAtContainer(container *types.Container, daemonPath string, logFilePath string) {
+func (s *Suite) RunDaemonAtContainer(container *types.Container, daemonPath string, logFilePath string) {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
