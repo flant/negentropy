@@ -131,9 +131,9 @@ func checkFileExists(path string) (os.FileInfo, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("JWT load: no such file %s", path)
+			return nil, fmt.Errorf("JWT load: %w: %s", err, path)
 		}
-		return nil, fmt.Errorf("JWT load file: %v", err)
+		return nil, fmt.Errorf("JWT load file: %w", err)
 	}
 	return stat, nil
 }
