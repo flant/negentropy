@@ -254,15 +254,15 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 		serverUUID, jwtToken, err := service.Create(issueFn, data.Get("tenant_uuid").(string), data.Get("project_uuid").(string),
 			data.Get("identifier").(string), labels, annotations, config.RolesForServers)
 		if err != nil {
-			msg := "cannot create server"
-			b.Logger().Error(msg, "err", err.Error())
+			msg := fmt.Sprintf("cannot register server:%s", err.Error())
+			b.Logger().Error(msg)
 			return logical.ErrorResponse(msg), err
 		}
 
 		err = tx.Commit()
 		if err != nil {
-			msg := "cannot commit transaction"
-			b.Logger().Error(msg, "err", err.Error())
+			msg := fmt.Sprintf("cannot commit transaction:%s", err.Error())
+			b.Logger().Error(msg)
 			return logical.ErrorResponse(msg), err
 		}
 
