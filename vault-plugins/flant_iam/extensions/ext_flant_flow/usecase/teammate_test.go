@@ -24,7 +24,7 @@ func createTeammates(t *testing.T, tx *io.MemoryStoreTxn, teammates ...model.Ful
 		tmp.FullIdentifier = uuid.New()
 		err := userRepo.Create(&tmp.User)
 		require.NoError(t, err)
-		err = teammateRepo.Create(tmp.GetTeammate())
+		err = teammateRepo.Create(tmp.ExtractTeammate())
 		require.NoError(t, err)
 	}
 }

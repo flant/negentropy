@@ -30,7 +30,7 @@ func (u *Teammate) ObjId() string {
 	return u.UserUUID
 }
 
-func (f *FullTeammate) GetTeammate() *Teammate {
+func (f *FullTeammate) ExtractTeammate() *Teammate {
 	if f == nil {
 		return nil
 	}
