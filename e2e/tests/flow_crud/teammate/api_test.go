@@ -17,6 +17,8 @@ func Test_teammateCRUD(t *testing.T) {
 	teammate.RoleAPI = lib.NewRoleAPI(rootClient)
 	teammate.TenantAPI = lib.NewTenantAPI(rootClient)
 	teammate.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
+
+	teammate.GroupAPI = lib.NewGroupAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Teammate")
 }

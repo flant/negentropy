@@ -16,6 +16,8 @@ func Test_teamCRUD(t *testing.T) {
 	TenantAPI = testapi.NewTenantAPI(&backend)
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+
+	GroupAPI = testapi.NewGroupAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Team")
 }

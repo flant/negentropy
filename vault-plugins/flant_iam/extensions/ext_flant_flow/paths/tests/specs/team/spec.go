@@ -14,6 +14,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -23,6 +25,8 @@ var (
 	TenantAPI testapi.TestAPI
 	RoleAPI   testapi.TestAPI
 	ConfigAPI testapi.ConfigAPI
+
+	GroupAPI testapi.TestAPI
 )
 
 var _ = Describe("Team", func() {
@@ -51,7 +55,7 @@ var _ = Describe("Team", func() {
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomTeamCreatePayload()
-
+		var directGroupUUID model.GroupUUID
 		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				teamData := json.Get("team")
@@ -66,9 +70,26 @@ var _ = Describe("Team", func() {
 				Expect(teamData.Get("team_type").String()).To(Equal(createPayload["team_type"].(string)))
 
 				Expect(teamData.Map()).To(HaveKey("parent_team_uuid"))
+
+				Expect(teamData.Map()).To(HaveKey("groups"))
+				Expect(teamData.Get("groups").Array()).To(HaveLen(1))
+				directLinkedGroup := teamData.Get("groups").Array()[0]
+				Expect(directLinkedGroup.Map()).To(HaveKey("type"))
+				Expect(directLinkedGroup.Get("type").String()).To(Equal(usecase.DirectMembersGroupType))
+				Expect(directLinkedGroup.Map()).To(HaveKey("uuid"))
+				directGroupUUID = directLinkedGroup.Get("uuid").String()
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+		GroupAPI.Read(testapi.Params{
+			"tenant": flantFlowCfg.FlantTenantUUID,
+			"group":  directGroupUUID,
+			"expectPayload": func(json gjson.Result) {
+				groupData := json.Get("group")
+				Expect(groupData.Map()).To(HaveKey("uuid"))
+			},
+		},
+			nil)
 	})
 
 	It("can be read", func() {
@@ -111,8 +132,10 @@ var _ = Describe("Team", func() {
 		deletedTeamData := TestAPI.Read(testapi.Params{
 			"team":         team.UUID,
 			"expectStatus": testapi.ExpectExactStatus(200),
-		}, nil)
-		Expect(deletedTeamData.Get("team.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+		}, nil).Get("team")
+		Expect(deletedTeamData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+		Expect(deletedTeamData.Map()).To(HaveKey("groups"))
+		Expect(deletedTeamData.Get("groups").Array()).To(HaveLen(0))
 	})
 
 	It("can be listed", func() {

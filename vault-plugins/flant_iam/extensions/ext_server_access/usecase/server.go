@@ -214,7 +214,7 @@ func (s *ServerService) Create(
 		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
 	}
 
-	groupService := usecase.Groups(s.tx, tenantUUID)
+	groupService := usecase.Groups(s.tx, tenantUUID, consts.OriginServerAccess)
 
 	if errors.Is(getGroupErr, consts.ErrNotFound) {
 		err := groupService.Create(group)

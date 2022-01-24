@@ -113,7 +113,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	)
 	result := st.PrepareForLoginTesting()
 
-	err := st.WaitPrepareForLoginTesting(result, 25)
+	err := st.WaitPrepareForLoginTesting(result, 40)
 	Expect(err).ToNot(HaveOccurred())
 
 	// create a role 'ssh' if not exists
