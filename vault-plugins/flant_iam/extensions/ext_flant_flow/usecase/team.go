@@ -13,16 +13,16 @@ import (
 )
 
 type TeamService struct {
-	flantTenantUUID iam_model.TenantUUID
-	repo            *repo.TeamRepository
-	groupBuilders   []GroupsBuilder
+	flantTenantUUID  iam_model.TenantUUID
+	repo             *repo.TeamRepository
+	groupsController GroupsController
 }
 
 func Teams(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeamService {
 	return &TeamService{
-		flantTenantUUID: flantTenantUUID,
-		repo:            repo.NewTeamRepository(db),
-		groupBuilders:   GroupBuilders(db, flantTenantUUID),
+		flantTenantUUID:  flantTenantUUID,
+		repo:             repo.NewTeamRepository(db),
+		groupsController: NewGroupsController(db, flantTenantUUID),
 	}
 }
 
@@ -35,11 +35,9 @@ func (s *TeamService) Create(t *model.Team) error {
 		return fmt.Errorf("%w: %s is not allowed", consts.ErrInvalidArg, t.TeamType)
 	}
 	t.Version = repo.NewResourceVersion()
-	for _, g := range s.groupBuilders {
-		*t, err = g.OnCreateTeam(*t)
-		if err != nil {
-			return err
-		}
+	*t, err = s.groupsController.OnCreateTeam(*t)
+	if err != nil {
+		return err
 	}
 	return s.repo.Create(t)
 }
@@ -74,11 +72,9 @@ func (s *TeamService) Update(updated *model.Team) error {
 		return consts.ErrBadVersion
 	}
 	updated.Version = repo.NewResourceVersion()
-	for _, g := range s.groupBuilders {
-		err = g.OnUpdateTeam(*stored, *updated)
-		if err != nil {
-			return err
-		}
+	*updated, err = s.groupsController.OnUpdateTeam(*stored, *updated)
+	if err != nil {
+		return err
 	}
 	return s.repo.Create(updated)
 }
@@ -106,11 +102,9 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 	// Delete all child IAM.group & - deleted by GroupBuilder
 	// Delete IAM.rolebinding
 	archiveMark := memdb.NewArchiveMark()
-	for _, g := range s.groupBuilders {
-		*team, err = g.OnDeleteTeam(*team)
-		if err != nil {
-			return err
-		}
+	*team, err = s.groupsController.OnDeleteTeam(*team)
+	if err != nil {
+		return err
 	}
 	return s.repo.Delete(id, archiveMark)
 }

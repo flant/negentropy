@@ -10,10 +10,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-type GroupsBuilder interface {
-	// GroupType return specific SOMETYPE of group
-	GroupType() string
-
+type GroupsController interface {
 	// OnCreateTeammate : User should appear at all suitable teams in groups "SOMETYPE" type
 	OnCreateTeammate(teammate model.Teammate) error
 
@@ -32,10 +29,17 @@ type GroupsBuilder interface {
 	// OnUpdateTeam : If  new ParentTeamUUID differ from old one,
 	// Specific users should disapper from suitable teams in groups "SOMETYPE" type
 	// Specific users should apper in suitable teams in groups "SOMETYPE" type
-	OnUpdateTeam(oldTeam model.Team, newTeam model.Team) error
+	OnUpdateTeam(oldTeam model.Team, newTeam model.Team) (model.Team, error)
 
 	// OnDeleteTeam : Just delete specific empty group (we can't delete not empty group)
 	OnDeleteTeam(team model.Team) (model.Team, error)
+}
+
+type GroupsBuilder interface {
+	// GroupType return specific SOMETYPE of group, which is controlled by concrete builder
+	GroupType() string
+
+	GroupsController
 }
 
 func GroupBuilders(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) []GroupsBuilder {
@@ -143,12 +147,12 @@ func (d directBuilder) OnCreateTeam(team model.Team) (model.Team, error) {
 	return team, nil
 }
 
-func (d directBuilder) OnUpdateTeam(_ model.Team, _ model.Team) error {
+func (d directBuilder) OnUpdateTeam(oldTeam model.Team, newTeam model.Team) (model.Team, error) {
 	// OnUpdateTeam : If  new ParentTeamUUID differ from old one,
 	// Specific users should disapper from suitable teams in groups "SOMETYPE" type
 	// Specific users should apper in suitable teams in groups "SOMETYPE" type
 	// For DIRECT type = do nothing
-	return nil
+	return newTeam, nil
 }
 
 func (d directBuilder) OnDeleteTeam(team model.Team) (model.Team, error) {
@@ -170,4 +174,78 @@ func (d directBuilder) OnDeleteTeam(team model.Team) (model.Team, error) {
 	groups := team.Groups
 	team.Groups = append(groups[:targetIdx], groups[targetIdx+1:]...) // nolint:gocritic
 	return team, nil
+}
+
+type groupsController struct {
+	groupBuilders []GroupsBuilder
+}
+
+func (g groupsController) OnCreateTeammate(teammate model.Teammate) error {
+	for _, c := range g.groupBuilders {
+		err := c.OnCreateTeammate(teammate)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g groupsController) OnUpdateTeammate(oldTeammate model.Teammate, newTeammate model.Teammate) error {
+	for _, c := range g.groupBuilders {
+		err := c.OnUpdateTeammate(oldTeammate, newTeammate)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g groupsController) OnDeleteTeammate(teammate model.Teammate) error {
+	for _, c := range g.groupBuilders {
+		err := c.OnDeleteTeammate(teammate)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g groupsController) OnCreateTeam(team model.Team) (model.Team, error) {
+	for _, c := range g.groupBuilders {
+		team, err := c.OnCreateTeam(team)
+		if err != nil {
+			return team, err
+		}
+	}
+	return team, nil
+}
+
+func (g groupsController) OnUpdateTeam(oldTeam model.Team, newTeam model.Team) (model.Team, error) {
+	var err error
+	for _, c := range g.groupBuilders {
+		newTeam, err = c.OnUpdateTeam(oldTeam, newTeam)
+		if err != nil {
+			return newTeam, err
+		}
+	}
+	return newTeam, err
+}
+
+func (g groupsController) OnDeleteTeam(team model.Team) (model.Team, error) {
+	var err error
+	for _, c := range g.groupBuilders {
+		team, err = c.OnDeleteTeam(team)
+		if err != nil {
+			return team, err
+		}
+	}
+	return team, err
+}
+
+func NewGroupsController(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) GroupsController {
+	return groupsController{
+		groupBuilders: []GroupsBuilder{
+			newDirectBuilder(db, flantTenantUUID),
+		},
+	}
 }
