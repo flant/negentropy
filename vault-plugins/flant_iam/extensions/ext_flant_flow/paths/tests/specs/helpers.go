@@ -26,6 +26,17 @@ func CreateRandomClient(clientsAPI testapi.TestAPI) ext_model.Client {
 	return client
 }
 
+func CreateDevopsTeam(teamAPI testapi.TestAPI) ext_model.Team {
+	createPayload := fixtures.TeamCreatePayload(fixtures.Teams()[0])
+	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	rawTeam := createdData.Get("team")
+	data := []byte(rawTeam.String())
+	var team ext_model.Team
+	err := json.Unmarshal(data, &team)
+	Expect(err).ToNot(HaveOccurred())
+	return team
+}
+
 func CreateRandomTeam(teamAPI testapi.TestAPI) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
@@ -82,9 +93,7 @@ func createProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 // TryCreateProjects creates projects, does not stop after error, as can be collision by uuid
 func TryCreateProjects(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID, projects ...ext_model.Project) {
 	for _, project := range projects {
-		bytes, _ := json.Marshal(project)
-		var payload map[string]interface{}
-		json.Unmarshal(bytes, &payload)                              //nolint:errcheck
+		payload := fixtures.ProjectCreatePayload(project)
 		_, err := createProject(projectAPI, clientID, payload, true) //nolint:errcheck
 		Expect(err).ToNot(HaveOccurred())
 	}

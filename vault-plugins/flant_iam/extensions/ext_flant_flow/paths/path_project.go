@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -44,9 +45,14 @@ func (b projectBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"service_packs": {
-					Type:        framework.TypeKVPairs,
-					Description: "Service packs",
-					Required:    true,
+					Type:          framework.TypeStringSlice,
+					Description:   "Service packs",
+					Required:      true,
+					AllowedValues: model.AllowedServicePackNames,
+				},
+				"devops_team": {
+					Type:        framework.TypeString,
+					Description: "Devops team uuid",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -80,9 +86,14 @@ func (b projectBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"service_packs": {
-					Type:        framework.TypeKVPairs,
-					Description: "Service packs",
-					Required:    true,
+					Type:          framework.TypeStringSlice,
+					Description:   "Service packs",
+					Required:      true,
+					AllowedValues: model.AllowedServicePackNames,
+				},
+				"devops_team": {
+					Type:        framework.TypeString,
+					Description: "Devops team uuid",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -143,9 +154,14 @@ func (b projectBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"service_packs": {
-					Type:        framework.TypeKVPairs,
-					Description: "Service packs",
-					Required:    true,
+					Type:          framework.TypeStringSlice,
+					Description:   "Service packs",
+					Required:      true,
+					AllowedValues: model.AllowedServicePackNames,
+				},
+				"devops_team": {
+					Type:        framework.TypeString,
+					Description: "Devops team uuid",
 				},
 			},
 			ExistenceCheck: b.handleExistence,
@@ -212,36 +228,22 @@ func (b *projectBackend) handleExistence(_ context.Context, req *logical.Request
 func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("create project", "path", req.Path)
-
-		id, err := backentutils.GetCreationID(expectID, data)
+		projectParams, err := getProjectParams(data, expectID, false)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
-		servicePacks, err := b.getServicePacks(data)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-
-		project := &model.Project{
-			Project: iam_model.Project{
-				UUID:       id,
-				TenantUUID: data.Get(clientUUIDKey).(string),
-				Identifier: data.Get("identifier").(string),
-			},
-			ServicePacks: servicePacks,
-		}
-
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if project, err = usecase.Projects(tx).Create(project); err != nil {
-			msg := "cannot create project"
-			b.Logger().Error(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+		var project *model.Project
+		if project, err = usecase.Projects(tx).Create(*projectParams); err != nil {
+			err = fmt.Errorf("cannot create project:%w", err)
+			b.Logger().Error("error", "error", err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 
-		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
-			return nil, err
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{"project": project}}
@@ -249,17 +251,48 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 	}
 }
 
-func (b *projectBackend) getServicePacks(data *framework.FieldData) (map[model.ServicePackName]string, error) {
+func getProjectParams(data *framework.FieldData, expectID, expectVersion bool) (*usecase.ProjectParams, error) {
+	id, err := backentutils.GetCreationID(expectID, data)
+	if err != nil {
+		return nil, err
+	}
+	version := ""
+	if expectVersion {
+		version = data.Get("resource_version").(string)
+	}
+	servicePacks, err := getServicePacks(data)
+	if err != nil {
+		return nil, err
+	}
+	devopsTeamUUID := data.Get("devops_team").(model.TeamUUID)
+	return &usecase.ProjectParams{
+		IamProject: &iam_model.Project{
+			UUID:       id,
+			TenantUUID: data.Get(clientUUIDKey).(string),
+			Version:    version,
+			Identifier: data.Get("identifier").(string),
+		},
+		ServicePackNames: servicePacks,
+		DevopsTeamUUID:   devopsTeamUUID,
+	}, nil
+}
+
+// returns only unique service_packs names
+func getServicePacks(data *framework.FieldData) (map[model.ServicePackName]struct{}, error) {
 	servicePacksRaw := data.Get("service_packs")
 
-	fmt.Printf("servicepacks: %#v ", servicePacksRaw) // TODO REMOVE
-
-	servicePacks, ok := servicePacksRaw.(map[model.ServicePackName]string)
+	servicePacksArr, ok := servicePacksRaw.([]model.ServicePackName)
 	if !ok {
-		err := fmt.Errorf("marshalling params: wrong type of param service_packs, cant cast to map[model.ServicePackName]string, passed value:%#v",
+		err := fmt.Errorf("marshalling params: wrong type of param service_packs, cant cast to []model.ServicePackName, passed value:%#v",
 			servicePacksRaw)
-		b.Logger().Error(err.Error())
 		return nil, err
+	}
+	servicePacks := map[model.ServicePackName]struct{}{}
+	for _, sp := range servicePacksArr {
+		if _, ok = model.ServicePackNames[sp]; !ok {
+			return nil, fmt.Errorf("%w: wrong service_pack name:%s", consts.ErrInvalidArg, sp)
+		}
+		servicePacks[sp] = struct{}{}
 	}
 	return servicePacks, nil
 }
@@ -267,31 +300,19 @@ func (b *projectBackend) getServicePacks(data *framework.FieldData) (map[model.S
 func (b *projectBackend) handleUpdate(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("update project", "path", req.Path)
 
-	servicePacks, err := b.getServicePacks(data)
+	projectParams, err := getProjectParams(data, true, true)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
-
-	id := data.Get("uuid").(string)
 
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	project := &model.Project{
-		Project: iam_model.Project{
-			UUID:       id,
-			TenantUUID: data.Get(clientUUIDKey).(string),
-			Version:    data.Get("resource_version").(string),
-			Identifier: data.Get("identifier").(string),
-		},
-		ServicePacks: servicePacks,
-	}
-
-	project, err = usecase.Projects(tx).Update(project)
+	project, err := usecase.Projects(tx).Update(*projectParams)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
-	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 		return nil, err
 	}
 

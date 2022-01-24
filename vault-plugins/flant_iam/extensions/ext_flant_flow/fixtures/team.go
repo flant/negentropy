@@ -27,7 +27,7 @@ func Teams() []model.Team {
 			Version:        "v1",
 			Identifier:     "team2",
 			TeamType:       model.DevopsTeam,
-			ParentTeamUUID: TeamUUID1,
+			ParentTeamUUID: "",
 		},
 		{
 			UUID:           TeamUUID3,
@@ -39,14 +39,19 @@ func Teams() []model.Team {
 	}
 }
 
+func TeamCreatePayload(sample model.Team) map[string]interface{} {
+	return map[string]interface{}{
+		"uuid":       sample.UUID,
+		"identifier": "Identifier_" + RandomStr(),
+		"version":    sample.Version,
+		"team_type":  sample.TeamType,
+		// "parent_team_uuid": sample.ParentTeamUUID,
+	}
+}
+
 func RandomTeamCreatePayload() map[string]interface{} {
 	teamSet := Teams()
 	rand.Seed(time.Now().UnixNano())
 	sample := teamSet[rand.Intn(len(teamSet))]
-	return map[string]interface{}{
-		"identifier": "Identifier_" + RandomStr(),
-		"version":    sample.Version,
-		"team_type":  sample.TeamType,
-		// "parent_team_uuid": nil,
-	}
+	return TeamCreatePayload(sample)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -12,17 +13,56 @@ import (
 
 type ProjectService struct {
 	*iam_usecase.ProjectService
+	teamRepo *repo.TeamRepository
 }
 
 func Projects(db *io.MemoryStoreTxn) *ProjectService {
 	return &ProjectService{
 		ProjectService: iam_usecase.Projects(db, consts.OriginFlantFlow),
+		teamRepo:       repo.NewTeamRepository(db),
 	}
 }
 
-func (s *ProjectService) Create(project *model.Project) (*model.Project, error) {
-	// TODO verify servicepacks
-	// TODO fix servicepacks params due to default teams
+type ProjectParams struct {
+	IamProject       *iam.Project
+	ServicePackNames map[model.ServicePackName]struct{}
+	DevopsTeamUUID   model.TeamUUID
+}
+
+// build servicePacks with CFGs
+func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.ServicePackName]model.ServicePackCFG, error) {
+	result := map[model.ServicePackName]model.ServicePackCFG{}
+	for spn := range params.ServicePackNames {
+		switch spn {
+		case model.DevOps:
+			if params.DevopsTeamUUID == "" {
+				return nil, fmt.Errorf("%w: service_pack %q needs passed devops_team", consts.ErrInvalidArg, spn)
+			}
+			if team, err := s.teamRepo.GetByID(params.DevopsTeamUUID); err != nil {
+				return nil, fmt.Errorf("service_pack %s: devops_team: %s:%w", spn, params.DevopsTeamUUID, err)
+			} else if team.TeamType != model.DevopsTeam {
+				return nil, fmt.Errorf("%w: service_pack %s: wrong passed team type: %s", consts.ErrInvalidArg, spn, team.TeamType)
+			}
+			result[spn] = model.DevopsServicePackCFG{
+				DevopsTeam: params.DevopsTeamUUID,
+			}
+		// TODO: others
+		default:
+			result[spn] = nil
+		}
+	}
+	return result, nil
+}
+
+func (s *ProjectService) Create(projectParams ProjectParams) (*model.Project, error) {
+	servicePacks, err := s.buildServicePacks(projectParams)
+	if err != nil {
+		return nil, err
+	}
+	project := &model.Project{
+		Project:      *projectParams.IamProject,
+		ServicePacks: servicePacks,
+	}
 	iamProject, err := makeIamProject(project)
 	if err != nil {
 		return nil, err
@@ -38,23 +78,27 @@ func (s *ProjectService) Create(project *model.Project) (*model.Project, error) 
 	return project, nil
 }
 
-func (s *ProjectService) Update(project *model.Project) (*model.Project, error) {
-	stored, err := s.ProjectService.GetByID(project.UUID)
-	if stored.TenantUUID != project.TenantUUID {
+func (s *ProjectService) Update(projectParams ProjectParams) (*model.Project, error) {
+	stored, err := s.ProjectService.GetByID(projectParams.IamProject.UUID)
+	if stored.TenantUUID != projectParams.IamProject.TenantUUID {
 		return nil, consts.ErrNotFound
 	}
 	if stored.Origin != consts.OriginFlantFlow {
 		return nil, consts.ErrBadOrigin
 	}
-	if stored.Version != project.Version {
+	if stored.Version != projectParams.IamProject.Version {
 		return nil, consts.ErrBadVersion
 	}
 	if stored.Archived() {
 		return nil, consts.ErrIsArchived
 	}
-
+	servicePacks, err := s.buildServicePacks(projectParams)
 	if err != nil {
 		return nil, err
+	}
+	project := &model.Project{
+		Project:      *projectParams.IamProject,
+		ServicePacks: servicePacks,
 	}
 	project.Extensions = stored.Extensions
 	iamProject, err := makeIamProject(project)
@@ -90,7 +134,7 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 	if project == nil {
 		return nil, consts.ErrNilPointer
 	}
-	var servicePacks map[model.ServicePackName]string
+	var servicePacks map[model.ServicePackName]model.ServicePackCFG
 	if exts := project.Extensions; exts != nil {
 		if ext := exts[consts.OriginFlantFlow]; ext != nil {
 			if ext.OwnerType == iam.ProjectType && ext.OwnerUUID == project.UUID {
@@ -109,24 +153,20 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 	}, nil
 }
 
-func unmarshallServicePackCandidate(servicePacksRaw interface{}) (map[model.ServicePackName]string, error) {
-	var servicePacks map[model.ServicePackName]string
+func unmarshallServicePackCandidate(servicePacksRaw interface{}) (map[model.ServicePackName]model.ServicePackCFG, error) {
+	var servicePacks map[model.ServicePackName]model.ServicePackCFG
+	var err error
 	switch spMap := servicePacksRaw.(type) {
 	// after kafka restoration
 	case map[model.ServicePackName]interface{}:
-		servicePacks = map[model.ServicePackName]string{}
-		for k, v := range spMap {
-			value, ok := v.(string)
-			if !ok {
-				return nil, fmt.Errorf("%w:need string, passed:%T",
-					consts.ErrWrongType, servicePacksRaw)
-			}
-			servicePacks[k] = value
+		servicePacks, err = model.ParseServicePacks(spMap)
+		if err != nil {
+			return nil, err
 		}
-	case map[model.ServicePackName]string:
+	case map[model.ServicePackName]model.ServicePackCFG:
 		servicePacks = spMap
 	default:
-		return nil, fmt.Errorf("%w:need map[string]interface{} or map[string]string, passed:%T",
+		return nil, fmt.Errorf("%w:need map[string]interface{} or map[model.ServicePackName]model.ServicePackCFG, passed:%T",
 			consts.ErrWrongType, servicePacksRaw)
 	}
 	return servicePacks, nil
