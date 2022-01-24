@@ -211,8 +211,9 @@ func (g groupsController) OnDeleteTeammate(teammate model.Teammate) error {
 }
 
 func (g groupsController) OnCreateTeam(team model.Team) (model.Team, error) {
+	var err error
 	for _, c := range g.groupBuilders {
-		team, err := c.OnCreateTeam(team)
+		team, err = c.OnCreateTeam(team)
 		if err != nil {
 			return team, err
 		}
