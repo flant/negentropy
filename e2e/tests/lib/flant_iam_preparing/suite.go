@@ -104,11 +104,12 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	return result
 }
 
+const TestServerIdentifier = "test-server"
+
 func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	const (
-		sshRole              = "ssh"
-		testServerIdentifier = "test-server"
-		serverRole           = "servers"
+		sshRole    = "ssh"
+		serverRole = "servers"
 	)
 	result := st.PrepareForLoginTesting()
 
@@ -146,7 +147,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	fmt.Printf("Created rolebinding:%#v\n", result.UserRolebinding)
 
 	// register as a server 'test_server' using serviceAccount & add connection info
-	result.TestServer, result.TestServerServiceAccountMultipassJWT = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, testServerIdentifier, serverLabels)
+	result.TestServer, result.TestServerServiceAccountMultipassJWT = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier, serverLabels)
 
 	fmt.Printf("Created testServer Server:%#v\n", result.TestServer)
 

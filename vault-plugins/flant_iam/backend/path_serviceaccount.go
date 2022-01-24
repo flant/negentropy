@@ -844,5 +844,15 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 func generatePassword() (string, error) {
 	// Generate a password that is 64 characters long with 10 digits, 10 symbols,
 	// allowing upper and lower case letters, disallowing repeat characters.
-	return password.Generate(64, 10, 10, false, false)
+	generatorInput := &password.GeneratorInput{
+		LowerLetters: password.LowerLetters,
+		UpperLetters: password.UpperLetters,
+		Digits:       password.Digits,
+		Symbols:      "~!@#$%^&*()_+`-={}|[]:<>?,./", // remove \ and " to escape double backslashes marshaling problem
+	}
+	passwordGenerator, err := password.NewGenerator(generatorInput)
+	if err != nil {
+		return "", err
+	}
+	return passwordGenerator.Generate(64, 10, 10, false, false)
 }
