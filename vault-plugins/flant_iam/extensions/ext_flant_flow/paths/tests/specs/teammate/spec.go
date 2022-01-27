@@ -1,7 +1,6 @@
 package teammate
 
 import (
-	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -14,6 +13,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 var (
@@ -22,26 +23,28 @@ var (
 	RoleAPI   testapi.TestAPI
 	TenantAPI testapi.TestAPI
 	ConfigAPI testapi.ConfigAPI
+
+	GroupAPI testapi.TestAPI
 )
 
 var _ = Describe("Teammate", func() {
-	var (
-		team         model.Team
-		flantFlowCfg *config.FlantFlowConfig
-	)
+	var team model.Team
+	var cfg *config.FlantFlowConfig
+
 	BeforeSuite(func() {
-		flantFlowCfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, ConfigAPI)
-		fmt.Printf("%#v\n", flantFlowCfg)
+		cfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, ConfigAPI)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
 	It("can be created", func() {
 		createPayload := fixtures.RandomTeammateCreatePayload(team)
 		createPayload["team_uuid"] = team.UUID
+		var teammateUUID model2.UserUUID
 
 		params := testapi.Params{
 			"expectPayload": func(json gjson.Result) {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))
+				teammateUUID = teammateData.Get("uuid").String()
 				Expect(teammateData.Map()).To(HaveKey("identifier"))
 				Expect(teammateData.Map()).To(HaveKey("full_identifier"))
 				Expect(teammateData.Map()).To(HaveKey("email"))
@@ -56,19 +59,34 @@ var _ = Describe("Teammate", func() {
 			"team": team.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammateUUID, true)
 	})
 
 	It("can be read", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
-		createdData := iam_specs.ConvertToGJSON(teammate)
 
 		TestAPI.Read(testapi.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.IsSubsetExceptKeys(createdData, json.Get("teammate"), "extensions")
+				iam_specs.IsSubsetExceptKeys(iam_specs.ConvertToGJSON(teammate), json.Get("teammate"), "extensions")
 			},
 		}, nil)
+	})
+
+	It("can be updated", func() {
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
+		updatePayload := fixtures.RandomTeamCreatePayload()
+		delete(updatePayload, "uuid")
+		delete(updatePayload, "team_uuid")
+		updatePayload["resource_version"] = teammate.Version
+		updatePayload["role_at_team"] = teammate.RoleAtTeam
+		updateData := TestAPI.Update(testapi.Params{
+			"team":     teammate.TeamUUID,
+			"teammate": teammate.UUID,
+		}, nil, updatePayload)
+
+		Expect(updateData.Get("teammate.identifier").String()).To(Equal(updatePayload["identifier"]))
 	})
 
 	It("can be deleted", func() {
@@ -85,6 +103,7 @@ var _ = Describe("Teammate", func() {
 			"expectStatus": testapi.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("teammate.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammate.UUID, false)
 	})
 
 	It("can be listed", func() {
@@ -94,7 +113,7 @@ var _ = Describe("Teammate", func() {
 			"team": teammate.TeamUUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teammates").Array(),
-					iam_specs.ConvertToGJSON(teammate), "extensions")
+					iam_specs.ConvertToGJSON(teammate), "extensions") // server_access extension has map inside, so no guarantees to equity
 			},
 		}, url.Values{})
 	})
@@ -114,4 +133,56 @@ var _ = Describe("Teammate", func() {
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			teammate := specs.CreateRandomTeammate(TestAPI, team)
+			TestAPI.Delete(testapi.Params{
+				"team":     teammate.TeamUUID,
+				"teammate": teammate.UUID,
+			}, nil)
+
+			TestAPI.Delete(testapi.Params{
+				"team":         teammate.TeamUUID,
+				"teammate":     teammate.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			teammate := specs.CreateRandomTeammate(TestAPI, team)
+			TestAPI.Delete(testapi.Params{
+				"team":     teammate.TeamUUID,
+				"teammate": teammate.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomTeamCreatePayload()
+			delete(updatePayload, "uuid")
+			delete(updatePayload, "team_uuid")
+			updatePayload["resource_version"] = teammate.Version
+			updatePayload["role_at_team"] = teammate.RoleAtTeam
+			TestAPI.Update(testapi.Params{
+				"team":         teammate.TeamUUID,
+				"teammate":     teammate.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
+	})
 })
+
+func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID, teamUUID model.TeamUUID,
+	teammateUUID model2.UserUUID, expectHas bool) {
+	respData := TeamAPI.Read(testapi.Params{
+		"team": teamUUID,
+	}, nil)
+	Expect(respData.Map()).To(HaveKey("team"))
+	teamData := respData.Get("team")
+	Expect(teamData.Map()).To(HaveKey("groups"))
+	Expect(teamData.Get("groups").Array()).To(HaveLen(1))
+	directLinkedGroup := teamData.Get("groups").Array()[0]
+	Expect(directLinkedGroup.Map()).To(HaveKey("type"))
+	Expect(directLinkedGroup.Get("type").String()).To(Equal(usecase.DirectMembersGroupType))
+	Expect(directLinkedGroup.Map()).To(HaveKey("uuid"))
+	directGroupUUID := directLinkedGroup.Get("uuid").String()
+	specs.CheckGroupHasUser(GroupAPI, flantTenantUUID, directGroupUUID, teammateUUID, expectHas)
+}

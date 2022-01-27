@@ -17,7 +17,7 @@ import (
 func createProjects(t *testing.T, repo *ProjectService, projects ...model.Project) {
 	for _, project := range projects {
 		tmp := project
-		err := repo.Create(&tmp)
+		_, err := repo.Create(&tmp)
 		require.NoError(t, err)
 	}
 }

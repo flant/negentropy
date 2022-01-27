@@ -204,6 +204,9 @@ func (r *MultipassService) validateContext() error {
 		if err != nil {
 			return err
 		}
+		if owner.Archived() {
+			return consts.ErrIsArchived
+		}
 		if owner.TenantUUID != r.tenantUUID {
 			return consts.ErrNotFound
 		}
@@ -213,6 +216,9 @@ func (r *MultipassService) validateContext() error {
 		owner, err := r.saRepo.GetByID(r.ownerUUID)
 		if err != nil {
 			return err
+		}
+		if owner.Archived() {
+			return consts.ErrIsArchived
 		}
 		if owner.TenantUUID != r.tenantUUID {
 			return consts.ErrNotFound
@@ -230,6 +236,9 @@ func (r *MultipassService) SetExtension(ext *model.Extension) error {
 	if err != nil {
 		return err
 	}
+	if obj.Archived() {
+		return consts.ErrIsArchived
+	}
 	if obj.Extensions == nil {
 		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
@@ -241,6 +250,9 @@ func (r *MultipassService) UnsetExtension(origin consts.ObjectOrigin, uuid model
 	obj, err := r.repo.GetByID(uuid)
 	if err != nil {
 		return err
+	}
+	if obj.Archived() {
+		return consts.ErrIsArchived
 	}
 	if obj.Extensions == nil {
 		return nil

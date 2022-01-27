@@ -37,7 +37,9 @@ func (s *ProjectService) Update(project *model.Project) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	// Validate
 	if stored.TenantUUID != project.TenantUUID {
 		return consts.ErrNotFound
@@ -45,7 +47,7 @@ func (s *ProjectService) Update(project *model.Project) error {
 	if stored.Version != project.Version {
 		return consts.ErrBadVersion
 	}
-	if stored.Origin != project.Origin {
+	if stored.Origin != s.origin {
 		return consts.ErrBadOrigin
 	}
 	project.Version = repo.NewResourceVersion()

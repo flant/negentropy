@@ -135,6 +135,7 @@ func (r *AuthSourceRepo) Iter(withInternal bool, action func(*model.AuthSource) 
 	if withInternal {
 		internals := []*model.AuthSource{
 			model.GetMultipassSource(),
+			model.GetServiceAccountPassSource(),
 		}
 
 		for _, s := range internals {

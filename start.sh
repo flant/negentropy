@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
+PATH="$PATH:$HOME/.local/bin"
 
+set -e
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -53,13 +54,11 @@ else
   fi
 fi
 
-python --version
 python3 --version
-pip install virtualenv
+pip3 install virtualenv
 virtualenv scripts/e2e
 source scripts/e2e/bin/activate
-pip install -r scripts/requirements.txt
-python scripts/start.py $MODE
+pip3 install -r scripts/requirements.txt
+python3 scripts/start.py $MODE
 
 deactivate
-

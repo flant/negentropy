@@ -53,19 +53,19 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 
 func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	// Validate
-	if rb.Origin == "" {
-		return consts.ErrBadOrigin
-	}
-
-	// Validate tenant relation
 	stored, err := s.repo.GetByID(rb.UUID)
 	if err != nil {
 		return err
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
+	if rb.Origin != stored.Origin {
+		return consts.ErrBadOrigin
+	}
 	if stored.TenantUUID != rb.TenantUUID {
 		return consts.ErrNotFound
 	}
-
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
@@ -101,6 +101,9 @@ func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
 	if err != nil {
 		return err
 	}
+	if obj.Archived() {
+		return consts.ErrIsArchived
+	}
 	if obj.Extensions == nil {
 		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
@@ -112,6 +115,9 @@ func (s *RoleBindingService) UnsetExtension(origin consts.ObjectOrigin, id model
 	obj, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
+	}
+	if obj.Archived() {
+		return consts.ErrIsArchived
 	}
 	if obj.Extensions == nil {
 		return nil

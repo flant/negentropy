@@ -6,18 +6,23 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type TeamService struct {
-	repo *repo.TeamRepository
+	flantTenantUUID  iam_model.TenantUUID
+	repo             *repo.TeamRepository
+	groupsController GroupsController
 }
 
-func Teams(db *io.MemoryStoreTxn) *TeamService {
+func Teams(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeamService {
 	return &TeamService{
-		repo: repo.NewTeamRepository(db),
+		flantTenantUUID:  flantTenantUUID,
+		repo:             repo.NewTeamRepository(db),
+		groupsController: NewGroupsController(db, flantTenantUUID),
 	}
 }
 
@@ -30,6 +35,10 @@ func (s *TeamService) Create(t *model.Team) error {
 		return fmt.Errorf("%w: %s is not allowed", consts.ErrInvalidArg, t.TeamType)
 	}
 	t.Version = repo.NewResourceVersion()
+	*t, err = s.groupsController.OnCreateTeam(*t)
+	if err != nil {
+		return err
+	}
 	return s.repo.Create(t)
 }
 
@@ -55,11 +64,18 @@ func (s *TeamService) Update(updated *model.Team) error {
 	if err != nil {
 		return err
 	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	updated.TeamType = stored.TeamType // team_type cant't be changed
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
 	}
 	updated.Version = repo.NewResourceVersion()
+	*updated, err = s.groupsController.OnUpdateTeam(*stored, *updated)
+	if err != nil {
+		return err
+	}
 	return s.repo.Create(updated)
 }
 
@@ -83,9 +99,14 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 	// TODO:
 	// Check no teammates - checked by memdb engine
 	// Check not default for any feature_flag
-	// Delete all child IAM.group & IAM.rolebinding
-
-	return s.repo.Delete(id, memdb.NewArchiveMark())
+	// Delete all child IAM.group & - deleted by GroupBuilder
+	// Delete IAM.rolebinding
+	archiveMark := memdb.NewArchiveMark()
+	*team, err = s.groupsController.OnDeleteTeam(*team)
+	if err != nil {
+		return err
+	}
+	return s.repo.Delete(id, archiveMark)
 }
 
 func (s *TeamService) GetByID(id model.TeamUUID) (*model.Team, error) {

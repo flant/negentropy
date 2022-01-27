@@ -102,7 +102,7 @@ func (r *ServiceAccountPasswordRepository) Delete(id model.ServiceAccountPasswor
 	if sap.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.ServiceAccountType, sap, archiveMark)
+	return r.db.Archive(model.ServiceAccountPasswordType, sap, archiveMark)
 }
 
 func (r *ServiceAccountPasswordRepository) List(ownerUUID model.OwnerUUID,

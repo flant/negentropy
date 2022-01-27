@@ -2,6 +2,7 @@ package root
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
@@ -38,8 +39,19 @@ func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User)
 	l.Debug("Entity object created for user", "identifier", user.FullIdentifier)
 
 	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
+		if source.OnlyServiceAccounts {
+			l.Debug("skipped creating entity alias for user and source, due to source only for service_accounts",
+				"identifier", user.FullIdentifier, "source", source.Name)
+			return true, nil
+		}
 		l.Debug("Create entity alias for user and source", "identifier", user.FullIdentifier, "source", source.Name)
 		err := eaRepo.CreateForUser(user, source)
+		if errors.Is(err, repo.ErrEmptyEntityAliasName) {
+			l.Debug("skipped creating entity alias for user and source, due to empty alias name error",
+				"identifier", user.FullIdentifier, "source", source.Name, "error", err.Error())
+			return true, nil
+		}
+
 		if err != nil {
 			return false, err
 		}

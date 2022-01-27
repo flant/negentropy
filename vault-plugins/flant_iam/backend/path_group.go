@@ -219,13 +219,12 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
-			Origin:     consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.Groups(tx, tenantUUID).Create(group); err != nil {
+		if err = usecase.Groups(tx, tenantUUID, consts.OriginIAM).Create(group); err != nil {
 			msg := "cannot create group"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -261,13 +260,12 @@ func (b *groupBackend) handleUpdate() framework.OperationFunc {
 			Version:    data.Get("resource_version").(string),
 			Identifier: data.Get("identifier").(string),
 			Members:    members,
-			Origin:     consts.OriginIAM,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err = usecase.Groups(tx, tenantUUID).Update(group)
+		err = usecase.Groups(tx, tenantUUID, consts.OriginIAM).Update(group)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -291,7 +289,7 @@ func (b *groupBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		err := usecase.Groups(tx, tenantUUID).Delete(consts.OriginIAM, id)
+		err := usecase.Groups(tx, tenantUUID, consts.OriginIAM).Delete(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -307,11 +305,11 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("read group", "path", req.Path)
 		id := data.Get("uuid").(string)
-
+		tenantUUID := data.Get(iam_repo.TenantForeignPK).(string)
 		tx := b.storage.Txn(true) // need writable for fixing members
 		defer tx.Abort()
-		repo := iam_repo.NewGroupRepository(tx)
-		group, err := repo.GetByID(id)
+
+		group, err := usecase.Groups(tx, tenantUUID, consts.OriginIAM).GetByID(id)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -335,9 +333,8 @@ func (b *groupBackend) handleList() framework.OperationFunc {
 
 		tx := b.storage.Txn(true) // need writable for fixing members
 		defer tx.Abort()
-		repo := iam_repo.NewGroupRepository(tx)
 
-		groups, err := repo.List(tenantID, showArchived)
+		groups, err := usecase.Groups(tx, tenantID, consts.OriginIAM).List(showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}

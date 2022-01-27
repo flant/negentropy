@@ -214,7 +214,7 @@ func (s *ServerService) Create(
 		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
 	}
 
-	groupService := usecase.Groups(s.tx, tenantUUID)
+	groupService := usecase.Groups(s.tx, tenantUUID, consts.OriginServerAccess)
 
 	if errors.Is(getGroupErr, consts.ErrNotFound) {
 		err := groupService.Create(group)
@@ -259,12 +259,17 @@ func (s *ServerService) Update(server *model.Server) error {
 	if err != nil {
 		return err
 	}
-
+	if stored.Version != server.Version {
+		return consts.ErrBadVersion
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	if stored.TenantUUID != server.TenantUUID {
 		return consts.ErrNotFound
 	}
 	server.Version = iam_repo.NewResourceVersion()
-
+	server.MultipassUUID = stored.MultipassUUID
 	project, err := s.projectsService.GetByID(server.ProjectUUID)
 	if err != nil {
 		return err

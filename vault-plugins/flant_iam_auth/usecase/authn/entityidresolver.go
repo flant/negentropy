@@ -79,7 +79,7 @@ func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryS
 		}, nil
 	} else {
 		r.logger.Debug("Not found user, try to find service_account")
-		sa, err := iam_repo.NewServiceAccountRepository(txn).GetByID(iamEntity.UUID)
+		sa, err := iam_repo.NewServiceAccountRepository(txn).GetByID(iamEntity.UserId)
 		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return nil, fmt.Errorf("finding service_account by id:%w", err)
 		}

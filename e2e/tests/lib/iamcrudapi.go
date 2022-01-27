@@ -191,3 +191,7 @@ func NewServiceAccountMultipassAPI(client *http.Client) TestAPI {
 func NewProjectFeatureFlagAPI(client *http.Client) TestAPI {
 	return &BuilderBasedAPI{client: client, url: &url2.ProjectFeatureFlagEndpointBuilder{}}
 }
+
+func NewServiceAccountPasswordAPI(client *http.Client) TestAPI {
+	return &BuilderBasedAPI{client: client, url: &url2.ServiceAccountPasswordEndpointBuilder{}}
+}

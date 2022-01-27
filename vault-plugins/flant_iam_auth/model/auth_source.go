@@ -37,25 +37,25 @@ const (
 )
 
 type AuthSource struct {
-	UUID                 string   `json:"uuid"` // ID
-	Name                 string   `json:"name"`
-	OIDCDiscoveryURL     string   `json:"oidc_discovery_url"`
-	OIDCDiscoveryCAPEM   string   `json:"oidc_discovery_ca_pem"`
-	OIDCClientID         string   `json:"oidc_client_id"`
-	OIDCClientSecret     string   `json:"oidc_client_secret"`
-	OIDCResponseMode     string   `json:"oidc_response_mode"`
-	OIDCResponseTypes    []string `json:"oidc_response_types"`
-	JWKSURL              string   `json:"jwks_url"`
-	JWKSCAPEM            string   `json:"jwks_ca_pem"`
-	JWTValidationPubKeys []string `json:"jwt_validation_pubkeys"`
-	JWTSupportedAlgs     []string `json:"jwt_supported_algs"`
-	BoundIssuer          string   `json:"bound_issuer"`
-	DefaultRole          string   `json:"default_role"`
-	NamespaceInState     bool     `json:"namespace_in_state"`
-	EntityAliasName      string   `json:"entity_alias_name"`
-	AllowServiceAccounts bool     `json:"allow_service_accounts"`
-
-	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
+	UUID                 string             `json:"uuid"` // ID
+	Name                 string             `json:"name"`
+	OIDCDiscoveryURL     string             `json:"oidc_discovery_url"`
+	OIDCDiscoveryCAPEM   string             `json:"oidc_discovery_ca_pem"`
+	OIDCClientID         string             `json:"oidc_client_id"`
+	OIDCClientSecret     string             `json:"oidc_client_secret"`
+	OIDCResponseMode     string             `json:"oidc_response_mode"`
+	OIDCResponseTypes    []string           `json:"oidc_response_types"`
+	JWKSURL              string             `json:"jwks_url"`
+	JWKSCAPEM            string             `json:"jwks_ca_pem"`
+	JWTValidationPubKeys []string           `json:"jwt_validation_pubkeys"`
+	JWTSupportedAlgs     []string           `json:"jwt_supported_algs"`
+	BoundIssuer          string             `json:"bound_issuer"`
+	DefaultRole          string             `json:"default_role"`
+	NamespaceInState     bool               `json:"namespace_in_state"`
+	EntityAliasName      string             `json:"entity_alias_name"`
+	AllowServiceAccounts bool               `json:"allow_service_accounts"`
+	OnlyServiceAccounts  bool               `json:"only_service_accounts"`
+	ParsedJWTPubKeys     []crypto.PublicKey `json:"-"`
 }
 
 func (s *AuthSource) ObjType() string {

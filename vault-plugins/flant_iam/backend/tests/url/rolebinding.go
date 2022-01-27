@@ -12,7 +12,7 @@ func (b *RoleBindingEndpointBuilder) OneCreate(params Params, query url.Values) 
 }
 
 func (b *RoleBindingEndpointBuilder) One(params Params, query url.Values) string {
-	return path.Join("tenant", params["tenant"].(string), "role_binding", params["uuid"].(string)) + "?" + query.Encode()
+	return path.Join("tenant", params["tenant"].(string), "role_binding", params["role_binding"].(string)) + "?" + query.Encode()
 }
 
 func (b *RoleBindingEndpointBuilder) Collection(params Params, query url.Values) string {

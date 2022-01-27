@@ -110,7 +110,7 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", uuid))
 		var sa *iam.ServiceAccount
 		sa, err = a.SaRepo.GetByID(uuid)
-		if (err != nil && errors.Is(err, consts.ErrNotFound)) || sa.Archived() {
+		if errors.Is(err, consts.ErrNotFound) || sa.Archived() {
 			return nil, "", fmt.Errorf("not found active iam entity %s", uuid)
 		}
 		if err != nil {
@@ -216,6 +216,59 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 						List: true,
 					},
 				},
+			}
+
+		case rc.Role == "register_server" && rc.TenantUUID != "" && rc.ProjectUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_at_project_%s_of_%s_by_%s", rc.Role, rc.ProjectUUID, rc.TenantUUID, userUUID),
+				Rules: []Rule{
+					{
+						Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/register_server*", rc.TenantUUID, rc.ProjectUUID),
+						Create: true,
+						Update: true,
+					},
+					{
+						Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/server*", rc.TenantUUID, rc.ProjectUUID),
+						Create: true,
+						Read:   true,
+						Update: true,
+						Delete: true,
+						List:   true,
+					},
+				},
+			}
+
+		case rc.Role == "iam_auth_read" && rc.TenantUUID != "":
+			policy = Policy{
+				Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, userUUID),
+				Rules: []Rule{{
+					Path: "auth/flant_iam_auth/tenant/" + rc.TenantUUID + "*",
+					Read: true,
+					List: true,
+				}},
+			}
+
+		case rc.Role == "flow_read":
+			policy = Policy{
+				Name: fmt.Sprintf("flow_read_by_%s", userUUID),
+				Rules: []Rule{{
+					Path: "flant_flow/*",
+					Read: true,
+					List: true,
+				}},
+			}
+
+		case rc.Role == "flow_write":
+			policy = Policy{
+				Name: fmt.Sprintf("flow_write_by_%s", userUUID),
+				Rules: []Rule{{
+					Path:   "flant_flow/*",
+					Create: true,
+					Read:   true,
+					Update: true,
+					Delete: true,
+					List:   true,
+				}},
 			}
 		}
 

@@ -56,6 +56,30 @@ var _ = Describe("User", func() {
 		}, nil)
 	})
 
+	It("can be updated", func() {
+		user := specs.CreateRandomUser(TestAPI, tenant.UUID)
+		updatePayload := fixtures.RandomUserCreatePayload()
+		updatePayload["tenant_uuid"] = user.TenantUUID
+		updatePayload["resource_version"] = user.Version
+
+		var updateData gjson.Result
+		TestAPI.Update(api.Params{
+			"tenant": user.TenantUUID,
+			"user":   user.UUID,
+			"expectPayload": func(json gjson.Result) {
+				updateData = json
+			},
+		}, nil, updatePayload)
+
+		TestAPI.Read(api.Params{
+			"tenant": user.TenantUUID,
+			"user":   user.UUID,
+			"expectPayload": func(json gjson.Result) {
+				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+			},
+		}, nil)
+	})
+
 	It("can be deleted", func() {
 		user := specs.CreateRandomUser(TestAPI, tenant.UUID)
 
@@ -98,5 +122,38 @@ var _ = Describe("User", func() {
 			"tenant": tenant.UUID,
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			user := specs.CreateRandomUser(TestAPI, tenant.UUID)
+			TestAPI.Delete(api.Params{
+				"tenant": user.TenantUUID,
+				"user":   user.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       user.TenantUUID,
+				"user":         user.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			user := specs.CreateRandomUser(TestAPI, tenant.UUID)
+			TestAPI.Delete(api.Params{
+				"tenant": user.TenantUUID,
+				"user":   user.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomUserCreatePayload()
+			updatePayload["tenant_uuid"] = user.TenantUUID
+			updatePayload["resource_version"] = user.Version
+			TestAPI.Update(api.Params{
+				"tenant":       user.TenantUUID,
+				"user":         user.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })

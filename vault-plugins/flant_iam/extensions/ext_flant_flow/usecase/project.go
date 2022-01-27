@@ -20,27 +20,53 @@ func Projects(db *io.MemoryStoreTxn) *ProjectService {
 	}
 }
 
-func (s *ProjectService) Create(project *model.Project) error {
+func (s *ProjectService) Create(project *model.Project) (*model.Project, error) {
 	// TODO verify servicepacks
 	// TODO fix servicepacks params due to default teams
 	iamProject, err := makeIamProject(project)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.ProjectService.Create(iamProject)
+	if err := s.ProjectService.Create(iamProject); err != nil {
+		return nil, err
+	}
+	iamProject, err = s.ProjectService.GetByID(project.UUID)
+	if err != nil {
+		return nil, err
+	}
+	project.Project = *iamProject
+	return project, nil
 }
 
-func (s *ProjectService) Update(project *model.Project) error {
+func (s *ProjectService) Update(project *model.Project) (*model.Project, error) {
 	stored, err := s.ProjectService.GetByID(project.UUID)
+	if stored.TenantUUID != project.TenantUUID {
+		return nil, consts.ErrNotFound
+	}
+	if stored.Origin != consts.OriginFlantFlow {
+		return nil, consts.ErrBadOrigin
+	}
+	if stored.Version != project.Version {
+		return nil, consts.ErrBadVersion
+	}
+	if stored.Archived() {
+		return nil, consts.ErrIsArchived
+	}
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 	project.Extensions = stored.Extensions
 	iamProject, err := makeIamProject(project)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.ProjectService.Update(iamProject)
+	iamProject, err = s.ProjectService.GetByID(project.UUID)
+	if err != nil {
+		return nil, err
+	}
+	project.Project = *iamProject
+	return project, nil
 }
 
 // func (s *ProjectService) Delete(id model.ProjectUUID) error {}
@@ -106,7 +132,7 @@ func unmarshallServicePackCandidate(servicePacksRaw interface{}) (map[model.Serv
 	return servicePacks, nil
 }
 
-// makeIamProject actually update extesions with servicepack
+// makeIamProject actually update extensions with servicepack
 func makeIamProject(project *model.Project) (*iam.Project, error) {
 	if project == nil {
 		return nil, consts.ErrNilPointer

@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -33,6 +34,9 @@ func (s *RoleService) Update(updated *model.Role) error {
 	stored, err := repo.GetByID(updated.Name)
 	if err != nil {
 		return err
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
 
 	updated.Scope = stored.Scope // type cannot be changed
@@ -65,6 +69,9 @@ func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole
 	if err != nil {
 		return err
 	}
+	if role.Archived() {
+		return consts.ErrIsArchived
+	}
 
 	// validate source exists
 	if _, err := repo.GetByID(subRole.Name); err != nil {
@@ -85,7 +92,9 @@ func (s *RoleService) Exclude(roleID, exclRoleID model.RoleName) error {
 	if err != nil {
 		return err
 	}
-
+	if role.Archived() {
+		return consts.ErrIsArchived
+	}
 	excludeRole(role, exclRoleID)
 
 	return repo.Update(role)

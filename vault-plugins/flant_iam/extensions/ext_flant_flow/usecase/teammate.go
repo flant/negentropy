@@ -13,23 +13,25 @@ import (
 )
 
 type TeammateService struct {
-	flantTenantUUID iam_model.TenantUUID
-	repo            *repo.TeammateRepository
-	teamRepo        *repo.TeamRepository
-	userService     *iam_usecase.UserService
+	flantTenantUUID  iam_model.TenantUUID
+	repo             *repo.TeammateRepository
+	teamRepo         *repo.TeamRepository
+	userService      *iam_usecase.UserService
+	groupsController GroupsController
 }
 
 func Teammates(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeammateService {
 	return &TeammateService{
-		flantTenantUUID: flantTenantUUID,
-		repo:            repo.NewTeammateRepository(db),
-		teamRepo:        repo.NewTeamRepository(db),
-		userService:     iam_usecase.Users(db, flantTenantUUID, consts.OriginFlantFlow),
+		flantTenantUUID:  flantTenantUUID,
+		repo:             repo.NewTeammateRepository(db),
+		teamRepo:         repo.NewTeamRepository(db),
+		userService:      iam_usecase.Users(db, flantTenantUUID, consts.OriginFlantFlow),
+		groupsController: NewGroupsController(db, flantTenantUUID),
 	}
 }
 
 func (s *TeammateService) Create(t *model.FullTeammate) error {
-	teammate := t.GetTeammate()
+	teammate := t.ExtractTeammate()
 	err := s.validateRole(teammate)
 	if err != nil {
 		return err
@@ -40,11 +42,15 @@ func (s *TeammateService) Create(t *model.FullTeammate) error {
 		return err
 	}
 	teammate.Version = t.Version
+	err = s.groupsController.OnCreateTeammate(*teammate)
+	if err != nil {
+		return err
+	}
 	return s.repo.Create(teammate)
 }
 
 func (s *TeammateService) Update(updated *model.FullTeammate) error {
-	teammate := updated.GetTeammate()
+	teammate := updated.ExtractTeammate()
 	if err := s.validateRole(teammate); err != nil {
 		return err
 	}
@@ -59,13 +65,16 @@ func (s *TeammateService) Update(updated *model.FullTeammate) error {
 		return consts.ErrBadVersion
 	}
 
-	updated.Version = repo.NewResourceVersion()
 	err = s.userService.Update(&updated.User)
 	if err != nil {
 		return err
 	}
 	// Update
 	teammate.Version = updated.Version
+	err = s.groupsController.OnUpdateTeammate(*stored, *teammate)
+	if err != nil {
+		return err
+	}
 	return s.repo.Update(teammate)
 }
 
@@ -79,6 +88,14 @@ func (s *TeammateService) Delete(id iam_model.UserUUID) error {
 		return err
 	}
 	archiveMark := user.ArchiveMark
+	stored, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	err = s.groupsController.OnDeleteTeammate(*stored)
+	if err != nil {
+		return err
+	}
 	return s.repo.Delete(id, archiveMark)
 }
 
@@ -119,6 +136,10 @@ func (s *TeammateService) Restore(id iam_model.UserUUID) (*model.FullTeammate, e
 		return nil, err
 	}
 	tm, err := s.repo.Restore(id)
+	if err != nil {
+		return nil, err
+	}
+	err = s.groupsController.OnCreateTeammate(*tm)
 	if err != nil {
 		return nil, err
 	}

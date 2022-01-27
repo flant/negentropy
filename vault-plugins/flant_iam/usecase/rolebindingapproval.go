@@ -54,6 +54,13 @@ func (s RoleBindingApprovalService) Update(rba *model.RoleBindingApproval) error
 	if rba.UUID == "" {
 		return fmt.Errorf("%w: uuid should be passed", consts.ErrInvalidArg)
 	}
+	stored, err := s.repo.GetByID(rba.UUID)
+	if err != nil {
+		return err
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
 	subj, err := s.approverFetcher.Fetch(rba.Approvers)
 	if err != nil {
 		return fmt.Errorf("RoleBindingApprovalService.Update:%w", err)

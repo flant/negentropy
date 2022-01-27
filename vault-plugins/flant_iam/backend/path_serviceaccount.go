@@ -768,7 +768,7 @@ func (b *serviceAccountBackend) handlePasswordCreate() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handlePasswordDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("delete service_account multipass", "path", req.Path)
+		b.Logger().Debug("delete service_account password", "path", req.Path)
 		var (
 			tenantUUID = data.Get("tenant_uuid").(string)
 			ownerUUID  = data.Get("owner_uuid").(string)
@@ -844,5 +844,15 @@ func (b *serviceAccountBackend) handlePasswordList() framework.OperationFunc {
 func generatePassword() (string, error) {
 	// Generate a password that is 64 characters long with 10 digits, 10 symbols,
 	// allowing upper and lower case letters, disallowing repeat characters.
-	return password.Generate(64, 10, 10, false, false)
+	generatorInput := &password.GeneratorInput{
+		LowerLetters: password.LowerLetters,
+		UpperLetters: password.UpperLetters,
+		Digits:       password.Digits,
+		Symbols:      "~!@#$%^&*()_+`-={}|[]:<>?,./", // remove \ and " to escape double backslashes marshaling problem
+	}
+	passwordGenerator, err := password.NewGenerator(generatorInput)
+	if err != nil {
+		return "", err
+	}
+	return passwordGenerator.Generate(64, 10, 10, false, false)
 }

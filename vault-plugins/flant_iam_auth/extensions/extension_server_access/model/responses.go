@@ -1,11 +1,5 @@
 package model
 
-type SafeProject struct {
-	UUID       string `json:"uuid"` // PK
-	TenantUUID string `json:"tenant_uuid"`
-	Version    string `json:"resource_version"`
-}
-
 type Project struct {
 	UUID       string `json:"uuid"` // PK
 	TenantUUID string `json:"tenant_uuid"`

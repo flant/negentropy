@@ -78,10 +78,12 @@ function build_server_accessd() {
     -v $AUTHD_DIR:/go/src/authd \
     -v $SERVER_ACCESSD_DIR/flant-server-accessd/build:/src/build \
     -v $SERVER_ACCESSD_DIR:/go/src/server-accessd \
+    -v $CLI_DIR:/go/src/cli \
+    -v $PLUGINS_DIR:/go/src/vault-plugins \
     -v /tmp/server-accessd-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
-    go build -o /src/build/server-accessd flant-server-accessd/cmd/main.go
+    go build -o /src/build/server-accessd flant-server-accessd/cmd/main.go flant-server-accessd/cmd/initcmd.go
 }
 
 function build_nss() {

@@ -15,6 +15,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 var (
@@ -48,13 +49,15 @@ var _ = Describe("Contact", func() {
 				Expect(contactData.Map()).To(HaveKey("full_identifier"))
 				Expect(contactData.Map()).To(HaveKey("email"))
 				Expect(contactData.Map()).To(HaveKey("origin"))
-				Expect(contactData.Get("uuid").String()).ToNot(HaveLen(10))
-				Expect(contactData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(contactData.Get("uuid").String()).To(HaveLen(36))
+				Expect(contactData.Get("resource_version").String()).To(HaveLen(36))
 				Expect(contactData.Map()).To(HaveKey("credentials"))
 				gotCreds := contactData.Get("credentials").Map()
 				b, _ := json.Marshal(createPayload["credentials"])
 				expectedCreds := gjson.Parse(string(b)).Map()
 				Expect(gotCreds).To(Equal(expectedCreds))
+				Expect(contactData.Map()).To(HaveKey("origin"))
+				Expect(contactData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 			"client": client.UUID,
 		}
@@ -72,6 +75,20 @@ var _ = Describe("Contact", func() {
 				iam_specs.IsSubsetExceptKeys(createdData, json.Get("contact"), "extensions")
 			},
 		}, nil)
+	})
+
+	It("can be updated", func() {
+		contact := specs.CreateRandomContact(TestAPI, client.UUID)
+		updatePayload := fixtures.RandomContactCreatePayload()
+		updatePayload["uuid"] = contact.UUID
+		updatePayload["client_uuid"] = client.UUID
+		updatePayload["resource_version"] = contact.Version
+
+		TestAPI.Update(testapi.Params{
+			"client":       contact.TenantUUID,
+			"contact":      contact.UUID,
+			"expectStatus": testapi.ExpectExactStatus(200),
+		}, nil, updatePayload)
 	})
 
 	It("can be deleted", func() {
@@ -116,5 +133,40 @@ var _ = Describe("Contact", func() {
 			"client": client.UUID,
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			contact := specs.CreateRandomContact(TestAPI, client.UUID)
+			TestAPI.Delete(testapi.Params{
+				"client":  contact.TenantUUID,
+				"contact": contact.UUID,
+			}, nil)
+
+			TestAPI.Delete(testapi.Params{
+				"client":       contact.TenantUUID,
+				"contact":      contact.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			contact := specs.CreateRandomContact(TestAPI, client.UUID)
+			TestAPI.Delete(testapi.Params{
+				"client":  contact.TenantUUID,
+				"contact": contact.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomContactCreatePayload()
+			updatePayload["uuid"] = contact.UUID
+			updatePayload["client_uuid"] = client.UUID
+			updatePayload["resource_version"] = contact.Version
+
+			TestAPI.Update(testapi.Params{
+				"client":       contact.TenantUUID,
+				"contact":      contact.UUID,
+				"expectStatus": testapi.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
 	})
 })

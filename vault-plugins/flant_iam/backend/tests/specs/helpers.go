@@ -9,7 +9,6 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
-	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -189,47 +188,7 @@ func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.R
 	return roleBinding
 }
 
-type ServerRegistrationResult struct {
-	MultipassJWT string `json:"multipassJWT"`
-	ServerUUID   string `json:"uuid"`
-}
-
-func RegisterServer(serverAPI api.TestAPI, server ext_model.Server) ServerRegistrationResult {
-	params := api.Params{
-		"tenant":       server.TenantUUID,
-		"project":      server.ProjectUUID,
-		"expectStatus": api.ExpectExactStatus(200),
-	}
-	bytes, _ := json.Marshal(server)
-	var createPayload map[string]interface{}
-	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
-	createData := serverAPI.Create(params, url.Values{}, createPayload)
-	data := []byte(createData.String())
-	var createdServer ServerRegistrationResult
-	err := json.Unmarshal(data, &createdServer)
-	Expect(err).ToNot(HaveOccurred())
-	return createdServer
-}
-
-func UpdateConnectionInfo(connectionInfoAPI api.TestAPI, server ext_model.Server, info ext_model.ConnectionInfo) ext_model.Server {
-	params := api.Params{
-		"tenant":       server.TenantUUID,
-		"project":      server.ProjectUUID,
-		"server":       server.UUID,
-		"expectStatus": api.ExpectExactStatus(200),
-	}
-	bytes, _ := json.Marshal(info)
-	var createPayload map[string]interface{}
-	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
-	createData := connectionInfoAPI.Update(params, url.Values{}, createPayload)
-	data := []byte(createData.Get("server").String())
-	var resultServer ext_model.Server
-	err := json.Unmarshal(data, &resultServer)
-	Expect(err).ToNot(HaveOccurred())
-	return resultServer
-}
-
-// return Mutipass model and JWT
+// CreateServiceAccountMultipass returns Mutipass model and JWT
 func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, serviceAccount model.ServiceAccount, description string,
 	ttl time.Duration, maxTTL time.Duration, roles []model.RoleName) (model.Multipass, string) {
 	createPayload := map[string]interface{}{
@@ -254,7 +213,7 @@ func CreateServiceAccountMultipass(serviceAccountMultipassAPI api.TestAPI, servi
 	return multipass, createData.Get("token").String()
 }
 
-func CreateServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.TenantUUID) model.ServiceAccount {
+func CreateRandomServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.TenantUUID) model.ServiceAccount {
 	createPayload := fixtures.RandomServiceAccountCreatePayload()
 	createPayload["tenant_uuid"] = tenantUUID
 	params := api.Params{
@@ -267,4 +226,28 @@ func CreateServiceAccount(serviceAccountAPI api.TestAPI, tenantUUID model.Tenant
 	err := json.Unmarshal(data, &serviceAccount)
 	Expect(err).ToNot(HaveOccurred())
 	return serviceAccount
+}
+
+// CreateServiceAccountPassword returns ServiceAccountPassword model
+func CreateServiceAccountPassword(serviceAccountPasswordAPI api.TestAPI, serviceAccount model.ServiceAccount, description string,
+	ttl time.Duration, roles []model.RoleName) model.ServiceAccountPassword {
+	createPayload := map[string]interface{}{
+		"tenant_uuid": serviceAccount.TenantUUID,
+		"owner_uuid":  serviceAccount.UUID,
+		"description": description,
+		// "allowed_cidrs":"",
+		"allowed_roles": roles,
+		"ttl":           ttl,
+	}
+	params := api.Params{
+		"tenant":          serviceAccount.TenantUUID,
+		"service_account": serviceAccount.UUID,
+	}
+	createData := serviceAccountPasswordAPI.Create(params, url.Values{}, createPayload)
+	rawPass := createData.Get("password")
+	data := []byte(rawPass.String())
+	var password model.ServiceAccountPassword
+	err := json.Unmarshal(data, &password)
+	Expect(err).ToNot(HaveOccurred())
+	return password
 }

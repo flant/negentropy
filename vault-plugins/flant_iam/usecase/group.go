@@ -18,16 +18,17 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 
 type GroupService struct {
 	tenantUUID model.TenantUUID
+	origin     consts.ObjectOrigin
 
 	repo           *iam_repo.GroupRepository
 	tenantsRepo    *iam_repo.TenantRepository
 	membersFetcher *MembersFetcher
 }
 
-func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID) *GroupService {
+func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID, origin consts.ObjectOrigin) *GroupService {
 	return &GroupService{
-		tenantUUID: tid,
-
+		tenantUUID:     tid,
+		origin:         origin,
 		repo:           iam_repo.NewGroupRepository(db),
 		tenantsRepo:    iam_repo.NewTenantRepository(db),
 		membersFetcher: NewMembersFetcher(db),
@@ -43,9 +44,7 @@ func (s *GroupService) Create(group *model.Group) error {
 	if group.Version != "" {
 		return consts.ErrBadVersion
 	}
-	if group.Origin == "" {
-		return consts.ErrBadOrigin
-	}
+	group.Origin = s.origin
 	group.Version = iam_repo.NewResourceVersion()
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
@@ -70,11 +69,14 @@ func (s *GroupService) Update(group *model.Group) error {
 	if stored.TenantUUID != s.tenantUUID {
 		return consts.ErrNotFound
 	}
-	if stored.Origin != group.Origin {
+	if stored.Origin != s.origin {
 		return consts.ErrBadOrigin
 	}
 	if stored.Version != group.Version {
 		return consts.ErrBadVersion
+	}
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
 
 	tenant, err := s.tenantsRepo.GetByID(s.tenantUUID)
@@ -102,13 +104,16 @@ func (s *GroupService) Update(group *model.Group) error {
 	return s.repo.Update(group)
 }
 
-func (s *GroupService) Delete(origin consts.ObjectOrigin, id model.GroupUUID) error {
+func (s *GroupService) Delete(id model.GroupUUID) error {
 	group, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
-	if group.Origin != origin {
+	if group.Origin != s.origin {
 		return consts.ErrBadOrigin
+	}
+	if group.Archived() {
+		return consts.ErrIsArchived
 	}
 	err = s.repo.CleanChildrenSliceIndexes(id)
 	if err != nil {
@@ -118,29 +123,80 @@ func (s *GroupService) Delete(origin consts.ObjectOrigin, id model.GroupUUID) er
 }
 
 func (s *GroupService) SetExtension(ext *model.Extension) error {
-	obj, err := s.repo.GetByID(ext.OwnerUUID)
+	stored, err := s.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
-		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	if stored.Archived() {
+		return consts.ErrIsArchived
 	}
-	obj.Extensions[ext.Origin] = ext
-	return s.repo.Update(obj)
+	if stored.Extensions == nil {
+		stored.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
+	}
+	stored.Extensions[ext.Origin] = ext
+	return s.repo.Update(stored)
 }
 
 func (s *GroupService) UnsetExtension(origin consts.ObjectOrigin, uuid model.GroupUUID) error {
-	obj, err := s.repo.GetByID(uuid)
+	stored, err := s.repo.GetByID(uuid)
 	if err != nil {
 		return err
 	}
-	if obj.Extensions == nil {
+	if stored.Archived() {
+		return consts.ErrIsArchived
+	}
+
+	if stored.Extensions == nil {
 		return nil
 	}
-	delete(obj.Extensions, origin)
-	return s.repo.Update(obj)
+	delete(stored.Extensions, origin)
+	return s.repo.Update(stored)
 }
 
-func (s *GroupService) List(tid model.TenantUUID, showArchived bool) ([]*model.Group, error) {
-	return s.repo.List(tid, showArchived)
+func (s *GroupService) List(showArchived bool) ([]*model.Group, error) {
+	return s.repo.List(s.tenantUUID, showArchived)
+}
+
+func (s *GroupService) GetByID(id model.GroupUUID) (*model.Group, error) {
+	return s.repo.GetByID(id)
+}
+
+func (s *GroupService) RemoveUsersFromGroup(groupUUID model.GroupUUID, userUUIDs ...model.UserUUID) error {
+	group, err := s.GetByID(groupUUID)
+	if err != nil {
+		return err
+	}
+	for _, userUUID := range userUUIDs {
+		targetUserIDX := -1
+		for i := range group.Users {
+			if group.Users[i] == userUUID {
+				targetUserIDX = i
+				break
+			}
+		}
+		if targetUserIDX > -1 {
+			group.Users = append(group.Users[:targetUserIDX], group.Users[targetUserIDX+1:]...) // nolint:gocritic
+			group.FixMembers()
+			err = s.Update(group)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *GroupService) AddUsersToGroup(groupUUID model.GroupUUID, userUUIDs ...model.UserUUID) error {
+	group, err := s.GetByID(groupUUID)
+	if err != nil {
+		return err
+	}
+	for _, extraUserUUID := range userUUIDs {
+		group.Users = append(group.Users, extraUserUUID)
+		group.Members = append(group.Members, model.MemberNotation{
+			Type: model.UserType,
+			UUID: extraUserUUID,
+		})
+	}
+	return s.Update(group)
 }

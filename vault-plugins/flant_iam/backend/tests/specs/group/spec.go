@@ -33,7 +33,7 @@ var _ = Describe("Group", func() {
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomGroupCreatePayload()
-		createPayload["tenant_uuid"] = tenant.UUID
+		delete(createPayload, "tenant_uuid")
 		createPayload["members"] = map[string]interface{}{
 			"type": "user",
 			"uuid": user.UUID,
@@ -50,8 +50,8 @@ var _ = Describe("Group", func() {
 				Expect(userData.Map()).To(HaveKey("members"))
 				Expect(userData.Map()).To(HaveKey("archiving_timestamp"))
 				Expect(userData.Map()).To(HaveKey("archiving_hash"))
-				Expect(userData.Get("uuid").String()).ToNot(HaveLen(10))
-				Expect(userData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(userData.Get("uuid").String()).To(HaveLen(36))
+				Expect(userData.Get("resource_version").String()).To(HaveLen(36))
 			},
 			"tenant": tenant.UUID,
 		}
@@ -67,6 +67,30 @@ var _ = Describe("Group", func() {
 			"group":  group.UUID,
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(createdData, json.Get("group"), "extensions")
+			},
+		}, nil)
+	})
+
+	It("can be updated", func() {
+		group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
+		updatePayload := fixtures.RandomGroupCreatePayload()
+		updatePayload["tenant_uuid"] = group.TenantUUID
+		updatePayload["resource_version"] = group.Version
+		updatePayload["members"] = map[string]interface{}{
+			"type": "user",
+			"uuid": user.UUID,
+		}
+
+		updateData := TestAPI.Update(api.Params{
+			"tenant": group.TenantUUID,
+			"group":  group.UUID,
+		}, nil, updatePayload)
+
+		TestAPI.Read(api.Params{
+			"tenant": group.TenantUUID,
+			"group":  group.UUID,
+			"expectPayload": func(json gjson.Result) {
+				specs.IsSubsetExceptKeys(updateData.Get("group"), json.Get("group"), "full_restore")
 			},
 		}, nil)
 	})
@@ -119,4 +143,45 @@ var _ = Describe("Group", func() {
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
+
+	Context("after deletion", func() {
+		It("can't be deleted", func() {
+			gr := createGroup(TenantAPI, UserAPI, TestAPI)
+			TestAPI.Delete(api.Params{
+				"tenant": gr.TenantUUID,
+				"group":  gr.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       gr.TenantUUID,
+				"group":        gr.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+		})
+
+		It("can't be updated", func() {
+			gr := createGroup(TenantAPI, UserAPI, TestAPI)
+			TestAPI.Delete(api.Params{
+				"tenant": gr.TenantUUID,
+				"group":  gr.UUID,
+			}, nil)
+
+			updatePayload := fixtures.RandomGroupCreatePayload()
+			updatePayload["uuid"] = gr.UUID
+			updatePayload["tenant_uuid"] = gr.TenantUUID
+			updatePayload["resource_version"] = gr.Version
+			TestAPI.Update(api.Params{
+				"tenant":       gr.TenantUUID,
+				"group":        gr.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
+		})
+	})
 })
+
+func createGroup(tenantAPI, userAPI, groupAPI api.TestAPI) *model.Group {
+	tenant := specs.CreateRandomTenant(tenantAPI)
+	user := specs.CreateRandomUser(userAPI, tenant.UUID)
+	group := specs.CreateRandomGroupWithUser(groupAPI, tenant.UUID, user.UUID)
+	return &group
+}

@@ -319,11 +319,12 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 	}
 
 	cases := []struct {
-		title  string
-		obj    io.MemoryStorableObject
-		get    func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error)
-		fullId func(io.MemoryStorableObject) string
-		id     func(io.MemoryStorableObject) string
+		title           string
+		obj             io.MemoryStorableObject
+		get             func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error)
+		fullId          func(io.MemoryStorableObject) string
+		id              func(io.MemoryStorableObject) string
+		amountOfAliases int
 	}{
 		{
 			title: "user",
@@ -345,6 +346,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			id: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.User).UUID
 			},
+			amountOfAliases: 1,
 		},
 
 		{
@@ -369,6 +371,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			id: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.ServiceAccount).UUID
 			},
+			amountOfAliases: 2,
 		},
 	}
 
@@ -394,7 +397,8 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			require.Equal(t, e.Name, c.fullId(user), "must name same af full_id")
 
 			aliases, _ := getAllAliases(t, tx, uuid)
-			require.Len(t, aliases, 1, "should does create one aliase for internal multipass source")
+
+			require.Len(t, aliases, c.amountOfAliases, "should create one alias for user (internal source multipass) and two for sa (multipass and sapassword)")
 
 			t.Run("creates entity aliases for all auth sources", func(t *testing.T) {
 				user := c.obj

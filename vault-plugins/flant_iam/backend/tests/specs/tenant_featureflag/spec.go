@@ -1,6 +1,7 @@
 package tenant_featureflag
 
 import (
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -30,7 +31,7 @@ var _ = Describe("Tenant feature flags", func() {
 	It("can be bound", func() {
 		params := api.Params{
 			"expectStatus":      api.ExpectExactStatus(200),
-			"tenant_uuid":       tenantID,
+			"tenant":            tenantID,
 			"feature_flag_name": ffName,
 		}
 
@@ -58,7 +59,7 @@ var _ = Describe("Tenant feature flags", func() {
 
 	It("can be unbound", func() {
 		TestAPI.Delete(api.Params{
-			"tenant_uuid":       tenantID,
+			"tenant":            tenantID,
 			"feature_flag_name": ffName,
 			"expectStatus":      api.ExpectExactStatus(200),
 		}, nil)
@@ -70,5 +71,20 @@ var _ = Describe("Tenant feature flags", func() {
 				Expect(ffArr).To(HaveLen(0))
 			},
 		}, nil)
+	})
+
+	Context("after deletion tenant", func() {
+		It("can't be deleted", func() {
+			TenantAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       tenantID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":            tenantID,
+				"feature_flag_name": ffName,
+				"expectStatus":      api.ExpectExactStatus(400),
+			}, nil)
+		})
 	})
 })

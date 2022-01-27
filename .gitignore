@@ -15,12 +15,12 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Python bytecode
+__pycache__
 
+# Terraform and packer stuff
 infra/**/packer_cache
 infra/**/output
-
 .terraform
 .terraform.lock.hcl
 env_vars
