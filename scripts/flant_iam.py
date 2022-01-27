@@ -1,4 +1,4 @@
-from consts import FLANT_IAM
+from consts import FLANT_IAM, FLANT_IAM_AUTH
 from vault import Vault, check_response
 
 
@@ -46,6 +46,30 @@ def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, ident
         return
     raise Exception("expect one of status :[200, 404], got: {}, full response:{}".format(resp.status_code, resp.text))
 
+def create_auth_method(vault: Vault, auth_method_name: str):
+    """create auth_method if not exists"""
+    base_path = "auth_method/{}".format(auth_method_name)
+
+    check_response(
+        vault.write_to_plugin(plugin=FLANT_IAM_AUTH, path=base_path,
+                              json={
+                                       "method_type": "access_token",
+                                       "source": "oidc-mock",
+                                       "bound_audiences": [
+                                           "https://login.flant.com"
+                                       ],
+                                       "token_ttl": "30m",
+                                       "token_max_ttl": "1440m",
+                                       "user_claim": "uuid",
+                                       "token_policies": [
+                                           "token_renew",
+                                           "list_tenants"
+                                       ],
+                                       "token_no_default_policy": "true"
+                                   }), 200)
+    print("auth_method with name '{}' created".format(auth_method_name))
+    return
+    raise Exception("expect one of status :[200, 404], got: {}, full response:{}".format(resp.status_code, resp.text))
 
 def create_user_multipass(vault: Vault, tenant_uuid: str, user_uuid: str, ttl_sec: int) -> str:
     """create user multipass"""

@@ -3,7 +3,7 @@ import sys
 from os import path, makedirs
 from typing import List
 
-from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
+from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass, create_auth_method
 from plugins import connect_plugins
 from plugins import find_master_root_vault
 from server_access_ext import ServerAccessExtension
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         vaults = [root_vault, auth_vault]
         auth_vault_name = auth_vault.name
 
-    oidc_url = "http://oidc-mock:9998"
+    oidc_url = "https://login.flant.com"
 
     # vaults = read_vaults_from_file()
 
@@ -146,3 +146,17 @@ if __name__ == "__main__":
     file.write(multipass)
     file.close()
     print(multipass_file_path + " is updated")
+
+
+
+    create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                           "e58cd98a-9421-4ead-8d7e-fc8abb4713a5",
+                           "user_for_authd_tests_vad")
+    multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                      "e58cd98a-9421-4ead-8d7e-fc8abb4713a5", 3600)
+    file = open(multipass_file_path, "w")
+    file.write(multipass)
+    file.close()
+    print(multipass_file_path + " is updated")
+
+    create_auth_method(iam_vault, "okta-jwt2")
