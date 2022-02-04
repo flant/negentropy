@@ -252,7 +252,7 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 			policy = Policy{
 				Name: fmt.Sprintf("flow_read_by_%s", userUUID),
 				Rules: []Rule{{
-					Path: "flant_flow/*",
+					Path: "flant_iam/*",
 					Read: true,
 					List: true,
 				}},
@@ -262,7 +262,7 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 			policy = Policy{
 				Name: fmt.Sprintf("flow_write_by_%s", userUUID),
 				Rules: []Rule{{
-					Path:   "flant_flow/*",
+					Path:   "flant_iam/*",
 					Create: true,
 					Read:   true,
 					Update: true,
