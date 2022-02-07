@@ -16,9 +16,9 @@ import (
 )
 
 var cfg config.FlantFlowConfig = config.FlantFlowConfig{
-	FlantTenantUUID: fixtures.TenantUUID1,
-	SpecificTeams:   nil,
-	SpecificRoles:   map[config.SpecializedRoleName]iam.RoleName{"ssh": "ssh"},
+	FlantTenantUUID:       fixtures.TenantUUID1,
+	SpecificTeams:         nil,
+	RolesForSpecificTeams: map[config.SpecializedTeam][]iam.RoleName{config.Devops: []string{"ssh"}},
 }
 
 func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project) {

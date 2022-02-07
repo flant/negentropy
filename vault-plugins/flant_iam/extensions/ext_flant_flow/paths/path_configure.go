@@ -51,13 +51,17 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			},
 		},
 		{
-			Pattern: path.Join("configure_extension", "flant_flow", "specific_roles"),
+			Pattern: path.Join("configure_extension", "flant_flow", "role_rules", framework.GenericNameRegex("specific_team")+"$"),
 			Fields: map[string]*framework.FieldSchema{
+				"specific_team": {
+					Type:        framework.TypeNameString,
+					Description: fmt.Sprintf("Specific team type. Mandatory keys:%v", config.MandatoryRoleRulesForSpecificTeams),
+					Required:    true,
+				},
 				"specific_roles": {
-					Type: framework.TypeKVPairs,
-					Description: fmt.Sprintf("Mapping some specific keys to iam.RoleName, mandatory keys:%v",
-						config.MandatorySpecificRoles),
-					Required: true,
+					Type:        framework.TypeStringSlice,
+					Description: "Set of roles for specific team type. Passed roles will be used for automatically created rolebindings",
+					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -117,12 +121,13 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Contex
 	defer b.Logger().Info("handleConfig exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
-	rolesMap := data.Get("specific_roles").(map[string]string)
-	if len(rolesMap) == 0 {
+	teamType := data.Get("specific_team").(string)
+	roles := data.Get("specific_roles").([]string)
+	if len(roles) == 0 {
 		return backentutils.ResponseErr(req,
 			fmt.Errorf("%w: mandatory param 'specific_roles' not passed, or is empty", consts.ErrInvalidArg))
 	}
-	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, rolesMap)
+	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, teamType, roles)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

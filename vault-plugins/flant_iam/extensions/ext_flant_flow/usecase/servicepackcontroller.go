@@ -79,7 +79,7 @@ func (d devopsServicePackBuilder) OnCreateProject(project model.Project) error {
 			return err
 		}
 		// create ssh rolebinding
-		rb, err := d.createSSHRoleBinding(project.TenantUUID, project.UUID, groupUUIDs, d.liveConfig.SpecificRoles[config.SSHRole])
+		rb, err := d.createRoleBinding(project.TenantUUID, project.UUID, groupUUIDs, d.liveConfig.RolesForSpecificTeams[config.Devops])
 		if err != nil {
 			return err
 		}
@@ -181,23 +181,28 @@ func (d devopsServicePackBuilder) createIdentitySharing(clientTenantUUID iam_mod
 	return groups, sh, nil
 }
 
-func (d devopsServicePackBuilder) createSSHRoleBinding(clientTenantUUID iam_model.TenantUUID, projectUUID iam_model.ProjectUUID,
-	groups []iam_model.GroupUUID, roleName iam_model.RoleName) (*iam_model.RoleBinding, error) {
+func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.TenantUUID, projectUUID iam_model.ProjectUUID,
+	groups []iam_model.GroupUUID, roles []iam_model.RoleName) (*iam_model.RoleBinding, error) {
 	rbsOfProject, err := d.roleBindingRepository.FindDirectRoleBindingsForProject(projectUUID)
 	if err != nil {
 		return nil, err
 	}
-	rbsOfRole, err := d.roleBindingRepository.FindDirectRoleBindingsForRoles(roleName)
+	rbsOfRole, err := d.roleBindingRepository.FindDirectRoleBindingsForRoles(roles...)
 	filteredRoleBindings := map[iam_model.RoleBindingUUID]*iam_model.RoleBinding{}
 	for uuid, rb := range rbsOfProject {
 		if _, ok := rbsOfRole[uuid]; ok {
 			filteredRoleBindings[uuid] = rb
 		}
 	}
-	rb := findEqualRoleBinding(filteredRoleBindings, groups)
+	rb := findEqualRoleBinding(filteredRoleBindings, groups, roles)
 	if rb != nil {
 		return rb, nil
 	}
+	boundRoles := make([]iam_model.BoundRole, 0, len(roles))
+	for _, role := range roles {
+		boundRoles = append(boundRoles, iam_model.BoundRole{Name: role})
+	}
+
 	rb = &iam_model.RoleBinding{
 		UUID:       uuid.New(),
 		TenantUUID: clientTenantUUID,
@@ -205,11 +210,8 @@ func (d devopsServicePackBuilder) createSSHRoleBinding(clientTenantUUID iam_mode
 		Identifier: model.DevOps,
 		Groups:     groups,
 		Projects:   []iam_model.ProjectUUID{projectUUID},
-		Roles: []iam_model.BoundRole{{
-			Name:    roleName,
-			Options: nil,
-		}},
-		Origin: consts.OriginFlantFlow,
+		Roles:      boundRoles,
+		Origin:     consts.OriginFlantFlow,
 	}
 	err = d.roleBindingRepository.Create(rb)
 	if err != nil {
@@ -218,10 +220,15 @@ func (d devopsServicePackBuilder) createSSHRoleBinding(clientTenantUUID iam_mode
 	return rb, nil
 }
 
-func findEqualRoleBinding(roleBindings map[iam_model.RoleBindingUUID]*iam_model.RoleBinding, groups []iam_model.GroupUUID) *iam_model.RoleBinding {
+func findEqualRoleBinding(roleBindings map[iam_model.RoleBindingUUID]*iam_model.RoleBinding, groups []iam_model.GroupUUID,
+	roles []iam_model.RoleName) *iam_model.RoleBinding {
 	groupUUIDs := map[iam_model.GroupUUID]struct{}{}
 	for _, g := range groups {
 		groupUUIDs[g] = struct{}{}
+	}
+	roleNames := map[iam_model.RoleName]struct{}{}
+	for _, r := range roles {
+		roleNames[r] = struct{}{}
 	}
 	for _, rb := range roleBindings {
 		if rb.Archived() ||
@@ -232,10 +239,19 @@ func findEqualRoleBinding(roleBindings map[iam_model.RoleBindingUUID]*iam_model.
 		for _, g := range rb.Groups {
 			if _, ok := groupUUIDs[g]; !ok {
 				equal = false
+				break
 			}
-		}
-		if equal {
-			return rb
+			if equal {
+				for _, r := range rb.Roles {
+					if _, ok := roleNames[r.Name]; !ok {
+						equal = false
+						break
+					}
+				}
+			}
+			if equal {
+				return rb
+			}
 		}
 	}
 	return nil

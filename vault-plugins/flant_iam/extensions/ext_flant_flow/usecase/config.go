@@ -44,13 +44,14 @@ func (c *ConfigService) SetFlantTenantUUID(ctx context.Context, storage logical.
 	return c.configProvider.SetFlantTenantUUID(ctx, storage, flantUUID)
 }
 
-func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, rolesMap map[string]string) (*config.FlantFlowConfig, error) {
-	for _, roleName := range rolesMap {
+func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, teamType config.SpecializedTeam,
+	roles []iam_model.RoleName) (*config.FlantFlowConfig, error) {
+	for _, roleName := range roles {
 		if _, err := c.roleRepo.GetByID(roleName); err != nil {
 			return nil, fmt.Errorf("%w:%s", err, roleName)
 		}
 	}
-	return c.configProvider.UpdateSpecificRoles(ctx, storage, rolesMap)
+	return c.configProvider.UpdateSpecificRoleRules(ctx, storage, teamType, roles)
 }
 
 func (c *ConfigService) UpdateSpecificTeams(ctx context.Context, storage logical.Storage, teamsMap map[string]string) (*config.FlantFlowConfig, error) {

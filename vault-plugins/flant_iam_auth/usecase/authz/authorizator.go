@@ -247,6 +247,54 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 					List: true,
 				}},
 			}
+
+		case rc.Role == "flow_read":
+			policy = Policy{
+				Name: fmt.Sprintf("flow_read_by_%s", userUUID),
+				Rules: []Rule{{
+					Path: "flant_iam/client/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/team/*",
+					Read: true,
+					List: true,
+				}},
+			}
+
+		case rc.Role == "flow_write":
+			policy = Policy{
+				Name: fmt.Sprintf("flow_write_by_%s", userUUID),
+				Rules: []Rule{{
+					Path:   "flant_iam/client",
+					Create: true,
+					Read:   true,
+					Update: true,
+					Delete: true,
+					List:   true,
+				}, {
+					Path:   "flant_iam/client/*",
+					Create: true,
+					Read:   true,
+					Update: true,
+					Delete: true,
+					List:   true,
+				}, {
+					Path:   "flant_iam/team",
+					Create: true,
+					Read:   true,
+					Update: true,
+					Delete: true,
+					List:   true,
+				}, {
+					Path:   "flant_iam/team/*",
+					Create: true,
+					Read:   true,
+					Update: true,
+					Delete: true,
+					List:   true,
+				}},
+			}
 		}
 
 		if policy.Name != "" {

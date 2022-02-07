@@ -25,23 +25,18 @@ var (
 	L1      SpecializedTeam = "L1"
 	Mk8s    SpecializedTeam = "mk8s"
 	Okmeter SpecializedTeam = "Okmeter"
-)
-
-// SpecializedRoleName
-var (
-	SSHRole = "ssh"
-	// TODO
+	Devops  SpecializedTeam = "DevOps"
 )
 
 type FlantFlowConfig struct {
-	FlantTenantUUID iam_model.TenantUUID
-	SpecificTeams   map[SpecializedTeam]model.TeamUUID
-	SpecificRoles   map[SpecializedRoleName]iam_model.RoleName
+	FlantTenantUUID       iam_model.TenantUUID
+	SpecificTeams         map[SpecializedTeam]model.TeamUUID
+	RolesForSpecificTeams map[SpecializedTeam][]iam_model.RoleName
 }
 
 var (
-	MandatorySpecificTeams = []SpecializedTeam{L1, Mk8s, Okmeter}
-	MandatorySpecificRoles = []SpecializedRoleName{SSHRole} // TODO
+	MandatorySpecificTeams             = []SpecializedTeam{L1, Mk8s, Okmeter}
+	MandatoryRoleRulesForSpecificTeams = []SpecializedTeam{Devops} // TODO
 )
 
 // IsBaseConfigured returns true if prohibited to use any of client paths, returns false if allowed only use configure path
@@ -52,12 +47,12 @@ func (c *FlantFlowConfig) IsBaseConfigured() error {
 	if c.FlantTenantUUID == "" {
 		return fmt.Errorf("%w:flant_tenant_uuid is empty", consts.ErrNotConfigured)
 	}
-	if c.SpecificRoles == nil {
-		return fmt.Errorf("%w:SpecificRoles:nil", consts.ErrNotConfigured)
+	if c.RolesForSpecificTeams == nil {
+		return fmt.Errorf("%w:RolesForSpecificTeams:nil", consts.ErrNotConfigured)
 	}
 
-	if err := allKeysInMap(MandatorySpecificRoles, c.SpecificRoles); err != nil {
-		return fmt.Errorf("%w:MandatorySpecificRoles:%s", consts.ErrNotConfigured, err.Error())
+	if err := allKeysInMapOfArray(MandatoryRoleRulesForSpecificTeams, c.RolesForSpecificTeams); err != nil {
+		return fmt.Errorf("%w:MandatoryRoleRulesForSpecificTeams:%s", consts.ErrNotConfigured, err.Error())
 	}
 	return nil
 }
@@ -85,6 +80,15 @@ func allKeysInMap(ks []string, m map[string]string) error {
 	return nil
 }
 
+func allKeysInMapOfArray(ks []string, m map[string][]string) error {
+	for _, k := range ks {
+		if _, ok := m[k]; !ok {
+			return fmt.Errorf("key %q not found", k)
+		}
+	}
+	return nil
+}
+
 type MutexedConfigManager struct {
 	m          sync.RWMutex
 	liveConfig *FlantFlowConfig
@@ -103,9 +107,9 @@ func (c *MutexedConfigManager) unSafeGetConfig(ctx context.Context, storage logi
 	}
 	if storedConfigEntry == nil {
 		return &FlantFlowConfig{
-			FlantTenantUUID: "",
-			SpecificTeams:   map[SpecializedTeam]model.TeamUUID{},
-			SpecificRoles:   map[SpecializedRoleName]iam_model.RoleName{},
+			FlantTenantUUID:       "",
+			SpecificTeams:         map[SpecializedTeam]model.TeamUUID{},
+			RolesForSpecificTeams: map[SpecializedTeam][]iam_model.RoleName{},
 		}, nil
 	}
 
@@ -163,15 +167,14 @@ func (c *MutexedConfigManager) UpdateSpecificTeams(ctx context.Context, storage 
 	return c.unSafeSaveConfig(ctx, storage, config)
 }
 
-func (c *MutexedConfigManager) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, specificRoles map[SpecializedRoleName]iam_model.RoleName) (*FlantFlowConfig, error) {
+func (c *MutexedConfigManager) UpdateSpecificRoleRules(ctx context.Context, storage logical.Storage,
+	teamType SpecializedTeam, roles []iam_model.RoleName) (*FlantFlowConfig, error) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	config, err := c.unSafeGetConfig(ctx, storage)
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range specificRoles {
-		config.SpecificRoles[k] = v
-	}
+	config.RolesForSpecificTeams[teamType] = roles
 	return c.unSafeSaveConfig(ctx, storage, config)
 }
