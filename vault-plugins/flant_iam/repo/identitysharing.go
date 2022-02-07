@@ -15,6 +15,7 @@ const (
 	SourceTenantUUIDIndex         = TenantForeignPK // it is generated because tenant is the parent object for shares
 	DestinationTenantUUIDIndex    = "destination_tenant_uuid_index"
 	GroupUUIDIdentitySharingIndex = "group_in_identity_sharing_index"
+	IdentitySharingForeignPK      = "identity_sharing_uuid"
 )
 
 func IdentitySharingSchema() *memdb.DBSchema {

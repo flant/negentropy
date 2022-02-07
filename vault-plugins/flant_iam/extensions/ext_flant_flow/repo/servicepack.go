@@ -7,18 +7,11 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
-
-type ServicePack_ struct {
-	memdb.ArchiveMark
-	ProjectUUID  iam_model.ProjectUUID       `json:"uuid"`
-	Name         model.ServicePackName       `json:"service_pack_name"`
-	Version      string                      `json:"resource_version"`
-	Rolebindings []iam_model.RoleBindingUUID `json:"rolebindings"`
-}
 
 const (
 	RoleBindingInServicePackIndex = "rb_in_service_pack_index"
@@ -57,6 +50,14 @@ func ServicePackSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
+					repo.IdentitySharingForeignPK: {
+						Name:         repo.IdentitySharingForeignPK,
+						Unique:       false,
+						AllowMissing: true,
+						Indexer: &hcmemdb.StringSliceFieldIndex{
+							Field: "IdentitySharings",
+						},
+					},
 				},
 			},
 		},
@@ -64,6 +65,7 @@ func ServicePackSchema() *memdb.DBSchema {
 			model.ServicePackType: {
 				{OriginalDataTypeFieldName: "ProjectUUID", RelatedDataType: iam_model.ProjectType, RelatedDataTypeFieldIndexName: PK},
 				{OriginalDataTypeFieldName: "Rolebindings", RelatedDataType: iam_model.RoleBindingType, RelatedDataTypeFieldIndexName: PK},
+				{OriginalDataTypeFieldName: "IdentitySharings", RelatedDataType: iam_model.IdentitySharingType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
 		CascadeDeletes: map[string][]memdb.Relation{
@@ -72,6 +74,11 @@ func ServicePackSchema() *memdb.DBSchema {
 			},
 			model.ServicePackType: {
 				{OriginalDataTypeFieldName: "Rolebindings", RelatedDataType: iam_model.RoleBindingType, RelatedDataTypeFieldIndexName: PK},
+			},
+		},
+		CheckingRelations: map[string][]memdb.Relation{
+			iam_model.IdentitySharingType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServicePackType, RelatedDataTypeFieldIndexName: repo.IdentitySharingForeignPK},
 			},
 		},
 	}
@@ -164,4 +171,25 @@ func (r *ServicePackRepository) Sync(objID string, data []byte) error {
 	}
 
 	return r.save(group)
+}
+
+func (r *ServicePackRepository) ListForIdentitySharing(identitySharingUUID iam_model.IdentitySharingUUID,
+	showArchived bool) ([]*model.ServicePack, error) {
+	iter, err := r.db.Get(model.ServicePackType, repo.IdentitySharingForeignPK, identitySharingUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*model.ServicePack{}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.ServicePack)
+		if showArchived || obj.NotArchived() {
+			list = append(list, obj)
+		}
+	}
+	return list, nil
 }

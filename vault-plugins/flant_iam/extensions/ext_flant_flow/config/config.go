@@ -29,7 +29,8 @@ var (
 
 // SpecializedRoleName
 var (
-// TODO
+	SSHRole = "ssh"
+	// TODO
 )
 
 type FlantFlowConfig struct {
@@ -40,7 +41,7 @@ type FlantFlowConfig struct {
 
 var (
 	MandatorySpecificTeams = []SpecializedTeam{L1, Mk8s, Okmeter}
-	MandatorySpecificRoles = []SpecializedRoleName{} // TODO
+	MandatorySpecificRoles = []SpecializedRoleName{SSHRole} // TODO
 )
 
 // IsBaseConfigured returns true if prohibited to use any of client paths, returns false if allowed only use configure path
@@ -141,7 +142,7 @@ func (c *MutexedConfigManager) SetFlantTenantUUID(ctx context.Context, storage l
 		return nil, err
 	}
 	if config.FlantTenantUUID != "" {
-		return nil, fmt.Errorf("flant tenant uui already set:%s", config.FlantTenantUUID)
+		return nil, fmt.Errorf("flant tenant uuid already set:%s", config.FlantTenantUUID)
 	}
 
 	config.FlantTenantUUID = flantTenantUUID

@@ -1,6 +1,9 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // ServicePack names
 var (
@@ -71,4 +74,16 @@ func ParseServicePacks(servicePacks map[ServicePackName]interface{}) (map[Servic
 		}
 	}
 	return result, nil
+}
+
+func TryGetDevopsCFG(servicePacks map[ServicePackName]ServicePackCFG) (cfg *DevopsServicePackCFG, err error, found bool) {
+	rawCFG, ok := servicePacks[DevOps]
+	if !ok {
+		return nil, nil, false
+	}
+	c, ok := rawCFG.(DevopsServicePackCFG)
+	if !ok {
+		return nil, fmt.Errorf("wrong cfg format: expected  DevopsServicePackCFG, got: %T", rawCFG), true
+	}
+	return &c, nil, true
 }

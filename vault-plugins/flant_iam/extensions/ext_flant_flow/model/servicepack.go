@@ -10,10 +10,11 @@ const ServicePackType = "servicepack" // also, memdb schema name
 type ServicePack struct {
 	memdb.ArchiveMark
 
-	ProjectUUID  iam_model.ProjectUUID       `json:"uuid"`
-	Name         ServicePackName             `json:"service_pack_name"`
-	Version      string                      `json:"resource_version"`
-	Rolebindings []iam_model.RoleBindingUUID `json:"rolebindings"`
+	ProjectUUID      iam_model.ProjectUUID           `json:"uuid"`
+	Name             ServicePackName                 `json:"service_pack_name"`
+	Version          string                          `json:"resource_version"`
+	Rolebindings     []iam_model.RoleBindingUUID     `json:"rolebindings"`
+	IdentitySharings []iam_model.IdentitySharingUUID `json:"identity_sharings"`
 }
 
 func (u *ServicePack) ObjType() string {

@@ -133,7 +133,7 @@ func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, roleAPI testapi.TestAPI, 
 	tenant := iam_specs.CreateRandomTenant(tenantAPI)
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
 	r1 := iam_specs.CreateRandomRole(roleAPI)
-	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{"todo_in_future": r1.Name}) // TODO fil later
+	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{config.SSHRole: r1.Name}) // TODO fil later
 
 	return &config.FlantFlowConfig{
 		FlantTenantUUID: tenant.UUID,

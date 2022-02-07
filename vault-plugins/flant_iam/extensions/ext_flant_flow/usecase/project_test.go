@@ -7,12 +7,19 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
+
+var cfg config.FlantFlowConfig = config.FlantFlowConfig{
+	FlantTenantUUID: fixtures.TenantUUID1,
+	SpecificTeams:   nil,
+	SpecificRoles:   map[config.SpecializedRoleName]iam.RoleName{"ssh": "ssh"},
+}
 
 func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project) {
 	for _, project := range projects {
@@ -34,7 +41,7 @@ func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project
 
 func projectFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	srv := Projects(tx)
+	srv := Projects(tx, &cfg)
 	createProjects(t, srv, fixtures.Projects()...)
 	err := tx.Commit()
 	require.NoError(t, err)
@@ -42,7 +49,7 @@ func projectFixture(t *testing.T, store *io.MemoryStore) {
 
 func Test_ProjectList(t *testing.T) {
 	tx := runFixtures(t, teamFixture, clientFixture, projectFixture).Txn(true)
-	projects, err := Projects(tx).List(fixtures.TenantUUID1, false)
+	projects, err := Projects(tx, &cfg).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)

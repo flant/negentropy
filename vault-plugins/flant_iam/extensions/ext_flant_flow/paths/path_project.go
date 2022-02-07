@@ -217,7 +217,7 @@ func (b *projectBackend) handleExistence(_ context.Context, req *logical.Request
 
 	tx := b.storage.Txn(false)
 
-	obj, err := usecase.Projects(tx).GetByID(id)
+	obj, err := usecase.Projects(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return false, err
 	}
@@ -236,7 +236,7 @@ func (b *projectBackend) handleCreate(expectID bool) framework.OperationFunc {
 		defer tx.Abort()
 
 		var project *model.Project
-		if project, err = usecase.Projects(tx).Create(*projectParams); err != nil {
+		if project, err = usecase.Projects(tx, b.liveConfig).Create(*projectParams); err != nil {
 			err = fmt.Errorf("cannot create project:%w", err)
 			b.Logger().Error("error", "error", err.Error())
 			return backentutils.ResponseErr(req, err)
@@ -308,7 +308,7 @@ func (b *projectBackend) handleUpdate(_ context.Context, req *logical.Request, d
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	project, err := usecase.Projects(tx).Update(*projectParams)
+	project, err := usecase.Projects(tx, b.liveConfig).Update(*projectParams)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -328,7 +328,7 @@ func (b *projectBackend) handleDelete(_ context.Context, req *logical.Request, d
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	err := usecase.Projects(tx).Delete(id)
+	err := usecase.Projects(tx, b.liveConfig).Delete(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -346,7 +346,7 @@ func (b *projectBackend) handleRead(_ context.Context, req *logical.Request, dat
 
 	tx := b.storage.Txn(false)
 
-	project, err := usecase.Projects(tx).GetByID(id)
+	project, err := usecase.Projects(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -366,7 +366,7 @@ func (b *projectBackend) handleList(_ context.Context, req *logical.Request, dat
 
 	tx := b.storage.Txn(false)
 
-	projects, err := usecase.Projects(tx).List(clientID, showArchived)
+	projects, err := usecase.Projects(tx, b.liveConfig).List(clientID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +386,7 @@ func (b *projectBackend) handleRestore(_ context.Context, req *logical.Request, 
 
 	id := data.Get("uuid").(string)
 
-	project, err := usecase.Projects(tx).Restore(id)
+	project, err := usecase.Projects(tx, b.liveConfig).Restore(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

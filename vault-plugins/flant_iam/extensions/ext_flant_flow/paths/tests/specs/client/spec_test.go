@@ -19,5 +19,5 @@ func Test_clientCRUD(t *testing.T) {
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CRUD: Tenant")
+	RunSpecs(t, "CRUD: Client")
 }

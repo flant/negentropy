@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -13,13 +14,15 @@ import (
 
 type ProjectService struct {
 	*iam_usecase.ProjectService
-	teamRepo *repo.TeamRepository
+	teamRepo               *repo.TeamRepository
+	servicePacksController ServicePackController
 }
 
-func Projects(db *io.MemoryStoreTxn) *ProjectService {
+func Projects(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *ProjectService {
 	return &ProjectService{
-		ProjectService: iam_usecase.Projects(db, consts.OriginFlantFlow),
-		teamRepo:       repo.NewTeamRepository(db),
+		ProjectService:         iam_usecase.Projects(db, consts.OriginFlantFlow),
+		teamRepo:               repo.NewTeamRepository(db),
+		servicePacksController: NewServicePackController(db, liveConfig),
 	}
 }
 
@@ -75,6 +78,9 @@ func (s *ProjectService) Create(projectParams ProjectParams) (*model.Project, er
 		return nil, err
 	}
 	project.Project = *iamProject
+	if err = s.servicePacksController.OnCreateProject(*project); err != nil {
+		return nil, err
+	}
 	return project, nil
 }
 
@@ -105,15 +111,36 @@ func (s *ProjectService) Update(projectParams ProjectParams) (*model.Project, er
 	if err != nil {
 		return nil, err
 	}
-	iamProject, err = s.ProjectService.GetByID(project.UUID)
+	project.Project = *iamProject
+	oldProject, err := makeProject(stored)
 	if err != nil {
 		return nil, err
 	}
-	project.Project = *iamProject
+	err = s.servicePacksController.OnUpdateProject(*oldProject, *project)
+	if err != nil {
+		return nil, err
+	}
+	err = s.ProjectService.Update(iamProject)
+	if err != nil {
+		return nil, err
+	}
 	return project, nil
 }
 
-// func (s *ProjectService) Delete(id model.ProjectUUID) error {}
+func (s *ProjectService) Delete(id model.ProjectUUID) error {
+	iamProject, err := s.ProjectService.GetByID(id)
+	if err != nil {
+		return err
+	}
+	project, err := makeProject(iamProject)
+	if err != nil {
+		return err
+	}
+	if err := s.servicePacksController.OnDeleteProject(*project); err != nil {
+		return err
+	}
+	return s.ProjectService.Delete(id)
+}
 
 func (s *ProjectService) List(cid model.ClientUUID, showArchived bool) ([]*model.Project, error) {
 	iamProjects, err := s.ProjectService.List(cid, showArchived)
