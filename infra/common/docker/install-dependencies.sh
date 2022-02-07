@@ -30,6 +30,7 @@ curl -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tar --stri
 export PATH="$PATH:$GOROOT/bin:$GOPATH/bin"
 
 echo "$GOOGLE_CREDENTIALS" > /tmp/credentials-tmp.json
+export GOOGLE_APPLICATION_CREDENTIALS="/tmp/credentials-tmp.json"
 gcloud auth activate-service-account --key-file /tmp/credentials-tmp.json
-gcloud privateca roots describe vault-ca --location=europe-west1 --pool=negentropy-flant-local --format="get(pemCaCertificates)" > /usr/local/share/ca-certificates/negentropy-flant-local.pem && \
+gcloud privateca roots describe negentropy --location=europe-west1 --pool=negentropy-flant-local --format="get(pemCaCertificates)" > /usr/local/share/ca-certificates/negentropy-flant-local.pem && \
 update-ca-certificates

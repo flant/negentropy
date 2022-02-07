@@ -14,7 +14,7 @@ api_addr = "https://$INTERNAL_ADDRESS:443"
 
 seal "gcpckms" {
   project = "$GCP_PROJECT"
-  region = "$GCP_REGION"
+  region = "$GCPCKMS_REGION"
   key_ring = "$GCPCKMS_SEAL_KEY_RING"
   crypto_key = "$GCPCKMS_SEAL_CRYPTO_KEY"
 }

@@ -1,5 +1,5 @@
 resource "google_compute_network" "main" {
-  name                    = "negentropy"
+  name                    = "${local.prefix}"
   auto_create_subnetworks = false
 }
 
@@ -8,6 +8,37 @@ resource "google_compute_subnetwork" "bastion" {
   name          = "${local.prefix}-bastion"
   network       = google_compute_network.main.self_link
   ip_cidr_range = local.ip_cidr_range
+}
+
+resource "google_dns_managed_zone" "local" {
+  name        = "negentropy-flant-local"
+  dns_name    = "negentropy.flant.local."
+
+  visibility = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_dns_managed_zone" "ptr" {
+  name        = "ptr"
+  dns_name    = "10.in-addr.arpa."
+
+  visibility = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_dns_managed_zone" "negentropy" {
+  name        = "negentropy"
+  dns_name    = "negentropy.dev.flant.com."
 }
 
 resource "google_compute_address" "bastion" {
@@ -55,14 +86,21 @@ resource "google_compute_firewall" "bastion" {
     ports    = ["22"]
   }
 
+  source_ranges = ["0.0.0.0/0"]
+
   target_tags = ["${local.prefix}-bastion"]
 }
 
-resource "google_privateca_certificate_authority" "vault-ca" {
-  # TODO: change certificate_authority_id to "local.prefix + name"
-  certificate_authority_id = "vault-ca"
-  location = "europe-west1"
-  pool = "negentropy-flant-local"
+resource "google_privateca_ca_pool" "main" {
+  name     = "negentropy-flant-local"
+  location = "${local.region}"
+  tier     = "DEVOPS"
+}
+
+resource "google_privateca_certificate_authority" "main" {
+  certificate_authority_id = "${local.prefix}"
+  location = "${local.region}"
+  pool = google_privateca_ca_pool.main.name
   # TODO: this is required arguments, so I took they default values from terraform documentation
   config {
     subject_config {
@@ -92,15 +130,17 @@ resource "google_privateca_certificate_authority" "vault-ca" {
   ignore_active_certificates_on_deletion = true
 }
 
-resource "google_dns_managed_zone" "ptr" {
-  name        = "ptr"
-  dns_name    = "10.in-addr.arpa."
+resource "google_kms_key_ring" "main" {
+  name     = "${local.prefix}-vault"
+  location = "europe"
+}
 
-  visibility = "private"
+resource "google_kms_crypto_key" "main" {
+  name     = "vault-unseal"
+  key_ring = google_kms_key_ring.main.id
 
-  private_visibility_config {
-    networks {
-      network_url = google_compute_network.main.id
-    }
+  version_template {
+    algorithm        = "GOOGLE_SYMMETRIC_ENCRYPTION"
+    protection_level = "HSM"
   }
 }

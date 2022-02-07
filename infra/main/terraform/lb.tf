@@ -46,7 +46,7 @@ resource "google_compute_managed_ssl_certificate" "root-source" {
   name = join("-", [var.prefix, "vault-root-source"])
 
   managed {
-    domains = ["root-source.flant-sandbox.flant.com."]
+    domains = ["root-source.negentropy.dev.flant.com."]
   }
 }
 
@@ -68,10 +68,10 @@ resource "google_compute_global_forwarding_rule" "root-source" {
 }
 
 resource "google_dns_record_set" "root-source" {
-  name         = "root-source.flant-sandbox.flant.com."
+  name         = "root-source.negentropy.dev.flant.com."
   type         = "A"
   ttl          = 300
-  managed_zone = "flant-sandbox"
+  managed_zone = "negentropy"
   rrdatas      = [google_compute_global_forwarding_rule.root-source.ip_address]
 }
 
@@ -122,7 +122,7 @@ resource "google_compute_backend_service" "auth" {
 resource "google_compute_managed_ssl_certificate" "auth" {
   name = join("-", [var.prefix, "vault-auth"])
   managed {
-    domains = ["auth.flant-sandbox.flant.com."]
+    domains = ["auth.negentropy.dev.flant.com."]
   }
 }
 
@@ -144,9 +144,9 @@ resource "google_compute_global_forwarding_rule" "auth" {
 }
 
 resource "google_dns_record_set" "auth" {
-  name         = "auth.flant-sandbox.flant.com."
+  name         = "auth.negentropy.dev.flant.com."
   type         = "A"
   ttl          = 300
-  managed_zone = "flant-sandbox"
+  managed_zone = "negentropy"
   rrdatas      = [google_compute_global_forwarding_rule.auth.ip_address]
 }

@@ -17,7 +17,7 @@ variable "image_sources_checksum" {
 
 variable "source_image_family" {
   type    = string
-  default = "ubuntu-1604-lts"
+  default = "ubuntu-2004-lts"
 }
 
 variable "name" {
@@ -27,7 +27,7 @@ variable "name" {
 
 variable "version" {
   type    = string
-  default = "16.04"
+  default = "20.04"
 }
 
 variable "disk_size" {

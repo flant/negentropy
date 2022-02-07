@@ -1,4 +1,4 @@
-# TODO: cleanup roles, maybe there is some unused roles for packer
+# TODO: cleanup roles, maybe there are some unused roles for packer
 
 resource "google_service_account" "packer" {
   account_id = "negentropy-packer"

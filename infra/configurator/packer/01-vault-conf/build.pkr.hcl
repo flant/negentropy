@@ -19,6 +19,10 @@ variable "gcp_ckms_seal_crypto_key" {
   type =  string
 }
 
+variable "gcp_ckms_region" {
+  type = string
+}
+
 variable "gcp_project" {
   type =  string
 }
@@ -161,7 +165,8 @@ build {
       "VAULT_BUCKET=${var.vault_conf_bucket}",
       "VAULT_INTERNAL_DOMAIN=${var.vault_conf_internal_domain}",
       "GCPCKMS_SEAL_KEY_RING=${var.gcp_ckms_seal_key_ring}",
-      "GCPCKMS_SEAL_CRYPTO_KEY=${var.gcp_ckms_seal_crypto_key}"
+      "GCPCKMS_SEAL_CRYPTO_KEY=${var.gcp_ckms_seal_crypto_key}",
+      "GCPCKMS_REGION=${var.gcp_ckms_region}"
     ]
     inline = [
       "tmp=$(mktemp); envsubst < /etc/vault-variables.sh > $tmp && cat $tmp > /etc/vault-variables.sh"
