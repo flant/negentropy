@@ -29,9 +29,9 @@ var (
 )
 
 type FlantFlowConfig struct {
-	FlantTenantUUID       iam_model.TenantUUID
-	SpecificTeams         map[SpecializedTeam]model.TeamUUID
-	RolesForSpecificTeams map[SpecializedTeam][]iam_model.RoleName
+	FlantTenantUUID       iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
+	SpecificTeams         map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
+	RolesForSpecificTeams map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
 }
 
 var (

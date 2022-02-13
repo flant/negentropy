@@ -118,7 +118,7 @@ func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
-	iter, err := r.db.Get(model.IdentitySharingType, TenantForeignPK, tenantUUID)
+	iter, err := r.db.Get(model.IdentitySharingType, SourceTenantUUIDIndex, tenantUUID)
 	if err != nil {
 		return nil, err
 	}
