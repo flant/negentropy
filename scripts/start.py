@@ -1,8 +1,10 @@
 import json
-import sys
 from os import path, makedirs
 from typing import List
 
+import sys
+
+from flant_flow_ext import FlantFlowExtension
 from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
 from plugins import connect_plugins
 from plugins import find_master_root_vault
@@ -18,6 +20,13 @@ def initialize_server_access(vaults: List[Vault]):
     server_access_extension = ServerAccessExtension(vaults=vaults, roles_for_servers=["servers"],
                                                     role_for_ssh_access="ssh")
     server_access_extension.configure_extension_at_vaults()
+
+
+def initialize_flant_flow(vaults: List[Vault]):
+    """ Initialize extension flant_flow """
+    master_vault = find_master_root_vault(vaults)
+    flant_flow_extension = FlantFlowExtension(root_vault=master_vault)
+    flant_flow_extension.configure_extension_at_root_vault()
 
 
 def write_tokens_files(vaults: List[Vault]):
@@ -101,7 +110,7 @@ if __name__ == "__main__":
         vault.configure_ssh_ca([auth_vault_name])  # for using at ssh access tests
 
     initialize_server_access(vaults)
-
+    initialize_flant_flow(vaults)
     # ============================
     # export tokens
     # ============================
