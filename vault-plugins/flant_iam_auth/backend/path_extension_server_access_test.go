@@ -32,15 +32,19 @@ func Test_ExtensionServer_PosixUsers(t *testing.T) {
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	tenant := uuid.New()
-
-	err = createUserAndSa(tx, tenant)
+	tenant, project, err := createTenantProject(tx)
+	require.NoError(t, err)
+	user, sa, err := createUserAndSa(tx, tenant)
+	require.NoError(t, err)
+	serverUUIDs, err := createServers(tx, tenant, project)
+	require.NoError(t, err)
+	err = createRoleAndRoleBinding(tx, tenant, user, sa)
 	require.NoError(t, err)
 	_ = tx.Commit()
 
 	req := &logical.Request{
 		Operation: logical.ReadOperation,
-		Path:      path.Join("tenant", tenant, "project", uuid.New(), "server", uuid.New(), "posix_users"),
+		Path:      path.Join("tenant", tenant, "project", project, "server", serverUUIDs[0], "posix_users"),
 		Storage:   storage,
 	}
 
@@ -57,6 +61,32 @@ func Test_ExtensionServer_PosixUsers(t *testing.T) {
 	err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &respData)
 	require.NoError(t, err)
 	assert.Len(t, respData.Data.PosixUsers, 2)
+}
+
+func createRoleAndRoleBinding(tx *io.MemoryStoreTxn, tenant iam_model.TenantUUID, user iam_model.UserUUID, sa iam_model.ServiceAccountUUID) error {
+	err := tx.Insert(iam_model.RoleType, &iam_model.Role{
+		Name:  "ssh",
+		Scope: "tenant",
+	})
+	if err != nil {
+		return err
+	}
+	err = tx.Insert(iam_model.RoleBindingType, &iam_model.RoleBinding{
+		UUID:            uuid.New(),
+		TenantUUID:      tenant,
+		Version:         uuid.New(),
+		Identifier:      uuid.New(),
+		ValidTill:       99999999999,
+		Users:           []iam_model.UserUUID{user},
+		Groups:          nil,
+		ServiceAccounts: []iam_model.ServiceAccountUUID{sa},
+		AnyProject:      true,
+		Projects:        nil,
+		Roles: []iam_model.BoundRole{{
+			Name: "ssh",
+		}},
+	})
+	return err
 }
 
 func Test_ExtensionServer_QueryServers(t *testing.T) {
@@ -331,15 +361,15 @@ func Test_ExtensionServer_JWT(t *testing.T) {
 }
 
 // returns servers uuids
-func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID ...string) ([]string, error) {
+func createServers(tx *io.MemoryStoreTxn, tenantUUID, projectUUID string, serverUUID ...string) ([]string, error) {
 	predefinedID := uuid.New()
-	if len(serverID) > 0 {
-		predefinedID = serverID[0]
+	if len(serverUUID) > 0 {
+		predefinedID = serverUUID[0]
 	}
 	serverDB1 := &ext_model.Server{
 		UUID:        predefinedID,
-		TenantUUID:  tenantID,
-		ProjectUUID: projectID,
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
 		Version:     uuid.New(),
 		Identifier:  "db-1",
 		Fingerprint: "F1",
@@ -349,8 +379,8 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 
 	serverWithLabels := &ext_model.Server{
 		UUID:        uuid.New(),
-		TenantUUID:  tenantID,
-		ProjectUUID: projectID,
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
 		Version:     uuid.New(),
 		Identifier:  "db-2",
 		Fingerprint: "F2",
@@ -371,7 +401,7 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	}
 
 	tenant := iam_model.Tenant{
-		UUID:       tenantID,
+		UUID:       tenantUUID,
 		Version:    "v1",
 		Identifier: "i1",
 	}
@@ -382,8 +412,8 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	}
 
 	project := iam_model.Project{
-		UUID:       projectID,
-		TenantUUID: tenantID,
+		UUID:       projectUUID,
+		TenantUUID: tenantUUID,
 		Version:    "v1",
 		Identifier: "i2",
 	}
@@ -396,7 +426,32 @@ func createServers(tx *io.MemoryStoreTxn, tenantID, projectID string, serverID .
 	return []string{serverDB1.UUID, serverWithLabels.UUID}, nil
 }
 
-func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
+func createTenantProject(tx *io.MemoryStoreTxn) (iam_model.TenantUUID, iam_model.ProjectUUID, error) {
+	tenantUUID := uuid.New()
+	projectUUID := uuid.New()
+	err := tx.Insert(iam_model.TenantType, &iam_model.Tenant{
+		UUID:       tenantUUID,
+		Identifier: uuid.New(),
+		Version:    uuid.New(),
+	})
+	if err != nil {
+		return "", "", err
+	}
+	err = tx.Insert(iam_model.ProjectType, &iam_model.Project{
+		UUID:       projectUUID,
+		TenantUUID: tenantUUID,
+		Identifier: uuid.New(),
+		Version:    uuid.New(),
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return tenantUUID, projectUUID, nil
+}
+
+func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) (iam_model.UserUUID, iam_model.ServiceAccountUUID, error) {
+	userUUID := uuid.New()
+	saUUID := uuid.New()
 	userAttr := map[string]interface{}{
 		"UID": 42,
 		"passwords": []ext_model.UserServerPassword{
@@ -412,11 +467,11 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 	}
 	attrs, err := marshallUnmarshal(userAttr)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	user := &iam_model.User{
-		UUID:           uuid.New(),
+		UUID:           userUUID,
 		TenantUUID:     tenant,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
@@ -444,10 +499,10 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 	}
 	attrs, err = marshallUnmarshal(saAttr)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	sa := &iam_model.ServiceAccount{
-		UUID:           uuid.New(),
+		UUID:           saUUID,
 		TenantUUID:     tenant,
 		Identifier:     "serviceacc",
 		FullIdentifier: "serviceacc@tenant1",
@@ -462,12 +517,14 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) error {
 
 	err = tx.Insert(iam_model.UserType, user)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	err = tx.Insert(iam_model.ServiceAccountType, sa)
-
-	return err
+	if err != nil {
+		return "", "", err
+	}
+	return userUUID, saUUID, nil
 }
 
 // emulates pipeline flant_iam -> kafka -> flant_iam_auth
