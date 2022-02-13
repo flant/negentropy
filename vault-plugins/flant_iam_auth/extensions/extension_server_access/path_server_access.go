@@ -16,9 +16,11 @@ import (
 	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -302,22 +304,22 @@ func (b *ServerAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 		b.Logger().Info("handleReadPosixUsers started")
 		defer b.Logger().Info("handleReadPosixUsers exit")
 		tenantID := data.Get("tenant_uuid").(string)
-		// projectID := data.Get("project_uuid").(string) // TODO: use it in resolver
+		projectID := data.Get("project_uuid").(string)
 		serverID := data.Get("server_uuid").(string)
 
-		txn := b.storage.Txn(false)
+		txn := b.storage.Txn(true) // need writable for fixing members in groups
 		defer txn.Abort()
 
-		sshRole := "ssh"
 		en, err := req.Storage.Get(ctx, serverAccessSSHRoleKey)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
-		if en != nil {
-			sshRole = string(en.Value)
+		if en == nil {
+			return backentutils.ResponseErr(req, fmt.Errorf("%w: serverAccessSSHRole not defined", consts.ErrNotConfigured))
 		}
+		sshRole := string(en.Value)
 
-		users, serviceAccounts, err := stubResolveUserAndSA(txn, sshRole, tenantID)
+		users, serviceAccounts, err := resolveUserAndSA(txn, sshRole, tenantID, projectID)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
@@ -344,6 +346,10 @@ func (b *ServerAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 			posixUsers = append(posixUsers, posix)
 		}
 
+		if err = io.CommitWithLog(txn, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		}
+
 		resp := &logical.Response{
 			Warnings: warnings,
 			Data:     map[string]interface{}{"posix_users": posixUsers},
@@ -352,37 +358,49 @@ func (b *ServerAccessBackend) handleReadPosixUsers() framework.OperationFunc {
 	}
 }
 
-// TODO: change to real func
-func stubResolveUserAndSA(tx *io.MemoryStoreTxn, role, tenantID string) ([]*iam_model.User, []*iam_model.ServiceAccount, error) {
-	// for stub, return all users and SA
-	userRepo := iam_repo.NewUserRepository(tx)
-	saRepo := iam_repo.NewServiceAccountRepository(tx)
-
-	resUsers := make([]*iam_model.User, 0)
-	resSa := make([]*iam_model.ServiceAccount, 0)
-
-	uList, err := userRepo.List(tenantID, false)
+func resolveUserAndSA(tx *io.MemoryStoreTxn, roleName, tenantID, projectID string) ([]*iam_model.User, []*iam_model.ServiceAccount, error) {
+	roleResolver := iam_usecase.NewRoleResolver(tx)
+	role, err := iam_repo.NewRoleRepository(tx).GetByID(roleName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("checking role_name:%s:%w", roleName, err)
+	}
+	var users []iam_model.UserUUID
+	var serviceAccounts []iam_model.ServiceAccountUUID
+	if role.Scope == iam_model.RoleScopeProject {
+		users, serviceAccounts, err = roleResolver.FindMembersWithProjectScopedRole(roleName, projectID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("collecting members with project scoped role:%w", err)
+		}
+	} else {
+		users, serviceAccounts, err = roleResolver.FindMembersWithTenantScopedRole(roleName, tenantID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("collecting members with tenant scoped role:%w", err)
+		}
 	}
 
-	for _, user := range uList {
+	userRepo := iam_repo.NewUserRepository(tx)
+	resUsers := make([]*iam_model.User, 0, len(users))
+	for _, userID := range users {
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("filling users:%w", err)
+		}
 		if _, ok := user.Extensions["server_access"]; ok {
 			resUsers = append(resUsers, user)
 		}
 	}
 
-	saList, err := saRepo.List(tenantID, false)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, sa := range saList {
+	saRepo := iam_repo.NewServiceAccountRepository(tx)
+	resSa := make([]*iam_model.ServiceAccount, 0, len(serviceAccounts))
+	for _, serviceAccountID := range serviceAccounts {
+		sa, err := saRepo.GetByID(serviceAccountID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("filling service_accounts:%w", err)
+		}
 		if _, ok := sa.Extensions["server_access"]; ok {
 			resSa = append(resSa, sa)
 		}
 	}
-
 	return resUsers, resSa, nil
 }
 
