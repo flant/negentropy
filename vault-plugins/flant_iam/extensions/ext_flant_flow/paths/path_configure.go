@@ -31,6 +31,15 @@ func flantFlowConfigurePaths(e *flantFlowExtension) []*framework.Path {
 func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
+			Pattern: path.Join("configure_extension", "flant_flow"),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleReadConfig,
+					Summary:  "read flant_flow extension config",
+				},
+			},
+		},
+		{
 			Pattern: path.Join("configure_extension", "flant_flow", "flant_tenant", uuid.Pattern("flant_tenant_uuid")),
 			Fields: map[string]*framework.FieldSchema{
 				"flant_tenant_uuid": {
@@ -155,4 +164,19 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificTeams(ctx context.Contex
 	b.setLiveConfig(cfg)
 	b.Logger().Info("handleConfig normal finish")
 	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
+}
+
+func (b *flantFlowConfigureBackend) handleReadConfig(ctx context.Context, req *logical.Request,
+	_ *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Info("read flant_flow config started")
+	defer b.Logger().Info("read flant_flow config")
+
+	cfg := b.liveConfig
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"flant_flow_cfg": cfg,
+		},
+	}
+	b.Logger().Info("read flant_flow config normal finish")
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

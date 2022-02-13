@@ -200,7 +200,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 	}
 	boundRoles := make([]iam_model.BoundRole, 0, len(roles))
 	for _, role := range roles {
-		boundRoles = append(boundRoles, iam_model.BoundRole{Name: role})
+		boundRoles = append(boundRoles, iam_model.BoundRole{Name: role, Options: map[string]interface{}{}})
 	}
 
 	rb = &iam_model.RoleBinding{
@@ -209,6 +209,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 		Version:    uuid.New(),
 		Identifier: model.DevOps,
 		Groups:     groups,
+		Members:    buildMemebers(groups),
 		Projects:   []iam_model.ProjectUUID{projectUUID},
 		Roles:      boundRoles,
 		Origin:     consts.OriginFlantFlow,
@@ -218,6 +219,17 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 		return nil, err
 	}
 	return rb, nil
+}
+
+func buildMemebers(groups []iam_model.GroupUUID) []iam_model.MemberNotation {
+	members := make([]iam_model.MemberNotation, 0, len(groups))
+	for _, groupUUID := range groups {
+		members = append(members, iam_model.MemberNotation{
+			Type: iam_model.GroupType,
+			UUID: groupUUID,
+		})
+	}
+	return members
 }
 
 func findEqualRoleBinding(roleBindings map[iam_model.RoleBindingUUID]*iam_model.RoleBinding, groups []iam_model.GroupUUID,

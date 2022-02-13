@@ -63,12 +63,12 @@ func CreateRandomTeammate(teamateAPI testapi.TestAPI, team ext_model.Team) ext_m
 
 func CreateRandomProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID) ext_model.Project {
 	createPayload := fixtures.RandomProjectCreatePayload()
-	project, err := createProject(projectAPI, clientID, createPayload, false)
+	project, err := СreateProject(projectAPI, clientID, createPayload, false)
 	Expect(err).ToNot(HaveOccurred())
 	return *project
 }
 
-func createProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
+func СreateProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 	createPayload map[string]interface{}, privileged bool) (*ext_model.Project, error) {
 	createPayload["tenant_uuid"] = clientID
 	params := testapi.Params{
@@ -94,7 +94,7 @@ func createProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 func TryCreateProjects(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID, projects ...ext_model.Project) {
 	for _, project := range projects {
 		payload := fixtures.ProjectCreatePayload(project)
-		_, err := createProject(projectAPI, clientID, payload, true) //nolint:errcheck
+		_, err := СreateProject(projectAPI, clientID, payload, true) //nolint:errcheck
 		Expect(err).ToNot(HaveOccurred())
 	}
 }
