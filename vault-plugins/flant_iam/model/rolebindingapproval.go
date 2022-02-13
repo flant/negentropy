@@ -12,9 +12,9 @@ type RoleBindingApproval struct {
 	RoleBindingUUID RoleBindingUUID         `json:"role_binding_uuid"`
 	Version         string                  `json:"resource_version"`
 
-	Users           []UserUUID           `json:"user_uuids"`
-	Groups          []GroupUUID          `json:"group_uuids"`
-	ServiceAccounts []ServiceAccountUUID `json:"service_account_uuids"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 	Approvers       []MemberNotation     `json:"approvers"`
 
 	RequiredVotes int  `json:"required_votes"`
