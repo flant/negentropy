@@ -20,6 +20,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -29,6 +30,9 @@ type Suite struct {
 	IamVaultClient *http.Client
 	// IamAuthVaultClient *http.Client
 }
+
+const FlantTenantUUID = "b2c3d385-6bc7-43ff-9e75-441330442b1e" // created by start.sh
+const FlantTenantID = "flant"
 
 type CheckingEnvironment struct {
 	Tenant                               model.Tenant
@@ -52,11 +56,13 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
+const (
+	RegisterServerRole = "register_server"
+	IamAuthRead        = "iam_auth_read"
+	IamReadRole        = "iam_read"
+)
+
 func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
-	const (
-		registerServerRole = "register_server"
-		iam_auth_read      = "iam_auth_read"
-	)
 	var result CheckingEnvironment
 	// create some tenant
 	result.Tenant = specs.CreateRandomTenant(lib.NewTenantAPI(st.IamVaultClient))
@@ -66,18 +72,18 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	fmt.Printf("Created serviceAccount:%#v\n", result.ServiceAccount)
 	// create  SA password for SA login
 	result.ServiceAccountPassword = specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(st.IamVaultClient),
-		result.ServiceAccount, "test", 100*time.Second, []string{"register_server", "iam_read"})
+		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole, IamReadRole})
 	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
 
 	// create a role 'register_server' if not exists
-	st.createRoleIfNotExist(registerServerRole)
+	st.createRoleIfNotExist(RegisterServerRole)
 
-	// create a role 'iam_auth_read' if not exists
-	st.createRoleIfNotExist(iam_auth_read)
+	// create a role 'IamAuthRead' if not exists
+	st.createRoleIfNotExist(IamAuthRead)
 
 	//time.Sleep(time.Second * 15)
 
-	// create rolebinding for a sa in project with the registerServerRole
+	// create rolebinding for a sa in project with the RegisterServerRole
 	result.ServiceAccountRoleBinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
 		model.RoleBinding{
 			TenantUUID: result.Tenant.UUID,
@@ -90,8 +96,8 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 				UUID: result.ServiceAccount.UUID,
 			}},
 			AnyProject: true,
-			Roles: []model.BoundRole{{Name: registerServerRole, Options: map[string]interface{}{}},
-				{Name: iam_auth_read, Options: map[string]interface{}{}}},
+			Roles: []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}},
+				{Name: IamAuthRead, Options: map[string]interface{}{}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.ServiceAccountRoleBinding)
 
@@ -236,6 +242,14 @@ func (st Suite) WaitPrepareForLoginTesting(cfg CheckingEnvironment, maxAttempts 
 	return repeat(f, maxAttempts)
 }
 
+func (st Suite) WaitPrepareForTeammateGotSSHAccess(cfg CheckingEnvironmentTeammate, maxAttempts int) error {
+	_, multipassJWT := specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
+		cfg.Admin, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+	print(multipassJWT)
+	f := func() error { return tryLoginByMultipassJWTToAuthVault(multipassJWT) }
+	return repeat(f, maxAttempts)
+}
+
 func repeat(f func() error, maxAttempts int) error {
 	err := f()
 	counter := 1
@@ -278,4 +292,30 @@ func tryLoginByMultipassJWTToAuthVault(multipassJWT string) error {
 		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
 	}
 	return nil
+}
+
+type CheckingEnvironmentTeammate struct {
+	FlantTenant model.Tenant
+	Admin       model.User
+}
+
+func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
+	var result CheckingEnvironmentTeammate
+	// create flant tenant
+	result.FlantTenant = model.Tenant{
+		ArchiveMark: memdb.ArchiveMark{},
+		UUID:        FlantTenantUUID,
+		Identifier:  FlantTenantID,
+	}
+
+	// create a role 'register_server' if not exists
+	st.createRoleIfNotExist(RegisterServerRole)
+
+	// create a role 'iam_auth_read' if not exists
+	st.createRoleIfNotExist(IamAuthRead)
+
+	// create some user at the tenant
+	result.Admin = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.FlantTenant.UUID)
+	fmt.Printf("Created admin:%#v\n", result.Admin)
+	return result
 }

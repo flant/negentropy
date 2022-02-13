@@ -80,7 +80,7 @@ var ServerSocketCFG string
 //go:embed server_main.yaml
 var ServerMainCFGTPL string
 
-func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+func (s *Suite) CheckServerBinariesAndFoldersExists() {
 	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.AuthdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "Test_server should have authd")
 
@@ -91,6 +91,10 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
+}
+
+func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+	s.CheckServerBinariesAndFoldersExists()
 
 	t, err := template.New("").Parse(ServerMainCFGTPL)
 	Expect(err).ToNot(HaveOccurred(), "template should be ok")
@@ -157,7 +161,7 @@ var clientSocketCFG string
 //go:embed client_main.yaml
 var clientMainCFGTPL string
 
-func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+func (s *Suite) CheckClientBinariesAndFoldersExists() {
 	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.AuthdPath, "f")
 	Expect(err).ToNot(HaveOccurred(), "TestClient should have authd")
 
@@ -168,6 +172,10 @@ func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestClientContainer,
 		"/etc/flant/negentropy/authd-conf.d")
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
+}
+
+func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+	s.CheckClientBinariesAndFoldersExists()
 
 	t, err := template.New("").Parse(clientMainCFGTPL)
 	Expect(err).ToNot(HaveOccurred(), "template should be ok")
