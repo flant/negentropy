@@ -176,7 +176,6 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 			}
 		}
 	}
-	project.Extensions = nil
 	return &model.Project{
 		Project:      *project,
 		ServicePacks: servicePacks,
