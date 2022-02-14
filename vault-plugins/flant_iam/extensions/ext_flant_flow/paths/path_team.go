@@ -215,10 +215,10 @@ func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Create(team); err != nil {
-			msg := "cannot create team"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+		if err = usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Create(team); err != nil {
+			err = fmt.Errorf("cannot create team:%w", err)
+			b.Logger().Error("error", "error", err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err

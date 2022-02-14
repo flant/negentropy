@@ -16,9 +16,9 @@ type Group struct {
 	Identifier     string     `json:"identifier"`
 	FullIdentifier string     `json:"full_identifier"`
 
-	Users           []UserUUID           `json:"-"`
-	Groups          []GroupUUID          `json:"-"`
-	ServiceAccounts []ServiceAccountUUID `json:"-"`
+	Users           []UserUUID           `json:"users"`
+	Groups          []GroupUUID          `json:"groups"`
+	ServiceAccounts []ServiceAccountUUID `json:"service_accounts"`
 	Members         []MemberNotation     `json:"members"`
 
 	Origin consts.ObjectOrigin `json:"origin"`

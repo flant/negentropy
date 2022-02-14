@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -14,25 +15,41 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func createProjects(t *testing.T, repo *ProjectService, projects ...model.Project) {
+var cfg config.FlantFlowConfig = config.FlantFlowConfig{
+	FlantTenantUUID:       fixtures.TenantUUID1,
+	SpecificTeams:         nil,
+	RolesForSpecificTeams: map[config.SpecializedTeam][]iam.RoleName{config.Devops: []string{"ssh"}},
+}
+
+func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project) {
 	for _, project := range projects {
-		tmp := project
-		_, err := repo.Create(&tmp)
+		sps := map[model.ServicePackName]struct{}{}
+		for spn := range project.ServicePacks {
+			sps[spn] = struct{}{}
+		}
+
+		tmp := ProjectParams{
+			IamProject:       &project.Project,
+			ServicePackNames: sps,
+			DevopsTeamUUID:   fixtures.TeamUUID1,
+		}
+
+		_, err := srv.Create(tmp)
 		require.NoError(t, err)
 	}
 }
 
 func projectFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	repo := Projects(tx)
-	createProjects(t, repo, fixtures.Projects()...)
+	srv := Projects(tx, &cfg)
+	createProjects(t, srv, fixtures.Projects()...)
 	err := tx.Commit()
 	require.NoError(t, err)
 }
 
 func Test_ProjectList(t *testing.T) {
-	tx := runFixtures(t, clientFixture, projectFixture).Txn(true)
-	projects, err := Projects(tx).List(fixtures.TenantUUID1, false)
+	tx := runFixtures(t, teamFixture, clientFixture, projectFixture).Txn(true)
+	projects, err := Projects(tx, &cfg).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	ids := make([]string, 0)
@@ -58,8 +75,10 @@ func Test_makeProjectCastingThroughBytes(t *testing.T) {
 			FeatureFlags: []iam.FeatureFlagName{"f1"},
 			Extensions:   nil,
 		},
-		ServicePacks: map[model.ServicePackName]string{
-			"DEVOPS": "some_options",
+		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+			model.DevOps: model.DevopsServicePackCFG{
+				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+			},
 		},
 	}
 	iamProject, err := makeIamProject(project)
@@ -92,8 +111,10 @@ func Test_makeProjectDirectCasting(t *testing.T) {
 			FeatureFlags: []iam.FeatureFlagName{"f1"},
 			Extensions:   nil,
 		},
-		ServicePacks: map[model.ServicePackName]string{
-			"DEVOPS": "some_options",
+		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+			model.DevOps: model.DevopsServicePackCFG{
+				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+			},
 		},
 	}
 	iamProject, err := makeIamProject(project)

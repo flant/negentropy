@@ -26,8 +26,8 @@ func Projects() []model.Project {
 				TenantUUID: TenantUUID1,
 				Identifier: "pr1",
 			},
-			ServicePacks: map[model.ServicePackName]string{
-				model.L1: TeamUUID3,
+			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+				model.L1: model.L1ServicePackCFG{},
 			},
 		},
 		{
@@ -36,8 +36,8 @@ func Projects() []model.Project {
 				TenantUUID: TenantUUID1,
 				Identifier: "pr2",
 			},
-			ServicePacks: map[model.ServicePackName]string{
-				model.DevOps: TeamUUID1,
+			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+				model.L1: model.L1ServicePackCFG{},
 			},
 		},
 		{
@@ -46,8 +46,8 @@ func Projects() []model.Project {
 				TenantUUID: TenantUUID1,
 				Identifier: "pr3",
 			},
-			ServicePacks: map[model.ServicePackName]string{
-				model.Mk8s: TeamUUID2,
+			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+				model.Mk8s: nil,
 			},
 		},
 		{
@@ -56,8 +56,8 @@ func Projects() []model.Project {
 				TenantUUID: TenantUUID1,
 				Identifier: "pr4",
 			},
-			ServicePacks: map[model.ServicePackName]string{
-				model.Deckhouse: TeamUUID2,
+			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+				model.Deckhouse: nil,
 			},
 		},
 		{
@@ -66,11 +66,25 @@ func Projects() []model.Project {
 				TenantUUID: TenantUUID2,
 				Identifier: "pr5",
 			},
-			ServicePacks: map[model.ServicePackName]string{
-				model.Consulting: TeamUUID2 + "," + TeamUUID1,
+			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
+				model.Consulting: nil,
 			},
 		},
 	}
+}
+
+func ProjectCreatePayload(sample model.Project) map[string]interface{} {
+	bytes, _ := json.Marshal(sample)
+	var payload map[string]interface{}
+	json.Unmarshal(bytes, &payload) //nolint:errcheck
+	sps := []string{}
+	for k := range sample.ServicePacks {
+		if k != model.DevOps {
+			sps = append(sps, k)
+		}
+	}
+	payload["service_packs"] = sps
+	return payload
 }
 
 func RandomProjectCreatePayload() map[string]interface{} {
@@ -81,8 +95,5 @@ func RandomProjectCreatePayload() map[string]interface{} {
 	sample.Identifier = uuid.New()
 	sample.UUID = ""
 
-	bytes, _ := json.Marshal(sample)
-	var payload map[string]interface{}
-	json.Unmarshal(bytes, &payload) //nolint:errcheck
-	return payload
+	return ProjectCreatePayload(sample)
 }

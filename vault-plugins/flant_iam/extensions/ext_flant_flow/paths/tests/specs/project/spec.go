@@ -32,16 +32,45 @@ var (
 var _ = Describe("Project", func() {
 	var client model.Client
 	var flantFlowCfg *config.FlantFlowConfig
+	var devopsTeam model.Team
 
 	BeforeSuite(func() {
 		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		client = specs.CreateRandomClient(ClientAPI)
+		devopsTeam = specs.CreateDevopsTeam(TeamAPI)
 	}, 1.0)
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = client.UUID
+
+		params := testapi.Params{
+			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
+			"expectPayload": func(json gjson.Result) {
+				projectData := json.Get("project")
+				Expect(projectData.Map()).To(HaveKey("uuid"))
+				Expect(projectData.Map()).To(HaveKey("tenant_uuid"))
+				Expect(projectData.Map()).To(HaveKey("resource_version"))
+				Expect(projectData.Map()).To(HaveKey("identifier"))
+				Expect(projectData.Map()).To(HaveKey("feature_flags"))
+				Expect(projectData.Map()).To(HaveKey("archiving_timestamp"))
+				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
+				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
+				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
+				Expect(projectData.Map()).To(HaveKey("origin"))
+				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+			},
+			"client": client.UUID,
+		}
+		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	It("can be created with devops service pack", func() {
+		createPayload := fixtures.RandomProjectCreatePayload()
+		createPayload["tenant_uuid"] = client.UUID
+		createPayload["devops_team"] = devopsTeam.UUID
+		createPayload["service_packs"] = []string{model.DevOps}
 
 		params := testapi.Params{
 			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
@@ -86,7 +115,7 @@ var _ = Describe("Project", func() {
 			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
-					iam_specs.ConvertToGJSON(project), "extensions")
+					iam_specs.ConvertToGJSON(project), "extensions", "service_packs")
 			},
 		}, url.Values{})
 	})

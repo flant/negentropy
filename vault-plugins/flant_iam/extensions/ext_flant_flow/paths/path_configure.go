@@ -31,6 +31,15 @@ func flantFlowConfigurePaths(e *flantFlowExtension) []*framework.Path {
 func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		{
+			Pattern: path.Join("configure_extension", "flant_flow"),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleReadConfig,
+					Summary:  "read flant_flow extension config",
+				},
+			},
+		},
+		{
 			Pattern: path.Join("configure_extension", "flant_flow", "flant_tenant", uuid.Pattern("flant_tenant_uuid")),
 			Fields: map[string]*framework.FieldSchema{
 				"flant_tenant_uuid": {
@@ -51,13 +60,17 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			},
 		},
 		{
-			Pattern: path.Join("configure_extension", "flant_flow", "specific_roles"),
+			Pattern: path.Join("configure_extension", "flant_flow", "role_rules", framework.GenericNameRegex("specific_team")+"$"),
 			Fields: map[string]*framework.FieldSchema{
+				"specific_team": {
+					Type:        framework.TypeNameString,
+					Description: fmt.Sprintf("Specific team type. Mandatory keys:%v", config.MandatoryRoleRulesForSpecificTeams),
+					Required:    true,
+				},
 				"specific_roles": {
-					Type: framework.TypeKVPairs,
-					Description: fmt.Sprintf("Mapping some specific keys to iam.RoleName, mandatory keys:%v",
-						config.MandatorySpecificRoles),
-					Required: true,
+					Type:        framework.TypeStringSlice,
+					Description: "Set of roles for specific team type. Passed roles will be used for automatically created rolebindings",
+					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -117,12 +130,13 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Contex
 	defer b.Logger().Info("handleConfig exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
-	rolesMap := data.Get("specific_roles").(map[string]string)
-	if len(rolesMap) == 0 {
+	teamType := data.Get("specific_team").(string)
+	roles := data.Get("specific_roles").([]string)
+	if len(roles) == 0 {
 		return backentutils.ResponseErr(req,
 			fmt.Errorf("%w: mandatory param 'specific_roles' not passed, or is empty", consts.ErrInvalidArg))
 	}
-	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, rolesMap)
+	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, teamType, roles)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -150,4 +164,19 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificTeams(ctx context.Contex
 	b.setLiveConfig(cfg)
 	b.Logger().Info("handleConfig normal finish")
 	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
+}
+
+func (b *flantFlowConfigureBackend) handleReadConfig(ctx context.Context, req *logical.Request,
+	_ *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Info("read flant_flow config started")
+	defer b.Logger().Info("read flant_flow config")
+
+	cfg := b.liveConfig
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"flant_flow_cfg": cfg,
+		},
+	}
+	b.Logger().Info("read flant_flow config normal finish")
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }

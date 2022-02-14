@@ -17,6 +17,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		TeamSchema(),
 		TeammateSchema(),
 		ContactSchema(),
+		ServicePackSchema(),
 	)
 }
 

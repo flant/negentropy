@@ -23,7 +23,7 @@ type ConfigAPI interface {
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
-	ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string)
+	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 }
 
@@ -32,17 +32,22 @@ type httpClientBasedConfigAPI struct {
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID) {
-	h.request("POST", "/configure_extension/flant_flow/flant_tenant/"+flantTenantUUID, []int{http.StatusOK, http.StatusBadRequest}, nil)
+	// by start.sh
+	// h.request("POST", "/configure_extension/flant_flow/flant_tenant/"+flantTenantUUID, []int{http.StatusOK, http.StatusBadRequest}, nil)
 }
 
-func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string) {
-	h.request("POST", "/configure_extension/flant_flow/specific_roles", []int{http.StatusOK},
-		map[string]interface{}{"specific_roles": roles})
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowRoleRules(rules map[string][]string) {
+	// by start.sh
+	// for team, roles := range rules {
+	//	h.request("POST", "/configure_extension/flant_flow/role_rules/"+team, []int{http.StatusOK},
+	//		map[string]interface{}{"specific_roles": roles})
+	// }
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {
-	h.request("POST", "/configure_extension/flant_flow/specific_teams", []int{http.StatusOK},
-		map[string]interface{}{"specific_teams": teams})
+	// by start.sh
+	// h.request("POST", "/configure_extension/flant_flow/specific_teams", []int{http.StatusOK},
+	//	map[string]interface{}{"specific_teams": teams})
 }
 
 func (h httpClientBasedConfigAPI) EnableJWT() {

@@ -15,6 +15,7 @@ const (
 	SourceTenantUUIDIndex         = TenantForeignPK // it is generated because tenant is the parent object for shares
 	DestinationTenantUUIDIndex    = "destination_tenant_uuid_index"
 	GroupUUIDIdentitySharingIndex = "group_in_identity_sharing_index"
+	IdentitySharingForeignPK      = "identity_sharing_uuid"
 )
 
 func IdentitySharingSchema() *memdb.DBSchema {
@@ -117,7 +118,7 @@ func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
 }
 
 func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
-	iter, err := r.db.Get(model.IdentitySharingType, TenantForeignPK, tenantUUID)
+	iter, err := r.db.Get(model.IdentitySharingType, SourceTenantUUIDIndex, tenantUUID)
 	if err != nil {
 		return nil, err
 	}

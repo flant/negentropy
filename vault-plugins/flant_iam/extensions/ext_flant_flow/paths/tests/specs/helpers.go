@@ -26,6 +26,17 @@ func CreateRandomClient(clientsAPI testapi.TestAPI) ext_model.Client {
 	return client
 }
 
+func CreateDevopsTeam(teamAPI testapi.TestAPI) ext_model.Team {
+	createPayload := fixtures.TeamCreatePayload(fixtures.Teams()[0])
+	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	rawTeam := createdData.Get("team")
+	data := []byte(rawTeam.String())
+	var team ext_model.Team
+	err := json.Unmarshal(data, &team)
+	Expect(err).ToNot(HaveOccurred())
+	return team
+}
+
 func CreateRandomTeam(teamAPI testapi.TestAPI) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
@@ -52,12 +63,12 @@ func CreateRandomTeammate(teamateAPI testapi.TestAPI, team ext_model.Team) ext_m
 
 func CreateRandomProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID) ext_model.Project {
 	createPayload := fixtures.RandomProjectCreatePayload()
-	project, err := createProject(projectAPI, clientID, createPayload, false)
+	project, err := СreateProject(projectAPI, clientID, createPayload, false)
 	Expect(err).ToNot(HaveOccurred())
 	return *project
 }
 
-func createProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
+func СreateProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 	createPayload map[string]interface{}, privileged bool) (*ext_model.Project, error) {
 	createPayload["tenant_uuid"] = clientID
 	params := testapi.Params{
@@ -82,10 +93,8 @@ func createProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 // TryCreateProjects creates projects, does not stop after error, as can be collision by uuid
 func TryCreateProjects(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID, projects ...ext_model.Project) {
 	for _, project := range projects {
-		bytes, _ := json.Marshal(project)
-		var payload map[string]interface{}
-		json.Unmarshal(bytes, &payload)                              //nolint:errcheck
-		_, err := createProject(projectAPI, clientID, payload, true) //nolint:errcheck
+		payload := fixtures.ProjectCreatePayload(project)
+		_, err := СreateProject(projectAPI, clientID, payload, true) //nolint:errcheck
 		Expect(err).ToNot(HaveOccurred())
 	}
 }
@@ -124,12 +133,13 @@ func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, roleAPI testapi.TestAPI, 
 	tenant := iam_specs.CreateRandomTenant(tenantAPI)
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
 	r1 := iam_specs.CreateRandomRole(roleAPI)
-	configAPI.ConfigureExtensionFlantFlowSpecificRoles(map[string]string{"todo_in_future": r1.Name}) // TODO fil later
+	rules := map[string][]string{config.Devops: {r1.Name}}
+	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fil later
 
 	return &config.FlantFlowConfig{
-		FlantTenantUUID: tenant.UUID,
-		SpecificTeams:   map[string]string{},
-		SpecificRoles:   map[string]string{},
+		FlantTenantUUID:       tenant.UUID,
+		SpecificTeams:         map[string]string{},
+		RolesForSpecificTeams: rules,
 	}
 }
 

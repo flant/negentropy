@@ -16,7 +16,7 @@ type ConfigAPI interface {
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
-	ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string)
+	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 }
 
@@ -60,11 +60,13 @@ func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flant
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowSpecificRoles(roles map[string]string) {
-	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/specific_roles",
-		map[string]interface{}{},
-		map[string]interface{}{"specific_roles": roles})
-	Expect(err).ToNot(HaveOccurred())
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowRoleRules(rules map[string][]string) {
+	for team, roles := range rules {
+		_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/role_rules/"+team,
+			map[string]interface{}{},
+			map[string]interface{}{"specific_roles": roles})
+		Expect(err).ToNot(HaveOccurred())
+	}
 }
 
 func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {

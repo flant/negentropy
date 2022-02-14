@@ -16,9 +16,6 @@ type Team struct {
 	TeamType       string   `json:"team_type"` // it is unchangeable
 	ParentTeamUUID string   `json:"parent_team_uuid"`
 
-	// TODO how to deal with?
-	// 1) only autocreate and autodelete?
-	// 2) something else?
 	Groups []LinkedGroup `json:"groups"`
 }
 

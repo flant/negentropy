@@ -138,7 +138,12 @@ func (s *ServerService) Create(
 				Origin:     consts.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
 				Groups:     []iam_model.GroupUUID{group.UUID},
+				Members: []iam_model.MemberNotation{{
+					Type: iam_model.GroupType,
+					UUID: group.UUID,
+				}},
 				Roles:      tenantBoundRoles,
+				AnyProject: true,
 			}
 
 			err := s.roleBindingRepo.Create(newRoleBinding)
@@ -168,7 +173,12 @@ func (s *ServerService) Create(
 				Origin:     consts.OriginServerAccess,
 				Identifier: nameForTenantLevelObjects(tenant.Identifier),
 				Groups:     []iam_model.GroupUUID{group.UUID},
+				Members: []iam_model.MemberNotation{{
+					Type: iam_model.GroupType,
+					UUID: group.UUID,
+				}},
 				Roles:      projectBoundRoles,
+				AnyProject: true,
 			}
 
 			err := s.roleBindingRepo.Create(newRoleBinding)
@@ -212,6 +222,10 @@ func (s *ServerService) Create(
 
 	if !isSAInGroup {
 		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
+		group.Members = append(group.Members, iam_model.MemberNotation{
+			Type: iam_model.ServiceAccountType,
+			UUID: serviceAccount.UUID,
+		})
 	}
 
 	groupService := usecase.Groups(s.tx, tenantUUID, consts.OriginServerAccess)

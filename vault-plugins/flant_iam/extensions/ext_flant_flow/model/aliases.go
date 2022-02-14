@@ -45,16 +45,6 @@ var (
 	}
 )
 
-// ServicePack names
-var (
-	L1         ServicePackName = "L1"
-	DevOps     ServicePackName = "DevOps"
-	Mk8s       ServicePackName = "mk8s"
-	Deckhouse  ServicePackName = "Deckhouse"
-	Okmeter    ServicePackName = "Okmeter"
-	Consulting ServicePackName = "Consulting"
-)
-
 // Contact roles
 type ContactRole = string
 
