@@ -34,7 +34,7 @@ type ProjectParams struct {
 
 // build servicePacks with CFGs
 func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.ServicePackName]model.ServicePackCFG, error) {
-	result := map[model.ServicePackName]model.ServicePackCFG{}
+	servicepacks := map[model.ServicePackName]model.ServicePackCFG{}
 	for spn := range params.ServicePackNames {
 		switch spn {
 		case model.DevOps:
@@ -46,15 +46,18 @@ func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.Serv
 			} else if team.TeamType != model.DevopsTeam {
 				return nil, fmt.Errorf("%w: service_pack %s: wrong passed team type: %s", consts.ErrInvalidArg, spn, team.TeamType)
 			}
-			result[spn] = model.DevopsServicePackCFG{
+			servicepacks[spn] = model.DevopsServicePackCFG{
 				DevopsTeam: params.DevopsTeamUUID,
 			}
 		// TODO: others
 		default:
-			result[spn] = nil
+			servicepacks[spn] = nil
 		}
 	}
-	return result, nil
+	if len(servicepacks) == 0 {
+		return nil, fmt.Errorf("%w:empty service_packs", consts.ErrInvalidArg)
+	}
+	return servicepacks, nil
 }
 
 func (s *ProjectService) Create(projectParams ProjectParams) (*model.Project, error) {
