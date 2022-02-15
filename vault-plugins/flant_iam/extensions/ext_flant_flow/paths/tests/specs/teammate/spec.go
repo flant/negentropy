@@ -134,6 +134,30 @@ var _ = Describe("Teammate", func() {
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
 
+	It("team can be changed", func() {
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
+		newTeam := specs.CreateRandomTeam(TeamAPI)
+		updatePayload := map[string]interface{}{
+			"resource_version": teammate.Version,
+			"role_at_team":     teammate.RoleAtTeam,
+			"identifier":       teammate.Identifier,
+		}
+		updateData := TestAPI.Update(testapi.Params{
+			"team":     newTeam.UUID,
+			"teammate": teammate.UUID,
+		}, nil, updatePayload)
+
+		readData := TestAPI.Read(testapi.Params{
+			"team":     newTeam.UUID,
+			"teammate": teammate.UUID,
+			"expectPayload": func(json gjson.Result) {
+				iam_specs.IsSubsetExceptKeys(updateData.Get("teammate"), json.Get("teammate"), "extensions")
+			},
+		}, nil)
+
+		Expect(readData.Get("teammate.team_uuid").String()).To(Equal(newTeam.UUID))
+	})
+
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			teammate := specs.CreateRandomTeammate(TestAPI, team)
