@@ -58,9 +58,6 @@ func (s *TeammateService) Update(updated *model.FullTeammate) error {
 	if err != nil {
 		return err
 	}
-	if stored.RoleAtTeam != updated.RoleAtTeam {
-		return fmt.Errorf("%w: role_at_team ", consts.ErrInvalidArg)
-	}
 	if stored.Version != updated.Version {
 		return consts.ErrBadVersion
 	}

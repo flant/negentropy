@@ -76,7 +76,7 @@ var _ = Describe("Teammate", func() {
 
 	It("can be updated", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
-		updatePayload := fixtures.RandomTeamCreatePayload()
+		updatePayload := fixtures.RandomTeammateCreatePayload(team)
 		delete(updatePayload, "uuid")
 		delete(updatePayload, "team_uuid")
 		updatePayload["resource_version"] = teammate.Version
@@ -141,9 +141,10 @@ var _ = Describe("Teammate", func() {
 			"resource_version": teammate.Version,
 			"role_at_team":     teammate.RoleAtTeam,
 			"identifier":       teammate.Identifier,
+			"new_team_uuid":    newTeam.UUID,
 		}
 		updateData := TestAPI.Update(testapi.Params{
-			"team":     newTeam.UUID,
+			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 		}, nil, updatePayload)
 
