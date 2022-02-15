@@ -148,6 +148,14 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 					Path: "flant_iam/tenant/" + rc.TenantUUID + "*",
 					Read: true,
 					List: true,
+				}, {
+					Path: "flant_iam/role/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/feature_flag/*",
+					Read: true,
+					List: true,
 				}},
 			}
 
@@ -161,6 +169,14 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 					Create: true,
 					Update: true,
 					Delete: true,
+				}, {
+					Path: "flant_iam/role/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/feature_flag/*",
+					Read: true,
+					List: true,
 				}},
 			}
 
@@ -169,6 +185,14 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 				Name: fmt.Sprintf("%s_by_%s", rc.Role, userUUID),
 				Rules: []Rule{{
 					Path: "flant_iam/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/role/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/feature_flag/*",
 					Read: true,
 					List: true,
 				}},
@@ -184,6 +208,14 @@ func buildPolicies(roleClaims []RoleClaim, userUUID iam.UserUUID) []Policy {
 					Create: true,
 					Update: true,
 					Delete: true,
+				}, {
+					Path: "flant_iam/role/*",
+					Read: true,
+					List: true,
+				}, {
+					Path: "flant_iam/feature_flag/*",
+					Read: true,
+					List: true,
 				}},
 			}
 

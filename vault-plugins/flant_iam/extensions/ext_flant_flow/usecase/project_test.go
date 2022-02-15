@@ -94,6 +94,7 @@ func Test_makeProjectCastingThroughBytes(t *testing.T) {
 
 	newProject, err := makeProject(&newIamProject)
 	require.NoError(t, err)
+	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }
 
@@ -122,6 +123,7 @@ func Test_makeProjectDirectCasting(t *testing.T) {
 	fmt.Printf("%#v\n", iamProject)
 	newProject, err := makeProject(iamProject)
 	require.NoError(t, err)
+	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }
 
@@ -146,5 +148,6 @@ func Test_makeProjectDirectCastingEmptyServicePack(t *testing.T) {
 	fmt.Printf("%#v\n", iamProject)
 	newProject, err := makeProject(iamProject)
 	require.NoError(t, err)
+	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }
