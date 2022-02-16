@@ -320,21 +320,21 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
                                                           ), 204)
         # create auth source
         if FLANT_IAM_AUTH in self.plugin_names:
-            print("creating auth source 'oidc-mock' for vault '{}', at {}".format(self.name, self.url))
+            print("creating auth source 'okta-oidc' for vault '{}', at {}".format(self.name, self.url))
             check_response(
-                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_source/oidc-mock", json={
+                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_source/okta-oidc", json={
                     "oidc_discovery_url": oidc_url,
                     "default_role": "demo",
                     "entity_alias_name": "full_identifier",
                 }), 204)
         # create auth method
         if FLANT_IAM_AUTH in self.plugin_names:
-            print("creating auth method 'oidc-mock-access-token' for vault '{}', at {}".format(self.name, self.url))
+            print("creating auth method 'okta-jwt' for vault '{}', at {}".format(self.name, self.url))
             check_response(
-                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/oidc-mock-access-token", json={
+                self.write_to_plugin(plugin=FLANT_IAM_AUTH, path="auth_method/okta-jwt", json={
                     "method_type": "access_token",
-                    "source": "oidc-mock",
-                    "bound_audiences": ["aud666"],
+                    "source": "okta-oidc",
+                    "bound_audiences": ["https://login.flant.com"],
                     "token_ttl": "30m",
                     "token_max_ttl": "1440m",
                     "user_claim": "uuid",

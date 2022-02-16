@@ -58,7 +58,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(err).ToNot(HaveOccurred())
 
 		adminVST := tools.LoginAccessToken(true, map[string]interface{}{
-			"method": "oidc-mock-access-token", "jwt": adminAccessToken,
+			"method": "okta-jwt", "jwt": adminAccessToken,
 			"roles": []map[string]interface{}{
 				{"role": "flow_write"}, {"role": "iam_write_all"},
 			},
@@ -232,7 +232,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(err).ToNot(HaveOccurred())
 
 		teammateVST := tools.LoginAccessToken(true, map[string]interface{}{
-			"method": "oidc-mock-access-token", "jwt": teammateAccessToken,
+			"method": "okta-jwt", "jwt": teammateAccessToken,
 			"roles": []map[string]interface{}{
 				{"role": "iam_write", "tenant_uuid": cfg.FlantTenant.UUID},
 			},

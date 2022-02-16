@@ -7,7 +7,7 @@ active development of initial version.
 
 needs:
 
-1) linux or macos system (only intel processors, for apple_silicone using needs some changes in scripts)
+1) linux or macos system (only intel processors, for apple silicone using needs some changes in scripts)
 2) docker
 
 ```shell
@@ -50,21 +50,21 @@ possible options for build:
 There are three possible modes of test and stage environment:
 
 1) One vault in dev mode, negentropy plugins are aside (DEV mode)
-2) Vaults with negentropy plugins onbоard (NORMAL mode)
+2) Vaults with negentropy plugins onbоard (E2E mode, for E2E Tests in CI)
 3) Vaults with negentropy plugins onbоard, run under delve debugger (DEBUG mode)
 
 ## DEV mode:
 
 ```shell
-./start.sh --dev
+./start.sh dev
 ```
 
-runs one vault at docker-container, uses separate plugin binaries, placed at vault-plugins/build
+runs one vault at docker container, uses separate plugin binaries, placed at vault-plugins/build
 
-## NORMAL mode:
+## E2E mode:
 
 ```shell
-./start.sh
+./start.sh e2e
 ```
 
 runs several vaults at docker-containers, uses complete vault binary with negentropy plugins onboard, placed at
@@ -73,7 +73,7 @@ infra/common/vault/vault/bin
 ## DEBUG mode
 
 ```shell
-./start.sh --debug
+./start.sh debug
 ```
 
 runs several vaults at docker-containers, each docker run under delve debugger server uses complete vault binary with
@@ -96,16 +96,10 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
 
 # Seal/Unseal vaults
 
-For stopping in NORMAL and DEBUG mode:
+For stop:
 
 ```shell
 ./stop.sh
-```
-
-For stopping in DEV mode:
-
-```shell
-./stop-dev.sh
 ```
 
 For restore:
