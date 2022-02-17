@@ -53,3 +53,6 @@ e2e/tests/lib/oidc_mock/build/
 # e2e
 e2e/tests/**/*.log
 e2e/tools/*
+
+# okta uuid
+okta-uuid

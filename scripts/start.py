@@ -1,4 +1,5 @@
 import json
+import argparse
 from os import path, makedirs
 from typing import List
 
@@ -63,8 +64,14 @@ def read_vaults_from_file() -> List[Vault]:
 
 
 if __name__ == "__main__":
-    print(sys.argv)
-    if "DEV" in sys.argv:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', dest='mode')
+    parser.add_argument('--oidc-url', dest='oidc_url')
+    parser.add_argument('--okta-uuid', dest='okta_uuid')
+    args = parser.parse_args()
+
+
+    if args.mode == 'dev':
         dev_vault = Vault(name="vault_dev", url="http://127.0.0.1:8200", token="root",
                           plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
         vaults = [dev_vault]
@@ -77,7 +84,9 @@ if __name__ == "__main__":
         vaults = [root_vault, auth_vault]
         auth_vault_name = auth_vault.name
 
-    oidc_url = "http://oidc-mock:9998"
+    oidc_url = args.oidc_url
+
+    print("DEBUG: OIDC URL is", oidc_url)
 
     # vaults = read_vaults_from_file()
 
@@ -156,3 +165,15 @@ if __name__ == "__main__":
     file.write(multipass)
     file.close()
     print(multipass_file_path + " is updated")
+
+    # ============================================================================
+    # create privileged user for webdev local development
+    # ============================================================================
+
+    if args.okta_uuid:
+        print("DEBUG: OKTA UUID is", args.okta_uuid)
+        create_privileged_user(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
+                               args.okta_uuid,
+                               "local-admin")
+        create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
+                               "142f39db-acb9-4d24-8c12-f5ec0adc6d44", 3600)

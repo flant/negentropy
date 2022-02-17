@@ -124,7 +124,7 @@ func CustomAccessTokenCreater(storage *mock.AuthStorage, provider op.OpenIDProvi
 		authorizer := provider
 		authReq := &mock.AuthRequest{
 			Subject:  subject,
-			ClientID: "aud666",
+			ClientID: "https://login.flant.com",
 		}
 
 		client, err := storage.GetClientByClientID(r.Context(), authReq.GetClientID())
