@@ -2,7 +2,6 @@ package teammate_got_ssh_access
 
 import (
 	"bytes"
-	"crypto/sha256"
 	_ "embed"
 	b64 "encoding/base64"
 	"encoding/json"
@@ -22,7 +21,7 @@ import (
 
 	"github.com/flant/negentropy/e2e/tests/lib"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
-	"github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
+	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
 	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
@@ -33,7 +32,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-var s test_server_and_client_preparing.Suite
+var s tsc.Suite
 
 var flantIamSuite flant_iam_preparing.Suite
 
@@ -187,7 +186,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			"/etc/flant/negentropy/authd-conf.d")
 		Expect(err).ToNot(HaveOccurred(), "folder should be created")
 
-		t, err := template.New("").Parse(test_server_and_client_preparing.ServerMainCFGTPL)
+		t, err := template.New("").Parse(tsc.ServerMainCFGTPL)
 		Expect(err).ToNot(HaveOccurred(), "template should be ok")
 		var serverMainCFG bytes.Buffer
 		err = t.Execute(&serverMainCFG, s)
@@ -198,7 +197,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 		err = s.WriteFileToContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d/sock1.yaml", test_server_and_client_preparing.ServerSocketCFG)
+			"/etc/flant/negentropy/authd-conf.d/sock1.yaml", tsc.ServerSocketCFG)
 		Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
@@ -209,23 +208,9 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	})
 
 	It("check run server_accessd", func() {
-		// TODO check content /etc/nsswitch.conf
-		err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer, "/opt/serveraccessd")
-		Expect(err).ToNot(HaveOccurred(), "folder should be created")
-
-		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.ServerAccessdPath)
-		s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
-		time.Sleep(time.Second)
-		pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
-		Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
-
-		authKeysFilePath := filepath.Join("/home", cfg.FlantTenant.Identifier, teammate.Identifier, ".ssh", "authorized_keys")
-		contentAuthKeysFile := s.ExecuteCommandAtContainer(s.TestServerContainer,
-			[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
-		Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
-		principal := calculatePrincipal(testServer.UUID, teammate.UUID)
-		Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\""+principal+"\" ssh-rsa.{373}"),
-			"content should be specific")
+		posixUserName := filepath.Join(cfg.FlantTenant.Identifier, teammate.Identifier)
+		err := tsc.RunAndCheckServerAccessd(s, posixUserName, testServer.UUID, teammate.UUID)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	var teammateClient *http.Client
@@ -398,14 +383,6 @@ func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUI
 	err = json.Unmarshal(bytes, &server)
 	Expect(err).ToNot(HaveOccurred())
 	return server
-}
-
-func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
-	principalHash := sha256.New()
-	principalHash.Write([]byte(serverUUID))
-	principalHash.Write([]byte(userUUID))
-	principalSum := principalHash.Sum(nil)
-	return fmt.Sprintf("%x", principalSum)
 }
 
 func writeLogToFile(output []string, logFilePath string) {

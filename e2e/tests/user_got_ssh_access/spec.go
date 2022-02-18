@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
-	"github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
+	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 )
 
-var testServerAndClientSuite test_server_and_client_preparing.Suite
+var testServerAndClientSuite tsc.Suite
 
 var flantIamSuite flant_iam_preparing.Suite
 
