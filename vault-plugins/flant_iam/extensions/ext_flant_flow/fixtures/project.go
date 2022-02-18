@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
-	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -21,51 +20,43 @@ const (
 func Projects() []model.Project {
 	return []model.Project{
 		{
-			Project: iam_model.Project{
-				UUID:       ProjectUUID1,
-				TenantUUID: TenantUUID1,
-				Identifier: "pr1",
-			},
+
+			UUID:       ProjectUUID1,
+			TenantUUID: TenantUUID1,
+			Identifier: "pr1",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 				model.L1: model.L1ServicePackCFG{},
 			},
 		},
 		{
-			Project: iam_model.Project{
-				UUID:       ProjectUUID2,
-				TenantUUID: TenantUUID1,
-				Identifier: "pr2",
-			},
+
+			UUID:       ProjectUUID2,
+			TenantUUID: TenantUUID1,
+			Identifier: "pr2",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 				model.L1: model.L1ServicePackCFG{},
 			},
 		},
 		{
-			Project: iam_model.Project{
-				UUID:       ProjectUUID3,
-				TenantUUID: TenantUUID1,
-				Identifier: "pr3",
-			},
+			UUID:       ProjectUUID3,
+			TenantUUID: TenantUUID1,
+			Identifier: "pr3",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 				model.Mk8s: nil,
 			},
 		},
 		{
-			Project: iam_model.Project{
-				UUID:       ProjectUUID4,
-				TenantUUID: TenantUUID1,
-				Identifier: "pr4",
-			},
+			UUID:       ProjectUUID4,
+			TenantUUID: TenantUUID1,
+			Identifier: "pr4",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 				model.Deckhouse: nil,
 			},
 		},
 		{
-			Project: iam_model.Project{
-				UUID:       ProjectUUID5,
-				TenantUUID: TenantUUID2,
-				Identifier: "pr5",
-			},
+			UUID:       ProjectUUID5,
+			TenantUUID: TenantUUID2,
+			Identifier: "pr5",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 				model.Consulting: nil,
 			},

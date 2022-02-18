@@ -23,10 +23,11 @@ var (
 	TestAPI   testapi.TestAPI
 	ClientAPI testapi.TestAPI
 
-	TenantAPI testapi.TestAPI
-	RoleAPI   testapi.TestAPI
-	TeamAPI   testapi.TestAPI
-	ConfigAPI testapi.ConfigAPI
+	TenantAPI      testapi.TestAPI
+	RoleAPI        testapi.TestAPI
+	TeamAPI        testapi.TestAPI
+	ConfigAPI      testapi.ConfigAPI
+	RoleBindingAPI testapi.TestAPI
 )
 
 var _ = Describe("Project", func() {
@@ -66,6 +67,7 @@ var _ = Describe("Project", func() {
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
+	var project model.Project
 	It("can be created with devops service pack", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = client.UUID
@@ -73,6 +75,7 @@ var _ = Describe("Project", func() {
 		createPayload["service_packs"] = []string{model.DevOps}
 
 		params := testapi.Params{
+			"client":       client.UUID,
 			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
@@ -87,10 +90,51 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
 				Expect(projectData.Map()).To(HaveKey("origin"))
 				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				project = model.Project{
+					UUID:       projectData.Get("uuid").String(),
+					TenantUUID: projectData.Get("tenant_uuid").String(),
+					Version:    projectData.Get("resource_version").String(),
+					Identifier: projectData.Get("identifier").String(),
+				}
 			},
-			"client": client.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	It("after devops_service_pack rolebinding DevOps exists, and contain DirectGroup, "+
+		"after changing devops_team_uuid, this rb is deleted", func() {
+		rolebidingsData := RoleBindingAPI.List(testapi.Params{
+			"tenant": client.UUID,
+		}, nil).Get("role_bindings")
+		roleBindingUUID := ""
+		for _, rolebindingData := range rolebidingsData.Array() {
+			if rolebindingData.Get("identifier").String() == "DevOps" && rolebindingData.Get("archiving_timestamp").String() == "0" {
+				for _, grData := range rolebindingData.Get("groups").Array() {
+					if grData.String() == devopsTeam.Groups[0].GroupUUID {
+						roleBindingUUID = rolebindingData.Get("uuid").String()
+						break
+					}
+				}
+			}
+		}
+		Expect(roleBindingUUID).ToNot(BeEmpty())
+		devopsTeam2 := specs.CreateDevopsTeam(TeamAPI)
+		updatePayload := map[string]interface{}{
+			"devops_team":      devopsTeam2.UUID,
+			"resource_version": project.Version,
+			"service_packs":    []string{model.DevOps},
+			"identifier":       project.Identifier,
+		}
+		TestAPI.Update(testapi.Params{
+			"client":       project.TenantUUID,
+			"project":      project.UUID,
+			"expectStatus": testapi.ExpectExactStatus(200),
+		}, nil, updatePayload)
+		rolebidingData := RoleBindingAPI.Read(testapi.Params{
+			"tenant":       client.UUID,
+			"role_binding": roleBindingUUID,
+		}, nil).Get("role_binding")
+		Expect(rolebidingData.Get("archiving_timestamp").String()).ToNot(Equal("0"))
 	})
 
 	It("can be read", func() {

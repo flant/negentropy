@@ -68,19 +68,6 @@ func ServicePackSchema() *memdb.DBSchema {
 				{OriginalDataTypeFieldName: "IdentitySharings", RelatedDataType: iam_model.IdentitySharingType, RelatedDataTypeFieldIndexName: PK},
 			},
 		},
-		CascadeDeletes: map[string][]memdb.Relation{
-			iam_model.ProjectType: {
-				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServicePackType, RelatedDataTypeFieldIndexName: ProjectForeignPK},
-			},
-			model.ServicePackType: {
-				{OriginalDataTypeFieldName: "Rolebindings", RelatedDataType: iam_model.RoleBindingType, RelatedDataTypeFieldIndexName: PK},
-			},
-		},
-		CheckingRelations: map[string][]memdb.Relation{
-			iam_model.IdentitySharingType: {
-				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServicePackType, RelatedDataTypeFieldIndexName: repo.IdentitySharingForeignPK},
-			},
-		},
 	}
 }
 
@@ -102,8 +89,7 @@ func (r *ServicePackRepository) Create(servicePack *model.ServicePack) error {
 
 func (r *ServicePackRepository) getRawByID(projectUUID iam_model.ProjectUUID,
 	servicePackName model.ServicePackName) (interface{}, error) {
-	id := projectUUID + "_" + servicePackName
-	raw, err := r.db.First(model.ServicePackType, PK, id)
+	raw, err := r.db.First(model.ServicePackType, PK, projectUUID, servicePackName)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +117,7 @@ func (r *ServicePackRepository) Update(servicePack *model.ServicePack) error {
 	return r.save(servicePack)
 }
 
-func (r *ServicePackRepository) CascadeDelete(projectUUID iam_model.ProjectUUID,
+func (r *ServicePackRepository) Delete(projectUUID iam_model.ProjectUUID,
 	servicePackName model.ServicePackName, archiveMark memdb.ArchiveMark) error {
 	servicePack, err := r.GetByID(projectUUID, servicePackName)
 	if err != nil {
@@ -140,7 +126,7 @@ func (r *ServicePackRepository) CascadeDelete(projectUUID iam_model.ProjectUUID,
 	if servicePack.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.CascadeArchive(model.ServicePackType, servicePack, archiveMark)
+	return r.db.Archive(model.ServicePackType, servicePack, archiveMark)
 }
 
 func (r *ServicePackRepository) List(projectUUID iam_model.ProjectUUID, showArchived bool) ([]*model.ServicePack, error) {

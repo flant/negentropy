@@ -136,7 +136,7 @@ var _ = Describe("Teammate", func() {
 
 	It("team can be changed", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
-		newTeam := specs.CreateRandomTeam(TeamAPI)
+		newTeam := specs.CreateRandomTeamWithSpecificType(TeamAPI, team.TeamType)
 		updatePayload := map[string]interface{}{
 			"resource_version": teammate.Version,
 			"role_at_team":     teammate.RoleAtTeam,

@@ -35,7 +35,7 @@ var _ = Describe("Login", func() {
 
 		JustBeforeEach(func() {
 			user, _, _ = PrepareUserAndMultipass(true)
-			jwtData = auth_source.SignJWT(user.FullIdentifier, time.Now().Add(5*time.Second), map[string]interface{}{
+			jwtData = auth_source.SignJWT(user.FullIdentifier, time.Now().Add(15*time.Second), map[string]interface{}{
 				"email": user.Email,
 				"uuid":  user.UUID,
 			})

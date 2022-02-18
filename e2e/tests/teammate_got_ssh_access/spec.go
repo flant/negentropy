@@ -7,6 +7,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,11 +18,13 @@ import (
 	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
+	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
@@ -42,7 +45,7 @@ var _ = BeforeSuite(func() {
 	Describe("configuring system", func() {
 		cfg = flantIamSuite.PrepareForTeammateGotSSHAccess()
 
-		err := flantIamSuite.WaitPrepareForTeammateGotSSHAccess(cfg, 40)
+		err := lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())
 		Expect(err).ToNot(HaveOccurred())
 		s.CheckServerBinariesAndFoldersExists()
 		s.CheckClientBinariesAndFoldersExists()
@@ -143,7 +146,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		// run init
 		tenantID := client.Identifier
 		projectID := project.Identifier
-		initCmd := s.ServerAccessdPath + " init --vault_url http://vault-root:8200 "
+		initCmd := fmt.Sprintf(s.ServerAccessdPath+" init --vault_url %s ", os.Getenv("ROOT_VAULT_INTERNAL_URL"))
 		initCmd += fmt.Sprintf("-t %s -p %s ", tenantID, projectID)
 		encodedPassword := b64.StdEncoding.EncodeToString([]byte(saRegisterServerPassword.UUID + ":" + saRegisterServerPassword.Secret))
 		initCmd += fmt.Sprintf("--password %s ", encodedPassword)
@@ -255,8 +258,13 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("cli ssh command works", func() {
 		cfg := flant_iam_preparing.CheckingEnvironment{
-			Tenant:     client,
-			Project:    project.Project,
+			Tenant: client,
+			Project: model.Project{
+				UUID:       project.UUID,
+				TenantUUID: project.TenantUUID,
+				Version:    project.Version,
+				Identifier: project.Identifier,
+			},
 			User:       teammate.User,
 			TestServer: testServer,
 		}
@@ -293,6 +301,84 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(s.DirectoryAtContainerNotExistOrEmpty(s.TestClientContainer, "/tmp/flint")).To(BeTrue(),
 			"/tmp/flint is empty  after closing cli")
 	})
+
+	var devopsTeam2 ext_model.Team
+
+	It("lost access after moving user to other ", func() {
+		devopsTeam2 = specs.CreateDevopsTeam(lib.NewFlowTeamAPI(adminClient))
+		checkChangeTeam := func(oldTeamUUID string, newTeamUUID string, usersLen int) {
+			updatedData := lib.NewFlowTeammateAPI(adminClient).Update(testapi.Params{
+				"team":     oldTeamUUID,
+				"teammate": teammate.UUID,
+			}, nil, map[string]interface{}{
+				"resource_version": teammate.Version,
+				"role_at_team":     teammate.RoleAtTeam,
+				"identifier":       teammate.Identifier,
+				"new_team_uuid":    newTeamUUID,
+			})
+			teammate.Version = updatedData.Get("teammate.resource_version").String()
+			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+
+			users, err := getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(users).To(HaveLen(usersLen))
+		}
+		checkChangeTeam(devopsTeam.UUID, devopsTeam2.UUID, 0)
+		checkChangeTeam(devopsTeam2.UUID, devopsTeam.UUID, 1)
+	})
+
+	It("lost access after deleting teammate", func() {
+		teammate2 := specs.CreateRandomTeammate(lib.NewFlowTeammateAPI(lib.NewConfiguredIamVaultClient()), devopsTeam)
+		Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+		users, err := getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(users).To(HaveLen(2))
+
+		lib.NewFlowTeammateAPI(adminClient).Delete(testapi.Params{
+			"team":     devopsTeam.UUID,
+			"teammate": teammate2.UUID,
+		}, nil)
+		Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+		users, err = getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(users).To(HaveLen(1))
+	})
+
+	It("lost access after changing devops team", func() {
+		checkChangeDevopsTeam := func(newTeamUUID string, usersLen int) {
+			updatedData := lib.NewFlowProjectAPI(adminClient).Update(testapi.Params{
+				"client":  client.UUID,
+				"project": project.UUID,
+			}, nil, map[string]interface{}{
+				"devops_team":      newTeamUUID,
+				"resource_version": project.Version,
+				"service_packs":    []string{ext_model.DevOps},
+				"identifier":       project.Identifier,
+			})
+			project.Version = updatedData.Get("project.resource_version").String()
+			println("updatedData = " + updatedData.String())
+			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+			rbsListData := lib.NewRoleBindingAPI(adminClient).List(testapi.Params{
+				"tenant": client.UUID,
+			}, map[string][]string{})
+			println("rbsListData = " + rbsListData.String())
+			users, err := getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
+			fmt.Printf("%#v\n", users)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(users).To(HaveLen(usersLen))
+		}
+		checkChangeDevopsTeam(devopsTeam2.UUID, 0)
+		checkChangeDevopsTeam(devopsTeam.UUID, 1)
+	})
+
+	It("lost access after deleting server from project", func() {
+		//TODO
+	})
+
+	It("lost access after deleting project", func() {
+		//TODO
+	})
+
 })
 
 func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUID, serverUUID ext.ServerUUID) ext.Server {
@@ -333,4 +419,39 @@ func writeLogToFile(output []string, logFilePath string) {
 	logFile.Close()
 }
 
-//flant/user_identifier
+// return user identifiers
+func getPosixUsers(authClient *http.Client, tenantUUID string, projectUUID string, serverUUID string) ([]string, error) {
+	url := fmt.Sprintf("/tenant/%s/project/%s/server/%s/posix_users",
+		tenantUUID, projectUUID, serverUUID)
+	method := "GET"
+	fmt.Println(url)
+	req, err := http.NewRequest(method, url, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	res, err := authClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	json := tools.UnmarshalVaultResponse(data)
+
+	Expect(json.Map()).To(HaveKey("posix_users"))
+	jsonUsers := json.Get("posix_users")
+	if jsonUsers.Type == gjson.Null {
+		return []string{}, nil
+	}
+	Expect(jsonUsers.IsArray()).To(BeTrue())
+	usersIdentifiers := []string{}
+	for _, jsonUser := range jsonUsers.Array() {
+		Expect(jsonUser.Map()).To(HaveKey("name"))
+		usersIdentifiers = append(usersIdentifiers, jsonUser.Get("name").String())
+	}
+	return usersIdentifiers, nil
+}

@@ -7,6 +7,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -71,7 +72,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		// run init
 		tenantID := cfg.Tenant.Identifier
 		projectID := cfg.Project.Identifier
-		initCmd := s.ServerAccessdPath + " init --vault_url http://vault-root:8200 "
+		initCmd := fmt.Sprintf(s.ServerAccessdPath+" init --vault_url %s ", os.Getenv("ROOT_VAULT_INTERNAL_URL"))
 		initCmd += fmt.Sprintf("-t %s -p %s ", tenantID, projectID)
 		encodedPassword := b64.StdEncoding.EncodeToString([]byte(cfg.ServiceAccountPassword.UUID + ":" + cfg.ServiceAccountPassword.Secret))
 		initCmd += fmt.Sprintf("--password %s ", encodedPassword)
@@ -80,6 +81,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		initCmd += fmt.Sprintf("--connection_hostname %s ", flant_iam_preparing.TestServerIdentifier)
 		initCmd += fmt.Sprintf("--store_multipass_to %s ", jwtPath)
 		s.ExecuteCommandAtContainer(s.TestServerContainer, []string{"/bin/bash", "-c", initCmd}, nil)
+		lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())
 	})
 
 	It("check files are created, and got server registration info", func() {
@@ -126,8 +128,8 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
-		s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
 		time.Sleep(time.Second)
+		s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
 		pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
 		Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
 	})
@@ -136,13 +138,11 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		// TODO check content /etc/nsswitch.conf
 		err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer, "/opt/serveraccessd")
 		Expect(err).ToNot(HaveOccurred(), "folder should be created")
-
 		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.ServerAccessdPath)
 		s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
-		time.Sleep(time.Second)
 		pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
 		Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
-
+		//time.Sleep(time.Second)
 		authKeysFilePath := filepath.Join("/home", cfg.User.Identifier, ".ssh", "authorized_keys")
 		contentAuthKeysFile := s.ExecuteCommandAtContainer(s.TestServerContainer,
 			[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
