@@ -1,7 +1,11 @@
 package lib
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -9,6 +13,8 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 )
 
 type customHeadersTransport struct {
@@ -124,4 +130,57 @@ func GetAuthVaultUrl() string {
 		panic("AUTH_VAULT_URL is empty, need valid URL to access vault")
 	}
 	return u
+}
+
+func WaitDataReachFlantAuthPlugin(maxAttempts int, vaultUrl string) error {
+	rootIamClient := NewConfiguredIamVaultClient()
+	tenant := specs.CreateRandomTenant(NewTenantAPI(rootIamClient))
+	user := specs.CreateRandomUser(NewUserAPI(rootIamClient), tenant.UUID)
+	_, multipassJWT := specs.CreateUserMultipass(NewUserMultipassAPI(rootIamClient),
+		user, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+	f := func() error { return TryLoginByMultipassJWTToAuthVault(multipassJWT, vaultUrl) }
+	return Repeat(f, maxAttempts)
+}
+
+func Repeat(f func() error, maxAttempts int) error {
+	err := f()
+	counter := 1
+	for err != nil {
+		if counter > maxAttempts {
+			return fmt.Errorf("exceeded attempts, last err:%w", err)
+		}
+		fmt.Printf("waiting fail %d attempt\n", counter)
+		time.Sleep(time.Second)
+		counter++
+		err = f()
+	}
+	fmt.Printf("waiting completed successfully, attempt %d\n", counter)
+	return nil
+}
+
+func TryLoginByMultipassJWTToAuthVault(multipassJWT string, vaultUrl string) error {
+	url := vaultUrl + "/v1/auth/flant_iam_auth/login"
+	payload := map[string]interface{}{
+		"method": "multipass",
+		"jwt":    multipassJWT,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
+	if err != nil {
+		return nil
+	}
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	_, err = ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
+	}
+	return nil
 }

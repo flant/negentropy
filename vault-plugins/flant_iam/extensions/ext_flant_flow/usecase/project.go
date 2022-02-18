@@ -65,22 +65,16 @@ func (s *ProjectService) Create(projectParams ProjectParams) (*model.Project, er
 	if err != nil {
 		return nil, err
 	}
-	project := &model.Project{
-		Project:      *projectParams.IamProject,
-		ServicePacks: servicePacks,
+	iamProject := updateExtensions(*projectParams.IamProject, servicePacks)
+	iamProject.Origin = consts.OriginFlantFlow
+
+	if err := s.ProjectService.Create(&iamProject); err != nil {
+		return nil, err
 	}
-	iamProject, err := makeIamProject(project)
+	project, err := makeProject(&iamProject)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.ProjectService.Create(iamProject); err != nil {
-		return nil, err
-	}
-	iamProject, err = s.ProjectService.GetByID(project.UUID)
-	if err != nil {
-		return nil, err
-	}
-	project.Project = *iamProject
 	if err = s.servicePacksController.OnCreateProject(*project); err != nil {
 		return nil, err
 	}
@@ -105,16 +99,12 @@ func (s *ProjectService) Update(projectParams ProjectParams) (*model.Project, er
 	if err != nil {
 		return nil, err
 	}
-	project := &model.Project{
-		Project:      *projectParams.IamProject,
-		ServicePacks: servicePacks,
-	}
-	project.Extensions = stored.Extensions
-	iamProject, err := makeIamProject(project)
+	iamProject := updateExtensions(*projectParams.IamProject, servicePacks)
+	iamProject.Origin = consts.OriginFlantFlow
+	project, err := makeProject(&iamProject)
 	if err != nil {
 		return nil, err
 	}
-	project.Project = *iamProject
 	oldProject, err := makeProject(stored)
 	if err != nil {
 		return nil, err
@@ -123,10 +113,11 @@ func (s *ProjectService) Update(projectParams ProjectParams) (*model.Project, er
 	if err != nil {
 		return nil, err
 	}
-	err = s.ProjectService.Update(iamProject)
+	err = s.ProjectService.Update(&iamProject)
 	if err != nil {
 		return nil, err
 	}
+	project.Version = iamProject.Version
 	return project, nil
 }
 
@@ -177,7 +168,13 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 		}
 	}
 	return &model.Project{
-		Project:      *project,
+		ArchiveMark:  project.ArchiveMark,
+		UUID:         project.UUID,
+		TenantUUID:   project.TenantUUID,
+		Version:      project.Version,
+		Identifier:   project.Identifier,
+		FeatureFlags: project.FeatureFlags,
+		Origin:       project.Origin,
 		ServicePacks: servicePacks,
 	}, nil
 }
@@ -201,26 +198,36 @@ func unmarshallServicePackCandidate(servicePacksRaw interface{}) (map[model.Serv
 	return servicePacks, nil
 }
 
-// makeIamProject actually update extensions with servicepack
 func makeIamProject(project *model.Project) (*iam.Project, error) {
 	if project == nil {
 		return nil, consts.ErrNilPointer
 	}
-	iamProject := project.Project
-	extensions := project.Extensions
-	if extensions == nil {
-		extensions = map[consts.ObjectOrigin]*iam.Extension{}
+	iamProject := iam.Project{
+		ArchiveMark:  project.ArchiveMark,
+		UUID:         project.UUID,
+		TenantUUID:   project.TenantUUID,
+		Version:      project.Version,
+		Identifier:   project.Identifier,
+		FeatureFlags: project.FeatureFlags,
+		Origin:       project.Origin,
 	}
-	extensions[consts.OriginFlantFlow] = &iam.Extension{
+	iamProject = updateExtensions(iamProject, project.ServicePacks)
+	return &iamProject, nil
+}
+
+func updateExtensions(iamProject iam.Project, servicePacks map[model.ServicePackName]model.ServicePackCFG) iam.Project {
+	if iamProject.Extensions == nil {
+		iamProject.Extensions = map[consts.ObjectOrigin]*iam.Extension{}
+	}
+	iamProject.Extensions[consts.OriginFlantFlow] = &iam.Extension{
 		Origin:    consts.OriginFlantFlow,
 		OwnerType: iam.ProjectType,
-		OwnerUUID: project.UUID,
+		OwnerUUID: iamProject.UUID,
 		Attributes: map[string]interface{}{
-			"service_packs": project.ServicePacks,
+			"service_packs": servicePacks,
 		},
 	}
-	iamProject.Extensions = extensions
-	return &iamProject, nil
+	return iamProject
 }
 
 func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) {

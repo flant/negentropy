@@ -29,18 +29,24 @@ func CreateRandomClient(clientsAPI testapi.TestAPI) ext_model.Client {
 func CreateDevopsTeam(teamAPI testapi.TestAPI) ext_model.Team {
 	createPayload := fixtures.TeamCreatePayload(fixtures.Teams()[0])
 	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
-	rawTeam := createdData.Get("team")
-	data := []byte(rawTeam.String())
-	var team ext_model.Team
-	err := json.Unmarshal(data, &team)
-	Expect(err).ToNot(HaveOccurred())
-	return team
+	return buildGroup(createdData)
 }
 
 func CreateRandomTeam(teamAPI testapi.TestAPI) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
-	rawTeam := createdData.Get("team")
+	return buildGroup(createdData)
+}
+
+func CreateRandomTeamWithSpecificType(teamAPI testapi.TestAPI, teamType string) ext_model.Team {
+	createPayload := fixtures.RandomTeamCreatePayload()
+	createPayload["team_type"] = teamType
+	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	return buildGroup(createdData)
+}
+
+func buildGroup(groupData gjson.Result) ext_model.Team {
+	rawTeam := groupData.Get("team")
 	data := []byte(rawTeam.String())
 	var team ext_model.Team
 	err := json.Unmarshal(data, &team)

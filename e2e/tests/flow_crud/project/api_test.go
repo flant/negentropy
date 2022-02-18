@@ -18,6 +18,7 @@ func Test_projectCRUD(t *testing.T) {
 	project.RoleAPI = lib.NewRoleAPI(rootClient)
 	project.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	project.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
+	project.RoleBindingAPI = lib.NewRoleBindingAPI(rootClient)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Project")

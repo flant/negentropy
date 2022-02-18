@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
@@ -100,7 +103,7 @@ func (d devopsServicePackBuilder) OnUpdateProject(oldProject model.Project, upda
 	if err != nil {
 		return err
 	}
-	newDevopsCFG, err, newCfgExists := model.TryGetDevopsCFG(oldProject.ServicePacks)
+	newDevopsCFG, err, newCfgExists := model.TryGetDevopsCFG(updatedProject.ServicePacks)
 	if err != nil {
 		return err
 	}
@@ -108,7 +111,7 @@ func (d devopsServicePackBuilder) OnUpdateProject(oldProject model.Project, upda
 	case !newCfgExists && oldCfgExists:
 		return d.OnDeleteProject(oldProject)
 	case newCfgExists && !oldCfgExists:
-		return d.OnCreateProject(oldProject)
+		return d.OnCreateProject(updatedProject)
 	case newCfgExists && oldCfgExists:
 		{
 			if *oldDevopsCFG == *newDevopsCFG {
@@ -117,7 +120,7 @@ func (d devopsServicePackBuilder) OnUpdateProject(oldProject model.Project, upda
 			if err = d.OnDeleteProject(oldProject); err != nil {
 				return err
 			}
-			return d.OnCreateProject(oldProject)
+			return d.OnCreateProject(updatedProject)
 		}
 	}
 	return nil
@@ -133,20 +136,29 @@ func (d devopsServicePackBuilder) OnDeleteProject(oldProject model.Project) erro
 		if err != nil {
 			return err
 		}
-		// try delete IdentitySharing
-		for _, isUUID := range sp.IdentitySharings {
-			sps, err := d.servicePackRepo.ListForIdentitySharing(isUUID, false)
-			if err != nil {
+		// delete servicepack
+		err = d.servicePackRepo.Delete(oldProject.UUID, model.DevOps, archiveMark)
+		if err != nil {
+			return err
+		}
+		// try delete rolbindings
+		for _, rbUUID := range sp.Rolebindings {
+			err := d.roleBindingRepository.CascadeDelete(rbUUID, archiveMark)
+			if err != nil && !errors.Is(err, memdb.ErrNotEmptyRelation) {
 				return err
 			}
-			if len(sps) == 1 && sps[0] == sp {
-				if err = d.identitySharingRepo.Delete(isUUID, archiveMark); err != nil {
-					return err
-				}
+		}
+
+		// try delete IdentitySharing
+		for _, isUUID := range sp.IdentitySharings {
+			if err = d.identitySharingRepo.Delete(isUUID, archiveMark); err != nil &&
+				!errors.Is(err, memdb.ErrNotEmptyRelation) {
+				sp1, _ := d.servicePackRepo.GetByID(sp.ProjectUUID, model.DevOps)
+				println(err.Error())
+				fmt.Printf("%#v\n", sp1)
+				return err
 			}
 		}
-		// delete rolebindings && SP
-		return d.servicePackRepo.CascadeDelete(oldProject.UUID, model.DevOps, archiveMark)
 	}
 	return nil
 }

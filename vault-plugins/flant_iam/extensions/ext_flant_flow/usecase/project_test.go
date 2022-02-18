@@ -28,8 +28,9 @@ func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project
 			sps[spn] = struct{}{}
 		}
 
+		iamProject, _ := makeIamProject(&project)
 		tmp := ProjectParams{
-			IamProject:       &project.Project,
+			IamProject:       iamProject,
 			ServicePackNames: sps,
 			DevopsTeamUUID:   fixtures.TeamUUID1,
 		}
@@ -54,7 +55,7 @@ func Test_ProjectList(t *testing.T) {
 	require.NoError(t, err)
 	ids := make([]string, 0)
 	for _, obj := range projects {
-		ids = append(ids, obj.ObjId())
+		ids = append(ids, obj.UUID)
 	}
 	require.ElementsMatch(t, []string{
 		fixtures.ProjectUUID1, fixtures.ProjectUUID2, fixtures.ProjectUUID3, fixtures.ProjectUUID4,
@@ -63,18 +64,15 @@ func Test_ProjectList(t *testing.T) {
 
 func Test_makeProjectCastingThroughBytes(t *testing.T) {
 	project := &model.Project{
-		Project: iam.Project{
-			ArchiveMark: memdb.ArchiveMark{
-				Timestamp: 99,
-				Hash:      999,
-			},
-			UUID:         "u1",
-			TenantUUID:   "tuid1",
-			Version:      "v1",
-			Identifier:   "i1",
-			FeatureFlags: []iam.FeatureFlagName{"f1"},
-			Extensions:   nil,
+		ArchiveMark: memdb.ArchiveMark{
+			Timestamp: 99,
+			Hash:      999,
 		},
+		UUID:         "u1",
+		TenantUUID:   "tuid1",
+		Version:      "v1",
+		Identifier:   "i1",
+		FeatureFlags: []iam.FeatureFlagName{"f1"},
 		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 			model.DevOps: model.DevopsServicePackCFG{
 				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
@@ -94,24 +92,20 @@ func Test_makeProjectCastingThroughBytes(t *testing.T) {
 
 	newProject, err := makeProject(&newIamProject)
 	require.NoError(t, err)
-	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }
 
 func Test_makeProjectDirectCasting(t *testing.T) {
 	project := &model.Project{
-		Project: iam.Project{
-			ArchiveMark: memdb.ArchiveMark{
-				Timestamp: 99,
-				Hash:      999,
-			},
-			UUID:         "u1",
-			TenantUUID:   "tuid1",
-			Version:      "v1",
-			Identifier:   "i1",
-			FeatureFlags: []iam.FeatureFlagName{"f1"},
-			Extensions:   nil,
+		ArchiveMark: memdb.ArchiveMark{
+			Timestamp: 99,
+			Hash:      999,
 		},
+		UUID:         "u1",
+		TenantUUID:   "tuid1",
+		Version:      "v1",
+		Identifier:   "i1",
+		FeatureFlags: []iam.FeatureFlagName{"f1"},
 		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 			model.DevOps: model.DevopsServicePackCFG{
 				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
@@ -123,24 +117,20 @@ func Test_makeProjectDirectCasting(t *testing.T) {
 	fmt.Printf("%#v\n", iamProject)
 	newProject, err := makeProject(iamProject)
 	require.NoError(t, err)
-	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }
 
 func Test_makeProjectDirectCastingEmptyServicePack(t *testing.T) {
 	project := &model.Project{
-		Project: iam.Project{
-			ArchiveMark: memdb.ArchiveMark{
-				Timestamp: 99,
-				Hash:      999,
-			},
-			UUID:         "u1",
-			TenantUUID:   "tuid1",
-			Version:      "v1",
-			Identifier:   "i1",
-			FeatureFlags: []iam.FeatureFlagName{"f1"},
-			Extensions:   nil,
+		ArchiveMark: memdb.ArchiveMark{
+			Timestamp: 99,
+			Hash:      999,
 		},
+		UUID:         "u1",
+		TenantUUID:   "tuid1",
+		Version:      "v1",
+		Identifier:   "i1",
+		FeatureFlags: []iam.FeatureFlagName{"f1"},
 		ServicePacks: nil,
 	}
 	iamProject, err := makeIamProject(project)
@@ -148,6 +138,5 @@ func Test_makeProjectDirectCastingEmptyServicePack(t *testing.T) {
 	fmt.Printf("%#v\n", iamProject)
 	newProject, err := makeProject(iamProject)
 	require.NoError(t, err)
-	project.Extensions = newProject.Extensions
 	require.Equal(t, project, newProject)
 }

@@ -166,6 +166,11 @@ func (b teammateBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
+				"new_team_uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a new team, if teammate move to another team",
+					Required:    false,
+				},
 			}),
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -190,11 +195,6 @@ func (b teammateBackend) paths() []*framework.Path {
 				"uuid": {
 					Type:        framework.TypeNameString,
 					Description: "ID of a teammate",
-					Required:    true,
-				},
-				"team_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a team",
 					Required:    true,
 				},
 			},
@@ -276,6 +276,9 @@ func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, 
 	b.Logger().Debug("update teammate", "path", req.Path)
 	id := data.Get("uuid").(string)
 	teamID := data.Get(repo.TeamForeignPK).(string)
+	if newTeamID := data.Get("new_team_uuid").(string); newTeamID != "" {
+		teamID = newTeamID
+	}
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
@@ -297,7 +300,6 @@ func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, 
 		TeamUUID:   teamID,
 		RoleAtTeam: data.Get("role_at_team").(string),
 	}
-
 	err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Update(teammate)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)

@@ -18,6 +18,7 @@ func Test_projectCRUD(t *testing.T) {
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+	RoleBindingAPI = testapi.NewRoleBindingAPI(&backend)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Project")

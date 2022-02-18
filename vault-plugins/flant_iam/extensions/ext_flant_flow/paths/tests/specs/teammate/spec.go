@@ -76,7 +76,7 @@ var _ = Describe("Teammate", func() {
 
 	It("can be updated", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
-		updatePayload := fixtures.RandomTeamCreatePayload()
+		updatePayload := fixtures.RandomTeammateCreatePayload(team)
 		delete(updatePayload, "uuid")
 		delete(updatePayload, "team_uuid")
 		updatePayload["resource_version"] = teammate.Version
@@ -132,6 +132,31 @@ var _ = Describe("Teammate", func() {
 			"team": team.UUID,
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	It("team can be changed", func() {
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
+		newTeam := specs.CreateRandomTeamWithSpecificType(TeamAPI, team.TeamType)
+		updatePayload := map[string]interface{}{
+			"resource_version": teammate.Version,
+			"role_at_team":     teammate.RoleAtTeam,
+			"identifier":       teammate.Identifier,
+			"new_team_uuid":    newTeam.UUID,
+		}
+		updateData := TestAPI.Update(testapi.Params{
+			"team":     teammate.TeamUUID,
+			"teammate": teammate.UUID,
+		}, nil, updatePayload)
+
+		readData := TestAPI.Read(testapi.Params{
+			"team":     newTeam.UUID,
+			"teammate": teammate.UUID,
+			"expectPayload": func(json gjson.Result) {
+				iam_specs.IsSubsetExceptKeys(updateData.Get("teammate"), json.Get("teammate"), "extensions")
+			},
+		}, nil)
+
+		Expect(readData.Get("teammate.team_uuid").String()).To(Equal(newTeam.UUID))
 	})
 
 	Context("after deletion", func() {
