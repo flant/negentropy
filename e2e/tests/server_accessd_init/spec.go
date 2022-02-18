@@ -142,7 +142,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
 		pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
 		Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
-		//time.Sleep(time.Second)
+		time.Sleep(time.Second)
 		authKeysFilePath := filepath.Join("/home", cfg.User.Identifier, ".ssh", "authorized_keys")
 		contentAuthKeysFile := s.ExecuteCommandAtContainer(s.TestServerContainer,
 			[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
