@@ -95,34 +95,9 @@ func (s *Suite) CheckServerBinariesAndFoldersExists() {
 func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
 	s.CheckServerBinariesAndFoldersExists()
 
-	t, err := template.New("").Parse(ServerMainCFGTPL)
-	Expect(err).ToNot(HaveOccurred(), "template should be ok")
-	var serverMainCFG bytes.Buffer
-	err = t.Execute(&serverMainCFG, *s)
-	Expect(err).ToNot(HaveOccurred(), "template should be executed")
+	err := RunAndCheckAuthdAtServer(*s)
+	Expect(err).ToNot(HaveOccurred())
 
-	err = s.WriteFileToContainer(s.TestServerContainer,
-		"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG.String())
-	Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-	err = s.WriteFileToContainer(s.TestServerContainer,
-		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", ServerSocketCFG)
-	Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-	err = s.WriteFileToContainer(s.TestServerContainer,
-		"/opt/authd/server-jwt", cfg.TestServerServiceAccountMultipassJWT)
-	Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-	s.ExecuteCommandAtContainer(s.TestServerContainer,
-		[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"}, nil)
-
-	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
-	s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
-	time.Sleep(time.Second)
-	pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
-	Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
-
-	// TODO check content /etc/nsswitch.conf
 	// Test_server server_accessd can be configured and run
 	err = s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
 		"/opt/serveraccessd")
@@ -140,19 +115,6 @@ func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvir
 
 	err = RunAndCheckServerAccessd(*s, cfg.User.Identifier, cfg.TestServer.UUID, cfg.User.UUID)
 	Expect(err).ToNot(HaveOccurred())
-	//s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.ServerAccessdPath)
-	//s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
-	//time.Sleep(time.Second)
-	//pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
-	//Expect(pidServerAccessd).Should(BeNumerically(">", 0), "pid greater 0")
-	//
-	//authKeysFilePath := filepath.Join("/home", cfg.User.Identifier, ".ssh", "authorized_keys")
-	//contentAuthKeysFile := s.ExecuteCommandAtContainer(s.TestServerContainer,
-	//	[]string{"/bin/bash", "-c", "cat " + authKeysFilePath}, nil)
-	//Expect(contentAuthKeysFile).To(HaveLen(1), "cat authorize should have one line text")
-	//principal := calculatePrincipal(cfg.TestServer.UUID, cfg.User.UUID)
-	//Expect(contentAuthKeysFile[0]).To(MatchRegexp(".+cert-authority,principals=\""+principal+"\" ssh-rsa.{373}"),
-	//	"content should be specific")
 }
 
 //go:embed client_sock1.yaml

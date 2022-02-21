@@ -1,7 +1,6 @@
 package teammate_got_ssh_access
 
 import (
-	"bytes"
 	_ "embed"
 	b64 "encoding/base64"
 	"encoding/json"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/hashicorp/vault/api"
@@ -181,30 +179,8 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	})
 
 	It("configure authd", func() {
-		// Authd can be configured and run at Test_server
-		err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d")
-		Expect(err).ToNot(HaveOccurred(), "folder should be created")
-
-		t, err := template.New("").Parse(tsc.ServerMainCFGTPL)
-		Expect(err).ToNot(HaveOccurred(), "template should be ok")
-		var serverMainCFG bytes.Buffer
-		err = t.Execute(&serverMainCFG, s)
-		Expect(err).ToNot(HaveOccurred(), "template should be executed")
-
-		err = s.WriteFileToContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG.String())
-		Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-		err = s.WriteFileToContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d/sock1.yaml", tsc.ServerSocketCFG)
-		Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
-		s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
-		time.Sleep(time.Second)
-		pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
-		Expect(pidAuthd).Should(BeNumerically(">", 0), "pid greater 0")
+		err := tsc.RunAndCheckAuthdAtServer(s)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("check run server_accessd", func() {

@@ -1,14 +1,12 @@
 package server_accessd_init
 
 import (
-	"bytes"
 	_ "embed"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
-	"text/template"
 
 	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
@@ -105,34 +103,8 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 	})
 
 	It("configure authd", func() {
-		// Authd can be configured and run at Test_server
-		err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d")
-		Expect(err).ToNot(HaveOccurred(), "folder should be created")
-
-		t, err := template.New("").Parse(tsc.ServerMainCFGTPL)
-		Expect(err).ToNot(HaveOccurred(), "template should be ok")
-		var serverMainCFG bytes.Buffer
-		err = t.Execute(&serverMainCFG, s)
-		Expect(err).ToNot(HaveOccurred(), "template should be executed")
-
-		err = s.WriteFileToContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d/main.yaml", serverMainCFG.String())
-		Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-		err = s.WriteFileToContainer(s.TestServerContainer,
-			"/etc/flant/negentropy/authd-conf.d/sock1.yaml", tsc.ServerSocketCFG)
-		Expect(err).ToNot(HaveOccurred(), "file should be written")
-
-		s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
-		tsc.Try(10, func() error {
-			s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
-			pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
-			if pidAuthd == 0 {
-				return fmt.Errorf("cant find running process of %s at container %s", s.AuthdPath, s.TestServerContainer.Names[0])
-			}
-			return nil
-		})
+		err := tsc.RunAndCheckAuthdAtServer(s)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("check run server_accessd", func() {

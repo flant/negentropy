@@ -1,9 +1,11 @@
 package test_server_and_client_preparing
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"text/template"
 	"time"
 )
 
@@ -60,4 +62,45 @@ func RunAndCheckServerAccessd(s Suite, posixUserName string, testServerUUID stri
 		return nil
 	})
 	return err
+}
+
+func RunAndCheckAuthdAtServer(s Suite) error {
+	// Authd can be configured and run at Test_server
+	path := "/etc/flant/negentropy/authd-conf.d"
+	err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
+		path)
+	if err != nil {
+		return fmt.Errorf("folder:%s should be created, but got error: %w", path, err)
+	}
+
+	t, err := template.New("").Parse(ServerMainCFGTPL)
+	if err != nil {
+		return fmt.Errorf("template should be ok:%w", err)
+	}
+	var serverMainCFG bytes.Buffer
+	err = t.Execute(&serverMainCFG, s)
+	if err != nil {
+		return fmt.Errorf("template should be executed:%w", err)
+	}
+	mainCfgPath := "/etc/flant/negentropy/authd-conf.d/main.yaml"
+	err = s.WriteFileToContainer(s.TestServerContainer, mainCfgPath, serverMainCFG.String())
+	if err != nil {
+		return fmt.Errorf("file:%s sshould be written, but got error: %w", mainCfgPath, err)
+	}
+	sockCfgPath := "/etc/flant/negentropy/authd-conf.d/sock1.yaml"
+	err = s.WriteFileToContainer(s.TestServerContainer, sockCfgPath, ServerSocketCFG)
+	if err != nil {
+		return fmt.Errorf("file:%s sshould be written, but got error: %w", sockCfgPath, err)
+	}
+
+	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
+	Try(10, func() error {
+		s.RunDaemonAtContainer(s.TestServerContainer, s.AuthdPath, "server_authd.log")
+		pidAuthd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.AuthdPath)
+		if pidAuthd == 0 {
+			return fmt.Errorf("cant find running process of %s at container %s", s.AuthdPath, s.TestServerContainer.Names[0])
+		}
+		return nil
+	})
+	return nil
 }
