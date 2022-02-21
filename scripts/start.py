@@ -176,4 +176,4 @@ if __name__ == "__main__":
                                args.okta_uuid,
                                "local-admin")
         create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
-                               "142f39db-acb9-4d24-8c12-f5ec0adc6d44", 3600)
+                               args.okta_uuid, 3600)
