@@ -220,7 +220,7 @@ func (b *teammateBackend) handleExistence(_ context.Context, req *logical.Reques
 
 	tx := b.storage.Txn(false)
 
-	obj, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id)
+	obj, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id, teamID)
 	if err != nil {
 		return false, err
 	}
@@ -332,10 +332,10 @@ func (b *teammateBackend) handleDelete(_ context.Context, req *logical.Request, 
 func (b *teammateBackend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("read teammate", "path", req.Path)
 	id := data.Get("uuid").(string)
-
+	teamID := data.Get("team_uuid").(string)
 	tx := b.storage.Txn(false)
 
-	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id, teamID)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

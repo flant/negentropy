@@ -96,15 +96,19 @@ func (s *TeammateService) Delete(id iam_model.UserUUID) error {
 	return s.repo.Delete(id, archiveMark)
 }
 
-func (s *TeammateService) GetByID(id iam_model.UserUUID) (*model.FullTeammate, error) {
-	user, err := s.userService.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
+func (s *TeammateService) GetByID(id iam_model.UserUUID, teamUUID model.TeamUUID) (*model.FullTeammate, error) {
 	tm, err := s.repo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
+	if tm.TeamUUID != teamUUID {
+		return nil, consts.ErrNotFound
+	}
+	user, err := s.userService.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	return makeFullTeammate(user, tm)
 }
 
