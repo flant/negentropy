@@ -1,10 +1,10 @@
-import time
 from json import dumps
 from typing import List
 
 import datetime
 import hvac
 import requests
+import time
 from hvac import exceptions
 
 from consts import negentropy_plugins, FLANT_IAM_AUTH
@@ -110,29 +110,29 @@ class Vault:
             raise Exception("vault {}: not unsealed, stopped".format(self.name))
         print("unseal for '{}' vault succeed".format(self.name))
 
-    def activate_plugins(self):
-        """ activate plugins """
-        print("run activate_plugins for '{}' vault ".format(self.name))
-        auths = set(self.vault_client.sys.list_auth_methods().keys())
-        secrets = set(self.vault_client.sys.list_mounted_secrets_engines().keys())
-        active_plugins = {remove_suffix(name, "/") for name in auths.union(secrets)}
-        for p in self.plugin_names:
-            if p in active_plugins:
-                print("plugin '{}' already activated at '{}' vault".format(p, self.name))
-            else:
-                if p in auth_plugins:
-                    self.vault_client.sys.enable_auth_method(
-                        method_type=p,
-                        path=p,
-                        plugin_name=p,
-                    )
-                else:
-                    self.vault_client.sys.enable_secrets_engine(
-                        backend_type=p,
-                        path=p,
-                        plugin_name=p,
-                    )
-                print("plugin '{}' is activated at '{}' vault".format(p, self.name))
+    # def activate_plugins(self):
+    #     """ activate plugins """
+    #     print("run activate_plugins for '{}' vault ".format(self.name))
+    #     auths = set(self.vault_client.sys.list_auth_methods().keys())
+    #     secrets = set(self.vault_client.sys.list_mounted_secrets_engines().keys())
+    #     active_plugins = {remove_suffix(name, "/") for name in auths.union(secrets)}
+    #     for p in self.plugin_names:
+    #         if p in active_plugins:
+    #             print("plugin '{}' already activated at '{}' vault".format(p, self.name))
+    #         else:
+    #             if p in auth_plugins:
+    #                 self.vault_client.sys.enable_auth_method(
+    #                     method_type=p,
+    #                     path=p,
+    #                     plugin_name=p,
+    #                 )
+    #             else:
+    #                 self.vault_client.sys.enable_secrets_engine(
+    #                     backend_type=p,
+    #                     path=p,
+    #                     plugin_name=p,
+    #                 )
+    #             print("plugin '{}' is activated at '{}' vault".format(p, self.name))
 
     def write_to_plugin(self, plugin: str, path: str, json: dict = None) -> requests.Response:
         """ write to plugin """

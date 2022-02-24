@@ -79,7 +79,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == 'dev':
-        dev_vault = Vault(name="vault_dev", url="http://127.0.0.1:8200", token="root",
+        dev_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root",
                           plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
         vaults = [dev_vault]
         auth_vault_name = dev_vault.name
