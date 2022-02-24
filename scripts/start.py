@@ -1,3 +1,4 @@
+import hvac
 import argparse
 import importlib as importlib
 import json
@@ -109,28 +110,28 @@ if __name__ == "__main__":
 
     run_migrations(vaults)
 
-    for vault in vaults:
+    # for vault in vaults:
         # vault.activate_plugins()
-        vault.configure_self_access_for_flant_iam_auth()
-        vault.create_token_renew_policy()
+        # vault.configure_self_access_for_flant_iam_auth()
+        # vault.create_token_renew_policy()
 
     write_vaults_state_to_file(vaults)
 
-    plugins = connect_plugins(vaults, "kafka:9092")
+    # plugins = connect_plugins(vaults, "kafka:9092")
 
     # ============================
     # configuration for ssh-access
     # ============================
-    for vault in vaults:
-        print("==========================================================")
-        print("ssh-access preparation: vault: {} at {}".format(vault.name, vault.url))
-        print("----------------------------------------------------------")
-        vault.activate_plugins_jwt()  # need kafka
-        vault.activate_auth_multipass()  # need activate jwt
-        vault.configure_ssh_ca([auth_vault_name])  # for using at ssh access tests
+    # for vault in vaults:
+    #     print("==========================================================")
+    #     print("ssh-access preparation: vault: {} at {}".format(vault.name, vault.url))
+    #     print("----------------------------------------------------------")
+        # vault.activate_plugins_jwt()  # need kafka
+        # vault.activate_auth_multipass()  # need activate jwt
+        # vault.configure_ssh_ca([auth_vault_name])  # for using at ssh access tests
 
-    initialize_server_access(vaults)
-    initialize_flant_flow(vaults)
+    # initialize_server_access(vaults)
+    # initialize_flant_flow(vaults)
     # ============================
     # export tokens
     # ============================
@@ -139,12 +140,12 @@ if __name__ == "__main__":
     # ================================
     # configuration for id_token login
     # ================================
-    for vault in vaults:
-        print("==============================================================================")
-        print("id_token and service_account_password login preparation: vault: {} at {}".format(vault.name, vault.url))
-        print("------------------------------------------------------------------------------")
-        vault.connect_oidc(oidc_url)
-        vault.activate_auth_service_account_pass()
+    # for vault in vaults:
+    #    print("==============================================================================")
+    #    print("id_token and service_account_password login preparation: vault: {} at {}".format(vault.name, vault.url))
+    #    print("------------------------------------------------------------------------------")
+        # vault.connect_oidc(oidc_url)
+        # vault.activate_auth_service_account_pass()
 
     # ============================================================================
     # logs (only requests done by vault.write_to_plugin or vault.read_from_plugin)
@@ -188,3 +189,7 @@ if __name__ == "__main__":
                                "local-admin")
         create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
                               args.okta_uuid, 3600)
+
+        print("DEBUG: overwrite oidc connection settings for local environment")
+        for vault in vaults:
+            vault.connect_oidc(oidc_url)
