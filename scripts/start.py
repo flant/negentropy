@@ -1,9 +1,8 @@
-import json
 import argparse
+import importlib as importlib
+import json
 from os import path, makedirs
 from typing import List
-
-import sys
 
 from flant_flow_ext import FlantFlowExtension
 from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
@@ -63,13 +62,21 @@ def read_vaults_from_file() -> List[Vault]:
     return vaults
 
 
+def run_migrations(vaults: List[Vault]):
+    module_path = './infra/main/vault_migrations/core/run_all_migrations.py'
+    module_name = 'migrations'
+    loader = importlib.machinery.SourceFileLoader(module_name, module_path)
+    module = loader.load_module()
+    migration_dir = 'infra/main/vault_migrations/core'
+    module.run_all_migrations([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode')
     parser.add_argument('--oidc-url', dest='oidc_url')
     parser.add_argument('--okta-uuid', dest='okta_uuid')
     args = parser.parse_args()
-
 
     if args.mode == 'dev':
         dev_vault = Vault(name="vault_dev", url="http://127.0.0.1:8200", token="root",
@@ -99,7 +106,11 @@ if __name__ == "__main__":
         print("----------------------------------------")
         vault.wait()
         vault.init_and_unseal()
-        vault.activate_plugins()
+
+    run_migrations(vaults)
+
+    for vault in vaults:
+        # vault.activate_plugins()
         vault.configure_self_access_for_flant_iam_auth()
         vault.create_token_renew_policy()
 
@@ -176,4 +187,4 @@ if __name__ == "__main__":
                                args.okta_uuid,
                                "local-admin")
         create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
-                               args.okta_uuid, 3600)
+                              args.okta_uuid, 3600)
