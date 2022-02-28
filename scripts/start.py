@@ -63,12 +63,15 @@ def read_vaults_from_file() -> List[Vault]:
 
 
 def run_migrations(vaults: List[Vault]):
-    module_path = './infra/main/vault_migrations/core/run_all_migrations.py'
+    # module_path = './infra/main/vault_migrations/core/run_all_migrations.py'
+    module_path = './infra/common/docker/migrator.py'
     module_name = 'migrations'
     loader = importlib.machinery.SourceFileLoader(module_name, module_path)
     module = loader.load_module()
-    migration_dir = 'infra/main/vault_migrations/core'
-    module.run_all_migrations([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
+    # migration_dir = 'infra/main/vault_migrations/core'
+    migration_dir = 'infra/main/vault_migrations'
+    # module.run_all_migrations([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
+    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
 
 
 if __name__ == "__main__":
