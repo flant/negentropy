@@ -148,7 +148,6 @@ class Vault(object):
 
     def initialize_version_control(self):
         list_mounted_secrets_engines = self.conn.sys.list_mounted_secrets_engines().keys()
-        print(list_mounted_secrets_engines)
         if not 'secret/' in list_mounted_secrets_engines:
             self.conn.sys.enable_secrets_engine(
                 backend_type='kv',
