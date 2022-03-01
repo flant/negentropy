@@ -3,7 +3,7 @@ import glob
 import importlib.machinery
 import os
 import traceback
-from typing import TypedDict, List
+from typing import TypedDict, List, Callable
 
 import datetime
 import hvac
@@ -304,7 +304,7 @@ class VaultParams(TypedDict):
     url: str
 
 
-def core_migration_vaults(migration_type: str, all_vaults: List[VaultParams]) -> List[VaultParams]:
+def core_migrations_vault_filter(migration_type: str, all_vaults: List[VaultParams]) -> List[VaultParams]:
     """
     filter vaults by type of core_migration
     :param migration_type:
@@ -360,7 +360,7 @@ def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: Lis
     module.upgrade(vault['name'], vaults)
 
 
-def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version=None):
+def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str = None):
     """
     operate migrations over given vaults
     :param vaults: example: [{'name': 'conf-conf', 'url': 'https://X.X.X.X:YYY', 'token': '...'}, {'name': 'auth-ew3a1', ...}, {'name': 'root-source-3', ...}]
@@ -372,28 +372,44 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version=None):
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
         raise Error("allow only one not core vault, got '%s'" % other_vaults)
+    print("core_vaults", core_vaults)
+    print("other_vaults", other_vaults)
     # run core_migrations if core_vaults are passed
     if len(core_vaults) > 0:
         core_migrations = collect_and_sort_migrations(os.path.join(migration_dir, "core"))
-        print(core_migrations)
-        for m in core_migrations:
-            if version and m.get_version() > version:
-                break
-            operate_vaults_params = core_migration_vaults(migration_type=m.get_core_migration_type(),
-                                                          all_vaults=core_vaults)
-            for v in operate_vaults_params:
-                if is_migration_new(m, v):
-                    run_migration_at_vault(m, v, core_vaults)
-                    update_migration(m, v)
-                new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
-                if new_version == m.get_version():
-                    msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
-                    Console.info(msg)
-                else:
-                    msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
-                    Console.info(msg)
-                    exit(1)
-    #  TODO run conf or conf-conf migrations
+        run_migrations(migrations=core_migrations, vaults=core_vaults, version=version,
+                       vault_filter=core_migrations_vault_filter)
+    # run other_migrations if core_vaults are passed
+    if len(other_vaults) > 0:
+        if 'conf-conf' in other_vaults[0].get('name'):
+            migration_dir = os.path.join(migration_dir, 'conf-conf')
+        else:
+            migration_dir = os.path.join(migration_dir, 'conf')
+        not_core_migrations = collect_and_sort_migrations(migration_dir)
+        run_migrations(migrations=not_core_migrations, vaults=other_vaults, version=version, vault_filter=None)
+
+
+def run_migrations(migrations: List[Migration], vaults: List[VaultParams],
+                   vault_filter: Callable[[str, List[VaultParams]], List[VaultParams]] = None, version: str = None):
+    for m in migrations:
+        if version and m.get_version() > version:
+            break
+        if vault_filter:
+            operate_vaults = vault_filter(migration_type=m.get_core_migration_type(), all_vaults=vaults)
+        else:
+            operate_vaults = vaults
+        for v in operate_vaults:
+            if is_migration_new(m, v):
+                run_migration_at_vault(m, v, vaults)
+                update_migration(m, v)
+            new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
+            if new_version == m.get_version():
+                msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
+                Console.info(msg)
+            else:
+                msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
+                Console.info(msg)
+                exit(1)
 
 
 def list_migrations_command(args):
