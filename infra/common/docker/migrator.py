@@ -1,13 +1,13 @@
 import argparse
+import datetime
 import glob
 import importlib.machinery
 import os
+import sys
 import traceback
 from typing import TypedDict, List, Callable
 
-import datetime
 import hvac
-import sys
 
 # TODO
 # vault secrets enable -path migrator database
@@ -144,7 +144,6 @@ class Vault(object):
     def update_version(self, version):
         if not self.is_version_controlled():
             self.initialize_version_control()
-        Console.info("====== vault updated to version %s" % version)
         self.conn.secrets.kv.create_or_update_secret(path=VERSION_KEY, secret=dict(version=version))
 
     def initialize_version_control(self):
@@ -162,11 +161,6 @@ class Vault(object):
         return 'Vault()'
 
 
-# def _assert_migration_exists(migrations, version):
-#     if version not in (m.get_version() for m in migrations):
-#         raise Error('No migration with version %s exists.' % version)
-
-
 def load_migrations(directory):
     """ Return the migrations contained in the given directory. """
     if not is_directory(directory):
@@ -175,27 +169,6 @@ def load_migrations(directory):
     wildcard = os.path.join(directory, '*', 'migrate.py')
     migration_files = glob.glob(wildcard)
     return [Migration(f) for f in migration_files]
-
-
-# def upgrade(migration_dir: str, vault_url: str, vault_token: str, version=None):
-#     """ Upgrade the given vault with the migrations contained in the
-#         migrations directory. If a version is not specified, upgrade
-#         to the most recent version.
-#     """
-#     db = Vault(url=vault_url, token=vault_token)
-#     if not db.is_version_controlled():
-#         db.initialize_version_control()
-#     migrations = load_migrations(migration_dir)
-#     db.upgrade(migrations, version)
-
-
-# def get_latest_migration_version(migration_dir):
-#     migrations = load_migrations(migration_dir)
-#     migrations.sort(key=lambda x: x.get_version())
-#     latest_migration = migrations[-1:]
-#     if latest_migration:
-#         return latest_migration[0].get_version()
-#     return None
 
 
 def get_vault_version(url='', token=''):
@@ -228,6 +201,8 @@ MIGRATION_TEMPLATE = """\
 \"\"\"
 This module contains a vault migration.
 Write your migration using hvac python module. See https://hvac.readthedocs.io/en/stable/overview.html for details.
+Migration should be idempotent, if repeated write is wrong operation, use read before write 
+
 
 Migration Name: %(name)s
 Migration Version: %(version)s
@@ -286,6 +261,7 @@ def print_status_command(args):
 
 
 def collect_and_sort_migrations(directory: str) -> List[Migration]:
+    """collect migrations from specified path and sort then ascending"""
     if not is_directory(directory):
         msg = "%s is not a directory." % directory
         raise Error(msg)
@@ -299,6 +275,7 @@ def collect_and_sort_migrations(directory: str) -> List[Migration]:
 
 
 class VaultParams(TypedDict):
+    """vault connection params"""
     name: str
     token: str
     url: str
@@ -333,10 +310,9 @@ def split_vaults(vaults: List[VaultParams]) -> (List[VaultParams], List[VaultPar
 
 
 def is_migration_new(migration: Migration, vault: VaultParams) -> bool:
+    """check is migration new for specified vault"""
     current_vault_version = get_vault_version(url=vault.get('url'), token=vault.get('token'))
-    msg = 'migration version   [%s] for vault [%s]' % (current_vault_version, vault.get('name'))
-    print('migration.get_version()', migration.get_version())
-    print('current_vault_version', current_vault_version)
+    msg = 'migration version   [%s] for vault [%s]' % (migration.get_version(), vault.get('name'))
     if migration.get_version() >= current_vault_version:
         msg += ' is new'
         Console.info(msg)
@@ -348,13 +324,13 @@ def is_migration_new(migration: Migration, vault: VaultParams) -> bool:
 
 
 def update_migration(migration: Migration, vault: VaultParams):
+    """store new version in vault"""
     vault = Vault(url=vault.get('url'), token=vault.get('token'))
     vault.update_version(migration.get_version())
 
 
 def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: List[VaultParams]):
-    print(type(migration))
-    print(migration.path)
+    """run passed migration for specified vault"""
     loader = importlib.machinery.SourceFileLoader('migration_' + migration.get_version(), migration.path)
     module = loader.load_module()
     module.upgrade(vault['name'], vaults)
@@ -372,8 +348,6 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str =
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
         raise Error("allow only one not core vault, got '%s'" % other_vaults)
-    print("core_vaults", core_vaults)
-    print("other_vaults", other_vaults)
     # run core_migrations if core_vaults are passed
     if len(core_vaults) > 0:
         core_migrations = collect_and_sort_migrations(os.path.join(migration_dir, "core"))
@@ -391,6 +365,7 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str =
 
 def run_migrations(migrations: List[Migration], vaults: List[VaultParams],
                    vault_filter: Callable[[str, List[VaultParams]], List[VaultParams]] = None, version: str = None):
+    """run all paased migration at vaults according passed vault_fliter and version"""
     for m in migrations:
         if version and m.get_version() > version:
             break

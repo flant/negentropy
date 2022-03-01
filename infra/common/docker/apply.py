@@ -10,15 +10,16 @@ import base64
 import json
 import os
 import subprocess
+import sys
+import time
 from typing import List, Dict
 
 import gnupg
 import hvac
-import sys
-import time
 from google.auth import compute_engine
 from google.cloud import storage
 from google.oauth2 import service_account
+from hvac.exceptions import VaultDown
 
 from migrator import upgrade_vaults
 
@@ -147,26 +148,12 @@ def main():
             decrypted_vault_root_token = read_file(decrypted_vault_root_token_name)
             vault_root_token = decrypted_vault_root_token
             vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
-            # os.environ['VAULT_TOKEN'] = vault_root_token
-            # os.environ['VAULT_ADDR'] = vault_address
             print('DEBUG: vault_root_token is', vault_root_token)
             print('DEBUG: vault_address is', vault_address)
 
             while check_vault_is_ready(vault_url=vault_address, vault_token=vault_root_token) != True:
                 time.sleep(1)
 
-            # client = hvac.Client(url=vault_address, token=vault_root_token)
-            # list_mounted_secrets_engines = client.sys.list_mounted_secrets_engines().keys()
-            # if not 'secret/' in list_mounted_secrets_engines:
-            #     client.sys.enable_secrets_engine(
-            #         backend_type='kv',
-            #         path='secret',
-            #         options={'version': 1},
-            #     )
-            #
-            # upgrade_db_command(type('obj', (object,),
-            #                         {'migration_dir': '../../configurator/vault_migrations/%s' % vault['name'],
-            #                          'version': args.target_migration_version}))
             vaults_with_url_and_token.append(
                 {'name': vault['name'], 'url': vault_address, 'token': vault_root_token})
     else:
@@ -184,8 +171,7 @@ def main():
         vault_root_source_standby_list = []
         for vault in vault_root_source_list:
             vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault]
-            client = hvac.Client(url=vault_address)
-            status = client.sys.read_leader_status()
+            status = get_leader_status(vault_address)
             if not status['is_self']:
                 vault_root_source_standby_list.append(vault)
         print('DEBUG: vault_root_source_standby_list is', vault_root_source_standby_list)
@@ -205,37 +191,42 @@ def main():
                 vault_address = 'https://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
             else:
                 vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
-            # os.environ['VAULT_TOKEN'] = vault_root_token
-            # os.environ['VAULT_ADDR'] = vault_address
             print('DEBUG: vault_root_token is', vault_root_token)
             print('DEBUG: vault_address is', vault_address)
 
             while check_vault_is_ready(vault_url=vault_address, vault_token=vault_root_token) != True:
                 time.sleep(1)
 
-            # client = hvac.Client(timeout=5, url=vault_address, token=vault_root_token)
-            # list_mounted_secrets_engines = client.sys.list_mounted_secrets_engines().keys()
-            # if not 'secret/' in list_mounted_secrets_engines:
-            #     client.sys.enable_secrets_engine(
-            #         backend_type='kv',
-            #         path='secret',
-            #         options={'version': 1},
-            #     )
-            #
-            # upgrade_db_command(type('obj', (object,),
-            #                         {'migration_dir': '../../main/vault_migrations/%s' % vault['name'],
-            #                          'version': args.target_migration_version}))
-
             vaults_with_url_and_token.append(
                 {'name': vault['name'], 'url': vault_address, 'token': vault_root_token})
     print('vaults_with_url_and_token:', vaults_with_url_and_token)
 
     # migrator calling
+    migration_dir = None
     if args.type == 'configurator':
         migration_dir = '../../configurator/vault_migrations'
     elif args.type == 'main':
         migration_dir = '../../main/vault_migrations'
     upgrade_vaults(vaults_with_url_and_token, migration_dir)
+
+
+def get_leader_status(vault_address: str):
+    """get vault leader status with 20 retries"""
+    client = hvac.Client(url=vault_address)
+    status = None
+    attempt = 0
+    while not status:
+        try:
+            status = client.sys.read_leader_status()
+        except VaultDown:
+            if attempt < 20:
+                attempt += 1
+                time.sleep(1)
+            else:
+                raise Exception(("spend 20 attempts to get leader status of vault at %s, " +
+                                 "got only 'hvac.exceptions.VaultDown: Vault is sealed'") % vault_address)
+    return status
+
 
 def check_vault_is_ready(vault_url: str, vault_token: str):
     client = hvac.Client(timeout=5, url=vault_url, token=vault_token)
