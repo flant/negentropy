@@ -56,6 +56,10 @@ func kafkaPaths(b logical.Backend, storage *io.MemoryStore, parentLogger hclog.L
 				Summary:  "Setup kafka plugin configuration",
 				Callback: bb.handleKafkaConfiguration,
 			},
+			logical.ReadOperation: &framework.PathOperation{
+				Summary:  "Read kafka plugin configuration",
+				Callback: bb.handleKafkaReadConfiguration,
+			},
 		},
 	}
 
@@ -126,4 +130,26 @@ func (kb kafkaBackend) handleKafkaConfiguration(ctx context.Context, req *logica
 	kb.storage.ReinitializeKafka()
 
 	return logical.RespondWithStatusCode(&logical.Response{}, req, http.StatusOK)
+}
+
+func (kb kafkaBackend) handleKafkaReadConfiguration(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	cfg := kb.broker.PluginConfig
+	cfgResp := struct {
+		SelfTopicName     string   `json:"self_topic_name,omitempty"`
+		RootTopicName     string   `json:"root_topic_name,omitempty"`
+		RootPublicKey     string   `json:"root_public_key,omitempty"`
+		PeersPublicKeys   []string `json:"peers_public_keys,omitempty"`
+		PublishQuotaUsage bool     `json:"publish_quota,omitempty"`
+	}{
+		SelfTopicName:     cfg.SelfTopicName,
+		RootTopicName:     cfg.RootTopicName,
+		RootPublicKey:     backentutils.ConvertToPem(cfg.RootPublicKey),
+		PeersPublicKeys:   backentutils.ConvertToPems(cfg.PeersPublicKeys),
+		PublishQuotaUsage: cfg.PublishQuotaUsage,
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"kafka_configuration": &cfgResp,
+	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
