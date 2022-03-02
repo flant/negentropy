@@ -5,16 +5,16 @@ Migration Name: write_trusted_ca
 Migration Version: 20210716203319
 """
 
-from apply import *
+# from apply import *
 
-def upgrade(connection):
-    ca = download_blob_as_string(terraform_state_bucket, vault_auth_ca_name)
-
-    connection.write(
-        path='auth/cert/certs/auth',
-        display_name='auth',
-        policies='auth',
-        certificate=ca
-    )
+def upgrade(vault_name, vaults):
+    # ca = download_blob_as_string(terraform_state_bucket, vault_auth_ca_name)
+    #
+    # connection.write(
+    #     path='auth/cert/certs/auth',
+    #     display_name='auth',
+    #     policies='auth',
+    #     certificate=ca
+    # )
 
     pass
