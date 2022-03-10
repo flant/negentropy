@@ -191,7 +191,7 @@ func (b *teamBackend) handleExistence(_ context.Context, req *logical.Request, d
 
 	tx := b.storage.Txn(false)
 
-	t, err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).GetByID(id)
+	t, err := usecase.Teams(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return false, err
 	}
@@ -215,7 +215,7 @@ func (b *teamBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Create(team); err != nil {
+		if err = usecase.Teams(tx, b.liveConfig).Create(team); err != nil {
 			err = fmt.Errorf("cannot create team:%w", err)
 			b.Logger().Error("error", "error", err.Error())
 			return backentutils.ResponseErr(req, err)
@@ -242,7 +242,7 @@ func (b *teamBackend) handleUpdate(_ context.Context, req *logical.Request, data
 		Version:        data.Get("resource_version").(string),
 	}
 
-	err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Update(team)
+	err := usecase.Teams(tx, b.liveConfig).Update(team)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -261,7 +261,7 @@ func (b *teamBackend) handleDelete(_ context.Context, req *logical.Request, data
 
 	id := data.Get("uuid").(string)
 
-	err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Delete(id)
+	err := usecase.Teams(tx, b.liveConfig).Delete(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -278,7 +278,7 @@ func (b *teamBackend) handleRead(_ context.Context, req *logical.Request, data *
 
 	tx := b.storage.Txn(false)
 
-	team, err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).GetByID(id)
+	team, err := usecase.Teams(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -299,7 +299,7 @@ func (b *teamBackend) handleList(_ context.Context, req *logical.Request, data *
 	}
 
 	tx := b.storage.Txn(false)
-	teams, err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).List(showArchived)
+	teams, err := usecase.Teams(tx, b.liveConfig).List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (b *teamBackend) handleRestore(_ context.Context, req *logical.Request, dat
 		fullRestore = rawFullRestore.(bool)
 	}
 
-	team, err := usecase.Teams(tx, b.liveConfig.FlantTenantUUID).Restore(id, fullRestore)
+	team, err := usecase.Teams(tx, b.liveConfig).Restore(id, fullRestore)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

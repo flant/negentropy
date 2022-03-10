@@ -131,7 +131,7 @@ func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, team
 		config.Okmeter: teamOkmeter.UUID,
 	}
 	configAPI.ConfigureExtensionFlantFlowSpecificTeams(teams)
-	cfg.SpecificTeams = teams
+	*cfg = configAPI.ReadConfigFlantFlow()
 	return cfg
 }
 

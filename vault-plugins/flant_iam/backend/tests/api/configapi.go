@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	. "github.com/onsi/gomega"
+	"github.com/tidwall/gjson"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
@@ -18,11 +21,23 @@ type ConfigAPI interface {
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
+	ReadConfigFlantFlow() config.FlantFlowConfig
 }
 
 type backendBasedConfigAPI struct {
 	backend *logical.Backend
 	storage *logical.Storage
+}
+
+func (b *backendBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
+	resp, err := b.request(logical.ReadOperation, "configure_extension/flant_flow", map[string]interface{}{}, map[string]interface{}{})
+	Expect(err).ToNot(HaveOccurred())
+	js := gjson.Parse(resp["http_raw_body"].(string))
+	cfgRaw := js.Get("data.flant_flow_cfg").String()
+	var result config.FlantFlowConfig
+	err = json.Unmarshal([]byte(cfgRaw), &result)
+	Expect(err).ToNot(HaveOccurred())
+	return result
 }
 
 func (b *backendBasedConfigAPI) GenerateCSR() {

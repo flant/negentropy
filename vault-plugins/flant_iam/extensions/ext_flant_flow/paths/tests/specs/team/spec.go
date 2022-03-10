@@ -32,7 +32,7 @@ var (
 var _ = Describe("Team", func() {
 	var flantFlowCfg *config.FlantFlowConfig
 	BeforeSuite(func() {
-		flantFlowCfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TestAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 	}, 1.0)
 	Describe("payload", func() {
@@ -160,6 +160,27 @@ var _ = Describe("Team", func() {
 			},
 		}
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
+	})
+
+	It("can't be deleted L1Team", func() {
+		TestAPI.Delete(testapi.Params{
+			"team":         flantFlowCfg.SpecificTeams[config.L1],
+			"expectStatus": testapi.ExpectExactStatus(400),
+		}, nil)
+	})
+
+	It("can't be deleted OkMeterTeam", func() {
+		TestAPI.Delete(testapi.Params{
+			"team":         flantFlowCfg.SpecificTeams[config.Okmeter],
+			"expectStatus": testapi.ExpectExactStatus(400),
+		}, nil)
+	})
+
+	It("can't be deleted Mk8sTeam", func() {
+		TestAPI.Delete(testapi.Params{
+			"team":         flantFlowCfg.SpecificTeams[config.Mk8s],
+			"expectStatus": testapi.ExpectExactStatus(400),
+		}, nil)
 	})
 
 	Context("after deletion", func() {
