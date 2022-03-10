@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -16,13 +17,15 @@ type TeamService struct {
 	flantTenantUUID  iam_model.TenantUUID
 	repo             *repo.TeamRepository
 	groupsController GroupsController
+	liveConfig       *config.FlantFlowConfig
 }
 
-func Teams(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeamService {
+func Teams(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *TeamService {
 	return &TeamService{
-		flantTenantUUID:  flantTenantUUID,
+		flantTenantUUID:  liveConfig.FlantTenantUUID,
 		repo:             repo.NewTeamRepository(db),
-		groupsController: NewGroupsController(db, flantTenantUUID),
+		groupsController: NewGroupsController(db, liveConfig.FlantTenantUUID),
+		liveConfig:       liveConfig,
 	}
 }
 
@@ -80,6 +83,10 @@ func (s *TeamService) Update(updated *model.Team) error {
 }
 
 func (s *TeamService) Delete(id model.TeamUUID) error {
+	err := checkTeamNotInConfig(id, s.liveConfig.SpecificTeams)
+	if err != nil {
+		return fmt.Errorf("%w:%s", consts.ErrInvalidArg, err.Error())
+	}
 	team, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
@@ -107,6 +114,15 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 		return err
 	}
 	return s.repo.Delete(id, archiveMark)
+}
+
+func checkTeamNotInConfig(teamUUID string, teams map[config.SpecializedTeam]model.TeamUUID) error {
+	for specification, specificTeamUUID := range teams {
+		if specificTeamUUID == teamUUID {
+			return fmt.Errorf("team %s is %s team", teamUUID, specification)
+		}
+	}
+	return nil
 }
 
 func (s *TeamService) GetByID(id model.TeamUUID) (*model.Team, error) {

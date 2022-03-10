@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
@@ -25,6 +26,7 @@ type ConfigAPI interface {
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
+	ReadConfigFlantFlow() config.FlantFlowConfig
 }
 
 type httpClientBasedConfigAPI struct {
@@ -48,6 +50,15 @@ func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams
 	// by start.sh
 	// h.request("POST", "/configure_extension/flant_flow/specific_teams", []int{http.StatusOK},
 	//	map[string]interface{}{"specific_teams": teams})
+}
+
+func (h httpClientBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
+	resp := h.request("GET", "/configure_extension/flant_flow", []int{http.StatusOK}, map[string]interface{}{})
+	cfgRaw := resp.Get("flant_flow_cfg").String()
+	var result config.FlantFlowConfig
+	err := json.Unmarshal([]byte(cfgRaw), &result)
+	Expect(err).ToNot(HaveOccurred())
+	return result
 }
 
 func (h httpClientBasedConfigAPI) EnableJWT() {
