@@ -28,6 +28,7 @@ func GetSchema() (*memdb.DBSchema, error) {
 		AuthMethodSchema(),
 		JWTIssueTypeSchema(),
 		MultipassGenerationNumberSchema(),
+		PolicySchema(),
 
 		// copy of data from iam, so no needs to checks
 		memdb.DropRelations(iam_repo.TenantSchema()),

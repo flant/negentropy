@@ -13,6 +13,7 @@ require (
 	github.com/hashicorp/vault/sdk v0.2.1-0.20210614231108-a35199734e5f
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.7.0
+	github.com/tidwall/gjson v1.8.1 // indirect
 	github.com/werf/logboek v0.5.4
 	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210823182616-23a91b817bc8
 )

@@ -16,18 +16,19 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
-	TestAPI   testapi.TestAPI
-	ClientAPI testapi.TestAPI
+	TestAPI   tests.TestAPI
+	ClientAPI tests.TestAPI
 
-	TenantAPI      testapi.TestAPI
-	RoleAPI        testapi.TestAPI
-	TeamAPI        testapi.TestAPI
+	TenantAPI      tests.TestAPI
+	RoleAPI        tests.TestAPI
+	TeamAPI        tests.TestAPI
 	ConfigAPI      testapi.ConfigAPI
-	RoleBindingAPI testapi.TestAPI
+	RoleBindingAPI tests.TestAPI
 )
 
 var _ = Describe("Project", func() {
@@ -46,8 +47,8 @@ var _ = Describe("Project", func() {
 		createPayload := fixtures.RandomProjectCreatePayload()
 		createPayload["tenant_uuid"] = client.UUID
 
-		params := testapi.Params{
-			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
+		params := tests.Params{
+			"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))
@@ -74,9 +75,9 @@ var _ = Describe("Project", func() {
 		createPayload["devops_team"] = devopsTeam.UUID
 		createPayload["service_packs"] = []string{model.DevOps}
 
-		params := testapi.Params{
+		params := tests.Params{
 			"client":       client.UUID,
-			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
+			"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))
@@ -103,7 +104,7 @@ var _ = Describe("Project", func() {
 
 	It("after devops_service_pack rolebinding DevOps exists, and contain DirectGroup, "+
 		"after changing devops_team_uuid, this rb is deleted", func() {
-		rolebidingsData := RoleBindingAPI.List(testapi.Params{
+		rolebidingsData := RoleBindingAPI.List(tests.Params{
 			"tenant": client.UUID,
 		}, nil).Get("role_bindings")
 		roleBindingUUID := ""
@@ -125,12 +126,12 @@ var _ = Describe("Project", func() {
 			"service_packs":    []string{model.DevOps},
 			"identifier":       project.Identifier,
 		}
-		TestAPI.Update(testapi.Params{
+		TestAPI.Update(tests.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
-		rolebidingData := RoleBindingAPI.Read(testapi.Params{
+		rolebidingData := RoleBindingAPI.Read(tests.Params{
 			"tenant":       client.UUID,
 			"role_binding": roleBindingUUID,
 		}, nil).Get("role_binding")
@@ -141,10 +142,10 @@ var _ = Describe("Project", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 		createdData := iam_specs.ConvertToGJSON(project)
 		project.Origin = consts.OriginFlantFlow
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
+			"expectStatus": tests.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"), "extensions")
 			},
@@ -154,9 +155,9 @@ var _ = Describe("Project", func() {
 	It("can be listed", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
-		TestAPI.List(testapi.Params{
+		TestAPI.List(tests.Params{
 			"client":       project.TenantUUID,
-			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
+			"expectStatus": tests.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
 					iam_specs.ConvertToGJSON(project), "extensions", "service_packs")
@@ -170,26 +171,26 @@ var _ = Describe("Project", func() {
 		updatePayload := fixtures.RandomProjectCreatePayload()
 		updatePayload["tenant_uuid"] = project.TenantUUID
 		updatePayload["resource_version"] = project.Version
-		TestAPI.Update(testapi.Params{
+		TestAPI.Update(tests.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
 	})
 
 	It("can be deleted", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
-		TestAPI.Delete(testapi.Params{
-			"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
+		TestAPI.Delete(tests.Params{
+			"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(testapi.Params{
+		deletedData := TestAPI.Read(tests.Params{
 			"client":       project.TenantUUID,
 			"project":      project.UUID,
-			"expectStatus": testapi.ExpectExactStatus(http.StatusOK),
+			"expectStatus": tests.ExpectExactStatus(http.StatusOK),
 		}, nil)
 		Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
@@ -200,8 +201,8 @@ var _ = Describe("Project", func() {
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
-		params := testapi.Params{
-			"expectStatus": testapi.ExpectExactStatus(http.StatusCreated),
+		params := tests.Params{
+			"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
 			"expectPayload": func(json gjson.Result) {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))
@@ -215,23 +216,23 @@ var _ = Describe("Project", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			project := specs.CreateRandomProject(TestAPI, client.UUID)
-			TestAPI.Delete(testapi.Params{
-				"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
+			TestAPI.Delete(tests.Params{
+				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
 				"client":       project.TenantUUID,
 				"project":      project.UUID,
 			}, nil)
 
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client":       project.TenantUUID,
 				"project":      project.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil)
 		})
 
 		It("can't be updated", func() {
 			project := specs.CreateRandomProject(TestAPI, client.UUID)
-			TestAPI.Delete(testapi.Params{
-				"expectStatus": testapi.ExpectExactStatus(http.StatusNoContent),
+			TestAPI.Delete(tests.Params{
+				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
 				"client":       project.TenantUUID,
 				"project":      project.UUID,
 			}, nil)
@@ -239,10 +240,10 @@ var _ = Describe("Project", func() {
 			updatePayload := fixtures.RandomProjectCreatePayload()
 			updatePayload["tenant_uuid"] = project.TenantUUID
 			updatePayload["resource_version"] = project.Version
-			TestAPI.Update(testapi.Params{
+			TestAPI.Update(tests.Params{
 				"client":       project.TenantUUID,
 				"project":      project.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
 	})

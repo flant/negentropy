@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -21,7 +21,7 @@ func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
 		subsetMap[key] = setMap[key]
 	}
 	for k, v := range subsetMap {
-		Expect(v).To(Equal(setMap[k]))
+		Expect(v.String()).To(Equal(setMap[k].String()))
 	}
 }
 
@@ -38,7 +38,7 @@ func CheckArrayContainsElementByUUIDExceptKeys(array []gjson.Result, element gjs
 	found := false
 	for i := range array {
 		Expect(array[i].Map()).To(HaveKey("uuid"))
-		if array[i].Map()["uuid"] == element.Map()["uuid"] {
+		if array[i].Map()["uuid"].String() == element.Map()["uuid"].String() {
 			IsSubsetExceptKeys(element, array[i], keys...)
 			found = true
 			break

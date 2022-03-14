@@ -13,11 +13,12 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
-func CreateRandomClient(clientsAPI testapi.TestAPI) ext_model.Client {
+func CreateRandomClient(clientsAPI tests.TestAPI) ext_model.Client {
 	createPayload := fixtures.RandomClientCreatePayload()
-	createdData := clientsAPI.Create(testapi.Params{}, nil, createPayload)
+	createdData := clientsAPI.Create(tests.Params{}, nil, createPayload)
 	rawClient := createdData.Get("client")
 	data := []byte(rawClient.String())
 	var client ext_model.Client
@@ -26,22 +27,22 @@ func CreateRandomClient(clientsAPI testapi.TestAPI) ext_model.Client {
 	return client
 }
 
-func CreateDevopsTeam(teamAPI testapi.TestAPI) ext_model.Team {
+func CreateDevopsTeam(teamAPI tests.TestAPI) ext_model.Team {
 	createPayload := fixtures.TeamCreatePayload(fixtures.Teams()[0])
-	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	createdData := teamAPI.Create(tests.Params{}, nil, createPayload)
 	return buildGroup(createdData)
 }
 
-func CreateRandomTeam(teamAPI testapi.TestAPI) ext_model.Team {
+func CreateRandomTeam(teamAPI tests.TestAPI) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
-	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	createdData := teamAPI.Create(tests.Params{}, nil, createPayload)
 	return buildGroup(createdData)
 }
 
-func CreateRandomTeamWithSpecificType(teamAPI testapi.TestAPI, teamType string) ext_model.Team {
+func CreateRandomTeamWithSpecificType(teamAPI tests.TestAPI, teamType string) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	createPayload["team_type"] = teamType
-	createdData := teamAPI.Create(testapi.Params{}, nil, createPayload)
+	createdData := teamAPI.Create(tests.Params{}, nil, createPayload)
 	return buildGroup(createdData)
 }
 
@@ -54,9 +55,9 @@ func buildGroup(groupData gjson.Result) ext_model.Team {
 	return team
 }
 
-func CreateRandomTeammate(teamateAPI testapi.TestAPI, team ext_model.Team) ext_model.FullTeammate {
+func CreateRandomTeammate(teamateAPI tests.TestAPI, team ext_model.Team) ext_model.FullTeammate {
 	createPayload := fixtures.RandomTeammateCreatePayload(team)
-	createdData := teamateAPI.Create(testapi.Params{
+	createdData := teamateAPI.Create(tests.Params{
 		"team": team.UUID,
 	}, nil, createPayload)
 	rawTeamate := createdData.Get("teammate")
@@ -67,17 +68,17 @@ func CreateRandomTeammate(teamateAPI testapi.TestAPI, team ext_model.Team) ext_m
 	return teammate
 }
 
-func CreateRandomProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID) ext_model.Project {
+func CreateRandomProject(projectAPI tests.TestAPI, clientID ext_model.ClientUUID) ext_model.Project {
 	createPayload := fixtures.RandomProjectCreatePayload()
 	project, err := СreateProject(projectAPI, clientID, createPayload, false)
 	Expect(err).ToNot(HaveOccurred())
 	return *project
 }
 
-func СreateProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
+func СreateProject(projectAPI tests.TestAPI, clientID ext_model.ClientUUID,
 	createPayload map[string]interface{}, privileged bool) (*ext_model.Project, error) {
 	createPayload["tenant_uuid"] = clientID
-	params := testapi.Params{
+	params := tests.Params{
 		"client": clientID,
 	}
 	var createData gjson.Result
@@ -97,7 +98,7 @@ func СreateProject(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID,
 }
 
 // TryCreateProjects creates projects, does not stop after error, as can be collision by uuid
-func TryCreateProjects(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID, projects ...ext_model.Project) {
+func TryCreateProjects(projectAPI tests.TestAPI, clientID ext_model.ClientUUID, projects ...ext_model.Project) {
 	for _, project := range projects {
 		payload := fixtures.ProjectCreatePayload(project)
 		_, err := СreateProject(projectAPI, clientID, payload, true) //nolint:errcheck
@@ -105,10 +106,10 @@ func TryCreateProjects(projectAPI testapi.TestAPI, clientID ext_model.ClientUUID
 	}
 }
 
-func CreateRandomContact(contactAPI testapi.TestAPI, clientID ext_model.TeamUUID) ext_model.FullContact {
+func CreateRandomContact(contactAPI tests.TestAPI, clientID ext_model.TeamUUID) ext_model.FullContact {
 	createPayload := fixtures.RandomContactCreatePayload()
 	createPayload["tenant_uuid"] = clientID
-	createdData := contactAPI.Create(testapi.Params{
+	createdData := contactAPI.Create(tests.Params{
 		"client": clientID,
 	}, nil, createPayload)
 	rawContact := createdData.Get("contact")
@@ -119,7 +120,7 @@ func CreateRandomContact(contactAPI testapi.TestAPI, clientID ext_model.TeamUUID
 	return contact
 }
 
-func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, teamAPI testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, configAPI)
 
 	teamL1 := CreateRandomTeam(teamAPI)
@@ -135,7 +136,7 @@ func ConfigureFlantFlow(tenantAPI testapi.TestAPI, roleApi testapi.TestAPI, team
 	return cfg
 }
 
-func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, roleAPI testapi.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	tenant := iam_specs.CreateRandomTenant(tenantAPI)
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
 	r1 := iam_specs.CreateRandomRole(roleAPI)
@@ -149,9 +150,9 @@ func BaseConfigureFlantFlow(tenantAPI testapi.TestAPI, roleAPI testapi.TestAPI, 
 	}
 }
 
-func CheckGroupHasUser(groupAPI testapi.TestAPI, tenantUUID model.TenantUUID, groupUUID model.GroupUUID,
+func CheckGroupHasUser(groupAPI tests.TestAPI, tenantUUID model.TenantUUID, groupUUID model.GroupUUID,
 	userUUID model.UserUUID, expectHas bool) {
-	groupAPI.Read(testapi.Params{
+	groupAPI.Read(tests.Params{
 		"tenant": tenantUUID,
 		"group":  groupUUID,
 		"expectPayload": func(json gjson.Result) {

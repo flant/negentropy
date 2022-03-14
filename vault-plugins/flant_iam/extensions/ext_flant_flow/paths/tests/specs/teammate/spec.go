@@ -15,16 +15,17 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 var (
-	TestAPI   testapi.TestAPI
-	TeamAPI   testapi.TestAPI
-	RoleAPI   testapi.TestAPI
-	TenantAPI testapi.TestAPI
+	TestAPI   tests.TestAPI
+	TeamAPI   tests.TestAPI
+	RoleAPI   tests.TestAPI
+	TenantAPI tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 
-	GroupAPI testapi.TestAPI
+	GroupAPI tests.TestAPI
 )
 
 var _ = Describe("Teammate", func() {
@@ -40,7 +41,7 @@ var _ = Describe("Teammate", func() {
 		createPayload["team_uuid"] = team.UUID
 		var teammateUUID model2.UserUUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))
@@ -65,7 +66,7 @@ var _ = Describe("Teammate", func() {
 	It("can be read", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 			"expectPayload": func(json gjson.Result) {
@@ -81,7 +82,7 @@ var _ = Describe("Teammate", func() {
 		delete(updatePayload, "team_uuid")
 		updatePayload["resource_version"] = teammate.Version
 		updatePayload["role_at_team"] = teammate.RoleAtTeam
-		updateData := TestAPI.Update(testapi.Params{
+		updateData := TestAPI.Update(tests.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 		}, nil, updatePayload)
@@ -92,15 +93,15 @@ var _ = Describe("Teammate", func() {
 	It("can be deleted", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
 
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(testapi.Params{
+		deletedData := TestAPI.Read(tests.Params{
 			"team":         teammate.TeamUUID,
 			"teammate":     teammate.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("teammate.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammate.UUID, false)
@@ -109,7 +110,7 @@ var _ = Describe("Teammate", func() {
 	It("can be listed", func() {
 		teammate := specs.CreateRandomTeammate(TestAPI, team)
 
-		TestAPI.List(testapi.Params{
+		TestAPI.List(tests.Params{
 			"team": teammate.TeamUUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teammates").Array(),
@@ -123,7 +124,7 @@ var _ = Describe("Teammate", func() {
 		originalUUID := createPayload["uuid"]
 		createPayload["team_uuid"] = team.UUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))
@@ -143,12 +144,12 @@ var _ = Describe("Teammate", func() {
 			"identifier":       teammate.Identifier,
 			"new_team_uuid":    newTeam.UUID,
 		}
-		updateData := TestAPI.Update(testapi.Params{
+		updateData := TestAPI.Update(tests.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
 		}, nil, updatePayload)
 
-		readData := TestAPI.Read(testapi.Params{
+		readData := TestAPI.Read(tests.Params{
 			"team":     newTeam.UUID,
 			"teammate": teammate.UUID,
 			"expectPayload": func(json gjson.Result) {
@@ -162,21 +163,21 @@ var _ = Describe("Teammate", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			teammate := specs.CreateRandomTeammate(TestAPI, team)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team":     teammate.TeamUUID,
 				"teammate": teammate.UUID,
 			}, nil)
 
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team":         teammate.TeamUUID,
 				"teammate":     teammate.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil)
 		})
 
 		It("can't be updated", func() {
 			teammate := specs.CreateRandomTeammate(TestAPI, team)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team":     teammate.TeamUUID,
 				"teammate": teammate.UUID,
 			}, nil)
@@ -186,10 +187,10 @@ var _ = Describe("Teammate", func() {
 			delete(updatePayload, "team_uuid")
 			updatePayload["resource_version"] = teammate.Version
 			updatePayload["role_at_team"] = teammate.RoleAtTeam
-			TestAPI.Update(testapi.Params{
+			TestAPI.Update(tests.Params{
 				"team":         teammate.TeamUUID,
 				"teammate":     teammate.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
 	})
@@ -197,7 +198,7 @@ var _ = Describe("Teammate", func() {
 
 func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID, teamUUID model.TeamUUID,
 	teammateUUID model2.UserUUID, expectHas bool) {
-	respData := TeamAPI.Read(testapi.Params{
+	respData := TeamAPI.Read(tests.Params{
 		"team": teamUUID,
 	}, nil)
 	Expect(respData.Map()).To(HaveKey("team"))

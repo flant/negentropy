@@ -182,7 +182,7 @@ func HandleNewMessageSelfSource(txn *io.MemoryStoreTxn, handler ModelHandler, ms
 			}
 		}
 
-	case model.AuthMethodType, model.MethodTypeJWT:
+	case model.AuthMethodType, model.MethodTypeJWT, model.PolicyType:
 		// don't need handle
 		return nil
 

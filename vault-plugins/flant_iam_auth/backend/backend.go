@@ -242,6 +242,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 				// pathUI(b),
 			},
 
+			policiesPaths(b, storage),
+
 			b.jwtController.ApiPaths(),
 
 			[]*framework.Path{
