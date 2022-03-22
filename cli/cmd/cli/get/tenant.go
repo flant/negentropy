@@ -117,8 +117,10 @@ func readCache() (*model.Cache, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	permanentCacheFilePath := path.Join(homeDir, ".flant", "cli", "ssh", "cache")
-
+	var permanentCacheFilePath string
+	if permanentCacheFilePath = os.Getenv("CACHE_PATH"); permanentCacheFilePath == "" {
+		permanentCacheFilePath = path.Join(homeDir, ".flant", "cli", "ssh", "cache")
+	}
 	cache, err := model.TryReadCacheFromFile(permanentCacheFilePath, consts.CacheTTL)
 	if err != nil {
 		err = fmt.Errorf("get project, reading permanent cache: %w", err)
