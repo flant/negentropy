@@ -21,12 +21,12 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
-	testapi "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -268,7 +268,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	It("lost access after moving user to other ", func() {
 		devopsTeam2 = specs.CreateDevopsTeam(lib.NewFlowTeamAPI(adminClient))
 		checkChangeTeam := func(oldTeamUUID string, newTeamUUID string, usersLen int) {
-			updatedData := lib.NewFlowTeammateAPI(adminClient).Update(testapi.Params{
+			updatedData := lib.NewFlowTeammateAPI(adminClient).Update(tests.Params{
 				"team":     oldTeamUUID,
 				"teammate": teammate.UUID,
 			}, nil, map[string]interface{}{
@@ -295,7 +295,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(users).To(HaveLen(2))
 
-		lib.NewFlowTeammateAPI(adminClient).Delete(testapi.Params{
+		lib.NewFlowTeammateAPI(adminClient).Delete(tests.Params{
 			"team":     devopsTeam.UUID,
 			"teammate": teammate2.UUID,
 		}, nil)
@@ -307,7 +307,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("lost access after changing devops team", func() {
 		checkChangeDevopsTeam := func(newTeamUUID string, usersLen int) {
-			updatedData := lib.NewFlowProjectAPI(adminClient).Update(testapi.Params{
+			updatedData := lib.NewFlowProjectAPI(adminClient).Update(tests.Params{
 				"client":  client.UUID,
 				"project": project.UUID,
 			}, nil, map[string]interface{}{
@@ -319,7 +319,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			project.Version = updatedData.Get("project.resource_version").String()
 			println("updatedData = " + updatedData.String())
 			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
-			rbsListData := lib.NewRoleBindingAPI(adminClient).List(testapi.Params{
+			rbsListData := lib.NewRoleBindingAPI(adminClient).List(tests.Params{
 				"tenant": client.UUID,
 			}, map[string][]string{})
 			println("rbsListData = " + rbsListData.String())

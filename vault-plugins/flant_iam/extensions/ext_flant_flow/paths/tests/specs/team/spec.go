@@ -16,17 +16,18 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
-	TestAPI testapi.TestAPI
+	TestAPI tests.TestAPI
 
-	TenantAPI testapi.TestAPI
-	RoleAPI   testapi.TestAPI
+	TenantAPI tests.TestAPI
+	RoleAPI   tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 
-	GroupAPI testapi.TestAPI
+	GroupAPI tests.TestAPI
 )
 
 var _ = Describe("Team", func() {
@@ -41,7 +42,7 @@ var _ = Describe("Team", func() {
 				payload := fixtures.RandomTeamCreatePayload()
 				payload["identifier"] = identifier
 
-				params := testapi.Params{"expectStatus": testapi.ExpectStatus(statusCodeCondition)}
+				params := tests.Params{"expectStatus": tests.ExpectStatus(statusCodeCondition)}
 
 				TestAPI.Create(params, nil, payload)
 			},
@@ -56,7 +57,7 @@ var _ = Describe("Team", func() {
 	It("can be created", func() {
 		createPayload := fixtures.RandomTeamCreatePayload()
 		var directGroupUUID model.GroupUUID
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				teamData := json.Get("team")
 				Expect(teamData.Map()).To(HaveKey("uuid"))
@@ -81,7 +82,7 @@ var _ = Describe("Team", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
-		GroupAPI.Read(testapi.Params{
+		GroupAPI.Read(tests.Params{
 			"tenant": flantFlowCfg.FlantTenantUUID,
 			"group":  directGroupUUID,
 			"expectPayload": func(json gjson.Result) {
@@ -95,7 +96,7 @@ var _ = Describe("Team", func() {
 	It("can be read", func() {
 		team := specs.CreateRandomTeam(TestAPI)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"team": team.UUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(iam_specs.ConvertToGJSON(team), json.Get("team"), "full_restore")
@@ -110,11 +111,11 @@ var _ = Describe("Team", func() {
 		updatePayload["resource_version"] = team.Version
 		updatePayload["team_type"] = team.TeamType
 
-		updateData := TestAPI.Update(testapi.Params{
+		updateData := TestAPI.Update(tests.Params{
 			"team": team.UUID,
 		}, nil, updatePayload)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"team": team.UUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(updateData.Get("team"), json.Get("team"), "full_restore")
@@ -125,13 +126,13 @@ var _ = Describe("Team", func() {
 	It("can be deleted", func() {
 		team := specs.CreateRandomTeam(TestAPI)
 
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"team": team.UUID,
 		}, nil)
 
-		deletedTeamData := TestAPI.Read(testapi.Params{
+		deletedTeamData := TestAPI.Read(tests.Params{
 			"team":         team.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil).Get("team")
 		Expect(deletedTeamData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 		Expect(deletedTeamData.Map()).To(HaveKey("groups"))
@@ -141,7 +142,7 @@ var _ = Describe("Team", func() {
 	It("can be listed", func() {
 		team := specs.CreateRandomTeam(TestAPI)
 
-		TestAPI.List(testapi.Params{"expectPayload": func(json gjson.Result) {
+		TestAPI.List(tests.Params{"expectPayload": func(json gjson.Result) {
 			iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teams").Array(),
 				iam_specs.ConvertToGJSON(team))
 		}}, url.Values{})
@@ -152,7 +153,7 @@ var _ = Describe("Team", func() {
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				teamData := json.Get("team")
 				Expect(teamData.Map()).To(HaveKey("uuid"))
@@ -163,42 +164,42 @@ var _ = Describe("Team", func() {
 	})
 
 	It("can't be deleted L1Team", func() {
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"team":         flantFlowCfg.SpecificTeams[config.L1],
-			"expectStatus": testapi.ExpectExactStatus(400),
+			"expectStatus": tests.ExpectExactStatus(400),
 		}, nil)
 	})
 
 	It("can't be deleted OkMeterTeam", func() {
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"team":         flantFlowCfg.SpecificTeams[config.Okmeter],
-			"expectStatus": testapi.ExpectExactStatus(400),
+			"expectStatus": tests.ExpectExactStatus(400),
 		}, nil)
 	})
 
 	It("can't be deleted Mk8sTeam", func() {
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"team":         flantFlowCfg.SpecificTeams[config.Mk8s],
-			"expectStatus": testapi.ExpectExactStatus(400),
+			"expectStatus": tests.ExpectExactStatus(400),
 		}, nil)
 	})
 
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			team := specs.CreateRandomTeam(TestAPI)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team": team.UUID,
 			}, nil)
 
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team":         team.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil)
 		})
 
 		It("can't be updated", func() {
 			team := specs.CreateRandomTeam(TestAPI)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"team": team.UUID,
 			}, nil)
 
@@ -206,9 +207,9 @@ var _ = Describe("Team", func() {
 			updatePayload["resource_version"] = team.Version
 			updatePayload["team_type"] = team.TeamType
 
-			TestAPI.Update(testapi.Params{
+			TestAPI.Update(tests.Params{
 				"team":         team.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
 	})

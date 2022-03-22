@@ -65,7 +65,8 @@ func (mkd *SelfKafkaDestination) isValidObjectType(objType string) bool {
 		model.AuthSourceType,
 		model.EntityAliasType,
 		model.AuthMethodType,
-		model.JWTIssueTypeType:
+		model.JWTIssueTypeType,
+		model.PolicyType:
 		return true
 	}
 

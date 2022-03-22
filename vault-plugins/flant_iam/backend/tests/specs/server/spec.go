@@ -9,10 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
+	cfg_api "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 	TenantAPI  api.TestAPI
 	ProjectAPI api.TestAPI
 	RoleAPI    api.TestAPI
-	ConfigAPI  api.ConfigAPI
+	ConfigAPI  cfg_api.ConfigAPI
 )
 
 var _ = Describe("Server", func() {

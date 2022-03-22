@@ -16,9 +16,12 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
 	github.com/hashicorp/vault/sdk v0.2.0
+	github.com/onsi/ginkgo v1.10.1
+	github.com/onsi/gomega v1.7.0
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
+	github.com/tidwall/gjson v1.8.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/square/go-jose.v2 v2.5.1
 	sigs.k8s.io/yaml v1.2.0

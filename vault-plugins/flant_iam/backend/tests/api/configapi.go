@@ -11,6 +11,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 type ConfigAPI interface {
@@ -99,7 +100,7 @@ func NewBackendBasedConfigAPI(backend *logical.Backend, storage *logical.Storage
 }
 
 func (b *backendBasedConfigAPI) request(operation logical.Operation, url string,
-	params Params, payload interface{}) (map[string]interface{}, error) {
+	_ tests.Params, payload interface{}) (map[string]interface{}, error) {
 	p, ok := payload.(map[string]interface{})
 	if !(operation == logical.ReadOperation || operation == logical.DeleteOperation || operation == logical.ListOperation) {
 		Expect(ok).To(Equal(true), "definitely need map[string]interface{}")

@@ -15,14 +15,15 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
-	TestAPI   testapi.TestAPI
-	TenantAPI testapi.TestAPI
-	RoleAPI   testapi.TestAPI
-	TeamAPI   testapi.TestAPI
+	TestAPI   tests.TestAPI
+	TenantAPI tests.TestAPI
+	RoleAPI   tests.TestAPI
+	TeamAPI   tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 )
 
@@ -39,7 +40,7 @@ var _ = Describe("Client", func() {
 				payload := fixtures.RandomClientCreatePayload()
 				payload["identifier"] = identifier
 
-				params := testapi.Params{"expectStatus": testapi.ExpectStatus(statusCodeCondition)}
+				params := tests.Params{"expectStatus": tests.ExpectStatus(statusCodeCondition)}
 
 				TestAPI.Create(params, nil, payload)
 			},
@@ -54,7 +55,7 @@ var _ = Describe("Client", func() {
 	It("can be created", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				clientData := json.Get("client")
 				Expect(clientData.Map()).To(HaveKey("uuid"))
@@ -73,13 +74,13 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(testapi.Params{
+		TestAPI.Create(tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
 		}, nil, createPayload)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(createdData, json, "full_restore")
@@ -91,7 +92,7 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(testapi.Params{
+		TestAPI.Create(tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
@@ -101,14 +102,14 @@ var _ = Describe("Client", func() {
 		updatePayload["resource_version"] = createdData.Get("client.resource_version").String()
 
 		var updateData gjson.Result
-		TestAPI.Update(testapi.Params{
+		TestAPI.Update(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				updateData = json
 			},
 		}, nil, updatePayload)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(updateData, json, "full_restore")
@@ -120,27 +121,27 @@ var _ = Describe("Client", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 
 		var createdData gjson.Result
-		TestAPI.Create(testapi.Params{
+		TestAPI.Create(tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				createdData = json
 			},
 		}, nil, createPayload)
 
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
 		}, nil)
 
-		deletedClientData := TestAPI.Read(testapi.Params{
+		deletedClientData := TestAPI.Read(tests.Params{
 			"client":       createdData.Get("client.uuid").String(),
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedClientData.Get("client.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
 	It("can be listed", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
-		TestAPI.Create(testapi.Params{}, url.Values{}, createPayload)
-		TestAPI.List(testapi.Params{}, url.Values{})
+		TestAPI.Create(tests.Params{}, url.Values{}, createPayload)
+		TestAPI.List(tests.Params{}, url.Values{})
 	})
 
 	It("can be created with privileged", func() {
@@ -148,7 +149,7 @@ var _ = Describe("Client", func() {
 		originalUUID := uuid.New()
 		createPayload["uuid"] = originalUUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				clientData := json.Get("client")
 				Expect(clientData.Map()).To(HaveKey("uuid"))
@@ -162,37 +163,37 @@ var _ = Describe("Client", func() {
 		It("can't be deleted", func() {
 			createPayload := fixtures.RandomClientCreatePayload()
 			var createdData gjson.Result
-			TestAPI.Create(testapi.Params{
+			TestAPI.Create(tests.Params{
 				"expectPayload": func(json gjson.Result) {
 					createdData = json
 				},
 			}, nil, createPayload)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client": createdData.Get("client.uuid").String(),
 			}, nil)
 
-			TestAPI.Delete(testapi.Params{
-				"client": createdData.Get("client.uuid").String(), "expectStatus": testapi.ExpectExactStatus(400),
+			TestAPI.Delete(tests.Params{
+				"client": createdData.Get("client.uuid").String(), "expectStatus": tests.ExpectExactStatus(400),
 			}, nil)
 		})
 
 		It("can't be updated", func() {
 			createPayload := fixtures.RandomClientCreatePayload()
 			var createdData gjson.Result
-			TestAPI.Create(testapi.Params{
+			TestAPI.Create(tests.Params{
 				"expectPayload": func(json gjson.Result) {
 					createdData = json
 				},
 			}, nil, createPayload)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client": createdData.Get("client.uuid").String(),
 			}, nil)
 
 			updatePayload := fixtures.RandomClientCreatePayload()
 			updatePayload["resource_version"] = createdData.Get("client.resource_version").String()
-			TestAPI.Update(testapi.Params{
+			TestAPI.Update(tests.Params{
 				"client":       createdData.Get("client.uuid").String(),
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
 	})

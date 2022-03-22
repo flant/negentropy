@@ -13,11 +13,11 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib"
 	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/api"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
@@ -211,7 +211,7 @@ func (st Suite) createRoleIfNotExist(roleName string) {
 	var roleNotExists bool
 	rawRole := roleAPI.Read(tools.Params{
 		"name":         roleName,
-		"expectStatus": api.ExpectStatus("%d > 0"),
+		"expectStatus": tests.ExpectStatus("%d > 0"),
 		"expectPayload": func(json gjson.Result) {
 			roleNotExists = json.String() == "{\"error\":\"not found\"}"
 		},

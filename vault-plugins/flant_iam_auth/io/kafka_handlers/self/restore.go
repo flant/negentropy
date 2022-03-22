@@ -36,6 +36,8 @@ func HandleRestoreMessagesSelfSource(txn *memdb.Txn, objType string, data []byte
 		inputObject = &model.EntityAlias{}
 	case model.JWTIssueTypeType:
 		inputObject = &model.JWTIssueType{}
+	case model.PolicyType:
+		inputObject = &model.Policy{}
 	default:
 		return nil
 	}

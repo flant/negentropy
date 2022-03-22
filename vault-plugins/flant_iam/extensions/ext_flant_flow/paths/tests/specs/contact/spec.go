@@ -16,15 +16,16 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 var (
-	TestAPI    testapi.TestAPI
-	ClientAPI  testapi.TestAPI
-	ProjectAPI testapi.TestAPI
-	TenantAPI  testapi.TestAPI
-	RoleAPI    testapi.TestAPI
-	TeamAPI    testapi.TestAPI
+	TestAPI    tests.TestAPI
+	ClientAPI  tests.TestAPI
+	ProjectAPI tests.TestAPI
+	TenantAPI  tests.TestAPI
+	RoleAPI    tests.TestAPI
+	TeamAPI    tests.TestAPI
 	ConfigAPI  testapi.ConfigAPI
 )
 
@@ -41,7 +42,7 @@ var _ = Describe("Contact", func() {
 		createPayload := fixtures.RandomContactCreatePayload()
 		createPayload["client_uuid"] = client.UUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(j gjson.Result) {
 				contactData := j.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))
@@ -68,7 +69,7 @@ var _ = Describe("Contact", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 		createdData := iam_specs.ConvertToGJSON(contact)
 
-		TestAPI.Read(testapi.Params{
+		TestAPI.Read(tests.Params{
 			"client":  contact.TenantUUID,
 			"contact": contact.UUID,
 			"expectPayload": func(json gjson.Result) {
@@ -84,25 +85,25 @@ var _ = Describe("Contact", func() {
 		updatePayload["client_uuid"] = client.UUID
 		updatePayload["resource_version"] = contact.Version
 
-		TestAPI.Update(testapi.Params{
+		TestAPI.Update(tests.Params{
 			"client":       contact.TenantUUID,
 			"contact":      contact.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
 	})
 
 	It("can be deleted", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 
-		TestAPI.Delete(testapi.Params{
+		TestAPI.Delete(tests.Params{
 			"client":  contact.TenantUUID,
 			"contact": contact.UUID,
 		}, nil)
 
-		deletedData := TestAPI.Read(testapi.Params{
+		deletedData := TestAPI.Read(tests.Params{
 			"client":       contact.TenantUUID,
 			"contact":      contact.UUID,
-			"expectStatus": testapi.ExpectExactStatus(200),
+			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("contact.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
@@ -110,7 +111,7 @@ var _ = Describe("Contact", func() {
 	It("can be listed", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 
-		TestAPI.List(testapi.Params{
+		TestAPI.List(tests.Params{
 			"client": contact.TenantUUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("contacts").Array(),
@@ -124,7 +125,7 @@ var _ = Describe("Contact", func() {
 		originalUUID := createPayload["uuid"]
 		createPayload["client_uuid"] = client.UUID
 
-		params := testapi.Params{
+		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				contactData := json.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))
@@ -138,21 +139,21 @@ var _ = Describe("Contact", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			contact := specs.CreateRandomContact(TestAPI, client.UUID)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client":  contact.TenantUUID,
 				"contact": contact.UUID,
 			}, nil)
 
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client":       contact.TenantUUID,
 				"contact":      contact.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil)
 		})
 
 		It("can't be updated", func() {
 			contact := specs.CreateRandomContact(TestAPI, client.UUID)
-			TestAPI.Delete(testapi.Params{
+			TestAPI.Delete(tests.Params{
 				"client":  contact.TenantUUID,
 				"contact": contact.UUID,
 			}, nil)
@@ -162,10 +163,10 @@ var _ = Describe("Contact", func() {
 			updatePayload["client_uuid"] = client.UUID
 			updatePayload["resource_version"] = contact.Version
 
-			TestAPI.Update(testapi.Params{
+			TestAPI.Update(tests.Params{
 				"client":       contact.TenantUUID,
 				"contact":      contact.UUID,
-				"expectStatus": testapi.ExpectExactStatus(400),
+				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
 	})

@@ -1,3 +1,6 @@
 package model
 
-type MultipassGenerationNumberUUID = string
+type (
+	MultipassGenerationNumberUUID = string
+	PolicyName                    = string
+)
