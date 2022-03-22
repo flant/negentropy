@@ -2,12 +2,12 @@ package vault
 
 import (
 	"fmt"
-
-	"github.com/flant/negentropy/cli/pkg"
+	"os"
 
 	"github.com/flant/negentropy/authd"
 	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/model"
+	"github.com/flant/negentropy/cli/pkg"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
@@ -31,10 +31,14 @@ type vaultService struct {
 }
 
 func NewService() VaultService {
-	authdClient := authd.NewAuthdClient("/run/authd.sock")
+	var authdSocketPath string
+	if authdSocketPath = os.Getenv("AUTHD_SOCKET_PATH"); authdSocketPath == "" {
+		authdSocketPath = "/run/authd.sock"
+	}
+	authdClient := authd.NewAuthdClient(authdSocketPath)
 
 	req := authdapi.NewLoginRequest().
-		WithRoles(authdapi.NewRoleWithClaim("*", "")).
+		WithRoles(authdapi.NewRoleWithClaim("ssh", "")).
 		WithServerType(authdapi.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)
