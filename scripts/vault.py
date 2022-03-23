@@ -193,7 +193,7 @@ class Vault:
                                                           policy='path "*" {capabilities = ["create", "read", "update", "delete", "list"]}'
                                                           ), 204)
         # approle, secretID & roleID
-        print("enable approle/role/full, getting secret_is and role_id")
+        print("enable approle/role/full, getting secret_id and role_id")
         self.enable_approle()
         check_response(
             self.vault_client.auth.approle.create_or_update_approle(role_name="full", mount_point="approle",
