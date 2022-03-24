@@ -42,6 +42,8 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Map()).To(HaveKey("feature_flags"))
 				Expect(projectData.Map()).To(HaveKey("archiving_timestamp"))
 				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
+				Expect(projectData.Map()).To(HaveKey("origin"))
+				Expect(projectData.Get("origin").String()).To(Equal("iam"))
 				Expect(projectData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(projectData.Get("resource_version").String()).ToNot(HaveLen(10))
 			},
@@ -76,6 +78,9 @@ var _ = Describe("Project", func() {
 			"project": project.UUID,
 			"expectPayload": func(json gjson.Result) {
 				updateData = json
+				projectData := updateData.Get("project")
+				Expect(projectData.Map()).To(HaveKey("origin"))
+				Expect(projectData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil, updatePayload)
 

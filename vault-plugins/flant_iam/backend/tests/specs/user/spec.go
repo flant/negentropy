@@ -35,6 +35,7 @@ var _ = Describe("User", func() {
 				Expect(userData.Map()).To(HaveKey("full_identifier"))
 				Expect(userData.Map()).To(HaveKey("email"))
 				Expect(userData.Map()).To(HaveKey("origin"))
+				Expect(userData.Get("origin").String()).To(Equal("iam"))
 				Expect(userData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(userData.Get("resource_version").String()).ToNot(HaveLen(10))
 			},
@@ -68,6 +69,9 @@ var _ = Describe("User", func() {
 			"user":   user.UUID,
 			"expectPayload": func(json gjson.Result) {
 				updateData = json
+				userData := updateData.Get("user")
+				Expect(userData.Map()).To(HaveKey("origin"))
+				Expect(userData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil, updatePayload)
 
