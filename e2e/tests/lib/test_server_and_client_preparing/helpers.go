@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"text/template"
 	"time"
+
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
 func Try(limitSeconds int, action func() error) error {
@@ -64,7 +66,7 @@ func RunAndCheckServerAccessd(s Suite, posixUserName string, testServerUUID stri
 	return err
 }
 
-func RunAndCheckAuthdAtServer(s Suite) error {
+func RunAndCheckAuthdAtServer(s Suite, testServerServiceAccountMultipassJWT iam.MultipassJWT) error {
 	// Authd can be configured and run at Test_server
 	path := "/etc/flant/negentropy/authd-conf.d"
 	err := s.CreateIfNotExistsDirectoryAtContainer(s.TestServerContainer,
@@ -91,6 +93,15 @@ func RunAndCheckAuthdAtServer(s Suite) error {
 	err = s.WriteFileToContainer(s.TestServerContainer, sockCfgPath, ServerSocketCFG)
 	if err != nil {
 		return fmt.Errorf("file:%s sshould be written, but got error: %w", sockCfgPath, err)
+	}
+	if testServerServiceAccountMultipassJWT != "" {
+		err = s.WriteFileToContainer(s.TestServerContainer,
+			"/opt/authd/server-jwt", testServerServiceAccountMultipassJWT)
+		if err != nil {
+			return fmt.Errorf("error writing /opt/authd/server-jwt:%w", err)
+		}
+		s.ExecuteCommandAtContainer(s.TestServerContainer,
+			[]string{"/bin/bash", "-c", "chmod 600 /opt/authd/server-jwt"}, nil)
 	}
 
 	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.AuthdPath)
