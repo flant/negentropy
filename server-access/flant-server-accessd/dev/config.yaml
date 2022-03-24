@@ -1,0 +1,5 @@
+tenant: 09fce3d9-af0b-46ef-abaa-238b99da76aa
+project: f49b6fba-5f3d-44e4-81de-87cbd6126ecd
+server: 749ab1ef-5fdf-4bdc-a3c6-61b372f8e3b1
+database: server-accessd.db
+authdSocketPath: ../authd/dev/run/sock1.sock

@@ -103,7 +103,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 	})
 
 	It("configure authd", func() {
-		err := tsc.RunAndCheckAuthdAtServer(s)
+		err := tsc.RunAndCheckAuthdAtServer(s, "")
 		Expect(err).ToNot(HaveOccurred())
 	})
 

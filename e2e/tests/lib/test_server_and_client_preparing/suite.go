@@ -23,7 +23,7 @@ import (
 	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
 
-	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
+	fip "github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
@@ -92,10 +92,10 @@ func (s *Suite) CheckServerBinariesAndFoldersExists() {
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 }
 
-func (s *Suite) PrepareServerForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+func (s *Suite) PrepareServerForSSHTesting(cfg fip.CheckingEnvironment) {
 	s.CheckServerBinariesAndFoldersExists()
 
-	err := RunAndCheckAuthdAtServer(*s)
+	err := RunAndCheckAuthdAtServer(*s, cfg.TestServerServiceAccountMultipassJWT)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Test_server server_accessd can be configured and run
@@ -136,7 +136,7 @@ func (s *Suite) CheckClientBinariesAndFoldersExists() {
 	Expect(err).ToNot(HaveOccurred(), "folder should be created")
 }
 
-func (s *Suite) PrepareClientForSSHTesting(cfg flant_iam_preparing.CheckingEnvironment) {
+func (s *Suite) PrepareClientForSSHTesting(cfg fip.CheckingEnvironment) {
 	s.CheckClientBinariesAndFoldersExists()
 
 	t, err := template.New("").Parse(clientMainCFGTPL)

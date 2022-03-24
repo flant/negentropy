@@ -179,7 +179,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	})
 
 	It("configure authd", func() {
-		err := tsc.RunAndCheckAuthdAtServer(s)
+		err := tsc.RunAndCheckAuthdAtServer(s, "")
 		Expect(err).ToNot(HaveOccurred())
 	})
 

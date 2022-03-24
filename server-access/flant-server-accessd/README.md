@@ -50,3 +50,47 @@ socketPath: /run/authd.sock
 *socketPath* should be syncronized with config of *authd*
 
 Restart service after change configuration
+
+## debug running daemon
+
+from negentropy folder:
+
+- build run and prepare system
+
+ ```
+  ./build.sh # build components
+  ./build.sh vault --force # for forced rebuild vault
+  ./start.sh e2e # run system
+  ./run-e2e-tests.sh # run tests for creating user and other staff
+  ```
+
+- copy from test-server docker container multipass-jwt file /opt/authd/client-jwt to authd/dev/secret/authd.jwt :  
+  ```docker cp  test-server:/opt/authd/server-jwt authd/dev/secret/authd.jwt```
+
+- copy from test-server docker container file /opt/server-access/config.yaml to
+  server-access/flant-server-accessd/dev/config.yaml  
+  ```docker cp  test-server:/opt/server-access/config.yaml  server-access/flant-server-accessd/dev/config.yaml```
+
+- edit *server-access/flant-server-accessd/dev/config.yaml*  
+  replace:
+  ``` 
+  database: /opt/serveraccessd/server-accessd.db
+  authdSocketPath: /run/sock1.sock 
+  ```     
+
+  for
+  ```
+  database: server-accessd.db
+  authdSocketPath: ../authd/dev/run/sock1.sock
+  ```
+
+from authd folder
+
+- run authd:  
+  ```go run cmd/authd/main.go --conf-dir=dev/conf```
+
+from server-access folder
+
+- run serveraccessd:    
+  ```export SERVER_ACCESSD_CONF=./flant-server-accessd/dev/config.yaml; go run ./flant-server-accessd/cmd```
+
