@@ -51,7 +51,7 @@ func (s *ProjectService) Update(project *model.Project) error {
 		return consts.ErrBadOrigin
 	}
 	project.Version = repo.NewResourceVersion()
-
+	project.Origin = s.origin
 	// Update
 
 	return repository.Update(project)

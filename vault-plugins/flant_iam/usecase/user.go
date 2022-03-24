@@ -76,6 +76,7 @@ func (s *UserService) Update(user *model.User) error {
 	// Update
 	user.TenantUUID = s.tenantUUID
 	user.Version = iam_repo.NewResourceVersion()
+	user.Origin = s.origin
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier
 
 	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
