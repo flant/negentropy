@@ -2,8 +2,9 @@ version: "3"
 
 services:
   zookeeper:
-    container_name: zookeeper
     image: docker.io/bitnami/zookeeper:3
+    platform: linux/amd64
+    container_name: zookeeper
     ports:
       - "2181:2181"
     environment:
@@ -17,6 +18,7 @@ services:
 
   kafka:
     image: docker.io/bitnami/kafka:2
+    platform: linux/amd64
     container_name: kafka
     ports:
       - "9093:9093"
@@ -36,11 +38,12 @@ services:
       test:
         ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
       interval: 10s
-      timeout: 5s
+      timeout: 20s
       retries: 5
 
   kafdrop:
     image: obsidiandynamics/kafdrop
+    platform: linux/amd64
     container_name: kafdrop
     ports:
       - "9100:9000"
@@ -53,6 +56,7 @@ services:
 
   oidc-mock:
     image: alpine:3.14.2
+    platform: linux/amd64
     container_name: oidc-mock
     ports:
       - "9998:9998"

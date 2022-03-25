@@ -22,6 +22,7 @@ function build_plugin() {
   mkdir -p /tmp/vault-plugins-build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /go/src/app/$PLUGIN_NAME \
     -v $PLUGINS_DIR/build:/src/build \
     -v $PLUGINS_DIR/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
@@ -40,6 +41,7 @@ function build_authd() {
   mkdir -p /tmp/authd-build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /go/src/app/authd \
     -v $AUTHD_DIR/build:/src/build \
     -v $AUTHD_DIR:/go/src/app/authd \
@@ -56,6 +58,7 @@ function build_cli() {
   mkdir -p /tmp/cli-build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /go/src/app/cli \
     -v $PLUGINS_DIR:/go/src/app/vault-plugins \
     -v $AUTHD_DIR:/go/src/app/authd \
@@ -74,6 +77,7 @@ function build_server_accessd() {
   mkdir -p /tmp/server-accessd-build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /go/src/server-accessd \
     -v $AUTHD_DIR:/go/src/authd \
     -v $SERVER_ACCESSD_DIR/flant-server-accessd/build:/src/build \
@@ -92,6 +96,7 @@ function build_nss() {
   mkdir -p $NSS_DIR/build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /app \
     -v $NSS_DIR:/app \
     rust:1.54 \
@@ -107,6 +112,7 @@ function build_oidc_mock() {
   mkdir -p /tmp/oidc-mock-build
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /go/src/oidc-mock \
     -v $OIDC_MOCK_DIR/build:/src/build \
     -v $OIDC_MOCK_DIR:/go/src/oidc-mock \
@@ -120,6 +126,7 @@ function build_vault() {
   echo "Building vault"
 
   docker run --rm \
+    --platform=linux/amd64 \
     -w /app/infra/common/vault \
     -v $(pwd):/app \
     $EXTRA_MOUNT \

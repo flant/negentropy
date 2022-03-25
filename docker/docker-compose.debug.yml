@@ -2,6 +2,7 @@ version: "3"
 
 services:
   vault-auth:
+    platform: linux/amd64
     container_name: vault-auth
     build:
       context: .
@@ -23,6 +24,7 @@ services:
       - kafka
 
   vault-root:
+    platform: linux/amd64
     container_name: vault-root
     build:
       context: .
@@ -44,6 +46,7 @@ services:
       - kafka
 
   test-client:
+    platform: linux/amd64
     container_name: test-client
     build:
       context: .
@@ -57,6 +60,7 @@ services:
     command: [ "sleep", "infinity" ]
 
   test-server:
+    platform: linux/amd64
     container_name: test-server
     build:
       context: .
