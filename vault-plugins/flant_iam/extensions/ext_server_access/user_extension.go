@@ -2,7 +2,12 @@ package ext_server_access
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"math/rand"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,7 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	ext_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/txnwatchers"
@@ -63,15 +68,8 @@ func RegisterServerAccessUserExtension(ctx context.Context, vaultStore logical.S
 		Events:  []io.HookEvent{io.HookEventInsert},
 		ObjType: iam_model.UserType,
 		CallbackFn: func(txn *io.MemoryStoreTxn, _ io.HookEvent, obj interface{}) error {
-			repo, err := ext_repo.NewUserServerAccessRepository(txn, sac.LastAllocatedUID,
-				sac.ExpirePasswordSeedAfterRevealIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
-			if err != nil {
-				return err
-			}
-
 			user := obj.(*iam_model.User)
-
-			err = repo.CreateExtension(user)
+			err := CreateExtension(user, sac)
 			if err != nil {
 				return err
 			}
@@ -247,11 +245,6 @@ func checkAndCreateServiceAccountExtension(txn *io.MemoryStoreTxn,
 
 func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig,
 	users map[iam_model.UserUUID]struct{}, vaultStore logical.Storage) error {
-	repoUserExtension, err := ext_repo.NewUserServerAccessRepository(txn,
-		sac.LastAllocatedUID, sac.ExpirePasswordSeedAfterRevealIn, sac.DeleteExpiredPasswordSeedsAfter, vaultStore)
-	if err != nil {
-		return fmt.Errorf("checkAndCreateUserExtension: %w", err)
-	}
 	repoUser := iam_repo.NewUserRepository(txn)
 
 	for userUUID := range users {
@@ -260,11 +253,141 @@ func checkAndCreateUserExtension(txn *io.MemoryStoreTxn, sac *ServerAccessConfig
 			return fmt.Errorf("checkAndCreateUserExtension: %w", err)
 		}
 		if _, isSet := user.Extensions[consts.OriginServerAccess]; !isSet {
-			err = repoUserExtension.CreateExtension(user)
+			err = CreateExtension(user, sac)
 			if err != nil {
 				return fmt.Errorf("creating user extension: %w", err)
 			}
 		}
 	}
 	return nil
+}
+
+func CreateExtension(user *iam_model.User, sac *ServerAccessConfig) error {
+	if user.Extensions == nil {
+		user.Extensions = map[consts.ObjectOrigin]*iam_model.Extension{}
+	}
+
+	if _, ok := user.Extensions[consts.OriginServerAccess]; ok {
+		return nil
+	}
+
+	randomSeed, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return nil
+	}
+
+	randomSalt, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return nil
+	}
+
+	lastUID := sac.LastAllocatedUID
+	currentUID := lastUID + 1
+
+	user.Extensions[consts.OriginServerAccess] = &iam_model.Extension{
+		Origin:    consts.OriginServerAccess,
+		OwnerType: iam_model.ExtensionOwnerTypeUser,
+		OwnerUUID: user.ObjId(),
+		Attributes: map[string]interface{}{
+			"UID": currentUID,
+			"passwords": []ext_model.UserServerPassword{
+				{
+					Seed:      randomSeed,
+					Salt:      randomSalt,
+					ValidTill: time.Time{},
+				},
+			},
+		},
+		SensitiveAttributes: nil, // TODO: ?
+	}
+	sac.LastAllocatedUID = currentUID
+
+	return nil
+}
+
+func RevealPassword(tx *io.MemoryStoreTxn, sac *ServerAccessConfig,
+	userUUID, serverUUID string) (string, error) {
+	user, err := iam_repo.NewUserRepository(tx).GetByID(userUUID)
+	if err != nil {
+		return "", err
+	}
+
+	randomSeed, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return "", err
+	}
+
+	randomSalt, err := generateRandomBytes(64) // TODO: proper value
+	if err != nil {
+		return "", err
+	}
+
+	passwordsRaw := user.Extensions[consts.OriginServerAccess].Attributes["passwords"]
+	passwords := passwordsRaw.([]ext_model.UserServerPassword)
+
+	passwords = garbageCollectPasswords(passwords, randomSeed, randomSalt,
+		sac.ExpirePasswordSeedAfterRevealIn, sac.DeleteExpiredPasswordSeedsAfter)
+
+	freshPass, err := returnFreshPassword(passwords)
+	if err != nil {
+		return "", err
+	}
+
+	sha512Hash := sha512.New()
+	_, err = sha512Hash.Write(append([]byte(serverUUID), freshPass.Seed...))
+	retPass := hex.EncodeToString(sha512Hash.Sum(nil))
+
+	return retPass[:11], nil
+}
+
+var NoValidPasswords = errors.New("no valid Password found in User extension")
+
+func returnFreshPassword(usps []ext_model.UserServerPassword) (ext_model.UserServerPassword, error) {
+	if len(usps) == 0 {
+		return ext_model.UserServerPassword{}, errors.New("no User password found")
+	}
+
+	sort.Slice(usps, func(i, j int) bool {
+		return usps[i].ValidTill.Before(usps[j].ValidTill) // TODO: should iterate from freshest. check!!!
+	})
+
+	return usps[0], NoValidPasswords
+}
+
+func garbageCollectPasswords(usps []ext_model.UserServerPassword, seed, salt []byte,
+	expirePasswordSeedAfterRevealIn, deleteAfter time.Duration) (ret []ext_model.UserServerPassword) {
+	var (
+		currentTime                            = time.Now()
+		expirePasswordSeedAfterTimestamp       = currentTime.Add(expirePasswordSeedAfterRevealIn)
+		expirePasswordSeedAfterTimestampHalved = currentTime.Add(expirePasswordSeedAfterRevealIn / 2)
+		deleteAfterTimestamp                   = currentTime.Add(deleteAfter)
+	)
+
+	if !usps[len(usps)-1].ValidTill.After(expirePasswordSeedAfterTimestampHalved) {
+		usps[len(usps)-1].ValidTill = time.Time{}
+		usps = append(usps, ext_model.UserServerPassword{
+			Seed:      seed,
+			Salt:      salt,
+			ValidTill: expirePasswordSeedAfterTimestamp,
+		})
+	}
+
+	for _, usp := range usps {
+		if !usp.ValidTill.Before(deleteAfterTimestamp) {
+			ret = append(ret, usp)
+		}
+	}
+
+	return
+}
+
+func generateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
