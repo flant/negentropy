@@ -24,7 +24,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         plugins_to_activate = root_vault_plugins
     for plugin_name, plugin_type in plugins_to_activate.items():
         if plugin_type == 'secret':
-            if plugin_name not in active_secrets:
+            if plugin_name + '/' not in active_secrets:
                 vault_client.sys.enable_secrets_engine(
                     backend_type=plugin_name,
                     path=plugin_name,
@@ -34,7 +34,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
             else:
                 print("INFO: secret plugin '{}' already activated at '{}' vault".format(plugin_name, vault_name))
         if plugin_type == 'auth':
-            if 'auth/' + plugin_name not in active_auths:
+            if plugin_name + '/' not in active_auths:
                 vault_client.sys.enable_auth_method(
                     method_type=plugin_name,
                     path=plugin_name,

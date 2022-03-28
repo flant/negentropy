@@ -85,7 +85,7 @@ def get_vault_list_with_statuses(args: argparse.Namespace) -> (List, List):
     """
     vault_list = []
     if args.type == 'configurator':
-        vault_list = next(os.walk('../../configurator/vault_migrations'))[1]
+        vault_list = ['conf']
     elif args.type == 'main':
         vault_list = ['root-source-2', 'root-source-3', 'conf-conf', 'root-source-1', 'auth-ew3a1']
     else:
@@ -199,7 +199,7 @@ def main():
 
             vaults_with_url_and_token.append(
                 {'name': vault['name'], 'url': vault_address, 'token': vault_root_token})
-    print('vaults_with_url_and_token:', vaults_with_url_and_token)
+    print('DEBUG: vaults_with_url_and_token is', vaults_with_url_and_token)
 
     # migrator calling
     migration_dir = None
