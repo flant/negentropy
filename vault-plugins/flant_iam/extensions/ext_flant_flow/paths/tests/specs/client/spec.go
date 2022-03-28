@@ -101,18 +101,18 @@ var _ = Describe("Client", func() {
 		updatePayload := fixtures.RandomClientCreatePayload()
 		updatePayload["resource_version"] = createdData.Get("client.resource_version").String()
 
-		var updateData gjson.Result
 		TestAPI.Update(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
-			"expectPayload": func(json gjson.Result) {
-				updateData = json
-			},
 		}, nil, updatePayload)
 
 		TestAPI.Read(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+				clientData := json.Get("client")
+				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, clientData, "archiving_timestamp",
+					"archiving_hash", "uuid", "resource_version", "origin", "feature_flags")
+				Expect(clientData.Map()).To(HaveKey("origin"))
+				Expect(clientData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 		}, nil)
 	})

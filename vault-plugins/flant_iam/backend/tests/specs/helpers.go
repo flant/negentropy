@@ -14,6 +14,13 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
+func IsMapSubsetOfSetExceptKeys(mapa map[string]interface{}, set gjson.Result, keys ...string) {
+	bytes, err := json.Marshal(mapa)
+	Expect(err).ToNot(HaveOccurred())
+	subset := gjson.Parse(string(bytes))
+	IsSubsetExceptKeys(subset, set, keys...)
+}
+
 func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
 	setMap := set.Map()
 	subsetMap := subset.Map()
@@ -21,7 +28,7 @@ func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
 		subsetMap[key] = setMap[key]
 	}
 	for k, v := range subsetMap {
-		Expect(v.String()).To(Equal(setMap[k].String()))
+		Expect(v.String()).To(Equal(setMap[k].String()), "field:", k)
 	}
 }
 

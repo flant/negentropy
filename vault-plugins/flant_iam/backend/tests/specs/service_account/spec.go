@@ -35,6 +35,7 @@ var _ = Describe("ServiceAccount", func() {
 				Expect(saData.Map()).To(HaveKey("full_identifier"))
 				Expect(saData.Map()).To(HaveKey("allowed_cidrs"))
 				Expect(saData.Map()).To(HaveKey("origin"))
+				Expect(saData.Get("origin").String()).To(Equal("iam"))
 				Expect(saData.Map()).To(HaveKey("token_ttl"))
 				Expect(saData.Map()).To(HaveKey("token_max_ttl"))
 				Expect(saData.Get("uuid").String()).To(HaveLen(36))
@@ -78,6 +79,9 @@ var _ = Describe("ServiceAccount", func() {
 			"service_account": sa.UUID,
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+				saData := json.Get("service_account")
+				Expect(saData.Map()).To(HaveKey("origin"))
+				Expect(saData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil)
 	})

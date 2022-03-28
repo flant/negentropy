@@ -40,12 +40,14 @@ var _ = Describe("Tenant", func() {
 
 		params := api.Params{
 			"expectPayload": func(json gjson.Result) {
-				tenanData := json.Get("tenant")
-				Expect(tenanData.Map()).To(HaveKey("uuid"))
-				Expect(tenanData.Map()).To(HaveKey("identifier"))
-				Expect(tenanData.Map()).To(HaveKey("resource_version"))
-				Expect(tenanData.Get("uuid").String()).ToNot(HaveLen(10))
-				Expect(tenanData.Get("resource_version").String()).ToNot(HaveLen(10))
+				tenantData := json.Get("tenant")
+				Expect(tenantData.Map()).To(HaveKey("uuid"))
+				Expect(tenantData.Map()).To(HaveKey("identifier"))
+				Expect(tenantData.Map()).To(HaveKey("resource_version"))
+				Expect(tenantData.Get("uuid").String()).ToNot(HaveLen(10))
+				Expect(tenantData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(tenantData.Map()).To(HaveKey("origin"))
+				Expect(tenantData.Get("origin").String()).To(Equal("iam"))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
@@ -95,6 +97,9 @@ var _ = Describe("Tenant", func() {
 			"tenant": createdData.Get("tenant.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(updateData, json, "full_restore")
+				tenantData := json.Get("tenant")
+				Expect(tenantData.Map()).To(HaveKey("origin"))
+				Expect(tenantData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil)
 	})

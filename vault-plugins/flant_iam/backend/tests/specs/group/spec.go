@@ -41,17 +41,19 @@ var _ = Describe("Group", func() {
 
 		params := api.Params{
 			"expectPayload": func(json gjson.Result) {
-				userData := json.Get("group")
-				Expect(userData.Map()).To(HaveKey("uuid"))
-				Expect(userData.Map()).To(HaveKey("tenant_uuid"))
-				Expect(userData.Map()).To(HaveKey("resource_version"))
-				Expect(userData.Map()).To(HaveKey("identifier"))
-				Expect(userData.Map()).To(HaveKey("full_identifier"))
-				Expect(userData.Map()).To(HaveKey("members"))
-				Expect(userData.Map()).To(HaveKey("archiving_timestamp"))
-				Expect(userData.Map()).To(HaveKey("archiving_hash"))
-				Expect(userData.Get("uuid").String()).To(HaveLen(36))
-				Expect(userData.Get("resource_version").String()).To(HaveLen(36))
+				groupData := json.Get("group")
+				Expect(groupData.Map()).To(HaveKey("uuid"))
+				Expect(groupData.Map()).To(HaveKey("tenant_uuid"))
+				Expect(groupData.Map()).To(HaveKey("resource_version"))
+				Expect(groupData.Map()).To(HaveKey("identifier"))
+				Expect(groupData.Map()).To(HaveKey("full_identifier"))
+				Expect(groupData.Map()).To(HaveKey("members"))
+				Expect(groupData.Map()).To(HaveKey("archiving_timestamp"))
+				Expect(groupData.Map()).To(HaveKey("archiving_hash"))
+				Expect(groupData.Map()).To(HaveKey("origin"))
+				Expect(groupData.Get("origin").String()).To(Equal("iam"))
+				Expect(groupData.Get("uuid").String()).To(HaveLen(36))
+				Expect(groupData.Get("resource_version").String()).To(HaveLen(36))
 			},
 			"tenant": tenant.UUID,
 		}
@@ -91,6 +93,9 @@ var _ = Describe("Group", func() {
 			"group":  group.UUID,
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(updateData.Get("group"), json.Get("group"), "full_restore")
+				groupData := json.Get("group")
+				Expect(groupData.Map()).To(HaveKey("origin"))
+				Expect(groupData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil)
 	})

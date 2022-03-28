@@ -70,6 +70,7 @@ var _ = Describe("Role binding", func() {
 				Expect(rbData.Map()).To(HaveKey("projects"))
 				Expect(rbData.Map()).To(HaveKey("roles"))
 				Expect(rbData.Map()).To(HaveKey("origin"))
+				Expect(rbData.Get("origin").String()).To(Equal("iam"))
 				Expect(rbData.Get("uuid").String()).To(HaveLen(36))
 				Expect(rbData.Get("resource_version").String()).To(HaveLen(36))
 			},
@@ -116,6 +117,9 @@ var _ = Describe("Role binding", func() {
 			"role_binding": createdRB.Get("role_binding.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(updateData, json)
+				rbData := json.Get("role_binding")
+				Expect(rbData.Map()).To(HaveKey("origin"))
+				Expect(rbData.Get("origin").String()).To(Equal("iam"))
 			},
 		}, nil)
 	})
