@@ -32,7 +32,7 @@ func RandomClientCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := clientSet[rand.Intn(len(clientSet))]
 	return map[string]interface{}{
-		"identifier": "Identifier_" + RandomStr(),
-		"version":    sample.Version,
+		"identifier":       "Identifier_" + RandomStr(),
+		"resource_version": sample.Version,
 	}
 }

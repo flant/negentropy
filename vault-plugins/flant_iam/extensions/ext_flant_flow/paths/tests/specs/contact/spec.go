@@ -90,6 +90,19 @@ var _ = Describe("Contact", func() {
 			"contact":      contact.UUID,
 			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
+
+		TestAPI.Read(tests.Params{
+			"client":  contact.TenantUUID,
+			"contact": contact.UUID,
+			"expectPayload": func(json gjson.Result) {
+				contactData := json.Get("contact")
+				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, contactData, "archiving_timestamp",
+					"archiving_hash", "uuid", "resource_version", "origin", "tenant_uuid", "additional_phones",
+					"client_uuid", "full_identifier", "additional_emails", "extensions")
+				Expect(contactData.Map()).To(HaveKey("origin"))
+				Expect(contactData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+			},
+		}, nil)
 	})
 
 	It("can be deleted", func() {

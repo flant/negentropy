@@ -176,6 +176,18 @@ var _ = Describe("Project", func() {
 			"project":      project.UUID,
 			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
+
+		TestAPI.Read(tests.Params{
+			"client":  project.TenantUUID,
+			"project": project.UUID,
+			"expectPayload": func(json gjson.Result) {
+				projectData := json.Get("project")
+				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, projectData, "archiving_timestamp",
+					"archiving_hash", "uuid", "resource_version", "origin", "tenant_uuid", "service_packs")
+				Expect(projectData.Map()).To(HaveKey("origin"))
+				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+			},
+		}, nil)
 	})
 
 	It("can be deleted", func() {

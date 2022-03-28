@@ -44,7 +44,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 		return consts.ErrBadVersion
 	}
 	updated.Version = iam_repo.NewResourceVersion()
-
+	updated.Origin = s.origin
 	// Update
 
 	return s.repo.Create(updated)

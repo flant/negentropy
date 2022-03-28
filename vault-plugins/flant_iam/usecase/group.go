@@ -86,6 +86,7 @@ func (s *GroupService) Update(group *model.Group) error {
 	// Update
 	group.TenantUUID = s.tenantUUID
 	group.Version = iam_repo.NewResourceVersion()
+	group.Origin = s.origin
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
 	subj, err := s.membersFetcher.Fetch(group.Members)
