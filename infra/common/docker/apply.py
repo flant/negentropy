@@ -61,7 +61,7 @@ def build_and_deploy(args: argparse.Namespace) -> Dict:
         terraform_log = run_bash(
             "terraform init -backend-config bucket=%s-terraform-state; terraform apply -no-color -auto-approve" % google_project_id,
             "../../configurator/terraform")
-    else:
+    elif args.type == 'main':
         print("• [main] run packer")
         run_bash("./build.sh", "../../main/packer")
         print("• [main] terraform apply")
@@ -105,12 +105,11 @@ def main():
     parser.add_argument('--save-root-tokens-on-initialization', dest='save_root_tokens', action='store_true')
     args = parser.parse_args()
 
-    vault_list, vault_list_with_status = get_vault_list_with_statuses(
-        args)  # [{'name':'auth-ew3a1', 'initialized':false}...]
-    print("VAULT_LIST:", vault_list_with_status)
+    vault_list, vault_list_with_status = get_vault_list_with_statuses(args)  # [{'name':'auth-ew3a1', 'initialized':false}...]
+    print("VAULT LIST:", vault_list_with_status)
 
     ips_map = build_and_deploy(args)  # {'private_static_ip_negentropy-kafka-1': 'X.Y.Z.31',...}
-    print("ips_map:", ips_map)
+    print("IPS MAP:", ips_map)
 
     for vault in vault_list_with_status:
         if not vault['initialized']:
@@ -148,15 +147,13 @@ def main():
             decrypted_vault_root_token = read_file(decrypted_vault_root_token_name)
             vault_root_token = decrypted_vault_root_token
             vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
-            print('DEBUG: vault_root_token is', vault_root_token)
-            print('DEBUG: vault_address is', vault_address)
 
             while check_vault_is_ready(vault_url=vault_address, vault_token=vault_root_token) != True:
                 time.sleep(1)
 
             vaults_with_url_and_token.append(
                 {'name': vault['name'], 'url': vault_address, 'token': vault_root_token})
-    else:
+    elif args.type == 'main':
         vault_root_source_list = []
         for vault in vault_list:
             if vault.startswith("root-source"):
@@ -191,15 +188,12 @@ def main():
                 vault_address = 'https://%s:8200' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
             else:
                 vault_address = 'https://%s:443' % ips_map['private_static_ip_negentropy-vault-%s' % vault['name']]
-            print('DEBUG: vault_root_token is', vault_root_token)
-            print('DEBUG: vault_address is', vault_address)
 
             while check_vault_is_ready(vault_url=vault_address, vault_token=vault_root_token) != True:
                 time.sleep(1)
 
             vaults_with_url_and_token.append(
                 {'name': vault['name'], 'url': vault_address, 'token': vault_root_token})
-    print('DEBUG: vaults_with_url_and_token is', vaults_with_url_and_token)
 
     # migrator calling
     migration_dir = None

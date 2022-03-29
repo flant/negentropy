@@ -200,7 +200,7 @@ MIGRATION_TEMPLATE = """\
 \"\"\"
 This module contains a vault migration.
 Write your migration using hvac python module. See https://hvac.readthedocs.io/en/stable/overview.html for details.
-Migration should be idempotent, if repeated write is wrong operation, use read before write 
+Migration should be idempotent, if repeated write is wrong operation, use read before write
 
 
 Migration Name: %(name)s
@@ -377,14 +377,14 @@ def run_migrations(migrations: List[Migration], vaults: List[VaultParams],
             if is_migration_new(m, v):
                 run_migration_at_vault(m, v, vaults)
                 update_migration(m, v)
-            new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
-            if new_version == m.get_version():
-                msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
-                Console.info(msg)
-            else:
-                msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
-                Console.info(msg)
-                exit(1)
+                new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
+                if new_version == m.get_version():
+                    msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
+                    Console.info(msg)
+                else:
+                    msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
+                    Console.info(msg)
+                    exit(1)
 
 
 def list_migrations_command(args):

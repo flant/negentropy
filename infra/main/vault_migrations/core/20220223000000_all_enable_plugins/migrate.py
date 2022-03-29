@@ -17,8 +17,8 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault = next(v for v in vaults if v['name'] == vault_name)
     vault_client = hvac.Client(url=vault['url'], token=vault['token'])
     print("INFO: activate plugins at '{}' vault ".format(vault_name))
-    active_auths = set(vault_client.sys.list_auth_methods().keys())
-    active_secrets = set(vault_client.sys.list_mounted_secrets_engines().keys())
+    active_auths = vault_client.sys.list_auth_methods()
+    active_secrets = vault_client.sys.list_mounted_secrets_engines()
     plugins_to_activate = auth_vault_plugins
     if 'root' in vault_name:
         plugins_to_activate = root_vault_plugins

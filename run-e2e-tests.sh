@@ -19,7 +19,7 @@ else
   export AUTH_VAULT_TOKEN=$(cat /tmp/auth_token)
   export ROOT_VAULT_URL=http://127.0.0.1:8300
   export AUTH_VAULT_URL=http://127.0.0.1:8200
-  export ROOT_VAULT_INTERNAL_URL=http://vault-root:8200
+  export ROOT_VAULT_INTERNAL_URL=http://vault-root:8300
   export AUTH_VAULT_INTERNAL_URL=http://vault-auth:8200
 fi
 

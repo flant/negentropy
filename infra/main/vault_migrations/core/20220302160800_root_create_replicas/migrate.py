@@ -13,7 +13,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     all_pubkeys = []
     print("INFO: get flant_iam_auth kafka public keys from all vaults")
     for vault in vaults:
-        # TODO: check if plugin not enabled
         vault_client = hvac.Client(url=vault['url'], token=vault['token'])
         public_key = vault_client.read(path='auth/flant_iam_auth/kafka/public_key').get('data').get('public_key')
         all_pubkeys.append({'name': vault['name'], 'public_key': public_key})

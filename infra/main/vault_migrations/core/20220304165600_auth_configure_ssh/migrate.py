@@ -12,7 +12,6 @@ class Vault(TypedDict):
 def upgrade(vault_name: str, vaults: List[Vault]):
     vault = next(v for v in vaults if v['name'] == vault_name)
     vault_client = hvac.Client(url=vault['url'], token=vault['token'])
-    # TODO: make this migration idempotent
     print("INFO: import ssh ca at '{}' vault".format(vault_name))
     vault_client.write(path='ssh/config/ca', private_key="""-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEA0/G1wVnF9ufvio1W1XBAD51EU6UP+p0otMVfpap/7DgkyZY0

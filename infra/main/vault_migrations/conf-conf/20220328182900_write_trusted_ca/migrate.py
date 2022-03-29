@@ -7,6 +7,7 @@ from google.auth import compute_engine
 from google.oauth2 import service_account
 from google.cloud import storage
 
+
 class Vault(TypedDict):
     name: str
     token: str
@@ -21,7 +22,7 @@ else:
         json.loads(os.environ.get("GOOGLE_CREDENTIALS")))
 
 bucket_name = '%s-terraform-state' % google_credentials.project_id
-vault_conf_ca_name = "vault-cert-auth-ca.pem"
+vault_conf_ca_name = "vault-conf-ca.pem"
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
@@ -31,4 +32,4 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(vault_conf_ca_name)
     ca = str(blob.download_as_string(), 'utf-8')
-    print("DEBUG: ca is", ca)
+    vault_client.write(path='auth/cert/certs/auth', display_name='auth', policies='auth', certificate=ca, ttl='3600')

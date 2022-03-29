@@ -29,7 +29,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         plugins = auth_vault_plugins
     for plugin in plugins:
         print("INFO: generate kafka csr for '{}' plugin at '{}' vault".format(plugin, vault_name))
-        print("DEBUG: kafka_endpoints is", kafka_endpoints)
         if plugin == 'flant_iam_auth':
             vault_client.write(path='auth/flant_iam_auth/kafka/generate_csr')
             vault_client.write(path='auth/flant_iam_auth/kafka/configure_access', kafka_endpoints=kafka_endpoints)
