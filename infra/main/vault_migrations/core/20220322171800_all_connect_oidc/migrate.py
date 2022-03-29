@@ -1,6 +1,7 @@
 from typing import TypedDict, List
 
 import hvac
+import os
 
 
 class Vault(TypedDict):
@@ -9,8 +10,11 @@ class Vault(TypedDict):
     url: str
 
 
-# TODO: get this variable from args
-oidc_url = "http://oidc-mock:9998"
+oidc_url_from_env = os.environ.get("NEGENTROPY_OIDC_URL")
+if oidc_url_from_env is None:
+    oidc_url = "http://oidc-mock:9998"
+else:
+    oidc_url = oidc_url_from_env
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):

@@ -3,6 +3,7 @@ from typing import TypedDict, List
 import hvac
 import os
 
+
 class Vault(TypedDict):
     name: str
     token: str
@@ -10,7 +11,7 @@ class Vault(TypedDict):
 
 
 kafka_endpoints_from_env = os.environ.get("NEGENTROPY_KAFKA_ENDPOINTS")
-if kafka_endpoints_from_env == None:
+if kafka_endpoints_from_env is None:
     kafka_endpoints = "kafka:9092"
 else:
     kafka_endpoints = kafka_endpoints_from_env
@@ -27,7 +28,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     else:
         plugins = auth_vault_plugins
     for plugin in plugins:
-        # TODO: fix kafka_endpoints hardcode
         print("INFO: generate kafka csr for '{}' plugin at '{}' vault".format(plugin, vault_name))
         print("DEBUG: kafka_endpoints is", kafka_endpoints)
         if plugin == 'flant_iam_auth':

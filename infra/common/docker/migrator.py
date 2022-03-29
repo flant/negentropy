@@ -311,8 +311,9 @@ def split_vaults(vaults: List[VaultParams]) -> (List[VaultParams], List[VaultPar
 def is_migration_new(migration: Migration, vault: VaultParams) -> bool:
     """check is migration new for specified vault"""
     current_vault_version = get_vault_version(url=vault.get('url'), token=vault.get('token'))
+    Console.info('current_version   [%s]' % current_vault_version)
     msg = 'migration version [%s] for vault [%s]' % (migration.get_version(), vault.get('name'))
-    if migration.get_version() >= current_vault_version:
+    if migration.get_version() > current_vault_version:
         msg += ' is new'
         Console.info(msg)
         return True
