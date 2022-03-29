@@ -18,6 +18,7 @@ func Test_clientCRUD(t *testing.T) {
 	client.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	client.GroupAPI = lib.NewGroupAPI(rootClient)
 	client.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
+	client.IdentitySharingAPI = lib.NewIdentitySharingAPI(rootClient)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Client")

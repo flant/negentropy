@@ -20,12 +20,13 @@ import (
 )
 
 var (
-	TestAPI   tests.TestAPI
-	TenantAPI tests.TestAPI
-	RoleAPI   tests.TestAPI
-	TeamAPI   tests.TestAPI
-	GroupAPI  tests.TestAPI
-	ConfigAPI testapi.ConfigAPI
+	TestAPI            tests.TestAPI
+	TenantAPI          tests.TestAPI
+	RoleAPI            tests.TestAPI
+	TeamAPI            tests.TestAPI
+	GroupAPI           tests.TestAPI
+	ConfigAPI          testapi.ConfigAPI
+	IdentitySharingAPI tests.TestAPI
 )
 
 var _ = Describe("Client", func() {
@@ -55,11 +56,13 @@ var _ = Describe("Client", func() {
 
 	It("can be created", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
+		clientUUID := ""
 
 		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				clientData := json.Get("client")
 				Expect(clientData.Map()).To(HaveKey("uuid"))
+				clientUUID = clientData.Get("uuid").String()
 				Expect(clientData.Map()).To(HaveKey("identifier"))
 				Expect(clientData.Map()).To(HaveKey("resource_version"))
 				Expect(clientData.Get("uuid").String()).To(HaveLen(36))
@@ -69,6 +72,9 @@ var _ = Describe("Client", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+
+		// Check identity_sharing is created
+		checkIdentitySharingExists(flantFlowCfg, clientUUID, true)
 	})
 
 	It("can be read", func() {
@@ -137,6 +143,9 @@ var _ = Describe("Client", func() {
 			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedClientData.Get("client.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+
+		// Check identity_sharing is deleted
+		checkIdentitySharingExists(flantFlowCfg, createdData.Get("client.uuid").String(), false)
 	})
 
 	It("can be listed", func() {
@@ -199,3 +208,26 @@ var _ = Describe("Client", func() {
 		})
 	})
 })
+
+func checkIdentitySharingExists(flantFlowCfg *config.FlantFlowConfig, clientUUID string, needExist bool) {
+	resp := IdentitySharingAPI.List(tests.Params{
+		"tenant": flantFlowCfg.FlantTenantUUID,
+	}, url.Values{})
+	Expect(resp.Map()).To(HaveKey("identity_sharings"))
+	identitySharingExists := false
+	for _, is := range resp.Get("identity_sharings").Array() {
+		if is.Get("destination_tenant_uuid").String() == clientUUID &&
+			len(is.Get("groups").Array()) == 1 && is.Get("groups").Array()[0].String() == flantFlowCfg.AllFlantGroup {
+			identitySharingExists = true
+		}
+	}
+	if needExist {
+		Expect(identitySharingExists).To(BeTrue(), fmt.Sprintf("should exists identitySharing for group "+
+			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroup,
+			flantFlowCfg.FlantTenantUUID, clientUUID, resp.Get("identity_sharings").String()))
+	} else {
+		Expect(identitySharingExists).To(BeFalse(), fmt.Sprintf("should NOT exists identitySharing for group "+
+			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroup,
+			flantFlowCfg.FlantTenantUUID, clientUUID, resp.Get("identity_sharings").String()))
+	}
+}

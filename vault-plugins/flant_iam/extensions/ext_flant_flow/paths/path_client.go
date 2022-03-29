@@ -164,7 +164,7 @@ func (b *clientBackend) handleExistence(_ context.Context, req *logical.Request,
 
 	tx := b.storage.Txn(false)
 
-	c, err := usecase.Clients(tx).GetByID(id)
+	c, err := usecase.Clients(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return false, err
 	}
@@ -187,7 +187,7 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Clients(tx).Create(client); err != nil {
+		if err := usecase.Clients(tx, b.liveConfig).Create(client); err != nil {
 			msg := "cannot create client"
 			b.Logger().Debug(msg, "err", err.Error())
 			return logical.ErrorResponse(msg), nil
@@ -213,7 +213,7 @@ func (b *clientBackend) handleUpdate(ctx context.Context, req *logical.Request, 
 		Version:    data.Get("resource_version").(string),
 	}
 
-	err := usecase.Clients(tx).Update(client)
+	err := usecase.Clients(tx, b.liveConfig).Update(client)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -232,7 +232,7 @@ func (b *clientBackend) handleDelete(_ context.Context, req *logical.Request, da
 
 	id := data.Get("uuid").(string)
 
-	err := usecase.Clients(tx).Delete(id)
+	err := usecase.Clients(tx, b.liveConfig).Delete(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -249,7 +249,7 @@ func (b *clientBackend) handleRead(_ context.Context, req *logical.Request, data
 
 	tx := b.storage.Txn(false)
 
-	client, err := usecase.Clients(tx).GetByID(id)
+	client, err := usecase.Clients(tx, b.liveConfig).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -270,7 +270,7 @@ func (b *clientBackend) handleList(_ context.Context, req *logical.Request, data
 	}
 
 	tx := b.storage.Txn(false)
-	clients, err := usecase.Clients(tx).List(showArchived)
+	clients, err := usecase.Clients(tx, b.liveConfig).List(showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func (b *clientBackend) handleRestore(_ context.Context, req *logical.Request, d
 		fullRestore = rawFullRestore.(bool)
 	}
 
-	client, err := usecase.Clients(tx).Restore(id, fullRestore)
+	client, err := usecase.Clients(tx, b.liveConfig).Restore(id, fullRestore)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
