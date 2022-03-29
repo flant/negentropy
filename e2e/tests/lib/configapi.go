@@ -24,6 +24,7 @@ type ConfigAPI interface {
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
+	ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ReadConfigFlantFlow() config.FlantFlowConfig
@@ -33,23 +34,20 @@ type httpClientBasedConfigAPI struct {
 	httpVaultClient *http.Client
 }
 
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID) {
+	// start.sh & migrations
+}
+
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID) {
-	// by start.sh
-	// h.request("POST", "/configure_extension/flant_flow/flant_tenant/"+flantTenantUUID, []int{http.StatusOK, http.StatusBadRequest}, nil)
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowRoleRules(rules map[string][]string) {
-	// by start.sh
-	// for team, roles := range rules {
-	//	h.request("POST", "/configure_extension/flant_flow/role_rules/"+team, []int{http.StatusOK},
-	//		map[string]interface{}{"specific_roles": roles})
-	// }
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {
-	// by start.sh
-	// h.request("POST", "/configure_extension/flant_flow/specific_teams", []int{http.StatusOK},
-	//	map[string]interface{}{"specific_teams": teams})
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
@@ -62,19 +60,19 @@ func (h httpClientBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
 }
 
 func (h httpClientBasedConfigAPI) EnableJWT() {
-	// by start.sh
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) GenerateCSR() {
-	// by start.sh
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) ConfigureKafka(certificate string, kafkaEndpoints []string) {
-	// by start.sh
+	// start.sh & migrations
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionServerAccess(params map[string]interface{}) {
-	// by start.sh
+	// start.sh & migrations
 }
 
 func NewHttpClientBasedConfigAPI(client *http.Client) ConfigAPI {

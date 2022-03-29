@@ -120,9 +120,8 @@ func CreateRandomContact(contactAPI tests.TestAPI, clientID ext_model.TeamUUID) 
 	return contact
 }
 
-func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
-	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, configAPI)
-
+func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, groupAPI, configAPI)
 	teamL1 := CreateRandomTeam(teamAPI)
 	teamMk8s := CreateRandomTeam(teamAPI)
 	teamOkmeter := CreateRandomTeam(teamAPI)
@@ -136,15 +135,17 @@ func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI 
 	return cfg
 }
 
-func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	tenant := iam_specs.CreateRandomTenant(tenantAPI)
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
 	r1 := iam_specs.CreateRandomRole(roleAPI)
 	rules := map[string][]string{config.Devops: {r1.Name}}
-	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fil later
-
+	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
+	allFlantGroup := iam_specs.CreateRandomEmptyGroup(groupAPI, tenant.UUID)
+	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroup.UUID)
 	return &config.FlantFlowConfig{
 		FlantTenantUUID:       tenant.UUID,
+		AllFlantGroup:         allFlantGroup.UUID,
 		SpecificTeams:         map[string]string{},
 		RolesForSpecificTeams: rules,
 	}

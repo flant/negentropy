@@ -21,6 +21,8 @@ mk8s_team_uuid = "2c769dca-3805-4a42-bea9-8bb759ef7023"
 okmeter_team_name = "Okmeter"
 okmeter_team_id = "OKMETER_FLANT_TEAM"
 okmeter_team_uuid = "f3ff9087-d75b-4bea-9af8-7a5d7686eb6c"
+all_flant_group_identifier = "flant-all"
+all_flant_group_uuid = "a5c6650a-665a-404d-acbf-708c9fd1731f"
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
@@ -35,6 +37,13 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     if not flant or flant == '':
         vault_client.write(path='flant_iam/tenant/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
         vault_client.write(path='flant_iam/configure_extension/flant_flow/flant_tenant/' + flant_tenant_uuid)
+
+    print("INFO: creating group '{}' with uuid '{}'".format(all_flant_group_identifier, all_flant_group_uuid))
+    all_flant_group = cfg.get('all_flant_group_uuid')
+    if not all_flant_group or all_flant_group == '':
+        vault_client.write(path='flant_iam/tenant/{}/group/privileged'.format(flant_tenant_uuid),
+                           uuid=all_flant_group_uuid, identifier=all_flant_group_identifier)
+        vault_client.write(path='flant_iam/configure_extension/flant_flow/all_flant_group/' + all_flant_group_uuid)
 
     print("INFO: creating role rules")
     rules = cfg.get('roles_for_specific_teams')
@@ -62,4 +71,3 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         vault_client.write(path='flant_iam/configure_extension/flant_flow/specific_teams',
                            specific_teams={okmeter_team_name: okmeter_team_uuid})
         print("INFO: team '{}' with uuid '{}' created".format(okmeter_team_name, okmeter_team_uuid))
-

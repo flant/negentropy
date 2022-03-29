@@ -30,6 +30,7 @@ var (
 
 type FlantFlowConfig struct {
 	FlantTenantUUID       iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
+	AllFlantGroup         iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
 	SpecificTeams         map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
 	RolesForSpecificTeams map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
 }
@@ -46,6 +47,9 @@ func (c *FlantFlowConfig) IsBaseConfigured() error {
 	}
 	if c.FlantTenantUUID == "" {
 		return fmt.Errorf("%w:flant_tenant_uuid is empty", consts.ErrNotConfigured)
+	}
+	if c.AllFlantGroup == "" {
+		return fmt.Errorf("%w:all_flant_group_uuid is empty", consts.ErrNotConfigured)
 	}
 	if c.RolesForSpecificTeams == nil {
 		return fmt.Errorf("%w:RolesForSpecificTeams:nil", consts.ErrNotConfigured)
@@ -138,7 +142,8 @@ func (c *MutexedConfigManager) unSafeSaveConfig(ctx context.Context, storage log
 	return config, nil
 }
 
-func (c *MutexedConfigManager) SetFlantTenantUUID(ctx context.Context, storage logical.Storage, flantTenantUUID iam_model.TenantUUID) (*FlantFlowConfig, error) {
+func (c *MutexedConfigManager) SetFlantTenantUUID(ctx context.Context, storage logical.Storage,
+	flantTenantUUID iam_model.TenantUUID) (*FlantFlowConfig, error) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	config, err := c.unSafeGetConfig(ctx, storage)
@@ -150,6 +155,23 @@ func (c *MutexedConfigManager) SetFlantTenantUUID(ctx context.Context, storage l
 	}
 
 	config.FlantTenantUUID = flantTenantUUID
+
+	return c.unSafeSaveConfig(ctx, storage, config)
+}
+
+func (c *MutexedConfigManager) SetAllFlantGroupUUID(ctx context.Context, storage logical.Storage,
+	allFlantGroupUUID iam_model.GroupUUID) (*FlantFlowConfig, error) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	config, err := c.unSafeGetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	if config.AllFlantGroup != "" {
+		return nil, fmt.Errorf("all flant group is already set:%s", config.AllFlantGroup)
+	}
+
+	config.AllFlantGroup = allFlantGroupUUID
 
 	return c.unSafeSaveConfig(ctx, storage, config)
 }

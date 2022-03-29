@@ -16,6 +16,7 @@ func Test_clientCRUD(t *testing.T) {
 	client.TenantAPI = lib.NewTenantAPI(rootClient)
 	client.RoleAPI = lib.NewRoleAPI(rootClient)
 	client.TeamAPI = lib.NewFlowTeamAPI(rootClient)
+	client.GroupAPI = lib.NewGroupAPI(rootClient)
 	client.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 
 	RegisterFailHandler(Fail)

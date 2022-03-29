@@ -33,7 +33,7 @@ var _ = Describe("Teammate", func() {
 	var cfg *config.FlantFlowConfig
 
 	BeforeSuite(func() {
-		cfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, ConfigAPI)
+		cfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, GroupAPI, ConfigAPI)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
 	It("can be created", func() {

@@ -17,6 +17,7 @@ func Test_projectCRUD(t *testing.T) {
 	project.TenantAPI = lib.NewTenantAPI(rootClient)
 	project.RoleAPI = lib.NewRoleAPI(rootClient)
 	project.TeamAPI = lib.NewFlowTeamAPI(rootClient)
+	project.GroupAPI = lib.NewGroupAPI(rootClient)
 	project.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 	project.RoleBindingAPI = lib.NewRoleBindingAPI(rootClient)
 

@@ -33,7 +33,7 @@ var (
 var _ = Describe("Team", func() {
 	var flantFlowCfg *config.FlantFlowConfig
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TestAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TestAPI, GroupAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 	}, 1.0)
 	Describe("payload", func() {
