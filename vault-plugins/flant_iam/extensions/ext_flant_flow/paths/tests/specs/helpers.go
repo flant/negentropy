@@ -143,12 +143,8 @@ func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, grou
 	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
 	allFlantGroup := iam_specs.CreateRandomEmptyGroup(groupAPI, tenant.UUID)
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroup.UUID)
-	return &config.FlantFlowConfig{
-		FlantTenantUUID:       tenant.UUID,
-		AllFlantGroup:         allFlantGroup.UUID,
-		SpecificTeams:         map[string]string{},
-		RolesForSpecificTeams: rules,
-	}
+	cfg := configAPI.ReadConfigFlantFlow()
+	return &cfg
 }
 
 func CheckGroupHasUser(groupAPI tests.TestAPI, tenantUUID model.TenantUUID, groupUUID model.GroupUUID,

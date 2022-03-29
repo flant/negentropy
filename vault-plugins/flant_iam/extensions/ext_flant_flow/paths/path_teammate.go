@@ -220,7 +220,7 @@ func (b *teammateBackend) handleExistence(_ context.Context, req *logical.Reques
 
 	tx := b.storage.Txn(false)
 
-	obj, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id, teamID)
+	obj, err := usecase.Teammates(tx, b.getLiveConfig()).GetByID(id, teamID)
 	if err != nil {
 		return false, err
 	}
@@ -257,7 +257,7 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Create(teammate); err != nil {
+		if err := usecase.Teammates(tx, b.getLiveConfig()).Create(teammate); err != nil {
 			msg := "cannot create teammate"
 			b.Logger().Debug(msg, "err", err.Error())
 			err = fmt.Errorf("%s:%w", msg, err)
@@ -300,7 +300,7 @@ func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, 
 		TeamUUID:   teamID,
 		RoleAtTeam: data.Get("role_at_team").(string),
 	}
-	err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Update(teammate)
+	err := usecase.Teammates(tx, b.getLiveConfig()).Update(teammate)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -318,7 +318,7 @@ func (b *teammateBackend) handleDelete(_ context.Context, req *logical.Request, 
 
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
-	err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Delete(id)
+	err := usecase.Teammates(tx, b.getLiveConfig()).Delete(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -335,7 +335,7 @@ func (b *teammateBackend) handleRead(_ context.Context, req *logical.Request, da
 	teamID := data.Get("team_uuid").(string)
 	tx := b.storage.Txn(false)
 
-	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).GetByID(id, teamID)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig()).GetByID(id, teamID)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -354,7 +354,7 @@ func (b *teammateBackend) handleList(_ context.Context, req *logical.Request, da
 
 	tx := b.storage.Txn(false)
 	teamID := data.Get(repo.TeamForeignPK).(string)
-	teammates, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).List(teamID, showArchived)
+	teammates, err := usecase.Teammates(tx, b.getLiveConfig()).List(teamID, showArchived)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func (b *teammateBackend) handleRestore(_ context.Context, req *logical.Request,
 
 	id := data.Get("uuid").(string)
 
-	teammate, err := usecase.Teammates(tx, b.getLiveConfig().FlantTenantUUID).Restore(id)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig()).Restore(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
