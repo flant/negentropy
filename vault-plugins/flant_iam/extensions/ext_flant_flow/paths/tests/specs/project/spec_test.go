@@ -17,6 +17,7 @@ func Test_projectCRUD(t *testing.T) {
 	TenantAPI = testapi.NewTenantAPI(&backend)
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
+	GroupAPI = testapi.NewGroupAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 	RoleBindingAPI = testapi.NewRoleBindingAPI(&backend)
 

@@ -35,7 +35,7 @@ func (s *TeamService) Create(t *model.Team) error {
 		return err
 	}
 	if _, allowed := model.TeamTypes[t.TeamType]; !allowed {
-		return fmt.Errorf("%w: %s is not allowed", consts.ErrInvalidArg, t.TeamType)
+		return fmt.Errorf("%w: team_type: '%s' is not allowed", consts.ErrInvalidArg, t.TeamType)
 	}
 	t.Version = repo.NewResourceVersion()
 	*t, err = s.groupsController.OnCreateTeam(*t)

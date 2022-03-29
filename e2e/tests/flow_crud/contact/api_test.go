@@ -18,6 +18,7 @@ func Test_teammateCRUD(t *testing.T) {
 	contact.TenantAPI = lib.NewTenantAPI(rootClient)
 	contact.RoleAPI = lib.NewRoleAPI(rootClient)
 	contact.TeamAPI = lib.NewFlowTeamAPI(rootClient)
+	contact.GroupAPI = lib.NewGroupAPI(rootClient)
 	contact.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Contact")

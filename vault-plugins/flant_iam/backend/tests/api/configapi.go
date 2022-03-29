@@ -20,6 +20,7 @@ type ConfigAPI interface {
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
+	ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ReadConfigFlantFlow() config.FlantFlowConfig
@@ -71,6 +72,13 @@ func (b *backendBasedConfigAPI) ConfigureExtensionServerAccess(params map[string
 
 func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID) {
 	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/flant_tenant/"+flantTenantUUID,
+		map[string]interface{}{},
+		map[string]interface{}{})
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/all_flant_group/"+allFlantGroupUUID,
 		map[string]interface{}{},
 		map[string]interface{}{})
 	Expect(err).ToNot(HaveOccurred())

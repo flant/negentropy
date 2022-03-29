@@ -27,6 +27,7 @@ var (
 	TenantAPI      tests.TestAPI
 	RoleAPI        tests.TestAPI
 	TeamAPI        tests.TestAPI
+	GroupAPI       tests.TestAPI
 	ConfigAPI      testapi.ConfigAPI
 	RoleBindingAPI tests.TestAPI
 )
@@ -37,7 +38,7 @@ var _ = Describe("Project", func() {
 	var devopsTeam model.Team
 
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		client = specs.CreateRandomClient(ClientAPI)
 		devopsTeam = specs.CreateDevopsTeam(TeamAPI)

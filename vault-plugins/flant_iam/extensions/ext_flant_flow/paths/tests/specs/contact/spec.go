@@ -26,6 +26,7 @@ var (
 	TenantAPI  tests.TestAPI
 	RoleAPI    tests.TestAPI
 	TeamAPI    tests.TestAPI
+	GroupAPI   tests.TestAPI
 	ConfigAPI  testapi.ConfigAPI
 )
 
@@ -33,7 +34,7 @@ var _ = Describe("Contact", func() {
 	var client model.Client
 	var flantFlowCfg *config.FlantFlowConfig
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		client = specs.CreateRandomClient(ClientAPI)
 		specs.TryCreateProjects(ProjectAPI, client.UUID, fixtures.Projects()...)

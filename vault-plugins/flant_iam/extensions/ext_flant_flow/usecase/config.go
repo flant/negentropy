@@ -17,6 +17,7 @@ import (
 type ConfigService struct {
 	configProvider config.MutexedConfigManager
 	tenantRepo     *iam_repo.TenantRepository
+	groupRepo      *iam_repo.GroupRepository
 	teamRepo       *repo.TeamRepository
 	roleRepo       *iam_repo.RoleRepository
 }
@@ -25,12 +26,14 @@ func Config(db *io.MemoryStoreTxn) *ConfigService {
 	return &ConfigService{
 		configProvider: config.MutexedConfigManager{},
 		tenantRepo:     iam_repo.NewTenantRepository(db),
+		groupRepo:      iam_repo.NewGroupRepository(db),
 		teamRepo:       repo.NewTeamRepository(db),
 		roleRepo:       iam_repo.NewRoleRepository(db),
 	}
 }
 
-func (c *ConfigService) SetFlantTenantUUID(ctx context.Context, storage logical.Storage, flantUUID iam_model.TenantUUID) (*config.FlantFlowConfig, error) {
+func (c *ConfigService) SetFlantTenantUUID(ctx context.Context, storage logical.Storage,
+	flantUUID iam_model.TenantUUID) (*config.FlantFlowConfig, error) {
 	cfg, err := c.configProvider.GetConfig(ctx, storage)
 	if err != nil {
 		return nil, err
@@ -42,6 +45,28 @@ func (c *ConfigService) SetFlantTenantUUID(ctx context.Context, storage logical.
 		return nil, fmt.Errorf("%w:%s", err, flantUUID)
 	}
 	return c.configProvider.SetFlantTenantUUID(ctx, storage, flantUUID)
+}
+
+func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logical.Storage,
+	allFlantGroupUUID iam_model.GroupUUID) (*config.FlantFlowConfig, error) {
+	cfg, err := c.configProvider.GetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.FlantTenantUUID == "" {
+		return nil, fmt.Errorf("%w:flant_tenant_uuid should be set first", consts.ErrNotConfigured)
+	}
+	if cfg.AllFlantGroup != "" {
+		return nil, fmt.Errorf("%w:all_flant_group_uuid is already set", consts.ErrInvalidArg)
+	}
+	group, err := c.groupRepo.GetByID(allFlantGroupUUID)
+	if err != nil {
+		return nil, fmt.Errorf("%w:%s", err, allFlantGroupUUID)
+	}
+	if group.TenantUUID != cfg.FlantTenantUUID {
+		return nil, fmt.Errorf("%w:passed group doesn't refer to FlantTenant", consts.ErrInvalidArg)
+	}
+	return c.configProvider.SetAllFlantGroupUUID(ctx, storage, allFlantGroupUUID)
 }
 
 func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, teamType config.SpecializedTeam,

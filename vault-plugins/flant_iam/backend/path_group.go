@@ -210,9 +210,9 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-		if len(members) == 0 {
-			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
-		}
+		// if len(members) == 0 {
+		// 	 return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+		// }
 
 		group := &model.Group{
 			UUID:       id,
