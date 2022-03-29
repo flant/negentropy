@@ -207,6 +207,9 @@ def main():
         migration_dir = '../../configurator/vault_migrations'
     elif args.type == 'main':
         migration_dir = '../../main/vault_migrations'
+    # TODO: switch to use config file
+    os.environ["NEGENTROPY_VAULT_ADDRESS"] = vault_address
+    os.environ["NEGENTROPY_KAFKA_ENDPOINTS"] = "negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093"
     upgrade_vaults(vaults_with_url_and_token, migration_dir)
 
 
