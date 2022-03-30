@@ -4,6 +4,7 @@ import (
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	api "github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -36,6 +38,29 @@ var _ = Describe("Role binding", func() {
 		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
 		sa = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
 		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
+	})
+
+	Describe("payload", func() {
+		DescribeTable("identifier",
+			func(identifier interface{}, statusCodeCondition string) {
+				payload := fixtures.RandomRoleBindingCreatePayload()
+				payload["members"] = []map[string]interface{}{
+					{"type": model.UserType, "uuid": user.UUID},
+				}
+				payload["identifier"] = identifier
+
+				params := api.Params{
+					"tenant":       tenant.UUID,
+					"expectStatus": api.ExpectStatus(statusCodeCondition),
+				}
+
+				TestAPI.Create(params, nil, payload)
+			},
+			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
+			Entry("under_score allowed", "under_score", "%d == 201"),
+			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
+			Entry("space forbidden", "invalid space", "%d >= 400"),
+		)
 	})
 
 	It("can be created", func() {
