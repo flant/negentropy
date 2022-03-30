@@ -198,11 +198,12 @@ def main():
 
     # migrator calling
     migration_dir = None
+    migration_config = '../config/environments/' + args.migration_config + '.yaml'
     if args.type == 'configurator':
         migration_dir = '../../configurator/vault_migrations'
     elif args.type == 'main':
         migration_dir = '../../main/vault_migrations'
-    upgrade_vaults(vaults_with_url_and_token, migration_dir, args.migration_config)
+    upgrade_vaults(vaults_with_url_and_token, migration_dir, migration_config)
 
 
 def get_leader_status(vault_address: str):

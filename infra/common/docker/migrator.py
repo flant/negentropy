@@ -334,21 +334,19 @@ def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: Lis
     module.upgrade(vault['name'], vaults)
 
 
-def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_config: str = 'prod.yaml',
-                   version: str = None):
+def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_config: str, version: str = None):
     """
     operate migrations over given vaults
     :param vaults: example: [{'name': 'conf-conf', 'url': 'https://X.X.X.X:YYY', 'token': '...'}, {'name': 'auth-ew3a1', ...}, {'name': 'root-source-3', ...}]
     :param migration_dir: one of '../../configurator/vault_migrations' or '../../main/vault_migrations'
-    :param migration_config: migration config file with values for environment variables
+    :param migration_config: full path to migration config file with values for environment variables
     :param version: valid UTC timestamp, the last operated migration will not exceed, example: 20210716203309
     :return:
     """
-    print("parse migration config file:", migration_config)
+    print("start migration with '{}' config file".format(migration_config))
     cfg = yaml.safe_load(open(migration_config, "r"))
     for k, v in cfg.items():
         os.environ["NEGENTROPY_" + k.upper()] = v
-    print("upgrade_vaults run")
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
         raise Error("allow only one not core vault, got '%s'" % other_vaults)

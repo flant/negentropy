@@ -1,3 +1,4 @@
+from logging import NullHandler
 from typing import TypedDict, List
 
 import hvac
@@ -11,6 +12,9 @@ class Vault(TypedDict):
 
 
 kafka_endpoints = os.environ.get("NEGENTROPY_KAFKA_ENDPOINTS")
+if kafka_endpoints == None:
+    raise Exception("ERROR: NEGENTROPY_KAFKA_ENDPOINTS must be set")
+
 
 auth_vault_plugins = ['flant_iam_auth']
 root_vault_plugins = ['flant_iam_auth', 'flant_iam']

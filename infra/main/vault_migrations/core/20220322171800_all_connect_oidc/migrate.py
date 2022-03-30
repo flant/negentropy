@@ -11,6 +11,8 @@ class Vault(TypedDict):
 
 
 oidc_url = os.environ.get("NEGENTROPY_OIDC_URL")
+if oidc_url == None:
+    raise Exception("ERROR: NEGENTROPY_OIDC_URL must be set")
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):

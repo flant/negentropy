@@ -67,10 +67,9 @@ def run_migrations(vaults: List[Vault]):
     module_name = 'migrations'
     loader = importlib.machinery.SourceFileLoader(module_name, module_path)
     module = loader.load_module()
-    migration_config_file_path = 'infra/common/config/environments/' + args.mode + '.yaml'
+    migration_config = 'infra/common/config/environments/' + args.mode + '.yaml'
     migration_dir = 'infra/main/vault_migrations'
-    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir,
-                          migration_config=migration_config_file_path)
+    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir, migration_config)
 
 
 if __name__ == "__main__":
