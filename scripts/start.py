@@ -67,8 +67,10 @@ def run_migrations(vaults: List[Vault]):
     module_name = 'migrations'
     loader = importlib.machinery.SourceFileLoader(module_name, module_path)
     module = loader.load_module()
+    migration_config_file_path = '???/e2e.yaml'  # TODO правильно указать путь от корня negentropy
     migration_dir = 'infra/main/vault_migrations'
-    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
+    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir,
+                          config_file=migration_config_file_path)
 
 
 if __name__ == "__main__":

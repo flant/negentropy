@@ -10,12 +10,12 @@ import base64
 import json
 import os
 import subprocess
-import sys
-import time
 from typing import List, Dict
 
 import gnupg
 import hvac
+import sys
+import time
 from google.auth import compute_engine
 from google.cloud import storage
 from google.oauth2 import service_account

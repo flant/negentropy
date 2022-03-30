@@ -1,15 +1,14 @@
 import argparse
-import datetime
 import glob
 import importlib.machinery
 import os
-import sys
 import traceback
-import yaml
-import json
 from typing import TypedDict, List, Callable
 
+import datetime
 import hvac
+import sys
+import yaml
 
 # TODO
 # vault secrets enable -path migrator database
@@ -338,7 +337,8 @@ def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: Lis
     module.upgrade(vault['name'], vaults)
 
 
-def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str = None):
+def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, config_file: str = 'default_for_prod.yaml',
+                   version: str = None):
     """
     operate migrations over given vaults
     :param vaults: example: [{'name': 'conf-conf', 'url': 'https://X.X.X.X:YYY', 'token': '...'}, {'name': 'auth-ew3a1', ...}, {'name': 'root-source-3', ...}]
@@ -346,6 +346,7 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str =
     :param version: valid UTC timestamp, the last operated migration will not exceed, example: 20210716203309
     :return:
     """
+    # TODO парсинг конфига
     print("upgrade_vaults run")
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
@@ -403,10 +404,14 @@ def list_migrations_command(args):
         Console.info(line)
 
 
-def parse_migration_config(args):
-    config = yaml.safe_load(open(args.path, "r"))
+def set_config_from_file(config_path: str):
+    config = yaml.safe_load(open(config_path, "r"))
     for k, v in config.items():
         os.environ["NEGENTROPY_" + k.upper()] = v
+
+
+def parse_migration_config(args):
+    set_config_from_file(args.path)
 
 
 def main():
