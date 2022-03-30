@@ -42,6 +42,7 @@ func UserSchema() *memdb.DBSchema {
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
 						},
+						Unique: true,
 					},
 				},
 			},

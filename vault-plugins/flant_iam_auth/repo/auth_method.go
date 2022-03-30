@@ -28,6 +28,7 @@ func AuthMethodSchema() *memdb.DBSchema {
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
+						Unique: true,
 					},
 				},
 			},

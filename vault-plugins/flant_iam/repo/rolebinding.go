@@ -31,11 +31,11 @@ func RoleBindingSchema() *memdb.DBSchema {
 	}
 	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, tenantUUIDIndexer)
 
-	groupIdIndexer := &hcmemdb.StringFieldIndex{
+	rbIdIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
-	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, groupIdIndexer)
+	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, rbIdIndexer)
 
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -105,6 +105,7 @@ func RoleBindingSchema() *memdb.DBSchema {
 					TenantUUIDRoleBindingIdIndex: {
 						Name:    TenantUUIDRoleBindingIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
+						Unique:  true,
 					},
 				},
 			},

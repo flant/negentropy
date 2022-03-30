@@ -67,6 +67,7 @@ func ServerSchema() *memdb.DBSchema {
 						Indexer: &hcmemdb.CompoundIndex{
 							Indexes: serverIdentifierMultiIndexer,
 						},
+						Unique: true,
 					},
 					"tenant_project": {
 						Name: "tenant_project",
