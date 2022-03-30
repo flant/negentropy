@@ -12,7 +12,6 @@ class Vault(TypedDict):
 
 kafka_endpoints = os.environ.get("NEGENTROPY_KAFKA_ENDPOINTS")
 
-
 auth_vault_plugins = ['flant_iam_auth']
 root_vault_plugins = ['flant_iam_auth', 'flant_iam']
 

@@ -4,7 +4,7 @@ set -e
 
 export COMPOSE_PROJECT_NAME=negentropy
 
-vault_counts=$(docker ps --format '{{.Names}}' | grep vault | wc -l)
+vault_counts=$(docker ps -a --format '{{.Names}}' | grep vault | wc -l)
 if (( $vault_counts < 2 )); then
   echo "DEBUG: found single vault instance"
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.dev.yml down

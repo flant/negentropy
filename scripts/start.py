@@ -67,16 +67,15 @@ def run_migrations(vaults: List[Vault]):
     module_name = 'migrations'
     loader = importlib.machinery.SourceFileLoader(module_name, module_path)
     module = loader.load_module()
-    migration_config_file_path = '???/e2e.yaml'  # TODO правильно указать путь от корня negentropy
+    migration_config_file_path = 'infra/common/config/environments/' + args.mode + '.yaml'
     migration_dir = 'infra/main/vault_migrations'
     module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir,
-                          config_file=migration_config_file_path)
+                          migration_config=migration_config_file_path)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode')
-    parser.add_argument('--oidc-url', dest='oidc_url')
     parser.add_argument('--okta-uuid', dest='okta_uuid')
     args = parser.parse_args()
 
@@ -93,9 +92,6 @@ if __name__ == "__main__":
         vaults = [root_vault, auth_vault]
         auth_vault_name = auth_vault.name
 
-    oidc_url = args.oidc_url
-
-    print("DEBUG: OIDC URL is", oidc_url)
 
     # vaults = read_vaults_from_file()
 
@@ -193,7 +189,7 @@ if __name__ == "__main__":
 
         print("DEBUG: overwrite oidc connection settings for local environment")
         for vault in vaults:
-            vault.connect_oidc(oidc_url)
+            vault.connect_oidc("https://login.flant.com")
 
         print("DEBUG: add user to flant-all group")
         flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'

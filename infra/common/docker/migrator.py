@@ -10,8 +10,7 @@ import hvac
 import sys
 import yaml
 
-# TODO
-# vault secrets enable -path migrator database
+# TODO: vault secrets enable -path migrator database
 VERSION_KEY = 'migratorversion'
 UTC_LENGTH = 14
 
@@ -34,8 +33,6 @@ class InvalidNameError(Error):
               'The following file has an invalid name: %s' % filename
         super(InvalidNameError, self).__init__(msg)
 
-
-# code
 
 def has_method(an_object, method_name):
     return hasattr(an_object, method_name) and \
@@ -337,16 +334,20 @@ def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: Lis
     module.upgrade(vault['name'], vaults)
 
 
-def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, config_file: str = 'default_for_prod.yaml',
+def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_config: str = 'prod.yaml',
                    version: str = None):
     """
     operate migrations over given vaults
     :param vaults: example: [{'name': 'conf-conf', 'url': 'https://X.X.X.X:YYY', 'token': '...'}, {'name': 'auth-ew3a1', ...}, {'name': 'root-source-3', ...}]
     :param migration_dir: one of '../../configurator/vault_migrations' or '../../main/vault_migrations'
+    :param migration_config: migration config file with values for environment variables
     :param version: valid UTC timestamp, the last operated migration will not exceed, example: 20210716203309
     :return:
     """
-    # TODO парсинг конфига
+    print("parse migration config file:", migration_config)
+    cfg = yaml.safe_load(open(migration_config, "r"))
+    for k, v in cfg.items():
+        os.environ["NEGENTROPY_" + k.upper()] = v
     print("upgrade_vaults run")
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
@@ -404,16 +405,6 @@ def list_migrations_command(args):
         Console.info(line)
 
 
-def set_config_from_file(config_path: str):
-    config = yaml.safe_load(open(config_path, "r"))
-    for k, v in config.items():
-        os.environ["NEGENTROPY_" + k.upper()] = v
-
-
-def parse_migration_config(args):
-    set_config_from_file(args.path)
-
-
 def main():
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(help='commands')
@@ -428,11 +419,6 @@ def main():
     status_cmd = commands.add_parser("status", help="return status of vault and migrations")
     status_cmd.add_argument("migration_dir", help="the migration directory")
     status_cmd.set_defaults(func=print_status_command)
-
-    # add the config command
-    config_cmd = commands.add_parser("config", help="set specific migration config file")
-    config_cmd.add_argument("path", help="path to migration config file")
-    config_cmd.set_defaults(func=parse_migration_config)
 
     args = parser.parse_args()
     try:
