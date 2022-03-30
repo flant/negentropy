@@ -29,9 +29,9 @@ services:
       - "../infra/common/vault/vault/bin/vault:/bin/vault"
       - "./vault/vault-root.hcl:/etc/vault.hcl"
     ports:
-      - 8300:8200
+      - 8300:8300
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_ADDR=http://127.0.0.1:8300
       - VAULT_CLIENT_TIMEOUT=120s
       - DEBUG=true
     command: vault server -config /etc/vault.hcl

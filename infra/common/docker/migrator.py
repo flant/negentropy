@@ -200,7 +200,7 @@ MIGRATION_TEMPLATE = """\
 \"\"\"
 This module contains a vault migration.
 Write your migration using hvac python module. See https://hvac.readthedocs.io/en/stable/overview.html for details.
-Migration should be idempotent, if repeated write is wrong operation, use read before write 
+Migration should be idempotent, if repeated write is wrong operation, use read before write
 
 
 Migration Name: %(name)s
@@ -311,8 +311,9 @@ def split_vaults(vaults: List[VaultParams]) -> (List[VaultParams], List[VaultPar
 def is_migration_new(migration: Migration, vault: VaultParams) -> bool:
     """check is migration new for specified vault"""
     current_vault_version = get_vault_version(url=vault.get('url'), token=vault.get('token'))
+    Console.info('current_version   [%s]' % current_vault_version)
     msg = 'migration version [%s] for vault [%s]' % (migration.get_version(), vault.get('name'))
-    if migration.get_version() >= current_vault_version:
+    if migration.get_version() > current_vault_version:
         msg += ' is new'
         Console.info(msg)
         return True
@@ -376,14 +377,14 @@ def run_migrations(migrations: List[Migration], vaults: List[VaultParams],
             if is_migration_new(m, v):
                 run_migration_at_vault(m, v, vaults)
                 update_migration(m, v)
-            new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
-            if new_version == m.get_version():
-                msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
-                Console.info(msg)
-            else:
-                msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
-                Console.info(msg)
-                exit(1)
+                new_version = get_vault_version(url=v.get('url'), token=v.get('token'))
+                if new_version == m.get_version():
+                    msg = "vault [%s] upgraded successfully to version [%s]" % (v.get('name'), new_version)
+                    Console.info(msg)
+                else:
+                    msg = "vault [%s] is NOT upgraded to version [%s]" % (v.get('name'), new_version)
+                    Console.info(msg)
+                    exit(1)
 
 
 def list_migrations_command(args):
