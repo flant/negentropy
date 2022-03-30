@@ -5,6 +5,8 @@ import importlib.machinery
 import os
 import sys
 import traceback
+import yaml
+import json
 from typing import TypedDict, List, Callable
 
 import hvac
@@ -401,6 +403,12 @@ def list_migrations_command(args):
         Console.info(line)
 
 
+def parse_migration_config(args):
+    config = yaml.safe_load(open(args.path, "r"))
+    for k, v in config.items():
+        os.environ["NEGENTROPY_" + k.upper()] = v
+
+
 def main():
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(help='commands')
@@ -415,6 +423,11 @@ def main():
     status_cmd = commands.add_parser("status", help="return status of vault and migrations")
     status_cmd.add_argument("migration_dir", help="the migration directory")
     status_cmd.set_defaults(func=print_status_command)
+
+    # add the config command
+    config_cmd = commands.add_parser("config", help="set specific migration config file")
+    config_cmd.add_argument("path", help="path to migration config file")
+    config_cmd.set_defaults(func=parse_migration_config)
 
     args = parser.parse_args()
     try:

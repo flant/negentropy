@@ -10,11 +10,8 @@ class Vault(TypedDict):
     url: str
 
 
-kafka_endpoints_from_env = os.environ.get("NEGENTROPY_KAFKA_ENDPOINTS")
-if kafka_endpoints_from_env is None:
-    kafka_endpoints = "kafka:9092"
-else:
-    kafka_endpoints = kafka_endpoints_from_env
+kafka_endpoints = os.environ.get("NEGENTROPY_KAFKA_ENDPOINTS")
+
 
 auth_vault_plugins = ['flant_iam_auth']
 root_vault_plugins = ['flant_iam_auth', 'flant_iam']
