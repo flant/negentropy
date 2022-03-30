@@ -1,4 +1,4 @@
-import hvac
+import argparse
 import argparse
 import importlib as importlib
 import json
@@ -6,8 +6,8 @@ from os import path, makedirs
 from typing import List
 
 from flant_flow_ext import FlantFlowExtension
-from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, create_user_multipass
-from plugins import connect_plugins
+from flant_iam import create_role_if_not_exists, create_privileged_tenant, create_privileged_user, \
+    create_user_multipass, add_user_to_group
 from plugins import find_master_root_vault
 from server_access_ext import ServerAccessExtension
 from vault import Vault
@@ -193,3 +193,8 @@ if __name__ == "__main__":
         print("DEBUG: overwrite oidc connection settings for local environment")
         for vault in vaults:
             vault.connect_oidc(oidc_url)
+
+        print("DEBUG: add user to flant-all group")
+        flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'
+        flant_all_group_uuid = 'a5c6650a-665a-404d-acbf-708c9fd1731f'
+        add_user_to_group(iam_vault, flant_tenant_uuid, args.okta_uuid, flant_all_group_uuid)

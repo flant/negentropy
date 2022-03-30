@@ -60,3 +60,24 @@ def create_user_multipass(vault: Vault, tenant_uuid: str, user_uuid: str, ttl_se
             or not body['data']['token']:
         raise Exception("expect {'data':{'token':'xxxx', ...}, ...} dict, got:\n" + body)
     return body['data']['token']
+
+
+def add_user_to_group(vault: Vault, tenant_uuid: str, user_uuid: str, group_uuid: str):
+    """add user to group"""
+    path = "tenant/{}/group/{}".format(tenant_uuid, group_uuid)
+    resp = vault.read_from_plugin(plugin=FLANT_IAM, path=path)
+    if resp.status_code != 200:
+        raise Exception("got status={} expect 200, body:\n{}".format(resp.status_code, resp.text))
+    body = resp.json()
+    group = body['data']['group']
+    print(group['users'])
+    print(group['members'])
+    if user_uuid not in group['users']:
+        group['members'].append({'type': 'user', 'uuid': user_uuid})
+        resp = vault.write_to_plugin(plugin=FLANT_IAM, path=path, json=group)
+        if resp.status_code != 200:
+            raise Exception("got status={} expect 200, body:\n{}".format(resp.status_code, resp.text))
+        else:
+            print("user {} is added to group {}".format(user_uuid, group_uuid))
+    else:
+        print("user {} already at group {}".format(user_uuid, group_uuid))
