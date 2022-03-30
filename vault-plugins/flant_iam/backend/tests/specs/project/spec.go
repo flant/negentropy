@@ -42,7 +42,7 @@ var _ = Describe("Project", func() {
 				TestAPI.Create(params, nil, payload)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
-			Entry("under_score allowed", "under_score", "%d == 201"),
+			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
 			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
 			Entry("space forbidden", "invalid space", "%d >= 400"),
 		)

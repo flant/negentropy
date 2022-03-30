@@ -51,6 +51,10 @@ var _ = Describe("Team", func() {
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),
 			Entry("object forbidden", map[string]int{"a": 1}, "%d >= 400"),
+			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
+			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
+			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
+			Entry("space forbidden", "invalid space", "%d >= 400"),
 		)
 	})
 
