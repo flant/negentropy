@@ -357,7 +357,7 @@ func TestAuthMethod_CreateError(t *testing.T) {
 					"user_claim":        "user",
 					"groups_claim":      "groups",
 					"bound_cidrs":       "127.0.0.1/8",
-					"source":            "not exists",
+					"source":            "not_exists",
 				},
 			},
 

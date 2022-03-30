@@ -25,11 +25,11 @@ func ServiceAccountSchema() *memdb.DBSchema {
 	}
 	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, tenantUUIDIndexer)
 
-	groupIdIndexer := &hcmemdb.StringFieldIndex{
+	saIdIndexer := &hcmemdb.StringFieldIndex{
 		Field:     "Identifier",
 		Lowercase: true,
 	}
-	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, groupIdIndexer)
+	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, saIdIndexer)
 
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -61,6 +61,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 					TenantUUIDServiceAccountIdIndex: {
 						Name:    TenantUUIDServiceAccountIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
+						Unique:  true,
 					},
 				},
 			},

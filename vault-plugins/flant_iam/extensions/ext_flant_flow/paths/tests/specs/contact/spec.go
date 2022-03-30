@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -39,6 +41,27 @@ var _ = Describe("Contact", func() {
 		client = specs.CreateRandomClient(ClientAPI)
 		specs.TryCreateProjects(ProjectAPI, client.UUID, fixtures.Projects()...)
 	}, 1.0)
+
+	Describe("payload", func() {
+		DescribeTable("identifier",
+			func(identifier interface{}, statusCodeCondition string) {
+				payload := fixtures.RandomContactCreatePayload()
+				payload["identifier"] = identifier
+
+				params := tests.Params{
+					"client":       client.UUID,
+					"expectStatus": tests.ExpectStatus(statusCodeCondition),
+				}
+
+				TestAPI.Create(params, nil, payload)
+			},
+			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
+			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
+			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
+			Entry("space forbidden", "invalid space", "%d >= 400"),
+		)
+	})
+
 	It("can be created", func() {
 		createPayload := fixtures.RandomContactCreatePayload()
 		createPayload["client_uuid"] = client.UUID

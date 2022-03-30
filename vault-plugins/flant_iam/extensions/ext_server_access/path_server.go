@@ -270,7 +270,7 @@ func (b *serverBackend) handleRegister() framework.OperationFunc {
 			"multipassJWT": jwtToken,
 			"uuid":         serverUUID,
 		}}
-		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
 

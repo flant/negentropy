@@ -83,6 +83,7 @@ func GroupSchema() *memdb.DBSchema {
 					TenantUUIDGroupIdIndex: {
 						Name:    TenantUUIDGroupIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
+						Unique:  true,
 					},
 				},
 			},

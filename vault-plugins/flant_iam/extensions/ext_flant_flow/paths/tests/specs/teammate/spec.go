@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -37,9 +39,29 @@ var _ = Describe("Teammate", func() {
 		cfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, GroupAPI, ConfigAPI)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
+
+	Describe("payload", func() {
+		DescribeTable("identifier",
+			func(identifier interface{}, statusCodeCondition string) {
+				payload := fixtures.RandomTeammateCreatePayload(team)
+				payload["identifier"] = identifier
+
+				params := tests.Params{
+					"team":         team.UUID,
+					"expectStatus": tests.ExpectStatus(statusCodeCondition),
+				}
+
+				TestAPI.Create(params, nil, payload)
+			},
+			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
+			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
+			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
+			Entry("space forbidden", "invalid space", "%d >= 400"),
+		)
+	})
+
 	It("can be created", func() {
 		createPayload := fixtures.RandomTeammateCreatePayload(team)
-		createPayload["team_uuid"] = team.UUID
 		var teammateUUID model2.UserUUID
 
 		params := tests.Params{

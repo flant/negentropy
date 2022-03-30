@@ -16,7 +16,19 @@ const (
 	FeatureFlagInProjectIndex = "feature_flag_in_project"
 )
 
+const TenantUUIDProjectIdIndex = "tenant_uuid_project_id"
+
 func ProjectSchema() *memdb.DBSchema {
+	tenantUUIDProjectIdIndex := []hcmemdb.Indexer{
+		&hcmemdb.StringFieldIndex{
+			Field:     "TenantUUID",
+			Lowercase: true,
+		},
+		&hcmemdb.StringFieldIndex{
+			Field:     "Identifier",
+			Lowercase: true,
+		},
+	}
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
 			model.ProjectType: {
@@ -54,6 +66,11 @@ func ProjectSchema() *memdb.DBSchema {
 						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "FeatureFlags",
 						},
+					},
+					TenantUUIDProjectIdIndex: {
+						Name:    TenantUUIDProjectIdIndex,
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDProjectIdIndex},
+						Unique:  true,
 					},
 				},
 			},
