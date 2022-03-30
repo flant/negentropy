@@ -38,7 +38,7 @@ func (b policyBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				"rego": {
-					Type:        framework.TypeNameString,
+					Type:        framework.TypeString,
 					Description: "Rego policy",
 					Required:    true,
 				},

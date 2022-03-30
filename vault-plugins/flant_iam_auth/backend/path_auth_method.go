@@ -50,13 +50,13 @@ func pathAuthMethod(b *flantIamAuthBackend) *framework.Path {
 				Description: "Name of the authMethodConfig.",
 			},
 			"method_type": {
-				Type: framework.TypeString,
+				Type: framework.TypeNameString,
 				Description: fmt.Sprintf("Type of the authMethodConfig, either '%s', '%s', '%s' , '%s' or '%s'.",
 					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeSAPassword, model.MethodTypeMultipass, model.MethodTypeAccessToken),
 				Required: true,
 			},
 			"source": {
-				Type: framework.TypeString,
+				Type: framework.TypeNameString,
 				Description: fmt.Sprintf("authentification source for method thypes '%s', '%s' or '%s'.",
 					model.MethodTypeJWT, model.MethodTypeOIDC, model.MethodTypeAccessToken),
 			},

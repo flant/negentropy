@@ -45,11 +45,11 @@ func (b replicaBackend) paths() []*framework.Path {
 			Pattern: "replica/" + framework.GenericNameRegex("replica_name"),
 			Fields: map[string]*framework.FieldSchema{
 				"replica_name": {
-					Type:        framework.TypeString,
+					Type:        framework.TypeNameString,
 					Description: "replication name",
 				},
 				"type": {
-					Type:          framework.TypeString,
+					Type:          framework.TypeNameString,
 					Description:   "replication type",
 					AllowedValues: []interface{}{"Vault", "Metadata"},
 				},

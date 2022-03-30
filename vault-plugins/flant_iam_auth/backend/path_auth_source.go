@@ -31,7 +31,7 @@ func pathAuthSource(b *flantIamAuthBackend) *framework.Path {
 		Pattern: `auth_source/` + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
-				Type:        framework.TypeString,
+				Type:        framework.TypeNameString,
 				Description: "auth source name",
 				Required:    true,
 			},
