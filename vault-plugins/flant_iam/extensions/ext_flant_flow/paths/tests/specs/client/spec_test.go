@@ -18,6 +18,7 @@ func Test_clientCRUD(t *testing.T) {
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
 	GroupAPI = testapi.NewGroupAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+	IdentitySharingAPI = testapi.NewIdentitySharingAPI(&backend)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Client")

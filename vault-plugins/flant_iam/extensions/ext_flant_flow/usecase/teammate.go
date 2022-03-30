@@ -4,35 +4,39 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type TeammateService struct {
-	flantTenantUUID  iam_model.TenantUUID
+	liveConfig       *config.FlantFlowConfig
 	repo             *repo.TeammateRepository
 	teamRepo         *repo.TeamRepository
+	groupRepo        *iam_repo.GroupRepository
 	userService      *iam_usecase.UserService
 	groupsController GroupsController
 }
 
-func Teammates(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) *TeammateService {
+func Teammates(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *TeammateService {
 	return &TeammateService{
-		flantTenantUUID:  flantTenantUUID,
+		liveConfig:       liveConfig,
 		repo:             repo.NewTeammateRepository(db),
 		teamRepo:         repo.NewTeamRepository(db),
-		userService:      iam_usecase.Users(db, flantTenantUUID, consts.OriginFlantFlow),
-		groupsController: NewGroupsController(db, flantTenantUUID),
+		groupRepo:        iam_repo.NewGroupRepository(db),
+		userService:      iam_usecase.Users(db, liveConfig.FlantTenantUUID, consts.OriginFlantFlow),
+		groupsController: NewGroupsController(db, liveConfig.FlantTenantUUID),
 	}
 }
 
 func (s *TeammateService) Create(t *model.FullTeammate) error {
 	teammate := t.ExtractTeammate()
-	err := s.validateRole(teammate)
+	err := s.validateTeamRole(teammate)
 	if err != nil {
 		return err
 	}
@@ -46,12 +50,30 @@ func (s *TeammateService) Create(t *model.FullTeammate) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.Create(teammate)
+	err = s.repo.Create(teammate)
+	if err != nil {
+		return err
+	}
+
+	return s.addTeammateToFlantAllGroup(teammate)
+}
+
+func (s *TeammateService) addTeammateToFlantAllGroup(teammate *model.Teammate) error {
+	flantAllGroup, err := s.groupRepo.GetByID(s.liveConfig.AllFlantGroup)
+	if err != nil {
+		return err
+	}
+	flantAllGroup.Users = append(flantAllGroup.Users, teammate.UserUUID)
+	flantAllGroup.Members = append(flantAllGroup.Members, iam_model.MemberNotation{
+		Type: "user",
+		UUID: teammate.UserUUID,
+	})
+	return s.groupRepo.Update(flantAllGroup)
 }
 
 func (s *TeammateService) Update(updated *model.FullTeammate) error {
 	teammate := updated.ExtractTeammate()
-	if err := s.validateRole(teammate); err != nil {
+	if err := s.validateTeamRole(teammate); err != nil {
 		return err
 	}
 	stored, err := s.repo.GetByID(updated.UUID)
@@ -93,7 +115,12 @@ func (s *TeammateService) Delete(id iam_model.UserUUID) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(id, archiveMark)
+	err = s.repo.Delete(id, archiveMark)
+	if err != nil {
+		return err
+	}
+	// err = s.removeTeammateFromFlantAllGroup(stored) // should deleted by shared.memdb mechanics
+	return nil
 }
 
 func (s *TeammateService) GetByID(id iam_model.UserUUID, teamUUID model.TeamUUID) (*model.FullTeammate, error) {
@@ -144,10 +171,18 @@ func (s *TeammateService) Restore(id iam_model.UserUUID) (*model.FullTeammate, e
 	if err != nil {
 		return nil, err
 	}
-	return makeFullTeammate(user, tm)
+	fullTeammate, err := makeFullTeammate(user, tm)
+	if err != nil {
+		return nil, err
+	}
+	err = s.addTeammateToFlantAllGroup(fullTeammate.ExtractTeammate())
+	if err != nil {
+		return nil, err
+	}
+	return fullTeammate, nil
 }
 
-func (s *TeammateService) validateRole(t *model.Teammate) error {
+func (s *TeammateService) validateTeamRole(t *model.Teammate) error {
 	team, err := s.teamRepo.GetByID(t.TeamUUID)
 	if errors.Is(err, consts.ErrNotFound) {
 		return fmt.Errorf("%w: team with uuid:%s not found", consts.ErrInvalidArg, t.TeamUUID)

@@ -1,6 +1,7 @@
 package teammate
 
 import (
+	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -61,6 +62,7 @@ var _ = Describe("Teammate", func() {
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
 		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammateUUID, true)
+		checkTeammateInAllFlantGroup(cfg, teammateUUID, true)
 	})
 
 	It("can be read", func() {
@@ -105,6 +107,7 @@ var _ = Describe("Teammate", func() {
 		}, nil)
 		Expect(deletedData.Get("teammate.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammate.UUID, false)
+		checkTeammateInAllFlantGroup(cfg, teammate.UUID, false)
 	})
 
 	It("can be listed", func() {
@@ -195,6 +198,41 @@ var _ = Describe("Teammate", func() {
 		})
 	})
 })
+
+func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID model2.UserUUID, shouldBe bool) {
+	allFlantGroupResp := GroupAPI.Read(tests.Params{
+		"tenant": cfg.FlantTenantUUID,
+		"group":  cfg.AllFlantGroup,
+	}, nil)
+
+	userFound := false
+	for _, userUUID := range allFlantGroupResp.Get("group.users").Array() {
+		if userUUID.String() == teammateUUID {
+			userFound = true
+		}
+	}
+	if shouldBe {
+		Expect(userFound).To(BeTrue(), fmt.Sprintf("after creating teammate [%s], he should be in users of "+
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.users").String()))
+	} else {
+		Expect(userFound).To(BeFalse(), fmt.Sprintf("after deleting teammate [%s], he should be deleted from users of "+
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.users").String()))
+	}
+
+	memberFound := false
+	for _, member := range allFlantGroupResp.Get("group.members").Array() {
+		if member.Get("uuid").String() == teammateUUID {
+			memberFound = true
+		}
+	}
+	if shouldBe {
+		Expect(memberFound).To(BeTrue(), fmt.Sprintf("after creating teammate [%s], he should be in members of "+
+			"allFlantGroup [%s], got memebers:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.members").String()))
+	} else {
+		Expect(userFound).To(BeFalse(), fmt.Sprintf("after deleting teammate [%s], he should be deleted from members of "+
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.members").String()))
+	}
+}
 
 func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID, teamUUID model.TeamUUID,
 	teammateUUID model2.UserUUID, expectHas bool) {
