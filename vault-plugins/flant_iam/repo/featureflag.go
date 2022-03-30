@@ -12,7 +12,19 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
+const TenantUUIDProjectIdIndex = "tenant_uuid_project_id"
+
 func FeatureFlagSchema() *memdb.DBSchema {
+	tenantUUIDProjectIdIndex := []hcmemdb.Indexer{
+		&hcmemdb.StringFieldIndex{
+			Field:     "TenantUUID",
+			Lowercase: true,
+		},
+		&hcmemdb.StringFieldIndex{
+			Field:     "Identifier",
+			Lowercase: true,
+		},
+	}
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
 			model.FeatureFlagType: {
@@ -24,6 +36,10 @@ func FeatureFlagSchema() *memdb.DBSchema {
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
+					},
+					TenantUUIDProjectIdIndex: {
+						Name:    TenantUUIDProjectIdIndex,
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDProjectIdIndex},
 					},
 				},
 			},
