@@ -21,7 +21,8 @@ services:
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
 
   vault-root:
     platform: linux/amd64
@@ -43,7 +44,8 @@ services:
     cap_add:
       - IPC_LOCK
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
 
   test-client:
     platform: linux/amd64
@@ -51,13 +53,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test-client
-    depends_on:
-      - vault-root
-      - vault-auth
     volumes:
       - "../authd/build:/opt/authd/bin"
       - "../cli/build:/opt/cli/bin"
     command: [ "sleep", "infinity" ]
+    depends_on:
+      - vault-root
+      - vault-auth
 
   test-server:
     platform: linux/amd64
