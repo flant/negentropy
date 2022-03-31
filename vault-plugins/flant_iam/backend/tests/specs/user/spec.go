@@ -29,15 +29,7 @@ var _ = Describe("User", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomUserCreatePayload()
-				payload["identifier"] = identifier
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomUserAtTenantWithIdentifier(tenant.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -65,6 +57,20 @@ var _ = Describe("User", func() {
 			"tenant": tenant.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("tenant uniqueness of user identifier", func() {
+		identifier := uuid.New()
+		It("Can be created user with some identifier", func() {
+			tryCreateRandomUserAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomUserAtTenantWithIdentifier(tenant.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			tenant = specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomUserAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -184,3 +190,16 @@ var _ = Describe("User", func() {
 		})
 	})
 })
+
+func tryCreateRandomUserAtTenantWithIdentifier(tenantUUID string,
+	userIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomUserCreatePayload()
+	payload["identifier"] = userIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

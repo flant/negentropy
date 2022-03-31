@@ -29,15 +29,7 @@ var _ = Describe("ServiceAccount", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomServiceAccountCreatePayload()
-				payload["identifier"] = identifier
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -66,6 +58,20 @@ var _ = Describe("ServiceAccount", func() {
 			"tenant": tenant.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("tenant uniqueness of serviceAccount identifier", func() {
+		identifier := uuid.New()
+		It("Can be created serviceAccount with some identifier", func() {
+			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			tenant = specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -170,3 +176,16 @@ var _ = Describe("ServiceAccount", func() {
 		})
 	})
 })
+
+func tryCreateRandomServiceAccountAtTenantWithIdentifier(tenantUUID string,
+	serviceAccountIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomServiceAccountCreatePayload()
+	payload["identifier"] = serviceAccountIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

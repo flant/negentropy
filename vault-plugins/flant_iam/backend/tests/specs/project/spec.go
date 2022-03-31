@@ -31,15 +31,7 @@ var _ = Describe("Project", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomProjectCreatePayload()
-				payload["identifier"] = identifier
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomGroupAtTenantWithIdentifier(tenant.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -71,6 +63,20 @@ var _ = Describe("Project", func() {
 			"tenant": tenant.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("tenant uniqueness of project identifier", func() {
+		identifier := uuid.New()
+		It("Can be created project with some identifier", func() {
+			tryCreateRandomGroupAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomGroupAtTenantWithIdentifier(tenant.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			tenant = specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomGroupAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -219,3 +225,16 @@ var _ = Describe("Project", func() {
 		})
 	})
 })
+
+func tryCreateRandomGroupAtTenantWithIdentifier(tenantUUID,
+	projectIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomProjectCreatePayload()
+	payload["identifier"] = projectIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

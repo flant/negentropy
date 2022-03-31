@@ -263,9 +263,9 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 		defer tx.Abort()
 
 		if err := usecase.Contacts(tx, clientID).Create(contact); err != nil {
-			msg := "cannot create contact"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			err = fmt.Errorf("cannot create contact:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err

@@ -22,12 +22,7 @@ var _ = Describe("Feature Flag", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(name interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomFeatureFlagCreatePayload()
-				payload["name"] = name
-
-				params := api.Params{"expectStatus": api.ExpectStatus(statusCodeCondition)}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomFeatureFlagWithName(name, statusCodeCondition)
 			},
 			Entry("number allowed", rand.Intn(32), "%d == 201"), // the matter of fact ¯\_(ツ)_/¯
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
@@ -50,6 +45,14 @@ var _ = Describe("Feature Flag", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("global uniqueness of featureFlag Name", func() {
+		It("Can not be the same Name", func() {
+			name := uuid.New()
+			tryCreateRandomFeatureFlagWithName(name, "%d == 201")
+			tryCreateRandomFeatureFlagWithName(name, "%d >= 400")
+		})
 	})
 
 	It("can be listed", func() {
@@ -113,4 +116,15 @@ var _ = Describe("Feature Flag", func() {
 func createRandomFeatureFlag(featureFlagAPI api.TestAPI) (featureFlagName string) {
 	resp := featureFlagAPI.Create(api.Params{}, url.Values{}, fixtures.RandomFeatureFlagCreatePayload())
 	return resp.Get("feature_flag.name").String()
+}
+
+func tryCreateRandomFeatureFlagWithName(name interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomFeatureFlagCreatePayload()
+	payload["name"] = name
+
+	params := api.Params{
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
 }

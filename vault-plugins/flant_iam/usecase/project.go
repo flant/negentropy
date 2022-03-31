@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -22,6 +25,13 @@ func (s *ProjectService) Create(project *model.Project) error {
 	_, err := repo.NewTenantRepository(s.db).GetByID(project.TenantUUID)
 	if err != nil {
 		return err
+	}
+	_, err = repo.NewProjectRepository(s.db).GetByIdentifierAtTenant(project.TenantUUID, project.Identifier)
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return err
+	}
+	if err == nil {
+		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, project.Identifier, project.TenantUUID)
 	}
 
 	project.Version = repo.NewResourceVersion()

@@ -14,6 +14,7 @@ import (
 const (
 	TeamForeignPK   = "team_uuid"
 	ParentTeamIndex = "parent_team_uuid"
+	TeamIdentifier  = "identifier"
 )
 
 func TeamSchema() *memdb.DBSchema {
@@ -29,9 +30,8 @@ func TeamSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"identifier": {
-						Name:   "identifier",
-						Unique: true,
+					TeamIdentifier: {
+						Name: TeamIdentifier,
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "Identifier",
 							Lowercase: true,
@@ -224,4 +224,15 @@ func (r *TeamRepository) ListChildTeamIDs(parentTeamUUID model.TeamUUID, showArc
 		return nil, err
 	}
 	return ids, nil
+}
+
+func (r *TeamRepository) GetByIdentifier(identifier string) (*model.Team, error) {
+	raw, err := r.db.First(model.TeamType, TeamIdentifier, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, consts.ErrNotFound
+	}
+	return raw.(*model.Team), err
 }

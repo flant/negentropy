@@ -15,6 +15,7 @@ import (
 const (
 	TenantForeignPK          = "tenant_uuid"
 	FeatureFlagInTenantIndex = "feature_flag_in_tenant"
+	TenantIdentifier         = "identifier"
 )
 
 func TenantSchema() *memdb.DBSchema {
@@ -30,9 +31,8 @@ func TenantSchema() *memdb.DBSchema {
 							Field: "UUID",
 						},
 					},
-					"identifier": {
-						Name:   "identifier",
-						Unique: true,
+					TenantIdentifier: {
+						Name: TenantIdentifier,
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "Identifier",
 							Lowercase: true,
@@ -228,4 +228,15 @@ func (r *TenantRepository) CascadeRestore(id model.TenantUUID) (*model.Tenant, e
 		return nil, err
 	}
 	return tenant, nil
+}
+
+func (r *TenantRepository) GetByIdentifier(identifier string) (*model.Tenant, error) {
+	raw, err := r.db.First(model.TenantType, TenantIdentifier, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, consts.ErrNotFound
+	}
+	return raw.(*model.Tenant), err
 }

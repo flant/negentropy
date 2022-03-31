@@ -283,7 +283,7 @@ func (b *roleBackend) handleList() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"names": list,
+				"roles": list,
 			},
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)

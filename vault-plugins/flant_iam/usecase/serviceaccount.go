@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -30,6 +33,13 @@ func (s *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 	tenant, err := s.tenantRepo.GetByID(sa.TenantUUID)
 	if err != nil {
 		return err
+	}
+	_, err = s.repo.GetByIdentifierAtTenant(sa.TenantUUID, sa.Identifier)
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return err
+	}
+	if err == nil {
+		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, sa.Identifier, sa.TenantUUID)
 	}
 	if sa.Version != "" {
 		return consts.ErrBadVersion

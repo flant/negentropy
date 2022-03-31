@@ -22,12 +22,7 @@ var _ = Describe("Role", func() {
 	Describe("payload", func() {
 		DescribeTable("name",
 			func(name interface{}, statusCodeCondition string) {
-				createPayload := fixtures.RandomRoleCreatePayload()
-				createPayload["name"] = name
-
-				params := api.Params{"expectStatus": api.ExpectStatus(statusCodeCondition)}
-
-				TestAPI.Create(params, nil, createPayload)
+				tryCreateRandomRoleWithName(name, statusCodeCondition)
 			},
 			Entry("number is allowed", 100, "%d == 201"),
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
@@ -60,6 +55,14 @@ var _ = Describe("Role", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("global uniqueness of role Name", func() {
+		It("Can not be the same Name", func() {
+			name := uuid.New()
+			tryCreateRandomRoleWithName(name, "%d == 201")
+			tryCreateRandomRoleWithName(name, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -153,3 +156,14 @@ var _ = Describe("Role", func() {
 		})
 	})
 })
+
+func tryCreateRandomRoleWithName(name interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomRoleCreatePayload()
+	payload["name"] = name
+
+	params := api.Params{
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

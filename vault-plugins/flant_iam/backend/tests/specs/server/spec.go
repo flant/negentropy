@@ -64,18 +64,7 @@ var _ = Describe("Server", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := api.Params{
-					"identifier": identifier,
-					"labels":     map[string]string{"system": "ubuntu20"},
-				}
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"project":      project.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, project.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -100,6 +89,20 @@ var _ = Describe("Server", func() {
 			"project": project.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("project uniqueness of server identifier", func() {
+		identifier := uuid.New()
+		It("Can be created server with some identifier", func() {
+			tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, project.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant & project", func() {
+			tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, project.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other project", func() {
+			otherProject := specs.CreateRandomProject(ProjectAPI, tenant.UUID)
+			tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, otherProject.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -217,4 +220,21 @@ func createRoleForExtServAccess(roleName string) {
 				"scope":       model.RoleScopeProject,
 			})
 	}
+}
+
+func tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenantUUID string, projectUUID string,
+	serverIdentifier interface{}, statusCodeCondition string) {
+
+	payload := api.Params{
+		"identifier": serverIdentifier,
+		"labels":     map[string]string{"system": "ubuntu20"},
+	}
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"project":      projectUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
 }

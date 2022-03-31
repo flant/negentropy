@@ -17,19 +17,16 @@ const (
 )
 
 func ServiceAccountSchema() *memdb.DBSchema {
-	var tenantUUIDServiceAccountIdIndexer []hcmemdb.Indexer
-
-	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "TenantUUID",
-		Lowercase: true,
+	tenantUUIDServiceAccountIdIndexer := []hcmemdb.Indexer{
+		&hcmemdb.StringFieldIndex{
+			Field:     "TenantUUID",
+			Lowercase: true,
+		},
+		&hcmemdb.StringFieldIndex{
+			Field:     "Identifier",
+			Lowercase: true,
+		},
 	}
-	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, tenantUUIDIndexer)
-
-	saIdIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "Identifier",
-		Lowercase: true,
-	}
-	tenantUUIDServiceAccountIdIndexer = append(tenantUUIDServiceAccountIdIndexer, saIdIndexer)
 
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -61,7 +58,6 @@ func ServiceAccountSchema() *memdb.DBSchema {
 					TenantUUIDServiceAccountIdIndex: {
 						Name:    TenantUUIDServiceAccountIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDServiceAccountIdIndexer},
-						Unique:  true,
 					},
 				},
 			},
@@ -243,4 +239,22 @@ func CalcServiceAccountFullIdentifier(saID, tenantID string) string {
 	domain := "serviceaccount." + tenantID
 
 	return saID + "@" + domain
+}
+
+func (r *ServiceAccountRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.ServiceAccount, error) {
+	iter, err := r.db.Get(model.ServiceAccountType, TenantUUIDServiceAccountIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.ServiceAccount)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
 }

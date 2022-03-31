@@ -43,15 +43,7 @@ var _ = Describe("Teammate", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomTeammateCreatePayload(team)
-				payload["identifier"] = identifier
-
-				params := tests.Params{
-					"team":         team.UUID,
-					"expectStatus": tests.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomTeammateAtTeamWithIdentifier(team, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -85,6 +77,20 @@ var _ = Describe("Teammate", func() {
 		TestAPI.Create(params, url.Values{}, createPayload)
 		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammateUUID, true)
 		checkTeammateInAllFlantGroup(cfg, teammateUUID, true)
+	})
+
+	Context("global uniqueness of teammate identifier", func() {
+		identifier := uuid.New()
+		It("Can be created teammate with some identifier", func() {
+			tryCreateRandomTeammateAtTeamWithIdentifier(team, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same team", func() {
+			tryCreateRandomTeammateAtTeamWithIdentifier(team, identifier, "%d >= 400")
+		})
+		It("Can not be same identifier at other team", func() {
+			team = specs.CreateRandomTeam(TeamAPI)
+			tryCreateRandomTeammateAtTeamWithIdentifier(team, identifier, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -271,4 +277,17 @@ func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID,
 	Expect(directLinkedGroup.Map()).To(HaveKey("uuid"))
 	directGroupUUID := directLinkedGroup.Get("uuid").String()
 	specs.CheckGroupHasUser(GroupAPI, flantTenantUUID, directGroupUUID, teammateUUID, expectHas)
+}
+
+func tryCreateRandomTeammateAtTeamWithIdentifier(team model.Team,
+	teammateIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomTeammateCreatePayload(team)
+	payload["identifier"] = teammateIdentifier
+
+	params := tests.Params{
+		"team":         team.UUID,
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
 }

@@ -171,11 +171,17 @@ func CreateRandomRole(roleAPI api.TestAPI) model.Role {
 }
 
 func CreateRoles(roleAPI api.TestAPI, roles ...model.Role) {
+	rolesData := roleAPI.List(api.Params{}, nil).Get("roles")
+	roleNames := map[string]struct{}{}
+	for _, roleData := range rolesData.Array() {
+		roleNames[roleData.Get("name").String()] = struct{}{}
+	}
 	for _, r := range roles {
-		createPayload := fixtures.RoleCreatePayload(r)
-		params := api.Params{}
-		// don't check errors, as global roles can be already created
-		roleAPI.Create(params, url.Values{}, createPayload)
+		if _, found := roleNames[r.Name]; !found {
+			createPayload := fixtures.RoleCreatePayload(r)
+			params := api.Params{}
+			roleAPI.Create(params, url.Values{}, createPayload)
+		}
 	}
 }
 

@@ -22,20 +22,16 @@ const (
 type GroupObjectType string
 
 func GroupSchema() *memdb.DBSchema {
-	var tenantUUIDGroupIdIndexer []hcmemdb.Indexer
-
-	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "TenantUUID",
-		Lowercase: true,
+	tenantUUIDGroupIdIndexer := []hcmemdb.Indexer{
+		&hcmemdb.StringFieldIndex{
+			Field:     "TenantUUID",
+			Lowercase: true,
+		},
+		&hcmemdb.StringFieldIndex{
+			Field:     "Identifier",
+			Lowercase: true,
+		},
 	}
-	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, tenantUUIDIndexer)
-
-	groupIdIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "Identifier",
-		Lowercase: true,
-	}
-	tenantUUIDGroupIdIndexer = append(tenantUUIDGroupIdIndexer, groupIdIndexer)
-
 	return &memdb.DBSchema{
 
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -83,7 +79,6 @@ func GroupSchema() *memdb.DBSchema {
 					TenantUUIDGroupIdIndex: {
 						Name:    TenantUUIDGroupIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDGroupIdIndexer},
-						Unique:  true,
 					},
 				},
 			},
@@ -246,17 +241,6 @@ func (r *GroupRepository) Sync(objID string, data []byte) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) GetByIdentifier(tenantUUID, identifier string) (*model.Group, error) {
-	raw, err := r.db.First(model.GroupType, TenantUUIDGroupIdIndex, tenantUUID, identifier)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, consts.ErrNotFound
-	}
-	return raw.(*model.Group), err
-}
-
 func (r *GroupRepository) FindDirectParentGroupsByUserUUID(userUUID model.UserUUID) (map[model.GroupUUID]struct{}, error) {
 	iter, err := r.db.Get(model.GroupType, UserInGroupIndex, userUUID)
 	if err != nil {
@@ -388,4 +372,22 @@ func extractGroupUUIDs(iter hcmemdb.ResultIterator, showArchived bool) (map[mode
 		ids[g.UUID] = struct{}{}
 	}
 	return ids, nil
+}
+
+func (r *GroupRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.Group, error) {
+	iter, err := r.db.Get(model.GroupType, TenantUUIDGroupIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.Group)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
 }

@@ -11,7 +11,19 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
+const TenantUUIDUserIdIndex = "tenant_uuid_user_id"
+
 func UserSchema() *memdb.DBSchema {
+	tenantUUIDUserIdIndexer := []hcmemdb.Indexer{
+		&hcmemdb.StringFieldIndex{
+			Field:     "TenantUUID",
+			Lowercase: true,
+		},
+		&hcmemdb.StringFieldIndex{
+			Field:     "Identifier",
+			Lowercase: true,
+		},
+	}
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
 			model.UserType: {
@@ -37,12 +49,9 @@ func UserSchema() *memdb.DBSchema {
 							Field: "Version",
 						},
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &hcmemdb.StringFieldIndex{
-							Field: "Identifier",
-						},
-						Unique: true,
+					TenantUUIDUserIdIndex: {
+						Name:    TenantUUIDUserIdIndex,
+						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDUserIdIndexer},
 					},
 				},
 			},
@@ -220,4 +229,22 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (r *UserRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.User, error) {
+	iter, err := r.db.Get(model.UserType, TenantUUIDUserIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.User)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
 }

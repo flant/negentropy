@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -18,8 +21,15 @@ func Policies(db *io.MemoryStoreTxn) *PolicyService {
 	}
 }
 
-func (s *PolicyService) Create(t *model.Policy) error {
-	return s.repo.Create(t)
+func (s *PolicyService) Create(policy *model.Policy) error {
+	_, err := s.repo.GetByID(policy.Name)
+	if !errors.Is(err, consts.ErrNotFound) {
+		return fmt.Errorf("%w: %s", consts.ErrAlreadyExists, policy.Name)
+	}
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return err
+	}
+	return s.repo.Create(policy)
 }
 
 func (s *PolicyService) Update(updated *model.Policy) error {
