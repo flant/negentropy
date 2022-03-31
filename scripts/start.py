@@ -186,10 +186,6 @@ if __name__ == "__main__":
         create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
                               args.okta_uuid, 3600)
 
-        print("DEBUG: overwrite oidc connection settings for local environment")
-        for vault in vaults:
-            vault.connect_oidc("https://login.flant.com")
-
         print("DEBUG: add user to flant-all group")
         flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'
         flant_all_group_uuid = 'a5c6650a-665a-404d-acbf-708c9fd1731f'
