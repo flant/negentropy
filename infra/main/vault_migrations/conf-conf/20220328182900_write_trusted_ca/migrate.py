@@ -1,4 +1,5 @@
 from typing import TypedDict, List
+from unicodedata import name
 
 import hvac
 import json
@@ -32,4 +33,5 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(vault_conf_ca_name)
     ca = str(blob.download_as_string(), 'utf-8')
+    print("INFO: upload vault conf trusted ca at '{}' vault".format(vault_name))
     vault_client.write(path='auth/cert/certs/auth', display_name='auth', policies='auth', certificate=ca, ttl='3600')

@@ -19,5 +19,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: configure flant_iam at 'root' vault")
     root_vault = next(v for v in vaults if 'root' in v['name'])
     root_vault_client = hvac.Client(url=root_vault['url'], token=root_vault['token'])
+    # TODO: check existing public keys and add a new one to them
     root_vault_client.write(path='flant_iam/kafka/configure', self_topic_name="root_source",
                             peers_public_keys=all_pubkeys)

@@ -28,5 +28,3 @@ def upgrade(vault_name: str, vaults: List[Vault]):
             vault_client.write(path='flant_iam/configure_extension/server_access', roles_for_servers=["servers"],
                                role_for_ssh_access='ssh', delete_expired_password_seeds_after='1000000',
                                expire_password_seed_after_reveal_in='1000000', last_allocated_uid='10000')
-        else:
-            raise Exception("ERROR: not valid plugin_name")
