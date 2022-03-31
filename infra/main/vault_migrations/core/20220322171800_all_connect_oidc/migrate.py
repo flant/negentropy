@@ -10,11 +10,9 @@ class Vault(TypedDict):
     url: str
 
 
-oidc_url_from_env = os.environ.get("NEGENTROPY_OIDC_URL")
-if oidc_url_from_env is None:
-    oidc_url = "http://oidc-mock:9998"
-else:
-    oidc_url = oidc_url_from_env
+oidc_url = os.environ.get("NEGENTROPY_OIDC_URL")
+if oidc_url == None:
+    raise Exception("ERROR: NEGENTROPY_OIDC_URL must be set")
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):

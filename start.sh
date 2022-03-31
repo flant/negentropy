@@ -9,15 +9,15 @@ export COMPOSE_PROJECT_NAME="negentropy"
 function usage {
   echo -e "Usage: $(basename "$0") [option]\n"
   echo "Options:"
-  echo "  e2e		e2e mode"
-  echo "  dev		dev mode"
-  echo "  debug		debug mode"
+  echo "  e2e		for e2e tests"
+  echo "  single	single vault"
+  echo "  debug		enable debug"
   echo "  local		local development"
 }
 
 case "$1" in
-  dev)
-    export MODE="dev"
+  single)
+    export MODE="single"
     ;;
   e2e)
     export MODE="e2e"
@@ -39,15 +39,12 @@ esac
 
 echo DEBUG: MODE is $MODE
 
-if [[ $MODE == "dev" ]]; then
-  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.dev.yml up -d
-  export OIDC_URL="http://oidc-mock:9998"
+if [[ $MODE == "single" ]]; then
+  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.single.yml up -d
 elif [[ $MODE == "e2e" ]]; then
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml up -d
-  export OIDC_URL="http://oidc-mock:9998"
 elif [[ $MODE == "debug" ]]; then
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.debug.yml up -d
-  export OIDC_URL="http://oidc-mock:9998"
   while true; do
     read -p "Are you ready? (Y/n) " ANSWER;
       if [[ -z "$ANSWER" ]]; then ANSWER=Y; fi
@@ -58,7 +55,6 @@ elif [[ $MODE == "debug" ]]; then
   done
 elif [[ $MODE == "local" ]]; then
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml up -d
-  export OIDC_URL="https://login.flant.com"
   if [[ -f okta-uuid ]]; then
     OKTA_UUID=$(cat okta-uuid)
   fi
@@ -77,9 +73,9 @@ virtualenv scripts/environment
 source scripts/environment/bin/activate
 pip3 install -r scripts/requirements.txt
 if [[ $MODE == "local" ]]; then
-  python3 scripts/start.py --mode $MODE --oidc-url $OIDC_URL --okta-uuid $OKTA_UUID
+  python3 scripts/start.py --mode $MODE --okta-uuid $OKTA_UUID
 else
-  python3 scripts/start.py --mode $MODE --oidc-url $OIDC_URL
+  python3 scripts/start.py --mode $MODE
 fi
 
 deactivate

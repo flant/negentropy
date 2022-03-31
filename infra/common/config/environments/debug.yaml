@@ -1,0 +1,3 @@
+environment: docker
+kafka_endpoints: kafka:9092
+oidc_url: http://oidc-mock:9998

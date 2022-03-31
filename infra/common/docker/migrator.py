@@ -1,16 +1,16 @@
 import argparse
-import datetime
 import glob
 import importlib.machinery
 import os
-import sys
 import traceback
 from typing import TypedDict, List, Callable
 
+import datetime
 import hvac
+import sys
+import yaml
 
-# TODO
-# vault secrets enable -path migrator database
+# TODO: vault secrets enable -path migrator database
 VERSION_KEY = 'migratorversion'
 UTC_LENGTH = 14
 
@@ -33,8 +33,6 @@ class InvalidNameError(Error):
               'The following file has an invalid name: %s' % filename
         super(InvalidNameError, self).__init__(msg)
 
-
-# code
 
 def has_method(an_object, method_name):
     return hasattr(an_object, method_name) and \
@@ -336,15 +334,19 @@ def run_migration_at_vault(migration: Migration, vault: VaultParams, vaults: Lis
     module.upgrade(vault['name'], vaults)
 
 
-def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, version: str = None):
+def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_config: str, version: str = None):
     """
     operate migrations over given vaults
     :param vaults: example: [{'name': 'conf-conf', 'url': 'https://X.X.X.X:YYY', 'token': '...'}, {'name': 'auth-ew3a1', ...}, {'name': 'root-source-3', ...}]
     :param migration_dir: one of '../../configurator/vault_migrations' or '../../main/vault_migrations'
+    :param migration_config: full path to migration config file with values for environment variables
     :param version: valid UTC timestamp, the last operated migration will not exceed, example: 20210716203309
     :return:
     """
-    print("upgrade_vaults run")
+    print("start migration with '{}' config file".format(migration_config))
+    cfg = yaml.safe_load(open(migration_config, "r"))
+    for k, v in cfg.items():
+        os.environ["NEGENTROPY_" + k.upper()] = v
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
         raise Error("allow only one not core vault, got '%s'" % other_vaults)

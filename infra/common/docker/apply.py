@@ -10,12 +10,12 @@ import base64
 import json
 import os
 import subprocess
-import sys
-import time
 from typing import List, Dict
 
 import gnupg
 import hvac
+import sys
+import time
 from google.auth import compute_engine
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -101,6 +101,7 @@ def get_vault_list_with_statuses(args: argparse.Namespace) -> (List, List):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--type', dest='type', help='configurator or main')
+    parser.add_argument('--migration-config', dest='migration_config')
     parser.add_argument('--target-migration-version', dest='target_migration_version')
     parser.add_argument('--save-root-tokens-on-initialization', dest='save_root_tokens', action='store_true')
     args = parser.parse_args()
@@ -197,14 +198,12 @@ def main():
 
     # migrator calling
     migration_dir = None
+    migration_config = '../config/environments/' + args.migration_config + '.yaml'
     if args.type == 'configurator':
         migration_dir = '../../configurator/vault_migrations'
     elif args.type == 'main':
         migration_dir = '../../main/vault_migrations'
-    # TODO: switch to use config file
-    os.environ["NEGENTROPY_KAFKA_ENDPOINTS"] = "negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093"
-    os.environ["NEGENTROPY_OIDC_URL"] = "https://login.flant.com"
-    upgrade_vaults(vaults_with_url_and_token, migration_dir)
+    upgrade_vaults(vaults_with_url_and_token, migration_dir, migration_config)
 
 
 def get_leader_status(vault_address: str):

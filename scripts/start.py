@@ -1,5 +1,4 @@
 import argparse
-import argparse
 import importlib as importlib
 import json
 from os import path, makedirs
@@ -68,14 +67,14 @@ def run_migrations(vaults: List[Vault]):
     module_name = 'migrations'
     loader = importlib.machinery.SourceFileLoader(module_name, module_path)
     module = loader.load_module()
+    migration_config = 'infra/common/config/environments/' + args.mode + '.yaml'
     migration_dir = 'infra/main/vault_migrations'
-    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir)
+    module.upgrade_vaults([{'name': v.name, 'url': v.url, 'token': v.token} for v in vaults], migration_dir, migration_config)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode')
-    parser.add_argument('--oidc-url', dest='oidc_url')
     parser.add_argument('--okta-uuid', dest='okta_uuid')
     args = parser.parse_args()
 
@@ -92,9 +91,6 @@ if __name__ == "__main__":
         vaults = [root_vault, auth_vault]
         auth_vault_name = auth_vault.name
 
-    oidc_url = args.oidc_url
-
-    print("DEBUG: OIDC URL is", oidc_url)
 
     # vaults = read_vaults_from_file()
 
@@ -189,10 +185,6 @@ if __name__ == "__main__":
                                "local-admin")
         create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
                               args.okta_uuid, 3600)
-
-        print("DEBUG: overwrite oidc connection settings for local environment")
-        for vault in vaults:
-            vault.connect_oidc(oidc_url)
 
         print("DEBUG: add user to flant-all group")
         flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'

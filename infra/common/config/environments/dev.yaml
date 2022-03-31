@@ -1,0 +1,3 @@
+environment: dev
+kafka_endpoints: negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093
+oidc_url: https://login.flant.com
