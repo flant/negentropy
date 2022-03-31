@@ -19,6 +19,12 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   test-client:
     container_name: test-client
@@ -30,7 +36,8 @@ services:
       - "../cli/build:/opt/cli/bin"
     command: sleep infinity
     depends_on:
-      - vault
+      vault:
+        condition: service_healthy
 
   test-server:
     container_name: test-server
@@ -44,7 +51,8 @@ services:
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:
-      - vault
+      vault:
+        condition: service_healthy
 
 networks:
   default:

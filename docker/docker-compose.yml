@@ -20,6 +20,12 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "nc", "-z", "127.0.0.1:8200"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   vault-root:
     image: alpine:3.14.2
@@ -40,6 +46,12 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "nc", "-z", "127.0.0.1:8300"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   test-client:
     platform: linux/amd64
@@ -52,8 +64,10 @@ services:
       - "../cli/build:/opt/cli/bin"
     command: sleep infinity
     depends_on:
-      - vault-root
-      - vault-auth
+      vault-root:
+        condition: service_healthy
+      vault-auth:
+        condition: service_healthy
 
   test-server:
     platform: linux/amd64
@@ -68,8 +82,10 @@ services:
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:
-      - vault-root
-      - vault-auth
+      vault-root:
+        condition: service_healthy
+      vault-auth:
+        condition: service_healthy
 
 networks:
   default:
