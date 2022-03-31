@@ -19,5 +19,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: configure flant_iam replicas at 'root' vault")
     root_vault = next(v for v in vaults if 'root' in v['name'])
     root_vault_client = hvac.Client(url=root_vault['url'], token=root_vault['token'])
+    # TODO: check existing replicas and add a new one to them
     for v in all_pubkeys:
         root_vault_client.write(path='flant_iam/replica/' + v['name'], type='Vault', public_key=v['public_key'])
