@@ -9,7 +9,7 @@ class Vault(TypedDict):
     url: str
 
 
-roles = ['ssh', 'server']
+roles = ['ssh', 'servers']
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
