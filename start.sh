@@ -9,15 +9,15 @@ export COMPOSE_PROJECT_NAME="negentropy"
 function usage {
   echo -e "Usage: $(basename "$0") [option]\n"
   echo "Options:"
-  echo "  e2e		e2e mode"
-  echo "  dev		dev mode"
-  echo "  debug		debug mode"
+  echo "  e2e		for e2e tests"
+  echo "  single	single vault"
+  echo "  debug		enable debug"
   echo "  local		local development"
 }
 
 case "$1" in
-  dev)
-    export MODE="dev"
+  single)
+    export MODE="single"
     ;;
   e2e)
     export MODE="e2e"
@@ -39,8 +39,8 @@ esac
 
 echo DEBUG: MODE is $MODE
 
-if [[ $MODE == "dev" ]]; then
-  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.dev.yml up -d
+if [[ $MODE == "single" ]]; then
+  docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.single.yml up -d
 elif [[ $MODE == "e2e" ]]; then
   docker-compose -f docker/docker-compose.common.yml -f docker/docker-compose.yml up -d
 elif [[ $MODE == "debug" ]]; then
