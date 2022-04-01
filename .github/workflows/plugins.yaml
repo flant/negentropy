@@ -37,7 +37,7 @@ jobs:
 
       - name: Lint ${{ matrix.plugin }}
         working-directory: vault-plugins/${{ matrix.plugin }}
-        run: ${GITHUB_WORKSPACE}/bin/golangci-lint run ./... --config ../.golangci.yaml
+        run: ${GITHUB_WORKSPACE}/bin/golangci-lint --version; ${GITHUB_WORKSPACE}/bin/golangci-lint run ./... --config ../.golangci.yaml
 
       - name: Test ${{ matrix.plugin }}
         working-directory: vault-plugins/${{ matrix.plugin }}

@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -18,7 +21,15 @@ func Featureflags(db *io.MemoryStoreTxn) *FeatureFlagService {
 }
 
 func (s *FeatureFlagService) Create(featureFlag *model.FeatureFlag) error {
-	return repo.NewFeatureFlagRepository(s.db).Create(featureFlag)
+	repo := repo.NewFeatureFlagRepository(s.db)
+	_, err := repo.GetByID(featureFlag.Name)
+	if !errors.Is(err, consts.ErrNotFound) {
+		return fmt.Errorf("%w: %s", consts.ErrAlreadyExists, featureFlag.Name)
+	}
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return err
+	}
+	return repo.Create(featureFlag)
 }
 
 func (s *FeatureFlagService) List(showArchived bool) ([]*model.FeatureFlag, error) {

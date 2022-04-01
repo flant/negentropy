@@ -35,19 +35,7 @@ var _ = Describe("Group", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomGroupCreatePayload()
-				payload["members"] = map[string]interface{}{
-					"type": "user",
-					"uuid": user.UUID,
-				}
-				payload["identifier"] = identifier
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -83,6 +71,21 @@ var _ = Describe("Group", func() {
 			"tenant": tenant.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("tenant uniqueness of group identifier", func() {
+		identifier := uuid.New()
+		It("Can be created group with some identifier", func() {
+			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			tenant = specs.CreateRandomTenant(TenantAPI)
+			user = specs.CreateRandomUser(UserAPI, tenant.UUID)
+			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -208,6 +211,23 @@ var _ = Describe("Group", func() {
 		})
 	})
 })
+
+func tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenantUUID, userUUID string,
+	groupIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomGroupCreatePayload()
+	payload["members"] = map[string]interface{}{
+		"type": "user",
+		"uuid": userUUID,
+	}
+	payload["identifier"] = groupIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}
 
 func createGroup(tenantAPI, userAPI, groupAPI api.TestAPI) *model.Group {
 	tenant := specs.CreateRandomTenant(tenantAPI)

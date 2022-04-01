@@ -225,9 +225,9 @@ func (b *groupBackend) handleCreate(expectID bool) framework.OperationFunc {
 		defer tx.Abort()
 
 		if err = usecase.Groups(tx, tenantUUID, consts.OriginIAM).Create(group); err != nil {
-			msg := "cannot create group"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			err = fmt.Errorf("cannot create group:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)

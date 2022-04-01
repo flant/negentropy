@@ -48,15 +48,7 @@ var _ = Describe("Project", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomProjectCreatePayload()
-				payload["identifier"] = identifier
-
-				params := tests.Params{
-					"client":       client.UUID,
-					"expectStatus": tests.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -88,6 +80,20 @@ var _ = Describe("Project", func() {
 			"client": client.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("client uniqueness of project identifier", func() {
+		identifier := uuid.New()
+		It("Can be created project with some identifier", func() {
+			tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			client = specs.CreateRandomClient(ClientAPI)
+			tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, "%d == 201")
+		})
 	})
 
 	var project model.Project
@@ -282,3 +288,16 @@ var _ = Describe("Project", func() {
 		})
 	})
 })
+
+func tryCreateRandomProjectAtClientWithIdentifier(clientUUID string,
+	projectIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomProjectCreatePayload()
+	payload["identifier"] = projectIdentifier
+
+	params := tests.Params{
+		"client":       clientUUID,
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

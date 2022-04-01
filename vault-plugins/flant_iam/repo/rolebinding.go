@@ -373,3 +373,21 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(roles ...model.Ro
 	}
 	return roleBindings, nil
 }
+
+func (r *RoleBindingRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.RoleBinding, error) {
+	iter, err := r.db.Get(model.RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.RoleBinding)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
+}

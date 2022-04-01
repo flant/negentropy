@@ -70,7 +70,6 @@ func ProjectSchema() *memdb.DBSchema {
 					TenantUUIDProjectIdIndex: {
 						Name:    TenantUUIDProjectIdIndex,
 						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDProjectIdIndex},
-						Unique:  true,
 					},
 				},
 			},
@@ -221,4 +220,22 @@ func (r *ProjectRepository) Restore(id model.ProjectUUID) (*model.Project, error
 		return nil, err
 	}
 	return project, nil
+}
+
+func (r *ProjectRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.Project, error) {
+	iter, err := r.db.Get(model.ProjectType, TenantUUIDProjectIdIndex, tenantUUID, identifier)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.Project)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
 }

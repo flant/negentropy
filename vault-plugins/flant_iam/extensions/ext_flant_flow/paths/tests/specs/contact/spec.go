@@ -45,15 +45,7 @@ var _ = Describe("Contact", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomContactCreatePayload()
-				payload["identifier"] = identifier
-
-				params := tests.Params{
-					"client":       client.UUID,
-					"expectStatus": tests.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -87,6 +79,20 @@ var _ = Describe("Contact", func() {
 			"client": client.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("tenant uniqueness of contact identifier", func() {
+		identifier := uuid.New()
+		It("Can be created contact with some identifier", func() {
+			tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			client = specs.CreateRandomClient(ClientAPI)
+			tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, "%d == 201")
+		})
 	})
 
 	It("can be read", func() {
@@ -208,3 +214,16 @@ var _ = Describe("Contact", func() {
 		})
 	})
 })
+
+func tryCreateRandomContactAtTenantWithIdentifier(clientUUID string,
+	contactIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomContactCreatePayload()
+	payload["identifier"] = contactIdentifier
+
+	params := tests.Params{
+		"client":       clientUUID,
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

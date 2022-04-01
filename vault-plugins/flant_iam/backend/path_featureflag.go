@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -115,9 +116,9 @@ func (b *featureFlagBackend) handleCreate() framework.OperationFunc {
 		defer tx.Abort()
 
 		if err := usecase.Featureflags(tx).Create(featureFlag); err != nil {
-			msg := "cannot create feature flag"
-			b.Logger().Error(msg, "err", err.Error())
-			return backentutils.ResponseErrMessage(req, msg, http.StatusInternalServerError)
+			err = fmt.Errorf("cannot create feature flag:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
@@ -161,7 +162,7 @@ func (b *featureFlagBackend) handleList() framework.OperationFunc {
 
 		list, err := usecase.Featureflags(tx).List(showArchived)
 		if err != nil {
-			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+			return backentutils.ResponseErr(req, err)
 		}
 
 		resp := &logical.Response{

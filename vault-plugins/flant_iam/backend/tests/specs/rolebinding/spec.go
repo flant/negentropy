@@ -43,18 +43,7 @@ var _ = Describe("Role binding", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomRoleBindingCreatePayload()
-				payload["members"] = []map[string]interface{}{
-					{"type": model.UserType, "uuid": user.UUID},
-				}
-				payload["identifier"] = identifier
-
-				params := api.Params{
-					"tenant":       tenant.UUID,
-					"expectStatus": api.ExpectStatus(statusCodeCondition),
-				}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
@@ -105,6 +94,19 @@ var _ = Describe("Role binding", func() {
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
+	Context("tenant uniqueness of roleBinding identifier", func() {
+		identifier := uuid.New()
+		It("Can be created roleBinding with some identifier", func() {
+			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
+		})
+		It("Can not be the same identifier at the same tenant", func() {
+			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d >= 400")
+		})
+		It("Can be same identifier at other tenant", func() {
+			tenant = specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
+		})
+	})
 	It("can be read", func() {
 		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
 
@@ -215,3 +217,20 @@ var _ = Describe("Role binding", func() {
 		})
 	})
 })
+
+func tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenantUUID, userUUID string,
+	roleBindingIdentifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomRoleBindingCreatePayload()
+	payload["members"] = map[string]interface{}{
+		"type": "user",
+		"uuid": userUUID,
+	}
+	payload["identifier"] = roleBindingIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

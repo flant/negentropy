@@ -39,14 +39,8 @@ var _ = Describe("Client", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomClientCreatePayload()
-				payload["identifier"] = identifier
-
-				params := tests.Params{"expectStatus": tests.ExpectStatus(statusCodeCondition)}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomClientWithIdentifier(identifier, statusCodeCondition)
 			},
-			Entry("number allowed", 100, "%d == 201"),
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),
@@ -79,6 +73,14 @@ var _ = Describe("Client", func() {
 
 		// Check identity_sharing is created
 		checkIdentitySharingExists(flantFlowCfg, clientUUID, true)
+	})
+
+	Context("global uniqueness of client Identifier", func() {
+		It("Can not be the same Identifier", func() {
+			identifier := uuid.New()
+			tryCreateRandomClientWithIdentifier(identifier, "%d == 201")
+			tryCreateRandomClientWithIdentifier(identifier, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -234,4 +236,15 @@ func checkIdentitySharingExists(flantFlowCfg *config.FlantFlowConfig, clientUUID
 			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroup,
 			flantFlowCfg.FlantTenantUUID, clientUUID, resp.Get("identity_sharings").String()))
 	}
+}
+
+func tryCreateRandomClientWithIdentifier(identifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomClientCreatePayload()
+	payload["identifier"] = identifier
+
+	params := tests.Params{
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
 }

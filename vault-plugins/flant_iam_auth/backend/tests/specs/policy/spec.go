@@ -10,7 +10,8 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	iam_fixtures "github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/fixtures"
-	tests "github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -36,6 +37,14 @@ var _ = Describe("Policy", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("global uniqueness of policy Name", func() {
+		It("Can not be the same Name", func() {
+			name := uuid.New()
+			tryCreateRandomPolicyWithName(name, "%d == 201")
+			tryCreateRandomPolicyWithName(name, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -150,3 +159,14 @@ var _ = Describe("Policy", func() {
 		})
 	})
 })
+
+func tryCreateRandomPolicyWithName(name interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomPolicyCreatePayload()
+	payload["name"] = name
+
+	params := tests.Params{
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

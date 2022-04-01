@@ -81,7 +81,7 @@ func (s *ServerService) Create(
 		return "", "", fmt.Errorf("server with identifier %q already exists in project %q", serverID, project.Identifier)
 	}
 
-	group, getGroupErr := s.groupRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
+	group, getGroupErr := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
 	if getGroupErr != nil && !errors.Is(getGroupErr, consts.ErrNotFound) {
 		return "", "", err
 	}
@@ -230,16 +230,9 @@ func (s *ServerService) Create(
 
 	groupService := usecase.Groups(s.tx, tenantUUID, consts.OriginServerAccess)
 
-	if errors.Is(getGroupErr, consts.ErrNotFound) {
-		err := groupService.Create(group)
-		if err != nil {
-			return "", "", err
-		}
-	} else {
-		err = groupService.Update(group)
-		if err != nil {
-			return "", "", err
-		}
+	err = groupService.Update(group)
+	if err != nil {
+		return "", "", err
 	}
 
 	var multipassRoleNames []iam_model.RoleName
@@ -380,7 +373,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 	}
 
 	if !serversPresentInProject {
-		groupToDelete, err := s.groupRepo.GetByIdentifier(tenant.UUID, nameForTenantLevelObjects(tenant.Identifier))
+		groupToDelete, err := s.groupRepo.GetByIdentifierAtTenant(tenant.UUID, nameForTenantLevelObjects(tenant.Identifier))
 		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return err
 		}

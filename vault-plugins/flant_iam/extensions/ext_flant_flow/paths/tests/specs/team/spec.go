@@ -39,14 +39,8 @@ var _ = Describe("Team", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomTeamCreatePayload()
-				payload["identifier"] = identifier
-
-				params := tests.Params{"expectStatus": tests.ExpectStatus(statusCodeCondition)}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomTeamWithIdentifier(identifier, statusCodeCondition)
 			},
-			Entry("number allowed", 100, "%d == 201"),
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),
@@ -95,6 +89,14 @@ var _ = Describe("Team", func() {
 			},
 		},
 			nil)
+	})
+
+	Context("global uniqueness of team Identifier", func() {
+		It("Can not be the same Identifier", func() {
+			identifier := uuid.New()
+			tryCreateRandomTeamWithIdentifier(identifier, "%d == 201")
+			tryCreateRandomTeamWithIdentifier(identifier, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -218,3 +220,14 @@ var _ = Describe("Team", func() {
 		})
 	})
 })
+
+func tryCreateRandomTeamWithIdentifier(identifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomTeamCreatePayload()
+	payload["identifier"] = identifier
+
+	params := tests.Params{
+		"expectStatus": tests.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

@@ -20,14 +20,8 @@ var _ = Describe("Tenant", func() {
 	Describe("payload", func() {
 		DescribeTable("identifier",
 			func(identifier interface{}, statusCodeCondition string) {
-				payload := fixtures.RandomTenantCreatePayload()
-				payload["identifier"] = identifier
-
-				params := api.Params{"expectStatus": api.ExpectStatus(statusCodeCondition)}
-
-				TestAPI.Create(params, nil, payload)
+				tryCreateRandomTenantWithIdentifier(identifier, statusCodeCondition)
 			},
-			Entry("number allowed", 100, "%d == 201"),
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),
@@ -55,6 +49,14 @@ var _ = Describe("Tenant", func() {
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
+	Context("global uniqueness of tenant Identifier", func() {
+		It("Can not be the same Identifier", func() {
+			identifier := uuid.New()
+			tryCreateRandomTenantWithIdentifier(identifier, "%d == 201")
+			tryCreateRandomTenantWithIdentifier(identifier, "%d >= 400")
+		})
 	})
 
 	It("can be read", func() {
@@ -179,3 +181,14 @@ var _ = Describe("Tenant", func() {
 		})
 	})
 })
+
+func tryCreateRandomTenantWithIdentifier(identifier interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomTenantCreatePayload()
+	payload["identifier"] = identifier
+
+	params := api.Params{
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}

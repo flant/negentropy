@@ -188,9 +188,9 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 		defer tx.Abort()
 
 		if err := usecase.Clients(tx, b.getLiveConfig()).Create(client); err != nil {
-			msg := "cannot create client"
-			b.Logger().Debug(msg, "err", err.Error())
-			return logical.ErrorResponse(msg), nil
+			err = fmt.Errorf("cannot create client:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err := io.CommitWithLog(tx, b.Logger()); err != nil {
 			return nil, err
