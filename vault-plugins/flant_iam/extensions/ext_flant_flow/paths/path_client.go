@@ -187,7 +187,7 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Clients(tx, b.getLiveConfig()).Create(client); err != nil {
+		if client, err = usecase.Clients(tx, b.getLiveConfig()).Create(client); err != nil {
 			err = fmt.Errorf("cannot create client:%w", err)
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
@@ -213,7 +213,7 @@ func (b *clientBackend) handleUpdate(ctx context.Context, req *logical.Request, 
 		Version:    data.Get("resource_version").(string),
 	}
 
-	err := usecase.Clients(tx, b.getLiveConfig()).Update(client)
+	client, err := usecase.Clients(tx, b.getLiveConfig()).Update(client)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
