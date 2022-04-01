@@ -78,10 +78,10 @@ if __name__ == "__main__":
     parser.add_argument('--okta-uuid', dest='okta_uuid')
     args = parser.parse_args()
 
-    if args.mode == 'dev':
-        dev_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root",
+    if args.mode == 'single':
+        single_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root",
                           plugin_names=['flant_iam', 'flant_iam_auth', 'ssh'])
-        vaults = [dev_vault]
+        vaults = [single_vault]
         auth_vault_name = dev_vault.name
     else:
         root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="root",
