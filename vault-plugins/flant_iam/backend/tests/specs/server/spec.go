@@ -224,7 +224,6 @@ func createRoleForExtServAccess(roleName string) {
 
 func tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenantUUID string, projectUUID string,
 	serverIdentifier interface{}, statusCodeCondition string) {
-
 	payload := api.Params{
 		"identifier": serverIdentifier,
 		"labels":     map[string]string{"system": "ubuntu20"},
