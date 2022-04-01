@@ -53,8 +53,8 @@ func Test_RoleActiveList(t *testing.T) {
 	assert.Contains(t, resp.Data, "http_raw_body")
 	data := gjson.Parse(resp.Data["http_raw_body"].(string))
 	assert.Contains(t, data.Map(), "data")
-	assert.Contains(t, data.Get("data").Map(), "names")
-	assert.Len(t, data.Get("data.names").Array(), 1)
+	assert.Contains(t, data.Get("data").Map(), "roles")
+	assert.Len(t, data.Get("data.roles").Array(), 1)
 }
 
 func Test_RoleArchivedList(t *testing.T) {
@@ -65,8 +65,8 @@ func Test_RoleArchivedList(t *testing.T) {
 	assert.Contains(t, resp.Data, "http_raw_body")
 	data := gjson.Parse(resp.Data["http_raw_body"].(string))
 	assert.Contains(t, data.Map(), "data")
-	assert.Contains(t, data.Get("data").Map(), "names")
-	assert.Len(t, data.Get("data.names").Array(), 1)
+	assert.Contains(t, data.Get("data").Map(), "roles")
+	assert.Len(t, data.Get("data.roles").Array(), 1)
 	resp = deleteRole(t, roleName, b)
 	assert.Contains(t, resp.Data, "http_status_code")
 	status, ok := (resp.Data["http_status_code"]).(int)
@@ -76,16 +76,16 @@ func Test_RoleArchivedList(t *testing.T) {
 	assert.Contains(t, resp.Data, "http_raw_body")
 	data = gjson.Parse(resp.Data["http_raw_body"].(string))
 	assert.Contains(t, data.Map(), "data")
-	assert.Contains(t, data.Get("data").Map(), "names")
-	assert.Len(t, data.Get("data.names").Array(), 0)
+	assert.Contains(t, data.Get("data").Map(), "roles")
+	assert.Len(t, data.Get("data.roles").Array(), 0)
 
 	resp = listRoles(t, true, b)
 
 	assert.Contains(t, resp.Data, "http_raw_body")
 	data = gjson.Parse(resp.Data["http_raw_body"].(string))
 	assert.Contains(t, data.Map(), "data")
-	assert.Contains(t, data.Get("data").Map(), "names")
-	assert.Len(t, data.Get("data.names").Array(), 1)
+	assert.Contains(t, data.Get("data").Map(), "roles")
+	assert.Len(t, data.Get("data.roles").Array(), 1)
 }
 
 func listRoles(t *testing.T, showArchived bool, b logical.Backend) *logical.Response {
