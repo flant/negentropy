@@ -1,13 +1,10 @@
-# run of all migrations for testing and debugging purposese
-import importlib as importlib
+# Run of all migrations for testing and debugging purposes
+
 import os
+import importlib
+
 from typing import TypedDict, List
-
 from setuptools import glob
-
-
-def is_directory(path):
-    return os.path.exists(path) and os.path.isdir(path)
 
 
 class Vault(TypedDict):
@@ -16,16 +13,20 @@ class Vault(TypedDict):
     url: str
 
 
-def migration_vaults(migration_type: str, all_vaults: List[Vault]) -> List[Vault]:
-    if migration_type == 'all':
-        return all_vaults
-    return [v for v in all_vaults if migration_type in v['name']]
-
-
 class Migration(TypedDict):
     path: str
     type: str
     stamp: int
+
+
+def is_directory(path):
+    return os.path.exists(path) and os.path.isdir(path)
+
+
+def migration_vaults(migration_type: str, all_vaults: List[Vault]) -> List[Vault]:
+    if migration_type == 'all':
+        return all_vaults
+    return [v for v in all_vaults if migration_type in v['name']]
 
 
 def collect_and_sort_migrations(directory: str) -> List[Migration]:
@@ -70,7 +71,7 @@ def run_all_migrations(vaults, directory):
             if is_migration_new(m, v):
                 run_migration_at_vault(m, v, vaults)
                 save_last_migration(m, v)
-    print("It is all migrations run ends !")
+    print("It is all migrations run ends!")
 
 # vaults = [{'name': 'root', 'url': 'http://127.0.0.1:8300', 'token': 's.qoeHXBNTscgZXYprEsNcCAAZ'},
 #           {'name': 'auth', 'url': 'http://127.0.0.1:8200', 'token': 's.LE3lTWROmvrjS4ed2RhLhvok'}]
