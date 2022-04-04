@@ -100,11 +100,11 @@ func (b contactBackend) paths() []*framework.Path {
 			Fields:  baseAndExtraFields(nil),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(false)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
 					Summary:  "Create contact.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(false)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
 					Summary:  "Create contact.",
 				},
 			},
@@ -121,11 +121,11 @@ func (b contactBackend) paths() []*framework.Path {
 			}),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
 					Summary:  "Create contact with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
 					Summary:  "Create contact with preexistent ID.",
 				},
 			},
@@ -147,7 +147,7 @@ func (b contactBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleList),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleList)),
 					Summary:  "Lists all contacts IDs.",
 				},
 			},
@@ -171,15 +171,15 @@ func (b contactBackend) paths() []*framework.Path {
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleUpdate),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleUpdate)),
 					Summary:  "Update the contact by ID",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleRead),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRead)),
 					Summary:  "Retrieve the contact by ID",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleDelete),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleDelete)),
 					Summary:  "Deletes the contact by ID",
 				},
 			},
@@ -202,7 +202,7 @@ func (b contactBackend) paths() []*framework.Path {
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleRestore),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRestore)),
 					Summary:  "Restore the contact by ID.",
 				},
 			},
