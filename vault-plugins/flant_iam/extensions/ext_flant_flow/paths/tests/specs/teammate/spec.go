@@ -64,13 +64,13 @@ var _ = Describe("Teammate", func() {
 				Expect(teammateData.Map()).To(HaveKey("identifier"))
 				Expect(teammateData.Map()).To(HaveKey("full_identifier"))
 				Expect(teammateData.Map()).To(HaveKey("email"))
-				Expect(teammateData.Map()).To(HaveKey("origin"))
 				Expect(teammateData.Map()).To(HaveKey("team_uuid"))
 				Expect(teammateData.Get("team_uuid").String()).To(Equal(createPayload["team_uuid"].(string)))
 				Expect(teammateData.Map()).To(HaveKey("role_at_team"))
 				Expect(teammateData.Get("role_at_team").String()).To(Equal(createPayload["role_at_team"].(string)))
 				Expect(teammateData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(teammateData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(teammateData.Map()).ToNot(HaveKey("origin"))
 			},
 			"team": team.UUID,
 		}
@@ -101,6 +101,7 @@ var _ = Describe("Teammate", func() {
 			"teammate": teammate.UUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(iam_specs.ConvertToGJSON(teammate), json.Get("teammate"), "extensions")
+				Expect(json.Get("teammate").Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -115,6 +116,9 @@ var _ = Describe("Teammate", func() {
 		updateData := TestAPI.Update(tests.Params{
 			"team":     teammate.TeamUUID,
 			"teammate": teammate.UUID,
+			"expectPayload": func(json gjson.Result) {
+				Expect(json.Get("teammate").Map()).ToNot(HaveKey("origin"))
+			},
 		}, nil, updatePayload)
 
 		Expect(updateData.Get("teammate.identifier").String()).To(Equal(updatePayload["identifier"]))
@@ -144,8 +148,11 @@ var _ = Describe("Teammate", func() {
 		TestAPI.List(tests.Params{
 			"team": teammate.TeamUUID,
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("teammates").Array(),
+				teammatesArray := json.Get("teammates").Array()
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(teammatesArray,
 					iam_specs.ConvertToGJSON(teammate), "extensions") // server_access extension has map inside, so no guarantees to equity
+				Expect(len(teammatesArray)).To(BeNumerically(">", 0))
+				Expect(teammatesArray[0].Map()).ToNot(HaveKey("origin"))
 			},
 		}, url.Values{})
 	})
@@ -160,6 +167,7 @@ var _ = Describe("Teammate", func() {
 				teammateData := json.Get("teammate")
 				Expect(teammateData.Map()).To(HaveKey("uuid"))
 				Expect(teammateData.Map()["uuid"].String()).To(Equal(originalUUID))
+				Expect(teammateData.Map()).ToNot(HaveKey("origin"))
 			},
 			"team": team.UUID,
 		}
