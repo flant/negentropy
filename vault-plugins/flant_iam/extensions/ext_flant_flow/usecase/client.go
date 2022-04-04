@@ -48,6 +48,10 @@ func (s *ClientService) Create(t *model.Tenant) (*model.Tenant, error) {
 	if err != nil {
 		return nil, err
 	}
+	result := makeClient(t)
+	if s.liveConfig.FlantTenantUUID == "" {
+		return &result, nil
+	}
 	is := &model.IdentitySharing{
 		UUID:                  uuid.New(),
 		SourceTenantUUID:      s.liveConfig.FlantTenantUUID,
@@ -55,7 +59,6 @@ func (s *ClientService) Create(t *model.Tenant) (*model.Tenant, error) {
 		Version:               uuid.New(),
 		Groups:                []model.GroupUUID{s.liveConfig.AllFlantGroup},
 	}
-	result := makeClient(t)
 	return &result, s.identitySharingRepo.Create(is)
 }
 

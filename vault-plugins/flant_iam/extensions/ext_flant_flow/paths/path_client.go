@@ -66,11 +66,11 @@ func (b clientBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.handleCreate(true),
 					Summary:  "Create client with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.handleCreate(true),
 					Summary:  "Create client with preexistent ID.",
 				},
 			},
