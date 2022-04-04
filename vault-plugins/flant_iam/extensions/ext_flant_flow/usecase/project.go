@@ -141,11 +141,14 @@ func (s *ProjectService) List(cid model.ClientUUID, showArchived bool) ([]*model
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*model.Project, len(iamProjects))
+	result := make([]*model.Project, 0, len(iamProjects))
 	for i := range iamProjects {
-		result[i], err = makeProject(iamProjects[i])
-		if err != nil {
-			return nil, err
+		if iamProjects[i].Origin == consts.OriginFlantFlow {
+			p, err := makeProject(iamProjects[i])
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, p)
 		}
 	}
 	return result, nil
@@ -174,7 +177,7 @@ func makeProject(project *iam.Project) (*model.Project, error) {
 		Version:      project.Version,
 		Identifier:   project.Identifier,
 		FeatureFlags: project.FeatureFlags,
-		Origin:       project.Origin,
+		Origin:       "",
 		ServicePacks: servicePacks,
 	}, nil
 }

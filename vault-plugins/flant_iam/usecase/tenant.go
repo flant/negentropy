@@ -13,19 +13,19 @@ import (
 
 type TenantService struct {
 	repo   *iam_repo.TenantRepository
-	origin consts.ObjectOrigin
+	Origin consts.ObjectOrigin
 }
 
 func Tenants(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *TenantService {
 	return &TenantService{
 		repo:   iam_repo.NewTenantRepository(db),
-		origin: origin,
+		Origin: origin,
 	}
 }
 
 func (s *TenantService) Create(tenant *model.Tenant) error {
 	tenant.Version = iam_repo.NewResourceVersion()
-	tenant.Origin = s.origin
+	tenant.Origin = s.Origin
 	_, err := s.repo.GetByIdentifier(tenant.Identifier)
 	if !errors.Is(err, consts.ErrNotFound) {
 		return fmt.Errorf("%w: %s", consts.ErrAlreadyExists, tenant.Identifier)
@@ -41,7 +41,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 	if err != nil {
 		return err
 	}
-	if stored.Origin != s.origin {
+	if stored.Origin != s.Origin {
 		return consts.ErrBadOrigin
 	}
 	if stored.Archived() {
@@ -54,7 +54,7 @@ func (s *TenantService) Update(updated *model.Tenant) error {
 		return consts.ErrBadVersion
 	}
 	updated.Version = iam_repo.NewResourceVersion()
-	updated.Origin = s.origin
+	updated.Origin = s.Origin
 	// Update
 
 	return s.repo.Create(updated)
@@ -65,7 +65,7 @@ func (s *TenantService) Delete(id model.TenantUUID) error {
 	if err != nil {
 		return err
 	}
-	if stored.Origin != s.origin {
+	if stored.Origin != s.Origin {
 		return consts.ErrBadOrigin
 	}
 
@@ -85,7 +85,7 @@ func (s *TenantService) Restore(id model.TenantUUID, fullRestore bool) (*model.T
 	if err != nil {
 		return nil, err
 	}
-	if stored.Origin != s.origin {
+	if stored.Origin != s.Origin {
 		return nil, consts.ErrBadOrigin
 	}
 	if fullRestore {

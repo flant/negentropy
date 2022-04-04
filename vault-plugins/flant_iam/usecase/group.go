@@ -64,15 +64,7 @@ func (s *GroupService) Create(group *model.Group) error {
 	group.Groups = subj.Groups
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
-	err = s.repo.Create(group)
-	if err != nil {
-		return err
-	}
-	groups, _ := s.repo.List(group.TenantUUID, true)
-	for _, g := range groups {
-		fmt.Printf("\n%#v\n", *g)
-	}
-	return nil
+	return s.repo.Create(group)
 }
 
 func (s *GroupService) Update(group *model.Group) error {

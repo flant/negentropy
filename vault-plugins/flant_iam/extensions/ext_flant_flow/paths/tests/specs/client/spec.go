@@ -14,7 +14,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
-	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -65,8 +64,7 @@ var _ = Describe("Client", func() {
 				Expect(clientData.Map()).To(HaveKey("resource_version"))
 				Expect(clientData.Get("uuid").String()).To(HaveLen(36))
 				Expect(clientData.Get("resource_version").String()).To(HaveLen(36))
-				Expect(clientData.Map()).To(HaveKey("origin"))
-				Expect(clientData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				Expect(clientData.Map()).ToNot(HaveKey("origin"))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
@@ -97,6 +95,7 @@ var _ = Describe("Client", func() {
 			"client": createdData.Get("client.uuid").String(),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(createdData, json, "full_restore")
+				Expect(json.Get("client").Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -116,6 +115,12 @@ var _ = Describe("Client", func() {
 
 		TestAPI.Update(tests.Params{
 			"client": createdData.Get("client.uuid").String(),
+			"expectPayload": func(json gjson.Result) {
+				clientData := json.Get("client")
+				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, clientData, "archiving_timestamp",
+					"archiving_hash", "uuid", "resource_version", "origin", "feature_flags")
+				Expect(clientData.Map()).ToNot(HaveKey("origin"))
+			},
 		}, nil, updatePayload)
 
 		TestAPI.Read(tests.Params{
@@ -124,8 +129,6 @@ var _ = Describe("Client", func() {
 				clientData := json.Get("client")
 				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, clientData, "archiving_timestamp",
 					"archiving_hash", "uuid", "resource_version", "origin", "feature_flags")
-				Expect(clientData.Map()).To(HaveKey("origin"))
-				Expect(clientData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 		}, nil)
 	})
@@ -157,7 +160,9 @@ var _ = Describe("Client", func() {
 	It("can be listed", func() {
 		createPayload := fixtures.RandomClientCreatePayload()
 		TestAPI.Create(tests.Params{}, url.Values{}, createPayload)
-		TestAPI.List(tests.Params{}, url.Values{})
+		clientsData := TestAPI.List(tests.Params{}, url.Values{}).Get("clients")
+		Expect(len(clientsData.Array())).To(BeNumerically(">", 0))
+		Expect(clientsData.Array()[0].Map()).ToNot(HaveKey("origin"))
 	})
 
 	It("can be created with privileged", func() {

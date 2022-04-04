@@ -31,40 +31,49 @@ func Contacts(db *io.MemoryStoreTxn, clientUUID model.ClientUUID) *ContactServic
 	}
 }
 
-func (s *ContactService) Create(fc *model.FullContact) error {
+func (s *ContactService) Create(fc *model.FullContact) (*model.FullContact, error) {
 	contact := fc.GetContact()
 	if err := s.validateCredentials(contact); err != nil {
-		return err
+		return nil, err
 	}
-	fc.Version = repo.NewResourceVersion()
+	fc.User.Version = repo.NewResourceVersion()
 	if err := s.userService.Create(&fc.User); err != nil {
-		return err
+		return nil, err
 	}
 	contact.Version = fc.Version
-	return s.repo.Create(contact)
+	if err := s.repo.Create(contact); err != nil {
+		return nil, err
+	}
+	result, _ := makeFullContact(&fc.User, contact)
+	result.Origin = ""
+	return result, nil
 }
 
-func (s *ContactService) Update(updated *model.FullContact) error {
+func (s *ContactService) Update(updated *model.FullContact) (*model.FullContact, error) {
 	contact := updated.GetContact()
 	if err := s.validateCredentials(contact); err != nil {
-		return err
+		return nil, err
 	}
 	stored, err := s.repo.GetByID(updated.UUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if stored.Archived() {
-		return consts.ErrIsArchived
+		return nil, consts.ErrIsArchived
 	}
 	if stored.Version != updated.Version {
-		return consts.ErrBadVersion
+		return nil, consts.ErrBadVersion
 	}
-
 	if err = s.userService.Update(&updated.User); err != nil {
-		return err
+		return nil, err
 	}
 	contact.Version = updated.Version
-	return s.repo.Update(contact)
+	if err = s.repo.Update(contact); err != nil {
+		return nil, err
+	}
+	result, _ := makeFullContact(&updated.User, contact)
+	result.Origin = ""
+	return result, nil
 }
 
 func (s *ContactService) Delete(id model.ContactUUID) error {
@@ -147,8 +156,10 @@ func makeFullContact(user *iam.User, contact *model.Contact) (*model.FullContact
 	if user == nil || contact == nil {
 		return nil, consts.ErrNilPointer
 	}
+	tmpUser := *user
+	tmpUser.Origin = ""
 	return &model.FullContact{
-		User:        *user,
+		User:        tmpUser,
 		Credentials: contact.Credentials,
 	}, nil
 }

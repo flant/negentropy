@@ -14,7 +14,7 @@ type User struct {
 	TenantUUID TenantUUID `json:"tenant_uuid"`
 	Version    string     `json:"resource_version"`
 
-	Origin consts.ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin,omitempty"`
 
 	Extensions map[consts.ObjectOrigin]*Extension `json:"extensions"`
 

@@ -257,7 +257,7 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Teammates(tx, b.getLiveConfig()).Create(teammate); err != nil {
+		if teammate, err = usecase.Teammates(tx, b.getLiveConfig()).Create(teammate); err != nil {
 			msg := "cannot create teammate"
 			b.Logger().Debug(msg, "err", err.Error())
 			err = fmt.Errorf("%s:%w", msg, err)
@@ -300,7 +300,7 @@ func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, 
 		TeamUUID:   teamID,
 		RoleAtTeam: data.Get("role_at_team").(string),
 	}
-	err := usecase.Teammates(tx, b.getLiveConfig()).Update(teammate)
+	teammate, err := usecase.Teammates(tx, b.getLiveConfig()).Update(teammate)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

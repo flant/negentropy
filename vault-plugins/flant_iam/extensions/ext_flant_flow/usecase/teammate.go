@@ -34,28 +34,31 @@ func Teammates(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *Teamm
 	}
 }
 
-func (s *TeammateService) Create(t *model.FullTeammate) error {
+func (s *TeammateService) Create(t *model.FullTeammate) (*model.FullTeammate, error) {
 	teammate := t.ExtractTeammate()
 	err := s.validateTeamRole(teammate)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	t.Version = repo.NewResourceVersion()
 	err = s.userService.Create(&t.User)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	teammate.Version = t.Version
 	err = s.groupsController.OnCreateTeammate(*teammate)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = s.repo.Create(teammate)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return s.addTeammateToFlantAllGroup(teammate)
+	err = s.addTeammateToFlantAllGroup(teammate)
+	if err != nil {
+		return nil, err
+	}
+	return makeFullTeammate(&t.User, teammate)
 }
 
 func (s *TeammateService) addTeammateToFlantAllGroup(teammate *model.Teammate) error {
@@ -71,30 +74,33 @@ func (s *TeammateService) addTeammateToFlantAllGroup(teammate *model.Teammate) e
 	return s.groupRepo.Update(flantAllGroup)
 }
 
-func (s *TeammateService) Update(updated *model.FullTeammate) error {
+func (s *TeammateService) Update(updated *model.FullTeammate) (*model.FullTeammate, error) {
 	teammate := updated.ExtractTeammate()
 	if err := s.validateTeamRole(teammate); err != nil {
-		return err
+		return nil, err
 	}
 	stored, err := s.repo.GetByID(updated.UUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if stored.Version != updated.Version {
-		return consts.ErrBadVersion
+		return nil, consts.ErrBadVersion
 	}
-
 	err = s.userService.Update(&updated.User)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Update
 	teammate.Version = updated.Version
 	err = s.groupsController.OnUpdateTeammate(*stored, *teammate)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.repo.Update(teammate)
+	err = s.repo.Update(teammate)
+	if err != nil {
+		return nil, err
+	}
+	return makeFullTeammate(&updated.User, teammate)
 }
 
 func (s *TeammateService) Delete(id iam_model.UserUUID) error {
@@ -200,8 +206,10 @@ func makeFullTeammate(user *iam_model.User, tm *model.Teammate) (*model.FullTeam
 	if user == nil || tm == nil {
 		return nil, consts.ErrNilPointer
 	}
+	valUser := *user
+	valUser.Origin = ""
 	return &model.FullTeammate{
-		User:       *user,
+		User:       valUser,
 		TeamUUID:   tm.TeamUUID,
 		RoleAtTeam: tm.RoleAtTeam,
 	}, nil

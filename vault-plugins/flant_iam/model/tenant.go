@@ -14,7 +14,7 @@ type Tenant struct {
 	Version    string     `json:"resource_version"`
 	Identifier string     `json:"identifier"`
 
-	Origin consts.ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin,omitempty"`
 
 	FeatureFlags []TenantFeatureFlag `json:"feature_flags"`
 }

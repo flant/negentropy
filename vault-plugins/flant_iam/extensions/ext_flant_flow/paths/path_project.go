@@ -57,11 +57,11 @@ func (b projectBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(false)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
 					Summary:  "Create project.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(false)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
 					Summary:  "Create project.",
 				},
 			},
@@ -98,11 +98,11 @@ func (b projectBackend) paths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
 					Summary:  "Create project with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleCreate(true)),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
 					Summary:  "Create project with preexistent ID.",
 				},
 			},
@@ -167,15 +167,15 @@ func (b projectBackend) paths() []*framework.Path {
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleUpdate),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleUpdate)),
 					Summary:  "Update the project by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleRead),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRead)),
 					Summary:  "Retrieve the project by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleDelete),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleDelete)),
 					Summary:  "Deletes the project by ID.",
 				},
 			},
@@ -198,7 +198,7 @@ func (b projectBackend) paths() []*framework.Path {
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkConfigured(b.handleRestore),
+					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRestore)),
 					Summary:  "Restore the project by ID.",
 				},
 			},

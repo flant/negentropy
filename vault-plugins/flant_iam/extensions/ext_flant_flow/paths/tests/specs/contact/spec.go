@@ -16,7 +16,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
-	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -65,7 +64,7 @@ var _ = Describe("Contact", func() {
 				Expect(contactData.Map()).To(HaveKey("identifier"))
 				Expect(contactData.Map()).To(HaveKey("full_identifier"))
 				Expect(contactData.Map()).To(HaveKey("email"))
-				Expect(contactData.Map()).To(HaveKey("origin"))
+				Expect(contactData.Map()).ToNot(HaveKey("origin"))
 				Expect(contactData.Get("uuid").String()).To(HaveLen(36))
 				Expect(contactData.Get("resource_version").String()).To(HaveLen(36))
 				Expect(contactData.Map()).To(HaveKey("credentials"))
@@ -73,8 +72,6 @@ var _ = Describe("Contact", func() {
 				b, _ := json.Marshal(createPayload["credentials"])
 				expectedCreds := gjson.Parse(string(b)).Map()
 				Expect(gotCreds).To(Equal(expectedCreds))
-				Expect(contactData.Map()).To(HaveKey("origin"))
-				Expect(contactData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
 			},
 			"client": client.UUID,
 		}
@@ -104,6 +101,7 @@ var _ = Describe("Contact", func() {
 			"contact": contact.UUID,
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(createdData, json.Get("contact"), "extensions")
+				Expect(json.Get("contact").Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -119,6 +117,9 @@ var _ = Describe("Contact", func() {
 			"client":       contact.TenantUUID,
 			"contact":      contact.UUID,
 			"expectStatus": tests.ExpectExactStatus(200),
+			"expectPayload": func(json gjson.Result) {
+				Expect(json.Get("contact").Map()).ToNot(HaveKey("origin"))
+			},
 		}, nil, updatePayload)
 
 		TestAPI.Read(tests.Params{
@@ -129,8 +130,7 @@ var _ = Describe("Contact", func() {
 				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, contactData, "archiving_timestamp",
 					"archiving_hash", "uuid", "resource_version", "origin", "tenant_uuid", "additional_phones",
 					"client_uuid", "full_identifier", "additional_emails", "extensions")
-				Expect(contactData.Map()).To(HaveKey("origin"))
-				Expect(contactData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				Expect(contactData.Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -159,6 +159,9 @@ var _ = Describe("Contact", func() {
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("contacts").Array(),
 					iam_specs.ConvertToGJSON(contact), "extensions")
+				contactsArray := json.Get("contacts").Array()
+				Expect(len(contactsArray)).To(BeNumerically(">", 0))
+				Expect(contactsArray[0].Map()).ToNot(HaveKey("origin"))
 			},
 		}, url.Values{})
 	})
@@ -173,6 +176,7 @@ var _ = Describe("Contact", func() {
 				contactData := json.Get("contact")
 				Expect(contactData.Map()).To(HaveKey("uuid"))
 				Expect(contactData.Map()["uuid"].String()).To(Equal(originalUUID))
+				Expect(contactData.Map()).ToNot(HaveKey("origin"))
 			},
 			"client": client.UUID,
 		}
