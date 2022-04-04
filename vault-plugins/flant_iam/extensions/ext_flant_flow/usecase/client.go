@@ -98,5 +98,7 @@ func (s *ClientService) Restore(id model.TenantUUID, fullRestore bool) (*model.T
 			break
 		}
 	}
-	return t, err
+	result := makeClient(t)
+	result.Origin = ""
+	return &result, nil
 }

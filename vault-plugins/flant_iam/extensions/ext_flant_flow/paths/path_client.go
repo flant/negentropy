@@ -179,7 +179,6 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 			return backentutils.ResponseErr(req, err)
 		}
 		client := &model.Client{
-
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
 		}

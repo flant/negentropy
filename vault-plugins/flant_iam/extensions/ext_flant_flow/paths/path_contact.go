@@ -262,7 +262,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err := usecase.Contacts(tx, clientID).Create(contact); err != nil {
+		if contact, err = usecase.Contacts(tx, clientID).Create(contact); err != nil {
 			err = fmt.Errorf("cannot create contact:%w", err)
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
@@ -301,11 +301,11 @@ func (b *contactBackend) handleUpdate(_ context.Context, req *logical.Request, d
 		Credentials: data.Get("credentials").(map[string]string),
 	}
 
-	err := usecase.Contacts(tx, clientID).Update(contact)
+	contact, err := usecase.Contacts(tx, clientID).Update(contact)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
-	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 		return nil, err
 	}
 
