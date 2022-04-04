@@ -74,8 +74,7 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
 				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
 				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
-				Expect(projectData.Map()).To(HaveKey("origin"))
-				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				Expect(projectData.Map()).ToNot(HaveKey("origin"))
 			},
 			"client": client.UUID,
 		}
@@ -117,8 +116,7 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
 				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
 				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
-				Expect(projectData.Map()).To(HaveKey("origin"))
-				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				Expect(projectData.Map()).ToNot(HaveKey("origin"))
 				project = model.Project{
 					UUID:       projectData.Get("uuid").String(),
 					TenantUUID: projectData.Get("tenant_uuid").String(),
@@ -176,6 +174,7 @@ var _ = Describe("Project", func() {
 			"expectStatus": tests.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
 				iam_specs.IsSubsetExceptKeys(createdData, json.Get("project"), "extensions")
+				Expect(json.Get("project").Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -187,8 +186,11 @@ var _ = Describe("Project", func() {
 			"client":       project.TenantUUID,
 			"expectStatus": tests.ExpectExactStatus(http.StatusOK),
 			"expectPayload": func(json gjson.Result) {
-				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("projects").Array(),
+				projectsArray := json.Get("projects").Array()
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(projectsArray,
 					iam_specs.ConvertToGJSON(project), "extensions", "service_packs")
+				Expect(len(projectsArray)).To(BeNumerically(">", 0))
+				Expect(projectsArray[0].Map()).ToNot(HaveKey("origin"))
 			},
 		}, url.Values{})
 	})
@@ -212,8 +214,7 @@ var _ = Describe("Project", func() {
 				projectData := json.Get("project")
 				iam_specs.IsMapSubsetOfSetExceptKeys(updatePayload, projectData, "archiving_timestamp",
 					"archiving_hash", "uuid", "resource_version", "origin", "tenant_uuid", "service_packs")
-				Expect(projectData.Map()).To(HaveKey("origin"))
-				Expect(projectData.Get("origin").String()).To(Equal(string(consts.OriginFlantFlow)))
+				Expect(projectData.Map()).ToNot(HaveKey("origin"))
 			},
 		}, nil)
 	})
@@ -247,6 +248,7 @@ var _ = Describe("Project", func() {
 				projectData := json.Get("project")
 				Expect(projectData.Map()).To(HaveKey("uuid"))
 				Expect(projectData.Map()["uuid"].String()).To(Equal(originalUUID))
+				Expect(projectData.Map()).ToNot(HaveKey("origin"))
 			},
 			"client": client.UUID,
 		}

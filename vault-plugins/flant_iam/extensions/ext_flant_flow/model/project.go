@@ -17,7 +17,7 @@ type Project struct {
 
 	FeatureFlags []iam_model.FeatureFlagName `json:"feature_flags"`
 
-	Origin consts.ObjectOrigin `json:"origin"`
+	Origin consts.ObjectOrigin `json:"origin,omitempty"`
 
 	// Extensions map[consts.ObjectOrigin]*Extension `json:"extensions"`
 	ServicePacks map[ServicePackName]ServicePackCFG `json:"service_packs"`
