@@ -238,6 +238,9 @@ func (s *ProjectService) GetByID(pid model.ProjectUUID) (*model.Project, error) 
 	if err != nil {
 		return nil, err
 	}
+	if iamProject.Origin != consts.OriginFlantFlow {
+		return nil, consts.ErrBadOrigin
+	}
 	return makeProject(iamProject)
 }
 
