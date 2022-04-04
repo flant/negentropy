@@ -35,7 +35,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: creating tenant '{}' with uuid '{}'".format(flant_identifier, flant_tenant_uuid))
     flant = cfg.get('flant_tenant_uuid')
     if not flant or flant == '':
-        vault_client.write(path='flant_iam/tenant/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
+        vault_client.write(path='flant_iam/client/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
         vault_client.write(path='flant_iam/configure_extension/flant_flow/flant_tenant/' + flant_tenant_uuid)
 
     print("INFO: creating group '{}' with uuid '{}'".format(all_flant_group_identifier, all_flant_group_uuid))
