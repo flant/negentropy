@@ -16,7 +16,7 @@ type RoleResolver interface {
 	CheckServiceAccountForProjectScopedRole(model.ServiceAccountUUID, model.RoleName, model.ProjectUUID) (bool, RoleBindingParams, error)
 	CheckServiceAccountForTenantScopedRole(model.ServiceAccountUUID, model.RoleName, model.TenantUUID) (bool, RoleBindingParams, error)
 
-	FindMembersWithProjectScopedRole(model.RoleName, model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
+	FindMembersWithProjectScopedRole(model.RoleName, model.TenantUUID, model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
 	FindMembersWithTenantScopedRole(model.RoleName, model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
 
 	CheckGroupForRole(model.GroupUUID, model.RoleName) (bool, error)
@@ -317,7 +317,7 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount mod
 	return roleExists, roleBindingParams, nil
 }
 
-func (r *roleResolver) FindMembersWithProjectScopedRole(roleName model.RoleName,
+func (r *roleResolver) FindMembersWithProjectScopedRole(roleName model.RoleName, tenantUUID model.TenantUUID,
 	projectUUID model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error) {
 	_, roleBindings, err := r.collectAllRolesAndRoleBindings(roleName)
 	if err != nil {
@@ -334,7 +334,7 @@ func (r *roleResolver) FindMembersWithProjectScopedRole(roleName model.RoleName,
 	serviceAccounts := map[model.ServiceAccountUUID]struct{}{}
 	groups := map[model.GroupUUID]struct{}{}
 	for _, rb := range roleBindings {
-		if _, hasProject := roleBindingsForProject[rb.UUID]; hasProject || rb.AnyProject {
+		if _, hasProject := roleBindingsForProject[rb.UUID]; hasProject || (rb.AnyProject && rb.TenantUUID == tenantUUID) {
 			users = mergeUUIDs(users, rb.Users)
 			serviceAccounts = mergeUUIDs(serviceAccounts, rb.ServiceAccounts)
 			groups = mergeUUIDs(groups, rb.Groups)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -20,11 +21,12 @@ var TestAPI api.TestAPI
 
 var _ = Describe("Feature Flag", func() {
 	Describe("payload", func() {
+		rand.Seed(time.Now().Unix())
 		DescribeTable("identifier",
 			func(name interface{}, statusCodeCondition string) {
 				tryCreateRandomFeatureFlagWithName(name, statusCodeCondition)
 			},
-			Entry("number allowed", rand.Intn(32), "%d == 201"), // the matter of fact ¯\_(ツ)_/¯
+			Entry("number allowed", rand.Intn(999999999), "%d == 201"), // the matter of fact ¯\_(ツ)_/¯
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),

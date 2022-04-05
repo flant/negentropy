@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -28,13 +27,6 @@ func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 }
 
 func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
-	_, err := s.repo.GetByIdentifierAtTenant(rb.TenantUUID, rb.Identifier)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return err
-	}
-	if err == nil {
-		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, rb.Identifier, rb.TenantUUID)
-	}
 	// Validate
 	if rb.Origin == "" {
 		return consts.ErrBadOrigin
@@ -87,7 +79,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}
-	rb.Identifier = stored.Identifier
+	rb.Description = stored.Description
 
 	// Store
 	return s.repo.Update(rb)

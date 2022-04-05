@@ -181,10 +181,10 @@ func Test_FindAffectedUsersAndSAs_OnGroupChange_ModifiedSubjects(t *testing.T) {
 
 	// Add role binding for parent group with role "test".
 	createRoleBindings(t, txn, &model.RoleBinding{
-		TenantUUID: tenantUUID,
-		UUID:       roleBindingUUID1,
-		Groups:     []string{groupUUID5},
-		Identifier: "test_role_binding1",
+		TenantUUID:  tenantUUID,
+		UUID:        roleBindingUUID1,
+		Groups:      []string{groupUUID5},
+		Description: "test_role_binding1",
 		Roles: []model.BoundRole{
 			{
 				Name: "test",

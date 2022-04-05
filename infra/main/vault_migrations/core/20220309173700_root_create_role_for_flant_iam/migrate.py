@@ -9,12 +9,13 @@ class Vault(TypedDict):
     url: str
 
 
-roles = ['ssh', 'servers']
+# {role:scope}
+roles = {'ssh': 'project', 'servers': 'project'}
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
     vault = next(v for v in vaults if v['name'] == vault_name)
     vault_client = hvac.Client(url=vault['url'], token=vault['token'])
-    for role in roles:
+    for role, scope in roles.items():
         print("INFO: create role '{}' at '{}' vault".format(role, vault_name))
-        vault_client.write(path='flant_iam/role', name=role, scope='tenant')
+        vault_client.write(path='flant_iam/role', name=role, scope=scope)

@@ -42,13 +42,13 @@ var _ = Describe("Role binding", func() {
 
 	Describe("payload", func() {
 		DescribeTable("identifier",
-			func(identifier interface{}, statusCodeCondition string) {
-				tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, statusCodeCondition)
+			func(description interface{}, statusCodeCondition string) {
+				tryCreateRandomRoleBindingAtTenantWithUserAndDescription(tenant.UUID, user.UUID, description, statusCodeCondition)
 			},
 			Entry("hyphen, symbols and numbers are allowed", uuid.New(), "%d == 201"),
 			Entry("under_score allowed", "under_score"+uuid.New(), "%d == 201"),
-			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 400"),
-			Entry("space forbidden", "invalid space", "%d >= 400"),
+			Entry("russian symbols forbidden", "РусскийТекст", "%d >= 201"),
+			Entry("space not forbidden", "invalid space", "%d >= 201"),
 		)
 	})
 
@@ -80,7 +80,7 @@ var _ = Describe("Role binding", func() {
 				Expect(rbData.Map()).To(HaveKey("service_accounts"))
 				Expect(rbData.Map()).To(HaveKey("any_project"))
 				Expect(rbData.Map()).To(HaveKey("archiving_hash"))
-				Expect(rbData.Map()).To(HaveKey("identifier"))
+				Expect(rbData.Map()).To(HaveKey("description"))
 				Expect(rbData.Map()).To(HaveKey("projects"))
 				Expect(rbData.Map()).To(HaveKey("roles"))
 				Expect(rbData.Map()).To(HaveKey("origin"))
@@ -94,19 +94,6 @@ var _ = Describe("Role binding", func() {
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
-	Context("tenant uniqueness of roleBinding identifier", func() {
-		identifier := uuid.New()
-		It("Can be created roleBinding with some identifier", func() {
-			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
-		})
-		It("Can not be the same identifier at the same tenant", func() {
-			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d >= 400")
-		})
-		It("Can be same identifier at other tenant", func() {
-			tenant = specs.CreateRandomTenant(TenantAPI)
-			tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
-		})
-	})
 	It("can be read", func() {
 		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
 
@@ -218,14 +205,14 @@ var _ = Describe("Role binding", func() {
 	})
 })
 
-func tryCreateRandomRoleBindingAtTenantWithUserAndIdentifier(tenantUUID, userUUID string,
-	roleBindingIdentifier interface{}, statusCodeCondition string) {
+func tryCreateRandomRoleBindingAtTenantWithUserAndDescription(tenantUUID, userUUID string,
+	roleBindingDescription interface{}, statusCodeCondition string) {
 	payload := fixtures.RandomRoleBindingCreatePayload()
 	payload["members"] = map[string]interface{}{
 		"type": "user",
 		"uuid": userUUID,
 	}
-	payload["identifier"] = roleBindingIdentifier
+	payload["description"] = roleBindingDescription
 
 	params := api.Params{
 		"tenant":       tenantUUID,

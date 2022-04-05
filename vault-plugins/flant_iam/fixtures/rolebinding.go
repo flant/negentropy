@@ -26,7 +26,7 @@ func RoleBindings() []model.RoleBinding {
 		{
 			UUID:            RbUUID1,
 			TenantUUID:      TenantUUID1,
-			Identifier:      "rb1",
+			Description:     "rb1",
 			ValidTill:       100,
 			RequireMFA:      false,
 			Users:           []string{UserUUID1, UserUUID2},
@@ -41,14 +41,14 @@ func RoleBindings() []model.RoleBinding {
 			Origin: consts.OriginIAM,
 		},
 		{
-			UUID:       RbUUID2,
-			TenantUUID: TenantUUID2,
-			Identifier: "rb2",
-			ValidTill:  110,
-			RequireMFA: false,
-			Users:      []string{UserUUID1, UserUUID2},
-			AnyProject: true,
-			Projects:   nil,
+			UUID:        RbUUID2,
+			TenantUUID:  TenantUUID2,
+			Description: "rb2",
+			ValidTill:   110,
+			RequireMFA:  false,
+			Users:       []string{UserUUID1, UserUUID2},
+			AnyProject:  true,
+			Projects:    nil,
 			Roles: []model.BoundRole{{
 				Name:    RoleName1,
 				Options: map[string]interface{}{"o1": "data2"},
@@ -58,7 +58,7 @@ func RoleBindings() []model.RoleBinding {
 		{
 			UUID:            RbUUID3,
 			TenantUUID:      TenantUUID1,
-			Identifier:      "rb3",
+			Description:     "rb3",
 			ValidTill:       120,
 			RequireMFA:      false,
 			Users:           []string{UserUUID2},
@@ -76,14 +76,14 @@ func RoleBindings() []model.RoleBinding {
 			Origin: consts.OriginIAM,
 		},
 		{
-			UUID:       RbUUID4,
-			TenantUUID: TenantUUID1,
-			Identifier: "rb4",
-			ValidTill:  150,
-			RequireMFA: false,
-			Users:      []string{UserUUID1},
-			AnyProject: false,
-			Projects:   []model.ProjectUUID{ProjectUUID3, ProjectUUID4},
+			UUID:        RbUUID4,
+			TenantUUID:  TenantUUID1,
+			Description: "rb4",
+			ValidTill:   150,
+			RequireMFA:  false,
+			Users:       []string{UserUUID1},
+			AnyProject:  false,
+			Projects:    []model.ProjectUUID{ProjectUUID3, ProjectUUID4},
 			Roles: []model.BoundRole{{
 				Name:    RoleName8,
 				Options: map[string]interface{}{"o1": "data5"},
@@ -93,7 +93,7 @@ func RoleBindings() []model.RoleBinding {
 		{
 			UUID:            RbUUID5,
 			TenantUUID:      TenantUUID1,
-			Identifier:      "rb5",
+			Description:     "rb5",
 			ValidTill:       160,
 			RequireMFA:      false,
 			ServiceAccounts: []string{ServiceAccountUUID1},
@@ -108,7 +108,7 @@ func RoleBindings() []model.RoleBinding {
 		{
 			UUID:            RbUUID6,
 			TenantUUID:      TenantUUID1,
-			Identifier:      "rb6",
+			Description:     "rb6",
 			ValidTill:       170,
 			RequireMFA:      false,
 			ServiceAccounts: []string{ServiceAccountUUID2},
@@ -121,14 +121,14 @@ func RoleBindings() []model.RoleBinding {
 			Origin: consts.OriginIAM,
 		},
 		{
-			UUID:       RbUUID7,
-			TenantUUID: TenantUUID1,
-			Identifier: "rb7",
-			ValidTill:  180,
-			RequireMFA: false,
-			Groups:     []model.GroupUUID{GroupUUID4},
-			AnyProject: false,
-			Projects:   nil,
+			UUID:        RbUUID7,
+			TenantUUID:  TenantUUID1,
+			Description: "rb7",
+			ValidTill:   180,
+			RequireMFA:  false,
+			Groups:      []model.GroupUUID{GroupUUID4},
+			AnyProject:  false,
+			Projects:    nil,
 			Roles: []model.BoundRole{{
 				Name:    RoleName10,
 				Options: map[string]interface{}{"o1": "data8"},
@@ -136,14 +136,14 @@ func RoleBindings() []model.RoleBinding {
 			Origin: consts.OriginIAM,
 		},
 		{
-			UUID:       RbUUID8,
-			TenantUUID: TenantUUID1,
-			Identifier: "rb8",
-			ValidTill:  190,
-			RequireMFA: false,
-			Users:      []model.UserUUID{UserUUID2},
-			AnyProject: false,
-			Projects:   nil,
+			UUID:        RbUUID8,
+			TenantUUID:  TenantUUID1,
+			Description: "rb8",
+			ValidTill:   190,
+			RequireMFA:  false,
+			Users:       []model.UserUUID{UserUUID2},
+			AnyProject:  false,
+			Projects:    nil,
 			Roles: []model.BoundRole{{
 				Name:    RoleName9,
 				Options: map[string]interface{}{"o1": "data9"},
@@ -157,7 +157,7 @@ func RandomRoleBindingCreatePayload() map[string]interface{} {
 	rbSet := RoleBindings()
 	rand.Seed(time.Now().UnixNano())
 	sample := rbSet[rand.Intn(len(rbSet))]
-	sample.Identifier = "Identifier_" + RandomStr()
+	sample.Description = " Description_" + RandomStr()
 	bytes, _ := json.Marshal(sample)
 	var payload map[string]interface{}
 	json.Unmarshal(bytes, &payload) //nolint:errcheck

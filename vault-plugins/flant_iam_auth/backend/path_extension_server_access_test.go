@@ -75,7 +75,7 @@ func createRoleAndRoleBinding(tx *io.MemoryStoreTxn, tenant iam_model.TenantUUID
 		UUID:            uuid.New(),
 		TenantUUID:      tenant,
 		Version:         uuid.New(),
-		Identifier:      uuid.New(),
+		Description:     uuid.New(),
 		ValidTill:       99999999999,
 		Users:           []iam_model.UserUUID{user},
 		Groups:          nil,
