@@ -14,7 +14,7 @@ type RoleBinding struct {
 	TenantUUID TenantUUID      `json:"tenant_uuid"`
 	Version    string          `json:"resource_version"`
 
-	Identifier string `json:"identifier"`
+	Description string `json:"description"`
 
 	ValidTill  int64 `json:"valid_till"`
 	RequireMFA bool  `json:"require_mfa"`

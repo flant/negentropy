@@ -18,7 +18,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var serverLabels = map[string]string{"system": "ubuntu20"}
@@ -83,11 +82,11 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	// create rolebinding for a sa in project with the RegisterServerRole
 	result.ServiceAccountRoleBinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
 		model.RoleBinding{
-			TenantUUID: result.Tenant.UUID,
-			Version:    "",
-			Identifier: uuid.New(),
-			ValidTill:  1000000,
-			RequireMFA: false,
+			TenantUUID:  result.Tenant.UUID,
+			Version:     "",
+			Description: "flant_iam_preparing for e2e login testing",
+			ValidTill:   1000000,
+			RequireMFA:  false,
 			Members: []model.MemberNotation{{
 				Type: model.ServiceAccountType,
 				UUID: result.ServiceAccount.UUID,
@@ -138,14 +137,14 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	// create rolebinding for a user in project with the ssh role
 	result.UserRolebinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
 		model.RoleBinding{
-			TenantUUID: result.User.TenantUUID,
-			Version:    "",
-			Identifier: uuid.New(),
-			ValidTill:  1000000,
-			RequireMFA: false,
-			Members:    result.Group.Members,
-			AnyProject: true,
-			Roles:      []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{}}},
+			TenantUUID:  result.User.TenantUUID,
+			Version:     "",
+			Description: "flant_iam_preparing for e2e ssh testing",
+			ValidTill:   1000000,
+			RequireMFA:  false,
+			Members:     result.Group.Members,
+			AnyProject:  true,
+			Roles:       []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.UserRolebinding)
 

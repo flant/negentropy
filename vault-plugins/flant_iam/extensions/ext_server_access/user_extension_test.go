@@ -128,8 +128,8 @@ func prepareRoleBinding(t *testing.T, txn *io.MemoryStoreTxn, roleName model.Rol
 			Name:    roleName,
 			Options: nil,
 		}},
-		Identifier: "rolebinding1",
-		Origin:     "test",
+		Description: "rolebinding1",
+		Origin:      "test",
 	}
 	err := txn.Insert(model.RoleBindingType, rb)
 	dieOnErr(t, err)

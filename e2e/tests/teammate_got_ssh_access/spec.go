@@ -27,7 +27,6 @@ import (
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var s tsc.Suite
@@ -76,10 +75,10 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		saRegisterServer := iam_specs.CreateRandomServiceAccount(lib.NewServiceAccountAPI(adminClient), client.UUID)
 		iam_specs.CreateRoleBinding(lib.NewRoleBindingAPI(adminClient),
 			model.RoleBinding{
-				TenantUUID: client.UUID,
-				Identifier: uuid.New(),
-				ValidTill:  1000000,
-				RequireMFA: false,
+				TenantUUID:  client.UUID,
+				Description: "teammate got ssh access testing",
+				ValidTill:   1000000,
+				RequireMFA:  false,
 				Members: []model.MemberNotation{{
 					Type: model.ServiceAccountType,
 					UUID: saRegisterServer.UUID,
@@ -265,7 +264,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	var devopsTeam2 ext_model.Team
 
-	It("lost access after moving user to other ", func() {
+	It("lost access after moving user to other team", func() {
 		devopsTeam2 = specs.CreateDevopsTeam(lib.NewFlowTeamAPI(adminClient))
 		checkChangeTeam := func(oldTeamUUID string, newTeamUUID string, usersLen int) {
 			updatedData := lib.NewFlowTeammateAPI(adminClient).Update(tests.Params{

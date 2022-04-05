@@ -48,10 +48,7 @@ func (s *ServerService) Create(
 	labels, annotations map[string]string,
 	roles []string,
 ) (string, string, error) {
-	var (
-		tenantBoundRoles  []iam_model.BoundRole
-		projectBoundRoles []iam_model.BoundRole
-	)
+	var projectBoundRoles []iam_model.BoundRole
 
 	server := &model.Server{
 		UUID:        uuid.New(),
@@ -81,7 +78,8 @@ func (s *ServerService) Create(
 		return "", "", fmt.Errorf("server with identifier %q already exists in project %q", serverID, project.Identifier)
 	}
 
-	group, getGroupErr := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
+	groupIdentifier := nameForProjectLevelObjects(tenant.Identifier, project.Identifier)
+	group, getGroupErr := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, groupIdentifier)
 	if getGroupErr != nil && !errors.Is(getGroupErr, consts.ErrNotFound) {
 		return "", "", err
 	}
@@ -89,7 +87,7 @@ func (s *ServerService) Create(
 		group = &iam_model.Group{
 			UUID:       uuid.New(),
 			TenantUUID: tenant.UUID,
-			Identifier: nameForTenantLevelObjects(tenant.Identifier),
+			Identifier: groupIdentifier,
 			Origin:     consts.OriginServerAccess,
 		}
 		err := s.groupRepo.Create(group)
@@ -105,52 +103,9 @@ func (s *ServerService) Create(
 			return "", "", fmt.Errorf("roleService.Get(%q):%w", roleName, err)
 		}
 
-		switch role.Scope {
-		case iam_model.RoleScopeTenant:
-			tenantBoundRoles = append(tenantBoundRoles, iam_model.BoundRole{
-				Name: role.Name,
-			})
-		case iam_model.RoleScopeProject:
-			projectBoundRoles = append(projectBoundRoles, iam_model.BoundRole{
-				Name: role.Name,
-			})
-		}
-	}
-
-	// FIXME: remove duplication
-	if len(tenantBoundRoles) != 0 {
-		var (
-			roleBinding *iam_model.RoleBinding
-			err         error
-		)
-
-		// TODO: update existing
-		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
-		if err != nil && !errors.Is(err, consts.ErrNotFound) {
-			return "", "", err
-		}
-
-		if roleBinding == nil {
-			newRoleBinding := &iam_model.RoleBinding{
-				UUID:       uuid.New(),
-				Version:    iam_repo.NewResourceVersion(),
-				TenantUUID: tenant.ObjId(),
-				Origin:     consts.OriginServerAccess,
-				Identifier: nameForTenantLevelObjects(tenant.Identifier),
-				Groups:     []iam_model.GroupUUID{group.UUID},
-				Members: []iam_model.MemberNotation{{
-					Type: iam_model.GroupType,
-					UUID: group.UUID,
-				}},
-				Roles:      tenantBoundRoles,
-				AnyProject: true,
-			}
-
-			err := s.roleBindingRepo.Create(newRoleBinding)
-			if err != nil {
-				return "", "", err
-			}
-		}
+		projectBoundRoles = append(projectBoundRoles, iam_model.BoundRole{
+			Name: role.Name,
+		})
 	}
 
 	if len(projectBoundRoles) != 0 {
@@ -160,25 +115,26 @@ func (s *ServerService) Create(
 		)
 
 		// TODO: update existing
-		roleBinding, err = s.roleBindingRepo.GetByIdentifier(tenantUUID, nameForTenantLevelObjects(tenant.Identifier))
+		roleBinding, err = s.roleBindingRepo.FindSpecificRoleBindingAtProject(projectUUID, roles, []string{group.UUID})
 		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return "", "", err
 		}
 
 		if roleBinding == nil {
 			newRoleBinding := &iam_model.RoleBinding{
-				UUID:       uuid.New(),
-				TenantUUID: tenant.ObjId(),
-				Version:    iam_repo.NewResourceVersion(),
-				Origin:     consts.OriginServerAccess,
-				Identifier: nameForTenantLevelObjects(tenant.Identifier),
-				Groups:     []iam_model.GroupUUID{group.UUID},
+				UUID:        uuid.New(),
+				TenantUUID:  tenant.ObjId(),
+				Version:     iam_repo.NewResourceVersion(),
+				Origin:      consts.OriginServerAccess,
+				Description: groupIdentifier,
+				Groups:      []iam_model.GroupUUID{group.UUID},
 				Members: []iam_model.MemberNotation{{
 					Type: iam_model.GroupType,
 					UUID: group.UUID,
 				}},
 				Roles:      projectBoundRoles,
-				AnyProject: true,
+				AnyProject: false,
+				Projects:   []string{projectUUID},
 			}
 
 			err := s.roleBindingRepo.Create(newRoleBinding)
@@ -236,9 +192,6 @@ func (s *ServerService) Create(
 	}
 
 	var multipassRoleNames []iam_model.RoleName
-	for _, tenantRole := range tenantBoundRoles {
-		multipassRoleNames = append(multipassRoleNames, tenantRole.Name)
-	}
 	for _, projectRole := range projectBoundRoles {
 		multipassRoleNames = append(multipassRoleNames, projectRole.Name)
 	}
@@ -373,7 +326,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 	}
 
 	if !serversPresentInProject {
-		groupToDelete, err := s.groupRepo.GetByIdentifierAtTenant(tenant.UUID, nameForTenantLevelObjects(tenant.Identifier))
+		groupToDelete, err := s.groupRepo.GetByIdentifierAtTenant(tenant.UUID, nameForProjectLevelObjects(tenant.Identifier, project.Identifier))
 		if err != nil && !errors.Is(err, consts.ErrNotFound) {
 			return err
 		}
@@ -418,8 +371,8 @@ func (s *ServerService) Delete(serverUUID string) error {
 	return s.serverRepo.Delete(server.UUID, archiveMark)
 }
 
-func nameForTenantLevelObjects(tenantID string) string {
-	return "servers/" + tenantID
+func nameForProjectLevelObjects(tenantID string, projectID string) string {
+	return "servers/" + projectID + "/" + tenantID
 }
 
 func nameForServerRelatedProjectLevelObjects(projectID, serverID string) string {

@@ -12,7 +12,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var flantIamSuite flant_iam_preparing.Suite
@@ -42,14 +41,14 @@ var _ = Describe("Process of getting new user/service_account next linux uid", f
 		// create rolebinding for a user in project with the ssh role
 		specs.CreateRoleBinding(lib.NewRoleBindingAPI(flantIamSuite.IamVaultClient),
 			iam.RoleBinding{
-				TenantUUID: newUser.TenantUUID,
-				Version:    "",
-				Identifier: uuid.New(),
-				ValidTill:  0,
-				RequireMFA: false,
-				Members:    newGroup.Members,
-				AnyProject: true,
-				Roles:      []iam.BoundRole{{Name: "ssh", Options: map[string]interface{}{}}},
+				TenantUUID:  newUser.TenantUUID,
+				Version:     "",
+				Description: "user got next uid testing",
+				ValidTill:   0,
+				RequireMFA:  false,
+				Members:     newGroup.Members,
+				AnyProject:  true,
+				Roles:       []iam.BoundRole{{Name: "ssh", Options: map[string]interface{}{}}},
 			})
 
 		newUserUID = extractUID(newUser)

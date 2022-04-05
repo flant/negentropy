@@ -38,9 +38,9 @@ func rbBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[str
 			Description: "ID of a tenant",
 			Required:    true,
 		},
-		"identifier": {
-			Type:        framework.TypeNameString,
-			Description: "Identifier for humans and machines",
+		"description": {
+			Type:        framework.TypeString,
+			Description: "Description of rolebinding purpose",
 			Required:    true,
 		},
 		"members": {
@@ -216,15 +216,15 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		}
 
 		roleBinding := &model.RoleBinding{
-			UUID:       id,
-			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
-			ValidTill:  expiration,
-			RequireMFA: data.Get("require_mfa").(bool),
-			Members:    members,
-			Roles:      roles,
-			Origin:     consts.OriginIAM,
-			Identifier: data.Get("identifier").(string),
-			AnyProject: data.Get("any_project").(bool),
+			UUID:        id,
+			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
+			ValidTill:   expiration,
+			RequireMFA:  data.Get("require_mfa").(bool),
+			Members:     members,
+			Roles:       roles,
+			Origin:      consts.OriginIAM,
+			Description: data.Get("description").(string),
+			AnyProject:  data.Get("any_project").(bool),
 		}
 
 		tx := b.storage.Txn(true)
@@ -266,15 +266,16 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		}
 
 		roleBinding := &model.RoleBinding{
-			UUID:       id,
-			TenantUUID: data.Get(iam_repo.TenantForeignPK).(string),
-			Version:    data.Get("resource_version").(string),
-			ValidTill:  expiration,
-			RequireMFA: data.Get("require_mfa").(bool),
-			Members:    members,
-			Roles:      roles,
-			Origin:     consts.OriginIAM,
-			AnyProject: data.Get("any_project").(bool),
+			UUID:        id,
+			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
+			Version:     data.Get("resource_version").(string),
+			ValidTill:   expiration,
+			RequireMFA:  data.Get("require_mfa").(bool),
+			Members:     members,
+			Roles:       roles,
+			Origin:      consts.OriginIAM,
+			Description: data.Get("description").(string),
+			AnyProject:  data.Get("any_project").(bool),
 		}
 
 		tx := b.storage.Txn(true)

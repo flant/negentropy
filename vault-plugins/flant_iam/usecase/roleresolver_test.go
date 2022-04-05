@@ -140,7 +140,7 @@ func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 		rbi: repo.NewRoleBindingRepository(tx),
 	}
 
-	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.ProjectUUID3)
+	users, serviceAccounts, err := rr.FindMembersWithProjectScopedRole(fixtures.RoleName1, fixtures.TenantUUID1, fixtures.ProjectUUID3)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{fixtures.UserUUID1, fixtures.UserUUID2, fixtures.UserUUID3, fixtures.UserUUID4},

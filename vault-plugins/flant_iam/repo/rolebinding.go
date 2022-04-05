@@ -19,24 +19,9 @@ const (
 	GroupInRoleBindingIndex          = "group_in_role_binding"
 	ProjectInRoleBindingIndex        = "project_in_role_binding"
 	RoleInRoleBindingIndex           = "role_in_role_binding"
-	TenantUUIDRoleBindingIdIndex     = "tenant_uuid_role_binding_id"
 )
 
 func RoleBindingSchema() *memdb.DBSchema {
-	var tenantUUIDRoleBindingIdIndexer []hcmemdb.Indexer
-
-	tenantUUIDIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "TenantUUID",
-		Lowercase: true,
-	}
-	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, tenantUUIDIndexer)
-
-	rbIdIndexer := &hcmemdb.StringFieldIndex{
-		Field:     "Identifier",
-		Lowercase: true,
-	}
-	tenantUUIDRoleBindingIdIndexer = append(tenantUUIDRoleBindingIdIndexer, rbIdIndexer)
-
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
 			model.RoleBindingType: {
@@ -101,11 +86,6 @@ func RoleBindingSchema() *memdb.DBSchema {
 								return []byte(obj.Name), nil
 							},
 						},
-					},
-					TenantUUIDRoleBindingIdIndex: {
-						Name:    TenantUUIDRoleBindingIdIndex,
-						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDRoleBindingIdIndexer},
-						Unique:  true,
 					},
 				},
 			},
@@ -266,18 +246,6 @@ func (r *RoleBindingRepository) Sync(_ string, data []byte) error {
 	return r.save(rb)
 }
 
-func (r *RoleBindingRepository) GetByIdentifier(tenantUUID, identifier string) (*model.RoleBinding, error) {
-	raw, err := r.db.First(model.RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
-	if err != nil {
-		return nil, err
-	}
-	if raw == nil {
-		return nil, consts.ErrNotFound
-	}
-	roleBinding := raw.(*model.RoleBinding)
-	return roleBinding, nil
-}
-
 func extractRoleBindings(iter hcmemdb.ResultIterator, showArchived bool) (map[model.RoleBindingUUID]*model.RoleBinding, error) {
 	rbs := map[model.RoleBindingUUID]*model.RoleBinding{}
 	for {
@@ -374,20 +342,56 @@ func (r *RoleBindingRepository) FindDirectRoleBindingsForRoles(roles ...model.Ro
 	return roleBindings, nil
 }
 
-func (r *RoleBindingRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.RoleBinding, error) {
-	iter, err := r.db.Get(model.RoleBindingType, TenantUUIDRoleBindingIdIndex, tenantUUID, identifier)
+func (r *RoleBindingRepository) FindSpecificRoleBindingAtProject(projectUUID model.ProjectUUID,
+	roles []model.RoleName, groups []model.GroupUUID) (*model.RoleBinding, error) {
+	rbsOfProject, err := r.FindDirectRoleBindingsForProject(projectUUID)
 	if err != nil {
 		return nil, err
 	}
-	for {
-		raw := iter.Next()
-		if raw == nil {
-			break
-		}
-		obj := raw.(*model.RoleBinding)
-		if obj.NotArchived() {
-			return obj, nil
+	rbsOfRole, err := r.FindDirectRoleBindingsForRoles(roles...)
+	filteredRoleBindings := map[model.RoleBindingUUID]*model.RoleBinding{}
+	for uuid, rb := range rbsOfProject {
+		if _, ok := rbsOfRole[uuid]; ok {
+			filteredRoleBindings[uuid] = rb
 		}
 	}
-	return nil, consts.ErrNotFound
+	rb := filterEqualRoleBinding(filteredRoleBindings, groups, roles)
+	return rb, nil
+}
+
+func filterEqualRoleBinding(roleBindings map[model.RoleBindingUUID]*model.RoleBinding, groups []model.GroupUUID,
+	roles []model.RoleName) *model.RoleBinding {
+	groupUUIDs := map[model.GroupUUID]struct{}{}
+	for _, g := range groups {
+		groupUUIDs[g] = struct{}{}
+	}
+	roleNames := map[model.RoleName]struct{}{}
+	for _, r := range roles {
+		roleNames[r] = struct{}{}
+	}
+	for _, rb := range roleBindings {
+		if rb.Archived() ||
+			len(rb.Groups) != len(groups) {
+			continue
+		}
+		equal := true
+		for _, g := range rb.Groups {
+			if _, ok := groupUUIDs[g]; !ok {
+				equal = false
+				break
+			}
+			if equal {
+				for _, r := range rb.Roles {
+					if _, ok := roleNames[r.Name]; !ok {
+						equal = false
+						break
+					}
+				}
+			}
+			if equal {
+				return rb
+			}
+		}
+	}
+	return nil
 }

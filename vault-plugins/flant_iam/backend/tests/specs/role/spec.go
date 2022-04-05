@@ -1,8 +1,10 @@
 package role
 
 import (
+	"math/rand"
 	"net/http"
 	"net/url"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -19,12 +21,13 @@ import (
 var TestAPI api.TestAPI
 
 var _ = Describe("Role", func() {
+	rand.Seed(time.Now().Unix())
 	Describe("payload", func() {
 		DescribeTable("name",
 			func(name interface{}, statusCodeCondition string) {
 				tryCreateRandomRoleWithName(name, statusCodeCondition)
 			},
-			Entry("number is allowed", 100, "%d == 201"),
+			Entry("number is allowed", rand.Intn(9999999), "%d == 201"),
 			Entry("absent identifier forbidden", nil, "%d >= 400"),
 			Entry("empty string forbidden", "", "%d >= 400"),
 			Entry("array forbidden", []string{"a"}, "%d >= 400"),

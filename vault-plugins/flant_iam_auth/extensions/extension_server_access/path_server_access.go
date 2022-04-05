@@ -367,7 +367,7 @@ func resolveUserAndSA(tx *io.MemoryStoreTxn, roleName, tenantID, projectID strin
 	var users []iam_model.UserUUID
 	var serviceAccounts []iam_model.ServiceAccountUUID
 	if role.Scope == iam_model.RoleScopeProject {
-		users, serviceAccounts, err = roleResolver.FindMembersWithProjectScopedRole(roleName, projectID)
+		users, serviceAccounts, err = roleResolver.FindMembersWithProjectScopedRole(roleName, tenantID, projectID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("collecting members with project scoped role:%w", err)
 		}
