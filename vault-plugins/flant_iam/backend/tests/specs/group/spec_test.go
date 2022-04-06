@@ -14,6 +14,7 @@ func Test_groupCRUD(t *testing.T) {
 	TestAPI = api.NewGroupAPI(&backend)
 	TenantAPI = api.NewTenantAPI(&backend)
 	UserAPI = api.NewUserAPI(&backend)
+	IdentitySharingAPI = api.NewIdentitySharingAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_iam: Group")
 }

@@ -10,11 +10,12 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs/group"
 )
 
-func Test_tenantCRUD(t *testing.T) {
+func Test_groupCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	group.TenantAPI = lib.NewTenantAPI(rootClient)
 	group.UserAPI = lib.NewUserAPI(rootClient)
 	group.TestAPI = lib.NewGroupAPI(rootClient)
+	group.IdentitySharingAPI = lib.NewIdentitySharingAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Group")
 }

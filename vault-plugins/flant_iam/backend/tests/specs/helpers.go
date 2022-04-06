@@ -2,6 +2,7 @@ package specs
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -54,6 +55,22 @@ func CheckArrayContainsElementByUUIDExceptKeys(array []gjson.Result, element gjs
 	Expect(found).To(BeTrue())
 }
 
+func CheckObjectArrayForUUID(array []gjson.Result, uuid string, shouldContains bool) {
+	found := false
+	for i := range array {
+		Expect(array[i].Map()).To(HaveKey("uuid"))
+		if array[i].Map()["uuid"].String() == uuid {
+			found = true
+			break
+		}
+	}
+	if shouldContains {
+		Expect(found).To(BeTrue())
+	} else {
+		Expect(found).To(BeFalse())
+	}
+}
+
 func ConvertToGJSON(object interface{}) gjson.Result {
 	bytes, err := json.Marshal(object)
 	Expect(err).ToNot(HaveOccurred())
@@ -97,6 +114,45 @@ func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, 
 		"type": "user",
 		"uuid": userID,
 	}
+	params := api.Params{
+		"tenant": tenantID,
+	}
+	createdData := groupAPI.Create(params, url.Values{}, createPayload)
+	rawGroup := createdData.Get("group")
+	data := []byte(rawGroup.String())
+	var group model.Group
+	err := json.Unmarshal(data, &group)
+	Expect(err).ToNot(HaveOccurred())
+	return group
+}
+
+func membersToSliceOfMaps(members model.Members) []map[string]interface{} {
+	result := []map[string]interface{}{}
+	for _, userUUID := range members.Users {
+		result = append(result, map[string]interface{}{
+			"type": "user",
+			"uuid": userUUID,
+		})
+	}
+	for _, saUUID := range members.ServiceAccounts {
+		result = append(result, map[string]interface{}{
+			"type": "service_account",
+			"uuid": saUUID,
+		})
+	}
+	for _, gUUID := range members.Groups {
+		result = append(result, map[string]interface{}{
+			"type": "group",
+			"uuid": gUUID,
+		})
+	}
+	return result
+}
+
+func CreateRandomGroupWithMembers(groupAPI api.TestAPI, tenantID model.TenantUUID, members model.Members) model.Group {
+	createPayload := fixtures.RandomGroupCreatePayload()
+	createPayload["tenant_uuid"] = tenantID
+	createPayload["members"] = membersToSliceOfMaps(members)
 	params := api.Params{
 		"tenant": tenantID,
 	}
@@ -278,4 +334,16 @@ func CreateServiceAccountPassword(serviceAccountPasswordAPI api.TestAPI, service
 	err := json.Unmarshal(data, &password)
 	Expect(err).ToNot(HaveOccurred())
 	return password
+}
+
+func ShareGroupToTenant(identitySharingAPI api.TestAPI, group model.Group, targetTenantUUID model.TenantUUID) {
+	params := api.Params{
+		"tenant": group.TenantUUID,
+	}
+	data := map[string]interface{}{
+		"destination_tenant_uuid": targetTenantUUID,
+		"groups":                  []string{group.UUID},
+	}
+	resp := identitySharingAPI.Create(params, url.Values{}, data)
+	fmt.Printf("identitySharing = %#v", resp)
 }

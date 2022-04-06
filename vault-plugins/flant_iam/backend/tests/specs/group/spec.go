@@ -16,20 +16,34 @@ import (
 )
 
 var (
-	TestAPI   api.TestAPI
-	TenantAPI api.TestAPI
-	UserAPI   api.TestAPI
+	TestAPI            api.TestAPI
+	TenantAPI          api.TestAPI
+	IdentitySharingAPI api.TestAPI
+	UserAPI            api.TestAPI
 )
 
 var _ = Describe("Group", func() {
 	var (
-		tenant model.Tenant
-		user   model.User
+		tenant           model.Tenant
+		user             model.User
+		otherChildGroup  model.Group
+		otherParentGroup model.Group
 	)
 
 	BeforeSuite(func() {
 		tenant = specs.CreateRandomTenant(TenantAPI)
 		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
+		otherTenant := specs.CreateRandomTenant(TenantAPI)
+		otherUserOfChildGroup := specs.CreateRandomUser(UserAPI, otherTenant.UUID)
+		otherChildGroup = specs.CreateRandomGroupWithMembers(TestAPI, otherTenant.UUID, model.Members{
+			Users: []string{otherUserOfChildGroup.UUID},
+		})
+		otherUserOfParentGroup := specs.CreateRandomUser(UserAPI, otherTenant.UUID)
+		otherParentGroup = specs.CreateRandomGroupWithMembers(TestAPI, otherTenant.UUID, model.Members{
+			Users:  []string{otherUserOfParentGroup.UUID},
+			Groups: []string{otherChildGroup.UUID},
+		})
+		specs.ShareGroupToTenant(IdentitySharingAPI, otherParentGroup, tenant.UUID)
 	}, 1.0)
 
 	Describe("payload", func() {
@@ -82,9 +96,9 @@ var _ = Describe("Group", func() {
 			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d >= 400")
 		})
 		It("Can be same identifier at other tenant", func() {
-			tenant = specs.CreateRandomTenant(TenantAPI)
-			user = specs.CreateRandomUser(UserAPI, tenant.UUID)
-			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant.UUID, user.UUID, identifier, "%d == 201")
+			tenant2 := specs.CreateRandomTenant(TenantAPI)
+			user2 := specs.CreateRandomUser(UserAPI, tenant.UUID)
+			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant2.UUID, user2.UUID, identifier, "%d == 201")
 		})
 	})
 
@@ -144,16 +158,35 @@ var _ = Describe("Group", func() {
 		Expect(deletedData.Get("group.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
-	It("can be listed", func() {
-		group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
+	Context("can be listed", func() {
+		It("result contains only own groups if not passed shared=true", func() {
+			group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
 
-		TestAPI.List(api.Params{
-			"tenant": user.TenantUUID,
-			"expectPayload": func(json gjson.Result) {
-				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("groups").Array(),
-					specs.ConvertToGJSON(group), "extensions")
-			},
-		}, url.Values{})
+			TestAPI.List(api.Params{
+				"tenant": user.TenantUUID,
+				"expectPayload": func(json gjson.Result) {
+					groupsArray := json.Get("groups").Array()
+					specs.CheckArrayContainsElementByUUIDExceptKeys(groupsArray,
+						specs.ConvertToGJSON(group), "extensions")
+					specs.CheckObjectArrayForUUID(groupsArray, otherParentGroup.UUID, false)
+					specs.CheckObjectArrayForUUID(groupsArray, otherChildGroup.UUID, false)
+				},
+			}, url.Values{})
+		})
+		It("result contains shared groups if passed show_shared=true", func() {
+			group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
+
+			TestAPI.List(api.Params{
+				"tenant": tenant.UUID,
+				"expectPayload": func(json gjson.Result) {
+					groupsArray := json.Get("groups").Array()
+					specs.CheckArrayContainsElementByUUIDExceptKeys(groupsArray,
+						specs.ConvertToGJSON(group), "extensions")
+					specs.CheckObjectArrayForUUID(groupsArray, otherParentGroup.UUID, true)
+					specs.CheckObjectArrayForUUID(groupsArray, otherChildGroup.UUID, true)
+				},
+			}, url.Values{"show_shared": []string{"true"}})
+		})
 	})
 
 	It("can be created with privileged", func() {
