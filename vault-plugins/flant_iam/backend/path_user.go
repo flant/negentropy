@@ -178,6 +178,11 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "Option to list archived users",
 					Required:    false,
 				},
+				"show_shared": {
+					Type:        framework.TypeBool,
+					Description: "Option to list shared to this tenants users",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -536,17 +541,23 @@ func (b *userBackend) handleRead() framework.OperationFunc {
 
 func (b *userBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list users", "path", req.Path)
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
+		var showShared bool
+		rawShowShared, ok := data.GetOk("show_shared")
+		if ok {
+			showShared = rawShowShared.(bool)
+		}
+		b.Logger().Debug("list users", "path", req.Path, "showArchived", showArchived, "showShared", showShared)
+
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		users, err := usecase.Users(tx, tenantID, consts.OriginIAM).List(showArchived)
+		users, err := usecase.Users(tx, tenantID, consts.OriginIAM).List(showShared, showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}

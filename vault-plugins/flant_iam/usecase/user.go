@@ -14,8 +14,10 @@ import (
 type UserService struct {
 	tenantUUID model.TenantUUID
 
-	tenantRepo *iam_repo.TenantRepository
-	usersRepo  *iam_repo.UserRepository
+	tenantRepo          *iam_repo.TenantRepository
+	usersRepo           *iam_repo.UserRepository
+	identitySharingRepo *iam_repo.IdentitySharingRepository
+	groupRepo           *iam_repo.GroupRepository
 
 	origin consts.ObjectOrigin
 }
@@ -24,8 +26,10 @@ func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID, origin consts.Obj
 	return &UserService{
 		tenantUUID: tenantUUID,
 
-		tenantRepo: iam_repo.NewTenantRepository(db),
-		usersRepo:  iam_repo.NewUserRepository(db),
+		tenantRepo:          iam_repo.NewTenantRepository(db),
+		usersRepo:           iam_repo.NewUserRepository(db),
+		identitySharingRepo: iam_repo.NewIdentitySharingRepository(db),
+		groupRepo:           iam_repo.NewGroupRepository(db),
 
 		origin: origin,
 	}
@@ -54,7 +58,51 @@ func (s *UserService) GetByID(id model.UserUUID) (*model.User, error) {
 	return s.usersRepo.GetByID(id)
 }
 
-func (s *UserService) List(showArchived bool) ([]*model.User, error) {
+func (s *UserService) List(showShared bool, showArchived bool) ([]*model.User, error) {
+	if showShared {
+		sharedGroupUUIDs := map[model.GroupUUID]struct{}{}
+		iss, err := s.identitySharingRepo.ListForDestinationTenant(s.tenantUUID)
+		if err != nil {
+			return nil, fmt.Errorf("collecting identity_sharings:%w", err)
+		}
+		for _, is := range iss {
+			for _, g := range is.Groups {
+				gs, err := s.groupRepo.FindAllChildGroups(g, showArchived)
+				if err != nil {
+					return nil, fmt.Errorf("collecting shared groups:%w", err)
+				}
+				for candidate := range gs {
+					if _, alreadyCollected := sharedGroupUUIDs[candidate]; !alreadyCollected {
+						sharedGroupUUIDs[candidate] = struct{}{}
+					}
+				}
+			}
+		}
+
+		sharedUsersUUIDs := map[model.UserUUID]struct{}{}
+		for gUUID := range sharedGroupUUIDs {
+			g, err := s.groupRepo.GetByID(gUUID)
+			if err != nil {
+				return nil, fmt.Errorf("collecting users of shared groups:%w", err)
+			}
+			for _, userUUID := range g.Users {
+				sharedUsersUUIDs[userUUID] = struct{}{}
+			}
+		}
+		users, err := s.usersRepo.List(s.tenantUUID, showArchived)
+		if err != nil {
+			return nil, fmt.Errorf("collecting own users:%w", err)
+		}
+		for sharedUserUUID := range sharedUsersUUIDs {
+			sharedUser, err := s.usersRepo.GetByID(sharedUserUUID)
+			if err != nil {
+				return nil, fmt.Errorf("getting shared user:%w", err)
+			}
+			users = append(users, sharedUser)
+		}
+		return users, nil
+	}
+
 	return s.usersRepo.List(s.tenantUUID, showArchived)
 }
 
