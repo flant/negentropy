@@ -49,14 +49,14 @@ possible options for build:
 
 There are three possible modes of test and stage environment:
 
-1) One vault in dev mode, negentropy plugins are aside (DEV mode)
+1) One vault in dev mode, negentropy plugins are aside (SINGLE mode)
 2) Vaults with negentropy plugins onbоard (E2E mode, for E2E Tests in CI)
 3) Vaults with negentropy plugins onbоard, run under delve debugger (DEBUG mode)
 
-## DEV mode:
+## SINGLE mode:
 
 ```shell
-./start.sh dev
+./start.sh single
 ```
 
 runs one vault at docker container, uses separate plugin binaries, placed at vault-plugins/build
@@ -93,22 +93,6 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
 1) run all components containers
 2) configure negentropy plugins
 3) export data for running tests and unsealing vaults
-
-# Seal/Unseal vaults
-
-For stop:
-
-```shell
-./stop.sh
-```
-
-For restore:
-
-1) run vault container(s), run delve clients for DEBUG mode
-2) execute:
-```shell
-./unseal.sh
-```
 
 # E2E tests:
 
