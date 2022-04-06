@@ -114,6 +114,11 @@ func (b groupBackend) paths() []*framework.Path {
 					Description: "Option to list archived groups",
 					Required:    false,
 				},
+				"show_shared": {
+					Type:        framework.TypeBool,
+					Description: "Option to list shared to this tenants groups",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -323,18 +328,24 @@ func (b *groupBackend) handleRead() framework.OperationFunc {
 
 func (b *groupBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list groups", "path", req.Path)
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
+		var showShared bool
+		rawShowShared, ok := data.GetOk("show_shared")
+		if ok {
+			showShared = rawShowShared.(bool)
+		}
+		b.Logger().Debug("list groups", "path", req.Path, "showArchived", showArchived, "showShared", showShared)
+
 		tenantID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(true) // need writable for fixing members
 		defer tx.Abort()
 
-		groups, err := usecase.Groups(tx, tenantID, consts.OriginIAM).List(showArchived)
+		groups, err := usecase.Groups(tx, tenantID, consts.OriginIAM).List(showShared, showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}

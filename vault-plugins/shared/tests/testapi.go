@@ -135,7 +135,24 @@ func (b *BackendBasedAPI) Delete(params Params, query url.Values) {
 
 func (b *BackendBasedAPI) List(params Params, query url.Values) gjson.Result {
 	addIfNotExists(&params, "expectStatus", ExpectExactStatus(200))
-	return b.request(logical.ReadOperation, b.Url.Collection(params, query), params, nil)
+	var payload map[string]interface{} = nil
+	if value, ok := query["show_archived"]; ok && value[0] == "true" {
+		payload = map[string]interface{}{"show_archived": true}
+		delete(query, "show_archived")
+	}
+	if value, ok := query["show_shared"]; ok {
+		v := false
+		if value[0] == "true" {
+			v = true
+		}
+		if len(payload) == 0 {
+			payload = map[string]interface{}{}
+		}
+		payload["show_shared"] = v
+		delete(query, "show_shared")
+	}
+
+	return b.request(logical.ReadOperation, b.Url.Collection(params, query), params, payload)
 }
 
 func (b *BackendBasedAPI) Restore(params Params, query url.Values) gjson.Result {

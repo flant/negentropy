@@ -268,8 +268,8 @@ func (r *GroupRepository) FindDirectParentGroupsByGroupUUID(groupUUID model.Grou
 // returns map with found parent uuids and originally passed uuids
 func (r *GroupRepository) FindAllParentGroupsForGroupUUIDs(
 	groupUUIDs map[model.GroupUUID]struct{}) (map[model.GroupUUID]struct{}, error) {
-	resultGroupsSet := groupUUIDs
-	currentGroupsSet := groupUUIDs
+	resultGroupsSet := copyGroupUUIDs(groupUUIDs)
+	currentGroupsSet := copyGroupUUIDs(groupUUIDs)
 	for len(currentGroupsSet) != 0 {
 		nextSet := map[model.GroupUUID]struct{}{}
 		for currentGroupUUID := range currentGroupsSet {
@@ -287,6 +287,14 @@ func (r *GroupRepository) FindAllParentGroupsForGroupUUIDs(
 		currentGroupsSet = nextSet
 	}
 	return resultGroupsSet, nil
+}
+
+func copyGroupUUIDs(groups map[model.GroupUUID]struct{}) map[model.GroupUUID]struct{} {
+	result := map[model.GroupUUID]struct{}{}
+	for g := range groups {
+		result[g] = struct{}{}
+	}
+	return result
 }
 
 func (r *GroupRepository) FindAllParentGroupsForUserUUID(
@@ -390,4 +398,33 @@ func (r *GroupRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, i
 		}
 	}
 	return nil, consts.ErrNotFound
+}
+
+// FindAllChildGroups collects child groups traversing tree
+func (r *GroupRepository) FindAllChildGroups(groupUUID model.GroupUUID, showArchived bool) (map[model.GroupUUID]struct{}, error) {
+	return r.findAllChildGroups(map[model.GroupUUID]struct{}{groupUUID: {}}, showArchived)
+}
+
+func (r *GroupRepository) findAllChildGroups(groupUUIDs map[model.GroupUUID]struct{}, showArchived bool) (map[model.GroupUUID]struct{}, error) {
+	resultGroupsSet := copyGroupUUIDs(groupUUIDs)
+	currentGroupsSet := copyGroupUUIDs(groupUUIDs)
+	for len(currentGroupsSet) != 0 {
+		nextSet := map[model.GroupUUID]struct{}{}
+		for currentGroupUUID := range currentGroupsSet {
+			group, err := r.GetByID(currentGroupUUID)
+			if err != nil {
+				return nil, err
+			}
+			if group.NotArchived() || showArchived {
+				for _, candidate := range group.Groups {
+					if _, found := resultGroupsSet[candidate]; !found {
+						resultGroupsSet[candidate] = struct{}{}
+						nextSet[candidate] = struct{}{}
+					}
+				}
+			}
+		}
+		currentGroupsSet = nextSet
+	}
+	return resultGroupsSet, nil
 }
