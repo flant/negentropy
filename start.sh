@@ -11,7 +11,7 @@ function usage {
   echo "Options:"
   echo "  e2e		for e2e tests"
   echo "  single	single vault"
-  echo "  debug		enable debug"
+  echo "  debug		debug with dlv"
   echo "  local		local development"
 }
 
