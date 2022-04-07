@@ -22,7 +22,7 @@ keytool -keystore kafka.keystore.jks -alias localhost -certreq -file server.csr 
 
 ## Sign CSR
 ```shell
-openssl x509 -req -CA ca.crt -CAkey ca.key -in server.csr -out server.crt -days 365 -CAcreateserial -extensions req_ext -extfile client.cnf
+openssl x509 -req -CA ca.crt -CAkey ca.key -in server.csr -out server.crt -days 365 -CAcreateserial -extensions req_ext -extfile config.cnf
 ```
 
 ## Import CA to keystore
