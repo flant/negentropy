@@ -138,6 +138,11 @@ func (b serviceAccountBackend) paths() []*framework.Path {
 					Description: "Option to list archived groups",
 					Required:    false,
 				},
+				"show_shared": {
+					Type:        framework.TypeBool,
+					Description: "Option to list shared to this tenants service_accounts",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -572,17 +577,23 @@ func (b *serviceAccountBackend) handleRead() framework.OperationFunc {
 
 func (b *serviceAccountBackend) handleList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		b.Logger().Debug("list service_accounts", "path", req.Path)
 		var showArchived bool
 		rawShowArchived, ok := data.GetOk("show_archived")
 		if ok {
 			showArchived = rawShowArchived.(bool)
 		}
+		var showShared bool
+		rawShowShared, ok := data.GetOk("show_shared")
+		if ok {
+			showShared = rawShowShared.(bool)
+		}
+		b.Logger().Debug("list service_accounts", "path", req.Path, "showArchived", showArchived, "showShared", showShared)
+
 		tenantUUID := data.Get(iam_repo.TenantForeignPK).(string)
 
 		tx := b.storage.Txn(false)
 
-		serviceAccounts, err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).List(showArchived)
+		serviceAccounts, err := usecase.ServiceAccounts(tx, consts.OriginIAM, tenantUUID).List(showShared, showArchived)
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}

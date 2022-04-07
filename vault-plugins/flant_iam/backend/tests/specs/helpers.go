@@ -2,7 +2,6 @@ package specs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"time"
 
@@ -336,7 +335,7 @@ func CreateServiceAccountPassword(serviceAccountPasswordAPI api.TestAPI, service
 	return password
 }
 
-func ShareGroupToTenant(identitySharingAPI api.TestAPI, group model.Group, targetTenantUUID model.TenantUUID) {
+func ShareGroupToTenant(identitySharingAPI api.TestAPI, group model.Group, targetTenantUUID model.TenantUUID) gjson.Result {
 	params := api.Params{
 		"tenant": group.TenantUUID,
 	}
@@ -344,6 +343,6 @@ func ShareGroupToTenant(identitySharingAPI api.TestAPI, group model.Group, targe
 		"destination_tenant_uuid": targetTenantUUID,
 		"groups":                  []string{group.UUID},
 	}
-	resp := identitySharingAPI.Create(params, url.Values{}, data)
-	fmt.Printf("identitySharing = %#v", resp)
+	is := identitySharingAPI.Create(params, url.Values{}, data).Get("identity_sharing")
+	return is
 }

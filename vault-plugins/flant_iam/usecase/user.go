@@ -13,25 +13,23 @@ import (
 
 type UserService struct {
 	tenantUUID model.TenantUUID
+	origin     consts.ObjectOrigin
 
 	tenantRepo          *iam_repo.TenantRepository
 	usersRepo           *iam_repo.UserRepository
 	identitySharingRepo *iam_repo.IdentitySharingRepository
 	groupRepo           *iam_repo.GroupRepository
-
-	origin consts.ObjectOrigin
 }
 
 func Users(db *io.MemoryStoreTxn, tenantUUID model.TenantUUID, origin consts.ObjectOrigin) *UserService {
 	return &UserService{
 		tenantUUID: tenantUUID,
+		origin:     origin,
 
 		tenantRepo:          iam_repo.NewTenantRepository(db),
 		usersRepo:           iam_repo.NewUserRepository(db),
 		identitySharingRepo: iam_repo.NewIdentitySharingRepository(db),
 		groupRepo:           iam_repo.NewGroupRepository(db),
-
-		origin: origin,
 	}
 }
 

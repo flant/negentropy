@@ -14,6 +14,8 @@ func Test_userCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	serviceaccount.TenantAPI = lib.NewTenantAPI(rootClient)
 	serviceaccount.TestAPI = lib.NewServiceAccountAPI(rootClient)
+	serviceaccount.IdentitySharingAPI = lib.NewIdentitySharingAPI(rootClient)
+	serviceaccount.GroupAPI = lib.NewGroupAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: ServiceAccount")
 }

@@ -15,8 +15,10 @@ type ServiceAccountService struct {
 	tenantUUID model.TenantUUID
 	origin     consts.ObjectOrigin
 
-	repo       *iam_repo.ServiceAccountRepository
-	tenantRepo *iam_repo.TenantRepository
+	tenantRepo          *iam_repo.TenantRepository
+	repo                *iam_repo.ServiceAccountRepository
+	identitySharingRepo *iam_repo.IdentitySharingRepository
+	groupRepo           *iam_repo.GroupRepository
 }
 
 func ServiceAccounts(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, tid model.TenantUUID) *ServiceAccountService {
@@ -24,8 +26,10 @@ func ServiceAccounts(db *io.MemoryStoreTxn, origin consts.ObjectOrigin, tid mode
 		tenantUUID: tid,
 		origin:     origin,
 
-		repo:       iam_repo.NewServiceAccountRepository(db),
-		tenantRepo: iam_repo.NewTenantRepository(db),
+		repo:                iam_repo.NewServiceAccountRepository(db),
+		tenantRepo:          iam_repo.NewTenantRepository(db),
+		identitySharingRepo: iam_repo.NewIdentitySharingRepository(db),
+		groupRepo:           iam_repo.NewGroupRepository(db),
 	}
 }
 
@@ -133,7 +137,51 @@ func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
-func (s *ServiceAccountService) List(showArchived bool) ([]*model.ServiceAccount, error) {
+func (s *ServiceAccountService) List(showShared bool, showArchived bool) ([]*model.ServiceAccount, error) {
+	if showShared {
+		sharedGroupUUIDs := map[model.GroupUUID]struct{}{}
+		iss, err := s.identitySharingRepo.ListForDestinationTenant(s.tenantUUID)
+		if err != nil {
+			return nil, fmt.Errorf("collecting identity_sharings:%w", err)
+		}
+		for _, is := range iss {
+			for _, g := range is.Groups {
+				gs, err := s.groupRepo.FindAllChildGroups(g, showArchived)
+				if err != nil {
+					return nil, fmt.Errorf("collecting shared groups:%w", err)
+				}
+				for candidate := range gs {
+					if _, alreadyCollected := sharedGroupUUIDs[candidate]; !alreadyCollected {
+						sharedGroupUUIDs[candidate] = struct{}{}
+					}
+				}
+			}
+		}
+
+		sharedSAsUUIDs := map[model.UserUUID]struct{}{}
+		for gUUID := range sharedGroupUUIDs {
+			g, err := s.groupRepo.GetByID(gUUID)
+			if err != nil {
+				return nil, fmt.Errorf("collecting service_accounts of shared groups:%w", err)
+			}
+			for _, saUUID := range g.ServiceAccounts {
+				sharedSAsUUIDs[saUUID] = struct{}{}
+			}
+		}
+		serviceAccounts, err := s.repo.List(s.tenantUUID, showArchived)
+		if err != nil {
+			return nil, fmt.Errorf("collecting own service_accounts:%w", err)
+		}
+		for sharedSaUUID := range sharedSAsUUIDs {
+			sharedServiceAccount, err := s.repo.GetByID(sharedSaUUID)
+			if err != nil {
+				return nil, fmt.Errorf("getting shared service_account:%w", err)
+			}
+			serviceAccounts = append(serviceAccounts, sharedServiceAccount)
+		}
+		return serviceAccounts, nil
+	}
+
 	return s.repo.List(s.tenantUUID, showArchived)
 }
 
