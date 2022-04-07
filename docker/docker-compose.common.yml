@@ -21,22 +21,31 @@ services:
     platform: linux/amd64
     container_name: kafka
     ports:
+      - "9092:9092"
       - "9093:9093"
     volumes:
-      - "./kafka/log4j.properties:/bitnami/kafka/config/log4j.properties"
+      - "./kafka/log4j.properties:/bitnami/kafka/config/log4j.properties:ro"
+      - './kafka/kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro'
+      - './kafka/kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+      - './kafka/client-ssl.properties:/opt/bitnami/kafka/config/client-ssl.properties:ro'
     environment:
       KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
       ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
-      KAFKA_CFG_LISTENERS: "CLIENT://:9092,EXTERNAL://:9093"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092,EXTERNAL://localhost:9093"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT, EXTERNAL:SSL"
+      KAFKA_CFG_LISTENERS: "INTERNAL://:9092,EXTERNAL://:9093"
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://kafka:9093"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: "foobar"
+      KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/opt/bitnami/kafka/config/certs/kafka.keystore.jks"
+      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: "foobar"
+      KAFKA_CFG_SSL_CLIENT_AUTH: "required"
     depends_on:
       zookeeper:
         condition: service_healthy
     healthcheck:
-      test:
-        ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
+      test: ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
       interval: 10s
       timeout: 20s
       retries: 5
