@@ -8,9 +8,11 @@ import (
 
 func main() {
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": "localhost:9093",
-		"security.protocol": "SSL",
-		"ssl.ca.location":   "./kafka-docker/ca.crt",
+		"bootstrap.servers":        "localhost:9093",
+		"security.protocol":        "SSL",
+		"ssl.ca.location":          "/home/artem/kafka/ca.crt",
+                "ssl.key.location":         "/home/artem/kafka/client.key",
+                "ssl.certificate.location": "/home/artem/kafka/client.crt",
 		//"ssl.truststore.location": "../kafka-docker/kafka.truststore.jks",
 		//"ssl.truststore.password": "foobar",
 		//"ssl.keystore.location": "./kafka-docker/kafka.keystore.jks",
