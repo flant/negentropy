@@ -46,7 +46,7 @@ openssl x509 -req -CA ca.crt -CAkey ca.key -in client.csr -out client.crt -days 
 ```
 
 ---
-For corrent work SAN in signed certificates need openssl config like this:
+For correct work SAN in signed certificates needs openssl config like this:
 ```
 [ req ]
 distinguished_name = req_distinguished_name
