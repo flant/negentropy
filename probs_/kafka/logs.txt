@@ -1,0 +1,132 @@
+Project
+=======
+flant_iam
+---------
+2021-10-07T10:02:06.907Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace: create project: path=tenant/e9ff7a69-3b8b-4f61-87ef-b2e5e458f1d3/project
+2021-10-07T10:02:06.909Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.MessageBroker: SendMessages-29 - started
+2021-10-07T10:02:06.909Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.MessageBroker: msgsTopics :=
+2021-10-07T10:02:06.909Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.MessageBroker: source topics = root_source.auth-1
+2021-10-07T10:02:06.909Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.MessageBroker: SendMessages - try finish by send offset
+2021-10-07T10:02:06.913Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.MessageBroker: SendMessages-29 - exit
+2021-10-07T10:02:06.913Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.Auth09:59:46.860.MemStorage: Commit transaction
+---
+0.006s
+
+flant_iam_auth
+--------------
+2021-10-07T10:02:06.958Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceRoot: Handle new message project/237cfd69-6298-428a-8fec-45a5a45105a4: type=project id=237cfd69-6298-428a-8fec-45a5a45105a4
+2021-10-07T10:02:06.958Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceRoot: Message handled successful project/237cfd69-6298-428a-8fec-45a5a45105a4: type=project id=237cfd69-6298-428a-8fec-45a5a45105a4
+2021-10-07T10:02:06.958Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Messages count: count=0 source="&{[root_source.auth-2[0]@23] 0xc003069b18 false}"
+2021-10-07T10:02:06.958Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-19 - started
+2021-10-07T10:02:06.959Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: msgsTopics :=
+2021-10-07T10:02:06.959Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: source topics = root_source.auth-2
+2021-10-07T10:02:06.959Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages - try finish by send offset
+2021-10-07T10:02:06.964Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-19 - exit
+2021-10-07T10:02:06.964Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Commit transaction
+---
+0.008s
+===
+0.057
+
+
+User
+====
+flant_iam
+---------
+2021-10-07T10:00:11.436Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace: create user: path=tenant/11daae14-5925-404b-8867-92693148873c/user
+2021-10-07T10:00:11.444Z [ERROR] finished user hook: new="&{9e30b467-9912-47ee-84d4-219e465aa2a3 11daae14-5925-404b-8867-92693148873c 01d5987e-1634-4290-9aad-ad961c90dcf3 iam map[server_access:0xc0009de2c0] 382edab1-5db9-40f5-be2a-6c245a3441a5 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20    ae900a9f2d63b92c5fa264513584d584683bf910@ex.com []  [] 0 0}"
+2021-10-07T10:00:11.478Z [INFO]  secrets.flant_iam.flant_iam_f4f8dace: Messages count: count=3 source=<nil>
+2021-10-07T10:00:11.478Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.MessageBroker: SendMessages-2 - started
+2021-10-07T10:00:11.478Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.MessageBroker: msgsTopics := root_source,root_source.auth-1,root_source.auth-2
+2021-10-07T10:00:11.478Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.MessageBroker: empty source
+2021-10-07T10:00:11.478Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.MessageBroker: SendMessages - try finish with sendMessages
+2021-10-07T10:00:11.487Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.MessageBroker: SendMessages-2 - exit
+2021-10-07T10:00:11.487Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace: Commit transaction
+
+
+
+Multipass
+flant_iam_auth
+
+2021-10-07T10:01:40.483Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceRoot.msgHandler: Got message: user=9e30b467-9912-47ee-84d4-219e465aa2a3
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceRoot: Handle new message user/9e30b467-9912-47ee-84d4-219e465aa2a3: type=user id=9e30b467-9912-47ee-84d4-219e465aa2a3
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.RootSourceHandler: Handle new user. Create entity object: EXTRA_VALUE_AT_END=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.RootSourceHandler: Entity object created for user: EXTRA_VALUE_AT_END=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.RootSourceHandler: Create entity alias for user and source: 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20=_internal_multipass
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.RootSourceHandler: Entity alias for user and source created: 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20=_internal_multipass
+2021-10-07T10:01:40.484Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceRoot: Message handled successful user/9e30b467-9912-47ee-84d4-219e465aa2a3: type=user id=9e30b467-9912-47ee-84d4-219e465aa2a3
+2021-10-07T10:01:40.507Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Messages count: count=2 source="&{[root_source.auth-2[0]@5] 0xc0008ba168 false}"
+2021-10-07T10:01:40.507Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-4 - started
+2021-10-07T10:01:40.507Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: msgsTopics := auth-source.auth-2,auth-source.auth-2
+2021-10-07T10:01:40.507Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: source topics = root_source.auth-2
+2021-10-07T10:01:40.507Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages - try finish with sendMessages
+2021-10-07T10:01:40.515Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-4 - exit
+2021-10-07T10:01:40.515Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Commit transaction
+
+2021-10-07T10:01:40.620Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Handle new message entity/0e18ad6b-1b4c-4bdc-b195-6f43dca1de21: type=entity id=0e18ad6b-1b4c-4bdc-b195-6f43dca1de21
+2021-10-07T10:01:40.621Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.VaultIdentityClient: Creating vault entity with name 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20: name=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.VaultIdentityClient: Created vault entity with name 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20: name=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Message handled successful entity/0e18ad6b-1b4c-4bdc-b195-6f43dca1de21, try commit: type=entity id=0e18ad6b-1b4c-4bdc-b195-6f43dca1de21
+2021-10-07T10:01:40.627Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Messages count: count=0 source="&{[auth-source.auth-2[0]@6] 0xc000836438 false}"
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-6 - started
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: msgsTopics :=
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: source topics = auth-source.auth-2
+2021-10-07T10:01:40.627Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages - try finish by send offset
+2021-10-07T10:01:40.633Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-6 - exit
+2021-10-07T10:01:40.633Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Commit transaction
+2021-10-07T10:01:40.633Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Message handled successful entity/0e18ad6b-1b4c-4bdc-b195-6f43dca1de21: type=entity id=0e18ad6b-1b4c-4bdc-b195-6f43dca1de21
+
+
+flant_iam_auth user->entity
+2021-10-07T10:01:40.483Z
+2021-10-07T10:01:40.633Z
+               ---------
+               0.15s
+
+2021-10-07T10:01:40.738Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Handle new message entity_alias/1a81c309-463a-4334-be70-512ddd28dda8: type=entity_alias id=1a81c309-463a-4334-be70-512ddd28dda8
+2021-10-07T10:01:40.740Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.VaultIdentityClient: Creating entity alias with name 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20 for entity id 8181ef7d-71ba-8edc-6979-fb7aa86de83e with mount accessor auth_flant_iam_auth_29275f73: eaName=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20 entityId=8181ef7d-71ba-8edc-6979-fb7aa86de83e ma=auth_flant_iam_auth_29275f73
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.VaultIdentityClient: Entity alias 382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20 created for entity id 8181ef7d-71ba-8edc-6979-fb7aa86de83e with mount accessor auth_flant_iam_auth_29275f73: eaName=382edab1-5db9-40f5-be2a-6c245a3441a5@Identifier_a300614473879ba7e476b929dc89d21f53d98c20 entityId=8181ef7d-71ba-8edc-6979-fb7aa86de83e ma=auth_flant_iam_auth_29275f73
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Message handled successful entity_alias/1a81c309-463a-4334-be70-512ddd28dda8, try commit: type=entity_alias id=1a81c309-463a-4334-be70-512ddd28dda8
+2021-10-07T10:01:40.743Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Messages count: count=0 source="&{[auth-source.auth-2[0]@7] 0xc00056ac78 false}"
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-8 - started
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: msgsTopics :=
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: source topics = auth-source.auth-2
+2021-10-07T10:01:40.743Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages - try finish by send offset
+2021-10-07T10:01:40.746Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.MessageBroker: SendMessages-8 - exit
+2021-10-07T10:01:40.746Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.MemStorage: Commit transaction
+2021-10-07T10:01:40.747Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth10:00:33.502.KafkaSourceSelf: Message handled successful entity_alias/1a81c309-463a-4334-be70-512ddd28dda8: type=entity_alias id=1a81c309-463a-4334-be70-512ddd28dda8
+
+flant_iam_auth user->entity + entity_alias
+2021-10-07T10:01:40.483Z
+2021-10-07T10:01:40.747Z
+               ---------
+                  0.264
+
+Notes:
+
+Strange 50s gap between two operations at flant_iam_auth
+--------------------------------------------------------
+021-10-07T09:59:43.424Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth09:58:48.818.KafkaSourceSelf.RunMessageLoop: exit
+2021-10-07T09:59:43.424Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.Auth09:58:48.818.KafkaSourceSelf: Watcher - stop: replica_name=auth-source.auth-2
+2021-10-07T10:00:33.502Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.flant_iam_auth.Factory: started
+2021-10-07T10:00:33.502Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_29275f73.flant_iam_auth.Factory: DEBUG mode is ON, messages will not be encrypted
+
+
+
+ROOT_VAULT
+2021-10-07T09:57:37.008Z [INFO]  proxy environment: http_proxy="" https_proxy="" no_proxy=""
+2021-10-07T09:57:38.748Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.flant_iam.Factory: started
+2021-10-07T09:58:02.168Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.flant_iam.Factory: exit
+2021-10-07T09:58:02.168Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace: Call removeAllKafkaSources
+2021-10-07T09:58:02.168Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace: removeAllKafkaSources finished
+
+2021-10-07T09:58:02.179Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.flant_iam_auth.Factory: started
+2021-10-07T09:58:46.896Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.flant_iam_auth.Factory: exit
+2021-10-07T09:58:46.896Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.cleanup: started
+2021-10-07T09:58:46.896Z [INFO]  auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.cleanup: finished
+
+2021-10-07T09:59:46.860Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.flant_iam_auth.Factory: started
+2021-10-07T09:59:46.860Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.flant_iam.Factory: started
+
+2021-10-07T10:00:10.291Z [DEBUG] secrets.flant_iam.flant_iam_f4f8dace.flant_iam.Factory: exit
+2021-10-07T10:00:31.808Z [DEBUG] auth.flant_iam_auth.auth_flant_iam_auth_7485f70d.flant_iam_auth.Factory: exit
