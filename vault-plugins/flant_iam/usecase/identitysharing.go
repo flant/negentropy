@@ -35,7 +35,7 @@ func (s *IdentitySharingService) Create(is *model.IdentitySharing) error {
 	if err != nil {
 		return err
 	}
-
+	// TODO check all groups are owned by source tenant
 	is.Version = repo.NewResourceVersion()
 	return s.sharesRepo.Create(is)
 }
@@ -44,6 +44,7 @@ func (s *IdentitySharingService) Update(is *model.IdentitySharing) error {
 	is.Version = repo.NewResourceVersion()
 
 	// Update
+	// TODO check all groups are owned by source tenant
 	return s.sharesRepo.Update(is)
 }
 

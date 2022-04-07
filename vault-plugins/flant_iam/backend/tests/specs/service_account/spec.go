@@ -16,14 +16,33 @@ import (
 )
 
 var (
-	TestAPI   api.TestAPI
-	TenantAPI api.TestAPI
+	TestAPI            api.TestAPI
+	TenantAPI          api.TestAPI
+	IdentitySharingAPI api.TestAPI
+	GroupAPI           api.TestAPI
 )
 
 var _ = Describe("ServiceAccount", func() {
-	var tenant model.Tenant
+	var (
+		tenant                          model.Tenant
+		serviceAccount                  model.ServiceAccount
+		otherSaOfChildGroupOtherTenant  model.ServiceAccount
+		otherSaOfParentGroupOtherTenant model.ServiceAccount
+	)
 	BeforeSuite(func() {
 		tenant = specs.CreateRandomTenant(TenantAPI)
+		serviceAccount = specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
+		otherTenant := specs.CreateRandomTenant(TenantAPI)
+		otherSaOfChildGroupOtherTenant = specs.CreateRandomServiceAccount(TestAPI, otherTenant.UUID)
+		otherChildGroup := specs.CreateRandomGroupWithMembers(GroupAPI, otherTenant.UUID, model.Members{
+			ServiceAccounts: []string{otherSaOfChildGroupOtherTenant.UUID},
+		})
+		otherSaOfParentGroupOtherTenant = specs.CreateRandomServiceAccount(TestAPI, otherTenant.UUID)
+		otherParentGroup := specs.CreateRandomGroupWithMembers(GroupAPI, otherTenant.UUID, model.Members{
+			ServiceAccounts: []string{otherSaOfParentGroupOtherTenant.UUID},
+			Groups:          []string{otherChildGroup.UUID},
+		})
+		specs.ShareGroupToTenant(IdentitySharingAPI, otherParentGroup, tenant.UUID)
 	}, 1.0)
 
 	Describe("payload", func() {
@@ -69,18 +88,17 @@ var _ = Describe("ServiceAccount", func() {
 			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, "%d >= 400")
 		})
 		It("Can be same identifier at other tenant", func() {
-			tenant = specs.CreateRandomTenant(TenantAPI)
-			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant.UUID, identifier, "%d == 201")
+			tenant2 := specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomServiceAccountAtTenantWithIdentifier(tenant2.UUID, identifier, "%d == 201")
 		})
 	})
 
 	It("can be read", func() {
-		sa := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
-		createdData := specs.ConvertToGJSON(sa)
+		createdData := specs.ConvertToGJSON(serviceAccount)
 
 		TestAPI.Read(api.Params{
-			"tenant":          sa.TenantUUID,
-			"service_account": sa.UUID,
+			"tenant":          serviceAccount.TenantUUID,
+			"service_account": serviceAccount.UUID,
 			"expectPayload": func(json gjson.Result) {
 				specs.IsSubsetExceptKeys(createdData, json.Get("service_account"), "extensions")
 			},
@@ -129,18 +147,33 @@ var _ = Describe("ServiceAccount", func() {
 		Expect(deletedData.Get("service_account.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
-	It("can be listed", func() {
-		sa := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
+	Context("can be listed", func() {
+		It("result contains only own service_accounts if not passed shared=true", func() {
+			TestAPI.List(api.Params{
+				"tenant": serviceAccount.TenantUUID,
+				"expectPayload": func(json gjson.Result) {
+					sasArray := json.Get("service_accounts").Array()
+					specs.CheckArrayContainsElementByUUIDExceptKeys(sasArray,
+						specs.ConvertToGJSON(serviceAccount), "extensions")
+					specs.CheckObjectArrayForUUID(sasArray, otherSaOfChildGroupOtherTenant.UUID, false)
+					specs.CheckObjectArrayForUUID(sasArray, otherSaOfParentGroupOtherTenant.UUID, false)
+				},
+			}, url.Values{})
+		})
 
-		TestAPI.List(api.Params{
-			"tenant": sa.TenantUUID,
-			"expectPayload": func(json gjson.Result) {
-				specs.CheckArrayContainsElementByUUIDExceptKeys(json.Get("service_accounts").Array(),
-					specs.ConvertToGJSON(sa), "extensions")
-			},
-		}, url.Values{})
+		It("result contains shared service_accounts if  passed shared=true", func() {
+			TestAPI.List(api.Params{
+				"tenant": serviceAccount.TenantUUID,
+				"expectPayload": func(json gjson.Result) {
+					sasArray := json.Get("service_accounts").Array()
+					specs.CheckArrayContainsElementByUUIDExceptKeys(sasArray,
+						specs.ConvertToGJSON(serviceAccount), "extensions")
+					specs.CheckObjectArrayForUUID(sasArray, otherSaOfChildGroupOtherTenant.UUID, true)
+					specs.CheckObjectArrayForUUID(sasArray, otherSaOfParentGroupOtherTenant.UUID, true)
+				},
+			}, url.Values{"show_shared": []string{"true"}})
+		})
 	})
-
 	// It("can not be created with privileged", func() {
 
 	Context("after deletion", func() {
