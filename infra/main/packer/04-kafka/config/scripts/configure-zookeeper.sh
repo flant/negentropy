@@ -4,6 +4,7 @@
 
 mkdir -p /tmp/kafka
 envsubst < /etc/kafka/zookeeper.properties > /tmp/kafka/zookeeper.properties
+envsubst < /etc/kafka/zk-client-ssl.properties > /tmp/kafka/zk-client-ssl.properties
 
 for ((i=1; i<=$KAFKA_REPLICAS; i++)); do
   echo "server.$i=$NODE_PREFIX$i.$KAFKA_DOMAIN:2888:3888" >> /tmp/kafka/zookeeper.properties

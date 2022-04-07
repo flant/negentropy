@@ -1,8 +1,3 @@
-variable "root_password" {
-  type      = string
-  sensitive = true
-}
-
 variable "gcp_project" {
   type = string
 }

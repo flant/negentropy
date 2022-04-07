@@ -1,8 +1,3 @@
-variable "root_password" {
-  type =  string
-  sensitive = true
-}
-
 variable "vault_auth_bucket" {
   type = string
 }
@@ -117,7 +112,6 @@ source "googlecompute" "vault-auth" {
   machine_type        = var.machine_type
 
   ssh_username        = "root"
-  ssh_password        = var.root_password
 
   disk_size         = var.disk_size
   image_description = "Vault Auth ${var.version} based on Alpine Linux x86_64 Virtual"
@@ -128,9 +122,10 @@ source "googlecompute" "vault-auth" {
   }
   image_name          = local.image_name
   project_id          = var.gcp_project
-
-  ssh_wait_timeout    = var.ssh_wait_timeout
   zone                = var.gcp_zone
+
+  temporary_key_pair_type = "ed25519"
+  ssh_wait_timeout    = var.ssh_wait_timeout
 }
 
 build {
@@ -186,10 +181,9 @@ build {
       "../../../common/packer-scripts/80-read-only.sh",
       "../../../common/packer-scripts/90-cleanup.sh",
       "../../../common/packer-scripts/91-minimize.sh",
-      "../../../common/packer-scripts/99-sshd.sh",
-      "packer-scripts/01-vault-addr.sh",
-      "packer-scripts/02-uncomment-vars.sh",
-      "packer-scripts/03-nginx.sh"
+      "../../../common/packer-scripts/99-tfadm.sh",
+      "packer-scripts/01-uncomment-vars.sh",
+      "packer-scripts/02-nginx.sh"
     ]
   }
 

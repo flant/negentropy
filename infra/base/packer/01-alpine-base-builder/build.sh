@@ -2,6 +2,8 @@
 # Here we have custom build script to calculate checksum
 # for the image in '01-alpine-base' directory instead of current one.
 
+# TODO: make this script more simple
+
 dir_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 export SCRIPT_PATH="$(dirname "$dir_path")/01-alpine-base"
 

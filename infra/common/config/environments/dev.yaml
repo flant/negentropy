@@ -1,7 +1,49 @@
-environment: dev
-kafka_endpoints: negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093
-oidc_url: https://login.flant.com
-kafka_use_ssl: true
-kafka_ssl_ca_path: /etc/ca.crt
-kafka_ssl_client_private_key_path: /etc/client.key
-kafka_ssl_client_certificate_path: /etc/client.crt
+---
+apiVersion: negentropy.io/v1
+kind: MigrationConfiguration
+variables:
+  # Environment variables names in lowercase. In migration engine their names will be converted to uppercase with prefix "NEGENTROPY_" at the beginning
+  kafka_endpoints: negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093
+  oidc_url: https://login.flant.com
+  kafka_use_ssl: true
+  kafka_ssl_ca_path: /tmp/ca-certificates/ca.crt
+  kafka_ssl_client_private_key_path: /tmp/internal.key
+  kafka_ssl_client_certificate_path: /tmp/internal.crt
+---
+apiVersion: negentropy.io/v1
+kind: PackerConfiguration
+config:
+  tfstate_bucket: "negentropy-dev-terraform-state"
+  gcp_project: "negentropy-dev"
+  gcp_region: "europe-west1"
+  gcp_zone: "europe-west1-b"
+  gcp_builder_service_account: "negentropy-base@negentropy-dev.iam.gserviceaccount.com"
+  gcp_image_bucket: "negentropy-dev-packer"
+  gcp_ckms_seal_key_ring: "negentropy-vault"
+  gcp_ckms_seal_crypto_key: "vault-unseal"
+  gcp_ckms_region: "europe"
+  vault_ca_name: "negentropy"
+  vault_ca_pool: "negentropy-flant-local"
+  vault_ca_location: "europe-west1"
+  vault_conf_bucket: "negentropy-dev-vault-conf"
+  vault_conf_conf_bucket: "negentropy-dev-vault-conf-conf"
+  vault_root_source_bucket: "negentropy-dev-vault-root-source"
+  vault_auth_bucket: "negentropy-dev-vault-auth"
+  vault_conf_internal_domain: "conf.negentropy.flant.local"
+  vault_conf_conf_internal_domain: "conf-conf.negentropy.flant.local"
+  vault_root_source_internal_domain: "root-source.negentropy.flant.local"
+  vault_auth_internal_domain: "auth.negentropy.flant.local"
+  vault_auth_external_domain: "auth.negentropy.dev.flant.com"
+  kafka_bucket: "negentropy-dev-kafka"
+  kafka_domain: "negentropy.flant.local"
+  kafka_server_key_pass: "Flant123"
+  kafka_ca_name: "negentropy"
+  kafka_ca_pool: "negentropy-flant-local"
+  kafka_ca_location: "europe-west1"
+  kafka_replicas: "3"
+---
+apiVersion: negentropy.io/v1
+kind: TerraformConfiguration
+variables:
+  vault_root_source_loadbalancer_domain: "root-source.negentropy.dev.flant.com"
+  vault_auth_loadbalancer_domain: "auth.negentropy.dev.flant.com"

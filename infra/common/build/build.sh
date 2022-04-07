@@ -1,11 +1,11 @@
 # Build packer image in current directory.
-# $1 - pass `1` to skip image existence check.
+# $1 - pass "force" to skip image existence check.
 function build_image()
 {
   export SCRIPT_PATH="$(pwd)"
   source ../../../common/build/include.sh
 
-  if [ "$1" != "1" ]; then
+  if [ "$1" != "force" ]; then
     if image_exists; then
       >&2 echo "Image already exists in cloud, skipping build."
       return 0
@@ -37,14 +37,14 @@ function build_image()
   return $?
 }
 
-# Build packer images in all directories in the current directory.
-# To target image build from a particular directory you can pass `<directoryName>` as a first parameter.
-# Also you can pass the `--force` parameter to prevent checksum check and force image rebuilding.
+# Build packer images in all sub-directories in the current directory.
+# To target image build from a specific directory you can pass <directoryName> as a first parameter.
+# Also you can pass the "--force" parameter to prevent checksum check and force image rebuilding.
 function build_images()
 {
   for var in "$@"; do
     if [ "$var" == "--force" ]; then
-      force="1"
+      force="force"
       continue
     fi
     target="$var"
@@ -52,11 +52,13 @@ function build_images()
 
   for d in */ ; do
     folder="$(basename -- "$d")"
+    # Skip image build if $folder isn't equal to $target.
     if [ -n "$target" ] && [ "$target" != "$folder" ]; then
-      >&2 echo "Skipping image build from directory '$folder' because target is '$target'"
       continue
     fi
-    if [ -z "$target" ] && [ -n "$SKIP_DIRECTORY" ] && [ "$SKIP_DIRECTORY" == "$folder" ]; then
+    # Skip image build if no arguments were passed ($target is empty) and $SKIP_DIRECTORY contains directory
+    # whose build should be skipped.
+    if [ -z "$target" ] && [ "$SKIP_DIRECTORY" == "$folder" ]; then
       continue
     fi
 
@@ -72,7 +74,7 @@ function build_images()
     fi
     popd &> /dev/null
 
-    if [ "$code" == "0" ]; then
+    if [ $code -eq 0 ]; then
       >&2 echo "Build image succeed."
     else
       >&2 echo "Build image error occurred."

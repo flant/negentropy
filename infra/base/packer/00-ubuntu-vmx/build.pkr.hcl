@@ -1,8 +1,3 @@
-variable "root_password" {
-  type      = string
-  sensitive = true
-}
-
 variable "gcp_project" {
   type = string
 }
@@ -63,6 +58,9 @@ source "googlecompute" "ubuntu-vmx" {
   image_labels = {
     image_sources_checksum = var.image_sources_checksum,
     version                = local.version_dashed
+  }
+  metadata = {
+    block-project-ssh-keys: "true"
   }
   image_licenses = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name     = local.image_name
