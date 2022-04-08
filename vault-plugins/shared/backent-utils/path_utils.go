@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/pkg/errors"
@@ -58,6 +60,8 @@ func MapErrorToHTTPStatusCode(err error) int {
 		consts.ErrAlreadyExists:       http.StatusBadRequest,
 		consts.ErrBadProjectScopeRole: http.StatusBadRequest,
 		consts.ErrInvalidArg:          http.StatusBadRequest,
+		memdb.ErrNotEmptyRelation:     http.StatusBadRequest,
+		memdb.ErrForeignKey:           http.StatusBadRequest,
 
 		consts.ErrNotFound: http.StatusNotFound,
 

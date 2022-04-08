@@ -222,11 +222,7 @@ var _ = Describe("Project", func() {
 	It("can be deleted", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 
-		TestAPI.Delete(tests.Params{
-			"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
-			"client":       project.TenantUUID,
-			"project":      project.UUID,
-		}, nil)
+		deleteProject(project)
 
 		deletedData := TestAPI.Read(tests.Params{
 			"client":       project.TenantUUID,
@@ -258,11 +254,7 @@ var _ = Describe("Project", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			project := specs.CreateRandomProject(TestAPI, client.UUID)
-			TestAPI.Delete(tests.Params{
-				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
-				"client":       project.TenantUUID,
-				"project":      project.UUID,
-			}, nil)
+			deleteProject(project)
 
 			TestAPI.Delete(tests.Params{
 				"client":       project.TenantUUID,
@@ -273,11 +265,7 @@ var _ = Describe("Project", func() {
 
 		It("can't be updated", func() {
 			project := specs.CreateRandomProject(TestAPI, client.UUID)
-			TestAPI.Delete(tests.Params{
-				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
-				"client":       project.TenantUUID,
-				"project":      project.UUID,
-			}, nil)
+			deleteProject(project)
 
 			updatePayload := fixtures.RandomProjectCreatePayload()
 			updatePayload["tenant_uuid"] = project.TenantUUID
@@ -287,6 +275,49 @@ var _ = Describe("Project", func() {
 				"project":      project.UUID,
 				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
+		})
+	})
+
+	Context("restoring deleted project", func() {
+		It("can be restored after deleting", func() {
+			project := specs.CreateRandomProject(TestAPI, client.UUID)
+			deleteProject(project)
+
+			TestAPI.Restore(tests.Params{
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": tests.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					projectData := json.Get("project")
+					Expect(projectData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically("==", int64(0))))
+				},
+			}, nil)
+		})
+
+		It("cant be restored after deleting client", func() {
+			otherClient := specs.CreateRandomClient(ClientAPI)
+			project := specs.CreateRandomProject(TestAPI, otherClient.UUID)
+			deleteProject(project)
+			ClientAPI.Delete(tests.Params{
+				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
+				"client":       otherClient.UUID,
+			}, nil)
+
+			TestAPI.Restore(tests.Params{
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": tests.ExpectExactStatus(400),
+			}, nil)
+
+			TestAPI.Read(tests.Params{
+				"client":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": tests.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					projectData := json.Get("project")
+					Expect(projectData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+				},
+			}, nil)
 		})
 	})
 })
@@ -302,4 +333,12 @@ func tryCreateRandomProjectAtClientWithIdentifier(clientUUID string,
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func deleteProject(project model.Project) {
+	TestAPI.Delete(tests.Params{
+		"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
+		"client":       project.TenantUUID,
+		"project":      project.UUID,
+	}, nil)
 }
