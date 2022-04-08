@@ -185,6 +185,7 @@ func (d devopsServicePackBuilder) createIdentitySharing(clientTenantUUID iam_mod
 		DestinationTenantUUID: clientTenantUUID,
 		Version:               uuid.New(),
 		Groups:                groups,
+		Origin:                consts.OriginFlantFlow,
 	}
 	if err = d.identitySharingRepo.Create(sh); err != nil {
 		return nil, nil, err
@@ -253,6 +254,7 @@ func findEqualIdentitySharing(identitySharings []*iam_model.IdentitySharing, sou
 	for _, is := range identitySharings {
 		if is.Archived() ||
 			is.SourceTenantUUID != sourceTenantUUID ||
+			is.Origin != consts.OriginFlantFlow ||
 			len(is.Groups) != len(groups) {
 			continue
 		}

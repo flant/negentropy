@@ -47,6 +47,7 @@ var _ = Describe("Identity sharing", func() {
 				Expect(is.Map()).To(HaveKey("source_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("destination_tenant_uuid"))
 				Expect(is.Map()).To(HaveKey("groups"))
+				Expect(is.Map()).To(HaveKey("origin"))
 				Expect(is.Get("groups").Array()).To(HaveLen(1))
 			},
 			"tenant": sourceTenantID,
