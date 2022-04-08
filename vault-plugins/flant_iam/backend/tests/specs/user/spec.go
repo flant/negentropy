@@ -1,6 +1,7 @@
 package user
 
 import (
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -134,10 +135,7 @@ var _ = Describe("User", func() {
 	It("can be deleted", func() {
 		user := specs.CreateRandomUser(TestAPI, tenant.UUID)
 
-		TestAPI.Delete(api.Params{
-			"tenant": user.TenantUUID,
-			"user":   user.UUID,
-		}, nil)
+		deleteUser(user)
 
 		deletedData := TestAPI.Read(api.Params{
 			"tenant":       user.TenantUUID,
@@ -198,10 +196,7 @@ var _ = Describe("User", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			user := specs.CreateRandomUser(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"tenant": user.TenantUUID,
-				"user":   user.UUID,
-			}, nil)
+			deleteUser(user)
 
 			TestAPI.Delete(api.Params{
 				"tenant":       user.TenantUUID,
@@ -212,10 +207,7 @@ var _ = Describe("User", func() {
 
 		It("can't be updated", func() {
 			user := specs.CreateRandomUser(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"tenant": user.TenantUUID,
-				"user":   user.UUID,
-			}, nil)
+			deleteUser(user)
 
 			updatePayload := fixtures.RandomUserCreatePayload()
 			updatePayload["tenant_uuid"] = user.TenantUUID
@@ -225,6 +217,49 @@ var _ = Describe("User", func() {
 				"user":         user.UUID,
 				"expectStatus": api.ExpectExactStatus(400),
 			}, nil, updatePayload)
+		})
+	})
+
+	Context("restoring deleted user", func() {
+		It("can be restored after deleting", func() {
+			user := specs.CreateRandomUser(TestAPI, tenant.UUID)
+			deleteUser(user)
+
+			TestAPI.Restore(api.Params{
+				"tenant":       user.TenantUUID,
+				"user":         user.UUID,
+				"expectStatus": api.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					userData := json.Get("user")
+					Expect(userData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically("==", int64(0))))
+				},
+			}, nil)
+		})
+
+		It("cant be restored after deleting tenant", func() {
+			otherTenant := specs.CreateRandomTenant(TenantAPI)
+			user := specs.CreateRandomUser(TestAPI, otherTenant.UUID)
+			deleteUser(user)
+			TenantAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       otherTenant.UUID,
+			}, nil)
+
+			TestAPI.Restore(api.Params{
+				"tenant":       user.TenantUUID,
+				"user":         user.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+
+			TestAPI.Read(api.Params{
+				"tenant":       user.TenantUUID,
+				"user":         user.UUID,
+				"expectStatus": api.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					userData := json.Get("user")
+					Expect(userData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+				},
+			}, nil)
 		})
 	})
 })
@@ -240,4 +275,12 @@ func tryCreateRandomUserAtTenantWithIdentifier(tenantUUID string,
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func deleteUser(user model.User) {
+	TestAPI.Delete(api.Params{
+		"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+		"tenant":       user.TenantUUID,
+		"user":         user.UUID,
+	}, nil)
 }
