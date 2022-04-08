@@ -123,11 +123,7 @@ var _ = Describe("Project", func() {
 	It("can be deleted", func() {
 		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
 
-		TestAPI.Delete(api.Params{
-			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
-			"tenant":       project.TenantUUID,
-			"project":      project.UUID,
-		}, nil)
+		deleteProject(project)
 
 		deletedData := TestAPI.Read(api.Params{
 			"tenant":       project.TenantUUID,
@@ -168,36 +164,55 @@ var _ = Describe("Project", func() {
 		TestAPI.CreatePrivileged(params, url.Values{}, createPayload)
 	})
 
-	It("can be restored", func() {
-		project := specs.CreateRandomProject(TestAPI, tenant.UUID)
-		TestAPI.Delete(api.Params{
-			"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
-			"tenant":       project.TenantUUID,
-			"project":      project.UUID,
-		}, nil)
-		deletedData := TestAPI.Read(api.Params{
-			"tenant":       project.TenantUUID,
-			"project":      project.UUID,
-			"expectStatus": api.ExpectExactStatus(http.StatusOK),
-		}, nil)
-		Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+	Context("restoring deleted project", func() {
+		It("can be restored after deleting", func() {
+			project := specs.CreateRandomProject(TestAPI, tenant.UUID)
+			deleteProject(project)
+			deletedData := TestAPI.Read(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(http.StatusOK),
+			}, nil)
+			Expect(deletedData.Get("project.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 
-		restoreData := TestAPI.Restore(api.Params{
-			"tenant":       project.TenantUUID,
-			"project":      project.UUID,
-			"expectStatus": api.ExpectExactStatus(http.StatusOK),
-		}, nil)
-		Expect(restoreData.Get("project.archiving_timestamp").Int()).To(Equal(int64(0)))
+			restoreData := TestAPI.Restore(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(http.StatusOK),
+			}, nil)
+			Expect(restoreData.Get("project.archiving_timestamp").Int()).To(Equal(int64(0)))
+		})
+
+		It("cant be restored after deleting client", func() {
+			otherClient := specs.CreateRandomTenant(TenantAPI)
+			project := specs.CreateRandomProject(TestAPI, otherClient.UUID)
+			deleteProject(project)
+			TenantAPI.Delete(api.Params{
+				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+				"tenant":       otherClient.UUID,
+			}, nil)
+
+			TestAPI.Restore(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
+
+			TestAPI.Read(api.Params{
+				"tenant":       project.TenantUUID,
+				"project":      project.UUID,
+				"expectStatus": api.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					projectData := json.Get("project")
+					Expect(projectData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+				},
+			}, nil)
+		})
 	})
-
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			project := specs.CreateRandomProject(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
-				"tenant":       project.TenantUUID,
-				"project":      project.UUID,
-			}, nil)
+			deleteProject(project)
 
 			TestAPI.Delete(api.Params{
 				"tenant":       project.TenantUUID,
@@ -208,11 +223,7 @@ var _ = Describe("Project", func() {
 
 		It("can't be updated", func() {
 			project := specs.CreateRandomProject(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
-				"tenant":       project.TenantUUID,
-				"project":      project.UUID,
-			}, nil)
+			deleteProject(project)
 			updatePayload := fixtures.RandomProjectCreatePayload()
 			updatePayload["tenant_uuid"] = project.TenantUUID
 			updatePayload["resource_version"] = project.Version
@@ -237,4 +248,12 @@ func tryCreateRandomGroupAtTenantWithIdentifier(tenantUUID,
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func deleteProject(project model.Project) {
+	TestAPI.Delete(api.Params{
+		"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+		"tenant":       project.TenantUUID,
+		"project":      project.UUID,
+	}, nil)
 }
