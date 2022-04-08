@@ -1,11 +1,12 @@
 import argparse
-import hvac
-import time
-import json
 import importlib
+import json
 import os
-
 from typing import List
+
+import hvac
+import requests
+import time
 
 
 class Vault:
@@ -43,7 +44,8 @@ class Vault:
             except Exception:
                 time.sleep(seconds_per_attempt)
                 continue
-        raise Exception("{} attempts were failed, vault '{}' at {} is unreachable".format(attempts, self.name, self.url))
+        raise Exception(
+            "{} attempts were failed, vault '{}' at {} is unreachable".format(attempts, self.name, self.url))
 
     def init_and_unseal(self):
         """Init and unseal vault """
@@ -113,6 +115,78 @@ class Vault:
         print("vault '{}' successfully inited and unsealed".format(self.name))
 
 
+def find_master_root_vault(vaults: List[Vault]) -> Vault:
+    """ returns master root vault (now it is just first vault with flant_iam onboard) """
+    for vault in vaults:
+        if vault.name == "root":
+            return vault
+    raise Exception("there is no vaults with flant_iam onboard in passed: {}".format(vaults))
+
+
+def check_response(resp: requests.Response, expected_status_code: int = 200) -> requests.Response:
+    """ raise an exception if returned status code doesn't match expected"""
+    if resp.status_code != expected_status_code:
+        raise Exception(
+            "expected {}, got {}, response json:\n {}".format(expected_status_code, resp.status_code, resp.text))
+    return resp
+
+
+def create_privileged_tenant(vault: Vault, tenant_uuid: str, identifier: str):
+    """create tenant if not exists"""
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    resp = vault_client.read(path="flant_iam/tenant/" + tenant_uuid)
+    if resp:
+        print("tenant with uuid '{}' already exists".format(tenant_uuid))
+        return
+    vault_client.write(path="flant_iam/tenant/privileged", uuid=tenant_uuid, identifier=identifier)
+    print("tenant with uuid '{}' created".format(tenant_uuid))
+
+
+def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, identifier: str):
+    """create user if not exists"""
+    base_path = "flant_iam/tenant/{}/user/".format(tenant_uuid)
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    resp = vault_client.read(path=base_path + user_uuid)
+    if resp:
+        print("user with uuid '{}' already exists".format(user_uuid))
+        return
+    vault_client.write(path=base_path + "privileged", uuid=user_uuid, identifier=identifier)
+    print("user with uuid '{}' created".format(user_uuid))
+
+
+def create_user_multipass(vault: Vault, tenant_uuid: str, user_uuid: str, ttl_sec: int) -> str:
+    """create user multipass"""
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    resp = vault_client.write(path="flant_iam/tenant/{}/user/{}/multipass".format(tenant_uuid, user_uuid), ttl=ttl_sec)
+    body = resp.json()
+    if type(body) is not dict:
+        raise Exception("expect dict, got:{}".format(type(body)))
+    if not body['data'] or \
+            type(body['data']) is not dict \
+            or not body['data']['token']:
+        raise Exception("expect {'data':{'token':'xxxx', ...}, ...} dict, got:\n" + body)
+    return body['data']['token']
+
+
+def add_user_to_group(vault: Vault, tenant_uuid: str, user_uuid: str, group_uuid: str):
+    """add user to group"""
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    path = "flant_iam/tenant/{}/group/{}".format(tenant_uuid, group_uuid)
+    resp = vault_client.read(path=path)
+    if not resp:
+        raise Exception("got None, expect group")
+    group = resp['data']['group']
+    if user_uuid not in group['users']:
+        group['members'].append({'type': 'user', 'uuid': user_uuid})
+        resp = vault_client.write(path=path, **group)
+        if resp:
+            print("user {} is added to group {}".format(user_uuid, group_uuid))
+        else:
+            raise Exception("got None ")
+    else:
+        print("user {} already at group {}".format(user_uuid, group_uuid))
+
+
 def run_migrations(vaults: List[Vault]):
     module_path = './infra/common/docker/migrator.py'
     module_name = 'migrations'
@@ -159,6 +233,42 @@ for vault in vaults:
 write_tokens_to_file(vaults)
 
 run_migrations(vaults)
+
+# ============================================================================
+# prepare user multipass_jwt for authd tests
+# ============================================================================
+multipass_file_path = "authd/dev/secret/authd.jwt"
+multipass_file_folder = multipass_file_path.rsplit("/", 1)[0]
+if not os.path.exists(multipass_file_folder):
+    os.makedirs(multipass_file_folder)
+iam_vault = find_master_root_vault(vaults)
+create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
+create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                       "00000661-0000-4000-A000-000000000000",
+                       "user_for_authd_tests")
+multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                  "00000661-0000-4000-A000-000000000000", 3600)
+file = open(multipass_file_path, "w")
+file.write(multipass)
+file.close()
+print(multipass_file_path + " is updated")
+
+# ============================================================================
+# create privileged user for webdev local development
+# ============================================================================
+
+if args.okta_uuid:
+    print("DEBUG: OKTA UUID is", args.okta_uuid)
+    create_privileged_user(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
+                           args.okta_uuid,
+                           "local-admin")
+    create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
+                          args.okta_uuid, 3600)
+
+    print("DEBUG: add user to flant-all group")
+    flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'
+    flant_all_group_uuid = 'a5c6650a-665a-404d-acbf-708c9fd1731f'
+    add_user_to_group(iam_vault, flant_tenant_uuid, args.okta_uuid, flant_all_group_uuid)
 
 
 # Custom steps for single vault
