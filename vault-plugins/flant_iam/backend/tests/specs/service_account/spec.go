@@ -209,11 +209,7 @@ var _ = Describe("ServiceAccount", func() {
 			TestAPI.Restore(api.Params{
 				"tenant":          serviceAccount.TenantUUID,
 				"service_account": serviceAccount.UUID,
-				"expectStatus":    api.ExpectExactStatus(500),
-				"expectPayload": func(json gjson.Result) {
-					service_accountData := json.Get("service_account")
-					Expect(service_accountData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically("==", int64(0))))
-				},
+				"expectStatus":    api.ExpectStatus("%d > 400"),
 			}, nil)
 		})
 	})
