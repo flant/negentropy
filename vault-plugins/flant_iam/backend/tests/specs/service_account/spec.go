@@ -1,6 +1,7 @@
 package serviceaccount
 
 import (
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -134,10 +135,7 @@ var _ = Describe("ServiceAccount", func() {
 	It("can be deleted", func() {
 		sa := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
 
-		TestAPI.Delete(api.Params{
-			"tenant":          sa.TenantUUID,
-			"service_account": sa.UUID,
-		}, nil)
+		deleteServiceAccount(sa)
 
 		deletedData := TestAPI.Read(api.Params{
 			"tenant":          sa.TenantUUID,
@@ -179,10 +177,7 @@ var _ = Describe("ServiceAccount", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			sa := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"tenant":          sa.TenantUUID,
-				"service_account": sa.UUID,
-			}, nil)
+			deleteServiceAccount(sa)
 
 			TestAPI.Delete(api.Params{
 				"tenant":          sa.TenantUUID,
@@ -193,10 +188,7 @@ var _ = Describe("ServiceAccount", func() {
 
 		It("can't be updated", func() {
 			sa := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
-			TestAPI.Delete(api.Params{
-				"tenant":          sa.TenantUUID,
-				"service_account": sa.UUID,
-			}, nil)
+			deleteServiceAccount(sa)
 
 			updatePayload := fixtures.RandomServiceAccountCreatePayload()
 			updatePayload["tenant_uuid"] = sa.TenantUUID
@@ -206,6 +198,23 @@ var _ = Describe("ServiceAccount", func() {
 				"service_account": sa.UUID,
 				"expectStatus":    api.ExpectExactStatus(400),
 			}, nil, updatePayload)
+		})
+	})
+
+	Context("restoring deleted service_account", func() {
+		It("can't be restored after deleting", func() {
+			serviceAccount := specs.CreateRandomServiceAccount(TestAPI, tenant.UUID)
+			deleteServiceAccount(serviceAccount)
+
+			TestAPI.Restore(api.Params{
+				"tenant":          serviceAccount.TenantUUID,
+				"service_account": serviceAccount.UUID,
+				"expectStatus":    api.ExpectExactStatus(500),
+				"expectPayload": func(json gjson.Result) {
+					service_accountData := json.Get("service_account")
+					Expect(service_accountData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically("==", int64(0))))
+				},
+			}, nil)
 		})
 	})
 })
@@ -221,4 +230,12 @@ func tryCreateRandomServiceAccountAtTenantWithIdentifier(tenantUUID string,
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func deleteServiceAccount(service_account model.ServiceAccount) {
+	TestAPI.Delete(api.Params{
+		"expectStatus":    api.ExpectExactStatus(http.StatusNoContent),
+		"tenant":          service_account.TenantUUID,
+		"service_account": service_account.UUID,
+	}, nil)
 }
