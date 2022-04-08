@@ -1,6 +1,7 @@
 package group
 
 import (
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -243,6 +244,19 @@ var _ = Describe("Group", func() {
 			}, nil, updatePayload)
 		})
 	})
+
+	Context("restoring deleted group", func() {
+		It("can't be restored after deleting", func() {
+			group := specs.CreateRandomEmptyGroup(TestAPI, tenant.UUID)
+			deleteGroup(group)
+
+			TestAPI.Restore(api.Params{
+				"tenant":       group.TenantUUID,
+				"group":        group.UUID,
+				"expectStatus": api.ExpectStatus("%d > 400"),
+			}, nil)
+		})
+	})
 })
 
 func tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenantUUID, userUUID string,
@@ -267,4 +281,12 @@ func createGroup(tenantAPI, userAPI, groupAPI api.TestAPI) *model.Group {
 	user := specs.CreateRandomUser(userAPI, tenant.UUID)
 	group := specs.CreateRandomGroupWithUser(groupAPI, tenant.UUID, user.UUID)
 	return &group
+}
+
+func deleteGroup(group model.Group) {
+	TestAPI.Delete(api.Params{
+		"expectStatus": api.ExpectExactStatus(http.StatusNoContent),
+		"tenant":       group.TenantUUID,
+		"group":        group.UUID,
+	}, nil)
 }

@@ -188,5 +188,12 @@ func (s *UserService) UnsetExtension(origin consts.ObjectOrigin, uuid model.User
 }
 
 func (s *UserService) Restore(id model.UserUUID) (*model.User, error) {
+	t, err := s.tenantRepo.GetByID(s.tenantUUID)
+	if err != nil {
+		return nil, err
+	}
+	if t.Archived() {
+		return nil, fmt.Errorf("%w:tenant/client", consts.ErrIsArchived)
+	}
 	return s.usersRepo.CascadeRestore(id)
 }

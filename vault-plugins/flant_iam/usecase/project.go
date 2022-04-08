@@ -97,5 +97,12 @@ func (s *ProjectService) Restore(id model.ProjectUUID) (*model.Project, error) {
 	if stored.Origin != s.origin {
 		return nil, consts.ErrBadOrigin
 	}
-	return repo.NewProjectRepository(s.db).Restore(id)
+	tenant, err := repo.NewTenantRepository(s.db).GetByID(stored.TenantUUID)
+	if err != nil {
+		return nil, err
+	}
+	if tenant.Archived() {
+		return nil, fmt.Errorf("%w:tenant/client", consts.ErrIsArchived)
+	}
+	return repository.Restore(id)
 }

@@ -3,6 +3,7 @@ package contact
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -138,10 +139,7 @@ var _ = Describe("Contact", func() {
 	It("can be deleted", func() {
 		contact := specs.CreateRandomContact(TestAPI, client.UUID)
 
-		TestAPI.Delete(tests.Params{
-			"client":  contact.TenantUUID,
-			"contact": contact.UUID,
-		}, nil)
+		deleteContact(contact)
 
 		deletedData := TestAPI.Read(tests.Params{
 			"client":       contact.TenantUUID,
@@ -186,10 +184,7 @@ var _ = Describe("Contact", func() {
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
 			contact := specs.CreateRandomContact(TestAPI, client.UUID)
-			TestAPI.Delete(tests.Params{
-				"client":  contact.TenantUUID,
-				"contact": contact.UUID,
-			}, nil)
+			deleteContact(contact)
 
 			TestAPI.Delete(tests.Params{
 				"client":       contact.TenantUUID,
@@ -200,10 +195,7 @@ var _ = Describe("Contact", func() {
 
 		It("can't be updated", func() {
 			contact := specs.CreateRandomContact(TestAPI, client.UUID)
-			TestAPI.Delete(tests.Params{
-				"client":  contact.TenantUUID,
-				"contact": contact.UUID,
-			}, nil)
+			deleteContact(contact)
 
 			updatePayload := fixtures.RandomContactCreatePayload()
 			updatePayload["uuid"] = contact.UUID
@@ -215,6 +207,49 @@ var _ = Describe("Contact", func() {
 				"contact":      contact.UUID,
 				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
+		})
+	})
+
+	Context("restoring deleted contact", func() {
+		It("can be restored after deleting", func() {
+			contact := specs.CreateRandomContact(TestAPI, client.UUID)
+			deleteContact(contact)
+
+			TestAPI.Restore(tests.Params{
+				"client":       contact.TenantUUID,
+				"contact":      contact.UUID,
+				"expectStatus": tests.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					contactData := json.Get("contact")
+					Expect(contactData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically("==", int64(0))))
+				},
+			}, nil)
+		})
+
+		It("cant be restored after deleting client", func() {
+			otherClient := specs.CreateRandomClient(ClientAPI)
+			contact := specs.CreateRandomContact(TestAPI, otherClient.UUID)
+			deleteContact(contact)
+			ClientAPI.Delete(tests.Params{
+				"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
+				"client":       otherClient.UUID,
+			}, nil)
+
+			TestAPI.Restore(tests.Params{
+				"client":       contact.TenantUUID,
+				"contact":      contact.UUID,
+				"expectStatus": tests.ExpectExactStatus(400),
+			}, nil)
+
+			TestAPI.Read(tests.Params{
+				"client":       contact.TenantUUID,
+				"contact":      contact.UUID,
+				"expectStatus": tests.ExpectExactStatus(200),
+				"expectPayload": func(json gjson.Result) {
+					contactData := json.Get("contact")
+					Expect(contactData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+				},
+			}, nil)
 		})
 	})
 })
@@ -230,4 +265,12 @@ func tryCreateRandomContactAtTenantWithIdentifier(clientUUID string,
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func deleteContact(contact model.FullContact) {
+	TestAPI.Delete(tests.Params{
+		"expectStatus": tests.ExpectExactStatus(http.StatusNoContent),
+		"client":       contact.TenantUUID,
+		"contact":      contact.UUID,
+	}, nil)
 }

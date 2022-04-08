@@ -209,6 +209,6 @@ func (s *ServiceAccountService) UnsetExtension(origin consts.ObjectOrigin, uuid 
 	return s.Update(obj)
 }
 
-func (s *ServiceAccountService) CascadeRestore(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
-	return s.repo.CascadeRestore(id)
-}
+// func (s *ServiceAccountService) CascadeRestore(id model.ServiceAccountUUID) (*model.ServiceAccount, error) {
+//	return s.repo.CascadeRestore(id)
+// }
