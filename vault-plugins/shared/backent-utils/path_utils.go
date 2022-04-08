@@ -5,13 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
-
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/pkg/errors"
 
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
