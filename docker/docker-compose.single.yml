@@ -5,7 +5,10 @@ services:
     container_name: vault
     image: vault:1.7.1
     volumes:
-      - "../vault-plugins/build/:/vault/plugins"
+      - "../vault-plugins/build/:/vault/plugins:ro"
+      - "./kafka/ca.crt:/etc/ca.crt:ro"
+      - "./kafka/client.crt:/etc/client.crt:ro"
+      - "./kafka/client.key:/etc/client.key:ro"
     ports:
       - 8200:8200
     environment:
@@ -32,8 +35,8 @@ services:
       context: .
       dockerfile: Dockerfile.test-client
     volumes:
-      - "../authd/build:/opt/authd/bin"
-      - "../cli/build:/opt/cli/bin"
+      - "../authd/build:/opt/authd/bin:ro"
+      - "../cli/build:/opt/cli/bin:ro"
     command: sleep infinity
     depends_on:
       vault:
@@ -45,9 +48,9 @@ services:
       context: .
       dockerfile: Dockerfile.test-server
     volumes:
-      - "../authd/build:/opt/authd/bin"
-      - "../server-access/flant-server-accessd/build:/opt/server-access/bin"
-      - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
+      - "../authd/build:/opt/authd/bin:ro"
+      - "../server-access/flant-server-accessd/build:/opt/server-access/bin:ro"
+      - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2:ro"
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:

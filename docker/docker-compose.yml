@@ -6,8 +6,11 @@ services:
     platform: linux/amd64
     container_name: vault-auth
     volumes:
-      - "../infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./vault/vault-auth.hcl:/etc/vault.hcl"
+      - "../infra/common/vault/vault/bin/vault:/bin/vault:ro"
+      - "./vault/vault-auth.hcl:/etc/vault.hcl:ro"
+      - "./kafka/ca.crt:/etc/ca.crt:ro"
+      - "./kafka/client.crt:/etc/client.crt:ro"
+      - "./kafka/client.key:/etc/client.key:ro"
     ports:
       - 8200:8200
     environment:
@@ -32,8 +35,11 @@ services:
     platform: linux/amd64
     container_name: vault-root
     volumes:
-      - "../infra/common/vault/vault/bin/vault:/bin/vault"
-      - "./vault/vault-root.hcl:/etc/vault.hcl"
+      - "../infra/common/vault/vault/bin/vault:/bin/vault:ro"
+      - "./vault/vault-root.hcl:/etc/vault.hcl:ro"
+      - "./kafka/ca.crt:/etc/ca.crt:ro"
+      - "./kafka/client.crt:/etc/client.crt:ro"
+      - "./kafka/client.key:/etc/client.key:ro"
     ports:
       - 8300:8300
     environment:
@@ -60,8 +66,8 @@ services:
       context: .
       dockerfile: Dockerfile.test-client
     volumes:
-      - "../authd/build:/opt/authd/bin"
-      - "../cli/build:/opt/cli/bin"
+      - "../authd/build:/opt/authd/bin:ro"
+      - "../cli/build:/opt/cli/bin:ro"
     command: sleep infinity
     depends_on:
       vault-root:
@@ -76,9 +82,9 @@ services:
       context: .
       dockerfile: Dockerfile.test-server
     volumes:
-      - "../authd/build:/opt/authd/bin"
-      - "../server-access/flant-server-accessd/build:/opt/server-access/bin"
-      - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2"
+      - "../authd/build:/opt/authd/bin:ro"
+      - "../server-access/flant-server-accessd/build:/opt/server-access/bin:ro"
+      - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2:ro"
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
     depends_on:
