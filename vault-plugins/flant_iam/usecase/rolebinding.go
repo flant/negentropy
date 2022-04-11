@@ -12,6 +12,7 @@ import (
 )
 
 type RoleBindingService struct {
+	db          *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 	repo        *iam_repo.RoleBindingRepository
 	tenantsRepo *iam_repo.TenantRepository
 
@@ -20,6 +21,7 @@ type RoleBindingService struct {
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 	return &RoleBindingService{
+		db:            db,
 		repo:          iam_repo.NewRoleBindingRepository(db),
 		memberFetcher: NewMembersFetcher(db),
 		tenantsRepo:   iam_repo.NewTenantRepository(db),
@@ -41,6 +43,7 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	if err != nil {
 		return fmt.Errorf("RoleBindingService.Create:%s", err)
 	}
+	// TODO check - owned or shared
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users
@@ -71,6 +74,7 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	if err != nil {
 		return err
 	}
+	// TODO check - owned or shared
 	rb.Groups = subj.Groups
 	rb.ServiceAccounts = subj.ServiceAccounts
 	rb.Users = subj.Users

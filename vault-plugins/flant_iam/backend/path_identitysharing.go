@@ -12,6 +12,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -176,7 +177,7 @@ func (b *identitySharingBackend) handleCreate(expectID bool) framework.Operation
 			Groups:                groups,
 		}
 
-		if err = usecase.IdentityShares(tx).Create(is); err != nil {
+		if err = usecase.IdentityShares(tx, consts.OriginIAM).Create(is); err != nil {
 			msg := "cannot create identity sharing"
 			b.Logger().Error(msg, "err", err.Error())
 			return backentutils.ResponseErrMessage(req, msg+":"+err.Error(), http.StatusBadRequest)
@@ -204,7 +205,7 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 	tx := b.storage.Txn(false)
 	defer tx.Abort()
 
-	list, err := usecase.IdentityShares(tx).List(sourceTenant, showArchived)
+	list, err := usecase.IdentityShares(tx, consts.OriginIAM).List(sourceTenant, showArchived)
 	if err != nil {
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
@@ -225,7 +226,7 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 	tx := b.storage.Txn(false)
 	defer tx.Abort()
 
-	identitySharing, err := usecase.IdentityShares(tx).GetByID(id)
+	identitySharing, err := usecase.IdentityShares(tx, consts.OriginIAM).GetByID(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}
@@ -242,7 +243,7 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 	tx := b.storage.Txn(true)
 	defer tx.Abort()
 
-	err := usecase.IdentityShares(tx).Delete(id)
+	err := usecase.IdentityShares(tx, consts.OriginIAM).Delete(id)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

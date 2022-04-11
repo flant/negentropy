@@ -1,6 +1,9 @@
 package model
 
-import "github.com/flant/negentropy/vault-plugins/shared/memdb"
+import (
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+)
 
 const IdentitySharingType = "identity_sharing" // also, memdb schema name
 
@@ -12,6 +15,8 @@ type IdentitySharing struct {
 	DestinationTenantUUID TenantUUID          `json:"destination_tenant_uuid"`
 
 	Version string `json:"resource_version"`
+
+	Origin consts.ObjectOrigin `json:"origin"`
 
 	// Groups which to share with target tenant
 	Groups []GroupUUID `json:"groups"`
