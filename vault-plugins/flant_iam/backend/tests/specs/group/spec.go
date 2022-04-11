@@ -98,7 +98,7 @@ var _ = Describe("Group", func() {
 		})
 		It("Can be same identifier at other tenant", func() {
 			tenant2 := specs.CreateRandomTenant(TenantAPI)
-			user2 := specs.CreateRandomUser(UserAPI, tenant.UUID)
+			user2 := specs.CreateRandomUser(UserAPI, tenant2.UUID)
 			tryCreateRandomGroupAtTenantWithUserAndIdentifier(tenant2.UUID, user2.UUID, identifier, "%d == 201")
 		})
 	})
@@ -247,7 +247,7 @@ var _ = Describe("Group", func() {
 
 	Context("restoring deleted group", func() {
 		It("can't be restored after deleting", func() {
-			group := specs.CreateRandomEmptyGroup(TestAPI, tenant.UUID)
+			group := specs.CreateRandomGroupWithUser(TestAPI, tenant.UUID, user.UUID)
 			deleteGroup(group)
 
 			TestAPI.Restore(api.Params{

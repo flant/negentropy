@@ -95,6 +95,7 @@ func CreateRandomTenant(tenantsAPI api.TestAPI) model.Tenant {
 func CreateRandomUser(userAPI api.TestAPI, tenantID model.TenantUUID) model.User {
 	createPayload := fixtures.RandomUserCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
+	createPayload["tenant_uuid"] = "user_" + uuid.New()
 	createdData := userAPI.Create(api.Params{
 		"tenant": tenantID,
 	}, nil, createPayload)
@@ -152,21 +153,6 @@ func CreateRandomGroupWithMembers(groupAPI api.TestAPI, tenantID model.TenantUUI
 	createPayload := fixtures.RandomGroupCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
 	createPayload["members"] = membersToSliceOfMaps(members)
-	params := api.Params{
-		"tenant": tenantID,
-	}
-	createdData := groupAPI.Create(params, url.Values{}, createPayload)
-	rawGroup := createdData.Get("group")
-	data := []byte(rawGroup.String())
-	var group model.Group
-	err := json.Unmarshal(data, &group)
-	Expect(err).ToNot(HaveOccurred())
-	return group
-}
-
-func CreateRandomEmptyGroup(groupAPI api.TestAPI, tenantID model.TenantUUID) model.Group {
-	createPayload := fixtures.RandomGroupCreatePayload()
-	createPayload["tenant_uuid"] = tenantID
 	params := api.Params{
 		"tenant": tenantID,
 	}

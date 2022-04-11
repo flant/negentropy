@@ -14,6 +14,7 @@ import (
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func CreateRandomClient(clientsAPI tests.TestAPI) ext_model.Client {
@@ -141,8 +142,7 @@ func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, grou
 	r1 := iam_specs.CreateRandomRole(roleAPI)
 	rules := map[string][]string{config.Devops: {r1.Name}}
 	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
-	allFlantGroup := iam_specs.CreateRandomEmptyGroup(groupAPI, tenant.UUID)
-	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroup.UUID)
+	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(uuid.New())
 	cfg := configAPI.ReadConfigFlantFlow()
 	return &cfg
 }

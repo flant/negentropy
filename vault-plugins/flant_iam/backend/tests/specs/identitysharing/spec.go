@@ -32,7 +32,7 @@ var _ = Describe("Identity sharing", func() {
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)
 		targetTenantID = t2.UUID
-		user = specs.CreateRandomUser(UserAPI, targetTenantID)
+		user = specs.CreateRandomUser(UserAPI, sourceTenantID)
 		group = specs.CreateRandomGroupWithUser(GroupAPI, sourceTenantID, user.UUID)
 	})
 
@@ -98,7 +98,7 @@ var _ = Describe("Identity sharing", func() {
 		sourceTenantID = t1.UUID
 		t2 := specs.CreateRandomTenant(TenantAPI)
 		targetTenantID = t2.UUID
-		user = specs.CreateRandomUser(UserAPI, targetTenantID)
+		user = specs.CreateRandomUser(UserAPI, sourceTenantID)
 		group = specs.CreateRandomGroupWithUser(GroupAPI, sourceTenantID, user.UUID)
 
 		originalUUID := uuid.New()

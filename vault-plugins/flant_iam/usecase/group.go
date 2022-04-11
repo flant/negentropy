@@ -20,9 +20,9 @@ func CalcGroupFullIdentifier(g *model.Group, tenant *model.Tenant) string {
 }
 
 type GroupService struct {
-	tenantUUID model.TenantUUID
-	origin     consts.ObjectOrigin
-
+	db                  *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	tenantUUID          model.TenantUUID
+	origin              consts.ObjectOrigin
 	repo                *iam_repo.GroupRepository
 	identitySharingRepo *iam_repo.IdentitySharingRepository
 	tenantsRepo         *iam_repo.TenantRepository
@@ -31,6 +31,7 @@ type GroupService struct {
 
 func Groups(db *io.MemoryStoreTxn, tid model.TenantUUID, origin consts.ObjectOrigin) *GroupService {
 	return &GroupService{
+		db:                  db,
 		tenantUUID:          tid,
 		origin:              origin,
 		repo:                iam_repo.NewGroupRepository(db),
@@ -63,10 +64,13 @@ func (s *GroupService) Create(group *model.Group) error {
 	if err != nil {
 		return err
 	}
+	err = checkMembersOwnedToTenant(s.db, *subj, group.TenantUUID)
+	if err != nil {
+		return err
+	}
 	group.Groups = subj.Groups
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
-	// TODO  check all members are in origin tenant
 	return s.repo.Create(group)
 }
 
@@ -104,10 +108,13 @@ func (s *GroupService) Update(group *model.Group) error {
 	if err != nil {
 		return err
 	}
+	err = checkMembersOwnedToTenant(s.db, *subj, group.TenantUUID)
+	if err != nil {
+		return err
+	}
 	group.Groups = subj.Groups
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
-	// TODO  check all members are in origin tenant
 	// Preserve fields, that are not always accessible from the outside, e.g. from HTTP API
 	if group.Extensions == nil {
 		group.Extensions = stored.Extensions
