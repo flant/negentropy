@@ -70,7 +70,7 @@ services:
     ports:
       - "9998:9998"
     volumes:
-      - "../e2e/tests/lib/oidc_mock/build/oidc-mock:/oidc-mock"
+      - "../e2e/tests/lib/oidc_mock/build/oidc-mock:/oidc-mock:ro"
     command: /oidc-mock
 
 networks:
