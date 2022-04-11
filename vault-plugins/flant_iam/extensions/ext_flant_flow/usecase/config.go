@@ -12,6 +12,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 type ConfigService struct {
@@ -59,12 +60,16 @@ func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logica
 	if cfg.AllFlantGroup != "" {
 		return nil, fmt.Errorf("%w:all_flant_group_uuid is already set", consts.ErrInvalidArg)
 	}
-	group, err := c.groupRepo.GetByID(allFlantGroupUUID)
+	err = c.groupRepo.Create(&iam_model.Group{
+		UUID:           allFlantGroupUUID,
+		TenantUUID:     cfg.FlantTenantUUID,
+		Version:        uuid.New(),
+		Identifier:     "all",
+		FullIdentifier: "all@flant",
+		Origin:         consts.OriginFlantFlow,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w:%s", err, allFlantGroupUUID)
-	}
-	if group.TenantUUID != cfg.FlantTenantUUID {
-		return nil, fmt.Errorf("%w:passed group doesn't refer to FlantTenant", consts.ErrInvalidArg)
 	}
 	return c.configProvider.SetAllFlantGroupUUID(ctx, storage, allFlantGroupUUID)
 }
