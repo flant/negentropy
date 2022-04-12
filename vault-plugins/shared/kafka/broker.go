@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -127,12 +126,16 @@ func (mb *MessageBroker) Configured() bool {
 	return mb.isConfigured
 }
 
+func (mb *MessageBroker) withSSLConfig(config *kafka.ConfigMap) *kafka.ConfigMap {
+	return mb.config.SSLConfig.addSSLConfig(config)
+}
+
 func (mb *MessageBroker) CheckConnection(endpoints []string) error {
 	brokers := strings.Join(endpoints, ",")
-	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+	ac, err := kafka.NewAdminClient(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
 		"retries":           3,
-	})
+	}))
 	if err != nil {
 		return err
 	}
@@ -142,12 +145,29 @@ func (mb *MessageBroker) CheckConnection(endpoints []string) error {
 	return err
 }
 
+// SSLConfig configures ssl connection to kafka
+type SSLConfig struct {
+	UseSSL                bool   `json:"use_ssl,omitempty"`
+	CAPath                string `json:"ca_path,omitempty"`                 //  "ssl.ca.location":          /etc/ca.crt
+	ClientPrivateKeyPath  string `json:"client_private_key_path,omitempty"` //  "ssl.key.location":         /etc/client.key
+	ClientCertificatePath string `json:"client_certificate_path,omitempty"` //  "ssl.certificate.location": /etc/client.crt
+}
+
+func (cfg *SSLConfig) addSSLConfig(config *kafka.ConfigMap) *kafka.ConfigMap {
+	if cfg != nil && cfg.UseSSL {
+		(*config)["security.protocol"] = "ssl"
+		(*config)["ssl.ca.location"] = cfg.CAPath
+		(*config)["ssl.key.location"] = cfg.ClientPrivateKeyPath
+		(*config)["ssl.certificate.location"] = cfg.ClientCertificatePath
+	}
+	return config
+}
+
 // BrokerConfig connection config
 type BrokerConfig struct {
 	Endpoints []string `json:"endpoints"`
 
-	ConnectionPrivateKey  *ecdsa.PrivateKey `json:"connection_private_key,omitempty"`
-	ConnectionCertificate *x509.Certificate `json:"connection_cert,omitempty"`
+	SSLConfig *SSLConfig `json:"ssl_config,omitempty"`
 
 	// Self pair of keys from this vault plugin instance
 	EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
@@ -175,8 +195,7 @@ func (bc *BrokerConfig) UnmarshalJSON(data []byte) error {
 	s := struct {
 		Endpoints []string `json:"endpoints"`
 
-		ConnectionPrivateKey  unmarshalablePrivateKey `json:"connection_private_key,omitempty"`
-		ConnectionCertificate *x509.Certificate       `json:"connection_cert,omitempty"`
+		SSLConfig *SSLConfig `json:"ssl_config,omitempty"`
 
 		EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
 		EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
@@ -187,9 +206,8 @@ func (bc *BrokerConfig) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	bc.SSLConfig = s.SSLConfig
 	bc.Endpoints = s.Endpoints
-	bc.ConnectionPrivateKey = s.ConnectionPrivateKey.toECDSA()
-	bc.ConnectionCertificate = s.ConnectionCertificate
 	bc.EncryptionPrivateKey = s.EncryptionPrivateKey
 	bc.EncryptionPublicKey = s.EncryptionPublicKey
 
@@ -237,14 +255,14 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 
 func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) *kafka.Consumer {
 	brokers := strings.Join(mb.config.Endpoints, ",")
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+	c, err := kafka.NewConsumer(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 consumerGroupID,
 		"auto.offset.reset":        "earliest",
 		"enable.auto.commit":       false,
 		"isolation.level":          "read_committed",
 		"go.events.channel.enable": true,
-	})
+	}))
 	if err != nil {
 		panic(err)
 	}
@@ -372,11 +390,11 @@ func (mb *MessageBroker) prepareMessage(msg Message) *kafka.Message {
 func (mb *MessageBroker) getProducer() *kafka.Producer {
 	mb.producerSync.Do(func() {
 		brokers := strings.Join(mb.config.Endpoints, ",")
-		p, err := kafka.NewProducer(&kafka.ConfigMap{
+		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			// "batch.size": 16384,
 			"client.id": mb.PluginConfig.SelfTopicName + ".producer",
-		})
+		}))
 		if err != nil {
 			panic(err)
 		}
@@ -389,12 +407,12 @@ func (mb *MessageBroker) getProducer() *kafka.Producer {
 func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 	mb.transProducerSync.Do(func() {
 		brokers := strings.Join(mb.config.Endpoints, ",")
-		p, err := kafka.NewProducer(&kafka.ConfigMap{
+		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			"transactional.id":  mb.PluginConfig.SelfTopicName,
 			// "batch.size": 16384,
 			"client.id": mb.PluginConfig.SelfTopicName + ".transactional_producer",
-		})
+		}))
 		if err != nil {
 			panic(err)
 		}
@@ -410,9 +428,9 @@ func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 
 func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config map[string]string) error {
 	brokers := strings.Join(mb.config.Endpoints, ",")
-	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+	ac, err := kafka.NewAdminClient(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
-	})
+	}))
 	if err != nil {
 		return err
 	}
@@ -457,9 +475,9 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 
 func (mb *MessageBroker) DeleteTopic(ctx context.Context, topicName string) error {
 	brokers := strings.Join(mb.config.Endpoints, ",")
-	ac, err := kafka.NewAdminClient(&kafka.ConfigMap{
+	ac, err := kafka.NewAdminClient(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
-	})
+	}))
 	if err != nil {
 		return err
 	}

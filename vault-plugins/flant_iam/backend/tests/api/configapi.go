@@ -16,7 +16,6 @@ import (
 
 type ConfigAPI interface {
 	EnableJWT()
-	GenerateCSR()
 	ConfigureKafka(certificate string, kafkaEndpoints []string)
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
@@ -40,13 +39,6 @@ func (b *backendBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
 	err = json.Unmarshal([]byte(cfgRaw), &result)
 	Expect(err).ToNot(HaveOccurred())
 	return result
-}
-
-func (b *backendBasedConfigAPI) GenerateCSR() {
-	_, err := b.request(logical.CreateOperation, "kafka/generate_csr",
-		map[string]interface{}{},
-		map[string]interface{}{})
-	Expect(err).ToNot(HaveOccurred())
 }
 
 func (b *backendBasedConfigAPI) ConfigureKafka(certificate string, kafkaEndpoints []string) {

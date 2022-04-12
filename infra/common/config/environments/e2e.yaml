@@ -1,3 +1,7 @@
 environment: docker
-kafka_endpoints: kafka:9092
+kafka_endpoints: kafka:9093
 oidc_url: http://oidc-mock:9998
+kafka_use_ssl: true
+kafka_ssl_ca_path: /etc/ca.crt
+kafka_ssl_client_private_key_path: /etc/client.key
+kafka_ssl_client_certificate_path: /etc/client.crt

@@ -31,11 +31,9 @@ func TestInitial(t *testing.T) {
 	topic := "topic_kafka_source_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_")
 
 	config := kafka.BrokerConfig{
-		Endpoints:             []string{"localhost:9093"},
-		ConnectionPrivateKey:  nil,
-		ConnectionCertificate: nil,
-		EncryptionPrivateKey:  pk,
-		EncryptionPublicKey:   &pk.PublicKey,
+		Endpoints:            []string{"localhost:9093"},
+		EncryptionPrivateKey: pk,
+		EncryptionPublicKey:  &pk.PublicKey,
 	}
 
 	plugin := kafka.PluginConfig{

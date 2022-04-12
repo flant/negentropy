@@ -346,7 +346,7 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_conf
     print("start migration with '{}' config file".format(migration_config))
     cfg = yaml.safe_load(open(migration_config, "r"))
     for k, v in cfg.items():
-        os.environ["NEGENTROPY_" + k.upper()] = v
+        os.environ["NEGENTROPY_" + k.upper()] = str(v).lower()
     core_vaults, other_vaults = split_vaults(vaults)
     if len(other_vaults) > 1:
         raise Error("allow only one not core vault, got '%s'" % other_vaults)

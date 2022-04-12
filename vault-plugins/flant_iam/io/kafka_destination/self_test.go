@@ -31,11 +31,9 @@ func TestSendItem(t *testing.T) {
 	require.NoError(t, err)
 
 	config := kafka.BrokerConfig{
-		Endpoints:             []string{"localhost:9093"},
-		ConnectionPrivateKey:  nil,
-		ConnectionCertificate: nil,
-		EncryptionPrivateKey:  pk,
-		EncryptionPublicKey:   &pk.PublicKey,
+		Endpoints:            []string{"localhost:9093"},
+		EncryptionPrivateKey: pk,
+		EncryptionPublicKey:  &pk.PublicKey,
 	}
 
 	topic := "topic_kafka_destination_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_")

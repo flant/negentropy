@@ -2,15 +2,12 @@ package kafka
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -47,36 +44,13 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 	if len(endpoints) == 0 {
 		return nil, logical.CodedError(http.StatusBadRequest, "endpoints required")
 	}
-	// TODO: restore cert
-
-	certData := data.Get("certificate").(string)
-	certData = strings.ReplaceAll(certData, "\\n", "\n")
-
-	if certData != "" {
-		// validate certificate
-		m, err := x509.MarshalECPrivateKey(mb.config.ConnectionPrivateKey)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-		}
-
-		priv := pem.EncodeToMemory(&pem.Block{
-			Type: "PRIVATE KEY", Bytes: m,
-		})
-
-		_, err = tls.X509KeyPair([]byte(certData), priv)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-		}
-
-		p, _ := pem.Decode([]byte(certData))
-		cert, err := x509.ParseCertificate(p.Bytes)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-		}
-		mb.config.ConnectionCertificate = cert
-	}
-
 	mb.config.Endpoints = endpoints
+	sslConfig, err := parseSSLCfg(data)
+	if err != nil {
+		mb.logger.Error(err.Error())
+		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
+	}
+	mb.config.SSLConfig = sslConfig
 	// TODO: check kafka connection
 	// generate encryption keys
 	if mb.config.EncryptionPrivateKey == nil {
@@ -101,48 +75,21 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 	return nil, nil
 }
 
-func (mb *MessageBroker) handleGenerateCSR(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	force := data.Get("force").(bool)
-
-	var warnings []string
-	if mb.config.ConnectionPrivateKey == nil || force {
-		priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
-		}
-		mb.config.ConnectionPrivateKey = priv
-
-		d, err := json.Marshal(mb.config)
-		if err != nil {
-			return nil, logical.CodedError(http.StatusBadRequest, err.Error())
-		}
-		err = req.Storage.Put(ctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: d, SealWrap: true})
-		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
-		}
-	} else if !force {
-		warnings = []string{"Private key is already exist. Add ?force=true param to recreate it"}
+// parseSSLCfg parse and check ssl config
+func parseSSLCfg(data *framework.FieldData) (*SSLConfig, error) {
+	cfg := SSLConfig{
+		UseSSL:                data.Get("use_ssl").(bool),
+		CAPath:                data.Get("ca_path").(string),
+		ClientPrivateKeyPath:  data.Get("client_private_key_path").(string),
+		ClientCertificatePath: data.Get("client_certificate_path").(string),
 	}
-
-	cr := &x509.CertificateRequest{
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		Subject:            pkix.Name{CommonName: "flant_iam.kafka"},
+	if !cfg.UseSSL {
+		return nil, nil
 	}
-	csr, err := x509.CreateCertificateRequest(rand.Reader, cr, mb.config.ConnectionPrivateKey)
-	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
+	if cfg.UseSSL && (cfg.CAPath == "" || cfg.ClientCertificatePath == "" || cfg.ClientPrivateKeyPath == "") {
+		return nil, fmt.Errorf("if passed 'use_ssl=true', have to pass ca_path, client_private_key_path and client_certificate_path")
 	}
-
-	csrr := pem.EncodeToMemory(&pem.Block{
-		Type: "CERTIFICATE REQUEST", Bytes: csr,
-	})
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"certificate_request": strings.ReplaceAll(string(csrr), "\n", "\\n"),
-		},
-		Warnings: warnings,
-	}, nil
+	return &cfg, nil
 }
 
 func (mb *MessageBroker) KafkaPaths() []*framework.Path {
@@ -159,41 +106,37 @@ func (mb *MessageBroker) KafkaPaths() []*framework.Path {
 		{
 			Pattern: "kafka/configure_access",
 			Fields: map[string]*framework.FieldSchema{
-				"certificate": {
-					Type:        framework.TypeString,
-					Description: " x509 certificate to establish Kafka TLS connection",
-				},
 				"kafka_endpoints": {
 					Type:        framework.TypeStringSlice,
 					Required:    true,
 					Description: "List of kafka backends. Ex: 192.168.1.1:9093",
+				},
+				"use_ssl": {
+					Type:        framework.TypeBool,
+					Required:    true,
+					Description: "Use SSL or not, if set true, have to pass ca_path, client_private_key_path, client_certificate_path",
+				},
+				// TODO more info about ca_path, client_private_key_path,  client_certificate_path
+				"ca_path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Absolute path to file, which contains CA certificate for verifying the kafka broker key, example: /etc/ca.crt",
+				},
+				"client_private_key_path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Absolute path to file, which contains client private key (PEM) used for authentication, example: /etc/client.key",
+				},
+				"client_certificate_path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Absolute path to file, which contains client public key (PEM) used for authentication, example: /etc/client.crt",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Summary:  "Setup kafka configuration",
 					Callback: mb.handleConfigureAccess,
-				},
-			},
-		},
-		{
-			Pattern: "kafka/generate_csr",
-			Fields: map[string]*framework.FieldSchema{
-				"force": {
-					Type:        framework.TypeBool,
-					Default:     false,
-					Description: "Enforce private key recreation",
-					Query:       true,
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Generate CSR for kafka endpoint",
-					Callback: mb.handleGenerateCSR,
-				},
-				logical.CreateOperation: &framework.PathOperation{
-					Summary:  "Generate CSR for kafka endpoint",
-					Callback: mb.handleGenerateCSR,
 				},
 			},
 		},

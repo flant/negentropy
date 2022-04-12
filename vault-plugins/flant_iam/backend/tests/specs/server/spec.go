@@ -35,7 +35,6 @@ var _ = Describe("Server", func() {
 	)
 
 	BeforeSuite(func() {
-		ConfigAPI.GenerateCSR()
 		ConfigAPI.ConfigureKafka("cert", []string{"192.168.1.1:9093"})
 		ConfigAPI.EnableJWT()
 

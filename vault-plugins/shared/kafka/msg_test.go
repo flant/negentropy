@@ -269,11 +269,9 @@ func messageBroker(t *testing.T) *MessageBroker {
 	require.NoError(t, err)
 
 	config := BrokerConfig{
-		Endpoints:             []string{serverKafka},
-		ConnectionPrivateKey:  nil,
-		ConnectionCertificate: nil,
-		EncryptionPrivateKey:  pk,
-		EncryptionPublicKey:   &pk.PublicKey,
+		Endpoints:            []string{serverKafka},
+		EncryptionPrivateKey: pk,
+		EncryptionPublicKey:  &pk.PublicKey,
 	}
 
 	plugin := PluginConfig{
