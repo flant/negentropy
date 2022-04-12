@@ -142,6 +142,33 @@ def create_privileged_tenant(vault: Vault, tenant_uuid: str, identifier: str):
     print("tenant with uuid '{}' created".format(tenant_uuid))
 
 
+proto_team_uuid = '58df57d6-d75b-4889-a1cf-15d95e90198a'
+
+
+def create_privileged_team_proto(vault: Vault):
+    """create proto team for first teammate"""
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    resp = vault_client.read(path="flant_iam/team/" + proto_team_uuid)
+    if resp:
+        print("proto team uuid '{}' already exists".format(proto_team_uuid))
+        return
+    vault_client.write(path='flant_iam/team/privileged', uuid=proto_team_uuid, identifier="proto",
+                       team_type='standard_team')
+    print("proto team uuid  '{}' created".format(proto_team_uuid))
+
+
+def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, identifier: str):
+    """create user if not exists"""
+    base_path = "flant_iam/team/{}/teammate/".format(proto_team_uuid)
+    vault_client = hvac.Client(url=vault.url, token=vault.token)
+    resp = vault_client.read(path=base_path + teammate_uuid)
+    if resp:
+        print("teammate with uuid '{}' already exists".format(teammate_uuid))
+        return
+    vault_client.write(path=base_path + "privileged", uuid=teammate_uuid, identifier=identifier, role_at_team="member")
+    print("teammate with uuid '{}' created".format(teammate_uuid))
+
+
 def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, identifier: str):
     """create user if not exists"""
     base_path = "flant_iam/tenant/{}/user/".format(tenant_uuid)
@@ -168,25 +195,6 @@ def create_user_multipass(vault: Vault, tenant_uuid: str, user_uuid: str, ttl_se
     return body['data']['token']
 
 
-def add_user_to_group(vault: Vault, tenant_uuid: str, user_uuid: str, group_uuid: str):
-    """add user to group"""
-    vault_client = hvac.Client(url=vault.url, token=vault.token)
-    path = "flant_iam/tenant/{}/group/{}".format(tenant_uuid, group_uuid)
-    resp = vault_client.read(path=path)
-    if not resp:
-        raise Exception("got None, expect group")
-    group = resp['data']['group']
-    if user_uuid not in group['users']:
-        group['members'].append({'type': 'user', 'uuid': user_uuid})
-        resp = vault_client.write(path=path, **group)
-        if resp:
-            print("user {} is added to group {}".format(user_uuid, group_uuid))
-        else:
-            raise Exception("got None ")
-    else:
-        print("user {} already at group {}".format(user_uuid, group_uuid))
-
-
 def run_migrations(vaults: List[Vault]):
     module_path = './infra/common/docker/migrator.py'
     module_name = 'migrations'
@@ -208,67 +216,6 @@ def write_tokens_to_file(vaults: List[Vault]):
         f = open("/tmp/vault_single_token", "w")
         f.write(vaults[0].token)
         f.close()
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--mode', dest='mode')
-parser.add_argument('--okta-uuid', dest='okta_uuid')
-args = parser.parse_args()
-
-if args.mode == 'single':
-    single_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root")
-    vaults = [single_vault]
-else:
-    root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="")
-    auth_vault = Vault(name="auth", url="http://127.0.0.1:8200", token="")
-    vaults = [root_vault, auth_vault]
-
-for vault in vaults:
-    print("========================================")
-    print("vault: {} at {}".format(vault.name, vault.url))
-    print("========================================")
-    vault.wait()
-    vault.init_and_unseal()
-
-write_tokens_to_file(vaults)
-
-run_migrations(vaults)
-
-# ============================================================================
-# prepare user multipass_jwt for authd tests
-# ============================================================================
-multipass_file_path = "authd/dev/secret/authd.jwt"
-multipass_file_folder = multipass_file_path.rsplit("/", 1)[0]
-if not os.path.exists(multipass_file_folder):
-    os.makedirs(multipass_file_folder)
-iam_vault = find_master_root_vault(vaults)
-create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
-create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
-                       "00000661-0000-4000-A000-000000000000",
-                       "user_for_authd_tests")
-multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
-                                  "00000661-0000-4000-A000-000000000000", 3600)
-file = open(multipass_file_path, "w")
-file.write(multipass)
-file.close()
-print(multipass_file_path + " is updated")
-
-# ============================================================================
-# create privileged user for webdev local development
-# ============================================================================
-
-if args.okta_uuid:
-    print("DEBUG: OKTA UUID is", args.okta_uuid)
-    create_privileged_user(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
-                           args.okta_uuid,
-                           "local-admin")
-    create_user_multipass(iam_vault, "b2c3d385-6bc7-43ff-9e75-441330442b1e",
-                          args.okta_uuid, 3600)
-
-    print("DEBUG: add user to flant-all group")
-    flant_tenant_uuid = 'b2c3d385-6bc7-43ff-9e75-441330442b1e'
-    flant_all_group_uuid = 'a5c6650a-665a-404d-acbf-708c9fd1731f'
-    add_user_to_group(iam_vault, flant_tenant_uuid, args.okta_uuid, flant_all_group_uuid)
 
 
 # Custom steps for single vault
@@ -310,5 +257,60 @@ C+iz1LopgyIrKSebDzl13Yx9/J6dP3LrC+TiYyYl0bf4a4AStLw=
                        default_extensions=[{"permit-agent-forwarding": "", "permit-pty": ""}], ttl='5m0s')
 
 
-if len(vaults) < 2:
-    configure_ssh(vaults[0])
+# Main scrypt block
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', dest='mode')
+    parser.add_argument('--okta-uuid', dest='okta_uuid')
+    args = parser.parse_args()
+
+    if args.mode == 'single':
+        single_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root")
+        vaults = [single_vault]
+    else:
+        root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="")
+        auth_vault = Vault(name="auth", url="http://127.0.0.1:8200", token="")
+        vaults = [root_vault, auth_vault]
+
+    for vault in vaults:
+        print("========================================")
+        print("vault: {} at {}".format(vault.name, vault.url))
+        print("========================================")
+        vault.wait()
+        vault.init_and_unseal()
+
+    write_tokens_to_file(vaults)
+
+    run_migrations(vaults)
+
+    # ============================================================================
+    # prepare user multipass_jwt for authd tests
+    # ============================================================================
+    multipass_file_path = "authd/dev/secret/authd.jwt"
+    multipass_file_folder = multipass_file_path.rsplit("/", 1)[0]
+    if not os.path.exists(multipass_file_folder):
+        os.makedirs(multipass_file_folder)
+    iam_vault = find_master_root_vault(vaults)
+    create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
+    create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
+                           "00000661-0000-4000-A000-000000000000",
+                           "user_for_authd_tests")
+    multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
+                                      "00000661-0000-4000-A000-000000000000", 3600)
+    file = open(multipass_file_path, "w")
+    file.write(multipass)
+    file.close()
+    print(multipass_file_path + " is updated")
+
+    # ============================================================================
+    # create teammate for webdev local development
+    # ============================================================================
+
+    if args.okta_uuid:
+        print("DEBUG: OKTA UUID is", args.okta_uuid)
+        create_privileged_team_proto(root_vault)
+        create_privileged_teammate_to_proto_team(root_vault, args.okta_uuid, "local-admin")
+
+    # single mode code run
+    if len(vaults) < 2:
+        configure_ssh(vaults[0])
