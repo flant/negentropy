@@ -1,7 +1,7 @@
 environment: docker
-kafka_endpoints: kafka:9092
+kafka_endpoints: kafka:9093
 oidc_url: https://login.flant.com
-kafka_use_ssl: false
-kafka_ssl_ca_path: not_used
-kafka_ssl_client_private_key_path: not_used
-kafka_ssl_client_certificate_path: not_used
+kafka_use_ssl: true
+kafka_ssl_ca_path: /etc/ca.crt
+kafka_ssl_client_private_key_path: /etc/client.key
+kafka_ssl_client_certificate_path: /etc/client.crt
