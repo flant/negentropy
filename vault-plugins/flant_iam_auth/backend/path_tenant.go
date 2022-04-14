@@ -85,7 +85,7 @@ func pathTenant(b *flantIamAuthBackend) []*framework.Path {
 	}
 }
 
-// TOO UNSAFE: full information for tennants
+// TOO UNSAFE: full information for tenants
 func (b *flantIamAuthBackend) listTenants(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	txn := b.storage.Txn(false)
 	defer txn.Abort()

@@ -11,7 +11,7 @@ require (
 	github.com/go-test/deep v1.0.2
 	github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 	github.com/hashicorp/errwrap v1.0.0
-	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/hashicorp/go-multierror v1.1.0
@@ -21,6 +21,7 @@ require (
 	github.com/mitchellh/pointerstructure v1.0.0
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
+	github.com/open-policy-agent/opa v0.30.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.7.0

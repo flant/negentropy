@@ -179,9 +179,11 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
 
 	logger.Debug("Start renew")
-	tokenOwnerType := req.Auth.InternalData["subject_type"].(string)
-	tokenOwnerUUID := req.Auth.InternalData["subject_uuid"].(string)
-	authzRes, err := authorizator.Renew(method, req.Auth, txn, tokenOwnerType, tokenOwnerUUID)
+	rawSubject := req.Auth.InternalData["subject"]
+	logger.Debug(fmt.Sprintf("%#v", rawSubject))
+	subjectData, _ := req.Auth.InternalData["subject"].(map[string]interface{})
+	subject := authz2.MakeSubject(subjectData)
+	authzRes, err := authorizator.Renew(method, req.Auth, txn, subject)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Not renew authz, err: %v", err))
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied

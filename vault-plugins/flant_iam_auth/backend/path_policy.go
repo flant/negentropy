@@ -47,9 +47,14 @@ func (b policyBackend) paths() []*framework.Path {
 					Description: "Negentropy roles, which processed by this negentropy policy",
 					Required:    true,
 				},
-				"options_schema": {
-					Type:        framework.TypeNameString,
-					Description: "Validation schema for rego policy data input",
+				"claim_schema": {
+					Type:        framework.TypeString,
+					Description: "Open api specification for rego policy claim",
+					Required:    true,
+				},
+				"allowed_auth_methods": {
+					Type:        framework.TypeStringSlice,
+					Description: "Allowed auth methods",
 					Required:    true,
 				},
 			},
@@ -100,9 +105,14 @@ func (b policyBackend) paths() []*framework.Path {
 					Description: "Negentropy roles, which processed by this negentropy policy",
 					Required:    true,
 				},
-				"options_schema": {
-					Type:        framework.TypeNameString,
-					Description: "Validation schema for rego policy data input",
+				"claim_schema": {
+					Type:        framework.TypeString,
+					Description: "Open api specification for rego policy claim",
+					Required:    true,
+				},
+				"allowed_auth_methods": {
+					Type:        framework.TypeStringSlice,
+					Description: "Allowed auth methods",
 					Required:    true,
 				},
 			},
@@ -145,10 +155,11 @@ func (b *policyBackend) handleCreate() framework.OperationFunc {
 		b.Logger().Debug("create policy", "path", req.Path)
 
 		policy := &model.Policy{
-			Name:          data.Get("name").(string),
-			Rego:          data.Get("rego").(string),
-			Roles:         data.Get("roles").([]string),
-			OptionsSchema: data.Get("options_schema").(string),
+			Name:               data.Get("name").(string),
+			Rego:               data.Get("rego").(string),
+			Roles:              data.Get("roles").([]string),
+			ClaimSchema:        data.Get("claim_schema").(string),
+			AllowedAuthMethods: data.Get("allowed_auth_methods").([]string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -175,10 +186,11 @@ func (b *policyBackend) handleUpdate() framework.OperationFunc {
 		defer tx.Abort()
 
 		policy := &model.Policy{
-			Name:          data.Get("name").(string),
-			Rego:          data.Get("rego").(string),
-			Roles:         data.Get("roles").([]string),
-			OptionsSchema: data.Get("options_schema").(string),
+			Name:               data.Get("name").(string),
+			Rego:               data.Get("rego").(string),
+			Roles:              data.Get("roles").([]string),
+			ClaimSchema:        data.Get("claim_schema").(string),
+			AllowedAuthMethods: data.Get("allowed_auth_methods").([]string),
 		}
 
 		err := usecase.Policies(tx).Update(policy)
