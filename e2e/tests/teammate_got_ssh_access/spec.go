@@ -84,12 +84,11 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 					UUID: saRegisterServer.UUID,
 				}},
 				AnyProject: true,
-				Roles: []model.BoundRole{{Name: flant_iam_preparing.RegisterServerRole, Options: map[string]interface{}{}},
-					{Name: flant_iam_preparing.IamAuthRead, Options: map[string]interface{}{}}},
+				Roles:      []model.BoundRole{{Name: flant_iam_preparing.RegisterServerRole, Options: map[string]interface{}{}}},
 			})
 
 		saRegisterServerPassword = iam_specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(adminClient),
-			saRegisterServer, "server_register", 100*time.Second, []string{flant_iam_preparing.RegisterServerRole, flant_iam_preparing.IamReadRole})
+			saRegisterServer, "server_register", 100*time.Second, []string{flant_iam_preparing.RegisterServerRole})
 
 		devopsTeam = specs.CreateDevopsTeam(lib.NewFlowTeamAPI(adminClient))
 		teammate = specs.CreateRandomTeammate(lib.NewFlowTeammateAPI(adminClient), devopsTeam)

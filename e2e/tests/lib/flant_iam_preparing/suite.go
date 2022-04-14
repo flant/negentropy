@@ -52,11 +52,7 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
-const (
-	RegisterServerRole = "register_server"
-	IamAuthRead        = "iam_auth_read"
-	IamReadRole        = "iam_read"
-)
+const RegisterServerRole = "register_server"
 
 func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	var result CheckingEnvironment
@@ -68,11 +64,9 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	fmt.Printf("Created serviceAccount:%#v\n", result.ServiceAccount)
 	// create  SA password for SA login
 	result.ServiceAccountPassword = specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(st.IamVaultClient),
-		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole, IamReadRole})
-	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
+		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole})
 
-	// create a role 'IamAuthRead' if not exists
-	st.createRoleIfNotExist(IamAuthRead, model.RoleScopeTenant)
+	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
 
 	// create some project
 	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
@@ -92,8 +86,7 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 			}},
 			Projects:   []string{result.Project.UUID},
 			AnyProject: false,
-			Roles: []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}},
-				{Name: IamAuthRead, Options: map[string]interface{}{}}},
+			Roles:      []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.ServiceAccountRoleBinding)
 
@@ -106,10 +99,8 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 const TestServerIdentifier = "test-server"
 
 func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
-	const (
-		sshRole    = "ssh"
-		serverRole = "servers"
-	)
+	const sshRole = "ssh"
+
 	result := st.PrepareForLoginTesting()
 
 	err := st.WaitPrepareForLoginTesting(result, 40)
@@ -242,9 +233,6 @@ func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
 		UUID:        FlantTenantUUID,
 		Identifier:  FlantTenantID,
 	}
-
-	// create a role 'iam_auth_read' if not exists
-	st.createRoleIfNotExist(IamAuthRead, model.RoleScopeTenant)
 
 	// create some user at the tenant
 	result.Admin = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.FlantTenant.UUID)
