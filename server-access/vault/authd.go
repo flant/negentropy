@@ -35,7 +35,7 @@ func ClientFromAuthd(settings AuthdSettings) (*api.Client, error) {
 	authdClient := authd.NewAuthdClient(settings.SocketPath)
 
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("*", "")).
+		WithRoles(v1.NewRoleWithClaim("*", nil)).
 		WithServerType(settings.ServerType)
 
 	err := authdClient.OpenVaultSession(req)
