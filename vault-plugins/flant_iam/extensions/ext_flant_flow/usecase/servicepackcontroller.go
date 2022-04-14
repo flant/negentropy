@@ -196,16 +196,24 @@ func (d devopsServicePackBuilder) createIdentitySharing(clientTenantUUID iam_mod
 
 func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.TenantUUID, projectUUID iam_model.ProjectUUID,
 	groups []iam_model.GroupUUID, roles []iam_model.RoleName) (*iam_model.RoleBinding, error) {
-	rb, err := d.roleBindingRepository.FindSpecificRoleBindingAtProject(projectUUID, roles, groups)
+	rbsOfProject, err := d.roleBindingRepository.FindDirectRoleBindingsForProject(projectUUID)
 	if err != nil {
 		return nil, err
 	}
+	rbsOfRole, err := d.roleBindingRepository.FindDirectRoleBindingsForRoles(roles...)
+	filteredRoleBindings := map[iam_model.RoleBindingUUID]*iam_model.RoleBinding{}
+	for uuid, rb := range rbsOfProject {
+		if _, ok := rbsOfRole[uuid]; ok {
+			filteredRoleBindings[uuid] = rb
+		}
+	}
+	rb := findEqualRoleBinding(filteredRoleBindings, groups, roles)
 	if rb != nil {
 		return rb, nil
 	}
 	boundRoles := make([]iam_model.BoundRole, 0, len(roles))
 	for _, role := range roles {
-		boundRoles = append(boundRoles, iam_model.BoundRole{Name: role, Options: map[string]interface{}{}})
+		boundRoles = append(boundRoles, iam_model.BoundRole{Name: role, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}})
 	}
 
 	rb = &iam_model.RoleBinding{
@@ -218,6 +226,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 		Projects:    []iam_model.ProjectUUID{projectUUID},
 		Roles:       boundRoles,
 		Origin:      consts.OriginFlantFlow,
+		ValidTill:   10_000_000_000,
 	}
 	err = d.roleBindingRepository.Create(rb)
 	if err != nil {
@@ -235,6 +244,43 @@ func buildMemebers(groups []iam_model.GroupUUID) []iam_model.MemberNotation {
 		})
 	}
 	return members
+}
+
+func findEqualRoleBinding(roleBindings map[iam_model.RoleBindingUUID]*iam_model.RoleBinding, groups []iam_model.GroupUUID,
+	roles []iam_model.RoleName) *iam_model.RoleBinding {
+	groupUUIDs := map[iam_model.GroupUUID]struct{}{}
+	for _, g := range groups {
+		groupUUIDs[g] = struct{}{}
+	}
+	roleNames := map[iam_model.RoleName]struct{}{}
+	for _, r := range roles {
+		roleNames[r] = struct{}{}
+	}
+	for _, rb := range roleBindings {
+		if rb.Archived() ||
+			len(rb.Groups) != len(groups) {
+			continue
+		}
+		equal := true
+		for _, g := range rb.Groups {
+			if _, ok := groupUUIDs[g]; !ok {
+				equal = false
+				break
+			}
+			if equal {
+				for _, r := range rb.Roles {
+					if _, ok := roleNames[r.Name]; !ok {
+						equal = false
+						break
+					}
+				}
+			}
+			if equal {
+				return rb
+			}
+		}
+	}
+	return nil
 }
 
 func buildGroupUUIDs(groups []model.LinkedGroup) []iam_model.GroupUUID {

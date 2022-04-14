@@ -213,6 +213,8 @@ func tryCreateRandomRoleBindingAtTenantWithUserAndDescription(tenantUUID, userUU
 		"uuid": userUUID,
 	}
 	payload["description"] = roleBindingDescription
+	payload["any_project"] = true
+	delete(payload, "projects")
 
 	params := api.Params{
 		"tenant":       tenantUUID,
