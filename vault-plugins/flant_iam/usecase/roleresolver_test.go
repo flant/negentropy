@@ -58,7 +58,6 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, hasRole)
 	expectedEffectiveRoles := []EffectiveRole{}
-	//RoleBindingParams{ValidTill: 120, RequireMFA: false, Options: map[string]interface{}{"o1": "data3"}}
 	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
 }
 
@@ -93,7 +92,6 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, hasRole)
 	expectedEffectiveRoles := []EffectiveRole{}
-	//expectedParams := RoleBindingParams{ValidTill: 160, RequireMFA: false, Options: map[string]interface{}{"o1": "data6"}}
 	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
 }
 
@@ -112,7 +110,6 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, hasRole)
 	expectedEffectiveRoles := []EffectiveRole{}
-	//expectedParams := RoleBindingParams{ValidTill: 190, RequireMFA: false, Options: map[string]interface{}{"o1": "data9"}}
 	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
 }
 
@@ -131,7 +128,6 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, hasRole)
 	expectedEffectiveRoles := []EffectiveRole{}
-	//expectedParams := RoleBindingParams{ValidTill: 180, RequireMFA: false, Options: map[string]interface{}{"o1": "data8"}}
 	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
 }
 

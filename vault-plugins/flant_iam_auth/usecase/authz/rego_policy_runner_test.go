@@ -132,7 +132,7 @@ to_seconds_number(t) = x {
 
 func Claims(ttl, maxTTL string) map[string]interface{} {
 	return map[string]interface{}{
-		//"role":         "ssh",
+		// "role":         "ssh",
 		"tenant_uuid":  "t1",
 		"project_uuid": "p1",
 		"ttl":          ttl,

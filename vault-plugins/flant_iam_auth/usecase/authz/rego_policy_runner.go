@@ -34,8 +34,9 @@ type rawRegoResult struct {
 
 // ApplyRegoPolicy parse all arguments and run rego policy
 // parse result of rego policy run, and choose the best role_binding
-func ApplyRegoPolicy(ctx context.Context, regoPolicy RegoPolicy, userData UserData, effectiveRoles []iam_usecase.EffectiveRole, claims LoginClaims) (*RegoResult, error) {
-	var data = map[string]interface{}{"effective_roles": effectiveRoles, "user_data": userData}
+func ApplyRegoPolicy(ctx context.Context, regoPolicy RegoPolicy, userData UserData,
+	effectiveRoles []iam_usecase.EffectiveRole, claims LoginClaims) (*RegoResult, error) {
+	data := map[string]interface{}{"effective_roles": effectiveRoles, "user_data": userData}
 	store := inmem.NewFromObject(data)
 	rego := rego.New(
 		rego.Store(store),

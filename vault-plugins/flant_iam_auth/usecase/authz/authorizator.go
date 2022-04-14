@@ -238,22 +238,22 @@ func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPol
 			Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: regoResult.VaultRules,
 
-			//[]Rule{
-			//{
+			// []Rule{
+			// {
 			//	Path:   "ssh/sign/signer",
 			//	Update: true,
-			//}, {
+			// }, {
 			//	Path: "auth/flant_iam_auth/multipass_owner",
 			//	Read: true,
-			//}, {
+			// }, {
 			//	Path: "auth/flant_iam_auth/query_server", // TODO
 			//	Read: true,
-			//}, {
+			// }, {
 			//	Path: "auth/flant_iam_auth/tenant/*", // TODO  split for tenant_list and others
 			//	Read: true,
 			//	List: true,
-			//},
-			//},
+			// },
+			// },
 		}
 		a.Logger.Debug("REMOVE IT VaultPolicy= %#v", policy)
 
@@ -642,58 +642,5 @@ to_seconds_number(t) = x {
      value = to_number(trim_right(lower_t, "hms"))
      x = value*3600 ; endswith(lower_t, "h")
 }`
-
-var (
-	uuid1           = "uuid1"
-	uuid2           = "uuid2"
-	uuid3           = "uuid3"
-	uuid4           = "uuid4"
-	effectiveRoles1 = []iam_usecase.EffectiveRole{
-		{ // not need MFA or approvals
-			RoleName:        "ssh",
-			RoleBindingUUID: uuid1,
-			TenantUUID:      "t1",
-			ValidTill:       999999999999,
-			RequireMFA:      false,
-			AnyProject:      false,
-			Projects:        []string{"p1"},
-			NeedApprovals:   0,
-			Options:         map[string]interface{}{"ttl": "100s", "max_ttl": "200s"},
-		},
-		{ // need MFA, not need approvals
-			RoleName:        "ssh",
-			RoleBindingUUID: uuid2,
-			TenantUUID:      "t1",
-			ValidTill:       999999999999,
-			RequireMFA:      true,
-			AnyProject:      false,
-			Projects:        []string{"p1"},
-			NeedApprovals:   0,
-			Options:         map[string]interface{}{"ttl": "200s", "max_ttl": "400s"},
-		},
-		{ // not need MFA,  need 1 approval
-			RoleName:        "ssh",
-			RoleBindingUUID: uuid3,
-			TenantUUID:      "t1",
-			ValidTill:       999999999999,
-			RequireMFA:      true,
-			AnyProject:      false,
-			Projects:        []string{"p1"},
-			NeedApprovals:   1,
-			Options:         map[string]interface{}{"ttl": "400s", "max_ttl": "800s"},
-		},
-		{ // not need MFA,  need 2 approvals
-			RoleName:        "ssh",
-			RoleBindingUUID: uuid4,
-			TenantUUID:      "t1",
-			ValidTill:       999999999999,
-			RequireMFA:      true,
-			AnyProject:      false,
-			Projects:        []string{"p1"},
-			NeedApprovals:   2,
-			Options:         map[string]interface{}{"ttl": "800s", "max_ttl": "1600s"},
-		},
-	}
-)
 
 // TODo REMOVE IT! ==========================
