@@ -77,7 +77,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			model.RoleBinding{
 				TenantUUID:  client.UUID,
 				Description: "teammate got ssh access testing",
-				ValidTill:   1000000,
+				ValidTill:   10_000_000_000,
 				RequireMFA:  false,
 				Members: []model.MemberNotation{{
 					Type: model.ServiceAccountType,
