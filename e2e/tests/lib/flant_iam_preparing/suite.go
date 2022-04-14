@@ -71,9 +71,6 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole, IamReadRole})
 	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
 
-	// create a role 'register_server' if not exists
-	st.createRoleIfNotExist(RegisterServerRole, model.RoleScopeTenant)
-
 	// create a role 'IamAuthRead' if not exists
 	st.createRoleIfNotExist(IamAuthRead, model.RoleScopeTenant)
 
@@ -117,12 +114,6 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 
 	err := st.WaitPrepareForLoginTesting(result, 40)
 	Expect(err).ToNot(HaveOccurred())
-
-	// create a role 'ssh' if not exists
-	st.createRoleIfNotExist(sshRole, "")
-
-	// create a role 'servers' if not exists
-	st.createRoleIfNotExist(serverRole, "")
 
 	// create a group with the user
 	result.Group = specs.CreateRandomGroupWithUser(lib.NewGroupAPI(st.IamVaultClient), result.User.TenantUUID, result.User.UUID)
@@ -251,9 +242,6 @@ func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
 		UUID:        FlantTenantUUID,
 		Identifier:  FlantTenantID,
 	}
-
-	// create a role 'register_server' if not exists
-	st.createRoleIfNotExist(RegisterServerRole, model.RoleScopeTenant)
 
 	// create a role 'iam_auth_read' if not exists
 	st.createRoleIfNotExist(IamAuthRead, model.RoleScopeTenant)
