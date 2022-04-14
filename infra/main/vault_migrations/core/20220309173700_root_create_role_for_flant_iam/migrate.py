@@ -12,7 +12,7 @@ class Vault(TypedDict):
 # {role:scope}
 roles = {'ssh': 'project',
          'servers': 'project',
-         'register_server': 'tenant'}
+         'register_server': 'project'}
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
