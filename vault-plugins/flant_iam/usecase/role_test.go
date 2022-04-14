@@ -31,20 +31,20 @@ func Test_Role_findDirectIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
-	roles, err := repo.FindDirectIncludingRoles(fixtures.RoleName1)
+	roles, err := repo.FindDirectParentRoles(fixtures.RoleName1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RoleName3, fixtures.RoleName4}, stringSlice(roles))
+	require.ElementsMatch(t, []string{fixtures.RoleName3, fixtures.RoleName4}, roleNames(roles))
 }
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
 	tx := runFixtures(t, roleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
-	roles, err := repo.FindAllIncludingRoles(fixtures.RoleName1)
+	roles, err := repo.FindAllAncestorsRoles(fixtures.RoleName1)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{fixtures.RoleName3, fixtures.RoleName4, fixtures.RoleName5}, stringSlice(roles))
+	require.ElementsMatch(t, []string{fixtures.RoleName1, fixtures.RoleName3, fixtures.RoleName4, fixtures.RoleName5}, roleNames(roles))
 }
 
 func Test_includeRole(t *testing.T) {
