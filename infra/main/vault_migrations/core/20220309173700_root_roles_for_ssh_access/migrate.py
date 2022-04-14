@@ -14,7 +14,6 @@ roles = {'ssh': 'project',
          'servers': 'project',
          'register_server': 'project'}
 
-
 def upgrade(vault_name: str, vaults: List[Vault]):
     vault = next(v for v in vaults if v['name'] == vault_name)
     vault_client = hvac.Client(url=vault['url'], token=vault['token'])
