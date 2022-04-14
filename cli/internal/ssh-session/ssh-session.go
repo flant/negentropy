@@ -17,12 +17,26 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
+	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/consts"
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
+	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
 )
+
+type VaultAuthReader interface {
+	// GetUser returns user which credentials are recognized by vault
+	GetUser() (*auth.User, error)
+	// UpdateServersByFilter returns ServerList synchronized with vault, according filter, using given ServerList as cache
+	UpdateServersByFilter(model.ServerFilter, *model.ServerList) (*model.ServerList, error)
+	// UpdateTenants update oldTenants by vault requests, according specified identifiers given by args
+	UpdateTenants(map[iam.TenantUUID]iam.Tenant, model.StringSet) (map[iam.TenantUUID]iam.Tenant, error)
+	// UpdateProjects update oldProjects by vault requests, according specified identifiers given by args
+	UpdateProjects(map[iam.ProjectUUID]iam.Project, map[iam.TenantUUID]iam.Tenant,
+		model.StringSet) (map[iam.ProjectUUID]iam.Project, error)
+}
 
 type Session struct {
 	UUID               string
@@ -31,7 +45,7 @@ type Session struct {
 	User               auth.User
 	ServerList         *model.ServerList
 	ServerFilter       model.ServerFilter
-	VaultService       vault.VaultService
+	VaultAuthReader    VaultAuthReader
 	SSHAgent           agent.Agent
 	SSHAgentSocketPath string
 	SSHConfigFile      *os.File
@@ -69,7 +83,7 @@ func (s *Session) SyncServersFromVault() error {
 		s.PermanentCache = *cache
 		s.ServerList = &cache.ServerList
 	}
-	sl, err := s.VaultService.UpdateServersByFilter(s.ServerFilter, s.ServerList)
+	sl, err := s.VaultAuthReader.UpdateServersByFilter(s.ServerFilter, s.ServerList)
 	if err != nil {
 		return fmt.Errorf("SyncServersFromVault: %w", err)
 	}
@@ -150,10 +164,12 @@ func (s *Session) RenderBashRCToFile() error {
 func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.Server) (*agent.AddedKey, error) {
 	principals := []string{}
 	serverIdentifiers := []string{}
+	projects := map[iam.ProjectUUID]iam.TenantUUID{}
 
 	for _, server := range servers {
 		principals = append(principals, GenerateUserPrincipal(server.UUID, s.User.UUID))
 		serverIdentifiers = append(serverIdentifiers, server.Identifier)
+		projects[server.ProjectUUID] = server.TenantUUID
 	}
 
 	privateRSA, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -170,8 +186,18 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.
 		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
 		ValidPrincipals: strings.Join(principals, ","),
 	}
+	roles := make([]authdapi.RoleWithClaim, 0, len(projects))
+	for projectUUID, tenantUUID := range projects {
+		roles = append(roles, authdapi.RoleWithClaim{
+			Role:        "ssh",
+			TenantUUID:  tenantUUID,
+			ProjectUUID: projectUUID,
+			Claim:       map[string]interface{}{"ttl": "720m", "max_ttl": "1440m"},
+		})
+	}
+	sshSigner := vault.NewService(roles...)
 
-	signedPublicSSHCertBytes, err := s.VaultService.SignPublicSSHCertificate(vaultReq)
+	signedPublicSSHCertBytes, err := sshSigner.SignPublicSSHCertificate(vaultReq)
 	if err != nil {
 		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServerBucket: %w", err)
 	}
@@ -327,10 +353,10 @@ func (s *Session) updateCache() error {
 
 func New(vaultService vault.VaultService, serverFilter model.ServerFilter, cacheFilePath string, cacheTTL time.Duration) (*Session, error) {
 	os.MkdirAll(consts.SSHWorkdir, os.ModePerm)
-	session := Session{VaultService: vaultService, ServerFilter: serverFilter, CachePath: cacheFilePath}
+	session := Session{VaultAuthReader: vaultService, ServerFilter: serverFilter, CachePath: cacheFilePath}
 	session.UUID = uuid.Must(uuid.NewRandom()).String()
 	session.SSHAgentSocketPath = fmt.Sprintf("%s/%s-ssh_agent.sock", consts.SSHWorkdir, session.UUID)
-	user, err := session.VaultService.GetUser()
+	user, err := session.VaultAuthReader.GetUser()
 	if err != nil {
 		return nil, fmt.Errorf("getting user: %w", err)
 	}

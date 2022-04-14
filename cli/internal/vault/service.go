@@ -30,7 +30,10 @@ type vaultService struct {
 	cl pkg.VaultClient
 }
 
-func NewService() VaultService {
+func NewService(roles ...authdapi.RoleWithClaim) VaultService {
+	if len(roles) == 0 {
+		roles = []authdapi.RoleWithClaim{authdapi.NewRoleWithClaim("ssh", nil)} // need here some valid role
+	}
 	var authdSocketPath string
 	if authdSocketPath = os.Getenv("AUTHD_SOCKET_PATH"); authdSocketPath == "" {
 		authdSocketPath = "/run/authd.sock"
@@ -38,7 +41,7 @@ func NewService() VaultService {
 	authdClient := authd.NewAuthdClient(authdSocketPath)
 
 	req := authdapi.NewLoginRequest().
-		WithRoles(authdapi.NewRoleWithClaim("ssh", "")).
+		WithRoles(roles...).
 		WithServerType(authdapi.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)
@@ -49,6 +52,15 @@ func NewService() VaultService {
 	vaultClient, err := authdClient.NewVaultClient()
 	if err != nil {
 		panic(err)
+	}
+
+	user, err := vaultService{
+		cl: pkg.VaultClient{Client: vaultClient},
+	}.GetUser()
+	if err != nil {
+		fmt.Printf("err %s\n", err.Error())
+	} else {
+		fmt.Printf("user %#v\n", *user)
 	}
 
 	return vaultService{
