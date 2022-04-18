@@ -11,8 +11,8 @@ import (
 )
 
 type RoleResolver interface {
-	IsUserSharedWithTenant(*model.User, model.TenantUUID) (bool, error)
-	IsServiceAccountSharedWithTenant(*model.ServiceAccount, model.TenantUUID) (bool, error)
+	IsUserSharedWithTenant(model.UserUUID, model.TenantUUID) (bool, error)
+	IsServiceAccountSharedWithTenant(model.ServiceAccountUUID, model.TenantUUID) (bool, error)
 
 	CheckUserForProjectScopedRole(model.UserUUID, model.RoleName, model.ProjectUUID) (bool, []EffectiveRole, error)
 	CheckUserForTenantScopedRole(model.UserUUID, model.RoleName, model.TenantUUID) (bool, []EffectiveRole, error)
@@ -75,12 +75,12 @@ type roleResolver struct {
 	approvalInformer     ApprovalInformer
 }
 
-func (r *roleResolver) IsUserSharedWithTenant(user *model.User, destinationTenantUUID model.TenantUUID) (bool, error) {
+func (r *roleResolver) IsUserSharedWithTenant(userUUID model.UserUUID, destinationTenantUUID model.TenantUUID) (bool, error) {
 	shares, err := r.sharingInformer.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
 		return false, err
 	}
-	sourceTenantGroups, err := r.groupInformer.FindAllParentGroupsForUserUUID(user.UUID)
+	sourceTenantGroups, err := r.groupInformer.FindAllParentGroupsForUserUUID(userUUID)
 	if err != nil {
 		return false, err
 	}
@@ -94,13 +94,13 @@ func (r *roleResolver) IsUserSharedWithTenant(user *model.User, destinationTenan
 	return false, nil
 }
 
-func (r *roleResolver) IsServiceAccountSharedWithTenant(serviceAccount *model.ServiceAccount, destinationTenantUUID model.TenantUUID) (
+func (r *roleResolver) IsServiceAccountSharedWithTenant(serviceAccountUUID model.ServiceAccountUUID, destinationTenantUUID model.TenantUUID) (
 	bool, error) {
 	shares, err := r.sharingInformer.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
 		return false, err
 	}
-	sourceTenantGroups, err := r.groupInformer.FindAllParentGroupsForServiceAccountUUID(serviceAccount.UUID)
+	sourceTenantGroups, err := r.groupInformer.FindAllParentGroupsForServiceAccountUUID(serviceAccountUUID)
 	if err != nil {
 		return false, err
 	}

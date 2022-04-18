@@ -197,7 +197,9 @@ func (r *IdentitySharingRepository) ListForDestinationTenant(tenantID model.Tena
 			break
 		}
 		u := raw.(*model.IdentitySharing)
-		res = append(res, u)
+		if u.NotArchived() {
+			res = append(res, u)
+		}
 	}
 	return res, nil
 }
