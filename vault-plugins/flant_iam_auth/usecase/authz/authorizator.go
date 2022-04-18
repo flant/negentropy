@@ -29,6 +29,7 @@ type Authorizator struct {
 	EntityRepo    *repo.EntityRepo
 	EaRepo        *repo.EntityAliasRepo
 	RoleRepo      *iam_repo.RoleRepository
+	PolicyRepo    *repo.PolicyRepository
 	RolesResolver iam_usecase.RoleResolver
 
 	MountAccessor *vault.MountAccessorGetter
@@ -65,10 +66,10 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 		SaRepo:   iam_repo.NewServiceAccountRepository(txn),
 		UserRepo: iam_repo.NewUserRepository(txn),
 
-		EaRepo:     repo.NewEntityAliasRepo(txn),
-		EntityRepo: repo.NewEntityRepo(txn),
-		RoleRepo:   iam_repo.NewRoleRepository(txn),
-
+		EaRepo:        repo.NewEntityAliasRepo(txn),
+		EntityRepo:    repo.NewEntityRepo(txn),
+		RoleRepo:      iam_repo.NewRoleRepository(txn),
+		PolicyRepo:    repo.NewPolicyRepository(txn),
 		RolesResolver: iam_usecase.NewRoleResolver(txn),
 
 		MountAccessor:       aGetter,
@@ -109,7 +110,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 	method.PopulateTokenAuth(authzRes)
 
-	err = a.addDynamicPolicies(authzRes, roleClaims, subject)
+	err = a.addDynamicPolicies(authzRes, roleClaims, subject, method.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -154,9 +155,13 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 	return authzRes, tokenOwnerFullIdentifier, nil
 }
 
-func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []RoleClaim, subject Subject) error {
-	extraPolicies := a.buildVaultPolicies(roleClaims, subject)
-	if err := a.createDynamicPolicies(extraPolicies); err != nil {
+func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []RoleClaim, subject Subject, authMethod string) error {
+	extraPolicies, err := a.buildVaultPolicies(roleClaims, subject, authMethod)
+	if err != nil {
+		return err
+	}
+	err = a.createDynamicPolicies(extraPolicies)
+	if err != nil {
 		return err
 	}
 	for _, p := range extraPolicies {
@@ -165,18 +170,25 @@ func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []R
 	return nil
 }
 
-func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subject) []VaultPolicy {
+func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subject, authMethod string) ([]VaultPolicy, error) {
 	var result []VaultPolicy
 	for _, rc := range roleClaims {
-		policy := a.buildVaultPolicy(subject, rc)
+		negentropyPolicy, err := a.seekAndValidatePolicy(rc.Role, authMethod)
+		if err != nil {
+			return nil, err
+		}
+		policy, err := a.buildVaultPolicy(negentropyPolicy.Rego, subject, rc)
+		if err != nil {
+			return nil, err
+		}
 		if policy != nil {
 			result = append(result, *policy)
 		}
 	}
-	return result
+	return result, nil
 }
 
-func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPolicy {
+func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc RoleClaim) (*VaultPolicy, error) {
 	if rc.TenantUUID == "" {
 		rc.TenantUUID = subject.TenantUUID
 	}
@@ -187,8 +199,9 @@ func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPol
 	case rc.Role == "ssh":
 		role, err := a.RoleRepo.GetByID(rc.Role)
 		if err != nil {
-			a.Logger.Error("error catching role", "rolename", *role, "error", err)
-			return nil
+			err = fmt.Errorf("error catching role %s:%w", rc.Role, err)
+			a.Logger.Error(err.Error())
+			return nil, err
 		}
 		var effectiveRoles []iam_usecase.EffectiveRole
 		var found bool
@@ -205,14 +218,16 @@ func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPol
 				rc.TenantUUID)
 		}
 		if !found {
-			a.Logger.Error("not found rolebindings", "subject_type", subject.Type, "subject_uuid",
-				subject.UUID, "rolename", *role)
-			return nil
+			err = fmt.Errorf("not found rolebindings, subject_type=%s, subject_uuid=%s, role=%s",
+				subject.Type, subject.UUID, role.Name)
+			a.Logger.Error(err.Error())
+			return nil, err
 		}
 		if err != nil {
-			a.Logger.Error("error searching rolebindings", "subject_type", subject.Type, "subject_uuid",
-				subject.UUID, "rolename", *role, "error", err)
-			return nil
+			err = fmt.Errorf("error searching, subject_type=%s, subject_uuid=%s, role=%s :%w",
+				subject.Type, subject.UUID, role.Name, err)
+			a.Logger.Error(err.Error())
+			return nil, err
 		}
 		ctx := context.Background()
 		regoClaims := map[string]interface{}{
@@ -223,16 +238,19 @@ func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPol
 		for k, v := range rc.Claim {
 			regoClaims[k] = v
 		}
-		regoResult, err := ApplyRegoPolicy(ctx, sshPolicy1, UserData{}, effectiveRoles, regoClaims)
+		regoResult, err := ApplyRegoPolicy(ctx, regoPolicy, UserData{}, effectiveRoles, regoClaims)
 		if err != nil {
-			a.Logger.Error(fmt.Sprintf("err:%s", err.Error()))
+			err = fmt.Errorf("error appliing rego policy:%w", err)
+			a.Logger.Error(err.Error())
+			return nil, err
 		} else {
 			a.Logger.Debug(fmt.Sprintf("regoResult:%#v\n", *regoResult))
 		}
 		if !regoResult.Allow {
-			a.Logger.Warn("not allowed", "subject_type", subject.Type, "subject_uuid",
-				subject.UUID, "rolename", *role, "claims", rc)
-			return nil
+			err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v",
+				subject.Type, subject.UUID, role.Name, rc)
+			a.Logger.Error(err.Error())
+			return nil, err
 		}
 		policy = VaultPolicy{
 			Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
@@ -423,7 +441,7 @@ func (a *Authorizator) buildVaultPolicy(subject Subject, rc RoleClaim) *VaultPol
 			}},
 		}
 	}
-	return &policy
+	return &policy, nil
 }
 
 // authorizeServiceAccount called from authorizeTokenOwner in case token is owned by service_account
@@ -593,54 +611,45 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 	return &authzRes, nil
 }
 
-// TODo REMOVE IT! ==========================
-var sshPolicy1 = `
-package negentropy
-
-
-default requested_ttl = "600s"
-default requested_max_ttl = "1200s"
-
-requested_ttl = input.ttl
-requested_max_ttl = input.max_ttl
-
-filtered_bindings[r] {
-#	tenant := input.tenant_uuid
-    project := input.project_uuid
-	some i
-	r := data.effective_roles[i]
-#   	data.effective_roles[i].tenant_uuid==tenant
-    	data.effective_roles[i].projects[_]==project
-        to_seconds_number(data.effective_roles[i].options.ttl)>=to_seconds_number(requested_ttl)
-        to_seconds_number(data.effective_roles[i].options.max_ttl)>=to_seconds_number(requested_max_ttl)
+// TODO REMOVE IT AFTER IMPLEMENT ALL:
+var tmpNotSeekPoliciesRoles = map[string]struct{}{
+	"iam_read":        {},
+	"iam_write":       {},
+	"iam_read_all":    {},
+	"iam_write_all":   {},
+	"servers":         {},
+	"register_server": {},
+	"iam_auth_read":   {},
+	"flow_read":       {},
+	"flow_write":      {},
 }
 
-default allow = false
+func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod string) (*model.Policy, error) {
+	if _, tmpSkip := tmpNotSeekPoliciesRoles[roleName]; tmpSkip { // TODO  tmp stub
+		fmt.Printf("====================Attantion! ===========================\n")
+		fmt.Printf("skipped searching negentropy policy for role %s\n", roleName)
+		fmt.Printf("====================Attantion! ===========================\n")
+		return &model.Policy{}, nil // TODO  tmp stub
+	} // TODO  tmp stub
+	policies, err := a.PolicyRepo.ListActiveForRole(roleName)
+	if err != nil {
+		return nil, err
+	}
+	if len(policies) == 0 {
+		return nil, fmt.Errorf("no one negentropy policy for role:%s", roleName)
+	}
+	if len(policies) > 1 {
+		return nil, fmt.Errorf("more the one negentropy policy for role:%s", roleName)
+	}
+	policy := policies[0]
 
-allow {count(filtered_bindings) >0}
-
-# пути по которым должен появится доступ
-rules = [
-	{"path":"ssh/sign/signer","capabilities":["update"]}
-    ]{allow}
-
-ttl := requested_ttl {allow}
-
-max_ttl := requested_max_ttl {allow}
-
-# Переводим в число секунд
-to_seconds_number(t) = x {
-	 lower_t = lower(t)
-     value = to_number(trim_right(lower_t, "hms"))
-	 x = value ; endswith(lower_t, "s")
-}{
-	 lower_t = lower(t)
-     value = to_number(trim_right(lower_t, "hms"))
-	 x = value*60 ; endswith(lower_t, "m")
-}{
-	 lower_t = lower(t)
-     value = to_number(trim_right(lower_t, "hms"))
-     x = value*3600 ; endswith(lower_t, "h")
-}`
-
-// TODo REMOVE IT! ==========================
+	if len(policy.AllowedAuthMethods) == 0 {
+		return policy, nil
+	}
+	for _, m := range policy.AllowedAuthMethods {
+		if m == authMethod {
+			return policy, nil
+		}
+	}
+	return nil, fmt.Errorf("for role:%s authMethod %s is not allowed", roleName, authMethod)
+}

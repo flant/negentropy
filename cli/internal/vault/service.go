@@ -32,7 +32,7 @@ type vaultService struct {
 
 func NewService(roles ...authdapi.RoleWithClaim) VaultService {
 	if len(roles) == 0 {
-		roles = []authdapi.RoleWithClaim{authdapi.NewRoleWithClaim("ssh", nil)} // need here some valid role
+		roles = []authdapi.RoleWithClaim{authdapi.NewRoleWithClaim("iam_auth_read", nil)} // TODO need here some valid role
 	}
 	var authdSocketPath string
 	if authdSocketPath = os.Getenv("AUTHD_SOCKET_PATH"); authdSocketPath == "" {
