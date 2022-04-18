@@ -95,7 +95,7 @@ func (vs *VaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, p
 }
 
 func (vs *VaultClient) GetUser() (*auth.User, error) {
-	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/multipass_owner", nil, nil)
+	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/vst_owner", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get_user:%w", err)
 	}

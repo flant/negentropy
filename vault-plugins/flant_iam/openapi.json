@@ -2449,7 +2449,7 @@
         }
       }
     },
-    "/auth/flant_iam_auth/multipass_owner": {
+    "/auth/flant_iam_auth/vst_owner": {
       "description": "Provide info about owner of multipass",
       "get": {
         "summary": "Authenticates to Vault using a JWT (or OIDC) token.",

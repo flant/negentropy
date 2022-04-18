@@ -17,7 +17,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
                                              policy="""path "auth/flant_iam_auth/issue/multipass_jwt/*" {capabilities = ["update"]}"""
                                              )
     vault_client.sys.create_or_update_policy(name="read_auth",
-                                             policy="""path "auth/flant_iam_auth/multipass_owner" {capabilities = ["read"]} 
+                                             policy="""path "auth/flant_iam_auth/vst_owner" {capabilities = ["read"]} 
                                                    path "auth/flant_iam_auth/query_server" {capabilities = ["read"]} 
                                                    path "auth/flant_iam_auth/tenant/*" {capabilities = ["read","list"]}"""
                                              )
