@@ -88,7 +88,7 @@ allow {count(filtered_bindings) >0}
 # пути по которым должен появится доступ
 rules = [
 	{"path":"ssh/sign/signer","capabilities":["update"]},
-    {"path":"auth/flant_iam_auth/multipass_owner","capabilities":["read"]},
+    {"path":"auth/flant_iam_auth/vst_owner","capabilities":["read"]},
     {"path":"auth/flant_iam_auth/query_server","capabilities":["read"]},
     {"path":"auth/flant_iam_auth/tenant/*","capabilities":["read","list"]}
     ]{allow}
@@ -117,7 +117,7 @@ to_seconds_number(t) = x {
 			Path:   "ssh/sign/signer",
 			Update: true,
 		}, {
-			Path: "auth/flant_iam_auth/multipass_owner",
+			Path: "auth/flant_iam_auth/vst_owner",
 			Read: true,
 		}, {
 			Path: "auth/flant_iam_auth/query_server", // TODO

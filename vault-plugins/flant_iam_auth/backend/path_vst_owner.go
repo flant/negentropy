@@ -15,30 +15,22 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
-func pathMultipassOwner(b *flantIamAuthBackend) *framework.Path {
+func pathVSTOwner(b *flantIamAuthBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: `multipass_owner$`,
-		Fields: map[string]*framework.FieldSchema{
-			"multipass": {
-				Type:        framework.TypeString,
-				Description: "multipass jwt",
-			},
-		},
-
+		Pattern: `vst_owner$`,
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.multipassOwner,
+				Callback: b.vstOwner,
 				Summary:  pathLoginHelpSyn,
 			},
 		},
-
-		HelpSynopsis: "Provide info about owner of multipass",
+		HelpSynopsis: "Provide info about owner of vault session token (if it issued for user or service_account of negentropy)",
 	}
 }
 
-func (b *flantIamAuthBackend) multipassOwner(ctx context.Context, req *logical.Request,
+func (b *flantIamAuthBackend) vstOwner(ctx context.Context, req *logical.Request,
 	d *framework.FieldData) (*logical.Response, error) {
-	logger := b.NamedLogger("multipassOwner")
+	logger := b.NamedLogger("vstOwner")
 	entityIDOwner, err := b.entityIDResolver.RevealEntityIDOwner(req.EntityID, b.storage.Txn(false), req.Storage)
 	if errors.Is(err, consts.ErrNotFound) {
 		return logical.RespondWithStatusCode(nil, req, http.StatusNotFound) //nolint:errCheck
