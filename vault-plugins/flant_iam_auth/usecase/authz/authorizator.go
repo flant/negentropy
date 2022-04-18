@@ -172,7 +172,12 @@ func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []R
 
 func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subject, authMethod string) ([]VaultPolicy, error) {
 	var result []VaultPolicy
+	var err error
 	for _, rc := range roleClaims {
+		rc, err = a.checkOrFillTenantUUID(rc, subject)
+		if err != nil {
+			return nil, err
+		}
 		negentropyPolicy, err := a.seekAndValidatePolicy(rc.Role, authMethod)
 		if err != nil {
 			return nil, err
@@ -652,4 +657,31 @@ func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod s
 		}
 	}
 	return nil, fmt.Errorf("for role:%s authMethod %s is not allowed", roleName, authMethod)
+}
+
+// checkOrFillTenantUUID check or fill tenantUUID un RoleClaim:
+// if it filled - it checks is it owner of subject or is subject shared to this tenant
+// if not filled - fill by  owner of subject
+func (a *Authorizator) checkOrFillTenantUUID(rc RoleClaim, subject Subject) (RoleClaim, error) {
+	if rc.TenantUUID == subject.TenantUUID {
+		return rc, nil
+	}
+	if rc.TenantUUID == "" {
+		rc.TenantUUID = subject.TenantUUID
+		return rc, nil
+	}
+	var isShared bool
+	var err error
+	if subject.Type == "user" {
+		isShared, err = a.RolesResolver.IsUserSharedWithTenant(subject.UUID, rc.TenantUUID)
+	} else {
+		isShared, err = a.RolesResolver.IsServiceAccountSharedWithTenant(subject.UUID, rc.TenantUUID)
+	}
+	if err != nil {
+		return RoleClaim{}, err
+	}
+	if !isShared {
+		return RoleClaim{}, fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
+	}
+	return rc, nil
 }
