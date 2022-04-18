@@ -10,10 +10,11 @@ const PolicyType = "policy" // also, memdb schema name
 type Policy struct {
 	memdb.ArchiveMark
 
-	Name          PolicyName     `json:"name"` // ID
-	Rego          string         `json:"rego"`
-	Roles         []iam.RoleName `json:"roles"`
-	OptionsSchema string         `json:"options_schema"`
+	Name               PolicyName     `json:"name"` // ID
+	Rego               string         `json:"rego"`
+	Roles              []iam.RoleName `json:"roles"`
+	ClaimSchema        string         `json:"claim_schema"`
+	AllowedAuthMethods []string       `json:"allowed_auth_methods"`
 }
 
 func (p *Policy) ObjType() string {

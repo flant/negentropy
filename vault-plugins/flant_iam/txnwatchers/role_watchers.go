@@ -177,7 +177,7 @@ func CheckRoleIncludeRole(txn *io.MemoryStoreTxn, role string, roleOfConcern str
 	}
 
 	repo := iam_repo.NewRoleRepository(txn)
-	roles, err := repo.FindAllIncludingRoles(role)
+	roles, err := repo.FindAllAncestorsRoles(role)
 	if err != nil {
 		return false, fmt.Errorf("CheckRoleIncludeRole for role `%s`: %w", role, err)
 	}
@@ -200,7 +200,7 @@ func CheckRoleObjectIncludeRole(txn *io.MemoryStoreTxn, role *model.Role, roleOf
 		if included.Name == roleOfConcern {
 			return true, nil
 		}
-		roles, err := repo.FindAllIncludingRoles(included.Name)
+		roles, err := repo.FindAllAncestorsRoles(included.Name)
 		if err != nil {
 			return false, err
 		}

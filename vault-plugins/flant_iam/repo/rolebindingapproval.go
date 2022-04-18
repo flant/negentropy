@@ -87,6 +87,14 @@ type RoleBindingApprovalRepository struct {
 	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
 }
 
+func (r *RoleBindingApprovalRepository) RoleBindingApprovalCount(rolebindingUUID model.RoleBindingApprovalUUID) int64 {
+	rbs, err := r.List(rolebindingUUID, false)
+	if err != nil {
+		return 0
+	}
+	return int64(len(rbs))
+}
+
 func NewRoleBindingApprovalRepository(tx *io.MemoryStoreTxn) *RoleBindingApprovalRepository {
 	return &RoleBindingApprovalRepository{db: tx}
 }

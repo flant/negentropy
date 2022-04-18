@@ -257,10 +257,9 @@ func extractRoleBindings(iter hcmemdb.ResultIterator, showArchived bool) (map[mo
 		if !ok {
 			return nil, fmt.Errorf("need type RoleBindig, actually passed: %#v", raw)
 		}
-		if !showArchived && rb.Hash != 0 {
-			continue
+		if showArchived || rb.NotArchived() {
+			rbs[rb.UUID] = rb
 		}
-		rbs[rb.UUID] = rb
 	}
 	return rbs, nil
 }

@@ -16,7 +16,13 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault_client.sys.create_or_update_policy(name="rotate_multipass",
                                              policy="""path "auth/flant_iam_auth/issue/multipass_jwt/*" {capabilities = ["update"]}"""
                                              )
+    vault_client.sys.create_or_update_policy(name="read_auth",
+                                             policy="""path "auth/flant_iam_auth/multipass_owner" {capabilities = ["read"]} 
+                                                   path "auth/flant_iam_auth/query_server" {capabilities = ["read"]} 
+                                                   path "auth/flant_iam_auth/tenant/*" {capabilities = ["read","list"]}"""
+                                             )
+
     print("INFO: configure multipass at '{}' vault".format(vault_name))
     vault_client.write(path='auth/flant_iam_auth/auth_method/multipass', token_ttl='30m', token_max_ttl='1440m',
-                       token_policies='rotate_multipass, token_renew', token_no_default_policy='True',
+                       token_policies='rotate_multipass, token_renew, read_auth', token_no_default_policy='True',
                        method_type='multipass_jwt')

@@ -119,7 +119,7 @@ func prepareRoleBinding(t *testing.T, txn *io.MemoryStoreTxn, roleName model.Rol
 		UUID:            rbUUID1,
 		TenantUUID:      tenantUUID,
 		Version:         "1",
-		ValidTill:       200000,
+		ValidTill:       10_000_000_000,
 		Users:           users,
 		Groups:          groups,
 		ServiceAccounts: serviceAccounts,

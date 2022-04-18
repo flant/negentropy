@@ -68,6 +68,11 @@ func rbBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[str
 			Description: "allow rolebinding for all projects of tenant",
 			Required:    true,
 		},
+		"projects": {
+			Type:        framework.TypeStringSlice,
+			Description: "project uuids list",
+			Required:    true,
+		},
 	}
 	for fieldName, fieldSchema := range extraFields {
 		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
@@ -203,6 +208,11 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		}
 
 		ttl := data.Get("ttl").(int)
+		if ttl <= 0 {
+			err = fmt.Errorf("%w: passed ttl<=0", consts.ErrInvalidArg)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
+		}
 		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
 
 		members, err := parseMembers(data.Get("members"))
@@ -215,6 +225,12 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
 
+		anyProject := data.Get("any_project").(bool)
+		var projects []string
+		if !anyProject {
+			projects = data.Get("projects").([]string)
+		}
+
 		roleBinding := &model.RoleBinding{
 			UUID:        id,
 			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
@@ -224,16 +240,17 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			Roles:       roles,
 			Origin:      consts.OriginIAM,
 			Description: data.Get("description").(string),
-			AnyProject:  data.Get("any_project").(bool),
+			AnyProject:  anyProject,
+			Projects:    projects,
 		}
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
 		if err = usecase.RoleBindings(tx).Create(roleBinding); err != nil {
-			msg := fmt.Sprintf("cannot create role binding:%s", err)
-			b.Logger().Error(msg)
-			return backentutils.ResponseErrMessage(req, msg, http.StatusBadRequest)
+			err = fmt.Errorf("cannot create role binding:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
@@ -264,7 +281,11 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if len(members) == 0 {
 			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
-
+		anyProject := data.Get("any_project").(bool)
+		var projects []string
+		if !anyProject {
+			projects = data.Get("projects").([]string)
+		}
 		roleBinding := &model.RoleBinding{
 			UUID:        id,
 			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
@@ -275,7 +296,8 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			Roles:       roles,
 			Origin:      consts.OriginIAM,
 			Description: data.Get("description").(string),
-			AnyProject:  data.Get("any_project").(bool),
+			AnyProject:  anyProject,
+			Projects:    projects,
 		}
 
 		tx := b.storage.Txn(true)

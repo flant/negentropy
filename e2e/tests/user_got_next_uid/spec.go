@@ -44,7 +44,7 @@ var _ = Describe("Process of getting new user/service_account next linux uid", f
 				TenantUUID:  newUser.TenantUUID,
 				Version:     "",
 				Description: "user got next uid testing",
-				ValidTill:   0,
+				ValidTill:   10_000_000_000,
 				RequireMFA:  false,
 				Members:     newGroup.Members,
 				AnyProject:  true,

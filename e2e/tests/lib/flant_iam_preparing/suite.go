@@ -52,11 +52,7 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
-const (
-	RegisterServerRole = "register_server"
-	IamAuthRead        = "iam_auth_read"
-	IamReadRole        = "iam_read"
-)
+const RegisterServerRole = "register_server"
 
 func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	var result CheckingEnvironment
@@ -68,16 +64,13 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	fmt.Printf("Created serviceAccount:%#v\n", result.ServiceAccount)
 	// create  SA password for SA login
 	result.ServiceAccountPassword = specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(st.IamVaultClient),
-		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole, IamReadRole})
+		result.ServiceAccount, "test", 100*time.Second, []string{RegisterServerRole})
+
 	fmt.Printf("Created serviceAccountPassword:%#v\n", result.ServiceAccountPassword)
 
-	// create a role 'register_server' if not exists
-	st.createRoleIfNotExist(RegisterServerRole)
-
-	// create a role 'IamAuthRead' if not exists
-	st.createRoleIfNotExist(IamAuthRead)
-
-	//time.Sleep(time.Second * 15)
+	// create some project
+	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
+	fmt.Printf("Created project:%#v\n", result.Project)
 
 	// create rolebinding for a sa in project with the RegisterServerRole
 	result.ServiceAccountRoleBinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
@@ -85,21 +78,18 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 			TenantUUID:  result.Tenant.UUID,
 			Version:     "",
 			Description: "flant_iam_preparing for e2e login testing",
-			ValidTill:   1000000,
+			ValidTill:   10_000_000_000,
 			RequireMFA:  false,
 			Members: []model.MemberNotation{{
 				Type: model.ServiceAccountType,
 				UUID: result.ServiceAccount.UUID,
 			}},
-			AnyProject: true,
-			Roles: []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}},
-				{Name: IamAuthRead, Options: map[string]interface{}{}}},
+			Projects:   []string{result.Project.UUID},
+			AnyProject: false,
+			Roles:      []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.ServiceAccountRoleBinding)
 
-	// create some project
-	result.Project = specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
-	fmt.Printf("Created project:%#v\n", result.Project)
 	// create some user at the tenant
 	result.User = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.Tenant.UUID)
 	fmt.Printf("Created user:%#v\n", result.User)
@@ -109,30 +99,16 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 const TestServerIdentifier = "test-server"
 
 func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
-	const (
-		sshRole    = "ssh"
-		serverRole = "servers"
-	)
+	const sshRole = "ssh"
+
 	result := st.PrepareForLoginTesting()
 
 	err := st.WaitPrepareForLoginTesting(result, 40)
 	Expect(err).ToNot(HaveOccurred())
 
-	// create a role 'ssh' if not exists
-	st.createRoleIfNotExist(sshRole)
-
-	// create a role 'servers' if not exists
-	st.createRoleIfNotExist(serverRole)
-
 	// create a group with the user
 	result.Group = specs.CreateRandomGroupWithUser(lib.NewGroupAPI(st.IamVaultClient), result.User.TenantUUID, result.User.UUID)
 	fmt.Printf("Created group:%#v\n", result.Group)
-
-	// create a role 'ssh' if not exists
-	st.createRoleIfNotExist(sshRole)
-
-	// create a role 'servers' if not exists
-	st.createRoleIfNotExist(serverRole)
 
 	// create rolebinding for a user in project with the ssh role
 	result.UserRolebinding = specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
@@ -140,11 +116,12 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 			TenantUUID:  result.User.TenantUUID,
 			Version:     "",
 			Description: "flant_iam_preparing for e2e ssh testing",
-			ValidTill:   1000000,
+			ValidTill:   10_000_000_000,
 			RequireMFA:  false,
 			Members:     result.Group.Members,
-			AnyProject:  true,
-			Roles:       []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{}}},
+			Projects:    []string{result.Project.UUID},
+			AnyProject:  false,
+			Roles:       []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.UserRolebinding)
 
@@ -205,7 +182,10 @@ func getClientAuthorizedWithSAPass(password model.ServiceAccountPassword, roles 
 	return pkg.VaultClient{Client: cl}
 }
 
-func (st Suite) createRoleIfNotExist(roleName string) {
+func (st Suite) createRoleIfNotExist(roleName string, scope model.RoleScope) {
+	if scope == "" {
+		scope = model.RoleScopeProject
+	}
 	roleAPI := lib.NewRoleAPI(st.IamVaultClient)
 	var roleNotExists bool
 	rawRole := roleAPI.Read(tools.Params{
@@ -253,12 +233,6 @@ func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
 		UUID:        FlantTenantUUID,
 		Identifier:  FlantTenantID,
 	}
-
-	// create a role 'register_server' if not exists
-	st.createRoleIfNotExist(RegisterServerRole)
-
-	// create a role 'iam_auth_read' if not exists
-	st.createRoleIfNotExist(IamAuthRead)
 
 	// create some user at the tenant
 	result.Admin = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.FlantTenant.UUID)

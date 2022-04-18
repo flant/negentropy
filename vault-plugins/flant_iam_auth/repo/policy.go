@@ -106,10 +106,21 @@ func (r *PolicyRepository) List(showArchived bool) ([]*model.Policy, error) {
 	if err != nil {
 		return nil, err
 	}
+	return makeList(iter, showArchived)
+}
 
+func (r *PolicyRepository) ListActiveForRole(roleName iam.RoleName) ([]*model.Policy, error) {
+	iter, err := r.db.Get(model.PolicyType, RoleInPolicyIndex, roleName)
+	if err != nil {
+		return nil, err
+	}
+	return makeList(iter, false)
+}
+
+func makeList(policyIterator hcmemdb.ResultIterator, showArchived bool) ([]*model.Policy, error) {
 	list := []*model.Policy{}
 	for {
-		raw := iter.Next()
+		raw := policyIterator.Next()
 		if raw == nil {
 			break
 		}

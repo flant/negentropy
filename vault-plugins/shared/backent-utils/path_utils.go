@@ -54,13 +54,13 @@ func ResponseErr(req *logical.Request, err error) (*logical.Response, error) {
 
 func MapErrorToHTTPStatusCode(err error) int {
 	statuses := map[error]int{
-		consts.ErrNoUUID:              http.StatusBadRequest,
-		consts.ErrIsArchived:          http.StatusBadRequest,
-		consts.ErrAlreadyExists:       http.StatusBadRequest,
-		consts.ErrBadProjectScopeRole: http.StatusBadRequest,
-		consts.ErrInvalidArg:          http.StatusBadRequest,
-		memdb.ErrNotEmptyRelation:     http.StatusBadRequest,
-		memdb.ErrForeignKey:           http.StatusBadRequest,
+		consts.ErrNoUUID:          http.StatusBadRequest,
+		consts.ErrIsArchived:      http.StatusBadRequest,
+		consts.ErrAlreadyExists:   http.StatusBadRequest,
+		consts.ErrBadScopeRole:    http.StatusBadRequest,
+		consts.ErrInvalidArg:      http.StatusBadRequest,
+		memdb.ErrNotEmptyRelation: http.StatusBadRequest,
+		memdb.ErrForeignKey:       http.StatusBadRequest,
 
 		consts.ErrNotFound: http.StatusNotFound,
 

@@ -239,12 +239,20 @@ func (r *RoleRepository) Sync(objID string, data []byte) error {
 	return r.save(role)
 }
 
-func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[model.RoleName]struct{}, error) {
+// RoleChain represents chain of some role nesting for options resolving
+type RoleChain struct {
+	// Role name at the start of the chain
+	RoleName model.RoleName
+	// OptionsTemplates which should be applied, from [0] to the last
+	OptionsTemplates []string
+}
+
+func (r *RoleRepository) FindDirectParentRoles(roleID model.RoleName) (map[model.RoleName]RoleChain, error) {
 	iter, err := r.db.Get(model.RoleType, IncludedRolesIndex, model.IncludedRole{Name: roleID})
 	if err != nil {
 		return nil, err
 	}
-	ids := map[model.RoleName]struct{}{}
+	result := map[model.RoleName]RoleChain{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -252,14 +260,22 @@ func (r *RoleRepository) FindDirectIncludingRoles(roleID model.RoleName) (map[mo
 		}
 		role := raw.(*model.Role)
 		if role.NotArchived() {
-			ids[role.Name] = struct{}{}
+			for _, includedRole := range role.IncludedRoles {
+				if includedRole.Name == roleID {
+					result[role.Name] = RoleChain{
+						RoleName:         role.Name,
+						OptionsTemplates: []string{includedRole.OptionsTemplate},
+					}
+					break
+				}
+			}
 		}
 	}
-	return ids, nil
+	return result, nil
 }
 
-func (r *RoleRepository) FindAllIncludingRoles(roleID model.RoleName) (map[model.RoleName]struct{}, error) {
-	result := map[model.RoleName]struct{}{} // empty map
+func (r *RoleRepository) FindAllAncestorsRoles(roleID model.RoleName) (map[model.RoleName]RoleChain, error) {
+	result := map[model.RoleName]RoleChain{roleID: {RoleName: roleID}}
 	role, err := r.GetByID(roleID)
 	if err != nil {
 		return nil, err
@@ -267,22 +283,26 @@ func (r *RoleRepository) FindAllIncludingRoles(roleID model.RoleName) (map[model
 	if role.Archived() {
 		return result, nil
 	}
-	currentSet := map[model.RoleName]struct{}{roleID: {}}
-	for len(currentSet) != 0 {
-		nextSet := map[model.RoleName]struct{}{}
-		for currentRole := range currentSet {
-			candidates, err := r.FindDirectIncludingRoles(currentRole)
+	currentSetOfChains := map[model.RoleName]RoleChain{roleID: {RoleName: roleID}}
+	for len(currentSetOfChains) != 0 {
+		nextSet := map[model.RoleName]RoleChain{}
+		for currentRole, currentOptionsChain := range currentSetOfChains {
+			candidates, err := r.FindDirectParentRoles(currentRole)
 			if err != nil {
 				return nil, err
 			}
-			for candidate := range candidates {
+			for candidate, candidateChain := range candidates {
 				if _, found := result[candidate]; !found && candidate != roleID {
-					result[candidate] = struct{}{}
-					nextSet[candidate] = struct{}{}
+					chain := RoleChain{
+						RoleName:         candidate,
+						OptionsTemplates: append(candidateChain.OptionsTemplates, currentOptionsChain.OptionsTemplates...),
+					}
+					result[candidate] = chain
+					nextSet[candidate] = chain
 				}
 			}
 		}
-		currentSet = nextSet
+		currentSetOfChains = nextSet
 	}
 	return result, nil
 }

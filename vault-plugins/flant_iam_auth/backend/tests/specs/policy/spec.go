@@ -33,7 +33,8 @@ var _ = Describe("Policy", func() {
 				Expect(policyData.Map()).To(HaveKey("name"))
 				Expect(policyData.Map()).To(HaveKey("rego"))
 				Expect(policyData.Map()).To(HaveKey("roles"))
-				Expect(policyData.Map()).To(HaveKey("options_schema"))
+				Expect(policyData.Map()).To(HaveKey("claim_schema"))
+				Expect(policyData.Map()).To(HaveKey("allowed_auth_methods"))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
