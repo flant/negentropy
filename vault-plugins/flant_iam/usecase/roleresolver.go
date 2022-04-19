@@ -220,8 +220,7 @@ func (r *roleResolver) mergeEffectiveRoles(originEffectiveRoles []EffectiveRole,
 	result := originEffectiveRoles
 	for _, boundRole := range roleBinding.Roles {
 		if roleOptionsTemplatesChain, target := targetRoles[boundRole.Name]; target {
-			fmt.Printf("roleBinding.ValidTill > time.Now().Unix()  %#v\n", roleBinding.ValidTill > time.Now().Unix()) // TODO REMOVE
-			if roleBinding.ValidTill > time.Now().Unix() {
+			if roleBinding.ValidTill == 0 || roleBinding.ValidTill > time.Now().Unix() {
 				newEffectiveRole := EffectiveRole{
 					RoleName:        masterRole,
 					RoleBindingUUID: roleBinding.UUID,

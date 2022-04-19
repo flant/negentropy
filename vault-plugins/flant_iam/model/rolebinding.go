@@ -16,7 +16,7 @@ type RoleBinding struct {
 
 	Description string `json:"description"`
 
-	ValidTill  int64 `json:"valid_till"`
+	ValidTill  int64 `json:"valid_till"` // if ==0 => valid forever
 	RequireMFA bool  `json:"require_mfa"`
 
 	Users           []UserUUID           `json:"users"`
