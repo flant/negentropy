@@ -226,7 +226,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 		Projects:    []iam_model.ProjectUUID{projectUUID},
 		Roles:       boundRoles,
 		Origin:      consts.OriginFlantFlow,
-		ValidTill:   10_000_000_000,
+		ValidTill:   0, // valid forever
 	}
 	err = d.roleBindingRepository.Create(rb)
 	if err != nil {
