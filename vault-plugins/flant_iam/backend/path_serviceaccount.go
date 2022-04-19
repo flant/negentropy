@@ -468,7 +468,6 @@ func (b *serviceAccountBackend) handleCreate(expectID bool) framework.OperationF
 		serviceAccount := &model.ServiceAccount{
 			UUID:        id,
 			TenantUUID:  tenantUUID,
-			BuiltinType: "",
 			Identifier:  data.Get("identifier").(string),
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
@@ -509,7 +508,6 @@ func (b *serviceAccountBackend) handleUpdate() framework.OperationFunc {
 			TenantUUID:  data.Get(iam_repo.TenantForeignPK).(string),
 			Version:     data.Get("resource_version").(string),
 			Identifier:  data.Get("identifier").(string),
-			BuiltinType: "",
 			CIDRs:       data.Get("allowed_cidrs").([]string),
 			TokenTTL:    time.Duration(ttl),
 			TokenMaxTTL: time.Duration(maxttl),

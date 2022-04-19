@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
@@ -257,6 +258,11 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 			a.Logger.Error(err.Error())
 			return nil, err
 		}
+		for _, r := range regoResult.VaultRules {
+			r.Path = strings.ReplaceAll(r.Path, "<tenant_uuid>", rc.TenantUUID)
+			r.Path = strings.ReplaceAll(r.Path, "<project_uuid>", rc.ProjectUUID)
+		}
+
 		policy = VaultPolicy{
 			Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: regoResult.VaultRules,
