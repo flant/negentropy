@@ -80,7 +80,6 @@ func (b *flantIamAuthBackend) vstOwner(ctx context.Context, req *logical.Request
 					"service_account": model.ServiceAccount{
 						UUID:           sa.UUID,
 						TenantUUID:     sa.TenantUUID,
-						BuiltinType:    sa.BuiltinType,
 						Identifier:     sa.Identifier,
 						FullIdentifier: sa.FullIdentifier,
 						CIDRs:          sa.CIDRs,

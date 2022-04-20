@@ -15,7 +15,6 @@ type ServiceAccount struct {
 	UUID           ServiceAccountUUID `json:"uuid"` // PK
 	TenantUUID     TenantUUID         `json:"tenant_uuid"`
 	Version        string             `json:"resource_version"`
-	BuiltinType    string             `json:"-"`
 	Identifier     string             `json:"identifier"`
 	FullIdentifier string             `json:"full_identifier"`
 	CIDRs          []string           `json:"allowed_cidrs"`
