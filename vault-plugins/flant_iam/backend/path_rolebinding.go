@@ -208,8 +208,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		}
 
 		ttl := data.Get("ttl").(int)
-		if ttl <= 0 {
-			err = fmt.Errorf("%w: passed ttl<=0", consts.ErrInvalidArg)
+		if ttl < 0 {
+			err = fmt.Errorf("%w: passed ttl<0", consts.ErrInvalidArg)
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
 		}
