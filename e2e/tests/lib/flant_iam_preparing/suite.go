@@ -27,7 +27,7 @@ type Suite struct {
 	// IamAuthVaultClient *http.Client
 }
 
-const FlantTenantUUID = "b2c3d385-6bc7-43ff-9e75-441330442b1e" // created by start.sh
+const FlantTenantUUID = "be0ba0d8-7be7-49c8-8609-c62ac1f14597" // created by start.sh
 const FlantTenantID = "flant"
 
 type CheckingEnvironment struct {

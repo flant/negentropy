@@ -9,19 +9,19 @@ class Vault(TypedDict):
     url: str
 
 
-flant_tenant_uuid = "b2c3d385-6bc7-43ff-9e75-441330442b1e"
+flant_tenant_uuid = "be0ba0d8-7be7-49c8-8609-c62ac1f14597"
 flant_identifier = "flant"
 devops_team = "DevOps"
 l1_team_name = "L1"
 l1_team_id = "L1"
-l1_team_uuid = "774b30d5-2c6a-4443-9613-caa06dc1b912"
+l1_team_uuid = "885909a2-a578-421f-b090-34273fdcadda"
 mk8s_team_name = "mk8s"
 mk8s_team_id = "foxtrot"
-mk8s_team_uuid = "2c769dca-3805-4a42-bea9-8bb759ef7023"
+mk8s_team_uuid = "5b834d95-d2d2-4689-ab0e-dd31df49a748"
 okmeter_team_name = "Okmeter"
 okmeter_team_id = "okmeter"
-okmeter_team_uuid = "f3ff9087-d75b-4bea-9af8-7a5d7686eb6c"
-all_flant_group_uuid = "a5c6650a-665a-404d-acbf-708c9fd1731f"
+okmeter_team_uuid = "3b896fc4-bf71-4a1d-8cf9-b8c665d6889f"
+all_flant_group_uuid = "0d8dff50-474f-40f9-b431-d10e8e2c7dfc"
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
