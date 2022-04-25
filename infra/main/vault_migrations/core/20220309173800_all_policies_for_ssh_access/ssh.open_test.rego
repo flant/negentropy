@@ -1,5 +1,6 @@
 package negentropy.ssh.open
 
+# example of data
 effective_roles = [
    {
        "any_project": false,
@@ -34,11 +35,15 @@ effective_roles = [
        "valid_till": 999999999999
    }
 ]
+
+# example of data enreaching by access_server_ext
 servers =[{"uuid":"0aaff1c0-0a93-4c15-9244-181aaeedd12d"},
            {"uuid":"s1"},
            {"uuid":"s2"},
            {"uuid":"s3"},
            {"uuid":"s4"}]
+
+# some porion of authorized subject data
 subject = {
                "uuid": "68e46dc0-b779-475d-b7a7-e93d548b04d5"
            }
@@ -249,3 +254,77 @@ test_forbid_by_show_paths_check_not_max_ttl {
      with input as show_paths_input
      with data.effective_roles as effective_roles with data.servers as servers with data.subject as subject
 }
+
+# full response for ok_input_firts_rb
+# -----------------------------------
+
+#{
+#    "all_servers_ok": true,
+#    "allow": true,
+#    "errors": [],
+#    "filtered_bindings": [
+#        {
+#            "any_project": false,
+#            "need_approvals": 0,
+#            "options": {
+#                "max_ttl": "1200s",
+#                "ttl": "600s"
+#            },
+#            "projects": [
+#                "p1"
+#            ],
+#            "require_mfa": true,
+#            "rolebinding_uuid": "uuid2",
+#            "rolename": "query_servers",
+#            "tenant_uuid": "t1",
+#            "valid_till": 999999999999
+#        },
+#        {
+#            "any_project": false,
+#            "need_approvals": 0,
+#            "options": {
+#                "max_ttl": "200s",
+#                "ttl": "100s"
+#            },
+#            "projects": [
+#                "p1"
+#            ],
+#            "require_mfa": false,
+#            "rolebinding_uuid": "uuid1",
+#            "rolename": "query_servers",
+#            "tenant_uuid": "t1",
+#            "valid_till": 999999999999
+#        }
+#    ],
+#    "invalid_servers": [],
+#    "max_ttl": "200s",
+#    "principals": [],
+#    "project_is_passed": true,
+#    "requested_max_ttl": "200s",
+#    "requested_ttl": "100s",
+#    "rolebinding_exists": true,
+#    "rules": [
+#        {
+#            "allowed_parameters": {
+#                "principals": []
+#            },
+#            "capabilities": [
+#                "update"
+#            ],
+#            "path": "ssh/sign/signer",
+#            "required_parameters": [
+#                "principals"
+#            ]
+#        }
+#    ],
+#    "show_paths": false,
+#    "tenant_is_passed": true,
+#    "ttl": "100s",
+#    "valid_servers_uuid": [
+#        "0aaff1c0-0a93-4c15-9244-181aaeedd12d",
+#        "s1",
+#        "s2",
+#        "s3",
+#        "s4"
+#    ]
+#}
