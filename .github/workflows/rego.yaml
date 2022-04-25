@@ -1,0 +1,29 @@
+name: Rego
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  rego:
+    name: Rego
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up OPA
+        uses: open-policy-agent/setup-opa@v1
+        with:
+          version: 0.39
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          # Check out pull request's HEAD commit instead of the merge commit to
+          # work-around an issue where wrong a commit is being checked out.
+          # For more details, see:
+          # https://github.com/actions/checkout/issues/299.
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Run tests
+        run: find infra/main/vault_migrations/ -name '*.rego' -printf '%h\n' | sort -u | xargs opa test -v
