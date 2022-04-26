@@ -15,5 +15,5 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: create auth method 'service_account_password' at '{}' vault".format(vault_name))
     vault_client.write(path='auth/flant_iam_auth/auth_method/sapassword', method_type='service_account_password',
                        token_ttl='30m', token_max_ttl='1440m',
-                       user_claim='uuid', token_policies=["list_tenants", "token_renew"],
+                       user_claim='uuid', token_policies=["vst_owner", "list_tenants", "token_renew"],
                        token_no_default_policy='True')
