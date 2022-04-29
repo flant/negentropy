@@ -249,7 +249,7 @@ func registerServer(vaultURL string, saPassword model.ServiceAccountPassword, tI
 	}
 	// get client for registering server
 	cl, err = getVaultClientAuthorizedWithSAPass(vaultURL, saPassword, []map[string]interface{}{
-		{"role": "register_server", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
+		{"role": "servers.register", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
 	if err != nil {
 		return nil, nil, fmt.Errorf("gettting vault client: %w", err)
 	}

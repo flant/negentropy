@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	authz2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
@@ -129,9 +130,9 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	}, nil
 }
 
-func getRoleClaims(d *framework.FieldData) ([]authz2.RoleClaim, error) {
+func getRoleClaims(d *framework.FieldData) ([]model.RoleClaim, error) {
 	if roleMaps, ok := d.Get("roles").([]interface{}); ok {
-		result := []authz2.RoleClaim{}
+		result := []model.RoleClaim{}
 		data, err := json.Marshal(roleMaps)
 		if err != nil {
 			return nil, err

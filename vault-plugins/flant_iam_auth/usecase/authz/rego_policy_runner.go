@@ -8,16 +8,18 @@ import (
 	"github.com/open-policy-agent/opa/storage/inmem"
 
 	iam_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 )
 
 type RegoPolicy = string
 
-type UserData struct{}
+type SubjectData struct{}
 
 type LoginClaims = map[string]interface{}
 
 type RegoResult struct {
 	Allow             bool
+	Errors            []string
 	BestEffectiveRole *iam_usecase.EffectiveRole
 	VaultRules        []Rule
 	TTL               string
@@ -27,6 +29,7 @@ type RegoResult struct {
 type rawRegoResult struct {
 	Allow         bool                        `json:"allow"`
 	FilteredRoles []iam_usecase.EffectiveRole `json:"filtered_bindings"`
+	Errors        []string                    `json:"errors"`
 	VaultRules    []Rule                      `json:"rules"`
 	TTL           string                      `json:"ttl"`
 	MaxTTL        string                      `json:"max_ttl"`
@@ -34,14 +37,19 @@ type rawRegoResult struct {
 
 // ApplyRegoPolicy parse all arguments and run rego policy
 // parse result of rego policy run, and choose the best role_binding
-func ApplyRegoPolicy(ctx context.Context, regoPolicy RegoPolicy, userData UserData,
+func ApplyRegoPolicy(ctx context.Context, negentropyPolicy model.Policy, subject model.Subject,
+	extensionsData map[string]interface{},
 	effectiveRoles []iam_usecase.EffectiveRole, claims LoginClaims) (*RegoResult, error) {
-	data := map[string]interface{}{"effective_roles": effectiveRoles, "user_data": userData}
+	data := map[string]interface{}{"effective_roles": effectiveRoles, "subject": subject}
+	for k, v := range extensionsData {
+		data[k] = v
+	}
+
 	store := inmem.NewFromObject(data)
 	rego := rego.New(
 		rego.Store(store),
-		rego.Query("data.negentropy"),
-		rego.Module("negentropy.rego", regoPolicy),
+		rego.Query("data.negentropy."+negentropyPolicy.Name),
+		rego.Module("negentropy.rego", negentropyPolicy.Rego),
 		rego.Input(claims),
 	)
 
@@ -61,7 +69,8 @@ func ApplyRegoPolicy(ctx context.Context, regoPolicy RegoPolicy, userData UserDa
 		return nil, err
 	}
 	result := RegoResult{
-		Allow: rawResult.Allow,
+		Allow:  rawResult.Allow,
+		Errors: rawResult.Errors,
 	}
 	if !result.Allow {
 		return &result, nil

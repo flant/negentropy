@@ -48,7 +48,7 @@ var _ = Describe("Process of getting new user/service_account next linux uid", f
 				RequireMFA:  false,
 				Members:     newGroup.Members,
 				AnyProject:  true,
-				Roles:       []iam.BoundRole{{Name: "ssh", Options: map[string]interface{}{}}},
+				Roles:       []iam.BoundRole{{Name: "ssh.open", Options: map[string]interface{}{}}},
 			})
 
 		newUserUID = extractUID(newUser)

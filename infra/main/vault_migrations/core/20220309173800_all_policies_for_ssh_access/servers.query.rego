@@ -3,6 +3,7 @@
 # tenant_is_optional: true
 # project_is_optional: true
 
+# naming for package: negentropy.POLICY_NAME
 package negentropy.servers.query
 
 default requested_ttl = "600s"

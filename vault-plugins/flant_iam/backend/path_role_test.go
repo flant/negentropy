@@ -13,7 +13,7 @@ import (
 
 func Test_RolePathCreate(t *testing.T) {
 	b := testRoleBackend(t)
-	roleName := "ssh"
+	roleName := "ssh.open"
 
 	resp := createRole(t, roleName, b)
 
@@ -26,7 +26,7 @@ func Test_RolePathCreate(t *testing.T) {
 
 func Test_RoleDelete(t *testing.T) {
 	b := testRoleBackend(t)
-	roleName := "ssh"
+	roleName := "ssh.open"
 	resp := createRole(t, roleName, b)
 
 	resp = deleteRole(t, roleName, b)
@@ -45,7 +45,7 @@ func Test_RoleDelete(t *testing.T) {
 
 func Test_RoleActiveList(t *testing.T) {
 	b := testRoleBackend(t)
-	roleName := "ssh"
+	roleName := "ssh.open"
 	resp := createRole(t, roleName, b)
 
 	resp = listRoles(t, false, b)
@@ -59,7 +59,7 @@ func Test_RoleActiveList(t *testing.T) {
 
 func Test_RoleArchivedList(t *testing.T) {
 	b := testRoleBackend(t)
-	roleName := "ssh"
+	roleName := "ssh.open"
 	resp := createRole(t, roleName, b)
 	resp = listRoles(t, false, b)
 	assert.Contains(t, resp.Data, "http_raw_body")

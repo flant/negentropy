@@ -1,4 +1,4 @@
-package authz
+package model
 
 import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 

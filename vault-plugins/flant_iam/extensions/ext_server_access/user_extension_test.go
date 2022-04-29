@@ -32,7 +32,7 @@ func checkDeepEqual(t *testing.T, expected, got interface{}) {
 const (
 	tenantUUID1         = "00000001-0000-0000-0000-000000000000"
 	userUUID1           = "00000000-0000-0000-0000-000000000001"
-	roleName1           = "ssh"
+	roleName1           = "ssh.open"
 	roleName2           = "notSSH"
 	rbUUID1             = "00000000-0000-0001-0000-000000000000"
 	serviceAccountUUID1 = "00000000-0000-0000-0000-000000000011"

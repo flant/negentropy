@@ -24,7 +24,7 @@ func Test_ExtensionServer_PosixUsers(t *testing.T) {
 	b, storage := getBackend(t)
 	err := storage.Put(context.TODO(), &logical.StorageEntry{
 		Key:      "iam_auth.extensions.server_access.ssh_role",
-		Value:    []byte("ssh"),
+		Value:    []byte("ssh.open"),
 		SealWrap: true,
 	})
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func Test_ExtensionServer_PosixUsers(t *testing.T) {
 
 func createRoleAndRoleBinding(tx *io.MemoryStoreTxn, tenant iam_model.TenantUUID, user iam_model.UserUUID, sa iam_model.ServiceAccountUUID) error {
 	err := tx.Insert(iam_model.RoleType, &iam_model.Role{
-		Name:  "ssh",
+		Name:  "ssh.open",
 		Scope: "tenant",
 	})
 	if err != nil {
@@ -83,7 +83,7 @@ func createRoleAndRoleBinding(tx *io.MemoryStoreTxn, tenant iam_model.TenantUUID
 		AnyProject:      true,
 		Projects:        nil,
 		Roles: []iam_model.BoundRole{{
-			Name: "ssh",
+			Name: "ssh.open",
 		}},
 	})
 	return err
@@ -93,7 +93,7 @@ func Test_ExtensionServer_QueryServers(t *testing.T) {
 	b, storage := getBackend(t)
 	err := storage.Put(context.TODO(), &logical.StorageEntry{
 		Key:      "iam_auth.extensions.server_access.ssh_role",
-		Value:    []byte("ssh"),
+		Value:    []byte("ssh.open"),
 		SealWrap: true,
 	})
 	require.NoError(t, err)
@@ -291,7 +291,7 @@ func Test_ExtensionServer_JWT(t *testing.T) {
 	b, storage := getBackend(t)
 	err := storage.Put(context.TODO(), &logical.StorageEntry{
 		Key:      "iam_auth.extensions.server_access.ssh_role",
-		Value:    []byte("ssh"),
+		Value:    []byte("ssh.open"),
 		SealWrap: true,
 	})
 	require.NoError(t, err)

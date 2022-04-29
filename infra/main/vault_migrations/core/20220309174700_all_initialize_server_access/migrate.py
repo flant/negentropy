@@ -23,8 +23,9 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     for plugin in plugins:
         print("INFO: configure server_access extension for plugin '{}' at '{}' vault".format(plugin, vault_name))
         if plugin == 'flant_iam_auth':
-            vault_client.write(path='auth/flant_iam_auth/configure_extension/server_access', role_for_ssh_access='ssh')
+            vault_client.write(path='auth/flant_iam_auth/configure_extension/server_access',
+                               role_for_ssh_access='ssh.open')
         elif plugin == 'flant_iam':
-            vault_client.write(path='flant_iam/configure_extension/server_access', roles_for_servers=["servers"],
+            vault_client.write(path='flant_iam/configure_extension/server_access', roles_for_servers=["server"],
                                role_for_ssh_access='ssh', delete_expired_password_seeds_after='1000000',
                                expire_password_seed_after_reveal_in='1000000', last_allocated_uid='10000')

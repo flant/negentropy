@@ -5,4 +5,4 @@ path: sock1.sock
 #group: wheel
 mode: 0666
 allowedRole:
-  - role: servers
+  - role: server

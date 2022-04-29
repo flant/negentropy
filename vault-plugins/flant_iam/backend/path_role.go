@@ -35,22 +35,37 @@ func (b roleBackend) paths() []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeNameString,
-					Description: "Role name",
+					Description: "Role name.",
 					Required:    true,
 				},
 				"description": {
 					Type:        framework.TypeString,
-					Description: "Role description",
+					Description: "Role description.",
 					Required:    true,
 				},
 				"scope": {
 					Type:        framework.TypeString,
-					Description: "The scope of the role",
+					Description: "The scope of the role.",
 					Required:    true,
 					AllowedValues: []interface{}{
 						model.RoleScopeProject,
 						model.RoleScopeProject,
 					},
+				},
+				"tenant_is_optional": {
+					Type:        framework.TypeBool,
+					Description: "Allow doesn't pass tenant_uuid, during login with role. Must be false, if scope is project and project_is_optional=true.",
+					Required:    true,
+				},
+				"project_is_optional": {
+					Type:        framework.TypeBool,
+					Description: "Allow doesn't pass project_uuid, during login with role.",
+					Required:    true,
+				},
+				"enriching_extensions": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "Enumerated extensions name which should enrich data for rego policy running",
+					Required:    true,
 				},
 				"options_schema": {
 					Type:        framework.TypeString,
@@ -59,7 +74,7 @@ func (b roleBackend) paths() []*framework.Path {
 				},
 				"require_one_of_feature_flags": {
 					Type:        framework.TypeCommaStringSlice,
-					Description: "Enumerated flags, one of which is required in the scope to use role",
+					Description: "Enumerated flags, one of which is required in the scope to use role.",
 					Required:    true,
 				},
 			},
@@ -107,6 +122,12 @@ func (b roleBackend) paths() []*framework.Path {
 					Required:    true,
 				},
 				// changing type is forbidden
+				"enriching_extensions": {
+					Type:          framework.TypeCommaStringSlice,
+					Description:   "Enumerated extensions name which should enrich data for rego policy running",
+					Required:      true,
+					AllowedValues: []interface{}{"server_access"},
+				},
 				"require_one_of_feature_flags": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Enumerated flags, one of which is required in the scope to use role",
@@ -176,6 +197,9 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 		role := &model.Role{
 			Name:                     data.Get("name").(string),
 			Scope:                    model.RoleScope(roleType),
+			TenantIsOptional:         data.Get("tenant_is_optional").(bool),
+			ProjectIsOptional:        data.Get("project_is_optional").(bool),
+			EnrichingExtensions:      data.Get("enriching_extensions").([]string),
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
@@ -207,6 +231,7 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 
 		role := &model.Role{
 			Name:                     data.Get("name").(string),
+			EnrichingExtensions:      data.Get("enriching_extensions").([]string),
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
