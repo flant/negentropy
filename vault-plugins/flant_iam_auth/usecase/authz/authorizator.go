@@ -33,27 +33,19 @@ type Authorizator struct {
 	PolicyRepo    *repo.PolicyRepository
 	RolesResolver iam_usecase.RoleResolver
 
+	ExtensionsDataProvider ExtensionsDataProvider
+
 	MountAccessor *vault.MountAccessorGetter
 
 	Logger              hclog.Logger
 	vaultClientProvider client.VaultClientController
 }
 
-// Subject is a representation of iam.ServiceAccount or iam.User
-type Subject struct {
-	// user or service_account
-	Type string `json:"type"`
-	// UUID of iam.ServiceAccount or iam.User
-	UUID string `json:"uuid"`
-	//  tenant_uuid of subject
-	TenantUUID iam.TenantUUID `json:"tenant_uuid"`
-}
-
-func MakeSubject(data map[string]interface{}) Subject {
+func MakeSubject(data map[string]interface{}) model.Subject {
 	subjectType, _ := data["type"].(string)
 	uuid, _ := data["uuid"].(string)
 	tenantUUID, _ := data["tenant_uuid"].(string)
-	return Subject{
+	return model.Subject{
 		Type:       subjectType,
 		UUID:       uuid,
 		TenantUUID: tenantUUID,
@@ -73,6 +65,8 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 		PolicyRepo:    repo.NewPolicyRepository(txn),
 		RolesResolver: iam_usecase.NewRoleResolver(txn),
 
+		ExtensionsDataProvider: NewExtensionsDataProvider(txn),
+
 		MountAccessor:       aGetter,
 		vaultClientProvider: vaultClientController,
 	}
@@ -83,7 +77,7 @@ func (a *Authorizator) identityApi() *api.IdentityAPI {
 }
 
 func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
-	roleClaims []RoleClaim) (*logical.Auth, error) {
+	roleClaims []model.RoleClaim) (*logical.Auth, error) {
 	subjectUUID := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", subjectUUID))
 
@@ -107,7 +101,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 	authzRes.Alias = vaultAlias
 	authzRes.EntityID = entityId
-	subject := authzRes.InternalData["subject"].(Subject)
+	subject := authzRes.InternalData["subject"].(model.Subject)
 
 	method.PopulateTokenAuth(authzRes)
 
@@ -156,7 +150,7 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 	return authzRes, tokenOwnerFullIdentifier, nil
 }
 
-func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []RoleClaim, subject Subject, authMethod string) error {
+func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []model.RoleClaim, subject model.Subject, authMethod string) error {
 	extraPolicies, err := a.buildVaultPolicies(roleClaims, subject, authMethod)
 	if err != nil {
 		return err
@@ -171,7 +165,7 @@ func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []R
 	return nil
 }
 
-func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subject, authMethod string) ([]VaultPolicy, error) {
+func (a *Authorizator) buildVaultPolicies(roleClaims []model.RoleClaim, subject model.Subject, authMethod string) ([]VaultPolicy, error) {
 	var result []VaultPolicy
 	var err error
 	for _, rc := range roleClaims {
@@ -183,7 +177,7 @@ func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subjec
 		if err != nil {
 			return nil, err
 		}
-		policy, err := a.buildVaultPolicy(negentropyPolicy.Rego, subject, rc)
+		policy, err := a.buildVaultPolicy(*negentropyPolicy, subject, rc)
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +188,7 @@ func (a *Authorizator) buildVaultPolicies(roleClaims []RoleClaim, subject Subjec
 	return result, nil
 }
 
-func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc RoleClaim) (*VaultPolicy, error) {
+func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject model.Subject, rc model.RoleClaim) (*VaultPolicy, error) {
 	if rc.TenantUUID == "" {
 		rc.TenantUUID = subject.TenantUUID
 	}
@@ -202,7 +196,7 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 	var policy VaultPolicy
 
 	switch {
-	case rc.Role == "ssh":
+	case rc.Role == "ssh.open":
 		role, err := a.RoleRepo.GetByID(rc.Role)
 		if err != nil {
 			err = fmt.Errorf("error catching role %s:%w", rc.Role, err)
@@ -244,7 +238,11 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 		for k, v := range rc.Claim {
 			regoClaims[k] = v
 		}
-		regoResult, err := ApplyRegoPolicy(ctx, regoPolicy, UserData{}, effectiveRoles, regoClaims)
+
+		extensionsData, err := a.ExtensionsDataProvider.CollectExtensionsData(role.EnrichingExtensions, subject, rc)
+
+		regoResult, err := ApplyRegoPolicy(ctx, negentropyPolicy, subject, extensionsData, effectiveRoles, regoClaims)
+
 		if err != nil {
 			err = fmt.Errorf("error appliing rego policy:%w", err)
 			a.Logger.Error(err.Error())
@@ -253,8 +251,8 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 			a.Logger.Debug(fmt.Sprintf("regoResult:%#v\n", *regoResult))
 		}
 		if !regoResult.Allow {
-			err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v",
-				subject.Type, subject.UUID, role.Name, rc)
+			err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v, errors, returned by rego:%v",
+				subject.Type, subject.UUID, role.Name, rc, regoResult.Errors)
 			a.Logger.Error(err.Error())
 			return nil, err
 		}
@@ -364,7 +362,7 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 			}},
 		}
 
-	case rc.Role == "servers":
+	case rc.Role == "server":
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: []Rule{{
@@ -374,7 +372,7 @@ func (a *Authorizator) buildVaultPolicy(regoPolicy string, subject Subject, rc R
 			}},
 		}
 
-	case rc.Role == "register_server" && rc.TenantUUID != "" && rc.ProjectUUID != "":
+	case rc.Role == "servers.register" && rc.TenantUUID != "" && rc.ProjectUUID != "":
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_at_project_%s_of_%s_by_%s", rc.Role, rc.ProjectUUID, rc.TenantUUID, subject.UUID),
 			Rules: []Rule{
@@ -462,7 +460,7 @@ func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *m
 	return &logical.Auth{
 		DisplayName: sa.FullIdentifier,
 		InternalData: map[string]interface{}{
-			"subject": Subject{
+			"subject": model.Subject{
 				Type:       "service_account",
 				UUID:       sa.UUID,
 				TenantUUID: sa.TenantUUID,
@@ -478,7 +476,7 @@ func (a *Authorizator) authorizeUser(user *iam.User, method *model.AuthMethod, s
 	return &logical.Auth{
 		DisplayName: user.FullIdentifier,
 		InternalData: map[string]interface{}{
-			"subject": Subject{
+			"subject": model.Subject{
 				Type:       "user",
 				UUID:       user.UUID,
 				TenantUUID: user.TenantUUID,
@@ -595,7 +593,7 @@ func (a *Authorizator) createDynamicPolicies(policies []VaultPolicy) error {
 	return nil
 }
 
-func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn, subject Subject) (*logical.Auth, error) {
+func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn, subject model.Subject) (*logical.Auth, error) {
 	// check is user/sa still active
 	// TODO check rolebinding still active
 	a.Logger.Debug(fmt.Sprintf("===REMOVE IT !!!!=== %#v", subject))
@@ -624,15 +622,15 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 
 // TODO REMOVE IT AFTER IMPLEMENT ALL:
 var tmpNotSeekPoliciesRoles = map[string]struct{}{
-	"iam_read":        {},
-	"iam_write":       {},
-	"iam_read_all":    {},
-	"iam_write_all":   {},
-	"servers":         {},
-	"register_server": {},
-	"iam_auth_read":   {},
-	"flow_read":       {},
-	"flow_write":      {},
+	"iam_read":         {},
+	"iam_write":        {},
+	"iam_read_all":     {},
+	"iam_write_all":    {},
+	"server":           {},
+	"servers.register": {},
+	"iam_auth_read":    {},
+	"flow_read":        {},
+	"flow_write":       {},
 }
 
 func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod string) (*model.Policy, error) {
@@ -668,7 +666,7 @@ func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod s
 // checkOrFillTenantUUID check or fill tenantUUID un RoleClaim:
 // if it filled - it checks is it owner of subject or is subject shared to this tenant
 // if not filled - fill by  owner of subject
-func (a *Authorizator) checkOrFillTenantUUID(rc RoleClaim, subject Subject) (RoleClaim, error) {
+func (a *Authorizator) checkOrFillTenantUUID(rc model.RoleClaim, subject model.Subject) (model.RoleClaim, error) {
 	if rc.TenantUUID == subject.TenantUUID {
 		return rc, nil
 	}
@@ -684,10 +682,10 @@ func (a *Authorizator) checkOrFillTenantUUID(rc RoleClaim, subject Subject) (Rol
 		isShared, err = a.RolesResolver.IsServiceAccountSharedWithTenant(subject.UUID, rc.TenantUUID)
 	}
 	if err != nil {
-		return RoleClaim{}, err
+		return model.RoleClaim{}, err
 	}
 	if !isShared {
-		return RoleClaim{}, fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
+		return model.RoleClaim{}, fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
 	}
 	return rc, nil
 }

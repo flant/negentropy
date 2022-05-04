@@ -170,7 +170,7 @@ func CreateRandomUserMultipass(userMultipassAPI api.TestAPI, user model.User) mo
 		"desc - "+uuid.New(),
 		100*time.Second,
 		1000*time.Second,
-		[]string{"ssh"})
+		[]string{"ssh.open"})
 	return multipass
 }
 

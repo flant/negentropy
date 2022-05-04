@@ -207,7 +207,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("Teammate create multipass", func() {
 		_, multipassJWT = iam_specs.CreateUserMultipass(lib.NewUserMultipassAPI(teammateClient),
-			teammate.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+			teammate.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
 		fmt.Printf("%#v\n", *teammateClient)
 	})
 

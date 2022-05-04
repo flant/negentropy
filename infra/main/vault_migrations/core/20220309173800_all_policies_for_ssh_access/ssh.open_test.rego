@@ -76,17 +76,15 @@ test_allow_by_first_rb_check_rules {
     rules== [
     {
                 "allowed_parameters": {
-                    "principals": {
-                        "2db561b02578945905f9688c540bc7489cf9dc7578d20b08cda636682c636a56",
-                        "d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793"
-                    }
+                    "valid_principals": ["2db561b02578945905f9688c540bc7489cf9dc7578d20b08cda636682c636a56,d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793"],
+                    "*":[]
                 },
                 "capabilities": [
                     "update"
                 ],
                 "path": "ssh/sign/signer",
                 "required_parameters": [
-                    "principals"
+                    "valid_principals"
                 ]
             }
     ]
@@ -226,16 +224,15 @@ test_forbid_by_show_paths_check_rules {
     rules== [
     {
                 "allowed_parameters": {
-                    "principals": {
-                        "sha256(server_uuid+user_uuud)",
-                    }
+                    "valid_principals": ["sha256(server_uuid1+user_uuud),sha256(server_uuid2+user_uuud)"],
+                    "*":[]
                 },
                 "capabilities": [
                     "update"
                 ],
                 "path": "ssh/sign/signer",
                 "required_parameters": [
-                    "principals"
+                    "valid_principals"
                 ]
             }
     ]
@@ -267,22 +264,6 @@ test_forbid_by_show_paths_check_not_max_ttl {
 #            "any_project": false,
 #            "need_approvals": 0,
 #            "options": {
-#                "max_ttl": "1200s",
-#                "ttl": "600s"
-#            },
-#            "projects": [
-#                "p1"
-#            ],
-#            "require_mfa": true,
-#            "rolebinding_uuid": "uuid2",
-#            "rolename": "query_servers",
-#            "tenant_uuid": "t1",
-#            "valid_till": 999999999999
-#        },
-#        {
-#            "any_project": false,
-#            "need_approvals": 0,
-#            "options": {
 #                "max_ttl": "200s",
 #                "ttl": "100s"
 #            },
@@ -294,11 +275,34 @@ test_forbid_by_show_paths_check_not_max_ttl {
 #            "rolename": "query_servers",
 #            "tenant_uuid": "t1",
 #            "valid_till": 999999999999
+#        },
+#        {
+#            "any_project": false,
+#            "need_approvals": 0,
+#            "options": {
+#                "max_ttl": "400s",
+#                "ttl": "200s"
+#            },
+#            "projects": [
+#                "p1"
+#            ],
+#            "require_mfa": true,
+#            "rolebinding_uuid": "uuid2",
+#            "rolename": "query_servers",
+#            "tenant_uuid": "t1",
+#            "valid_till": 999999999999
 #        }
+#    ],
+#    "input_servers": [
+#        "0aaff1c0-0a93-4c15-9244-181aaeedd12d",
+#        "s1"
 #    ],
 #    "invalid_servers": [],
 #    "max_ttl": "200s",
-#    "principals": [],
+#    "principals": [
+#        "2db561b02578945905f9688c540bc7489cf9dc7578d20b08cda636682c636a56",
+#        "d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793"
+#    ],
 #    "project_is_passed": true,
 #    "requested_max_ttl": "200s",
 #    "requested_ttl": "100s",
@@ -306,25 +310,26 @@ test_forbid_by_show_paths_check_not_max_ttl {
 #    "rules": [
 #        {
 #            "allowed_parameters": {
-#                "principals": []
+#                "*": [],
+#                "valid_principals": [
+#                    "2db561b02578945905f9688c540bc7489cf9dc7578d20b08cda636682c636a56,d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793"
+#                ]
 #            },
 #            "capabilities": [
 #                "update"
 #            ],
 #            "path": "ssh/sign/signer",
 #            "required_parameters": [
-#                "principals"
+#                "valid_principals"
 #            ]
 #        }
 #    ],
 #    "show_paths": false,
 #    "tenant_is_passed": true,
 #    "ttl": "100s",
+#    "valid_principals": "2db561b02578945905f9688c540bc7489cf9dc7578d20b08cda636682c636a56,d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793",
 #    "valid_servers_uuid": [
 #        "0aaff1c0-0a93-4c15-9244-181aaeedd12d",
-#        "s1",
-#        "s2",
-#        "s3",
-#        "s4"
+#        "s1"
 #    ]
 #}

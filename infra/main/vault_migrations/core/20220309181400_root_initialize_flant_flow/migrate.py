@@ -46,7 +46,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     rules = cfg.get('roles_for_specific_teams')
     if not rules or not rules.get(devops_team):
         vault_client.write(path='flant_iam/configure_extension/flant_flow/role_rules/' + devops_team,
-                           specific_roles=['ssh'])
+                           specific_roles=['ssh.open'])
 
     print("INFO: configure teams")
     teams = cfg.get('specific_teams')

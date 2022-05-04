@@ -137,7 +137,7 @@ func WaitDataReachFlantAuthPlugin(maxAttempts int, vaultUrl string) error {
 	tenant := specs.CreateRandomTenant(NewTenantAPI(rootIamClient))
 	user := specs.CreateRandomUser(NewUserAPI(rootIamClient), tenant.UUID)
 	_, multipassJWT := specs.CreateUserMultipass(NewUserMultipassAPI(rootIamClient),
-		user, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+		user, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
 	f := func() error { return TryLoginByMultipassJWTToAuthVault(multipassJWT, vaultUrl) }
 	return Repeat(f, maxAttempts)
 }

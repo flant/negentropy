@@ -87,7 +87,7 @@ var _ = Describe("Process of getting access through:", func() {
 					"service_account_password_uuid":   cfg.ServiceAccountPassword.UUID,
 					"service_account_password_secret": cfg.ServiceAccountPassword.Secret,
 					"roles": []map[string]interface{}{
-						{"role": "register_server", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
+						{"role": "servers.register", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
 					},
 				}).ClientToken
 			})
@@ -105,7 +105,7 @@ var _ = Describe("Process of getting access through:", func() {
 					"service_account_password_uuid":   "deadhead-a886-44f3-82bd-334e5de75fe3",
 					"service_account_password_secret": cfg.ServiceAccountPassword.Secret,
 					"roles": []map[string]interface{}{
-						{"role": "register_server", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
+						{"role": "servers.register", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
 					},
 				})
 			})
@@ -115,7 +115,7 @@ var _ = Describe("Process of getting access through:", func() {
 					"service_account_password_uuid":   cfg.ServiceAccountPassword.UUID,
 					"service_account_password_secret": "InvalidSecret",
 					"roles": []map[string]interface{}{
-						{"role": "register_server", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
+						{"role": "servers.register", "tenant_uuid": cfg.Tenant.UUID, "project_uuid": cfg.Project.UUID},
 					},
 				})
 			})

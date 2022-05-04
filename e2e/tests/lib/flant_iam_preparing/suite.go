@@ -52,7 +52,7 @@ func (st *Suite) BeforeSuite() {
 	// st.IamAuthVaultClient = lib.NewConfiguredIamAuthVaultClient()
 }
 
-const RegisterServerRole = "register_server"
+const RegisterServerRole = "servers.register"
 
 func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 	var result CheckingEnvironment
@@ -97,9 +97,10 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 }
 
 const TestServerIdentifier = "test-server"
+const TestServerIdentifier2 = "test-server2"
 
 func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
-	const sshRole = "ssh"
+	const sshRole = "ssh.open"
 
 	result := st.PrepareForLoginTesting()
 
@@ -127,12 +128,15 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 
 	// register as a server 'test_server' using serviceAccount & add connection info
 	result.TestServer, result.TestServerServiceAccountMultipassJWT = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier, serverLabels)
-
 	fmt.Printf("Created testServer Server:%#v\n", result.TestServer)
+
+	// register as a server 'test_server2' using serviceAccount & add connection info
+	_, _ = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
+	fmt.Printf("Created test-server2")
 
 	// create and get multipass for a user
 	_, result.UserMultipassJWT = specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
-		result.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+		result.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
 	fmt.Printf("user JWToken: : %#v\n", result.UserMultipassJWT)
 	return result
 }
@@ -150,7 +154,7 @@ func registerServer(saPassword model.ServiceAccountPassword, tIdentifier string,
 	Expect(err).ToNot(HaveOccurred())
 	// get client for registering server
 	cl = getClientAuthorizedWithSAPass(saPassword, []map[string]interface{}{
-		{"role": "register_server", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
+		{"role": "servers.register", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
 	serverUUID, multipassJWT, err := cl.RegisterServer(
 		model2.Server{
 			TenantUUID:  tenant.UUID,
@@ -215,7 +219,7 @@ func (st Suite) WaitPrepareForSSHTesting(cfg CheckingEnvironment, maxAttempts in
 
 func (st Suite) WaitPrepareForLoginTesting(cfg CheckingEnvironment, maxAttempts int) error {
 	_, multipassJWT := specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
-		cfg.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh"})
+		cfg.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
 	f := func() error { return lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl()) }
 	return lib.Repeat(f, maxAttempts)
 }

@@ -3,9 +3,8 @@
 # tenant_is_optional: false
 # project_is_optional: false
 
+# naming for package: negentropy.POLICY_NAME
 package negentropy.ssh.open
-
-import future.keywords.in
 
 default requested_ttl = "600s"
 default requested_max_ttl = "1200s"
@@ -22,16 +21,19 @@ filtered_bindings[r] {
 
 rolebinding_exists {count(filtered_bindings) > 0}
 
-valid_servers_uuid[server_uuid] {
+
+valid_servers_uuid [server_uuid] {
 	some i
-	server_uuid := data.servers[i].uuid
+    server_uuid := input.servers[i]
+     	server_uuid == data.servers[_].uuid
 }
 
-invalid_servers[server] {
+input_servers [server_uuid] {
 	some i
-	server := input.servers[i]
-    	not input.servers[i] in valid_servers_uuid
+    server_uuid := input.servers[i]
 }
+
+invalid_servers = input_servers - valid_servers_uuid
 
 all_servers_ok {count(invalid_servers)==0}
 
@@ -75,19 +77,22 @@ principals[principal] {
  	       principal := crypto.sha256(concat("",[input.servers[i], data.subject.uuid]))
            not show_paths
 }{
-	principal := "sha256(server_uuid+user_uuud)"
+	principal := "sha256(server_uuid1+user_uuud),sha256(server_uuid2+user_uuud)"
     	show_paths
 }
+
+valid_principals = concat(",", principals)
 
 # rules for building vault policies
 rules = [
 	{
     	"path":"ssh/sign/signer",
     	"capabilities":["update"],
-	    "required_parameters":["principals"],
+	    "required_parameters":["valid_principals"],
         "allowed_parameters":
         {
-        	"principals":principals
+        	"valid_principals":[valid_principals],
+            "*":[]
         }
     }
     ]	{allow}
@@ -113,3 +118,4 @@ to_seconds_number(t) = x {
      value = to_number(trim_right(lower_t, "hms"))
      x = value*3600 ; endswith(lower_t, "h")
 }
+

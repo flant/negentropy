@@ -8,16 +8,26 @@ import (
 
 // Rule represents atomic rule for vault policy
 type Rule struct {
-	Path   string
-	Create bool
-	Update bool
-	Read   bool
-	Delete bool
-	List   bool
+	Path               string
+	AllowedParameters  map[string][]string
+	RequiredParameters []string
+	Create             bool
+	Update             bool
+	Read               bool
+	Delete             bool
+	List               bool
 }
 
 // String represents Rule in vault form
 func (r *Rule) String() string {
+	capabilitiesString := buildCapabilities(*r)
+	requiredParametersString := buildRequiredParametersString(r.RequiredParameters)
+	allowedParametersString := buildAllowedParametersString(r.AllowedParameters)
+	return fmt.Sprintf("path \"%s\" {\n%s%s%s}", r.Path,
+		capabilitiesString, requiredParametersString, allowedParametersString)
+}
+
+func buildCapabilities(r Rule) string {
 	caps := []string{}
 	if r.Create {
 		caps = append(caps, "create")
@@ -34,9 +44,35 @@ func (r *Rule) String() string {
 	if r.List {
 		caps = append(caps, "list")
 	}
-	capsString := fmt.Sprintf("%#v", caps)         // []string{"create", "update", "read", "delete", "list"}
-	capsString = capsString[9 : len(capsString)-1] // "create", "update", "read", "delete", "list"
-	return fmt.Sprintf("path \"%s\" {\n   capabilities = [%s]\n}", r.Path, capsString)
+	return buildStringSlice("   capabilities", caps, false)
+}
+
+func buildAllowedParametersString(allowedParameters map[string][]string) string {
+	if len(allowedParameters) == 0 {
+		return ""
+	}
+	builder := strings.Builder{}
+	builder.WriteString("   allowed_parameters = {\n")
+	for name, params := range allowedParameters {
+		builder.WriteString("      " + buildStringSlice("\""+name+"\"", params, false))
+	}
+	builder.WriteString("   }\n")
+	return builder.String()
+}
+
+func buildRequiredParametersString(requiredParameters []string) string {
+	return buildStringSlice("   required_parameters", requiredParameters, true)
+}
+
+func buildStringSlice(name string, slice []string, skipEmpty bool) string {
+	if len(slice) == 0 && skipEmpty {
+		return ""
+	}
+	elemsString := ""
+	if len(slice) > 0 {
+		elemsString = "\"" + strings.Join(slice, "\", \"") + "\""
+	}
+	return fmt.Sprintf("%s = [%s]\n", name, elemsString)
 }
 
 type VaultPolicy struct {
@@ -82,25 +118,33 @@ func (r *Rule) MarshalJSON() ([]byte, error) {
 		caps = append(caps, "list")
 	}
 	return json.Marshal(&struct {
-		Path         string   `json:"path"`
-		Capabilities []string `json:"capabilities"`
+		Path               string              `json:"path"`
+		Capabilities       []string            `json:"capabilities"`
+		AllowedParameters  map[string][]string `json:"allowed_parameters"`
+		RequiredParameters []string            `json:"required_parameters"`
 	}{
-		Path:         r.Path,
-		Capabilities: caps,
+		Path:               r.Path,
+		Capabilities:       caps,
+		AllowedParameters:  r.AllowedParameters,
+		RequiredParameters: r.RequiredParameters,
 	})
 }
 
 func (r *Rule) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Path         string   `json:"path"`
-		Capabilities []string `json:"capabilities"`
+	var tmp struct {
+		Path               string              `json:"path"`
+		Capabilities       []string            `json:"capabilities"`
+		AllowedParameters  map[string][]string `json:"allowed_parameters"`
+		RequiredParameters []string            `json:"required_parameters"`
 	}
-	err := json.Unmarshal(data, &raw)
+	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
 	}
-	r.Path = raw.Path
-	for _, c := range raw.Capabilities {
+	r.Path = tmp.Path
+	r.AllowedParameters = tmp.AllowedParameters
+	r.RequiredParameters = tmp.RequiredParameters
+	for _, c := range tmp.Capabilities {
 		switch c {
 		case "create":
 			r.Create = true

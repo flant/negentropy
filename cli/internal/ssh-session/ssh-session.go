@@ -161,50 +161,36 @@ func (s *Session) RenderBashRCToFile() error {
 	return nil
 }
 
-func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.Server) (*agent.AddedKey, error) {
-	principals := []string{}
-	serverIdentifiers := []string{}
-	projects := map[iam.ProjectUUID]iam.TenantUUID{}
-
-	for _, server := range servers {
-		principals = append(principals, GenerateUserPrincipal(server.UUID, s.User.UUID))
-		serverIdentifiers = append(serverIdentifiers, server.Identifier)
-		projects[server.ProjectUUID] = server.TenantUUID
+func (s *Session) signCertificate(privateRSA *rsa.PrivateKey, pubkey ssh.PublicKey,
+	tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID, serverUUIDs []ext.ServerUUID,
+	serverIdentifiers []string) (*agent.AddedKey, error) {
+	principals := make([]string, 0, len(serverUUIDs))
+	for _, serverUUID := range serverUUIDs {
+		principals = append(principals, GenerateUserPrincipal(serverUUID, s.User.UUID))
 	}
 
-	privateRSA, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServerBucket: %w", err)
-	}
-
-	pubkey, err := ssh.NewPublicKey(&privateRSA.PublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServerBucket: %w", err)
-	}
+	sshSigner := vault.NewService(authdapi.RoleWithClaim{
+		Role:        "ssh.open",
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
+		Claim: map[string]interface{}{"ttl": "720m",
+			"max_ttl": "1440m",
+			"servers": serverUUIDs},
+	})
 
 	vaultReq := model.VaultSSHSignRequest{
 		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
 		ValidPrincipals: strings.Join(principals, ","),
 	}
-	roles := make([]authdapi.RoleWithClaim, 0, len(projects))
-	for projectUUID, tenantUUID := range projects {
-		roles = append(roles, authdapi.RoleWithClaim{
-			Role:        "ssh",
-			TenantUUID:  tenantUUID,
-			ProjectUUID: projectUUID,
-			Claim:       map[string]interface{}{"ttl": "720m", "max_ttl": "1440m"},
-		})
-	}
-	sshSigner := vault.NewService(roles...)
 
 	signedPublicSSHCertBytes, err := sshSigner.SignPublicSSHCertificate(vaultReq)
 	if err != nil {
-		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServerBucket: %w", err)
+		return nil, fmt.Errorf("signCertificates: %w", err)
 	}
 
 	ak, _, _, _, err := ssh.ParseAuthorizedKey(signedPublicSSHCertBytes)
 	if err != nil {
-		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServerBucket: %w", err)
+		return nil, fmt.Errorf("signCertificates: %w", err)
 	}
 	signedPublicSSHCert := ak.(*ssh.Certificate)
 
@@ -214,6 +200,54 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []ext.
 		Certificate:  signedPublicSSHCert,
 		LifetimeSecs: uint32(signedPublicSSHCert.ValidBefore - uint64(time.Now().UTC().Unix())),
 	}, nil
+
+}
+
+func (s *Session) generateAndSignSSHCertificateSetForServers(servers []ext.Server) ([]*agent.AddedKey, error) {
+	serverIdentifiers := []string{}
+	projects := map[iam.ProjectUUID]iam.TenantUUID{}
+	serverUUIDsByProject := map[iam.ProjectUUID][]ext.ServerUUID{}
+
+	for _, server := range servers {
+		serverUUIDsByProject[server.ProjectUUID] = append(serverUUIDsByProject[server.ProjectUUID], server.UUID)
+		serverIdentifiers = append(serverIdentifiers, server.Identifier)
+		projects[server.ProjectUUID] = server.TenantUUID
+	}
+
+	privateRSA, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServers: %w", err)
+	}
+
+	pubkey, err := ssh.NewPublicKey(&privateRSA.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServers: %w", err)
+	}
+
+	result := make([]*agent.AddedKey, 0, len(projects))
+	for projectUUID, serverUUIDs := range serverUUIDsByProject {
+		tenantUUID := projects[projectUUID]
+		// no more maxSize principals per one key
+		maxSize := 256
+		for start := 0; start < len(serverUUIDs); {
+			var uuidsBucket []ext.ServerUUID
+			var idBucket []string
+			if start+maxSize > len(serverUUIDs) {
+				uuidsBucket = serverUUIDs[start:]
+				idBucket = serverIdentifiers[start:]
+			} else {
+				uuidsBucket = serverUUIDs[start : start+maxSize]
+				uuidsBucket = serverIdentifiers[start : start+maxSize]
+			}
+			key, err := s.signCertificate(privateRSA, pubkey, tenantUUID, projectUUID, uuidsBucket, idBucket)
+			if err != nil {
+				return nil, fmt.Errorf("generateAndSignSSHCertificateSetForServers: %w", err)
+			}
+			result = append(result, key)
+			start += maxSize
+		}
+	}
+	return result, nil
 }
 
 func (s *Session) RefreshClientCertificates() error {
@@ -221,25 +255,24 @@ func (s *Session) RefreshClientCertificates() error {
 	for _, s := range s.ServerList.Servers {
 		servers = append(servers, s)
 	}
-	maxSize := 256
-	for i, j := 0, 0; i < len(servers); {
-		j += maxSize
-		if j > len(servers) {
-			j = len(servers)
-		}
+	oldKeys, err := s.SSHAgent.List()
+	if err != nil {
+		return fmt.Errorf("RefreshClientCertificates:getting old keys: %w", err)
+	}
 
-		serversBucket := servers[i:j]
-		signedCertificateForBucket, err := s.generateAndSignSSHCertificateSetForServerBucket(serversBucket)
+	signedCertificates, err := s.generateAndSignSSHCertificateSetForServers(servers)
+	for _, signedCertificate := range signedCertificates {
+		err = s.SSHAgent.Add(*signedCertificate)
 		if err != nil {
-			return fmt.Errorf("RefreshClientCertificates: %w", err)
+			return fmt.Errorf("RefreshClientCertificates: adding new certificate: %w", err)
 		}
+	}
 
-		// TODO remove after refresh
-		err = s.SSHAgent.Add(*signedCertificateForBucket)
+	for _, oldKey := range oldKeys {
+		err := s.SSHAgent.Remove(oldKey)
 		if err != nil {
-			return fmt.Errorf("RefreshClientCertificates: %w", err)
+			return fmt.Errorf("RefreshClientCertificates:removing old key: %w", err)
 		}
-		i += maxSize
 	}
 	return nil
 }

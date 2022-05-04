@@ -57,7 +57,7 @@ func (b *ServerAccessBackend) Paths() []*framework.Path {
 				"role_for_ssh_access": {
 					Type:        framework.TypeString,
 					Description: "Role to use for SSH access",
-					Default:     "ssh",
+					Default:     "ssh.open",
 					Required:    true,
 				},
 			},

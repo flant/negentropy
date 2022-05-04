@@ -44,13 +44,13 @@ var _ = Describe("Server", func() {
 		project = specs.CreateRandomProject(ProjectAPI, tenant.UUID)
 		fmt.Printf("%#v\n", project)
 
-		sshRoleName := "ssh"
+		sshRoleName := "ssh.open"
 		createRoleForExtServAccess(sshRoleName)
-		serversRoleName := "servers"
-		createRoleForExtServAccess(serversRoleName)
+		serverRoleName := "server"
+		createRoleForExtServAccess(serverRoleName)
 
 		cfg := map[string]interface{}{
-			"roles_for_servers":                    serversRoleName,
+			"roles_for_servers":                    serverRoleName,
 			"role_for_ssh_access":                  sshRoleName,
 			"name":                                 sshRoleName,
 			"delete_expired_password_seeds_after":  "1000000",
