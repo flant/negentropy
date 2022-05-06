@@ -16,32 +16,34 @@ type RoleBindingService struct {
 	repo        *iam_repo.RoleBindingRepository
 	tenantsRepo *iam_repo.TenantRepository
 
-	memberFetcher *MembersFetcher
+	memberFetcher        *MembersFetcher
+	memberNotationMapper MemberNotationMapper
 }
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 	return &RoleBindingService{
-		db:            db,
-		repo:          iam_repo.NewRoleBindingRepository(db),
-		memberFetcher: NewMembersFetcher(db),
-		tenantsRepo:   iam_repo.NewTenantRepository(db),
+		db:                   db,
+		repo:                 iam_repo.NewRoleBindingRepository(db),
+		memberFetcher:        NewMembersFetcher(db),
+		tenantsRepo:          iam_repo.NewTenantRepository(db),
+		memberNotationMapper: NewMemberNotationMapper(db),
 	}
 }
 
-func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
+func (s *RoleBindingService) Create(rb *model.RoleBinding) (*DenormalizedRoleBinding, error) {
 	// Validate
 	if rb.Origin == "" {
-		return consts.ErrBadOrigin
+		return nil, consts.ErrBadOrigin
 	}
 	if rb.Version != "" {
-		return consts.ErrBadVersion
+		return nil, consts.ErrBadVersion
 	}
 	rb.Version = iam_repo.NewResourceVersion()
 
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
-		return fmt.Errorf("RoleBindingService.Create:%s", err)
+		return nil, fmt.Errorf("RoleBindingService.Create:%s", err)
 	}
 	// TODO check - owned or shared
 	rb.Groups = subj.Groups
@@ -50,29 +52,32 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) error {
 	if rb.UUID == "" {
 		rb.UUID = uuid.New()
 	}
-
-	return s.repo.Create(rb)
+	err = s.repo.Create(rb)
+	if err != nil {
+		return nil, fmt.Errorf("RoleBindingService.Create:%s", err)
+	}
+	return s.denormalizeRoleBinding(rb)
 }
 
-func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
+func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBinding, error) {
 	// Validate
 	stored, err := s.repo.GetByID(rb.UUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if stored.Archived() {
-		return consts.ErrIsArchived
+		return nil, consts.ErrIsArchived
 	}
 	if rb.Origin != stored.Origin {
-		return consts.ErrBadOrigin
+		return nil, consts.ErrBadOrigin
 	}
 	if stored.TenantUUID != rb.TenantUUID {
-		return consts.ErrNotFound
+		return nil, consts.ErrNotFound
 	}
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// TODO check - owned or shared
 	rb.Groups = subj.Groups
@@ -86,7 +91,11 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) error {
 	rb.Description = stored.Description
 
 	// Store
-	return s.repo.Update(rb)
+	err = s.repo.Update(rb)
+	if err != nil {
+		return nil, fmt.Errorf("RoleBindingService.Update:%s", err)
+	}
+	return s.denormalizeRoleBinding(rb)
 }
 
 func (s *RoleBindingService) Delete(origin consts.ObjectOrigin, id model.RoleBindingUUID) error {
@@ -100,40 +109,111 @@ func (s *RoleBindingService) Delete(origin consts.ObjectOrigin, id model.RoleBin
 	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
-func (s *RoleBindingService) SetExtension(ext *model.Extension) error {
+func (s *RoleBindingService) SetExtension(ext *model.Extension) (*DenormalizedRoleBinding, error) {
 	obj, err := s.repo.GetByID(ext.OwnerUUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if obj.Archived() {
-		return consts.ErrIsArchived
+		return nil, consts.ErrIsArchived
 	}
 	if obj.Extensions == nil {
 		obj.Extensions = make(map[consts.ObjectOrigin]*model.Extension)
 	}
 	obj.Extensions[ext.Origin] = ext
-	return s.repo.Update(obj)
+	err = s.repo.Update(obj)
+	if err != nil {
+		return nil, fmt.Errorf("RoleBindingService.Update:%s", err)
+	}
+	return s.denormalizeRoleBinding(obj)
 }
 
-func (s *RoleBindingService) UnsetExtension(origin consts.ObjectOrigin, id model.RoleBindingUUID) error {
+func (s *RoleBindingService) UnsetExtension(origin consts.ObjectOrigin, id model.RoleBindingUUID) (*DenormalizedRoleBinding, error) {
 	obj, err := s.repo.GetByID(id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if obj.Archived() {
-		return consts.ErrIsArchived
+		return nil, consts.ErrIsArchived
 	}
 	if obj.Extensions == nil {
-		return nil
+		return s.denormalizeRoleBinding(obj)
 	}
 	delete(obj.Extensions, origin)
-	return s.repo.Update(obj)
+	err = s.repo.Update(obj)
+	if err != nil {
+		return nil, fmt.Errorf("RoleBindingService.Update:%s", err)
+	}
+	return s.denormalizeRoleBinding(obj)
 }
 
-func (s *RoleBindingService) List(tid model.TenantUUID, showArchived bool) ([]*model.RoleBinding, error) {
-	return s.repo.List(tid, showArchived)
+func (s *RoleBindingService) List(tid model.TenantUUID, showArchived bool) ([]*DenormalizedRoleBinding, error) {
+	rbs, err := s.repo.List(tid, showArchived)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeRoleBindings(rbs)
 }
 
-func (s *RoleBindingService) GetByID(id model.RoleBindingUUID) (*model.RoleBinding, error) {
-	return s.repo.GetByID(id)
+func (s *RoleBindingService) GetByID(id model.RoleBindingUUID) (*DenormalizedRoleBinding, error) {
+	rb, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeRoleBinding(rb)
+}
+
+type DenormalizedRoleBinding struct {
+	memdb.ArchiveMark
+
+	UUID       model.RoleBindingUUID `json:"uuid"` // PK
+	TenantUUID model.TenantUUID      `json:"tenant_uuid"`
+	Version    string                `json:"resource_version"`
+
+	Description string `json:"description"`
+
+	ValidTill  int64 `json:"valid_till"` // if ==0 => valid forever
+	RequireMFA bool  `json:"require_mfa"`
+
+	Members []DenormalizedMemberNotation `json:"members"`
+
+	AnyProject bool                `json:"any_project"`
+	Projects   []model.ProjectUUID `json:"projects"`
+
+	Roles []model.BoundRole `json:"roles"`
+
+	Origin consts.ObjectOrigin `json:"origin"`
+}
+
+func (s *RoleBindingService) denormalizeRoleBindings(rbs []*model.RoleBinding) ([]*DenormalizedRoleBinding, error) {
+	result := make([]*DenormalizedRoleBinding, 0, len(rbs))
+	for _, rb := range rbs {
+		drb, err := s.denormalizeRoleBinding(rb)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, drb)
+	}
+	return result, nil
+}
+
+func (s *RoleBindingService) denormalizeRoleBinding(rb *model.RoleBinding) (*DenormalizedRoleBinding, error) {
+	denormilizedMembers, err := s.memberNotationMapper.Denormalize(rb.Members)
+	if err != nil {
+		return nil, err
+	}
+	return &DenormalizedRoleBinding{
+		ArchiveMark: rb.ArchiveMark,
+		UUID:        rb.UUID,
+		TenantUUID:  rb.TenantUUID,
+		Version:     rb.Version,
+		Description: rb.Description,
+		ValidTill:   rb.ValidTill,
+		RequireMFA:  rb.RequireMFA,
+		Members:     denormilizedMembers,
+		AnyProject:  rb.AnyProject,
+		Projects:    rb.Projects,
+		Roles:       rb.Roles,
+		Origin:      rb.Origin,
+	}, nil
 }
