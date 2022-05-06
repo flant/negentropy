@@ -64,10 +64,6 @@ func (s *GroupService) Create(group *model.Group) error {
 	if err != nil {
 		return err
 	}
-	err = checkMembersOwnedToTenant(s.db, *subj, group.TenantUUID)
-	if err != nil {
-		return err
-	}
 	group.Groups = subj.Groups
 	group.ServiceAccounts = subj.ServiceAccounts
 	group.Users = subj.Users
@@ -105,10 +101,6 @@ func (s *GroupService) Update(group *model.Group) error {
 	group.FullIdentifier = CalcGroupFullIdentifier(group, tenant)
 
 	subj, err := s.membersFetcher.Fetch(group.Members)
-	if err != nil {
-		return err
-	}
-	err = checkMembersOwnedToTenant(s.db, *subj, group.TenantUUID)
 	if err != nil {
 		return err
 	}

@@ -71,13 +71,10 @@ var _ = Describe("Role binding", func() {
 				rbData := json.Get("role_binding")
 				Expect(rbData.Map()).To(HaveKey("valid_till"))
 				Expect(rbData.Map()).To(HaveKey("require_mfa"))
-				Expect(rbData.Map()).To(HaveKey("groups"))
 				Expect(rbData.Map()).To(HaveKey("archiving_timestamp"))
-				Expect(rbData.Map()).To(HaveKey("users"))
 				Expect(rbData.Map()).To(HaveKey("members"))
 				Expect(rbData.Map()).To(HaveKey("tenant_uuid"))
 				Expect(rbData.Map()).To(HaveKey("resource_version"))
-				Expect(rbData.Map()).To(HaveKey("service_accounts"))
 				Expect(rbData.Map()).To(HaveKey("any_project"))
 				Expect(rbData.Map()).To(HaveKey("archiving_hash"))
 				Expect(rbData.Map()).To(HaveKey("description"))
@@ -87,6 +84,10 @@ var _ = Describe("Role binding", func() {
 				Expect(rbData.Get("origin").String()).To(Equal("iam"))
 				Expect(rbData.Get("uuid").String()).To(HaveLen(36))
 				Expect(rbData.Get("resource_version").String()).To(HaveLen(36))
+				Expect(rbData.Get("members").Array()).To(HaveLen(3))
+				member0 := rbData.Get("members").Array()[0].Map()
+				Expect(member0).To(HaveKey("identifier"))
+				Expect(member0).To(HaveKey("full_identifier"))
 			},
 			"tenant": tenant.UUID,
 		}

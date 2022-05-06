@@ -65,6 +65,8 @@ var _ = Describe("Client", func() {
 				Expect(clientData.Get("uuid").String()).To(HaveLen(36))
 				Expect(clientData.Get("resource_version").String()).To(HaveLen(36))
 				Expect(clientData.Map()).ToNot(HaveKey("origin"))
+				Expect(clientData.Map()).To(HaveKey("language"))
+				Expect(clientData.Get("language").String()).To(Equal(createPayload["language"]))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)

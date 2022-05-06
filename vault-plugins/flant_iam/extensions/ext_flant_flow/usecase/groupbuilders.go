@@ -46,7 +46,7 @@ func GroupBuilders(db *io.MemoryStoreTxn, flantTenantUUID iam_model.TenantUUID) 
 	return []GroupsBuilder{newDirectBuilder(db, flantTenantUUID)}
 }
 
-const DirectMembersGroupType = "DIRECT"
+const DirectMembersGroupType = "direct"
 
 type directBuilder struct {
 	flantTenantUUID iam_model.TenantUUID

@@ -126,6 +126,21 @@ func CreateRandomGroupWithUser(groupAPI api.TestAPI, tenantID model.TenantUUID, 
 	return group
 }
 
+func CreateRandomEmptyGroup(groupAPI api.TestAPI, tenantID model.TenantUUID) model.Group {
+	createPayload := fixtures.RandomGroupCreatePayload()
+	createPayload["tenant_uuid"] = tenantID
+	params := api.Params{
+		"tenant": tenantID,
+	}
+	createdData := groupAPI.Create(params, url.Values{}, createPayload)
+	rawGroup := createdData.Get("group")
+	data := []byte(rawGroup.String())
+	var group model.Group
+	err := json.Unmarshal(data, &group)
+	Expect(err).ToNot(HaveOccurred())
+	return group
+}
+
 func membersToSliceOfMaps(members model.Members) []map[string]interface{} {
 	result := []map[string]interface{}{}
 	for _, userUUID := range members.Users {

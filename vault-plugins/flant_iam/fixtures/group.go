@@ -69,7 +69,7 @@ func RandomGroupCreatePayload() map[string]interface{} {
 	sample := groupSet[rand.Intn(len(groupSet))]
 
 	sample.UUID = ""
-	sample.Identifier = uuid.New()
+	sample.Identifier = "group_" + uuid.New()
 	sample.Groups = nil
 	sample.ServiceAccounts = nil
 	sample.Members = nil

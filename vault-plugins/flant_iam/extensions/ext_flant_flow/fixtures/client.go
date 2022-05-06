@@ -18,11 +18,13 @@ func Clients() []model.Client {
 			UUID:       TenantUUID1,
 			Identifier: "tenant1",
 			Version:    "v1",
+			Language:   "english",
 		},
 		{
 			UUID:       TenantUUID2,
 			Identifier: "tenant2",
 			Version:    "v1",
+			Language:   "russian",
 		},
 	}
 }
@@ -34,5 +36,6 @@ func RandomClientCreatePayload() map[string]interface{} {
 	return map[string]interface{}{
 		"identifier":       "Identifier_" + RandomStr(),
 		"resource_version": sample.Version,
+		"language":         sample.Language,
 	}
 }

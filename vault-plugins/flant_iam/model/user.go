@@ -13,6 +13,7 @@ type User struct {
 	UUID       UserUUID   `json:"uuid"` // PK
 	TenantUUID TenantUUID `json:"tenant_uuid"`
 	Version    string     `json:"resource_version"`
+	Language   string     `json:"language"`
 
 	Origin consts.ObjectOrigin `json:"origin,omitempty"`
 

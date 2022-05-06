@@ -247,7 +247,8 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if err = usecase.RoleBindings(tx).Create(roleBinding); err != nil {
+		denormalized, err := usecase.RoleBindings(tx).Create(roleBinding)
+		if err != nil {
 			err = fmt.Errorf("cannot create role binding:%w", err)
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
@@ -255,8 +256,7 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
-
-		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": denormalized}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
 }
@@ -302,16 +302,15 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
-
-		err = usecase.RoleBindings(tx).Update(roleBinding)
+		denormalized, err := usecase.RoleBindings(tx).Update(roleBinding)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
 		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 		}
+		resp := &logical.Response{Data: map[string]interface{}{"role_binding": denormalized}}
 
-		resp := &logical.Response{Data: map[string]interface{}{"role_binding": roleBinding}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 	}
 }

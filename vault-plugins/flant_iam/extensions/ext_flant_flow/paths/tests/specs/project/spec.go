@@ -136,8 +136,8 @@ var _ = Describe("Project", func() {
 		roleBindingUUID := ""
 		for _, rolebindingData := range rolebidingsData.Array() {
 			if rolebindingData.Get("description").String() == "DevOps" && rolebindingData.Get("archiving_timestamp").String() == "0" {
-				for _, grData := range rolebindingData.Get("groups").Array() {
-					if grData.String() == devopsTeam.Groups[0].GroupUUID {
+				for _, grData := range rolebindingData.Get("members").Array() {
+					if grData.Get("uuid").String() == devopsTeam.Groups[0].GroupUUID {
 						roleBindingUUID = rolebindingData.Get("uuid").String()
 						break
 					}

@@ -71,6 +71,8 @@ var _ = Describe("Teammate", func() {
 				Expect(teammateData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(teammateData.Get("resource_version").String()).ToNot(HaveLen(10))
 				Expect(teammateData.Map()).ToNot(HaveKey("origin"))
+				Expect(teammateData.Map()).To(HaveKey("language"))
+				Expect(teammateData.Get("language").String()).To(Equal(createPayload["language"]))
 			},
 			"team": team.UUID,
 		}

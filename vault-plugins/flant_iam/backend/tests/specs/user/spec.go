@@ -72,6 +72,8 @@ var _ = Describe("User", func() {
 				Expect(userData.Get("origin").String()).To(Equal("iam"))
 				Expect(userData.Get("uuid").String()).ToNot(HaveLen(10))
 				Expect(userData.Get("resource_version").String()).ToNot(HaveLen(10))
+				Expect(userData.Map()).To(HaveKey("language"))
+				Expect(userData.Get("language").String()).To(Equal(createPayload["language"]))
 			},
 			"tenant": tenant.UUID,
 		}
