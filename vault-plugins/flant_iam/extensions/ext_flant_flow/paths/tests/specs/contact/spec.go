@@ -73,6 +73,8 @@ var _ = Describe("Contact", func() {
 				b, _ := json.Marshal(createPayload["credentials"])
 				expectedCreds := gjson.Parse(string(b)).Map()
 				Expect(gotCreds).To(Equal(expectedCreds))
+				Expect(contactData.Map()).To(HaveKey("language"))
+				Expect(contactData.Get("language").String()).To(Equal(createPayload["language"]))
 			},
 			"client": client.UUID,
 		}

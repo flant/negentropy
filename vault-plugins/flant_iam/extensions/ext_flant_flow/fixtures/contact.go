@@ -29,6 +29,7 @@ func Contacts() []model.FullContact {
 				FullIdentifier: "user1@test",
 				Email:          "user1@mail.com",
 				Origin:         "test",
+				Language:       "english",
 			},
 			Credentials: map[iam_model.ProjectUUID]model.ContactRole{
 				ProjectUUID1: model.RegularContact,
@@ -45,6 +46,7 @@ func Contacts() []model.FullContact {
 				FullIdentifier: "user2@test",
 				Email:          "user2@mail.com",
 				Origin:         "test",
+				Language:       "german",
 			},
 		},
 		{
@@ -55,6 +57,7 @@ func Contacts() []model.FullContact {
 				FullIdentifier: "user3@test",
 				Email:          "user3@mail.com",
 				Origin:         "test",
+				Language:       "russian",
 			},
 		},
 		{
@@ -65,6 +68,7 @@ func Contacts() []model.FullContact {
 				FullIdentifier: "user4@test",
 				Email:          "user4@mail.com",
 				Origin:         "test",
+				Language:       "french",
 			},
 		},
 		{
@@ -75,6 +79,7 @@ func Contacts() []model.FullContact {
 				FullIdentifier: "user4@test",
 				Email:          "user4@mail.com",
 				Origin:         "test",
+				Language:       "albanian",
 			},
 		},
 	}

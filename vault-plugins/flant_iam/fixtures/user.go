@@ -27,6 +27,7 @@ func Users() []model.User {
 			FullIdentifier: "user1@test",
 			Email:          "user1@mail.com",
 			Origin:         "test",
+			Language:       "english",
 		},
 		{
 			UUID:           UserUUID2,
@@ -35,6 +36,7 @@ func Users() []model.User {
 			FullIdentifier: "user2@test",
 			Email:          "user2@mail.com",
 			Origin:         "test",
+			Language:       "german",
 		},
 		{
 			UUID:           UserUUID3,
@@ -43,6 +45,7 @@ func Users() []model.User {
 			FullIdentifier: "user3@test",
 			Email:          "user3@mail.com",
 			Origin:         "test",
+			Language:       "russian",
 		},
 		{
 			UUID:           UserUUID4,
@@ -51,6 +54,7 @@ func Users() []model.User {
 			FullIdentifier: "user4@test",
 			Email:          "user4@mail.com",
 			Origin:         "test",
+			Language:       "french",
 		},
 		{
 			UUID:           UserUUID5,
@@ -59,6 +63,7 @@ func Users() []model.User {
 			FullIdentifier: "user4@test",
 			Email:          "user4@mail.com",
 			Origin:         "test",
+			Language:       "albanian",
 		},
 	}
 }

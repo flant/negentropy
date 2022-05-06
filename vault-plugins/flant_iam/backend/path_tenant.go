@@ -41,6 +41,11 @@ func (b tenantBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -65,6 +70,11 @@ func (b tenantBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
 					Required:    true,
 				},
 			},
@@ -108,6 +118,11 @@ func (b tenantBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
 					Required:    true,
 				},
 				"resource_version": {
@@ -248,6 +263,7 @@ func (b *tenantBackend) handleCreate(expectID bool) framework.OperationFunc {
 		tenant := &model.Tenant{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
+			Language:   data.Get("language").(string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -278,6 +294,7 @@ func (b *tenantBackend) handleUpdate() framework.OperationFunc {
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
 			Version:    data.Get("resource_version").(string),
+			Language:   data.Get("language").(string),
 		}
 
 		err := usecase.Tenants(tx, consts.OriginIAM).Update(tenant)

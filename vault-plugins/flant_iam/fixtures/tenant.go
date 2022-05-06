@@ -19,12 +19,14 @@ func Tenants() []model.Tenant {
 			Identifier:   "tenant1",
 			Version:      "v1",
 			FeatureFlags: nil,
+			Language:     "russian",
 		},
 		{
 			UUID:         TenantUUID2,
 			Identifier:   "tenant2",
 			Version:      "v1",
 			FeatureFlags: nil,
+			Language:     "english",
 		},
 	}
 }
@@ -36,6 +38,7 @@ func RandomTenantCreatePayload() map[string]interface{} {
 	return map[string]interface{}{
 		"identifier":    "Identifier_" + RandomStr(),
 		"version":       sample.Version,
+		"language":      sample.Language,
 		"feature_flags": sample.FeatureFlags,
 	}
 }

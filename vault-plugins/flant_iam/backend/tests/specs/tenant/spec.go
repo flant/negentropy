@@ -46,6 +46,8 @@ var _ = Describe("Tenant", func() {
 				Expect(tenantData.Get("resource_version").String()).ToNot(HaveLen(10))
 				Expect(tenantData.Map()).To(HaveKey("origin"))
 				Expect(tenantData.Get("origin").String()).To(Equal("iam"))
+				Expect(tenantData.Map()).To(HaveKey("language"))
+				Expect(tenantData.Get("language").String()).To(Equal(createPayload["language"]))
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)

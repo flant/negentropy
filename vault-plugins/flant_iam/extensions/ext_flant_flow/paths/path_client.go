@@ -37,6 +37,11 @@ func (b clientBackend) paths() []*framework.Path {
 					Description: "Identifier for humans and machines",
 					Required:    true,
 				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -61,6 +66,11 @@ func (b clientBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
 					Required:    true,
 				},
 			},
@@ -104,6 +114,11 @@ func (b clientBackend) paths() []*framework.Path {
 				"identifier": {
 					Type:        framework.TypeNameString,
 					Description: "Identifier for humans and machines",
+					Required:    true,
+				},
+				"language": {
+					Type:        framework.TypeString,
+					Description: "preferred language",
 					Required:    true,
 				},
 				"resource_version": {
@@ -181,6 +196,7 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 		client := &model.Client{
 			UUID:       id,
 			Identifier: data.Get("identifier").(string),
+			Language:   data.Get("language").(string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -210,6 +226,7 @@ func (b *clientBackend) handleUpdate(ctx context.Context, req *logical.Request, 
 		UUID:       id,
 		Identifier: data.Get("identifier").(string),
 		Version:    data.Get("resource_version").(string),
+		Language:   data.Get("language").(string),
 	}
 
 	client, err := usecase.Clients(tx, b.getLiveConfig()).Update(client)

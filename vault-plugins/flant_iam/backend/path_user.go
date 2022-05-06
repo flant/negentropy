@@ -34,59 +34,74 @@ func userPaths(b logical.Backend, tokenController *jwt.Controller, storage *io.M
 	return bb.paths()
 }
 
+func userBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fs := map[string]*framework.FieldSchema{
+		"tenant_uuid": {
+			Type:        framework.TypeNameString,
+			Description: "ID of a tenant",
+			Required:    true,
+		},
+		"identifier": {
+			Type:        framework.TypeNameString,
+			Description: "Identifier for humans and machines",
+			Required:    true,
+		},
+		"first_name": {
+			Type:        framework.TypeString,
+			Description: "first_name",
+			Required:    true,
+		},
+		"last_name": {
+			Type:        framework.TypeString,
+			Description: "last_name",
+			Required:    true,
+		},
+		"display_name": {
+			Type:        framework.TypeString,
+			Description: "display_name",
+			Required:    true,
+		},
+		"email": {
+			Type:        framework.TypeString,
+			Description: "email",
+			Required:    true,
+		},
+		"additional_emails": {
+			Type:        framework.TypeStringSlice,
+			Description: "additional_emails",
+			Required:    true,
+		},
+		"mobile_phone": {
+			Type:        framework.TypeString,
+			Description: "mobile_phone",
+			Required:    true,
+		},
+		"additional_phones": {
+			Type:        framework.TypeStringSlice,
+			Description: "additional_phones",
+			Required:    true,
+		},
+		"language": {
+			Type:        framework.TypeString,
+			Description: "preferred language",
+			Required:    true,
+		},
+	}
+	for fieldName, fieldSchema := range extraFields {
+		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
+			panic(fmt.Sprintf("path_contact wrong schema: duplicate field name:%s", fieldName))
+		}
+		fs[fieldName] = fieldSchema
+	}
+	return fs
+}
+
 func (b userBackend) paths() []*framework.Path {
 	return []*framework.Path{
 		// Creation
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user",
-			Fields: map[string]*framework.FieldSchema{
-
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
-					Required:    true,
-				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"first_name": {
-					Type:        framework.TypeString,
-					Description: "first_name",
-					Required:    true,
-				},
-				"last_name": {
-					Type:        framework.TypeString,
-					Description: "last_name",
-					Required:    true,
-				},
-				"display_name": {
-					Type:        framework.TypeString,
-					Description: "display_name",
-					Required:    true,
-				},
-				"email": {
-					Type:        framework.TypeString,
-					Description: "email",
-					Required:    true,
-				},
-				"additional_emails": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_emails",
-					Required:    true,
-				},
-				"mobile_phone": {
-					Type:        framework.TypeString,
-					Description: "mobile_phone",
-					Required:    true,
-				},
-				"additional_phones": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_phones",
-					Required:    true,
-				},
-			},
+			Fields:  userBaseAndExtraFields(nil),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(false),
@@ -101,58 +116,13 @@ func (b userBackend) paths() []*framework.Path {
 		// Creation with known uuid in advance
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/privileged",
-			Fields: map[string]*framework.FieldSchema{
+			Fields: userBaseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a user",
+					Description: "ID of a teammate",
 					Required:    true,
 				},
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
-					Required:    true,
-				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"first_name": {
-					Type:        framework.TypeString,
-					Description: "first_name",
-					Required:    true,
-				},
-				"last_name": {
-					Type:        framework.TypeString,
-					Description: "last_name",
-					Required:    true,
-				},
-				"display_name": {
-					Type:        framework.TypeString,
-					Description: "display_name",
-					Required:    true,
-				},
-				"email": {
-					Type:        framework.TypeString,
-					Description: "email",
-					Required:    true,
-				},
-				"additional_emails": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_emails",
-					Required:    true,
-				},
-				"mobile_phone": {
-					Type:        framework.TypeString,
-					Description: "mobile_phone",
-					Required:    true,
-				},
-				"additional_phones": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_phones",
-					Required:    true,
-				},
-			},
+			}),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleCreate(true),
@@ -194,15 +164,10 @@ func (b userBackend) paths() []*framework.Path {
 		// Read, update, delete by uuid
 		{
 			Pattern: "tenant/" + uuid.Pattern("tenant_uuid") + "/user/" + uuid.Pattern("uuid") + "$",
-			Fields: map[string]*framework.FieldSchema{
+			Fields: userBaseAndExtraFields(map[string]*framework.FieldSchema{
 				"uuid": {
 					Type:        framework.TypeNameString,
-					Description: "ID of a user",
-					Required:    true,
-				},
-				"tenant_uuid": {
-					Type:        framework.TypeNameString,
-					Description: "ID of a tenant",
+					Description: "ID of a teammate",
 					Required:    true,
 				},
 				"resource_version": {
@@ -210,47 +175,7 @@ func (b userBackend) paths() []*framework.Path {
 					Description: "Resource version",
 					Required:    true,
 				},
-				"identifier": {
-					Type:        framework.TypeNameString,
-					Description: "Identifier for humans and machines",
-					Required:    true,
-				},
-				"first_name": {
-					Type:        framework.TypeString,
-					Description: "first_name",
-					Required:    true,
-				},
-				"last_name": {
-					Type:        framework.TypeString,
-					Description: "last_name",
-					Required:    true,
-				},
-				"display_name": {
-					Type:        framework.TypeString,
-					Description: "display_name",
-					Required:    true,
-				},
-				"email": {
-					Type:        framework.TypeString,
-					Description: "email",
-					Required:    true,
-				},
-				"additional_emails": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_emails",
-					Required:    true,
-				},
-				"mobile_phone": {
-					Type:        framework.TypeString,
-					Description: "mobile_phone",
-					Required:    true,
-				},
-				"additional_phones": {
-					Type:        framework.TypeStringSlice,
-					Description: "additional_phones",
-					Required:    true,
-				},
-			},
+			}),
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
@@ -446,6 +371,7 @@ func (b *userBackend) handleCreate(expectID bool) framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
+			Language:         data.Get("language").(string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -485,6 +411,7 @@ func (b *userBackend) handleUpdate() framework.OperationFunc {
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
+			Language:         data.Get("language").(string),
 		}
 
 		err := usecase.Users(tx, tenantID, consts.OriginIAM).Update(user)

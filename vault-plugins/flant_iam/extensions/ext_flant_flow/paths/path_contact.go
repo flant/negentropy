@@ -76,6 +76,11 @@ func baseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[strin
 			Description: "additional_phones",
 			Required:    true,
 		},
+		"language": {
+			Type:        framework.TypeString,
+			Description: "preferred language",
+			Required:    true,
+		},
 		"credentials": {
 			Type: framework.TypeKVPairs,
 			Description: "credentials per projectUUID, allowed values: " +
@@ -254,6 +259,7 @@ func (b *contactBackend) handleCreate(expectID bool) framework.OperationFunc {
 				AdditionalEmails: data.Get("additional_emails").([]string),
 				MobilePhone:      data.Get("mobile_phone").(string),
 				AdditionalPhones: data.Get("additional_phones").([]string),
+				Language:         data.Get("language").(string),
 				Origin:           consts.OriginFlantFlow,
 			},
 			Credentials: data.Get("credentials").(map[string]string),
@@ -295,6 +301,7 @@ func (b *contactBackend) handleUpdate(_ context.Context, req *logical.Request, d
 			AdditionalEmails: data.Get("additional_emails").([]string),
 			MobilePhone:      data.Get("mobile_phone").(string),
 			AdditionalPhones: data.Get("additional_phones").([]string),
+			Language:         data.Get("language").(string),
 			Version:          data.Get("resource_version").(string),
 			Origin:           consts.OriginFlantFlow,
 		},

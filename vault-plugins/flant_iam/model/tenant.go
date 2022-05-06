@@ -13,6 +13,7 @@ type Tenant struct {
 	UUID       TenantUUID `json:"uuid"` // PK
 	Version    string     `json:"resource_version"`
 	Identifier string     `json:"identifier"`
+	Language   string     `json:"language"`
 
 	Origin consts.ObjectOrigin `json:"origin,omitempty"`
 
