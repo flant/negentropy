@@ -76,6 +76,7 @@ type roleResolver struct {
 }
 
 func (r *roleResolver) IsUserSharedWithTenant(userUUID model.UserUUID, destinationTenantUUID model.TenantUUID) (bool, error) {
+	// TODO check chain of sharing
 	shares, err := r.sharingInformer.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
 		return false, err
@@ -96,6 +97,7 @@ func (r *roleResolver) IsUserSharedWithTenant(userUUID model.UserUUID, destinati
 
 func (r *roleResolver) IsServiceAccountSharedWithTenant(serviceAccountUUID model.ServiceAccountUUID, destinationTenantUUID model.TenantUUID) (
 	bool, error) {
+	// TODO check chain of sharing
 	shares, err := r.sharingInformer.ListForDestinationTenant(destinationTenantUUID)
 	if err != nil {
 		return false, err
