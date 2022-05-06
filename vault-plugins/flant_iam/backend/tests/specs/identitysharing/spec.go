@@ -179,7 +179,6 @@ var _ = Describe("Identity sharing", func() {
 				"uuid":         is.UUID,
 				"expectStatus": api.ExpectExactStatus(400),
 			}, nil, updatePayload)
-
 		})
 	})
 })

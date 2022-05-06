@@ -33,7 +33,7 @@ func roleBindingFixture(t *testing.T, store *io.MemoryStore) {
 	require.NoError(t, err)
 }
 
-func roleBindingsUUIDSFromSlice(rbs []*model.RoleBinding) []string {
+func roleBindingsUUIDSFromSlice(rbs []*DenormalizedRoleBinding) []string {
 	uuids := []string{}
 	for _, rb := range rbs {
 		uuids = append(uuids, rb.UUID)
@@ -52,9 +52,8 @@ func roleBindingsUUIDsFromMap(rbs map[model.RoleBindingUUID]*model.RoleBinding) 
 func Test_RoleBindingList(t *testing.T) {
 	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
-	repo := iam_repo.NewRoleBindingRepository(tx)
 
-	rbs, err := repo.List(fixtures.TenantUUID1, false)
+	rbs, err := RoleBindings(tx).List(fixtures.TenantUUID1, false)
 
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{

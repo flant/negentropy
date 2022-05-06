@@ -180,6 +180,7 @@ func (s *IdentitySharingService) denormalizeIdentitySharings(iss []*model.Identi
 	}
 	return result, nil
 }
+
 func (s *IdentitySharingService) denormalizeIdentitySharing(is *model.IdentitySharing) (*DenormalizedIdentitySharing, error) {
 	destinationTenant, err := s.tenantRepo.GetByID(is.DestinationTenantUUID)
 	if err != nil {
