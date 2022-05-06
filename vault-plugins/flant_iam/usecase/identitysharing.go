@@ -28,38 +28,69 @@ type IdentitySharingService struct {
 	tenantRepo *repo.TenantRepository
 }
 
-func (s *IdentitySharingService) GetByID(id model.IdentitySharingUUID) (*model.IdentitySharing, error) {
-	return s.sharesRepo.GetByID(id)
+func (s *IdentitySharingService) GetByID(id model.IdentitySharingUUID) (*DenormalizedIdentitySharing, error) {
+	is, err := s.sharesRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeIdentitySharing(is)
 }
 
-func (s *IdentitySharingService) Create(is *model.IdentitySharing) error {
+func (s *IdentitySharingService) Create(is *model.IdentitySharing) (*DenormalizedIdentitySharing, error) {
 	is.Origin = s.origin
 	_, err := s.tenantRepo.GetByID(is.SourceTenantUUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = s.tenantRepo.GetByID(is.DestinationTenantUUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = checkMembersOwnedToTenant(s.db, model.Members{Groups: is.Groups}, is.SourceTenantUUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	is.Version = repo.NewResourceVersion()
-	return s.sharesRepo.Create(is)
+	err = s.sharesRepo.Create(is)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeIdentitySharing(is)
 }
 
-func (s *IdentitySharingService) Update(is *model.IdentitySharing) error {
-	is.Version = repo.NewResourceVersion()
-	if is.Origin != s.origin {
-		return consts.ErrBadOrigin
-	}
-	err := checkMembersOwnedToTenant(s.db, model.Members{Groups: is.Groups}, is.SourceTenantUUID)
+func (s *IdentitySharingService) Update(is *model.IdentitySharing) (*DenormalizedIdentitySharing, error) {
+	stored, err := s.sharesRepo.GetByID(is.UUID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.sharesRepo.Update(is)
+	// Validate
+	notAllowedChangeErr := fmt.Errorf("%w: allowed only change groups", consts.ErrInvalidArg)
+	if is.SourceTenantUUID != stored.SourceTenantUUID {
+		return nil, notAllowedChangeErr
+	}
+
+	if stored.Origin != s.origin {
+		return nil, consts.ErrBadOrigin
+	}
+	if stored.Version != is.Version {
+		return nil, consts.ErrBadVersion
+	}
+	if stored.Archived() {
+		return nil, consts.ErrIsArchived
+	}
+	err = checkMembersOwnedToTenant(s.db, model.Members{Groups: is.Groups}, is.SourceTenantUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	is.DestinationTenantUUID = stored.DestinationTenantUUID
+	is.Origin = s.origin
+	is.Version = repo.NewResourceVersion()
+	err = s.sharesRepo.Update(is)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeIdentitySharing(is)
 }
 
 func (s *IdentitySharingService) Delete(id model.IdentitySharingUUID) error {
@@ -73,8 +104,12 @@ func (s *IdentitySharingService) Delete(id model.IdentitySharingUUID) error {
 	return s.sharesRepo.Delete(id, memdb.NewArchiveMark())
 }
 
-func (s *IdentitySharingService) List(tid model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
-	return s.sharesRepo.List(tid, showArchived)
+func (s *IdentitySharingService) List(tid model.TenantUUID, showArchived bool) ([]*DenormalizedIdentitySharing, error) {
+	iss, err := s.sharesRepo.List(tid, showArchived)
+	if err != nil {
+		return nil, err
+	}
+	return s.denormalizeIdentitySharings(iss)
 }
 
 func checkMembersOwnedToTenant(db *io.MemoryStoreTxn, members model.Members, tenantUUID model.TenantUUID) error {
@@ -116,4 +151,48 @@ func checkMembersOwnedToTenant(db *io.MemoryStoreTxn, members model.Members, ten
 		return nil
 	}
 	return allErrs
+}
+
+type DenormalizedIdentitySharing struct {
+	memdb.ArchiveMark
+
+	UUID                        model.IdentitySharingUUID `json:"uuid"` // PK
+	SourceTenantUUID            model.TenantUUID          `json:"source_tenant_uuid"`
+	DestinationTenantUUID       model.TenantUUID          `json:"destination_tenant_uuid"`
+	DestinationTenantIdentifier model.TenantUUID          `json:"destination_tenant_identifier"`
+
+	Version string `json:"resource_version"`
+
+	Origin consts.ObjectOrigin `json:"origin"`
+
+	// Groups which to share with target tenant
+	Groups []model.GroupUUID `json:"groups"`
+}
+
+func (s *IdentitySharingService) denormalizeIdentitySharings(iss []*model.IdentitySharing) ([]*DenormalizedIdentitySharing, error) {
+	result := make([]*DenormalizedIdentitySharing, 0, len(iss))
+	for _, is := range iss {
+		dis, err := s.denormalizeIdentitySharing(is)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, dis)
+	}
+	return result, nil
+}
+func (s *IdentitySharingService) denormalizeIdentitySharing(is *model.IdentitySharing) (*DenormalizedIdentitySharing, error) {
+	destinationTenant, err := s.tenantRepo.GetByID(is.DestinationTenantUUID)
+	if err != nil {
+		return nil, err
+	}
+	return &DenormalizedIdentitySharing{
+		ArchiveMark:                 is.ArchiveMark,
+		UUID:                        is.UUID,
+		SourceTenantUUID:            is.SourceTenantUUID,
+		DestinationTenantUUID:       is.DestinationTenantUUID,
+		DestinationTenantIdentifier: destinationTenant.Identifier,
+		Version:                     is.Version,
+		Origin:                      is.Origin,
+		Groups:                      is.Groups,
+	}, nil
 }

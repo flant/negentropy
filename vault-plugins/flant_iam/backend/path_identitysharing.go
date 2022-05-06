@@ -111,14 +111,22 @@ func (b identitySharingBackend) paths() []*framework.Path {
 					Description: "ID of a tenant",
 					Required:    true,
 				},
+				"groups": {
+					Type:        framework.TypeStringSlice,
+					Description: "ID of sharing groups",
+				},
+				"resource_version": {
+					Type:        framework.TypeString,
+					Description: "Resource version",
+					Required:    true,
+				},
 			},
 			ExistenceCheck: b.handleExistence(),
 			Operations: map[logical.Operation]framework.OperationHandler{
-				// do we need it? Maybe we can change groups...
-				// logical.UpdateOperation: &framework.PathOperation{
-				// 	Callback: b.handleUpdate(),
-				// 	Summary:  "Update the user by ID",
-				// },
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleUpdate,
+					Summary:  "Update  the identity sharing, allowed only change groups",
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleRead,
 					Summary:  "Retrieve the identity sharing by ID",
@@ -177,19 +185,53 @@ func (b *identitySharingBackend) handleCreate(expectID bool) framework.Operation
 			Groups:                groups,
 		}
 
-		if err = usecase.IdentityShares(tx, consts.OriginIAM).Create(is); err != nil {
-			msg := "cannot create identity sharing"
-			b.Logger().Error(msg, "err", err.Error())
-			return backentutils.ResponseErrMessage(req, msg+":"+err.Error(), http.StatusBadRequest)
+		denormalized, err := usecase.IdentityShares(tx, consts.OriginIAM).Create(is)
+		if err != nil {
+			err = fmt.Errorf("cannot create identity sharing:%w", err)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
 		}
 
 		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
-			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+			return backentutils.ResponseErr(req, err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": is}}
+		resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": denormalized}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusCreated)
 	}
+}
+
+func (b *identitySharingBackend) handleUpdate(ctx context.Context, req *logical.Request,
+	data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("update identity_sharing", "path", req.Path)
+	id, err := backentutils.GetCreationID(true, data)
+	if err != nil {
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
+	}
+
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
+
+	is := &model.IdentitySharing{
+		UUID:             id,
+		SourceTenantUUID: data.Get("tenant_uuid").(string),
+		Groups:           data.Get("groups").([]string),
+		Version:          data.Get("resource_version").(string),
+	}
+
+	denormalized, err := usecase.IdentityShares(tx, consts.OriginIAM).Update(is)
+	if err != nil {
+		err = fmt.Errorf("cannot update identity sharing:%w", err)
+		b.Logger().Error(err.Error())
+		return backentutils.ResponseErr(req, err)
+	}
+
+	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{"identity_sharing": denormalized}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 
 func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Request,
@@ -207,7 +249,8 @@ func (b *identitySharingBackend) handleList(ctx context.Context, req *logical.Re
 
 	list, err := usecase.IdentityShares(tx, consts.OriginIAM).List(sourceTenant, showArchived)
 	if err != nil {
-		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		b.Logger().Error(err.Error())
+		return backentutils.ResponseErr(req, err)
 	}
 
 	resp := &logical.Response{
@@ -228,6 +271,7 @@ func (b *identitySharingBackend) handleRead(ctx context.Context, req *logical.Re
 
 	identitySharing, err := usecase.IdentityShares(tx, consts.OriginIAM).GetByID(id)
 	if err != nil {
+		b.Logger().Error(err.Error())
 		return backentutils.ResponseErr(req, err)
 	}
 
@@ -245,6 +289,7 @@ func (b *identitySharingBackend) handleDelete(ctx context.Context, req *logical.
 
 	err := usecase.IdentityShares(tx, consts.OriginIAM).Delete(id)
 	if err != nil {
+		err = fmt.Errorf("cannot delete identity sharing:%w", err)
 		return backentutils.ResponseErr(req, err)
 	}
 	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
