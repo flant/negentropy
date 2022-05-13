@@ -26,6 +26,9 @@ policies = [
     {'name': 'tenants.list.auth', 'roles': ['tenants.list.auth'], 'claim_schema': 'TODO',
      'allowed_auth_methods': ['multipass', 'sapassword', 'okta-oidc'],
      'rego_file': 'tenants.list.auth.rego'},
+    {'name': 'servers.register', 'roles': ['servers.register'], 'claim_schema': 'TODO',
+     'allowed_auth_methods': ['sapassword'],
+     'rego_file': 'servers.register.rego'},
 
 ]
 
