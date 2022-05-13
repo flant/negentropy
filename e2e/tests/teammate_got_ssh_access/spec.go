@@ -84,7 +84,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 					UUID: saRegisterServer.UUID,
 				}},
 				AnyProject: true,
-				Roles:      []model.BoundRole{{Name: flant_iam_preparing.RegisterServerRole, Options: map[string]interface{}{}}},
+				Roles:      []model.BoundRole{{Name: flant_iam_preparing.RegisterServerRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 			})
 
 		saRegisterServerPassword = iam_specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(adminClient),

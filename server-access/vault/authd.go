@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/flant/server-access/util"
 	"github.com/hashicorp/vault/api"
 
 	"github.com/flant/negentropy/authd"
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+	"github.com/flant/negentropy/server-access/util"
 )
 
 type AuthdSettings struct {

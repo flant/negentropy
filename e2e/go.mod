@@ -14,6 +14,7 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/tidwall/gjson v1.8.1
 	gopkg.in/square/go-jose.v2 v2.6.0
+	github.com/flant/negentropy/authd v0.0.0
 )
 
 replace (

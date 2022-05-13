@@ -222,7 +222,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 		Version:     uuid.New(),
 		Description: model.DevOps,
 		Groups:      groups,
-		Members:     buildMemebers(groups),
+		Members:     buildMembers(groups),
 		Projects:    []iam_model.ProjectUUID{projectUUID},
 		Roles:       boundRoles,
 		Origin:      consts.OriginFlantFlow,
@@ -235,7 +235,7 @@ func (d devopsServicePackBuilder) createRoleBinding(clientTenantUUID iam_model.T
 	return rb, nil
 }
 
-func buildMemebers(groups []iam_model.GroupUUID) []iam_model.MemberNotation {
+func buildMembers(groups []iam_model.GroupUUID) []iam_model.MemberNotation {
 	members := make([]iam_model.MemberNotation, 0, len(groups))
 	for _, groupUUID := range groups {
 		members = append(members, iam_model.MemberNotation{

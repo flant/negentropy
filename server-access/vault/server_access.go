@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/vault/api"
 
-	"github.com/flant/server-access/util"
+	"github.com/flant/negentropy/server-access/util"
 )
 
 type PosixUsersData struct {

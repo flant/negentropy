@@ -17,4 +17,5 @@ var (
 	ErrWrongType          = fmt.Errorf("wrong type")
 	ErrInvalidArg         = fmt.Errorf("invalid value of argument")
 	ErrNotConfigured      = fmt.Errorf("not configured")
+	ErrAccessForbidden    = fmt.Errorf("access forbidden")
 )

@@ -65,7 +65,7 @@ func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logica
 		TenantUUID:     cfg.FlantTenantUUID,
 		Version:        uuid.New(),
 		Identifier:     "all",
-		FullIdentifier: "all@flant",
+		FullIdentifier: "all@group.flant",
 		Origin:         consts.OriginFlantFlow,
 	})
 	if err != nil {

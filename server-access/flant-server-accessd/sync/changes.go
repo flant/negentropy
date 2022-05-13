@@ -3,9 +3,9 @@ package sync
 import (
 	"context"
 
-	"github.com/flant/server-access/flant-server-accessd/db"
-	"github.com/flant/server-access/flant-server-accessd/system"
-	"github.com/flant/server-access/flant-server-accessd/types"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/db"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/system"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
 )
 
 func ApplyChanges(ctx context.Context, db db.UserDatabase, uwg types.UsersWithGroups) error {

@@ -37,8 +37,15 @@ invalid_servers = input_servers - valid_servers_uuid
 
 all_servers_ok {count(invalid_servers)==0}
 
-tenant_is_passed  {input.tenant_uuid}
-project_is_passed {input.project_uuid}
+tenant_is_passed  {
+    input.tenant_uuid
+    input.tenant_uuid != ""
+    }
+
+project_is_passed {
+    input.project_uuid
+    input.project_uuid != ""
+    }
 
 # show all possible vault policies
 default show_paths=false
@@ -59,7 +66,7 @@ errors[err] {
     	not rolebinding_exists
         not show_paths
 } {
-	err:=concat(": ",["servers are invalid", concat(",", invalid_servers)])
+	err:=concat(": ", ["servers are invalid", concat(", ", invalid_servers)])
     	not all_servers_ok
         not show_paths
 } {

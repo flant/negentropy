@@ -104,12 +104,15 @@ func getProjectData(onlyCache bool, cache *model.Cache, serverFilter model.Serve
 		}
 
 	} else {
-		var err error
-		tenants, err = vault.NewService().UpdateTenants(cache.Tenants, serverFilter.TenantIdentifiers)
+		vaultService, err := vault.NewService()
 		if err != nil {
 			return nil, nil, err
 		}
-		projects, err = vault.NewService().UpdateProjects(cache.Projects, tenants, serverFilter.ProjectIdentifiers)
+		tenants, err = vaultService.UpdateTenants(cache.Tenants, serverFilter.TenantIdentifiers)
+		if err != nil {
+			return nil, nil, err
+		}
+		projects, err = vaultService.UpdateProjects(cache.Projects, tenants, serverFilter.ProjectIdentifiers)
 		if err != nil {
 			return nil, nil, err
 		}

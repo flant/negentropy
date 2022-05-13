@@ -17,7 +17,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/consts"
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
@@ -169,21 +168,17 @@ func (s *Session) signCertificate(privateRSA *rsa.PrivateKey, pubkey ssh.PublicK
 		principals = append(principals, GenerateUserPrincipal(serverUUID, s.User.UUID))
 	}
 
-	sshSigner := vault.NewService(authdapi.RoleWithClaim{
-		Role:        "ssh.open",
-		TenantUUID:  tenantUUID,
-		ProjectUUID: projectUUID,
-		Claim: map[string]interface{}{"ttl": "720m",
-			"max_ttl": "1440m",
-			"servers": serverUUIDs},
-	})
+	sshSigner, err := vault.NewService()
+	if err != nil {
+		return nil, err
+	}
 
 	vaultReq := model.VaultSSHSignRequest{
 		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
 		ValidPrincipals: strings.Join(principals, ","),
 	}
 
-	signedPublicSSHCertBytes, err := sshSigner.SignPublicSSHCertificate(vaultReq)
+	signedPublicSSHCertBytes, err := sshSigner.SignPublicSSHCertificate(tenantUUID, projectUUID, serverUUIDs, vaultReq)
 	if err != nil {
 		return nil, fmt.Errorf("signCertificates: %w", err)
 	}

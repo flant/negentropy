@@ -1,4 +1,4 @@
-module github.com/flant/server-access
+module github.com/flant/negentropy/server-access
 
 go 1.16
 

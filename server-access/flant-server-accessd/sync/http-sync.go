@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flant/server-access/flant-server-accessd/db"
-	"github.com/flant/server-access/flant-server-accessd/types"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/db"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
 )
 
 type Server struct {

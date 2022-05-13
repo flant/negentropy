@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -14,10 +13,13 @@ type RoleResolver interface {
 	IsUserSharedWithTenant(model.UserUUID, model.TenantUUID) (bool, error)
 	IsServiceAccountSharedWithTenant(model.ServiceAccountUUID, model.TenantUUID) (bool, error)
 
-	CheckUserForProjectScopedRole(model.UserUUID, model.RoleName, model.ProjectUUID) (bool, []EffectiveRole, error)
-	CheckUserForTenantScopedRole(model.UserUUID, model.RoleName, model.TenantUUID) (bool, []EffectiveRole, error)
-	CheckServiceAccountForProjectScopedRole(model.ServiceAccountUUID, model.RoleName, model.ProjectUUID) (bool, []EffectiveRole, error)
-	CheckServiceAccountForTenantScopedRole(model.ServiceAccountUUID, model.RoleName, model.TenantUUID) (bool, []EffectiveRole, error)
+	CheckUserForRolebindingsAtProject(model.UserUUID, model.RoleName, model.ProjectUUID) (bool, []EffectiveRole, error)
+	CheckUserForRolebindingsAtTenant(model.UserUUID, model.RoleName, model.TenantUUID) (bool, []EffectiveRole, error)
+	CheckUserForRolebindings(model.UserUUID, model.RoleName) (bool, []EffectiveRole, error)
+
+	CheckServiceAccountForRolebindingsAtProject(model.ServiceAccountUUID, model.RoleName, model.ProjectUUID) (bool, []EffectiveRole, error)
+	CheckServiceAccountForRolebindingsAtTenant(model.ServiceAccountUUID, model.RoleName, model.TenantUUID) (bool, []EffectiveRole, error)
+	CheckServiceAccountForRolebindings(model.ServiceAccountUUID, model.RoleName) (bool, []EffectiveRole, error)
 
 	FindMembersWithProjectScopedRole(model.RoleName, model.TenantUUID, model.ProjectUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
 	FindMembersWithTenantScopedRole(model.RoleName, model.TenantUUID) ([]model.UserUUID, []model.ServiceAccountUUID, error)
@@ -172,7 +174,7 @@ func (r *roleResolver) collectAllRoleBindingsForServiceAccount(
 	return roleBindings, nil
 }
 
-func (r *roleResolver) CheckUserForProjectScopedRole(userUUID model.UserUUID, roleName model.RoleName,
+func (r *roleResolver) CheckUserForRolebindingsAtProject(userUUID model.UserUUID, roleName model.RoleName,
 	projectUUID model.ProjectUUID) (bool, []EffectiveRole, error) {
 	role, err := r.roleInformer.GetByID(roleName)
 	if err != nil {
@@ -182,19 +184,14 @@ func (r *roleResolver) CheckUserForProjectScopedRole(userUUID model.UserUUID, ro
 		return false, nil, consts.ErrBadScopeRole
 	}
 	roleBindings, err := r.collectAllRoleBindingsForUser(userUUID)
-	fmt.Printf("roleBindings, err := r.collectAllRoleBindingsForUser(userUUID): %#v\n", roleBindings) // TODO REMOVE !!!!
-
 	if err != nil {
 		return false, nil, err
 	}
 	roles, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
-	fmt.Printf("roles, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName): %#v %#v\n", roles, roleBindingsForRoles) // TODO REMOVE !!!!
-
 	if err != nil {
 		return false, nil, err
 	}
 	roleBindingsForProject, err := r.roleBindingsInformer.FindDirectRoleBindingsForProject(projectUUID)
-	fmt.Printf("roleBindingsForProject, err := r.roleBindingsInformer.FindDirectRoleBindingsForProject(projectUUID): %#v\n", roleBindingsForProject) // TODO REMOVE !!!!
 	if err != nil {
 		return false, nil, err
 	}
@@ -254,16 +251,15 @@ func applyOptionTemplate(options map[string]interface{}, template string) map[st
 	return options
 }
 
-func (r *roleResolver) CheckUserForTenantScopedRole(userUUID model.UserUUID, roleName model.RoleName,
+func (r *roleResolver) CheckUserForRolebindingsAtTenant(userUUID model.UserUUID, roleName model.RoleName,
 	tenantUUID model.TenantUUID) (bool, []EffectiveRole, error) {
 	role, err := r.roleInformer.GetByID(roleName)
 	if err != nil {
 		return false, nil, err
 	}
-	if role.Scope != model.RoleScopeTenant {
+	if role.Scope != model.RoleScopeTenant && !(role.Scope == model.RoleScopeProject && role.ProjectIsOptional) {
 		return false, nil, consts.ErrBadScopeRole
 	}
-
 	roleBindings, err := r.collectAllRoleBindingsForUser(userUUID)
 	if err != nil {
 		return false, nil, err
@@ -290,7 +286,39 @@ func (r *roleResolver) CheckUserForTenantScopedRole(userUUID model.UserUUID, rol
 	return roleExists, effectiveRoles, nil
 }
 
-func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUID model.ServiceAccountUUID,
+func (r *roleResolver) CheckUserForRolebindings(userUUID model.UserUUID, roleName model.RoleName) (bool, []EffectiveRole, error) {
+	role, err := r.roleInformer.GetByID(roleName)
+	if err != nil {
+		return false, nil, err
+	}
+	if !role.TenantIsOptional {
+		return false, nil, consts.ErrBadScopeRole
+	}
+
+	roleBindings, err := r.collectAllRoleBindingsForUser(userUUID)
+	if err != nil {
+		return false, nil, err
+	}
+	roles, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
+	if err != nil {
+		return false, nil, err
+	}
+
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
+		return false, nil, nil
+	}
+	effectiveRoles := []EffectiveRole{}
+	roleExists := false
+	for _, roleBinding := range roleBindings {
+		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
+			effectiveRoles = r.mergeEffectiveRoles(effectiveRoles, roleBinding, roles, roleName)
+			roleExists = true
+		}
+	}
+	return roleExists, effectiveRoles, nil
+}
+
+func (r *roleResolver) CheckServiceAccountForRolebindingsAtProject(serviceAccountUUID model.ServiceAccountUUID,
 	roleName model.RoleName, projectUUID model.ProjectUUID) (bool, []EffectiveRole, error) {
 	role, err := r.roleInformer.GetByID(roleName)
 	if err != nil {
@@ -330,17 +358,17 @@ func (r *roleResolver) CheckServiceAccountForProjectScopedRole(serviceAccountUUI
 	return roleExists, effectiveRoles, nil
 }
 
-func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount model.ServiceAccountUUID, roleName model.RoleName,
+func (r *roleResolver) CheckServiceAccountForRolebindingsAtTenant(serviceAccountUUID model.ServiceAccountUUID, roleName model.RoleName,
 	tenantUUID model.TenantUUID) (bool, []EffectiveRole, error) {
 	role, err := r.roleInformer.GetByID(roleName)
 	if err != nil {
 		return false, nil, err
 	}
-	if role.Scope != model.RoleScopeTenant {
+	if role.Scope != model.RoleScopeTenant && !(role.Scope == model.RoleScopeProject && role.ProjectIsOptional) {
 		return false, nil, consts.ErrBadScopeRole
 	}
 
-	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(serviceAccount)
+	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(serviceAccountUUID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -358,6 +386,38 @@ func (r *roleResolver) CheckServiceAccountForTenantScopedRole(serviceAccount mod
 		if roleBinding.TenantUUID != tenantUUID {
 			continue
 		}
+		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
+			effectiveRoles = r.mergeEffectiveRoles(effectiveRoles, roleBinding, roles, roleName)
+			roleExists = true
+		}
+	}
+	return roleExists, effectiveRoles, nil
+}
+
+func (r *roleResolver) CheckServiceAccountForRolebindings(serviceAccountUUID model.ServiceAccountUUID, roleName model.RoleName) (bool, []EffectiveRole, error) {
+	role, err := r.roleInformer.GetByID(roleName)
+	if err != nil {
+		return false, nil, err
+	}
+	if !role.TenantIsOptional {
+		return false, nil, consts.ErrBadScopeRole
+	}
+
+	roleBindings, err := r.collectAllRoleBindingsForServiceAccount(serviceAccountUUID)
+	if err != nil {
+		return false, nil, err
+	}
+	roles, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
+	if err != nil {
+		return false, nil, err
+	}
+
+	if len(roleBindings) == 0 || len(roleBindingsForRoles) == 0 {
+		return false, nil, nil
+	}
+	effectiveRoles := []EffectiveRole{}
+	roleExists := false
+	for _, roleBinding := range roleBindings {
 		if _, rbHasRole := roleBindingsForRoles[roleBinding.UUID]; rbHasRole {
 			effectiveRoles = r.mergeEffectiveRoles(effectiveRoles, roleBinding, roles, roleName)
 			roleExists = true

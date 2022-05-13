@@ -137,8 +137,11 @@ func getServerData(onlyCache bool, cache *model.Cache, serverFilter model.Server
 			Servers:  servers,
 		}
 	} else {
-		var err error
-		serverList, err = vault.NewService().UpdateServersByFilter(serverFilter, &cache.ServerList)
+		vaultService, err := vault.NewService()
+		if err != nil {
+			return nil, err
+		}
+		serverList, err = vaultService.UpdateServersByFilter(serverFilter, &cache.ServerList)
 		if err != nil {
 			return nil, err
 		}

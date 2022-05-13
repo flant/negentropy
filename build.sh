@@ -43,6 +43,7 @@ function build_authd() {
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/app/authd \
+    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
     -v $AUTHD_DIR/build:/src/build \
     -v $AUTHD_DIR:/go/src/app/authd \
     -v /tmp/authd-build:/go/pkg/mod \

@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	api "github.com/flant/negentropy/authd/pkg/api/v1"
+	"github.com/flant/negentropy/authd/pkg/client_error"
 	"github.com/flant/negentropy/authd/pkg/config"
 	"github.com/flant/negentropy/authd/pkg/jwt"
 	"github.com/flant/negentropy/authd/pkg/log"
@@ -57,7 +58,7 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 
 	token, err := jwt.DefaultStorage.GetJWT()
 	if err != nil {
-		return nil, 0, NewHTTPError(err, http.StatusForbidden, []string{err.Error()})
+		return nil, 0, client_error.NewHTTPError(err, http.StatusForbidden, []string{err.Error()})
 	}
 
 	var response interface{}

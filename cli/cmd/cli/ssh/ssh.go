@@ -85,8 +85,12 @@ func SSHSessionStarter(err *error) func(*cobra.Command, []string) {
 		if permanentCacheFilePath = os.Getenv("CACHE_PATH"); permanentCacheFilePath == "" {
 			permanentCacheFilePath = path.Join(homeDir, ".flant", "cli", "ssh", "cache")
 		}
-
-		s, *err = session.New(vault.NewService(), serverFilter, permanentCacheFilePath, consts.CacheTTL)
+		var vaultService vault.VaultService
+		vaultService, *err = vault.NewService()
+		if *err != nil {
+			return
+		}
+		s, *err = session.New(vaultService, serverFilter, permanentCacheFilePath, consts.CacheTTL)
 		if *err != nil {
 			return
 		}

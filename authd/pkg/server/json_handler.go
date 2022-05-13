@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/flant/negentropy/authd/pkg/client_error"
 	"github.com/flant/negentropy/authd/pkg/log"
 )
 
@@ -30,7 +31,7 @@ func ServeJSON(w http.ResponseWriter, r *http.Request, requestObj interface{}, h
 	resp, status, err := h(r.Context())
 	if err != nil {
 		// Check if ClientError
-		clientError, ok := err.(ClientError) // type assertion for behavior.
+		clientError, ok := err.(client_error.ClientError) // type assertion for behavior.
 		if ok {
 			body, bodyErr := clientError.ResponseBody()
 			if bodyErr != nil {

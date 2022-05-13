@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/pkg"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -229,7 +229,7 @@ func registerServer(vaultURL string, saPassword model.ServiceAccountPassword, tI
 	sIdentifier string, labels map[string]string, annotations map[string]string,
 	connectionHostname string, connectionPort string) (*model2.Server, *model.MultipassJWT, error) {
 	// get client just for tenants list
-	cl, err := getVaultClientAuthorizedWithSAPass(vaultURL, saPassword, nil)
+	cl, err := pkg.VaultClientAuthorizedWithSAPass(vaultURL, saPassword, []authdapi.RoleWithClaim{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("gettting vault client: %w", err)
 	}
@@ -238,8 +238,10 @@ func registerServer(vaultURL string, saPassword model.ServiceAccountPassword, tI
 		return nil, nil, fmt.Errorf("gettting tenant by identifier: %w", err)
 	}
 	// get client just for project list
-	cl, err = getVaultClientAuthorizedWithSAPass(vaultURL, saPassword, []map[string]interface{}{
-		{"role": "iam_auth_read", "tenant_uuid": tenant.UUID}})
+	cl, err = pkg.VaultClientAuthorizedWithSAPass(vaultURL, saPassword, []authdapi.RoleWithClaim{{
+		Role:       "tenant.read.auth",
+		TenantUUID: tenant.UUID,
+	}})
 	if err != nil {
 		return nil, nil, fmt.Errorf("gettting vault client: %w", err)
 	}
@@ -248,8 +250,11 @@ func registerServer(vaultURL string, saPassword model.ServiceAccountPassword, tI
 		return nil, nil, fmt.Errorf("gettting project by identifier: %w", err)
 	}
 	// get client for registering server
-	cl, err = getVaultClientAuthorizedWithSAPass(vaultURL, saPassword, []map[string]interface{}{
-		{"role": "servers.register", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
+	cl, err = pkg.VaultClientAuthorizedWithSAPass(vaultURL, saPassword, []authdapi.RoleWithClaim{{
+		Role:        "servers.register",
+		TenantUUID:  tenant.UUID,
+		ProjectUUID: project.UUID,
+	}})
 	if err != nil {
 		return nil, nil, fmt.Errorf("gettting vault client: %w", err)
 	}
@@ -273,34 +278,6 @@ func registerServer(vaultURL string, saPassword model.ServiceAccountPassword, tI
 	}
 
 	return server, &multipassJWT, nil
-}
-
-func getVaultClientAuthorizedWithSAPass(vaultURL string, password model.ServiceAccountPassword,
-	roles []map[string]interface{}) (*pkg.VaultClient, error) {
-	cl, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		return nil, err
-	}
-	err = cl.SetAddress(vaultURL)
-	if err != nil {
-		return nil, err
-	}
-
-	secret, err := cl.Logical().Write("/auth/flant_iam_auth/login", map[string]interface{}{
-		"method":                          "sapassword",
-		"service_account_password_uuid":   password.UUID,
-		"service_account_password_secret": password.Secret,
-		"roles":                           roles,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if secret == nil || secret.Auth == nil {
-		return nil, fmt.Errorf("expect not nil secret.Auth, got secret:%#v", secret)
-	}
-	cl.SetToken(secret.Auth.ClientToken)
-	return &pkg.VaultClient{Client: cl}, nil
 }
 
 // init -t tenant_for_authd_tests -p project_XXX  --password Mjc5MDUxYjItZTVmOC00MTVlLTlhNmQtMzcyMmQ5MTZlOTZmOjlPQWV7S0RpSDprQDRiajJMSklsd0NoRiFVcVBhY1ReVnVCWDFZWk10ZCVtTmcwPDVXUXZFMyk2b1J6OHMsKzc= --identifier tralala4 -l l1=vl1 -l l2=vl2 -a a1=av1 -a a2=av2 -h localhost --connection_port 222

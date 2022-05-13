@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/flant/server-access/flant-server-accessd/db"
-	"github.com/flant/server-access/flant-server-accessd/types"
-	"github.com/flant/server-access/vault"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/db"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
+	"github.com/flant/negentropy/server-access/vault"
 )
 
 type Periodic struct {

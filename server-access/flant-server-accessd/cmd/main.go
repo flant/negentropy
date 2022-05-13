@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/flant/server-access/flant-server-accessd/config"
-	"github.com/flant/server-access/flant-server-accessd/db/sqlite"
-	"github.com/flant/server-access/flant-server-accessd/sync"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/config"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/db/sqlite"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/sync"
 )
 
 func main() {

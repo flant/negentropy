@@ -2,7 +2,8 @@ package db
 
 import (
 	"context"
-	"github.com/flant/server-access/flant-server-accessd/types"
+
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
 )
 
 type UserDatabase interface {

@@ -25,8 +25,15 @@ filtered_bindings[r] {
 
 rolebinding_exists {count(filtered_bindings) > 0}
 
-tenant_is_passed  {input.tenant_uuid}
-project_is_passed {input.project_uuid}
+tenant_is_passed  {
+    input.tenant_uuid
+    input.tenant_uuid != ""
+    }
+
+project_is_passed {
+    input.project_uuid
+    input.project_uuid != ""
+    }
 
 project_is_passed_tenant_is_not {
 	project_is_passed
@@ -67,9 +74,9 @@ tenant_uuid = t {
     	show_paths
 }
 
-global_path = "auth/flant/query_server" {not tenant_is_passed; not project_is_passed} {show_paths}
-with_tenant_path = concat("/",["auth","flant","tenant",tenant_uuid,"query_server"]) {not project_is_passed; tenant_is_passed} {show_paths}
-with_project_path = concat("/",["auth","flant","tenant",tenant_uuid,"project",project_uuid,"query_server"]) {project_is_passed; tenant_is_passed} {show_paths}
+global_path = "auth/flant_iam_auth/query_server" {not tenant_is_passed; not project_is_passed} {show_paths}
+with_tenant_path = concat("/",["auth","flant_iam_auth","tenant",tenant_uuid,"query_server"]) {not project_is_passed; tenant_is_passed} {show_paths}
+with_project_path = concat("/",["auth","flant_iam_auth","tenant",tenant_uuid,"project",project_uuid,"query_server"]) {project_is_passed; tenant_is_passed} {show_paths}
 
 # fill rules
 pre_rules  [rule]{
