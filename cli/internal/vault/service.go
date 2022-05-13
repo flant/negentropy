@@ -1,16 +1,15 @@
 package vault
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
-	"github.com/flant/negentropy/authd"
-	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/pkg"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 type VaultService interface {
@@ -18,7 +17,7 @@ type VaultService interface {
 	GetUser() (*auth.User, error)
 	// UpdateServersByFilter returns ServerList synchronized with vault, according filter, using given ServerList as cache
 	UpdateServersByFilter(model.ServerFilter, *model.ServerList) (*model.ServerList, error)
-	SignPublicSSHCertificate(model.VaultSSHSignRequest) ([]byte, error)
+	SignPublicSSHCertificate(iam.TenantUUID, iam.ProjectUUID, []ext.ServerUUID, model.VaultSSHSignRequest) ([]byte, error)
 	// UpdateTenants update oldTenants by vault requests, according specified identifiers given by args
 	UpdateTenants(map[iam.TenantUUID]iam.Tenant, model.StringSet) (map[iam.TenantUUID]iam.Tenant, error)
 	// UpdateProjects update oldProjects by vault requests, according specified identifiers given by args
@@ -30,50 +29,23 @@ type vaultService struct {
 	cl pkg.VaultClient
 }
 
-func NewService(roles ...authdapi.RoleWithClaim) VaultService {
-	if len(roles) == 0 {
-		roles = []authdapi.RoleWithClaim{authdapi.NewRoleWithClaim("iam_auth_read", nil)} // TODO need here some valid role
-	}
-	var authdSocketPath string
-	if authdSocketPath = os.Getenv("AUTHD_SOCKET_PATH"); authdSocketPath == "" {
-		authdSocketPath = "/run/authd.sock"
-	}
-	authdClient := authd.NewAuthdClient(authdSocketPath)
-
-	req := authdapi.NewLoginRequest().
-		WithRoles(roles...).
-		WithServerType(authdapi.AuthServer)
-
-	err := authdClient.OpenVaultSession(req)
+func NewService() (VaultService, error) {
+	defaultVaultClient, err := pkg.DefaultVaultClient()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	vaultClient, err := authdClient.NewVaultClient()
-	if err != nil {
-		panic(err)
+	defaultService := &vaultService{
+		cl: defaultVaultClient,
 	}
-
-	user, err := vaultService{
-		cl: pkg.VaultClient{Client: vaultClient},
-	}.GetUser()
-	if err != nil {
-		fmt.Printf("err %s\n", err.Error())
-	} else {
-		fmt.Printf("user %#v\n", *user)
-	}
-
-	return vaultService{
-		cl: pkg.VaultClient{Client: vaultClient},
-	}
+	return defaultService, nil
 }
 
-func (v vaultService) GetUser() (*auth.User, error) {
+func (v *vaultService) GetUser() (*auth.User, error) {
 	return v.cl.GetUser()
 }
 
 // UpdateServersByFilter use oldServerList as cache and filter for returning synchronized with vault ServerList
-func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, oldServerList *model.ServerList) (*model.ServerList, error) {
+func (v *vaultService) UpdateServersByFilter(filter model.ServerFilter, oldServerList *model.ServerList) (*model.ServerList, error) {
 	var (
 		newSl *model.ServerList
 		err   error
@@ -93,11 +65,13 @@ func (v vaultService) UpdateServersByFilter(filter model.ServerFilter, oldServer
 	return newSl, nil
 }
 
-func (v vaultService) SignPublicSSHCertificate(req model.VaultSSHSignRequest) ([]byte, error) {
-	return v.cl.SignPublicSSHCertificate(req)
+func (v *vaultService) SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+	serverUUIDs []ext.ServerUUID, req model.VaultSSHSignRequest) ([]byte, error) {
+
+	return v.cl.SignPublicSSHCertificate(tenantUUID, projectUUID, serverUUIDs, req)
 }
 
-func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+func (v *vaultService) updateServerListByTenantAndProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
 	tenants, err := v.UpdateTenants(oldServerlist.Tenants, filter.TenantIdentifiers)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenantAndProject, collecting tenant: %w", err)
@@ -115,7 +89,6 @@ func (v vaultService) updateServerListByTenantAndProject(filter model.ServerFilt
 	for projectUUID = range projects {
 		break // the only one uuid should be presented
 	}
-
 	servers, err := v.cl.GetServersByTenantAndProject(tenantUUID, projectUUID,
 		filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
@@ -147,7 +120,7 @@ func safeServerMap(servers []auth.SafeServer) map[ext.ServerUUID]auth.SafeServer
 
 // updateServerListByTenant update data using vault unsafe paths, so, returned serverList contains
 // sensitive data only from given oldServerList
-func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+func (v *vaultService) updateServerListByTenant(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
 	tenants, err := v.UpdateTenants(oldServerlist.Tenants, filter.TenantIdentifiers)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenant, collecting tenant: %w", err)
@@ -161,7 +134,6 @@ func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldSer
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenant, collecting project: %w", err)
 	}
-
 	servers, err := v.cl.GetSafeServersByTenant(tenantUUID, filter.ServerIdentifiers, filter.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenant, collecting servers: %w", err)
@@ -178,7 +150,7 @@ func (v vaultService) updateServerListByTenant(filter model.ServerFilter, oldSer
 }
 
 // updateServerListByProject update data using vault safe paths, so, returned serverList contains sensitive data
-func (v vaultService) updateServerListByProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+func (v *vaultService) updateServerListByProject(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
 	allTenants, err := v.UpdateTenants(oldServerlist.Tenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByProject, collecting tenant: %w", err)
@@ -208,7 +180,7 @@ func (v vaultService) updateServerListByProject(filter model.ServerFilter, oldSe
 
 // updateServerList update data using vault unsafe paths, so, returned serverList contains
 // sensitive data only from given oldServerList
-func (v vaultService) updateServerList(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
+func (v *vaultService) updateServerList(filter model.ServerFilter, oldServerlist *model.ServerList) (*model.ServerList, error) {
 	allTenants, err := v.UpdateTenants(oldServerlist.Tenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerList, collecting tenant: %w", err)
@@ -234,7 +206,7 @@ func (v vaultService) updateServerList(filter model.ServerFilter, oldServerlist 
 }
 
 // synchronizeSensitiveData uses oldServers as cache return synchronized with vault slice of ext.Server
-func (v vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ext.Server,
+func (v *vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ext.Server,
 	newServers map[ext.ServerUUID]auth.SafeServer, filter model.ServerFilter) (map[ext.ServerUUID]ext.Server, error) {
 	result := map[ext.ServerUUID]ext.Server{}
 	for _, safeServer := range newServers {
@@ -257,9 +229,10 @@ func (v vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ext
 }
 
 // UpdateTenants return user tenants synchronized with vault
-func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
+func (v *vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 	tenantIdentifiers model.StringSet) (map[iam.TenantUUID]iam.Tenant, error) {
 	result := map[iam.TenantUUID]iam.Tenant{}
+	// enough default client
 	tenants, err := v.cl.GetTenants()
 	if err != nil {
 		return nil, fmt.Errorf("UpdateTenants: %w", err)
@@ -270,6 +243,10 @@ func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 		if oldTenant, ok := oldTenants[t.UUID]; !ok ||
 			oldTenant.Version != t.Version {
 			tmp, err := v.cl.GetTenantByUUID(t.UUID)
+			if errors.Is(err, consts.ErrAccessForbidden) {
+				// this tenant is prohibited, doesn't add it to list
+				continue
+			}
 			if err != nil {
 				return nil, fmt.Errorf("UpdateTenants: %w", err)
 			}
@@ -285,7 +262,7 @@ func (v vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 }
 
 // UpdateProjects return user projects synchronized with vault
-func (v vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project, tenants map[iam.TenantUUID]iam.Tenant,
+func (v *vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project, tenants map[iam.TenantUUID]iam.Tenant,
 	projectIdentifiers model.StringSet) (map[iam.ProjectUUID]iam.Project, error) {
 	result := map[iam.ProjectUUID]iam.Project{}
 	var projects []auth.Project
@@ -302,7 +279,7 @@ func (v vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project
 
 		if oldProject, ok := oldProjects[p.UUID]; !ok ||
 			oldProject.Version != p.Version {
-			tmp, err := v.cl.GetProjectByUUIDs(p.TenantUUID, p.UUID)
+			tmp, err := v.cl.GetProjectByUUID(p.TenantUUID, p.UUID)
 			if err != nil {
 				return nil, fmt.Errorf("UpdateProjects: %w", err)
 			}

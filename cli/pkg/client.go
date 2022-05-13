@@ -5,7 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
+
+	"github.com/flant/negentropy/authd"
+
+	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 
 	vault_api "github.com/hashicorp/vault/api"
 
@@ -17,20 +22,136 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
-// wrap requests to vault
-type VaultClient struct {
-	*vault_api.Client // authorized client
+// VaultClient wrap requests to vault
+// knows about needed roles, can escalate roles, if run by DefaultVaultClient
+type VaultClient interface {
+	GetTenants() ([]iam.Tenant, error)
+	GetProjects(tenantUUID iam.TenantUUID) ([]auth.Project, error)
+	GetUser() (*auth.User, error)
+	GetServersByTenantAndProject(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+		serverIdentifiers []string, labelSelector string) ([]ext.Server, error)
+	GetSafeServersByTenant(tenantUUID iam.TenantUUID, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error)
+	GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error)
+	SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+		serverUUIDs []ext.ServerUUID, vaultReq model.VaultSSHSignRequest) ([]byte, error)
+	GetTenantByUUID(tenantUUID string) (*iam.Tenant, error)
+	GetProjectByUUID(tenantUUID string, projectUUID string) (*iam.Project, error)
+	GetTenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error)
+	GetProjectByIdentifier(tenantUUID iam.TenantUUID, projectIdentifier string) (*auth.Project, error)
+	RegisterServer(server ext.Server) (ext.ServerUUID, iam.MultipassJWT, error)
+	UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+		serverUUID ext.ServerUUID, connInfo ext.ConnectionInfo) (*ext.Server, error)
 }
 
-func (vs VaultClient) makeRequest(method, requestPath string, params url.Values, bodyBytes []byte) ([]byte, error) {
-	req := vs.NewRequest(method, requestPath)
+type vaultClient struct {
+	*vault_api.Client  // authorized client
+	roles              []authdapi.RoleWithClaim
+	allowEscalateRoles bool
+}
+
+func ConfiguredVaultClient(authorizedClient *vault_api.Client, roles []authdapi.RoleWithClaim) VaultClient {
+	return &vaultClient{
+		Client:             authorizedClient,
+		roles:              roles,
+		allowEscalateRoles: false,
+	}
+}
+
+func DefaultVaultClient() (VaultClient, error) {
+	defaultClient := &vaultClient{allowEscalateRoles: true}
+	err := defaultClient.checkForRolesAndUpdateClient()
+	return defaultClient, err
+}
+
+func VaultClientAuthorizedWithSAPass(vaultURL string, password iam.ServiceAccountPassword,
+	roles []authdapi.RoleWithClaim) (VaultClient, error) {
+	cl, err := vault_api.NewClient(vault_api.DefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+	err = cl.SetAddress(vaultURL)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := cl.Logical().Write("/auth/flant_iam_auth/login", map[string]interface{}{
+		"method":                          "sapassword",
+		"service_account_password_uuid":   password.UUID,
+		"service_account_password_secret": password.Secret,
+		"roles":                           roles,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if secret == nil || secret.Auth == nil {
+		return nil, fmt.Errorf("expect not nil secret.Auth, got secret:%#v", secret)
+	}
+	cl.SetToken(secret.Auth.ClientToken)
+	return ConfiguredVaultClient(cl, roles), nil
+}
+
+func (vc *vaultClient) checkForRolesAndUpdateClient(neededRoles ...authdapi.RoleWithClaim) error {
+	var extraRoles []authdapi.RoleWithClaim = nil
+	for _, role := range neededRoles {
+		exists := false
+		for _, existedRole := range vc.roles {
+			if existedRole.Role == role.Role &&
+				existedRole.TenantUUID == role.TenantUUID &&
+				existedRole.ProjectUUID == role.ProjectUUID {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			extraRoles = append(extraRoles, role)
+		}
+	}
+	if len(extraRoles) == 0 && vc.Client != nil {
+		return nil // no needs to relogin
+	}
+	if len(extraRoles) == 0 {
+		extraRoles = []authdapi.RoleWithClaim{{
+			Role: TenantsListRole,
+		}}
+	}
+	if !vc.allowEscalateRoles {
+		return fmt.Errorf("vault client run in 'allowEscalateRoles=false' mode, needs extra roles: %#v", extraRoles)
+	}
+	roles := append(vc.roles, extraRoles...)
+	var authdSocketPath string
+	if authdSocketPath = os.Getenv("AUTHD_SOCKET_PATH"); authdSocketPath == "" {
+		authdSocketPath = "/run/authd.sock"
+	}
+	authdClient := authd.NewAuthdClient(authdSocketPath)
+
+	req := authdapi.NewLoginRequest().
+		WithRoles(roles...).
+		WithServerType(authdapi.AuthServer)
+
+	err := authdClient.OpenVaultSession(req)
+	if err != nil {
+		return fmt.Errorf("checkForRolesAndUpdateClient: %w", err)
+	}
+
+	vaultClient, err := authdClient.NewVaultClient()
+	if err != nil {
+		return fmt.Errorf("checkForRolesAndUpdateClient: %w", err)
+	}
+	vc.roles = roles
+	vc.Client = vaultClient
+	return nil
+}
+
+func (vc vaultClient) makeRequest(method, requestPath string, params url.Values, bodyBytes []byte) ([]byte, error) {
+	req := vc.NewRequest(method, requestPath)
 	if params != nil {
 		req.Params = params
 	}
 	if len(bodyBytes) > 0 {
 		req.BodyBytes = bodyBytes
 	}
-	resp, err := vs.Client.RawRequest(req)
+	resp, err := vc.Client.RawRequest(req)
 	defer resp.Body.Close() // nolint:errcheck
 	if err != nil {
 		return nil, err
@@ -45,8 +166,9 @@ func (vs VaultClient) makeRequest(method, requestPath string, params url.Values,
 	return buf.Bytes(), nil
 }
 
-func (vs *VaultClient) GetTenants() ([]iam.Tenant, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil, nil)
+func (vc *vaultClient) GetTenants() ([]iam.Tenant, error) {
+	// allowed by default
+	vaultTenantsResponseBytes, err := vc.makeRequest("LIST", "/v1/auth/flant_iam_auth/tenant", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +184,15 @@ func (vs *VaultClient) GetTenants() ([]iam.Tenant, error) {
 	return vaultTenantsResponse.Data.Tenants, nil
 }
 
-func (vs *VaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.Project, error) {
-	vaultProjectsResponseBytes, err := vs.makeRequest("LIST",
+func (vc *vaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.Project, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:       TenantReadAuthRole,
+		TenantUUID: tenantUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultProjectsResponseBytes, err := vc.makeRequest("LIST",
 		fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project", tenantUUID), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjects: %w", err)
@@ -82,20 +211,28 @@ func (vs *VaultClient) GetProjects(tenantUUID iam.TenantUUID) ([]auth.Project, e
 }
 
 // GetServersByTenantAndProject returns server full info
-func (vs *VaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+func (vc *vaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
 	serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
-
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:        ServersQueryRole,
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
 	requestPath := fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/query_server", tenantUUID, projectUUID)
 
-	servers, err := vs.getServers(requestPath, serverIdentifiers, labelSelector)
+	servers, err := vc.getServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("VaultClient.GetServersByTenantAndProject: %w", err)
 	}
 	return servers, nil
 }
 
-func (vs *VaultClient) GetUser() (*auth.User, error) {
-	vaultResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/vst_owner", nil, nil)
+func (vc *vaultClient) GetUser() (*auth.User, error) {
+	// allowed by default
+	vaultResponseBytes, err := vc.makeRequest("GET", "/v1/auth/flant_iam_auth/vst_owner", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get_user:%w", err)
 	}
@@ -112,15 +249,28 @@ func (vs *VaultClient) GetUser() (*auth.User, error) {
 	return &vaultUserMultipasOwnerResponse.Data.User, nil
 }
 
-func (vs *VaultClient) SignPublicSSHCertificate(vaultReq model.VaultSSHSignRequest) ([]byte, error) {
+func (vc *vaultClient) SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+	serverUUIDs []ext.ServerUUID, vaultReq model.VaultSSHSignRequest) ([]byte, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:        SSHOpenRole,
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
+		Claim: map[string]interface{}{"ttl": "720m",
+			"max_ttl": "1440m",
+			"servers": serverUUIDs},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	var reqMap map[string]interface{}
 	data, _ := json.Marshal(vaultReq)
-	err := json.Unmarshal(data, &reqMap)
+	err = json.Unmarshal(data, &reqMap)
 	if err != nil {
 		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
 	}
 
-	ssh := vs.Client.SSHWithMountPoint("ssh")
+	ssh := vc.Client.SSHWithMountPoint("ssh")
 	secret, err := ssh.SignKey("signer", reqMap)
 	if err != nil {
 		return nil, fmt.Errorf("SignPublicSSHCertificate: %w", err)
@@ -128,35 +278,47 @@ func (vs *VaultClient) SignPublicSSHCertificate(vaultReq model.VaultSSHSignReque
 	return []byte(secret.Data["signed_key"].(string)), nil
 }
 
-func (vs *VaultClient) GetSafeServersByTenant(tenantUUID iam.TenantUUID,
+func (vc *vaultClient) GetSafeServersByTenant(tenantUUID iam.TenantUUID,
 	serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:       ServersQueryRole,
+		TenantUUID: tenantUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
 	requestPath := fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/query_server", tenantUUID)
 
-	servers, err := vs.getSafeServers(requestPath, serverIdentifiers, labelSelector)
+	servers, err := vc.getSafeServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("VaultClient.GetServersByTenant: %w", err)
 	}
 	return servers, nil
 }
 
-func (vs *VaultClient) GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+func (vc *vaultClient) GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role: ServersQueryRole,
+	})
+	if err != nil {
+		return nil, err
+	}
 	requestPath := "/v1/auth/flant_iam_auth/query_server"
-	servers, err := vs.getSafeServers(requestPath, serverIdentifiers, labelSelector)
+	servers, err := vc.getSafeServers(requestPath, serverIdentifiers, labelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("VaultClient.GetServers: %w", err)
 	}
 	return servers, nil
 }
 
-// getServers get servers by path, adding params to request
-func (vs *VaultClient) getServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
+// getServers get servers by path, adding params to request, it is wrapping over queryServers method
+func (vc *vaultClient) getServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]ext.Server, error) {
 	var vaultServersResponse struct {
 		Data struct {
 			Servers []ext.Server `json:"servers"`
 		} `json:"data"`
 	}
-
-	err := vs.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
+	err := vc.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
 	if err != nil {
 		return nil, fmt.Errorf("VaultClient.getServers: %w", err)
 	}
@@ -167,7 +329,7 @@ func (vs *VaultClient) getServers(requestPath string, serverIdentifiers []string
 }
 
 // queryServers query vault by given path and args, and parse result into given vaultServersResponsePtr
-func (vs *VaultClient) queryServers(requestPath string, serverIdentifiers []string, labelSelector string,
+func (vc *vaultClient) queryServers(requestPath string, serverIdentifiers []string, labelSelector string,
 	vaultServersResponsePtr interface{}) error {
 	if len(serverIdentifiers) > 0 && labelSelector != "" {
 		return fmt.Errorf("queryServers: only serverIdentifiers or labelSelector must be set")
@@ -180,7 +342,7 @@ func (vs *VaultClient) queryServers(requestPath string, serverIdentifiers []stri
 		params = url.Values{"labelSelector": []string{labelSelector}}
 	}
 
-	vaultServersResponseBytes, err := vs.makeRequest("GET", requestPath, params, nil)
+	vaultServersResponseBytes, err := vc.makeRequest("GET", requestPath, params, nil)
 	if err != nil {
 		return fmt.Errorf("VaultClient.queryServers: %w", err)
 	}
@@ -193,14 +355,14 @@ func (vs *VaultClient) queryServers(requestPath string, serverIdentifiers []stri
 }
 
 // getServers get servers by path, adding params to request, returns SafeServer
-func (vs *VaultClient) getSafeServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
+func (vc *vaultClient) getSafeServers(requestPath string, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error) {
 	var vaultServersResponse struct {
 		Data struct {
 			Servers []auth_ext.SafeServer `json:"servers"`
 		} `json:"data"`
 	}
 
-	err := vs.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
+	err := vc.queryServers(requestPath, serverIdentifiers, labelSelector, &vaultServersResponse)
 	if err != nil {
 		return nil, fmt.Errorf("VaultClient.getServers: %w", err)
 	}
@@ -210,8 +372,15 @@ func (vs *VaultClient) getSafeServers(requestPath string, serverIdentifiers []st
 	return servers, nil
 }
 
-func (vs *VaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil, nil)
+func (vc *vaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:       TenantReadAuthRole,
+		TenantUUID: tenantUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultTenantsResponseBytes, err := vc.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getTenantByUUID: %w", err)
 	}
@@ -227,8 +396,15 @@ func (vs *VaultClient) GetTenantByUUID(tenantUUID string) (*iam.Tenant, error) {
 	return &vaultTenantResponse.Data.Tenant, nil
 }
 
-func (vs *VaultClient) GetProjectByUUIDs(tenantUUID string, projectUUID string) (*iam.Project, error) {
-	vaultTenantsResponseBytes, err := vs.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
+func (vc *vaultClient) GetProjectByUUID(tenantUUID string, projectUUID string) (*iam.Project, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:       TenantReadAuthRole,
+		TenantUUID: tenantUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultTenantsResponseBytes, err := vc.makeRequest("GET", "/v1/auth/flant_iam_auth/tenant/"+tenantUUID+
 		"/project/"+projectUUID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getProjectByUUIDs: %w", err)
@@ -245,8 +421,9 @@ func (vs *VaultClient) GetProjectByUUIDs(tenantUUID string, projectUUID string) 
 	return &vaultProjectResponse.Data.Project, nil
 }
 
-func (vs *VaultClient) GetTenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error) {
-	tenants, err := vs.GetTenants()
+// GetTenantByIdentifier wraps GetTenants
+func (vc *vaultClient) GetTenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error) {
+	tenants, err := vc.GetTenants()
 	if err != nil {
 		return nil, err
 	}
@@ -263,8 +440,9 @@ func (vs *VaultClient) GetTenantByIdentifier(tenantIdentifier string) (*iam.Tena
 	return tenant, nil
 }
 
-func (vs *VaultClient) GetProjectByIdentifier(tenantUUID iam.TenantUUID, projectIdentifier string) (*auth.Project, error) {
-	projects, err := vs.GetProjects(tenantUUID)
+// GetProjectByIdentifier wraps GetProjects
+func (vc *vaultClient) GetProjectByIdentifier(tenantUUID iam.TenantUUID, projectIdentifier string) (*auth.Project, error) {
+	projects, err := vc.GetProjects(tenantUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +459,16 @@ func (vs *VaultClient) GetProjectByIdentifier(tenantUUID iam.TenantUUID, project
 	return project, nil
 }
 
-func (vs *VaultClient) RegisterServer(server ext.Server) (ext.ServerUUID, iam.MultipassJWT, error) {
+func (vc *vaultClient) RegisterServer(server ext.Server) (ext.ServerUUID, iam.MultipassJWT, error) {
 	path := fmt.Sprintf("/v1/flant_iam/tenant/%s/project/%s/register_server", server.TenantUUID, server.ProjectUUID)
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:        ServersRegisterRole,
+		TenantUUID:  server.TenantUUID,
+		ProjectUUID: server.ProjectUUID,
+	})
+	if err != nil {
+		return "", "", err
+	}
 	data := map[string]interface{}{
 		"identifier":  server.Identifier,
 		"labels":      server.Labels,
@@ -292,7 +478,7 @@ func (vs *VaultClient) RegisterServer(server ext.Server) (ext.ServerUUID, iam.Mu
 	if err != nil {
 		return "", "", err
 	}
-	vaultRegisterServerResponseBytes, err := vs.makeRequest("POST", path, nil, bodyBytes)
+	vaultRegisterServerResponseBytes, err := vc.makeRequest("POST", path, nil, bodyBytes)
 	if err != nil {
 		return "", "", err
 	}
@@ -311,8 +497,16 @@ func (vs *VaultClient) RegisterServer(server ext.Server) (ext.ServerUUID, iam.Mu
 	return vaultRegisterServerResponse.Data.ServerUUID, vaultRegisterServerResponse.Data.MultipassJWT, nil
 }
 
-func (vs *VaultClient) UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
+func (vc *vaultClient) UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
 	serverUUID ext.ServerUUID, connInfo ext.ConnectionInfo) (*ext.Server, error) {
+	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
+		Role:        ServersRegisterRole,
+		TenantUUID:  tenantUUID,
+		ProjectUUID: projectUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
 	path := fmt.Sprintf("/v1/flant_iam/tenant/%s/project/%s/server/%s/connection_info", tenantUUID, projectUUID, serverUUID)
 	data := map[string]interface{}{
 		"hostname":      connInfo.Hostname,
@@ -324,7 +518,7 @@ func (vs *VaultClient) UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, pro
 	if err != nil {
 		return nil, err
 	}
-	updateServerConnectionInfoBytes, err := vs.makeRequest("POST", path, nil, bodyBytes)
+	updateServerConnectionInfoBytes, err := vc.makeRequest("POST", path, nil, bodyBytes)
 	if err != nil {
 		return nil, err
 	}

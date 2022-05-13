@@ -19,9 +19,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 
-	dberrors "github.com/flant/server-access/flant-server-accessd/db/errors"
-	"github.com/flant/server-access/flant-server-accessd/db/sqlite/migrations"
-	"github.com/flant/server-access/flant-server-accessd/types"
+	dberrors "github.com/flant/negentropy/server-access/flant-server-accessd/db/errors"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/db/sqlite/migrations"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
 )
 
 const (

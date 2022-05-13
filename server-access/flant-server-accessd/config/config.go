@@ -6,9 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/flant/server-access/util"
-	"github.com/flant/server-access/vault"
 	"sigs.k8s.io/yaml"
+
+	"github.com/flant/negentropy/server-access/util"
+	"github.com/flant/negentropy/server-access/vault"
 )
 
 type Config struct {

@@ -3,6 +3,7 @@ package authd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/flant/negentropy/authd/pkg/util"
 	"github.com/flant/negentropy/authd/pkg/util/exponential"
 	"github.com/flant/negentropy/authd/pkg/vault"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 /**
@@ -164,7 +166,10 @@ func (c *Client) OpenVaultSession(loginRequest *v1.LoginRequest) error {
 	defer cancelFunc()
 	resp, err := cl.RawRequestWithContext(ctx, req)
 	if err != nil {
-		return fmt.Errorf("raw request: %v", err)
+		if resp.StatusCode == http.StatusForbidden {
+			return fmt.Errorf("%w, err: %s", consts.ErrAccessForbidden, err.Error())
+		}
+		return fmt.Errorf("err: %w \n resp.status=: %d", err, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 

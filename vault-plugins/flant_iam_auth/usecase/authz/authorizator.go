@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
@@ -196,37 +195,15 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	var policy VaultPolicy
 
 	switch {
+	case rc.Role == "tenants.list.auth": // only default paths: list tenants and token_owner
+		fallthrough
+	case rc.Role == "tenant.read.auth":
+		fallthrough
 	case rc.Role == "ssh.open":
-		role, err := a.RoleRepo.GetByID(rc.Role)
+		fallthrough
+	case rc.Role == "servers.query":
+		role, effectiveRoles, err := a.checkScopeAndCollectEffectiveRoles(rc, subject)
 		if err != nil {
-			err = fmt.Errorf("error catching role %s:%w", rc.Role, err)
-			a.Logger.Error(err.Error())
-			return nil, err
-		}
-		var effectiveRoles []iam_usecase.EffectiveRole
-		var found bool
-		switch {
-		case subject.Type == "user" && role.Scope == "project":
-			found, effectiveRoles, err = a.RolesResolver.CheckUserForProjectScopedRole(subject.UUID, rc.Role, rc.ProjectUUID)
-		case subject.Type == "user" && role.Scope == "tenant":
-			found, effectiveRoles, err = a.RolesResolver.CheckUserForTenantScopedRole(subject.UUID, rc.Role, rc.TenantUUID)
-		case subject.Type == "service_account" && role.Scope == "project":
-			found, effectiveRoles, err = a.RolesResolver.CheckServiceAccountForProjectScopedRole(subject.UUID, rc.Role,
-				rc.ProjectUUID)
-		case subject.Type == "service_account" && role.Scope == "tenant":
-			found, effectiveRoles, err = a.RolesResolver.CheckServiceAccountForTenantScopedRole(subject.UUID, rc.Role,
-				rc.TenantUUID)
-		}
-		if !found {
-			err = fmt.Errorf("not found rolebindings, subject_type=%s, subject_uuid=%s, role=%s",
-				subject.Type, subject.UUID, role.Name)
-			a.Logger.Error(err.Error())
-			return nil, err
-		}
-		if err != nil {
-			err = fmt.Errorf("error searching, subject_type=%s, subject_uuid=%s, role=%s :%w",
-				subject.Type, subject.UUID, role.Name, err)
-			a.Logger.Error(err.Error())
 			return nil, err
 		}
 		ctx := context.Background()
@@ -256,33 +233,12 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 			a.Logger.Error(err.Error())
 			return nil, err
 		}
-		for _, r := range regoResult.VaultRules {
-			r.Path = strings.ReplaceAll(r.Path, "<tenant_uuid>", rc.TenantUUID)
-			r.Path = strings.ReplaceAll(r.Path, "<project_uuid>", rc.ProjectUUID)
-		}
 
 		policy = VaultPolicy{
 			Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: regoResult.VaultRules,
-
-			// []Rule{
-			// {
-			//	Path:   "ssh/sign/signer",
-			//	Update: true,
-			// }, {
-			//	Path: "auth/flant_iam_auth/multipass_owner",
-			//	Read: true,
-			// }, {
-			//	Path: "auth/flant_iam_auth/query_server", // TODO
-			//	Read: true,
-			// }, {
-			//	Path: "auth/flant_iam_auth/tenant/*", // TODO  split for tenant_list and others
-			//	Read: true,
-			//	List: true,
-			// },
-			// },
 		}
-		a.Logger.Debug("REMOVE IT VaultPolicy= %#v", policy)
+		a.Logger.Debug(fmt.Sprintf("REMOVE IT VaultPolicy= %#v", policy))
 
 	case rc.Role == "iam_read" && rc.TenantUUID != "":
 		policy = VaultPolicy{
@@ -453,6 +409,81 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	return &policy, nil
 }
 
+// check role scope and passed claim, if correct, collect  effectiveRoles
+func (a *Authorizator) checkScopeAndCollectEffectiveRoles(rc model.RoleClaim, subject model.Subject) (*iam.Role, []iam_usecase.EffectiveRole, error) {
+	role, err := a.RoleRepo.GetByID(rc.Role)
+	if err != nil {
+		err = fmt.Errorf("error catching role %s:%w", rc.Role, err)
+		a.Logger.Error(err.Error())
+		return nil, nil, err
+	}
+	scope, err := checkAndEvaluateScope(role, rc.TenantUUID, rc.ProjectUUID)
+	if err != nil {
+		a.Logger.Error(err.Error())
+		return nil, nil, err
+	}
+
+	var effectiveRoles []iam_usecase.EffectiveRole
+	var found bool
+	switch {
+
+	case subject.Type == "user" && scope == projectScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckUserForRolebindingsAtProject(subject.UUID, rc.Role, rc.ProjectUUID)
+	case subject.Type == "user" && scope == tenantScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckUserForRolebindingsAtTenant(subject.UUID, rc.Role, rc.TenantUUID)
+	case subject.Type == "user" && scope == globalScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckUserForRolebindings(subject.UUID, rc.Role)
+
+	case subject.Type == "service_account" && scope == projectScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckServiceAccountForRolebindingsAtProject(subject.UUID, rc.Role,
+			rc.ProjectUUID)
+	case subject.Type == "service_account" && scope == tenantScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckServiceAccountForRolebindingsAtTenant(subject.UUID, rc.Role,
+			rc.TenantUUID)
+	case subject.Type == "service_account" && scope == globalScope:
+		found, effectiveRoles, err = a.RolesResolver.CheckServiceAccountForRolebindings(subject.UUID, rc.Role)
+	}
+	if !found {
+		a.Logger.Warn(fmt.Sprintf("not found rolebindings, subject_type=%s, subject_uuid=%s, role=%s, if policy needs rolebindings, login fail",
+			subject.Type, subject.UUID, role.Name))
+	}
+	if err != nil {
+		err = fmt.Errorf("error searching, subject_type=%s, subject_uuid=%s, role=%s :%w",
+			subject.Type, subject.UUID, role.Name, err)
+		a.Logger.Error(err.Error())
+		return nil, nil, err
+	}
+	return role, effectiveRoles, nil
+}
+
+const (
+	errorScope = iota
+	globalScope
+	tenantScope
+	projectScope
+)
+
+// checkAndEvaluateScope according role.Scope, role.TenantIsOptional and role.ProjectIsOptional evaluate scope:
+// a) globalScope, b) "tenant" c) "project" and check is all necessary passed
+func checkAndEvaluateScope(role *iam.Role, tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID) (int, error) {
+	// global
+	if ((role.Scope == iam.RoleScopeProject && role.TenantIsOptional && role.ProjectIsOptional) || (role.Scope == iam.RoleScopeTenant && role.TenantIsOptional)) &&
+		tenantUUID == "" && projectUUID == "" {
+		return globalScope, nil
+	}
+	// tenant
+	if ((role.Scope == iam.RoleScopeProject && role.ProjectIsOptional) || (role.Scope == iam.RoleScopeTenant)) &&
+		tenantUUID != "" && projectUUID == "" {
+		return tenantScope, nil
+	}
+	// project
+	if (role.Scope == iam.RoleScopeProject) &&
+		tenantUUID != "" && projectUUID != "" {
+		return projectScope, nil
+	}
+	return errorScope, fmt.Errorf("error scope: role: %#v, passed tenant_uuid='%s', project_uuid='%s'", role, tenantUUID, projectUUID)
+}
+
 // authorizeServiceAccount called from authorizeTokenOwner in case token is owned by service_account
 func (a *Authorizator) authorizeServiceAccount(sa *iam.ServiceAccount, method *model.AuthMethod, source *model.AuthSource) (*logical.Auth, error) {
 	// todo some logic for sa here
@@ -596,7 +627,6 @@ func (a *Authorizator) createDynamicPolicies(policies []VaultPolicy) error {
 func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn, subject model.Subject) (*logical.Auth, error) {
 	// check is user/sa still active
 	// TODO check rolebinding still active
-	a.Logger.Debug(fmt.Sprintf("===REMOVE IT !!!!=== %#v", subject))
 	var owner memdb.Archivable
 	var err error
 	switch subject.Type {

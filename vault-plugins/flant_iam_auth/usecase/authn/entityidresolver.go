@@ -241,7 +241,6 @@ func NewEntityIDResolver(logger log.Logger, vaultClientProvider client.VaultClie
 func collectProjectUUIDsFromRoleBindings(rbs1 map[iam.RoleBindingUUID]*iam.RoleBinding,
 	rbs2 map[iam.RoleBindingUUID]*iam.RoleBinding, projectRepo *iam_repo.ProjectRepository) (map[iam.ProjectUUID]struct{}, error) {
 	result := map[iam.ProjectUUID]struct{}{}
-
 	fullTenants := map[iam.TenantUUID]struct{}{}
 	for _, rb := range rbs1 {
 		err := processRoleBinding(rb, &fullTenants, projectRepo, &result)

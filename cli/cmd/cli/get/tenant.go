@@ -86,8 +86,11 @@ func getTenantData(onlyCache bool, cache *model.Cache, serverFilter model.Server
 			}
 		}
 	} else {
-		var err error
-		tenants, err = vault.NewService().UpdateTenants(cache.Tenants, serverFilter.TenantIdentifiers)
+		vaultService, err := vault.NewService()
+		if err != nil {
+			return nil, err
+		}
+		tenants, err = vaultService.UpdateTenants(cache.Tenants, serverFilter.TenantIdentifiers)
 
 		if err != nil {
 			return nil, err

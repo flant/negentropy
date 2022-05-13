@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
+	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/cli/pkg"
 	"github.com/flant/negentropy/e2e/tests/lib"
-	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
@@ -86,7 +86,7 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 			}},
 			Projects:   []string{result.Project.UUID},
 			AnyProject: false,
-			Roles:      []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{}}},
+			Roles:      []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.ServiceAccountRoleBinding)
 
@@ -144,17 +144,29 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 func registerServer(saPassword model.ServiceAccountPassword, tIdentifier string, pIdentifier string,
 	sIdentifier string, labels map[string]string) (model2.Server, model.MultipassJWT) {
 	// get client just for tenants list
-	cl := getClientAuthorizedWithSAPass(saPassword, nil)
+	cl, err := pkg.VaultClientAuthorizedWithSAPass(lib.GetRootVaultUrl(), saPassword, nil)
+	Expect(err).ToNot(HaveOccurred())
 	tenant, err := cl.GetTenantByIdentifier(tIdentifier)
 	Expect(err).ToNot(HaveOccurred())
 	// get client just for project list
-	cl = getClientAuthorizedWithSAPass(saPassword, []map[string]interface{}{
-		{"role": "iam_auth_read", "tenant_uuid": tenant.UUID}})
+	cl, err = pkg.VaultClientAuthorizedWithSAPass(lib.GetRootVaultUrl(), saPassword, []v1.RoleWithClaim{
+		{
+			Role:       "tenant.read.auth",
+			TenantUUID: tenant.UUID,
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
 	project, err := cl.GetProjectByIdentifier(tenant.UUID, pIdentifier)
 	Expect(err).ToNot(HaveOccurred())
 	// get client for registering server
-	cl = getClientAuthorizedWithSAPass(saPassword, []map[string]interface{}{
-		{"role": "servers.register", "tenant_uuid": tenant.UUID, "project_uuid": project.UUID}})
+	cl, err = pkg.VaultClientAuthorizedWithSAPass(lib.GetRootVaultUrl(), saPassword, []v1.RoleWithClaim{
+		{
+			Role:        "servers.register",
+			TenantUUID:  tenant.UUID,
+			ProjectUUID: project.UUID,
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
 	serverUUID, multipassJWT, err := cl.RegisterServer(
 		model2.Server{
 			TenantUUID:  tenant.UUID,
@@ -168,22 +180,6 @@ func registerServer(saPassword model.ServiceAccountPassword, tIdentifier string,
 	})
 	Expect(err).ToNot(HaveOccurred())
 	return *server, multipassJWT
-}
-
-func getClientAuthorizedWithSAPass(password model.ServiceAccountPassword, roles []map[string]interface{}) pkg.VaultClient {
-	cl := configure.GetClientWithToken("", lib.GetRootVaultUrl())
-	cl.ClearToken()
-	secret, err := cl.Logical().Write(lib.IamAuthPluginPath+"/login", map[string]interface{}{
-		"method":                          "sapassword",
-		"service_account_password_uuid":   password.UUID,
-		"service_account_password_secret": password.Secret,
-		"roles":                           roles,
-	})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(secret).ToNot(BeNil())
-	Expect(secret.Auth).ToNot(BeNil())
-	cl.SetToken(secret.Auth.ClientToken)
-	return pkg.VaultClient{Client: cl}
 }
 
 func (st Suite) createRoleIfNotExist(roleName string, scope model.RoleScope) {

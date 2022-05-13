@@ -52,7 +52,7 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, effectiveRoles, err := rr.CheckUserForProjectScopedRole(fixtures.UserUUID1, fixtures.RoleName1,
+	hasRole, effectiveRoles, err := rr.CheckUserForRolebindingsAtProject(fixtures.UserUUID1, fixtures.RoleName1,
 		fixtures.ProjectUUID1)
 
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, effectiveRoles, err := rr.CheckServiceAccountForProjectScopedRole(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
+	hasRole, effectiveRoles, err := rr.CheckServiceAccountForRolebindingsAtProject(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
 		fixtures.ProjectUUID1)
 
 	require.NoError(t, err)
@@ -104,7 +104,7 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, effectiveRoles, err := rr.CheckUserForTenantScopedRole(fixtures.UserUUID2, fixtures.RoleName9,
+	hasRole, effectiveRoles, err := rr.CheckUserForRolebindingsAtTenant(fixtures.UserUUID2, fixtures.RoleName9,
 		fixtures.TenantUUID1)
 
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
 	}
 
-	hasRole, effectiveRoles, err := rr.CheckServiceAccountForTenantScopedRole(fixtures.ServiceAccountUUID2,
+	hasRole, effectiveRoles, err := rr.CheckServiceAccountForRolebindingsAtTenant(fixtures.ServiceAccountUUID2,
 		fixtures.RoleName9, fixtures.TenantUUID1)
 
 	require.NoError(t, err)

@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	dberrors "github.com/flant/server-access/flant-server-accessd/db/errors"
-	"github.com/flant/server-access/flant-server-accessd/types"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	dberrors "github.com/flant/negentropy/server-access/flant-server-accessd/db/errors"
+	"github.com/flant/negentropy/server-access/flant-server-accessd/types"
 )
 
 const (

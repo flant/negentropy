@@ -18,8 +18,16 @@ policies = [
     {'name': 'ssh.open', 'roles': ['ssh.open'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['multipass'],
      'rego_file': 'ssh.open.rego'},
     {'name': 'servers.query', 'roles': ['servers.query'], 'claim_schema': 'TODO',
-     'allowed_auth_methods': ['multipass'],
-     'rego_file': 'servers.query.rego'}]
+     'allowed_auth_methods': ['multipass', 'sapassword'],
+     'rego_file': 'servers.query.rego'},
+    {'name': 'tenant.read.auth', 'roles': ['tenant.read.auth'], 'claim_schema': 'TODO',
+     'allowed_auth_methods': ['multipass', 'sapassword'],
+     'rego_file': 'tenant.read.auth.rego'},
+    {'name': 'tenants.list.auth', 'roles': ['tenants.list.auth'], 'claim_schema': 'TODO',
+     'allowed_auth_methods': ['multipass', 'sapassword', 'okta-oidc'],
+     'rego_file': 'tenants.list.auth.rego'},
+
+]
 
 # need in case of first run to provide time for roles appears at auth plugins
 time.sleep(5)

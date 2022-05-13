@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+	"github.com/flant/negentropy/authd/pkg/client_error"
 	jwt2 "github.com/flant/negentropy/authd/pkg/jwt"
 )
 
@@ -68,7 +70,10 @@ func (c *Client) LoginWithJWTAndClaims(ctx context.Context, jwt string, claimedR
 
 	resp, err := cl.RawRequestWithContext(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("vault request: %v", err)
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, client_error.NewHTTPError(err, http.StatusForbidden, []string{"vault returns 403 status"})
+		}
+		return nil, fmt.Errorf("%w: vault reponse: %v", err, resp.Body)
 	}
 	defer resp.Body.Close()
 
