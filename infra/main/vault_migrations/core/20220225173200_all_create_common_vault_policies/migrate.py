@@ -17,7 +17,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
                                              policy="""path "auth/token/lookup-self" {capabilities = ["create", "update", "read"]} path "auth/token/renew-self" {capabilities = ["create", "update", "read"]} """)
     print("INFO: create vst_owner policy at '{}' vault".format(vault_name))
     vault_client.sys.create_or_update_policy(name="vst_owner",
-                                             policy="""path "auth/flant_iam_auth/vst_owner" {capabilities = ["read"]}""")
+                                             policy="""path "auth/flant/vst_owner" {capabilities = ["read"]}""")
     print("INFO: create list_tenants policy at '{}' vault".format(vault_name))
     vault_client.sys.create_or_update_policy(name="list_tenants",
-                                             policy="""path "auth/flant_iam_auth/tenant/" {capabilities = ["list"]}""")
+                                             policy="""path "auth/flant/tenant/" {capabilities = ["list"]}""")

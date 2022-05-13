@@ -115,7 +115,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return nil, err
 	}
 
-	b.accessorGetter = vault.NewMountAccessorGetter(b.accessVaultProvider, "flant_iam_auth/")
+	b.accessorGetter = vault.NewMountAccessorGetter(b.accessVaultProvider, "flant/")
 	entityApi := vault.NewVaultEntityDownstreamApi(b.accessVaultProvider, b.accessorGetter, conf.Logger)
 
 	storage, err := sharedio.NewMemoryStore(schema, mb, conf.Logger)

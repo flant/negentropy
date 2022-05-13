@@ -9,8 +9,11 @@ class Vault(TypedDict):
     url: str
 
 
-auth_vault_plugins = {'ssh': 'secret', 'flant_iam_auth': 'auth'}
-root_vault_plugins = {'ssh': 'secret', 'flant_iam_auth': 'auth', 'flant_iam': 'secret'}
+# plugins = {plugin_name:{"type":plugin_type, "path":plugin_path}}
+
+auth_vault_plugins = {'ssh': {'type': 'secret', 'path': 'ssh'}, 'flant_iam_auth': {'type': 'auth', 'path': 'flant'}}
+root_vault_plugins = {'ssh': {'type': 'secret', 'path': 'ssh'}, 'flant_iam_auth': {'type': 'auth', 'path': 'flant'},
+                      'flant_iam': {'type': 'secret', 'path': 'flant'}}
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
@@ -23,13 +26,15 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         plugins_to_activate = root_vault_plugins
     else:
         plugins_to_activate = auth_vault_plugins
-    for plugin_name, plugin_type in plugins_to_activate.items():
+    for plugin_name, plugin in plugins_to_activate.items():
+        plugin_type = plugin['type']
+        plugin_path = plugin['path']
         if plugin_type == 'secret':
             if plugin_name + '/' not in active_secrets:
                 vault_client.sys.enable_secrets_engine(
                     backend_type=plugin_name,
-                    path=plugin_name,
-                    plugin_name=plugin_name,
+                    path=plugin_path,
+                    plugin_name=plugin_path,
                 )
                 print("INFO: secret plugin '{}' is activated at '{}' vault".format(plugin_name, vault_name))
             else:
@@ -38,8 +43,8 @@ def upgrade(vault_name: str, vaults: List[Vault]):
             if plugin_name + '/' not in active_auths:
                 vault_client.sys.enable_auth_method(
                     method_type=plugin_name,
-                    path=plugin_name,
-                    plugin_name=plugin_name,
+                    path=plugin_path,
+                    plugin_name=plugin_path,
                 )
                 print("INFO: auth plugin '{}' is activated at '{}' vault".format(plugin_name, vault_name))
             else:

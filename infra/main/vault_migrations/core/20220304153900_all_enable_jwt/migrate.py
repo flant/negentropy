@@ -23,6 +23,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     for plugin in plugins:
         print("INFO: enable jwt for '{}' plugin at '{}' vault".format(plugin,vault_name))
         if plugin == 'flant_iam_auth':
-            vault_client.write(path='auth/flant_iam_auth/jwt/enable')
+            vault_client.write(path='auth/flant/jwt/enable')
         elif plugin == 'flant_iam':
-            vault_client.write(path='flant_iam/jwt/enable')
+            vault_client.write(path='flant/jwt/enable')

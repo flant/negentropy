@@ -62,19 +62,19 @@ test_allow_by_first_rb_check_rules {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/t1"
+                        "path": "auth/flant/tenant/t1"
                     },
                     {
                         "capabilities": [
                             "list"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/t1/project"
+                        "path": "auth/flant/tenant/t1/project"
                     },
                     {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/t1/project/+"
+                        "path": "auth/flant/tenant/t1/project/+"
                     }
                 ]
      with input as ok_input_firts_rb
@@ -180,19 +180,19 @@ test_forbid_by_show_paths_check_rules {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/<tenant_uuid>"
+                        "path": "auth/flant/tenant/<tenant_uuid>"
                     },
                     {
                         "capabilities": [
                             "list"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/<tenant_uuid>/project"
+                        "path": "auth/flant/tenant/<tenant_uuid>/project"
                     },
                     {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/<tenant_uuid>/project/+"
+                        "path": "auth/flant/tenant/<tenant_uuid>/project/+"
                     }
                 ]
      with input as show_paths_input

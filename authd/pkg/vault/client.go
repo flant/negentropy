@@ -23,8 +23,8 @@ type Client struct {
 }
 
 const (
-	DefaultLoginEndpoint = "/v1/auth/flant_iam_auth/login"
-	ObtainJWTURL         = "/v1/auth/flant_iam_auth/issue/multipass_jwt/"
+	DefaultLoginEndpoint = "/v1/auth/flant/login"
+	ObtainJWTURL         = "/v1/auth/flant/issue/multipass_jwt/"
 )
 
 var DefaultScheme = "https"

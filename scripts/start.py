@@ -134,11 +134,11 @@ def check_response(resp: requests.Response, expected_status_code: int = 200) -> 
 def create_privileged_tenant(vault: Vault, tenant_uuid: str, identifier: str):
     """create tenant if not exists"""
     vault_client = hvac.Client(url=vault.url, token=vault.token)
-    resp = vault_client.read(path="flant_iam/tenant/" + tenant_uuid)
+    resp = vault_client.read(path="flant/tenant/" + tenant_uuid)
     if resp:
         print("tenant with uuid '{}' already exists".format(tenant_uuid))
         return
-    vault_client.write(path="flant_iam/tenant/privileged", uuid=tenant_uuid, identifier=identifier)
+    vault_client.write(path="flant/tenant/privileged", uuid=tenant_uuid, identifier=identifier)
     print("tenant with uuid '{}' created".format(tenant_uuid))
 
 
@@ -148,18 +148,18 @@ proto_team_uuid = '58df57d6-d75b-4889-a1cf-15d95e90198a'
 def create_privileged_team_proto(vault: Vault):
     """create proto team for first teammate"""
     vault_client = hvac.Client(url=vault.url, token=vault.token)
-    resp = vault_client.read(path="flant_iam/team/" + proto_team_uuid)
+    resp = vault_client.read(path="flant/team/" + proto_team_uuid)
     if resp:
         print("proto team uuid '{}' already exists".format(proto_team_uuid))
         return
-    vault_client.write(path='flant_iam/team/privileged', uuid=proto_team_uuid, identifier="proto",
+    vault_client.write(path='flant/team/privileged', uuid=proto_team_uuid, identifier="proto",
                        team_type='standard_team')
     print("proto team uuid  '{}' created".format(proto_team_uuid))
 
 
 def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, identifier: str):
     """create user if not exists"""
-    base_path = "flant_iam/team/{}/teammate/".format(proto_team_uuid)
+    base_path = "flant/team/{}/teammate/".format(proto_team_uuid)
     vault_client = hvac.Client(url=vault.url, token=vault.token)
     resp = vault_client.read(path=base_path + teammate_uuid)
     if resp:
@@ -171,7 +171,7 @@ def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, i
 
 def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, identifier: str):
     """create user if not exists"""
-    base_path = "flant_iam/tenant/{}/user/".format(tenant_uuid)
+    base_path = "flant/tenant/{}/user/".format(tenant_uuid)
     vault_client = hvac.Client(url=vault.url, token=vault.token)
     resp = vault_client.read(path=base_path + user_uuid)
     if resp:
@@ -184,7 +184,7 @@ def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, ident
 def create_user_multipass(vault: Vault, tenant_uuid: str, user_uuid: str, ttl_sec: int) -> str:
     """create user multipass"""
     vault_client = hvac.Client(url=vault.url, token=vault.token)
-    resp = vault_client.write(path="flant_iam/tenant/{}/user/{}/multipass".format(tenant_uuid, user_uuid), ttl=ttl_sec)
+    resp = vault_client.write(path="flant/tenant/{}/user/{}/multipass".format(tenant_uuid, user_uuid), ttl=ttl_sec)
     body = resp.json()
     if type(body) is not dict:
         raise Exception("expect dict, got:{}".format(type(body)))

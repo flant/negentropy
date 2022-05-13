@@ -32,11 +32,11 @@ func Test(t *testing.T) {
 const (
 	methodReaderOnlyPolicyName = "method_reader"
 	methodReaderOnlyPolicy     = `
-path "auth/flant_iam_auth/auth_method/*" {
+path "auth/flant/auth_method/*" {
   capabilities = ["read"]
 }
 
-path "auth/flant_iam_auth/issue/multipass_jwt/*" {
+path "auth/flant/issue/multipass_jwt/*" {
   capabilities = ["update"]
 }
 
@@ -324,7 +324,7 @@ var _ = BeforeSuite(func() {
 		"token_no_default_policy": true,
 	})
 
-	mountAccessorId, err = vault.NewMountAccessorGetter(&client.MockVaultClientController{Client: iamAuthClientWithRoot}, "flant_iam_auth/").MountAccessor()
+	mountAccessorId, err = vault.NewMountAccessorGetter(&client.MockVaultClientController{Client: iamAuthClientWithRoot}, "flant/").MountAccessor()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mountAccessorId).ToNot(BeEmpty())
 })

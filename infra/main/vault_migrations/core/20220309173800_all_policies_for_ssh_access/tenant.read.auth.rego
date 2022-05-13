@@ -53,9 +53,9 @@ tenant_uuid = t {
     	show_paths
 }
 
-read_tenant_path = concat("/",["auth","flant_iam_auth","tenant",tenant_uuid]) {tenant_is_passed} {show_paths}
-list_projects_path = concat("/",["auth","flant_iam_auth","tenant",tenant_uuid, "project"]) {tenant_is_passed} {show_paths}
-read_project_path = concat("/",["auth","flant_iam_auth","tenant",tenant_uuid, "project", "+"]) {tenant_is_passed} {show_paths}
+read_tenant_path = concat("/",["auth","flant","tenant",tenant_uuid]) {tenant_is_passed} {show_paths}
+list_projects_path = concat("/",["auth","flant","tenant",tenant_uuid, "project"]) {tenant_is_passed} {show_paths}
+read_project_path = concat("/",["auth","flant","tenant",tenant_uuid, "project", "+"]) {tenant_is_passed} {show_paths}
 
 # rules for building vault policies
 rules = [

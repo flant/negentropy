@@ -29,42 +29,42 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault_client = hvac.Client(url=vault['url'], token=vault['token'])
     print("INFO: configure flant_flow extension at '{}' vault".format(vault_name))
 
-    cfg = vault_client.read(path='flant_iam/configure_extension/flant_flow').get('data').get('flant_flow_cfg')
+    cfg = vault_client.read(path='flant/configure_extension/flant_flow').get('data').get('flant_flow_cfg')
 
     print("INFO: creating tenant '{}' with uuid '{}'".format(flant_identifier, flant_tenant_uuid))
     flant = cfg.get('flant_tenant_uuid')
     if not flant or flant == '':
-        vault_client.write(path='flant_iam/client/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/flant_tenant/' + flant_tenant_uuid)
+        vault_client.write(path='flant/client/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
+        vault_client.write(path='flant/configure_extension/flant_flow/flant_tenant/' + flant_tenant_uuid)
 
     print("INFO: creating group 'all@flant' with uuid '{}'".format(all_flant_group_uuid))
     all_flant_group = cfg.get('all_flant_group_uuid')
     if not all_flant_group or all_flant_group == '':
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/all_flant_group/' + all_flant_group_uuid)
+        vault_client.write(path='flant/configure_extension/flant_flow/all_flant_group/' + all_flant_group_uuid)
 
     print("INFO: creating role rules")
     rules = cfg.get('roles_for_specific_teams')
     if not rules or not rules.get(devops_team):
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/role_rules/' + devops_team,
+        vault_client.write(path='flant/configure_extension/flant_flow/role_rules/' + devops_team,
                            specific_roles=['ssh.open'])  # ssh.open includes roles: servers.query, tenant.read.auth
 
     print("INFO: configure teams")
     teams = cfg.get('specific_teams')
     if not teams.get(l1_team_name):
-        vault_client.write(path='flant_iam/team/privileged', uuid=l1_team_uuid, identifier=l1_team_id,
+        vault_client.write(path='flant/team/privileged', uuid=l1_team_uuid, identifier=l1_team_id,
                            team_type='standard_team')
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/specific_teams',
+        vault_client.write(path='flant/configure_extension/flant_flow/specific_teams',
                            specific_teams={l1_team_name: l1_team_uuid})
         print("INFO: team '{}' with uuid '{}' created".format(l1_team_name, l1_team_uuid))
     if not teams.get(mk8s_team_name):
-        vault_client.write(path='flant_iam/team/privileged', uuid=mk8s_team_uuid, identifier=mk8s_team_id,
+        vault_client.write(path='flant/team/privileged', uuid=mk8s_team_uuid, identifier=mk8s_team_id,
                            team_type='standard_team')
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/specific_teams',
+        vault_client.write(path='flant/configure_extension/flant_flow/specific_teams',
                            specific_teams={mk8s_team_name: mk8s_team_uuid})
         print("INFO: team '{}' with uuid '{}' created".format(mk8s_team_name, mk8s_team_uuid))
     if not teams.get(okmeter_team_name):
-        vault_client.write(path='flant_iam/team/privileged', uuid=okmeter_team_uuid, identifier=okmeter_team_id,
+        vault_client.write(path='flant/team/privileged', uuid=okmeter_team_uuid, identifier=okmeter_team_id,
                            team_type='standard_team')
-        vault_client.write(path='flant_iam/configure_extension/flant_flow/specific_teams',
+        vault_client.write(path='flant/configure_extension/flant_flow/specific_teams',
                            specific_teams={okmeter_team_name: okmeter_team_uuid})
         print("INFO: team '{}' with uuid '{}' created".format(okmeter_team_name, okmeter_team_uuid))
