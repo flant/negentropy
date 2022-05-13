@@ -42,4 +42,4 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         with open(os.path.join(folder, policy['rego_file']), "r") as f:
             policy['rego'] = f.read()
             print("INFO: create policy '{}' at '{}' vault".format(policy['name'], vault_name))
-            vault_client.write(path='auth/flant_iam_auth/login_policy', **policy)
+            vault_client.write(path='auth/flant/login_policy', **policy)

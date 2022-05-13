@@ -118,7 +118,7 @@ func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUI
 	Expect(err).ToNot(HaveOccurred())
 	cl.SetToken(lib.GetRootRootToken())
 	cl.SetAddress(lib.GetRootVaultUrl())
-	secret, err := cl.Logical().Read(fmt.Sprintf("/flant_iam/tenant/%s/project/%s/server/%s", tenantUUID, projectUUID, serverUUID))
+	secret, err := cl.Logical().Read(fmt.Sprintf("/flant/tenant/%s/project/%s/server/%s", tenantUUID, projectUUID, serverUUID))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(secret).ToNot(BeNil())
 	Expect(secret.Data).ToNot(BeNil())

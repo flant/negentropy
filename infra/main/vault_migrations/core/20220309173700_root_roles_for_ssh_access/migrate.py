@@ -26,9 +26,9 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     for role, kwargs in roles.items():
         print('INFO: create role `{}` at `{}` vault'.format(role, vault_name))
         kwargs['name'] = role
-        vault_client.write(path='flant_iam/role', **kwargs)
+        vault_client.write(path='flant/role', **kwargs)
 
-    vault_client.write(path='flant_iam/role/ssh.open/include/servers.query')
-    vault_client.write(path='flant_iam/role/ssh.open/include/tenant.read.auth')
+    vault_client.write(path='flant/role/ssh.open/include/servers.query')
+    vault_client.write(path='flant/role/ssh.open/include/tenant.read.auth')
 
-    vault_client.write(path='flant_iam/role/servers.register/include/tenant.read.auth')
+    vault_client.write(path='flant/role/servers.register/include/tenant.read.auth')

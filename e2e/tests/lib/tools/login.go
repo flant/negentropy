@@ -15,7 +15,7 @@ func LoginAccessToken(positiveCase bool, params map[string]interface{}, vaultAdd
 	cl := configure.GetClientWithToken("", vaultAddr)
 	cl.ClearToken()
 
-	secret, err := cl.Logical().Write("auth/flant_iam_auth/login", params)
+	secret, err := cl.Logical().Write("auth/flant/login", params)
 
 	if positiveCase {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())

@@ -41,8 +41,8 @@ func (t *customHeadersTransport) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 const (
-	IamPluginPath     = "flant_iam"
-	IamAuthPluginPath = "auth/flant_iam_auth"
+	IamPluginPath     = "flant"
+	IamAuthPluginPath = "auth/flant"
 )
 
 func NewIamVaultClient(token string) *http.Client {
@@ -159,7 +159,7 @@ func Repeat(f func() error, maxAttempts int) error {
 }
 
 func TryLoginByMultipassJWTToAuthVault(multipassJWT string, vaultUrl string) error {
-	url := vaultUrl + "/v1/auth/flant_iam_auth/login"
+	url := vaultUrl + "/v1/auth/flant/login"
 	payload := map[string]interface{}{
 		"method": "multipass",
 		"jwt":    multipassJWT,

@@ -32,7 +32,7 @@ func Test_Client_LoginAndUseToken(t *testing.T) {
 	fmt.Printf("client token: %s\n", vaultClient.Token())
 
 	// use authorized client
-	s, err := vaultClient.Logical().List("auth/flant_iam_auth/tenant/")
+	s, err := vaultClient.Logical().List("auth/flant/tenant/")
 	if err != nil {
 		t.Fatalf("Should list tenants: %v", err)
 	}
@@ -58,7 +58,7 @@ func Test_Client_LoginAndRenewToken(t *testing.T) {
 	}
 	fmt.Printf("client token: %s\n", vaultClient.Token())
 	// use authorized client
-	_, err = vaultClient.Logical().List("auth/flant_iam_auth/tenant/")
+	_, err = vaultClient.Logical().List("auth/flant/tenant/")
 	if err != nil {
 		t.Fatalf("Should list tenants: %v", err)
 	}

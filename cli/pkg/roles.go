@@ -12,21 +12,21 @@ const (
 
 	// ServersQueryRole is a project scoped role with optional tenant and project
 	// allows READ at one of:
-	// auth/flant_iam_auth/query_server
-	// auth/flant_iam_auth/tenant/<tenant_uuid>/query_server
-	// auth/flant_iam_auth/tenant/<tenant_uuid>/project/<project_uuid>/query_server
+	// auth/flant/query_server
+	// auth/flant/tenant/<tenant_uuid>/query_server
+	// auth/flant/tenant/<tenant_uuid>/project/<project_uuid>/query_server
 	ServersQueryRole = "servers.query"
 
 	// TenantReadAuthRole is a tenant scoped role, definitely needs  tenant
 	// allows:
-	// READ at auth/flant_iam_auth/tenant/<tenant_uuid>
-	// LIST at auth/flant_iam_auth/tenant/<tenant_uuid>/project
-	// READ at auth/flant_iam_auth/tenant/<tenant_uuid>/project/+
+	// READ at auth/flant/tenant/<tenant_uuid>
+	// LIST at auth/flant/tenant/<tenant_uuid>/project
+	// READ at auth/flant/tenant/<tenant_uuid>/project/+
 	TenantReadAuthRole = "tenant.read.auth"
 
 	// ServersRegisterRole is a project scoped role, definitely needs tenant and project
 	// allows:
-	// PUT at flant_iam/tenant/<tenant_uuid>/project/<project_uuid>/register_server
-	// PUT at flant_iam/tenant/<tenant_uuid>/project/<project_uuid>/server/+/connection_info
+	// PUT at flant/tenant/<tenant_uuid>/project/<project_uuid>/register_server
+	// PUT at flant/tenant/<tenant_uuid>/project/<project_uuid>/server/+/connection_info
 	ServersRegisterRole = "servers.register"
 )

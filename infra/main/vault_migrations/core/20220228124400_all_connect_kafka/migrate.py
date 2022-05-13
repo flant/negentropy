@@ -1,6 +1,6 @@
+import os
 from typing import TypedDict, List
 
-import os
 import hvac
 
 
@@ -52,6 +52,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     for plugin in plugins:
         print("INFO: configure kafka access for '{}' plugin at '{}' vault".format(plugin, vault_name))
         if plugin == 'flant_iam_auth':
-            vault_client.write(path='auth/flant_iam_auth/kafka/configure_access', **kafka_configure_options)
+            vault_client.write(path='auth/flant/kafka/configure_access', **kafka_configure_options)
         elif plugin == 'flant_iam':
-            vault_client.write(path='flant_iam/kafka/configure_access', **kafka_configure_options)
+            vault_client.write(path='flant/kafka/configure_access', **kafka_configure_options)

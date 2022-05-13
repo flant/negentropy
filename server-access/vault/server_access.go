@@ -47,7 +47,7 @@ func AssembleServerAccessSettings(settings ServerAccessSettings) ServerAccessSet
 	}
 }
 
-const FlantIAMMountpoint = "flant_iam_auth"
+const FlantIAMMountpoint = "flant"
 
 type FlantIAMAuth struct {
 	c *api.Client

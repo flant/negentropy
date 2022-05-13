@@ -21,7 +21,7 @@ allow {
 
 # rules for building vault policies (actually this path is allowed by default)
 rules = [
-	{"path":"auth/flant_iam_auth/tenant","capabilities":["list"]},
+	{"path":"auth/flant/tenant","capabilities":["list"]},
 ]
 
 ttl := requested_ttl {allow}

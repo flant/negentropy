@@ -63,7 +63,7 @@ test_allow_by_first_rb_check_rules {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/t1/project/p1/query_server"
+                        "path": "auth/flant/tenant/t1/project/p1/query_server"
                     }
                 }
      with input as ok_input_firts_rb
@@ -192,19 +192,19 @@ test_forbid_by_show_paths_check_rules {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/query_server"
+                        "path": "auth/flant/query_server"
                     },
                     {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/<tenant_uuid>/project/<project_uuid>/query_server"
+                        "path": "auth/flant/tenant/<tenant_uuid>/project/<project_uuid>/query_server"
                     },
                     {
                         "capabilities": [
                             "read"
                         ],
-                        "path": "auth/flant_iam_auth/tenant/<tenant_uuid>/query_server"
+                        "path": "auth/flant/tenant/<tenant_uuid>/query_server"
                     }
                 }
      with input as show_paths_input

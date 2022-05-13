@@ -169,7 +169,7 @@ func (v *Vault) TouchIAM() error {
 }
 
 func (v *Vault) TouchAUTH() error {
-	url := v.vaultURL + "/v1/auth/flant_iam_auth/auth_method/multipass"
+	url := v.vaultURL + "/v1/auth/flant/auth_method/multipass"
 	req, err := http.NewRequest("GET", url, nil)
 	dieOnErr(err)
 	req.Header["X-Vault-Token"] = []string{v.vaultToken}

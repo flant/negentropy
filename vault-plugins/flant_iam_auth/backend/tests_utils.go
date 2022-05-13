@@ -190,7 +190,7 @@ func (r *rawVaultApiRequester) Request(method, name string, params map[string]in
 }
 
 func (r *rawVaultApiRequester) newRequest(method, name string, params map[string]interface{}, q *url.Values) *api.Request {
-	path := fmt.Sprintf("/v1/auth/flant_iam_auth/%s/%s", r.prefix, name)
+	path := fmt.Sprintf("/v1/auth/flant/%s/%s", r.prefix, name)
 	request := r.cl.NewRequest(method, path)
 	if params != nil {
 		raw, err := json.Marshal(params)

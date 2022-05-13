@@ -244,15 +244,15 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
 			Rules: []Rule{{
-				Path: "flant_iam/tenant/" + rc.TenantUUID + "*",
+				Path: "flant/tenant/" + rc.TenantUUID + "*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/role/*",
+				Path: "flant/role/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/feature_flag/*",
+				Path: "flant/feature_flag/*",
 				Read: true,
 				List: true,
 			}},
@@ -262,18 +262,18 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
 			Rules: []Rule{{
-				Path:   "flant_iam/tenant/" + rc.TenantUUID + "*",
+				Path:   "flant/tenant/" + rc.TenantUUID + "*",
 				Read:   true,
 				List:   true,
 				Create: true,
 				Update: true,
 				Delete: true,
 			}, {
-				Path: "flant_iam/role/*",
+				Path: "flant/role/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/feature_flag/*",
+				Path: "flant/feature_flag/*",
 				Read: true,
 				List: true,
 			}},
@@ -283,15 +283,15 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: []Rule{{
-				Path: "flant_iam/*",
+				Path: "flant/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/role/*",
+				Path: "flant/role/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/feature_flag/*",
+				Path: "flant/feature_flag/*",
 				Read: true,
 				List: true,
 			}},
@@ -301,18 +301,18 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: []Rule{{
-				Path:   "flant_iam/*",
+				Path:   "flant/*",
 				Read:   true,
 				List:   true,
 				Create: true,
 				Update: true,
 				Delete: true,
 			}, {
-				Path: "flant_iam/role/*",
+				Path: "flant/role/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/feature_flag/*",
+				Path: "flant/feature_flag/*",
 				Read: true,
 				List: true,
 			}},
@@ -322,7 +322,7 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
 			Rules: []Rule{{
-				Path: "auth/flant_iam_auth/tenant/*",
+				Path: "auth/flant/tenant/*",
 				Read: true,
 				List: true,
 			}},
@@ -333,12 +333,12 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 			Name: fmt.Sprintf("%s_at_project_%s_of_%s_by_%s", rc.Role, rc.ProjectUUID, rc.TenantUUID, subject.UUID),
 			Rules: []Rule{
 				{
-					Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/register_server*", rc.TenantUUID, rc.ProjectUUID),
+					Path:   fmt.Sprintf("flant/tenant/%s/project/%s/register_server*", rc.TenantUUID, rc.ProjectUUID),
 					Create: true,
 					Update: true,
 				},
 				{
-					Path:   fmt.Sprintf("flant_iam/tenant/%s/project/%s/server*", rc.TenantUUID, rc.ProjectUUID),
+					Path:   fmt.Sprintf("flant/tenant/%s/project/%s/server*", rc.TenantUUID, rc.ProjectUUID),
 					Create: true,
 					Read:   true,
 					Update: true,
@@ -352,7 +352,7 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
 			Rules: []Rule{{
-				Path: "auth/flant_iam_auth/tenant/" + rc.TenantUUID + "*",
+				Path: "auth/flant/tenant/" + rc.TenantUUID + "*",
 				Read: true,
 				List: true,
 			}},
@@ -362,11 +362,11 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("flow_read_by_%s", subject.UUID),
 			Rules: []Rule{{
-				Path: "flant_iam/client/*",
+				Path: "flant/client/*",
 				Read: true,
 				List: true,
 			}, {
-				Path: "flant_iam/team/*",
+				Path: "flant/team/*",
 				Read: true,
 				List: true,
 			}},
@@ -376,28 +376,28 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 		policy = VaultPolicy{
 			Name: fmt.Sprintf("flow_write_by_%s", subject.UUID),
 			Rules: []Rule{{
-				Path:   "flant_iam/client",
+				Path:   "flant/client",
 				Create: true,
 				Read:   true,
 				Update: true,
 				Delete: true,
 				List:   true,
 			}, {
-				Path:   "flant_iam/client/*",
+				Path:   "flant/client/*",
 				Create: true,
 				Read:   true,
 				Update: true,
 				Delete: true,
 				List:   true,
 			}, {
-				Path:   "flant_iam/team",
+				Path:   "flant/team",
 				Create: true,
 				Read:   true,
 				Update: true,
 				Delete: true,
 				List:   true,
 			}, {
-				Path:   "flant_iam/team/*",
+				Path:   "flant/team/*",
 				Create: true,
 				Read:   true,
 				Update: true,
