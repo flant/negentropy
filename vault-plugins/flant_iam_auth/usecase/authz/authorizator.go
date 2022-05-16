@@ -195,6 +195,8 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	var policy VaultPolicy
 
 	switch {
+	case rc.Role == "servers.register":
+		fallthrough
 	case rc.Role == "tenants.list.auth": // only default paths: list tenants and token_owner
 		fallthrough
 	case rc.Role == "tenant.read.auth":
@@ -326,26 +328,6 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 				Read: true,
 				List: true,
 			}},
-		}
-
-	case rc.Role == "servers.register" && rc.TenantUUID != "" && rc.ProjectUUID != "":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_at_project_%s_of_%s_by_%s", rc.Role, rc.ProjectUUID, rc.TenantUUID, subject.UUID),
-			Rules: []Rule{
-				{
-					Path:   fmt.Sprintf("flant/tenant/%s/project/%s/register_server*", rc.TenantUUID, rc.ProjectUUID),
-					Create: true,
-					Update: true,
-				},
-				{
-					Path:   fmt.Sprintf("flant/tenant/%s/project/%s/server*", rc.TenantUUID, rc.ProjectUUID),
-					Create: true,
-					Read:   true,
-					Update: true,
-					Delete: true,
-					List:   true,
-				},
-			},
 		}
 
 	case rc.Role == "iam_auth_read" && rc.TenantUUID != "":
@@ -652,15 +634,14 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 
 // TODO REMOVE IT AFTER IMPLEMENT ALL:
 var tmpNotSeekPoliciesRoles = map[string]struct{}{
-	"iam_read":         {},
-	"iam_write":        {},
-	"iam_read_all":     {},
-	"iam_write_all":    {},
-	"server":           {},
-	"servers.register": {},
-	"iam_auth_read":    {},
-	"flow_read":        {},
-	"flow_write":       {},
+	"iam_read":      {},
+	"iam_write":     {},
+	"iam_read_all":  {},
+	"iam_write_all": {},
+	"server":        {},
+	"iam_auth_read": {},
+	"flow_read":     {},
+	"flow_write":    {},
 }
 
 func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod string) (*model.Policy, error) {
