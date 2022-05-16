@@ -46,6 +46,8 @@ func (f *AuthenticatorFactory) Reset() {
 }
 
 func (f *AuthenticatorFactory) GetAuthenticator(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
+	f.logger.Debug(fmt.Sprintf("Auth method: %s", method.MethodType))
+
 	switch method.MethodType {
 	case model.MethodTypeJWT:
 		return f.jwt(ctx, method, txn)
@@ -97,14 +99,14 @@ func (f *AuthenticatorFactory) jwt(ctx context.Context, method *model.AuthMethod
 }
 
 func (f *AuthenticatorFactory) multipass(ctx context.Context, method *model.AuthMethod, txn *io.MemoryStoreTxn) (authn2.Authenticator, *model.AuthSource, error) {
-	f.logger.Debug("It is multipass. Check jwt is enabled")
+	f.logger.Debug("Check jwt is enabled")
 
 	enabled, err := f.jwtController.IsEnabled(txn)
 	if err != nil {
 		return nil, nil, err
 	}
 	if !enabled {
-		f.logger.Warn("jwt is not enabled. not use multipass login")
+		f.logger.Warn("jwt is not enabled. Do not use multipass login")
 		return nil, nil, fmt.Errorf("jwt is not enabled. not use multipass login")
 	}
 

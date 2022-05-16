@@ -18,7 +18,8 @@ type Periodic struct {
 	Settings      vault.ServerAccessSettings
 }
 
-func NewPeriodic(dbInstance db.UserDatabase, authdSettings vault.AuthdSettings, settings vault.ServerAccessSettings) *Periodic {
+func NewPeriodic(dbInstance db.UserDatabase, authdSettings vault.AuthdSettings,
+	settings vault.ServerAccessSettings) *Periodic {
 	return &Periodic{
 		DB:            dbInstance,
 		AuthdSettings: authdSettings,
@@ -39,7 +40,7 @@ func (p *Periodic) Start() {
 }
 
 func (p *Periodic) SyncUsers() error {
-	vaultClient, err := vault.ClientFromAuthd(p.AuthdSettings)
+	vaultClient, err := vault.ClientFromAuthd(p.AuthdSettings, p.Settings)
 	if err != nil {
 		log.Printf("Open Vault session: %v", err)
 		return nil

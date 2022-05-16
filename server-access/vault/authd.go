@@ -31,11 +31,13 @@ func AssembleAuthdSettings(settings AuthdSettings) AuthdSettings {
 	}
 }
 
-func ClientFromAuthd(settings AuthdSettings) (*api.Client, error) {
+func ClientFromAuthd(settings AuthdSettings, serverAccess ServerAccessSettings) (*api.Client, error) {
 	authdClient := authd.NewAuthdClient(settings.SocketPath)
 
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("*", nil)).
+		WithRoles(v1.NewRoleWithClaim(ServerRole, serverAccess.TenantUUID, serverAccess.ProjectUUID, map[string]interface{}{
+			"server_uuid": serverAccess.ServerUUID,
+		})).
 		WithServerType(settings.ServerType)
 
 	err := authdClient.OpenVaultSession(req)

@@ -29,6 +29,9 @@ policies = [
     {'name': 'servers.register', 'roles': ['servers.register'], 'claim_schema': 'TODO',
      'allowed_auth_methods': ['sapassword'],
      'rego_file': 'servers.register.rego'},
+    {'name': 'server', 'roles': ['server'], 'claim_schema': 'TODO',
+     'allowed_auth_methods': ['multipass'],
+     'rego_file': 'server.rego'},
 
 ]
 

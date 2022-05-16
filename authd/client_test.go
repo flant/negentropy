@@ -18,7 +18,7 @@ func Test_Client_LoginAndUseToken(t *testing.T) {
 	authdClient := NewAuthdClient("./dev/run/sock1.sock")
 	// "remote.example.com" is a random claim.
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("ssh.open", map[string]interface{}{"max_ttl": "1000m", "ttl": "300s"})).
+		WithRoles(v1.NewRoleWithClaim("tenants.list.auth", "", "", map[string]interface{}{"max_ttl": "1000m", "ttl": "300s"})).
 		WithServerType(v1.AuthServer)
 	err := authdClient.OpenVaultSession(req)
 	if err != nil {
@@ -46,7 +46,7 @@ func Test_Client_LoginAndRenewToken(t *testing.T) {
 	authdClient := NewAuthdClient("./dev/run/sock1.sock")
 	// "remote.example.com" is a random claim.
 	req := v1.NewLoginRequest().
-		WithRoles(v1.NewRoleWithClaim("ssh.open", map[string]interface{}{"max_ttl": "1000m", "ttl": "300s"})).
+		WithRoles(v1.NewRoleWithClaim("tenants.list.auth", "", "", map[string]interface{}{"max_ttl": "1000m", "ttl": "300s"})).
 		WithServerType(v1.AuthServer)
 	err := authdClient.OpenVaultSession(req)
 	if err != nil {
