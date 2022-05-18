@@ -10,6 +10,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -268,10 +269,47 @@ func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.R
 	createData := rolebindingAPI.Create(params, url.Values{}, createPayload)
 	rawRoleBinding := createData.Get("role_binding")
 	data := []byte(rawRoleBinding.String())
-	var roleBinding model.RoleBinding
-	err := json.Unmarshal(data, &roleBinding)
+	var rbd usecase.DenormalizedRoleBinding
+	err := json.Unmarshal(data, &rbd)
 	Expect(err).ToNot(HaveOccurred())
-	return roleBinding
+
+	return model.RoleBinding{
+		ArchiveMark:     rbd.ArchiveMark,
+		UUID:            rbd.UUID,
+		TenantUUID:      rbd.TenantUUID,
+		Version:         rbd.Version,
+		Description:     rbd.Description,
+		ValidTill:       rbd.ValidTill,
+		RequireMFA:      rbd.RequireMFA,
+		Users:           nil,
+		Groups:          nil,
+		ServiceAccounts: nil,
+		Members:         MapMembers(rbd.Members),
+		AnyProject:      rbd.AnyProject,
+		Projects:        MapProjects(rbd.Projects),
+		Roles:           rbd.Roles,
+		Origin:          rbd.Origin,
+		Extensions:      nil,
+	}
+}
+
+func MapMembers(members []usecase.DenormalizedMemberNotation) []model.MemberNotation {
+	var result []model.MemberNotation
+	for _, m := range members {
+		result = append(result, model.MemberNotation{
+			Type: m.Type,
+			UUID: m.UUID,
+		})
+	}
+	return result
+}
+
+func MapProjects(projects []usecase.ProjectUUIDWithIdentifier) []model.ProjectUUID {
+	var result []model.ProjectUUID
+	for _, m := range projects {
+		result = append(result, m.UUID)
+	}
+	return result
 }
 
 // CreateServiceAccountMultipass returns Mutipass model and JWT

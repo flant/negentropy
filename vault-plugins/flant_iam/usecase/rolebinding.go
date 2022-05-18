@@ -18,6 +18,7 @@ type RoleBindingService struct {
 
 	memberFetcher        *MembersFetcher
 	memberNotationMapper MemberNotationMapper
+	projectMapper        ProjectMapper
 }
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
@@ -27,6 +28,7 @@ func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 		memberFetcher:        NewMembersFetcher(db),
 		tenantsRepo:          iam_repo.NewTenantRepository(db),
 		memberNotationMapper: NewMemberNotationMapper(db),
+		projectMapper:        NewProjectMapper(db),
 	}
 }
 
@@ -177,8 +179,8 @@ type DenormalizedRoleBinding struct {
 
 	Members []DenormalizedMemberNotation `json:"members"`
 
-	AnyProject bool                `json:"any_project"`
-	Projects   []model.ProjectUUID `json:"projects"`
+	AnyProject bool                        `json:"any_project"`
+	Projects   []ProjectUUIDWithIdentifier `json:"projects"`
 
 	Roles []model.BoundRole `json:"roles"`
 
@@ -202,6 +204,10 @@ func (s *RoleBindingService) denormalizeRoleBinding(rb *model.RoleBinding) (*Den
 	if err != nil {
 		return nil, err
 	}
+	denormilizedProjects, err := s.projectMapper.Denormalize(rb.Projects)
+	if err != nil {
+		return nil, err
+	}
 	return &DenormalizedRoleBinding{
 		ArchiveMark: rb.ArchiveMark,
 		UUID:        rb.UUID,
@@ -212,7 +218,7 @@ func (s *RoleBindingService) denormalizeRoleBinding(rb *model.RoleBinding) (*Den
 		RequireMFA:  rb.RequireMFA,
 		Members:     denormilizedMembers,
 		AnyProject:  rb.AnyProject,
-		Projects:    rb.Projects,
+		Projects:    denormilizedProjects,
 		Roles:       rb.Roles,
 		Origin:      rb.Origin,
 	}, nil

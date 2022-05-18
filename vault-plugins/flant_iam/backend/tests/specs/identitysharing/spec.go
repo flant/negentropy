@@ -10,6 +10,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
 	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -194,8 +195,20 @@ func createIdentitySharing(identitySharingAPI api.TestAPI, sourceTenantUUID mode
 	}, url.Values{}, payload)
 	rawIS := createdData.Get("identity_sharing")
 	data := []byte(rawIS.String())
-	var is model.IdentitySharing
+	var is usecase.DenormalizedIdentitySharing
 	err := json.Unmarshal(data, &is)
 	Expect(err).ToNot(HaveOccurred())
-	return is
+	groups := make([]model.GroupUUID, 0, len(is.Groups))
+	for _, g := range is.Groups {
+		groups = append(groups, g.UUID)
+	}
+	return model.IdentitySharing{
+		ArchiveMark:           is.ArchiveMark,
+		UUID:                  is.UUID,
+		SourceTenantUUID:      is.SourceTenantUUID,
+		DestinationTenantUUID: is.DestinationTenantUUID,
+		Version:               is.Version,
+		Origin:                is.Origin,
+		Groups:                groups,
+	}
 }

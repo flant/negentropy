@@ -77,3 +77,89 @@ func NewMemberNotationMapper(db *io.MemoryStoreTxn) MemberNotationMapper {
 		groupRepo:          iam_repo.NewGroupRepository(db),
 	}
 }
+
+type ProjectUUIDWithIdentifier struct {
+	UUID       string `json:"uuid"`
+	Identifier string `json:"identifier"`
+}
+
+type ProjectMapper interface {
+	Denormalize([]model.ProjectUUID) ([]ProjectUUIDWithIdentifier, error)
+}
+
+type projectMapper struct {
+	projectRepo *iam_repo.ProjectRepository
+}
+
+func (m projectMapper) denormalizeOne(projectUUID model.ProjectUUID) (*ProjectUUIDWithIdentifier, error) {
+	project, err := m.projectRepo.GetByID(projectUUID)
+	if err != nil {
+		return nil, fmt.Errorf("catching project by UUID {%s}: %w", projectUUID, err)
+	}
+	return &ProjectUUIDWithIdentifier{
+		UUID:       projectUUID,
+		Identifier: project.Identifier,
+	}, nil
+}
+
+func (m projectMapper) Denormalize(projects []model.ProjectUUID) ([]ProjectUUIDWithIdentifier, error) {
+	result := make([]ProjectUUIDWithIdentifier, 0, len(projects))
+	for _, projectUUID := range projects {
+		projectUUIDWithIdentifier, err := m.denormalizeOne(projectUUID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *projectUUIDWithIdentifier)
+	}
+	return result, nil
+}
+
+func NewProjectMapper(db *io.MemoryStoreTxn) ProjectMapper {
+	return projectMapper{
+		projectRepo: iam_repo.NewProjectRepository(db),
+	}
+}
+
+type GroupUUIDWithIdentifiers struct {
+	UUID           string `json:"uuid"`
+	Identifier     string `json:"identifier"`
+	FullIdentifier string `json:"full_identifier"`
+}
+
+type GroupMapper interface {
+	Denormalize([]model.GroupUUID) ([]GroupUUIDWithIdentifiers, error)
+}
+
+type groupMapper struct {
+	groupRepo *iam_repo.GroupRepository
+}
+
+func (m groupMapper) denormalizeOne(groupUUID model.GroupUUID) (*GroupUUIDWithIdentifiers, error) {
+	group, err := m.groupRepo.GetByID(groupUUID)
+	if err != nil {
+		return nil, fmt.Errorf("catching group by UUID {%s}: %w", groupUUID, err)
+	}
+	return &GroupUUIDWithIdentifiers{
+		UUID:           groupUUID,
+		Identifier:     group.Identifier,
+		FullIdentifier: group.FullIdentifier,
+	}, nil
+}
+
+func (m groupMapper) Denormalize(groups []model.GroupUUID) ([]GroupUUIDWithIdentifiers, error) {
+	result := make([]GroupUUIDWithIdentifiers, 0, len(groups))
+	for _, groupUUID := range groups {
+		groupUUIDWithIdentifier, err := m.denormalizeOne(groupUUID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *groupUUIDWithIdentifier)
+	}
+	return result, nil
+}
+
+func NewGroupMapper(db *io.MemoryStoreTxn) GroupMapper {
+	return groupMapper{
+		groupRepo: iam_repo.NewGroupRepository(db),
+	}
+}
