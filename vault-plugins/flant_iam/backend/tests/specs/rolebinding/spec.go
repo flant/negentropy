@@ -96,7 +96,7 @@ var _ = Describe("Role binding", func() {
 	})
 
 	It("can be read", func() {
-		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 
 		TestAPI.Read(api.Params{
 			"tenant":       tenant.UUID,
@@ -108,7 +108,7 @@ var _ = Describe("Role binding", func() {
 	})
 
 	It("can be updated", func() {
-		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 		updatePayload := fixtures.RandomRoleBindingCreatePayload()
 		updatePayload["tenant_uuid"] = createdRB.Get("role_binding.tenant_uuid").String()
 		updatePayload["resource_version"] = createdRB.Get("role_binding.resource_version").String()
@@ -140,7 +140,7 @@ var _ = Describe("Role binding", func() {
 	})
 
 	It("can be deleted", func() {
-		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 		TestAPI.Delete(api.Params{
 			"tenant":       createdRB.Get("role_binding.tenant_uuid").String(),
 			"role_binding": createdRB.Get("role_binding.uuid").String(),
@@ -156,7 +156,7 @@ var _ = Describe("Role binding", func() {
 	})
 
 	It("can be listed", func() {
-		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 
 		TestAPI.List(api.Params{
 			"tenant": tenant.UUID,
@@ -169,7 +169,7 @@ var _ = Describe("Role binding", func() {
 
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
-			createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+			createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 			TestAPI.Delete(api.Params{
 				"tenant":       createdRB.Get("role_binding.tenant_uuid").String(),
 				"role_binding": createdRB.Get("role_binding.uuid").String(),
@@ -183,7 +183,7 @@ var _ = Describe("Role binding", func() {
 		})
 
 		It("can't be updated", func() {
-			createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+			createdRB := TestAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 			TestAPI.Delete(api.Params{
 				"tenant":       createdRB.Get("role_binding.tenant_uuid").String(),
 				"role_binding": createdRB.Get("role_binding.uuid").String(),
@@ -203,6 +203,18 @@ var _ = Describe("Role binding", func() {
 				"expectStatus": api.ExpectExactStatus(400),
 			}, nil, updatePayload)
 		})
+	})
+
+	It("can be created with empty members", func() {
+		createPayload := fixtures.RandomRoleBindingCreatePayload()
+		delete(createPayload, "members")
+
+		params := api.Params{
+			"expectStatus": api.ExpectExactStatus(400),
+			"tenant":       tenant.UUID,
+		}
+
+		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 })
 

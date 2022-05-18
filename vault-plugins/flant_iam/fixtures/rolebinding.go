@@ -153,6 +153,7 @@ func RoleBindings() []model.RoleBinding {
 	}
 }
 
+// RandomRoleBindingCreatePayload before using needs members to be added
 func RandomRoleBindingCreatePayload() map[string]interface{} {
 	rbSet := RoleBindings()
 	rand.Seed(time.Now().UnixNano())
@@ -168,6 +169,15 @@ func RandomRoleBindingCreatePayload() map[string]interface{} {
 	delete(payload, "service_accounts")
 	delete(payload, "valid_till")
 	payload["ttl"] = 1000
-	// payload["members"] = // fill with before created members
+	// payload["members"] = // fill with before created Rolebinding
+	return payload
+}
+
+func RandomRoleBindingCreatePayloadWithUser(userUUID model.UserUUID) map[string]interface{} {
+	payload := RandomRoleBindingCreatePayload()
+	payload["members"] = map[string]interface{}{
+		"type": "user",
+		"uuid": userUUID,
+	}
 	return payload
 }
