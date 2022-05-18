@@ -77,3 +77,45 @@ func NewMemberNotationMapper(db *io.MemoryStoreTxn) MemberNotationMapper {
 		groupRepo:          iam_repo.NewGroupRepository(db),
 	}
 }
+
+type ProjectUUIDWithIdentifier struct {
+	UUID       string `json:"uuid"`
+	Identifier string `json:"identifier"`
+}
+
+type ProjectMapper interface {
+	Denormalize([]model.ProjectUUID) ([]ProjectUUIDWithIdentifier, error)
+}
+
+type projectMapper struct {
+	projectRepo *iam_repo.ProjectRepository
+}
+
+func (m projectMapper) denormalizeOne(projectUUID model.ProjectUUID) (*ProjectUUIDWithIdentifier, error) {
+	project, err := m.projectRepo.GetByID(projectUUID)
+	if err != nil {
+		return nil, fmt.Errorf("catching project by UUID {%s}: %w", projectUUID, err)
+	}
+	return &ProjectUUIDWithIdentifier{
+		UUID:       projectUUID,
+		Identifier: project.Identifier,
+	}, nil
+}
+
+func (m projectMapper) Denormalize(projects []model.ProjectUUID) ([]ProjectUUIDWithIdentifier, error) {
+	result := make([]ProjectUUIDWithIdentifier, 0, len(projects))
+	for _, projectUUID := range projects {
+		projectUUIDWithIdentifier, err := m.denormalizeOne(projectUUID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *projectUUIDWithIdentifier)
+	}
+	return result, nil
+}
+
+func NewProjectMapper(db *io.MemoryStoreTxn) ProjectMapper {
+	return projectMapper{
+		projectRepo: iam_repo.NewProjectRepository(db),
+	}
+}
