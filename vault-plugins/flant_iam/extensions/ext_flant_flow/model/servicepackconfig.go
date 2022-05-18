@@ -7,12 +7,12 @@ import (
 
 // ServicePack names
 var (
-	L1                      ServicePackName = "L1"
-	DevOps                  ServicePackName = "DevOps"
-	Mk8s                    ServicePackName = "mk8s"
-	Deckhouse               ServicePackName = "Deckhouse"
-	Okmeter                 ServicePackName = "Okmeter"
-	Consulting              ServicePackName = "Consulting"
+	L1                      ServicePackName = "l1_service_pack"
+	DevOps                  ServicePackName = "devops_service_pack"
+	Mk8s                    ServicePackName = "mk8s_service_pack"
+	Deckhouse               ServicePackName = "deckhouse_service_pack"
+	Okmeter                 ServicePackName = "okmeter_service_pack"
+	Consulting              ServicePackName = "consulting_service_pack"
 	AllowedServicePackNames                 = []interface{}{L1, DevOps, Mk8s, Deckhouse, Okmeter, Consulting}
 	ServicePackNames                        = map[ServicePackName]struct{}{L1: {}, DevOps: {}, Mk8s: {}, Deckhouse: {}, Okmeter: {}, Consulting: {}}
 )

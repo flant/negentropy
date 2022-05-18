@@ -1,5 +1,6 @@
 package pkg
 
+// These roles should be placed into allowedRoles of authd config
 const (
 	// TenantsListRole is a tenant scoped role with optional tenant
 	// allows only default paths (list tenants and read token_owner)

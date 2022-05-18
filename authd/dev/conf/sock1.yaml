@@ -5,6 +5,7 @@ path: sock1.sock
 #group: wheel
 mode: 0777
 allowedRole:
-  - role: iam.view
-  - role: iam.edit
-  - role: server.ssh.*
+  - role: tenants.list.auth
+  - role: ssh.open
+  - role: servers.query
+  - role: tenant.read.auth

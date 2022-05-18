@@ -195,6 +195,8 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	var policy VaultPolicy
 
 	switch {
+	case rc.Role == "server":
+		fallthrough
 	case rc.Role == "servers.register":
 		fallthrough
 	case rc.Role == "tenants.list.auth": // only default paths: list tenants and token_owner
@@ -315,16 +317,6 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 				List: true,
 			}, {
 				Path: "flant/feature_flag/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "server":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
-			Rules: []Rule{{
-				Path: "auth/flant/tenant/*",
 				Read: true,
 				List: true,
 			}},
@@ -638,7 +630,6 @@ var tmpNotSeekPoliciesRoles = map[string]struct{}{
 	"iam_write":     {},
 	"iam_read_all":  {},
 	"iam_write_all": {},
-	"server":        {},
 	"iam_auth_read": {},
 	"flow_read":     {},
 	"flow_write":    {},

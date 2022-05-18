@@ -3,6 +3,7 @@ package authd
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -166,10 +167,14 @@ func (c *Client) OpenVaultSession(loginRequest *v1.LoginRequest) error {
 	defer cancelFunc()
 	resp, err := cl.RawRequestWithContext(ctx, req)
 	if err != nil {
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		msg := string(b)
+		fmt.Println(string(b))
 		if resp.StatusCode == http.StatusForbidden {
-			return fmt.Errorf("%w, err: %s", consts.ErrAccessForbidden, err.Error())
+			return fmt.Errorf("%w, err: %s \nlogin request: %#v \nmsg:%s", consts.ErrAccessForbidden, err.Error(), loginRequest, msg)
 		}
-		return fmt.Errorf("err: %w \n resp.status=: %d", err, resp.StatusCode)
+		return fmt.Errorf("err: %w \n resp.status=: %d \nlogin request: %#v \nmsg:%s", err, resp.StatusCode, loginRequest, msg)
 	}
 	defer resp.Body.Close()
 

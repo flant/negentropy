@@ -130,10 +130,12 @@ func (l *LoginRequest) WithPendingLoginUuid(loginUuid string) *LoginRequest {
 	return l
 }
 
-func NewRoleWithClaim(role string, claim map[string]interface{}) RoleWithClaim {
+func NewRoleWithClaim(role string, TenantUUID string, ProjectUUID string, claim map[string]interface{}) RoleWithClaim {
 	return RoleWithClaim{
-		Role:  role,
-		Claim: claim,
+		Role:        role,
+		TenantUUID:  TenantUUID,
+		ProjectUUID: ProjectUUID,
+		Claim:       claim,
 	}
 }
 

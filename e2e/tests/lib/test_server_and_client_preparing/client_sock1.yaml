@@ -5,4 +5,7 @@ path: authd.sock
 #group: wheel
 mode: 0777
 allowedRole:
-  - role: ssh
+  - role: tenants.list.auth
+  - role: ssh.open
+  - role: servers.query
+  - role: tenant.read.auth

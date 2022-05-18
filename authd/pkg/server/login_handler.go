@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hashicorp/go-multierror"
 
 	api "github.com/flant/negentropy/authd/pkg/api/v1"
 	"github.com/flant/negentropy/authd/pkg/client_error"
@@ -58,16 +60,18 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 
 	token, err := jwt.DefaultStorage.GetJWT()
 	if err != nil {
-		return nil, 0, client_error.NewHTTPError(err, http.StatusForbidden, []string{err.Error()})
+		return nil, http.StatusForbidden, client_error.NewHTTPError(err, http.StatusForbidden, []string{err.Error()})
 	}
 
 	var response interface{}
 
-	claimedRoles := l.claimedRoles(request)
+	if err := l.checkClaimedRoles(request.Roles); err != nil {
+		return nil, http.StatusForbidden, client_error.NewHTTPError(err, http.StatusForbidden, []string{err.Error()})
+	}
 
 	if request.Type == api.LoginRequestDefault || request.Type == api.LoginRequestSpecific {
 		log.Debugf(ctx)("LoginWithJWT")
-		response, err = vaultClient.LoginWithJWTAndClaims(ctx, token, claimedRoles)
+		response, err = vaultClient.LoginWithJWTAndClaims(ctx, token, request.Roles)
 	}
 	if request.Type == api.LoginRequestPending {
 		log.Debugf(ctx)("CheckPendingLogin")
@@ -81,16 +85,23 @@ func (l *LoginHandler) HandleLogin(ctx context.Context, request *api.LoginReques
 	return response, http.StatusOK, nil
 }
 
-// claimedRoles returns all roles specified at config, if '*' is requested
-func (l *LoginHandler) claimedRoles(request *api.LoginRequest) []api.RoleWithClaim {
-	claimedRoles := request.Roles
-	if len(claimedRoles) == 1 && claimedRoles[0].Role == "*" {
-		claimedRoles = []api.RoleWithClaim{}
-		for _, r := range l.AuthdSocketConfig.GetAllowedRoles() {
-			claimedRoles = append(claimedRoles, api.RoleWithClaim{
-				Role: r.Role,
-			})
+// checkClaimedRoles check is role in allowed list
+func (l *LoginHandler) checkClaimedRoles(roles []api.RoleWithClaim) error {
+	if len(l.AuthdSocketConfig.GetAllowedRoles()) == 0 {
+		return nil
+	}
+	multiError := multierror.Error{}
+	for _, claimedRole := range roles {
+		found := false
+		for _, allowedRole := range l.AuthdSocketConfig.GetAllowedRoles() {
+			if claimedRole.Role == allowedRole.Role {
+				found = true
+				break
+			}
+		}
+		if !found {
+			multiError.Errors = append(multiError.Errors, fmt.Errorf("role %s is not in allowed list", claimedRole.Role))
 		}
 	}
-	return claimedRoles
+	return multiError.ErrorOrNil()
 }
