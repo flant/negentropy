@@ -14,18 +14,20 @@ import (
 
 func IdentityShares(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *IdentitySharingService {
 	return &IdentitySharingService{
-		db:         db,
-		origin:     origin,
-		sharesRepo: repo.NewIdentitySharingRepository(db),
-		tenantRepo: repo.NewTenantRepository(db),
+		db:          db,
+		origin:      origin,
+		sharesRepo:  repo.NewIdentitySharingRepository(db),
+		tenantRepo:  repo.NewTenantRepository(db),
+		groupMapper: NewGroupMapper(db),
 	}
 }
 
 type IdentitySharingService struct {
-	db         *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	origin     consts.ObjectOrigin
-	sharesRepo *repo.IdentitySharingRepository
-	tenantRepo *repo.TenantRepository
+	db          *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	origin      consts.ObjectOrigin
+	sharesRepo  *repo.IdentitySharingRepository
+	tenantRepo  *repo.TenantRepository
+	groupMapper GroupMapper
 }
 
 func (s *IdentitySharingService) GetByID(id model.IdentitySharingUUID) (*DenormalizedIdentitySharing, error) {
@@ -166,7 +168,7 @@ type DenormalizedIdentitySharing struct {
 	Origin consts.ObjectOrigin `json:"origin"`
 
 	// Groups which to share with target tenant
-	Groups []model.GroupUUID `json:"groups"`
+	Groups []GroupUUIDWithIdentifiers `json:"groups"`
 }
 
 func (s *IdentitySharingService) denormalizeIdentitySharings(iss []*model.IdentitySharing) ([]*DenormalizedIdentitySharing, error) {
@@ -186,6 +188,10 @@ func (s *IdentitySharingService) denormalizeIdentitySharing(is *model.IdentitySh
 	if err != nil {
 		return nil, err
 	}
+	groupUUIDWithIdentifiers, err := s.groupMapper.Denormalize(is.Groups)
+	if err != nil {
+		return nil, err
+	}
 	return &DenormalizedIdentitySharing{
 		ArchiveMark:                 is.ArchiveMark,
 		UUID:                        is.UUID,
@@ -194,6 +200,6 @@ func (s *IdentitySharingService) denormalizeIdentitySharing(is *model.IdentitySh
 		DestinationTenantIdentifier: destinationTenant.Identifier,
 		Version:                     is.Version,
 		Origin:                      is.Origin,
-		Groups:                      is.Groups,
+		Groups:                      groupUUIDWithIdentifiers,
 	}, nil
 }

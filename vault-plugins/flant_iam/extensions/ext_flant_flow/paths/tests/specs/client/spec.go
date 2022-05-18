@@ -230,7 +230,7 @@ func checkIdentitySharingExists(flantFlowCfg *config.FlantFlowConfig, clientUUID
 	identitySharingExists := false
 	for _, is := range resp.Get("identity_sharings").Array() {
 		if is.Get("destination_tenant_uuid").String() == clientUUID &&
-			len(is.Get("groups").Array()) == 1 && is.Get("groups").Array()[0].String() == flantFlowCfg.AllFlantGroup {
+			len(is.Get("groups").Array()) == 1 && is.Get("groups").Array()[0].Get("uuid").String() == flantFlowCfg.AllFlantGroup {
 			identitySharingExists = true
 		}
 	}
