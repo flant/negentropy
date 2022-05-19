@@ -73,6 +73,14 @@ var _ = Describe("Teammate", func() {
 				Expect(teammateData.Map()).ToNot(HaveKey("origin"))
 				Expect(teammateData.Map()).To(HaveKey("language"))
 				Expect(teammateData.Get("language").String()).To(Equal(createPayload["language"]))
+				Expect(teammateData.Map()).To(HaveKey("gitlab.com"))
+				Expect(teammateData.Get(`gitlab\.com`).String()).To(Equal(createPayload["gitlab.com"]))
+				Expect(teammateData.Map()).To(HaveKey("github.com"))
+				Expect(teammateData.Get(`github\.com`).String()).To(Equal(createPayload["github.com"]))
+				Expect(teammateData.Map()).To(HaveKey("telegram"))
+				Expect(teammateData.Get(`telegram`).String()).To(Equal(createPayload["telegram"]))
+				Expect(teammateData.Map()).To(HaveKey("habr.com"))
+				Expect(teammateData.Get(`habr\.com`).String()).To(Equal(createPayload["habr.com"]))
 			},
 			"team": team.UUID,
 		}

@@ -105,6 +105,10 @@ func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
 		break
 	}
 	sample.RoleAtTeam = role
+	sample.GitlabAccount = iam_uuid.New() + "@gitlab.com"
+	sample.GithubAccount = iam_uuid.New() + "@github.com"
+	sample.TelegramAccount = "@telegram" + iam_uuid.New()
+	sample.HabrAccount = iam_uuid.New() + "@habr.com"
 	bytes, _ := json.Marshal(sample)
 	var payload map[string]interface{}
 	json.Unmarshal(bytes, &payload) //nolint:errcheck
