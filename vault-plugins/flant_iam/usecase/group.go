@@ -188,6 +188,10 @@ func (s *GroupService) List(showShared bool, showArchived bool) ([]*model.Group,
 		if err != nil {
 			return nil, fmt.Errorf("collecting own groups:%w", err)
 		}
+		// remove "self" groups from shared
+		for _, g := range groups {
+			delete(sharedGroupUUIDs, g.UUID)
+		}
 		for sharedGroupUUID := range sharedGroupUUIDs {
 			sharedGroup, err := s.repo.GetByID(sharedGroupUUID)
 			if err != nil {

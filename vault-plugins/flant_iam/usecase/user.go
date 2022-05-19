@@ -91,6 +91,10 @@ func (s *UserService) List(showShared bool, showArchived bool) ([]*model.User, e
 		if err != nil {
 			return nil, fmt.Errorf("collecting own users:%w", err)
 		}
+		// remove "self" users from shared
+		for _, u := range users {
+			delete(sharedUsersUUIDs, u.UUID)
+		}
 		for sharedUserUUID := range sharedUsersUUIDs {
 			sharedUser, err := s.usersRepo.GetByID(sharedUserUUID)
 			if err != nil {
