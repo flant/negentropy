@@ -209,8 +209,12 @@ func makeFullTeammate(user *iam_model.User, tm *model.Teammate) (*model.FullTeam
 	valUser := *user
 	valUser.Origin = ""
 	return &model.FullTeammate{
-		User:       valUser,
-		TeamUUID:   tm.TeamUUID,
-		RoleAtTeam: tm.RoleAtTeam,
+		User:            valUser,
+		TeamUUID:        tm.TeamUUID,
+		RoleAtTeam:      tm.RoleAtTeam,
+		GitlabAccount:   tm.GitlabAccount,
+		GithubAccount:   tm.GithubAccount,
+		TelegramAccount: tm.TelegramAccount,
+		HabrAccount:     tm.HabrAccount,
 	}, nil
 }

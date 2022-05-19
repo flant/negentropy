@@ -82,10 +82,25 @@ func teammateBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) m
 			Required:    true,
 		},
 		"role_at_team": {
-			Type:          framework.TypeString,
-			Description:   "role at team",
-			Required:      true,
-			AllowedValues: model.AllowedRolesAtTeam,
+			Type:        framework.TypeString,
+			Description: "role at team",
+			Required:    true,
+		},
+		"gitlab.com": {
+			Type:        framework.TypeString,
+			Description: "account at the gitlab.com",
+		},
+		"github.com": {
+			Type:        framework.TypeString,
+			Description: "account at the github.com",
+		},
+		"telegram": {
+			Type:        framework.TypeString,
+			Description: "account at the telegram",
+		},
+		"habr.com": {
+			Type:        framework.TypeString,
+			Description: "account at the habr.com",
 		},
 	}
 	for fieldName, fieldSchema := range extraFields {
@@ -256,8 +271,12 @@ func (b *teammateBackend) handleCreate(expectID bool) framework.OperationFunc {
 				Language:         data.Get("language").(string),
 				Origin:           consts.OriginFlantFlow,
 			},
-			TeamUUID:   teamID,
-			RoleAtTeam: data.Get("role_at_team").(string),
+			TeamUUID:        teamID,
+			RoleAtTeam:      data.Get("role_at_team").(string),
+			GitlabAccount:   data.Get("gitlab.com").(string),
+			GithubAccount:   data.Get("github.com").(string),
+			TelegramAccount: data.Get("telegram").(string),
+			HabrAccount:     data.Get("habr.com").(string),
 		}
 
 		tx := b.storage.Txn(true)
@@ -304,8 +323,12 @@ func (b *teammateBackend) handleUpdate(_ context.Context, req *logical.Request, 
 			Language:         data.Get("language").(string),
 			Origin:           consts.OriginFlantFlow,
 		},
-		TeamUUID:   teamID,
-		RoleAtTeam: data.Get("role_at_team").(string),
+		TeamUUID:        teamID,
+		RoleAtTeam:      data.Get("role_at_team").(string),
+		GitlabAccount:   data.Get("gitlab.com").(string),
+		GithubAccount:   data.Get("github.com").(string),
+		TelegramAccount: data.Get("telegram").(string),
+		HabrAccount:     data.Get("habr.com").(string),
 	}
 	teammate, err := usecase.Teammates(tx, b.getLiveConfig()).Update(teammate)
 	if err != nil {
