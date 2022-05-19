@@ -27,7 +27,8 @@ var (
 	RoleAPI   tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 
-	GroupAPI tests.TestAPI
+	GroupAPI    tests.TestAPI
+	TeammateAPI tests.TestAPI
 )
 
 var _ = Describe("Team", func() {
@@ -217,6 +218,58 @@ var _ = Describe("Team", func() {
 				"team":         team.UUID,
 				"expectStatus": tests.ExpectExactStatus(400),
 			}, nil, updatePayload)
+		})
+	})
+
+	Context("Deletion rules", func() {
+		Context("Teammate on board aspect", func() {
+			It("Team can't be deleted, if has teammate on board", func() {
+				team := specs.CreateRandomTeam(TestAPI)
+				specs.CreateRandomTeammate(TeammateAPI, team)
+
+				TestAPI.Delete(tests.Params{
+					"team":         team.UUID,
+					"expectStatus": tests.ExpectExactStatus(400),
+				}, nil)
+			})
+			It("Team can be deleted, if has teammate is deleted", func() {
+				team := specs.CreateRandomTeam(TestAPI)
+				teammate := specs.CreateRandomTeammate(TeammateAPI, team)
+				TeammateAPI.Delete(tests.Params{
+					"team":     teammate.TeamUUID,
+					"teammate": teammate.UUID,
+				}, nil)
+
+				TestAPI.Delete(tests.Params{
+					"team": team.UUID,
+				}, nil)
+			})
+		})
+		Context("Parent team link aspect", func() {
+			It("Team can be deleted, if has parent", func() {
+				parentTeam := specs.CreateRandomTeam(TestAPI)
+				childTeam := specs.CreateRandomTeamWithParent(TestAPI, parentTeam.UUID)
+
+				TestAPI.Delete(tests.Params{
+					"team": childTeam.UUID,
+				}, nil)
+
+				TestAPI.Read(tests.Params{
+					"team": parentTeam.UUID,
+					"expectPayload": func(json gjson.Result) {
+						Expect(json.Get("team.archiving_timestamp").Int()).To(Equal(int64(0)))
+					},
+				}, nil)
+			})
+			It("Team can not be deleted, if has child team", func() {
+				parentTeam := specs.CreateRandomTeam(TestAPI)
+				specs.CreateRandomTeamWithParent(TestAPI, parentTeam.UUID)
+
+				TestAPI.Delete(tests.Params{
+					"team":         parentTeam.UUID,
+					"expectStatus": tests.ExpectExactStatus(400),
+				}, nil)
+			})
 		})
 	})
 })

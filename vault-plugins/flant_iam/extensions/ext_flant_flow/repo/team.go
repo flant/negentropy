@@ -60,11 +60,6 @@ func TeamSchema() *memdb.DBSchema {
 					RelatedDataType:               model.TeammateType,
 					RelatedDataTypeFieldIndexName: TeamForeignPK,
 				},
-				{
-					OriginalDataTypeFieldName:     "ParentTeamUUID",
-					RelatedDataType:               model.TeamType,
-					RelatedDataTypeFieldIndexName: ParentTeamIndex,
-				},
 			},
 		},
 	}
