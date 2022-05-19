@@ -219,6 +219,9 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
+		if len(members) == 0 {
+			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+		}
 
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
@@ -273,13 +276,12 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 		}
-
+		if len(members) == 0 {
+			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
+		}
 		roles, err := parseBoundRoles(data.Get("roles"))
 		if err != nil {
 			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
-		}
-		if len(members) == 0 {
-			return backentutils.ResponseErrMessage(req, "members must not be empty", http.StatusBadRequest)
 		}
 		anyProject := data.Get("any_project").(bool)
 		var projects []string

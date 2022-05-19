@@ -41,7 +41,7 @@ var _ = Describe("Role binding approval", func() {
 		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
 		sa = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
 		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
-		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayload())
+		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
 		roleBindingID = res.Get("role_binding.uuid").String()
 	})
 
