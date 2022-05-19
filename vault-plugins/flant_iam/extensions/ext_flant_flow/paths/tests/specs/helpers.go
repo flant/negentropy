@@ -40,6 +40,13 @@ func CreateRandomTeam(teamAPI tests.TestAPI) ext_model.Team {
 	return buildGroup(createdData)
 }
 
+func CreateRandomTeamWithParent(teamAPI tests.TestAPI, parentTeamUUID ext_model.TeamUUID) ext_model.Team {
+	createPayload := fixtures.RandomTeamCreatePayload()
+	createPayload["parent_team_uuid"] = parentTeamUUID
+	createdData := teamAPI.Create(tests.Params{}, nil, createPayload)
+	return buildGroup(createdData)
+}
+
 func CreateRandomTeamWithSpecificType(teamAPI tests.TestAPI, teamType string) ext_model.Team {
 	createPayload := fixtures.RandomTeamCreatePayload()
 	createPayload["team_type"] = teamType

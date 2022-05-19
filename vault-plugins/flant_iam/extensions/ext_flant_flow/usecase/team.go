@@ -16,6 +16,7 @@ import (
 type TeamService struct {
 	flantTenantUUID  iam_model.TenantUUID
 	repo             *repo.TeamRepository
+	teammateRepo     *repo.TeammateRepository
 	groupsController GroupsController
 	liveConfig       *config.FlantFlowConfig
 }
@@ -24,6 +25,7 @@ func Teams(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *TeamServi
 	return &TeamService{
 		flantTenantUUID:  liveConfig.FlantTenantUUID,
 		repo:             repo.NewTeamRepository(db),
+		teammateRepo:     repo.NewTeammateRepository(db),
 		groupsController: NewGroupsController(db, liveConfig.FlantTenantUUID),
 		liveConfig:       liveConfig,
 	}
@@ -107,8 +109,15 @@ func (s *TeamService) Delete(id model.TeamUUID) error {
 	if len(children) > 0 {
 		return fmt.Errorf("%w: has child teams: %v", consts.ErrInvalidArg, children)
 	}
+	// Check no teammates
+	teammates, err := s.teammateRepo.List(id, false)
+	if err != nil {
+		return err
+	}
+	if len(teammates) > 0 {
+		return fmt.Errorf("%w: team has %d teammates on board", consts.ErrInvalidArg, len(teammates))
+	}
 	// TODO:
-	// Check no teammates - checked by memdb engine
 	// Check not default for any feature_flag
 	// Delete all child IAM.group & - deleted by GroupBuilder
 	// Delete IAM.rolebinding
