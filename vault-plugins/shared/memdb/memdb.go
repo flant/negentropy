@@ -275,7 +275,11 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 		return nil
 	}
 	a, ok := relatedRecord.(Archivable)
-	if !ok || a.NotArchived() {
+	if !ok {
+		return fmt.Errorf("got not archivable object: by key value %q found at table %q by index %q",
+			checkedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
+	}
+	if a.NotArchived() {
 		return fmt.Errorf("relation should be empty: %q found at table %q by index %q",
 			checkedFieldValue, key.RelatedDataType, key.RelatedDataTypeFieldIndexName)
 	}
