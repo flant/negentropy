@@ -16,14 +16,14 @@ func Test_Rule(t *testing.T) {
 		Read:               true,
 		Delete:             true,
 		List:               true,
-		AllowedParameters:  map[string][]string{"ap1": {"ap1_value1", "ap1_value2"}, "ap2": {"ap2_value1", "ap2_value2"}, "*": {}},
+		AllowedParameters:  map[string][]string{"ap1": {"ap1_value1", "ap1_value2"}},
 		RequiredParameters: []string{"ap1", "ap2"},
 	}
 
-	s := r.String()
-	// println(s)
+	actual := r.String()
+	expected := "path \"/tenant/199908\" {\n   capabilities = [\"create\", \"update\", \"read\", \"delete\", \"list\"]\n   required_parameters = [\"ap1\", \"ap2\"]\n   allowed_parameters = {\n      \"ap1\" = [\"ap1_value1\", \"ap1_value2\"]\n   }\n}"
 
-	require.Equal(t, "path \"/tenant/199908\" {\n   capabilities = [\"create\", \"update\", \"read\", \"delete\", \"list\"]\n   required_parameters = [\"ap1\", \"ap2\"]\n   allowed_parameters = {\n      \"ap1\" = [\"ap1_value1\", \"ap1_value2\"]\n      \"ap2\" = [\"ap2_value1\", \"ap2_value2\"]\n      \"*\" = []\n   }\n}", s)
+	require.Equal(t, expected, actual)
 }
 
 func Test_Unmarshall(t *testing.T) {

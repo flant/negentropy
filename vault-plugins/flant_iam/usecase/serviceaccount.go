@@ -172,6 +172,10 @@ func (s *ServiceAccountService) List(showShared bool, showArchived bool) ([]*mod
 		if err != nil {
 			return nil, fmt.Errorf("collecting own service_accounts:%w", err)
 		}
+		// remove "self" sa from shared
+		for _, s := range serviceAccounts {
+			delete(sharedSAsUUIDs, s.UUID)
+		}
 		for sharedSaUUID := range sharedSAsUUIDs {
 			sharedServiceAccount, err := s.repo.GetByID(sharedSaUUID)
 			if err != nil {
