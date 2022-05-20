@@ -96,7 +96,7 @@ func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := teammatesSet[rand.Intn(len(teammatesSet))]
 
-	sample.Identifier = iam_uuid.New()
+	sample.Identifier = "Teammate_" + iam_uuid.New()
 	sample.Email = fmt.Sprintf("%s@ex.com", RandomStr())
 	sample.TeamUUID = team.UUID
 	var role string

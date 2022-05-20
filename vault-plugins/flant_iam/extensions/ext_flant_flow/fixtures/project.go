@@ -83,7 +83,7 @@ func RandomProjectCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := projectSet[rand.Intn(len(projectSet))]
 
-	sample.Identifier = uuid.New()
+	sample.Identifier = "Project_" + uuid.New()
 	sample.UUID = ""
 
 	return ProjectCreatePayload(sample)

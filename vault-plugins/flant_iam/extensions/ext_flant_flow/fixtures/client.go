@@ -34,7 +34,7 @@ func RandomClientCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := clientSet[rand.Intn(len(clientSet))]
 	return map[string]interface{}{
-		"identifier":       "Identifier_" + RandomStr(),
+		"identifier":       "Client_" + RandomStr(),
 		"resource_version": sample.Version,
 		"language":         sample.Language,
 	}
