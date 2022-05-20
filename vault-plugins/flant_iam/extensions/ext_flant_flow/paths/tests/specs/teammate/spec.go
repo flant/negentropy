@@ -288,7 +288,7 @@ func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID,
 	Expect(respData.Map()).To(HaveKey("team"))
 	teamData := respData.Get("team")
 	Expect(teamData.Map()).To(HaveKey("groups"))
-	Expect(teamData.Get("groups").Array()).To(HaveLen(1))
+	Expect(teamData.Get("groups").Array()).To(HaveLen(3))
 	directLinkedGroup := teamData.Get("groups").Array()[0]
 	Expect(directLinkedGroup.Map()).To(HaveKey("type"))
 	Expect(directLinkedGroup.Get("type").String()).To(Equal(usecase.DirectMembersGroupType))

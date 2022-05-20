@@ -130,7 +130,7 @@ func (s *GroupService) Delete(id model.GroupUUID) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(id, memdb.NewArchiveMark())
+	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
 func (s *GroupService) SetExtension(ext *model.Extension) error {

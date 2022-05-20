@@ -56,6 +56,9 @@ var _ = Describe("Team", func() {
 	It("can be created", func() {
 		createPayload := fixtures.RandomTeamCreatePayload()
 		var directGroupUUID model.GroupUUID
+		var directManagersGroupUUID model.GroupUUID
+		var managersGroupUUID model.GroupUUID
+
 		params := tests.Params{
 			"expectPayload": func(json gjson.Result) {
 				teamData := json.Get("team")
@@ -72,24 +75,28 @@ var _ = Describe("Team", func() {
 				Expect(teamData.Map()).To(HaveKey("parent_team_uuid"))
 
 				Expect(teamData.Map()).To(HaveKey("groups"))
-				Expect(teamData.Get("groups").Array()).To(HaveLen(1))
+				Expect(teamData.Get("groups").Array()).To(HaveLen(3))
 				directLinkedGroup := teamData.Get("groups").Array()[0]
 				Expect(directLinkedGroup.Map()).To(HaveKey("type"))
 				Expect(directLinkedGroup.Get("type").String()).To(Equal(usecase.DirectMembersGroupType))
 				Expect(directLinkedGroup.Map()).To(HaveKey("uuid"))
 				directGroupUUID = directLinkedGroup.Get("uuid").String()
+
+				directManagersLinkedGroup := teamData.Get("groups").Array()[1]
+				Expect(directManagersLinkedGroup.Map()).To(HaveKey("type"))
+				Expect(directManagersLinkedGroup.Get("type").String()).To(Equal(usecase.DirectManagersGroupType))
+				Expect(directManagersLinkedGroup.Map()).To(HaveKey("uuid"))
+				directManagersGroupUUID = directManagersLinkedGroup.Get("uuid").String()
+
+				managersLinkedGroup := teamData.Get("groups").Array()[2]
+				Expect(managersLinkedGroup.Map()).To(HaveKey("type"))
+				Expect(managersLinkedGroup.Get("type").String()).To(Equal(usecase.ManagersGroupType))
+				Expect(managersLinkedGroup.Map()).To(HaveKey("uuid"))
+				managersGroupUUID = managersLinkedGroup.Get("uuid").String()
 			},
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
-		GroupAPI.Read(tests.Params{
-			"tenant": flantFlowCfg.FlantTenantUUID,
-			"group":  directGroupUUID,
-			"expectPayload": func(json gjson.Result) {
-				groupData := json.Get("group")
-				Expect(groupData.Map()).To(HaveKey("uuid"))
-			},
-		},
-			nil)
+		checkAtTenantExistsGroups(flantFlowCfg.FlantTenantUUID, directGroupUUID, directManagersGroupUUID, managersGroupUUID)
 	})
 
 	Context("global uniqueness of team Identifier", func() {
@@ -272,6 +279,43 @@ var _ = Describe("Team", func() {
 			})
 		})
 	})
+
+	Context("Rules of creation groups nested teams", func() {
+		It("After creation child team^ it's managers group contains own direct_managers_group and parent deirect_managers_group", func() {
+			parentTeam := specs.CreateRandomTeam(TestAPI)
+			childTeam := specs.CreateRandomTeamWithParent(TestAPI, parentTeam.UUID)
+			var (
+				managersChildGroupUUID        model.GroupUUID
+				directManagersChildGroupUUID  model.GroupUUID
+				directManagersParentGroupUUID model.GroupUUID
+			)
+			for _, g := range parentTeam.Groups {
+				if g.Type == usecase.DirectManagersGroupType {
+					directManagersParentGroupUUID = g.GroupUUID
+				}
+			}
+			for _, g := range childTeam.Groups {
+				if g.Type == usecase.DirectManagersGroupType {
+					directManagersChildGroupUUID = g.GroupUUID
+				}
+				if g.Type == usecase.ManagersGroupType {
+					managersChildGroupUUID = g.GroupUUID
+				}
+			}
+			GroupAPI.Read(tests.Params{
+				"tenant": flantFlowCfg.FlantTenantUUID,
+				"group":  managersChildGroupUUID,
+				"expectPayload": func(json gjson.Result) {
+					groupData := json.Get("group")
+					Expect(groupData.Map()).To(HaveKey("groups"))
+					Expect(groupData.Get("groups").Array()).To(HaveLen(2))
+					groups := groupData.Get("groups").Array()
+					Expect(groups[0].String()).To(Equal(directManagersParentGroupUUID))
+					Expect(groups[1].String()).To(Equal(directManagersChildGroupUUID))
+				},
+			}, nil)
+		})
+	})
 })
 
 func tryCreateRandomTeamWithIdentifier(identifier interface{}, statusCodeCondition string) {
@@ -283,4 +327,17 @@ func tryCreateRandomTeamWithIdentifier(identifier interface{}, statusCodeConditi
 	}
 
 	TestAPI.Create(params, nil, payload)
+}
+
+func checkAtTenantExistsGroups(tenantUUID string, groupUUIDs ...string) {
+	for _, g := range groupUUIDs {
+		GroupAPI.Read(tests.Params{
+			"tenant": tenantUUID,
+			"group":  g,
+			"expectPayload": func(json gjson.Result) {
+				groupData := json.Get("group")
+				Expect(groupData.Map()).To(HaveKey("uuid"))
+			},
+		}, nil)
+	}
 }
