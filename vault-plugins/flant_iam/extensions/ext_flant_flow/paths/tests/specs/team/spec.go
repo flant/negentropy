@@ -13,6 +13,7 @@ import (
 	iam_specs "github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
+	model2 "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -284,24 +285,10 @@ var _ = Describe("Team", func() {
 		It("After creation child team^ it's managers group contains own direct_managers_group and parent deirect_managers_group", func() {
 			parentTeam := specs.CreateRandomTeam(TestAPI)
 			childTeam := specs.CreateRandomTeamWithParent(TestAPI, parentTeam.UUID)
-			var (
-				managersChildGroupUUID        model.GroupUUID
-				directManagersChildGroupUUID  model.GroupUUID
-				directManagersParentGroupUUID model.GroupUUID
-			)
-			for _, g := range parentTeam.Groups {
-				if g.Type == usecase.DirectManagersGroupType {
-					directManagersParentGroupUUID = g.GroupUUID
-				}
-			}
-			for _, g := range childTeam.Groups {
-				if g.Type == usecase.DirectManagersGroupType {
-					directManagersChildGroupUUID = g.GroupUUID
-				}
-				if g.Type == usecase.ManagersGroupType {
-					managersChildGroupUUID = g.GroupUUID
-				}
-			}
+			managersChildGroupUUID := groupsMap(childTeam.Groups)[usecase.ManagersGroupType]
+			directManagersChildGroupUUID := groupsMap(childTeam.Groups)[usecase.DirectManagersGroupType]
+			directManagersParentGroupUUID := groupsMap(parentTeam.Groups)[usecase.DirectManagersGroupType]
+
 			GroupAPI.Read(tests.Params{
 				"tenant": flantFlowCfg.FlantTenantUUID,
 				"group":  managersChildGroupUUID,
@@ -340,4 +327,13 @@ func checkAtTenantExistsGroups(tenantUUID string, groupUUIDs ...string) {
 			},
 		}, nil)
 	}
+}
+
+// groupsMap returns map[GroupType]GroupUUID
+func groupsMap(groups []model2.LinkedGroup) map[string]model.GroupUUID {
+	result := map[string]model.GroupUUID{}
+	for _, g := range groups {
+		result[g.Type] = g.GroupUUID
+	}
+	return result
 }

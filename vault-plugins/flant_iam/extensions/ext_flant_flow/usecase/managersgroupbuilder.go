@@ -87,7 +87,7 @@ func (d managersBuilder) collectAllDirectManagersGroups(team model.Team) ([]iam_
 		}
 		parentsDirectManagersGroupUUIDs, err = d.collectAllDirectManagersGroups(*parentTeam)
 	}
-	result := append(parentsDirectManagersGroupUUIDs, ownDirectManagersGroupUUID)
+	result := append(parentsDirectManagersGroupUUIDs, ownDirectManagersGroupUUID) // nolint:gocritic
 	return result, nil
 }
 

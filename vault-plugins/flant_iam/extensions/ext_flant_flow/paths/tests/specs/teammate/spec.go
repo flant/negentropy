@@ -85,7 +85,7 @@ var _ = Describe("Teammate", func() {
 			"team": team.UUID,
 		}
 		TestAPI.Create(params, url.Values{}, createPayload)
-		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammateUUID, true)
+		checkTeamHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammateUUID, true, usecase.DirectMembersGroupType)
 		checkTeammateInAllFlantGroup(cfg, teammateUUID, true)
 	})
 
@@ -148,7 +148,7 @@ var _ = Describe("Teammate", func() {
 			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil)
 		Expect(deletedData.Get("teammate.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
-		checkTeamOfTeammateHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammate.UUID, false)
+		checkTeamHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, teammate.UUID, false, usecase.DirectMembersGroupType, usecase.DirectManagersGroupType)
 		checkTeammateInAllFlantGroup(cfg, teammate.UUID, false)
 	})
 
@@ -243,6 +243,18 @@ var _ = Describe("Teammate", func() {
 			}, nil, updatePayload)
 		})
 	})
+
+	It("Creating manager", func() {
+		createPayload := fixtures.RandomTeammateCreatePayload(team)
+		createPayload["role_at_team"] = model.ManagerRole
+
+		createdData := TestAPI.Create(tests.Params{
+			"team": team.UUID,
+		}, nil, createPayload)
+
+		checkTeamHasGroupsWithTeammate(cfg.FlantTenantUUID, team.UUID, createdData.Get("teammate.uuid").String(),
+			true, usecase.DirectMembersGroupType, usecase.DirectManagersGroupType)
+	})
 })
 
 func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID model2.UserUUID, shouldBe bool) {
@@ -280,21 +292,26 @@ func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID mode
 	}
 }
 
-func checkTeamOfTeammateHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID, teamUUID model.TeamUUID,
-	teammateUUID model2.UserUUID, expectHas bool) {
+func checkTeamHasGroupsWithTeammate(flantTenantUUID model2.TenantUUID, teamUUID model.TeamUUID,
+	teammateUUID model2.UserUUID, expectHas bool, groupTypes ...string) {
 	respData := TeamAPI.Read(tests.Params{
 		"team": teamUUID,
 	}, nil)
 	Expect(respData.Map()).To(HaveKey("team"))
 	teamData := respData.Get("team")
 	Expect(teamData.Map()).To(HaveKey("groups"))
-	Expect(teamData.Get("groups").Array()).To(HaveLen(3))
-	directLinkedGroup := teamData.Get("groups").Array()[0]
-	Expect(directLinkedGroup.Map()).To(HaveKey("type"))
-	Expect(directLinkedGroup.Get("type").String()).To(Equal(usecase.DirectMembersGroupType))
-	Expect(directLinkedGroup.Map()).To(HaveKey("uuid"))
-	directGroupUUID := directLinkedGroup.Get("uuid").String()
-	specs.CheckGroupHasUser(GroupAPI, flantTenantUUID, directGroupUUID, teammateUUID, expectHas)
+	Expect(teamData.Get("groups").Array()).To(HaveLen(3)) // should be updated after adding new group_types
+	groups := teamData.Get("groups").Array()
+	for _, checkingGroupType := range groupTypes {
+		for _, g := range groups {
+			Expect(g.Map()).To(HaveKey("type"))
+			if g.Get("type").String() == checkingGroupType {
+				Expect(g.Map()).To(HaveKey("uuid"))
+				groupUUID := g.Get("uuid").String()
+				specs.CheckGroupHasUser(GroupAPI, flantTenantUUID, groupUUID, teammateUUID, expectHas)
+			}
+		}
+	}
 }
 
 func tryCreateRandomTeammateAtTeamWithIdentifier(team model.Team,
