@@ -9,17 +9,20 @@ import (
 )
 
 type a struct {
+	ArchiveMark
 	UUID    string
 	NotUUID string
 }
 
 type b struct {
+	ArchiveMark
 	ID       a
 	Name     string
 	Children []c
 }
 
 type c struct {
+	ArchiveMark
 	UUID    string
 	NotUUID string
 }
@@ -108,7 +111,7 @@ func Test_InsertCustomTypeFieldIndexer(t *testing.T) {
 	txn := getTXN(t)
 
 	err := txn.Insert(testTable, &b{
-		ID:   a{"u1", "u2"},
+		ID:   a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "u2"},
 		Name: "u3",
 	})
 
@@ -118,16 +121,16 @@ func Test_InsertCustomTypeFieldIndexer(t *testing.T) {
 func Test_FirstCustomTypeFieldIndexer(t *testing.T) {
 	txn := getTXN(t)
 	err := txn.Insert(testTable, &b{
-		ID:   a{"u1", "u2"},
+		ID:   a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "u2"},
 		Name: "u3",
 	})
 	require.NoError(t, err)
 
-	obj, err := txn.First(testTable, PK, a{"u1", "u2"})
+	obj, err := txn.First(testTable, PK, a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "u2"})
 
 	require.NoError(t, err)
 	require.Equal(t, &b{
-		ID:   a{"u1", "u2"},
+		ID:   a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "u2"},
 		Name: "u3",
 	}, obj)
 }
@@ -136,9 +139,9 @@ func Test_InsertCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 	txn := getTXN(t)
 
 	err := txn.Insert(testTable, &b{
-		ID:       a{"u1", "u2"},
+		ID:       a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "u2"},
 		Name:     "u3",
-		Children: []c{{"u11", "nu11"}, {"u12", "nu12"}},
+		Children: []c{{ArchiveMark{Timestamp: 0, Hash: 0}, "u11", "nu11"}, {ArchiveMark{Timestamp: 0, Hash: 0}, "u12", "nu12"}},
 	})
 
 	require.NoError(t, err)
@@ -147,21 +150,21 @@ func Test_InsertCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 func getTxnWithData(t *testing.T) *Txn {
 	txn := getTXN(t)
 	err := txn.Insert(testTable, &b{
-		ID:       a{"u1", "nu1"},
+		ID:       a{ArchiveMark{Timestamp: 0, Hash: 0}, "u1", "nu1"},
 		Name:     "n1",
-		Children: []c{{"u11", "nu11"}, {"u12", "nu12"}},
+		Children: []c{{ArchiveMark{Timestamp: 0, Hash: 0}, "u11", "nu11"}, {ArchiveMark{Timestamp: 0, Hash: 0}, "u12", "nu12"}},
 	})
 	require.NoError(t, err)
 	err = txn.Insert(testTable, &b{
-		ID:       a{"u2", "nu2"},
+		ID:       a{ArchiveMark{Timestamp: 0, Hash: 0}, "u2", "nu2"},
 		Name:     "n2",
-		Children: []c{{"u11", "nu11"}, {"u13", "nu13"}},
+		Children: []c{{ArchiveMark{Timestamp: 0, Hash: 0}, "u11", "nu11"}, {ArchiveMark{Timestamp: 0, Hash: 0}, "u13", "nu13"}},
 	})
 	require.NoError(t, err)
 	err = txn.Insert(testTable, &b{
-		ID:       a{"u3", "u3"},
+		ID:       a{ArchiveMark{Timestamp: 0, Hash: 0}, "u3", "u3"},
 		Name:     "n3",
-		Children: []c{{"u12", "nu12"}, {"u13", "nu13"}},
+		Children: []c{{ArchiveMark{Timestamp: 0, Hash: 0}, "u12", "nu12"}, {ArchiveMark{Timestamp: 0, Hash: 0}, "u13", "nu13"}},
 	})
 	require.NoError(t, err)
 	return txn
@@ -170,7 +173,7 @@ func getTxnWithData(t *testing.T) *Txn {
 func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 	txn := getTxnWithData(t)
 
-	iter, err := txn.Get(testTable, childrenIndex, c{"u12", "nu12"})
+	iter, err := txn.Get(testTable, childrenIndex, c{ArchiveMark{Timestamp: 0, Hash: 0}, "u12", "nu12"})
 
 	require.NoError(t, err)
 	r1 := iter.Next()
@@ -187,7 +190,7 @@ func Test_GetCustomTypeSliceFieldIndexerTXN(t *testing.T) {
 
 func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
 	txn := getTxnWithData(t)
-	child := c{"u12", "nu12"}
+	child := c{ArchiveMark{Timestamp: 0, Hash: 0}, "u12", "nu12"}
 	iter, err := txn.Get(testTable, childrenIndex, child)
 	require.NoError(t, err)
 	r1 := iter.Next()
@@ -206,5 +209,5 @@ func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
 	err = txn.Delete(childTable, &child)
 
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "delete:not empty relation error:relation should be empty: {\"u12\" \"\"} found at table \"test_table\" by index \"children_index\"")
+	require.Equal(t, "delete:not empty relation error:relation should be empty: {{'\\x00' '\\x00'} \"u12\" \"\"} found at table \"test_table\" by index \"children_index\"", err.Error())
 }

@@ -42,7 +42,7 @@ func Teams() []model.Team {
 func TeamCreatePayload(sample model.Team) map[string]interface{} {
 	return map[string]interface{}{
 		"uuid":       sample.UUID,
-		"identifier": "Identifier_" + RandomStr(),
+		"identifier": "Team_" + RandomStr(),
 		"version":    sample.Version,
 		"team_type":  sample.TeamType,
 		// "parent_team_uuid": sample.ParentTeamUUID,

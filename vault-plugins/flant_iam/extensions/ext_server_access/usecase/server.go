@@ -332,7 +332,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		}
 
 		if groupToDelete != nil {
-			err := s.groupRepo.Delete(groupToDelete.UUID, archiveMark)
+			err := s.groupRepo.CascadeDelete(groupToDelete.UUID, archiveMark)
 			if err != nil {
 				return err
 			}

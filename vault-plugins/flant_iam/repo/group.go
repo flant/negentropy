@@ -149,7 +149,7 @@ func (r *GroupRepository) Update(group *model.Group) error {
 	return r.save(group)
 }
 
-func (r *GroupRepository) Delete(id model.GroupUUID, archiveMark memdb.ArchiveMark) error {
+func (r *GroupRepository) CascadeDelete(id model.GroupUUID, archiveMark memdb.ArchiveMark) error {
 	group, err := r.GetByID(id)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (r *GroupRepository) Delete(id model.GroupUUID, archiveMark memdb.ArchiveMa
 	if group.Archived() {
 		return consts.ErrIsArchived
 	}
-	return r.db.Archive(model.GroupType, group, archiveMark)
+	return r.db.CascadeArchive(model.GroupType, group, archiveMark)
 }
 
 func (r *GroupRepository) CleanChildrenSliceIndexes(id model.GroupUUID) error {

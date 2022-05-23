@@ -90,7 +90,7 @@ func RandomContactCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := contactSet[rand.Intn(len(contactSet))]
 
-	sample.Identifier = uuid.New()
+	sample.Identifier = "Contact_" + uuid.New()
 	sample.Email = fmt.Sprintf("%s@ex.com", RandomStr())
 	sample.Credentials = Contacts()[0].Credentials
 
