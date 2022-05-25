@@ -1431,7 +1431,7 @@
       "get": {
         "summary": "Lists all the roles registered with the backend.",
         "description": "The list will contain the names of the roles.",
-        "operationId": "getAuthFlant_iam_authAuth_method",
+        "operationId": "getAuthFlantAuth_method",
         "tags": [
           "auth"
         ],
@@ -1468,7 +1468,7 @@
       "x-vault-createSupported": true,
       "get": {
         "summary": "Read an existing authMethodConfig.",
-        "operationId": "getAuthFlant_iam_authAuth_methodName",
+        "operationId": "getAuthFlantAuth_methodName",
         "tags": [
           "auth"
         ],
@@ -1481,7 +1481,7 @@
       "post": {
         "summary": "Register an authMethodConfig with the backend.",
         "description": "A authMethodConfig is required to authenticate with this backend. The authMethodConfig binds\n\t\tJWT token information with token policies and settings.\n\t\tThe bindings, token polices and token settings can all be configured\n\t\tusing this endpoint",
-        "operationId": "postAuthFlant_iam_authAuth_methodName",
+        "operationId": "postAuthFlantAuth_methodName",
         "tags": [
           "auth"
         ],
@@ -1546,7 +1546,8 @@
                   },
                   "method_type": {
                     "type": "string",
-                    "description": "Type of the authMethodConfig, either 'jwt', 'oidc', 'service_account_password' or 'multipass_jwt'."
+                    "description": "Type of the authMethodConfig, either 'jwt', 'oidc', 'service_account_password' , 'multipass_jwt' or 'access_token'.",
+                    "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "not_before_leeway": {
                     "type": "integer",
@@ -1563,7 +1564,8 @@
                   },
                   "source": {
                     "type": "string",
-                    "description": "authentification source for method thypes 'jwt' and 'oidc'."
+                    "description": "authentification source for method thypes 'jwt', 'oidc' or 'access_token'.",
+                    "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "token_bound_cidrs": {
                     "type": "array",
@@ -1672,7 +1674,7 @@
       },
       "delete": {
         "summary": "Delete an existing authMethodConfig.",
-        "operationId": "deleteAuthFlant_iam_authAuth_methodName",
+        "operationId": "deleteAuthFlantAuth_methodName",
         "tags": [
           "auth"
         ],
@@ -1687,7 +1689,7 @@
       "get": {
         "summary": "Delete authentication source.",
         "description": "The JWT authentication backend validates JWTs (or OIDC) using the configured\ncredentials. If using OIDC Discovery, the URL must be provided, along\nwith (optionally) the CA cert to use for the connection. If performing JWT\nvalidation locally, a set of public keys must be provided.",
-        "operationId": "getAuthFlant_iam_authAuth_source",
+        "operationId": "getAuthFlantAuth_source",
         "tags": [
           "auth"
         ],
@@ -1716,14 +1718,15 @@
           "description": "auth source name",
           "in": "path",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
           },
           "required": true
         }
       ],
       "get": {
         "summary": "Read authentication source.",
-        "operationId": "getAuthFlant_iam_authAuth_sourceName",
+        "operationId": "getAuthFlantAuth_sourceName",
         "tags": [
           "auth"
         ],
@@ -1735,7 +1738,7 @@
       },
       "post": {
         "summary": "Write authentication source name passed name.",
-        "operationId": "postAuthFlant_iam_authAuth_sourceName",
+        "operationId": "postAuthFlantAuth_sourceName",
         "tags": [
           "auth"
         ],
@@ -1848,7 +1851,7 @@
       "delete": {
         "summary": "Delete authentication source.",
         "description": "The JWT authentication backend validates JWTs (or OIDC) using the configured\ncredentials. If using OIDC Discovery, the URL must be provided, along\nwith (optionally) the CA cert to use for the connection. If performing JWT\nvalidation locally, a set of public keys must be provided.",
-        "operationId": "deleteAuthFlant_iam_authAuth_sourceName",
+        "operationId": "deleteAuthFlantAuth_sourceName",
         "tags": [
           "auth"
         ],
@@ -1862,7 +1865,7 @@
     "/auth/flant/configure_extension/server_access": {
       "post": {
         "summary": "Register server extension",
-        "operationId": "postAuthFlant_iam_authConfigure_extensionServer_access",
+        "operationId": "postAuthFlantConfigure_extensionServer_access",
         "tags": [
           "auth"
         ],
@@ -1875,7 +1878,7 @@
                   "role_for_ssh_access": {
                     "type": "string",
                     "description": "Role to use for SSH access",
-                    "default": "ssh"
+                    "default": "ssh.open"
                   }
                 },
                 "required": [
@@ -1896,7 +1899,7 @@
       "description": "Configure vault access to itself",
       "post": {
         "summary": "Configure vault access to itself",
-        "operationId": "postAuthFlant_iam_authConfigure_vault_access",
+        "operationId": "postAuthFlantConfigure_vault_access",
         "tags": [
           "auth"
         ],
@@ -1947,15 +1950,15 @@
                   }
                 },
                 "required": [
-                  "vault_cacert",
-                  "secret_id",
+                  "approle_mount_point",
+                  "role_id",
+                  "secret_id_ttl",
                   "vault_tls_server_name",
                   "token_ttl",
-                  "approle_mount_point",
-                  "role_name",
                   "vault_addr",
-                  "role_id",
-                  "secret_id_ttl"
+                  "vault_cacert",
+                  "role_name",
+                  "secret_id"
                 ]
               }
             }
@@ -1983,7 +1986,7 @@
       ],
       "post": {
         "summary": "Update an existing jwt type",
-        "operationId": "postAuthFlant_iam_authIssueJwtName",
+        "operationId": "postAuthFlantIssueJwtName",
         "tags": [
           "auth"
         ],
@@ -2028,7 +2031,7 @@
       ],
       "post": {
         "summary": "Update an existing jwt type",
-        "operationId": "postAuthFlant_iam_authIssueMultipass_jwtUuid",
+        "operationId": "postAuthFlantIssueMultipass_jwtUuid",
         "tags": [
           "auth"
         ],
@@ -2044,7 +2047,7 @@
       "x-vault-unauthenticated": true,
       "get": {
         "summary": "Endpoint to expose public keys to check authority of issued tokens.",
-        "operationId": "getAuthFlant_iam_authJwks",
+        "operationId": "getAuthFlantJwks",
         "tags": [
           "auth"
         ],
@@ -2059,7 +2062,7 @@
       "description": "Configure JWT options.",
       "get": {
         "summary": "Read JWT issuing status and configuration.",
-        "operationId": "getAuthFlant_iam_authJwtConfigure",
+        "operationId": "getAuthFlantJwtConfigure",
         "tags": [
           "auth"
         ],
@@ -2071,7 +2074,7 @@
       },
       "post": {
         "summary": "Configure JWT options.",
-        "operationId": "postAuthFlant_iam_authJwtConfigure",
+        "operationId": "postAuthFlantJwtConfigure",
         "tags": [
           "auth"
         ],
@@ -2105,10 +2108,10 @@
                   }
                 },
                 "required": [
-                  "rotation_period",
                   "preliminary_announce_period",
                   "issuer",
-                  "multipass_audience"
+                  "multipass_audience",
+                  "rotation_period"
                 ]
               }
             }
@@ -2125,7 +2128,7 @@
       "description": "Disable JWT issuing.",
       "post": {
         "summary": "Disable JWT issuing.",
-        "operationId": "postAuthFlant_iam_authJwtDisable",
+        "operationId": "postAuthFlantJwtDisable",
         "tags": [
           "auth"
         ],
@@ -2140,7 +2143,7 @@
       "description": "Enable JWT issuing.",
       "post": {
         "summary": "Enable JWT issuing.",
-        "operationId": "postAuthFlant_iam_authJwtEnable",
+        "operationId": "postAuthFlantJwtEnable",
         "tags": [
           "auth"
         ],
@@ -2155,7 +2158,7 @@
       "description": "Force key rotation. Calling this endpoint will rotate keys immediately.",
       "post": {
         "summary": "Force key rotation. Calling this endpoint will rotate keys immediately.",
-        "operationId": "postAuthFlant_iam_authJwtRotate_key",
+        "operationId": "postAuthFlantJwtRotate_key",
         "tags": [
           "auth"
         ],
@@ -2170,7 +2173,7 @@
       "get": {
         "summary": "Lists all jwt types registered with the backend",
         "description": "The list will contain the names of the jwt token types.",
-        "operationId": "getAuthFlant_iam_authJwt_type",
+        "operationId": "getAuthFlantJwt_type",
         "tags": [
           "auth"
         ],
@@ -2207,7 +2210,7 @@
       "x-vault-createSupported": true,
       "get": {
         "summary": "Read an existing jwt type",
-        "operationId": "getAuthFlant_iam_authJwt_typeName",
+        "operationId": "getAuthFlantJwt_typeName",
         "tags": [
           "auth"
         ],
@@ -2219,7 +2222,7 @@
       },
       "post": {
         "summary": "Update an existing jwt type",
-        "operationId": "postAuthFlant_iam_authJwt_typeName",
+        "operationId": "postAuthFlantJwt_typeName",
         "tags": [
           "auth"
         ],
@@ -2254,7 +2257,7 @@
       },
       "delete": {
         "summary": "Delete an existing jwt type",
-        "operationId": "deleteAuthFlant_iam_authJwt_typeName",
+        "operationId": "deleteAuthFlantJwt_typeName",
         "tags": [
           "auth"
         ],
@@ -2267,9 +2270,21 @@
     },
     "/auth/flant/kafka/configure": {
       "x-vault-createSupported": true,
+      "get": {
+        "summary": "Read kafka plugin configuration",
+        "operationId": "getAuthFlantKafkaConfigure",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
       "post": {
         "summary": "Setup kafka plugin configuration",
-        "operationId": "postAuthFlant_iam_authKafkaConfigure",
+        "operationId": "postAuthFlantKafkaConfigure",
         "tags": [
           "auth"
         ],
@@ -2304,9 +2319,9 @@
                   }
                 },
                 "required": [
-                  "self_topic_name",
                   "root_public_key",
-                  "root_topic_name"
+                  "root_topic_name",
+                  "self_topic_name"
                 ]
               }
             }
@@ -2322,7 +2337,7 @@
     "/auth/flant/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
-        "operationId": "postAuthFlant_iam_authKafkaConfigure_access",
+        "operationId": "postAuthFlantKafkaConfigure_access",
         "tags": [
           "auth"
         ],
@@ -2332,9 +2347,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "certificate": {
+                  "ca_path": {
                     "type": "string",
-                    "description": "x509 certificate to establish Kafka TLS connection"
+                    "description": "Absolute path to file, which contains CA certificate for verifying the kafka broker key, example: /etc/ca.crt"
+                  },
+                  "client_certificate_path": {
+                    "type": "string",
+                    "description": "Absolute path to file, which contains client public key (PEM) used for authentication, example: /etc/client.crt"
+                  },
+                  "client_private_key_path": {
+                    "type": "string",
+                    "description": "Absolute path to file, which contains client private key (PEM) used for authentication, example: /etc/client.key"
                   },
                   "kafka_endpoints": {
                     "type": "array",
@@ -2342,10 +2365,18 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "use_ssl": {
+                    "type": "boolean",
+                    "description": "Use SSL or not, if set true, have to pass ca_path, client_private_key_path, client_certificate_path"
                   }
                 },
                 "required": [
-                  "kafka_endpoints"
+                  "kafka_endpoints",
+                  "use_ssl",
+                  "ca_path",
+                  "client_private_key_path",
+                  "client_certificate_path"
                 ]
               }
             }
@@ -2358,36 +2389,10 @@
         }
       }
     },
-    "/auth/flant/kafka/generate_csr": {
-      "parameters": [
-        {
-          "name": "force",
-          "description": "Enforce private key recreation",
-          "in": "query",
-          "schema": {
-            "type": "boolean",
-            "default": false
-          }
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Generate CSR for kafka endpoint",
-        "operationId": "postAuthFlant_iam_authKafkaGenerate_csr",
-        "tags": [
-          "auth"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/auth/flant/kafka/public_key": {
       "get": {
         "summary": "Return public key",
-        "operationId": "getAuthFlant_iam_authKafkaPublic_key",
+        "operationId": "getAuthFlantKafkaPublic_key",
         "tags": [
           "auth"
         ],
@@ -2403,7 +2408,7 @@
       "x-vault-unauthenticated": true,
       "post": {
         "summary": "Authenticates to Vault using a JWT (or OIDC) token.",
-        "operationId": "postAuthFlant_iam_authLogin",
+        "operationId": "postAuthFlantLogin",
         "tags": [
           "auth"
         ],
@@ -2437,7 +2442,10 @@
                     "type": "string",
                     "description": "Service account password uuid. Used for service account password auth"
                   }
-                }
+                },
+                "required": [
+                  "method"
+                ]
               }
             }
           }
@@ -2449,11 +2457,10 @@
         }
       }
     },
-    "/auth/flant/vst_owner": {
-      "description": "Provide info about owner of multipass",
+    "/auth/flant/login_policy": {
       "get": {
-        "summary": "Authenticates to Vault using a JWT (or OIDC) token.",
-        "operationId": "getAuthFlant_iam_authMultipass_owner",
+        "summary": "Lists all policies names.",
+        "operationId": "getAuthFlantLogin_policy",
         "tags": [
           "auth"
         ],
@@ -2464,11 +2471,101 @@
         }
       }
     },
+    "/auth/flant/login_policy/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Negentropy policy name",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Retrieve the policy by name.",
+        "operationId": "getAuthFlantLogin_policyName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update the policy by name.",
+        "operationId": "postAuthFlantLogin_policyName",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allowed_auth_methods": {
+                    "type": "array",
+                    "description": "Allowed auth methods",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "claim_schema": {
+                    "type": "string",
+                    "description": "Open api specification for rego policy claim"
+                  },
+                  "rego": {
+                    "type": "string",
+                    "description": "Rego policy",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "description": "Negentropy roles, which processed by this negentropy policy",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "roles",
+                  "claim_schema",
+                  "allowed_auth_methods",
+                  "rego"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deletes the policy by name.",
+        "operationId": "deleteAuthFlantLogin_policyName",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "empty body"
+          }
+        }
+      }
+    },
     "/auth/flant/oidc/auth_url": {
       "x-vault-unauthenticated": true,
       "post": {
         "summary": "Request an authorization URL to start an OIDC login flow.",
-        "operationId": "postAuthFlant_iam_authOidcAuth_url",
+        "operationId": "postAuthFlantOidcAuth_url",
         "tags": [
           "auth"
         ],
@@ -2507,7 +2604,7 @@
       "x-vault-unauthenticated": true,
       "get": {
         "summary": "Callback endpoint to complete an OIDC login.",
-        "operationId": "getAuthFlant_iam_authOidcCallback",
+        "operationId": "getAuthFlantOidcCallback",
         "tags": [
           "auth"
         ],
@@ -2519,7 +2616,7 @@
       },
       "post": {
         "summary": "Callback endpoint to handle form_posts.",
-        "operationId": "postAuthFlant_iam_authOidcCallback",
+        "operationId": "postAuthFlantOidcCallback",
         "tags": [
           "auth"
         ],
@@ -2566,7 +2663,7 @@
       ],
       "get": {
         "summary": "Query servers by labels",
-        "operationId": "getAuthFlant_iam_authQuery_server",
+        "operationId": "getAuthFlantQuery_server",
         "tags": [
           "auth"
         ],
@@ -2580,7 +2677,7 @@
     "/auth/flant/tenant": {
       "get": {
         "summary": "List all tenants.",
-        "operationId": "getAuthFlant_iam_authTenant",
+        "operationId": "getAuthFlantTenant",
         "tags": [
           "auth"
         ],
@@ -2615,7 +2712,7 @@
       ],
       "get": {
         "summary": "List all projects of a tenant.",
-        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProject",
+        "operationId": "getAuthFlantTenantTenant_uuidProject",
         "tags": [
           "auth"
         ],
@@ -2675,7 +2772,7 @@
       ],
       "get": {
         "summary": "Query servers in project by names or labels",
-        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectProject_uuidQuery_server",
+        "operationId": "getAuthFlantTenantTenant_uuidProjectProject_uuidQuery_server",
         "tags": [
           "auth"
         ],
@@ -2718,7 +2815,7 @@
       ],
       "get": {
         "summary": "GET all posix users",
-        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectProject_uuidServerServer_uuidPosix_users",
+        "operationId": "getAuthFlantTenantTenant_uuidProjectProject_uuidServerServer_uuidPosix_users",
         "tags": [
           "auth"
         ],
@@ -2754,7 +2851,7 @@
       ],
       "get": {
         "summary": "Retrieve the project by ID.",
-        "operationId": "getAuthFlant_iam_authTenantTenant_uuidProjectUuid",
+        "operationId": "getAuthFlantTenantTenant_uuidProjectUuid",
         "tags": [
           "auth"
         ],
@@ -2787,7 +2884,7 @@
       ],
       "get": {
         "summary": "Query servers in tenant by labels",
-        "operationId": "getAuthFlant_iam_authTenantTenant_uuidQuery_server",
+        "operationId": "getAuthFlantTenantTenant_uuidQuery_server",
         "tags": [
           "auth"
         ],
@@ -2813,7 +2910,22 @@
       ],
       "get": {
         "summary": "Retrieve the tenant by ID.",
-        "operationId": "getAuthFlant_iam_authTenantUuid",
+        "operationId": "getAuthFlantTenantUuid",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/flant/vst_owner": {
+      "description": "Provide info about owner of vault session token (if it issued for user or service_account of negentropy)",
+      "get": {
+        "summary": "Authenticates to Vault using a JWT (or OIDC) token.",
+        "operationId": "getAuthFlantVst_owner",
         "tags": [
           "auth"
         ],
@@ -3500,10 +3612,10 @@
         }
       }
     },
-    "/flant_iam/client": {
+    "/flant/client": {
       "get": {
         "summary": "Lists all client IDs.",
-        "operationId": "getFlant_iamClient",
+        "operationId": "getFlantClient",
         "tags": [
           "secrets"
         ],
@@ -3514,11 +3626,11 @@
         }
       }
     },
-    "/flant_iam/client/privileged": {
+    "/flant/client/privileged": {
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create client with preexistent ID.",
-        "operationId": "postFlant_iamClientPrivileged",
+        "operationId": "postFlantClientPrivileged",
         "tags": [
           "secrets"
         ],
@@ -3533,6 +3645,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "uuid": {
                     "type": "string",
                     "description": "ID of a client",
@@ -3541,6 +3657,7 @@
                 },
                 "required": [
                   "identifier",
+                  "language",
                   "uuid"
                 ]
               }
@@ -3554,7 +3671,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/contact": {
+    "/flant/client/{client_uuid}/contact": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3569,7 +3686,7 @@
       ],
       "get": {
         "summary": "Lists all contacts IDs.",
-        "operationId": "getFlant_iamClientClient_uuidContact",
+        "operationId": "getFlantClientClient_uuidContact",
         "tags": [
           "secrets"
         ],
@@ -3580,7 +3697,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/contact/privileged": {
+    "/flant/client/{client_uuid}/contact/privileged": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3596,7 +3713,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create contact with preexistent ID.",
-        "operationId": "postFlant_iamClientClient_uuidContactPrivileged",
+        "operationId": "postFlantClientClient_uuidContactPrivileged",
         "tags": [
           "secrets"
         ],
@@ -3642,6 +3759,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "last_name": {
                     "type": "string",
                     "description": "last_name"
@@ -3657,16 +3778,17 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "email",
-                  "display_name",
-                  "mobile_phone",
-                  "additional_phones",
-                  "additional_emails",
-                  "uuid",
-                  "credentials",
                   "first_name",
-                  "last_name"
+                  "uuid",
+                  "identifier",
+                  "display_name",
+                  "additional_emails",
+                  "additional_phones",
+                  "language",
+                  "last_name",
+                  "email",
+                  "mobile_phone",
+                  "credentials"
                 ]
               }
             }
@@ -3679,7 +3801,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/contact/{uuid}": {
+    "/flant/client/{client_uuid}/contact/{uuid}": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3704,7 +3826,7 @@
       ],
       "get": {
         "summary": "Retrieve the contact by ID",
-        "operationId": "getFlant_iamClientClient_uuidContactUuid",
+        "operationId": "getFlantClientClient_uuidContactUuid",
         "tags": [
           "secrets"
         ],
@@ -3716,7 +3838,7 @@
       },
       "post": {
         "summary": "Update the contact by ID",
-        "operationId": "postFlant_iamClientClient_uuidContactUuid",
+        "operationId": "postFlantClientClient_uuidContactUuid",
         "tags": [
           "secrets"
         ],
@@ -3762,6 +3884,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "last_name": {
                     "type": "string",
                     "description": "last_name"
@@ -3776,16 +3902,17 @@
                   }
                 },
                 "required": [
-                  "additional_emails",
-                  "first_name",
                   "display_name",
-                  "mobile_phone",
+                  "language",
+                  "credentials",
+                  "first_name",
+                  "email",
+                  "additional_emails",
+                  "additional_phones",
                   "resource_version",
                   "identifier",
-                  "email",
-                  "additional_phones",
-                  "credentials",
-                  "last_name"
+                  "last_name",
+                  "mobile_phone"
                 ]
               }
             }
@@ -3799,7 +3926,7 @@
       },
       "delete": {
         "summary": "Deletes the contact by ID",
-        "operationId": "deleteFlant_iamClientClient_uuidContactUuid",
+        "operationId": "deleteFlantClientClient_uuidContactUuid",
         "tags": [
           "secrets"
         ],
@@ -3810,7 +3937,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/contact/{uuid}/restore": {
+    "/flant/client/{client_uuid}/contact/{uuid}/restore": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3835,7 +3962,7 @@
       ],
       "post": {
         "summary": "Restore the contact by ID.",
-        "operationId": "postFlant_iamClientClient_uuidContactUuidRestore",
+        "operationId": "postFlantClientClient_uuidContactUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -3846,7 +3973,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/project": {
+    "/flant/client/{client_uuid}/project": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3861,7 +3988,7 @@
       ],
       "get": {
         "summary": "Lists all projects IDs.",
-        "operationId": "getFlant_iamClientClient_uuidProject",
+        "operationId": "getFlantClientClient_uuidProject",
         "tags": [
           "secrets"
         ],
@@ -3872,7 +3999,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/project/privileged": {
+    "/flant/client/{client_uuid}/project/privileged": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3888,7 +4015,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create project with preexistent ID.",
-        "operationId": "postFlant_iamClientClient_uuidProjectPrivileged",
+        "operationId": "postFlantClientClient_uuidProjectPrivileged",
         "tags": [
           "secrets"
         ],
@@ -3898,15 +4025,29 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "devops_team": {
+                    "type": "string",
+                    "description": "Devops team uuid"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "service_packs": {
-                    "type": "object",
+                    "type": "array",
                     "description": "Service packs",
-                    "format": "kvpairs"
+                    "items": {
+                      "type": "string"
+                    },
+                    "enum": [
+                      "l1_service_pack",
+                      "devops_service_pack",
+                      "mk8s_service_pack",
+                      "deckhouse_service_pack",
+                      "okmeter_service_pack",
+                      "consulting_service_pack"
+                    ]
                   },
                   "uuid": {
                     "type": "string",
@@ -3915,9 +4056,9 @@
                   }
                 },
                 "required": [
+                  "service_packs",
                   "uuid",
-                  "identifier",
-                  "service_packs"
+                  "identifier"
                 ]
               }
             }
@@ -3930,7 +4071,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/project/{uuid}": {
+    "/flant/client/{client_uuid}/project/{uuid}": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -3955,7 +4096,7 @@
       ],
       "get": {
         "summary": "Retrieve the project by ID.",
-        "operationId": "getFlant_iamClientClient_uuidProjectUuid",
+        "operationId": "getFlantClientClient_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -3967,7 +4108,7 @@
       },
       "post": {
         "summary": "Update the project by ID.",
-        "operationId": "postFlant_iamClientClient_uuidProjectUuid",
+        "operationId": "postFlantClientClient_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -3977,6 +4118,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "devops_team": {
+                    "type": "string",
+                    "description": "Devops team uuid"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
@@ -3987,9 +4132,19 @@
                     "description": "Resource version"
                   },
                   "service_packs": {
-                    "type": "object",
+                    "type": "array",
                     "description": "Service packs",
-                    "format": "kvpairs"
+                    "items": {
+                      "type": "string"
+                    },
+                    "enum": [
+                      "l1_service_pack",
+                      "devops_service_pack",
+                      "mk8s_service_pack",
+                      "deckhouse_service_pack",
+                      "okmeter_service_pack",
+                      "consulting_service_pack"
+                    ]
                   }
                 },
                 "required": [
@@ -4009,7 +4164,7 @@
       },
       "delete": {
         "summary": "Deletes the project by ID.",
-        "operationId": "deleteFlant_iamClientClient_uuidProjectUuid",
+        "operationId": "deleteFlantClientClient_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -4020,7 +4175,7 @@
         }
       }
     },
-    "/flant_iam/client/{client_uuid}/project/{uuid}/restore": {
+    "/flant/client/{client_uuid}/project/{uuid}/restore": {
       "parameters": [
         {
           "name": "client_uuid",
@@ -4045,7 +4200,7 @@
       ],
       "post": {
         "summary": "Restore the project by ID.",
-        "operationId": "postFlant_iamClientClient_uuidProjectUuidRestore",
+        "operationId": "postFlantClientClient_uuidProjectUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -4056,7 +4211,7 @@
         }
       }
     },
-    "/flant_iam/client/{uuid}": {
+    "/flant/client/{uuid}": {
       "parameters": [
         {
           "name": "uuid",
@@ -4071,7 +4226,7 @@
       ],
       "get": {
         "summary": "Retrieve the client by ID.",
-        "operationId": "getFlant_iamClientUuid",
+        "operationId": "getFlantClientUuid",
         "tags": [
           "secrets"
         ],
@@ -4083,7 +4238,7 @@
       },
       "post": {
         "summary": "Update the client by ID.",
-        "operationId": "postFlant_iamClientUuid",
+        "operationId": "postFlantClientUuid",
         "tags": [
           "secrets"
         ],
@@ -4098,6 +4253,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "resource_version": {
                     "type": "string",
                     "description": "Resource version"
@@ -4105,6 +4264,7 @@
                 },
                 "required": [
                   "identifier",
+                  "language",
                   "resource_version"
                 ]
               }
@@ -4119,7 +4279,7 @@
       },
       "delete": {
         "summary": "Deletes the client by ID.",
-        "operationId": "deleteFlant_iamClientUuid",
+        "operationId": "deleteFlantClientUuid",
         "tags": [
           "secrets"
         ],
@@ -4130,7 +4290,7 @@
         }
       }
     },
-    "/flant_iam/client/{uuid}/restore": {
+    "/flant/client/{uuid}/restore": {
       "parameters": [
         {
           "name": "uuid",
@@ -4145,7 +4305,7 @@
       ],
       "post": {
         "summary": "Restore the client by ID.",
-        "operationId": "postFlant_iamClientUuidRestore",
+        "operationId": "postFlantClientUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -4171,7 +4331,48 @@
         }
       }
     },
-    "/flant_iam/configure_extension/flant_flow/flant_tenant/{flant_tenant_uuid}": {
+    "/flant/configure_extension/flant_flow": {
+      "get": {
+        "summary": "read flant_flow extension config",
+        "operationId": "getFlantConfigure_extensionFlant_flow",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant/configure_extension/flant_flow/all_flant_group/{all_flant_group_uuid}": {
+      "parameters": [
+        {
+          "name": "all_flant_group_uuid",
+          "description": "ID of a group which contains all flant teammates",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
+      "x-vault-createSupported": true,
+      "post": {
+        "summary": "Set all Flant teammates group uuid",
+        "operationId": "postFlantConfigure_extensionFlant_flowAll_flant_groupAll_flant_group_uuid",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/flant/configure_extension/flant_flow/flant_tenant/{flant_tenant_uuid}": {
       "parameters": [
         {
           "name": "flant_tenant_uuid",
@@ -4187,7 +4388,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Set Flant uuid",
-        "operationId": "postFlant_iamConfigure_extensionFlant_flowFlant_tenantFlant_tenant_uuid",
+        "operationId": "postFlantConfigure_extensionFlant_flowFlant_tenantFlant_tenant_uuid",
         "tags": [
           "secrets"
         ],
@@ -4198,11 +4399,23 @@
         }
       }
     },
-    "/flant_iam/configure_extension/flant_flow/specific_roles": {
+    "/flant/configure_extension/flant_flow/role_rules/{specific_team}": {
+      "parameters": [
+        {
+          "name": "specific_team",
+          "description": "Specific team type. Mandatory keys:[DevOps]",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
+          },
+          "required": true
+        }
+      ],
       "x-vault-createSupported": true,
       "post": {
         "summary": "Set specific iam.roles for flant_flow extension",
-        "operationId": "postFlant_iamConfigure_extensionFlant_flowSpecific_roles",
+        "operationId": "postFlantConfigure_extensionFlant_flowRole_rulesSpecific_team",
         "tags": [
           "secrets"
         ],
@@ -4213,9 +4426,11 @@
                 "type": "object",
                 "properties": {
                   "specific_roles": {
-                    "type": "object",
-                    "description": "Mapping some specific keys to iam.RoleName, mandatory keys:[]",
-                    "format": "kvpairs"
+                    "type": "array",
+                    "description": "Set of roles for specific team type. Passed roles will be used for automatically created rolebindings",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [
@@ -4232,11 +4447,11 @@
         }
       }
     },
-    "/flant_iam/configure_extension/flant_flow/specific_teams": {
+    "/flant/configure_extension/flant_flow/specific_teams": {
       "x-vault-createSupported": true,
       "post": {
         "summary": "Set specific teams for flant_flow extension",
-        "operationId": "postFlant_iamConfigure_extensionFlant_flowSpecific_teams",
+        "operationId": "postFlantConfigure_extensionFlant_flowSpecific_teams",
         "tags": [
           "secrets"
         ],
@@ -4266,10 +4481,10 @@
         }
       }
     },
-    "/flant_iam/configure_extension/server_access": {
+    "/flant/configure_extension/server_access": {
       "post": {
         "summary": "Register server",
-        "operationId": "postFlant_iamConfigure_extensionServer_access",
+        "operationId": "postFlantConfigure_extensionServer_access",
         "tags": [
           "secrets"
         ],
@@ -4306,10 +4521,10 @@
                   }
                 },
                 "required": [
-                  "roles_for_servers",
-                  "role_for_ssh_access",
                   "delete_expired_password_seeds_after",
-                  "expire_password_seed_after_reveal_in"
+                  "expire_password_seed_after_reveal_in",
+                  "roles_for_servers",
+                  "role_for_ssh_access"
                 ]
               }
             }
@@ -4322,10 +4537,10 @@
         }
       }
     },
-    "/flant_iam/feature_flag": {
+    "/flant/feature_flag": {
       "get": {
         "summary": "Lists all feature flags.",
-        "operationId": "getFlant_iamFeature_flag",
+        "operationId": "getFlantFeature_flag",
         "tags": [
           "secrets"
         ],
@@ -4336,7 +4551,7 @@
         }
       }
     },
-    "/flant_iam/feature_flag/{name}": {
+    "/flant/feature_flag/{name}": {
       "parameters": [
         {
           "name": "name",
@@ -4351,7 +4566,7 @@
       ],
       "delete": {
         "summary": "Deletes the featureFlag by ID.",
-        "operationId": "deleteFlant_iamFeature_flagName",
+        "operationId": "deleteFlantFeature_flagName",
         "tags": [
           "secrets"
         ],
@@ -4362,11 +4577,11 @@
         }
       }
     },
-    "/flant_iam/jwks": {
+    "/flant/jwks": {
       "description": "Endpoint to expose public keys to check authority of issued tokens.",
       "get": {
         "summary": "Endpoint to expose public keys to check authority of issued tokens.",
-        "operationId": "getFlant_iamJwks",
+        "operationId": "getFlantJwks",
         "tags": [
           "secrets"
         ],
@@ -4377,11 +4592,11 @@
         }
       }
     },
-    "/flant_iam/jwt/configure": {
+    "/flant/jwt/configure": {
       "description": "Configure JWT options.",
       "get": {
         "summary": "Read JWT issuing status and configuration.",
-        "operationId": "getFlant_iamJwtConfigure",
+        "operationId": "getFlantJwtConfigure",
         "tags": [
           "secrets"
         ],
@@ -4393,7 +4608,7 @@
       },
       "post": {
         "summary": "Configure JWT options.",
-        "operationId": "postFlant_iamJwtConfigure",
+        "operationId": "postFlantJwtConfigure",
         "tags": [
           "secrets"
         ],
@@ -4443,11 +4658,11 @@
         }
       }
     },
-    "/flant_iam/jwt/disable": {
+    "/flant/jwt/disable": {
       "description": "Disable JWT issuing.",
       "post": {
         "summary": "Disable JWT issuing.",
-        "operationId": "postFlant_iamJwtDisable",
+        "operationId": "postFlantJwtDisable",
         "tags": [
           "secrets"
         ],
@@ -4458,11 +4673,11 @@
         }
       }
     },
-    "/flant_iam/jwt/enable": {
+    "/flant/jwt/enable": {
       "description": "Enable JWT issuing.",
       "post": {
         "summary": "Enable JWT issuing.",
-        "operationId": "postFlant_iamJwtEnable",
+        "operationId": "postFlantJwtEnable",
         "tags": [
           "secrets"
         ],
@@ -4473,11 +4688,11 @@
         }
       }
     },
-    "/flant_iam/jwt/rotate_key": {
+    "/flant/jwt/rotate_key": {
       "description": "Force key rotation. Calling this endpoint will rotate keys immediately.",
       "post": {
         "summary": "Force key rotation. Calling this endpoint will rotate keys immediately.",
-        "operationId": "postFlant_iamJwtRotate_key",
+        "operationId": "postFlantJwtRotate_key",
         "tags": [
           "secrets"
         ],
@@ -4488,11 +4703,23 @@
         }
       }
     },
-    "/flant_iam/kafka/configure": {
+    "/flant/kafka/configure": {
       "x-vault-createSupported": true,
+      "get": {
+        "summary": "Read kafka plugin configuration",
+        "operationId": "getFlantKafkaConfigure",
+        "tags": [
+          "secrets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
       "post": {
         "summary": "Setup kafka plugin configuration",
-        "operationId": "postFlant_iamKafkaConfigure",
+        "operationId": "postFlantKafkaConfigure",
         "tags": [
           "secrets"
         ],
@@ -4528,10 +4755,10 @@
         }
       }
     },
-    "/flant_iam/kafka/configure_access": {
+    "/flant/kafka/configure_access": {
       "post": {
         "summary": "Setup kafka configuration",
-        "operationId": "postFlant_iamKafkaConfigure_access",
+        "operationId": "postFlantKafkaConfigure_access",
         "tags": [
           "secrets"
         ],
@@ -4541,9 +4768,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "certificate": {
+                  "ca_path": {
                     "type": "string",
-                    "description": "x509 certificate to establish Kafka TLS connection"
+                    "description": "Absolute path to file, which contains CA certificate for verifying the kafka broker key, example: /etc/ca.crt"
+                  },
+                  "client_certificate_path": {
+                    "type": "string",
+                    "description": "Absolute path to file, which contains client public key (PEM) used for authentication, example: /etc/client.crt"
+                  },
+                  "client_private_key_path": {
+                    "type": "string",
+                    "description": "Absolute path to file, which contains client private key (PEM) used for authentication, example: /etc/client.key"
                   },
                   "kafka_endpoints": {
                     "type": "array",
@@ -4551,10 +4786,18 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "use_ssl": {
+                    "type": "boolean",
+                    "description": "Use SSL or not, if set true, have to pass ca_path, client_private_key_path, client_certificate_path"
                   }
                 },
                 "required": [
-                  "kafka_endpoints"
+                  "ca_path",
+                  "client_private_key_path",
+                  "client_certificate_path",
+                  "kafka_endpoints",
+                  "use_ssl"
                 ]
               }
             }
@@ -4567,36 +4810,10 @@
         }
       }
     },
-    "/flant_iam/kafka/generate_csr": {
-      "parameters": [
-        {
-          "name": "force",
-          "description": "Enforce private key recreation",
-          "in": "query",
-          "schema": {
-            "type": "boolean",
-            "default": false
-          }
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Generate CSR for kafka endpoint",
-        "operationId": "postFlant_iamKafkaGenerate_csr",
-        "tags": [
-          "secrets"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/flant_iam/kafka/public_key": {
+    "/flant/kafka/public_key": {
       "get": {
         "summary": "Return public key",
-        "operationId": "getFlant_iamKafkaPublic_key",
+        "operationId": "getFlantKafkaPublic_key",
         "tags": [
           "secrets"
         ],
@@ -4607,10 +4824,10 @@
         }
       }
     },
-    "/flant_iam/replica": {
+    "/flant/replica": {
       "get": {
         "summary": "Lists all flant_iam replication backends",
-        "operationId": "getFlant_iamReplica",
+        "operationId": "getFlantReplica",
         "tags": [
           "secrets"
         ],
@@ -4628,14 +4845,15 @@
           "description": "replication name",
           "in": "path",
           "schema": {
-            "type": "string"
+            "type": "string",
+            "pattern": "\\w([\\w-.]*\\w)?"
           },
           "required": true
         }
       ],
       "x-vault-createSupported": true,
       "get": {
-        "operationId": "getFlant_iamReplicaReplica_name",
+        "operationId": "getFlantReplicaReplica_name",
         "tags": [
           "secrets"
         ],
@@ -4646,7 +4864,7 @@
         }
       },
       "post": {
-        "operationId": "postFlant_iamReplicaReplica_name",
+        "operationId": "postFlantReplicaReplica_name",
         "tags": [
           "secrets"
         ],
@@ -4663,6 +4881,7 @@
                   "type": {
                     "type": "string",
                     "description": "replication type",
+                    "pattern": "\\w([\\w-.]*\\w)?",
                     "enum": [
                       "Vault",
                       "Metadata"
@@ -4680,7 +4899,7 @@
         }
       },
       "delete": {
-        "operationId": "deleteFlant_iamReplicaReplica_name",
+        "operationId": "deleteFlantReplicaReplica_name",
         "tags": [
           "secrets"
         ],
@@ -4691,10 +4910,10 @@
         }
       }
     },
-    "/flant_iam/role": {
+    "/flant/role": {
       "get": {
         "summary": "Lists all roles IDs",
-        "operationId": "getFlant_iamRole",
+        "operationId": "getFlantRole",
         "tags": [
           "secrets"
         ],
@@ -4705,7 +4924,7 @@
         }
       }
     },
-    "/flant_iam/role/{name}": {
+    "/flant/role/{name}": {
       "parameters": [
         {
           "name": "name",
@@ -4720,7 +4939,7 @@
       ],
       "get": {
         "summary": "Retrieve the role by ID",
-        "operationId": "getFlant_iamRoleName",
+        "operationId": "getFlantRoleName",
         "tags": [
           "secrets"
         ],
@@ -4732,7 +4951,7 @@
       },
       "post": {
         "summary": "Update the role by ID",
-        "operationId": "postFlant_iamRoleName",
+        "operationId": "postFlantRoleName",
         "tags": [
           "secrets"
         ],
@@ -4745,6 +4964,16 @@
                   "description": {
                     "type": "string",
                     "description": "Role description"
+                  },
+                  "enriching_extensions": {
+                    "type": "array",
+                    "description": "Enumerated extensions name which should enrich data for rego policy running",
+                    "items": {
+                      "type": "string"
+                    },
+                    "enum": [
+                      "server_access"
+                    ]
                   },
                   "options_schema": {
                     "type": "string",
@@ -4760,6 +4989,7 @@
                 },
                 "required": [
                   "description",
+                  "enriching_extensions",
                   "require_one_of_feature_flags",
                   "options_schema"
                 ]
@@ -4775,7 +5005,7 @@
       },
       "delete": {
         "summary": "Deletes the role by ID",
-        "operationId": "deleteFlant_iamRoleName",
+        "operationId": "deleteFlantRoleName",
         "tags": [
           "secrets"
         ],
@@ -4786,7 +5016,7 @@
         }
       }
     },
-    "/flant_iam/role/{name}/include/{included_name}": {
+    "/flant/role/{name}/include/{included_name}": {
       "parameters": [
         {
           "name": "included_name",
@@ -4811,7 +5041,7 @@
       ],
       "post": {
         "summary": "Include role",
-        "operationId": "postFlant_iamRoleNameIncludeIncluded_name",
+        "operationId": "postFlantRoleNameIncludeIncluded_name",
         "tags": [
           "secrets"
         ],
@@ -4841,7 +5071,7 @@
       },
       "delete": {
         "summary": "Exclude role",
-        "operationId": "deleteFlant_iamRoleNameIncludeIncluded_name",
+        "operationId": "deleteFlantRoleNameIncludeIncluded_name",
         "tags": [
           "secrets"
         ],
@@ -4852,10 +5082,10 @@
         }
       }
     },
-    "/flant_iam/team": {
+    "/flant/team": {
       "get": {
         "summary": "Lists all teams IDs.",
-        "operationId": "getFlant_iamTeam",
+        "operationId": "getFlantTeam",
         "tags": [
           "secrets"
         ],
@@ -4866,11 +5096,11 @@
         }
       }
     },
-    "/flant_iam/team/privileged": {
+    "/flant/team/privileged": {
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create team with preexistent ID.",
-        "operationId": "postFlant_iamTeamPrivileged",
+        "operationId": "postFlantTeamPrivileged",
         "tags": [
           "secrets"
         ],
@@ -4905,9 +5135,9 @@
                   }
                 },
                 "required": [
-                  "team_type",
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "team_type"
                 ]
               }
             }
@@ -4920,7 +5150,7 @@
         }
       }
     },
-    "/flant_iam/team/{team_uuid}/teammate": {
+    "/flant/team/{team_uuid}/teammate": {
       "parameters": [
         {
           "name": "team_uuid",
@@ -4935,7 +5165,7 @@
       ],
       "get": {
         "summary": "Lists all teammates IDs.",
-        "operationId": "getFlant_iamTeamTeam_uuidTeammate",
+        "operationId": "getFlantTeamTeam_uuidTeammate",
         "tags": [
           "secrets"
         ],
@@ -4946,7 +5176,7 @@
         }
       }
     },
-    "/flant_iam/team/{team_uuid}/teammate/privileged": {
+    "/flant/team/{team_uuid}/teammate/privileged": {
       "parameters": [
         {
           "name": "team_uuid",
@@ -4962,7 +5192,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create teammate with preexistent ID.",
-        "operationId": "postFlant_iamTeamTeam_uuidTeammatePrivileged",
+        "operationId": "postFlantTeamTeam_uuidTeammatePrivileged",
         "tags": [
           "secrets"
         ],
@@ -4998,10 +5228,26 @@
                     "type": "string",
                     "description": "first_name"
                   },
+                  "github.com": {
+                    "type": "string",
+                    "description": "account at the github.com"
+                  },
+                  "gitlab.com": {
+                    "type": "string",
+                    "description": "account at the gitlab.com"
+                  },
+                  "habr.com": {
+                    "type": "string",
+                    "description": "account at the habr.com"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
                   },
                   "last_name": {
                     "type": "string",
@@ -5013,14 +5259,11 @@
                   },
                   "role_at_team": {
                     "type": "string",
-                    "description": "role at team",
-                    "enum": [
-                      "member",
-                      "engineer",
-                      "manager",
-                      "project_manager",
-                      "teamlead"
-                    ]
+                    "description": "role at team"
+                  },
+                  "telegram": {
+                    "type": "string",
+                    "description": "account at the telegram"
                   },
                   "uuid": {
                     "type": "string",
@@ -5029,16 +5272,17 @@
                   }
                 },
                 "required": [
+                  "language",
+                  "first_name",
                   "role_at_team",
-                  "identifier",
                   "last_name",
                   "mobile_phone",
                   "additional_phones",
                   "additional_emails",
-                  "uuid",
-                  "first_name",
                   "display_name",
-                  "email"
+                  "identifier",
+                  "email",
+                  "uuid"
                 ]
               }
             }
@@ -5051,7 +5295,7 @@
         }
       }
     },
-    "/flant_iam/team/{team_uuid}/teammate/{uuid}": {
+    "/flant/team/{team_uuid}/teammate/{uuid}": {
       "parameters": [
         {
           "name": "team_uuid",
@@ -5076,7 +5320,7 @@
       ],
       "get": {
         "summary": "Retrieve the teammate by ID",
-        "operationId": "getFlant_iamTeamTeam_uuidTeammateUuid",
+        "operationId": "getFlantTeamTeam_uuidTeammateUuid",
         "tags": [
           "secrets"
         ],
@@ -5088,7 +5332,7 @@
       },
       "post": {
         "summary": "Update the teammate by ID",
-        "operationId": "postFlant_iamTeamTeam_uuidTeammateUuid",
+        "operationId": "postFlantTeamTeam_uuidTeammateUuid",
         "tags": [
           "secrets"
         ],
@@ -5124,10 +5368,26 @@
                     "type": "string",
                     "description": "first_name"
                   },
+                  "github.com": {
+                    "type": "string",
+                    "description": "account at the github.com"
+                  },
+                  "gitlab.com": {
+                    "type": "string",
+                    "description": "account at the gitlab.com"
+                  },
+                  "habr.com": {
+                    "type": "string",
+                    "description": "account at the habr.com"
+                  },
                   "identifier": {
                     "type": "string",
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
                   },
                   "last_name": {
                     "type": "string",
@@ -5137,33 +5397,36 @@
                     "type": "string",
                     "description": "mobile_phone"
                   },
+                  "new_team_uuid": {
+                    "type": "string",
+                    "description": "ID of a new team, if teammate move to another team",
+                    "pattern": "\\w([\\w-.]*\\w)?"
+                  },
                   "resource_version": {
                     "type": "string",
                     "description": "Resource version"
                   },
                   "role_at_team": {
                     "type": "string",
-                    "description": "role at team",
-                    "enum": [
-                      "member",
-                      "engineer",
-                      "manager",
-                      "project_manager",
-                      "teamlead"
-                    ]
+                    "description": "role at team"
+                  },
+                  "telegram": {
+                    "type": "string",
+                    "description": "account at the telegram"
                   }
                 },
                 "required": [
-                  "display_name",
                   "mobile_phone",
-                  "role_at_team",
-                  "resource_version",
+                  "additional_emails",
                   "first_name",
-                  "email",
-                  "additional_phones",
+                  "display_name",
                   "identifier",
+                  "additional_phones",
+                  "resource_version",
                   "last_name",
-                  "additional_emails"
+                  "email",
+                  "language",
+                  "role_at_team"
                 ]
               }
             }
@@ -5177,7 +5440,7 @@
       },
       "delete": {
         "summary": "Deletes the teammate by ID",
-        "operationId": "deleteFlant_iamTeamTeam_uuidTeammateUuid",
+        "operationId": "deleteFlantTeamTeam_uuidTeammateUuid",
         "tags": [
           "secrets"
         ],
@@ -5188,18 +5451,8 @@
         }
       }
     },
-    "/flant_iam/team/{team_uuid}/teammate/{uuid}/restore": {
+    "/flant/team/{team_uuid}/teammate/{uuid}/restore": {
       "parameters": [
-        {
-          "name": "team_uuid",
-          "description": "ID of a team",
-          "in": "path",
-          "schema": {
-            "type": "string",
-            "pattern": "\\w([\\w-.]*\\w)?"
-          },
-          "required": true
-        },
         {
           "name": "uuid",
           "description": "ID of a teammate",
@@ -5213,7 +5466,7 @@
       ],
       "post": {
         "summary": "Restore the teammate by ID.",
-        "operationId": "postFlant_iamTeamTeam_uuidTeammateUuidRestore",
+        "operationId": "postFlantTeamTeam_uuidTeammateUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -5224,7 +5477,7 @@
         }
       }
     },
-    "/flant_iam/team/{uuid}": {
+    "/flant/team/{uuid}": {
       "parameters": [
         {
           "name": "uuid",
@@ -5239,7 +5492,7 @@
       ],
       "get": {
         "summary": "Retrieve the team by ID.",
-        "operationId": "getFlant_iamTeamUuid",
+        "operationId": "getFlantTeamUuid",
         "tags": [
           "secrets"
         ],
@@ -5251,7 +5504,7 @@
       },
       "post": {
         "summary": "Update the team by ID.",
-        "operationId": "postFlant_iamTeamUuid",
+        "operationId": "postFlantTeamUuid",
         "tags": [
           "secrets"
         ],
@@ -5290,7 +5543,7 @@
       },
       "delete": {
         "summary": "Deletes the team by ID.",
-        "operationId": "deleteFlant_iamTeamUuid",
+        "operationId": "deleteFlantTeamUuid",
         "tags": [
           "secrets"
         ],
@@ -5301,7 +5554,7 @@
         }
       }
     },
-    "/flant_iam/team/{uuid}/restore": {
+    "/flant/team/{uuid}/restore": {
       "parameters": [
         {
           "name": "uuid",
@@ -5316,7 +5569,7 @@
       ],
       "post": {
         "summary": "Restore the team by ID.",
-        "operationId": "postFlant_iamTeamUuidRestore",
+        "operationId": "postFlantTeamUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -5342,10 +5595,10 @@
         }
       }
     },
-    "/flant_iam/tenant": {
+    "/flant/tenant": {
       "get": {
         "summary": "Lists all tenants IDs.",
-        "operationId": "getFlant_iamTenant",
+        "operationId": "getFlantTenant",
         "tags": [
           "secrets"
         ],
@@ -5356,11 +5609,11 @@
         }
       }
     },
-    "/flant_iam/tenant/privileged": {
+    "/flant/tenant/privileged": {
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create tenant with preexistent ID.",
-        "operationId": "postFlant_iamTenantPrivileged",
+        "operationId": "postFlantTenantPrivileged",
         "tags": [
           "secrets"
         ],
@@ -5375,6 +5628,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "uuid": {
                     "type": "string",
                     "description": "ID of a tenant",
@@ -5383,7 +5640,8 @@
                 },
                 "required": [
                   "uuid",
-                  "identifier"
+                  "identifier",
+                  "language"
                 ]
               }
             }
@@ -5396,7 +5654,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/feature_flag/{feature_flag_name}": {
+    "/flant/tenant/{tenant_uuid}/feature_flag/{feature_flag_name}": {
       "parameters": [
         {
           "name": "feature_flag_name",
@@ -5422,7 +5680,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Add Feature flag to the tenant.",
-        "operationId": "postFlant_iamTenantTenant_uuidFeature_flagFeature_flag_name",
+        "operationId": "postFlantTenantTenant_uuidFeature_flagFeature_flag_name",
         "tags": [
           "secrets"
         ],
@@ -5450,7 +5708,7 @@
       },
       "delete": {
         "summary": "Remove Feature flag from the tenant.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidFeature_flagFeature_flag_name",
+        "operationId": "deleteFlantTenantTenant_uuidFeature_flagFeature_flag_name",
         "tags": [
           "secrets"
         ],
@@ -5461,7 +5719,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/group": {
+    "/flant/tenant/{tenant_uuid}/group": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5476,7 +5734,7 @@
       ],
       "get": {
         "summary": "Lists all groups IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidGroup",
+        "operationId": "getFlantTenantTenant_uuidGroup",
         "tags": [
           "secrets"
         ],
@@ -5487,7 +5745,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/group/privileged": {
+    "/flant/tenant/{tenant_uuid}/group/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5503,7 +5761,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create group with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidGroupPrivileged",
+        "operationId": "postFlantTenantTenant_uuidGroupPrivileged",
         "tags": [
           "secrets"
         ],
@@ -5515,7 +5773,8 @@
                 "properties": {
                   "identifier": {
                     "type": "string",
-                    "description": "Identifier for humans and machines"
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "members": {
                     "type": "array",
@@ -5546,7 +5805,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/group/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/group/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5571,7 +5830,7 @@
       ],
       "get": {
         "summary": "Retrieve the service account by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidGroupUuid",
+        "operationId": "getFlantTenantTenant_uuidGroupUuid",
         "tags": [
           "secrets"
         ],
@@ -5583,7 +5842,7 @@
       },
       "post": {
         "summary": "Update the service account by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidGroupUuid",
+        "operationId": "postFlantTenantTenant_uuidGroupUuid",
         "tags": [
           "secrets"
         ],
@@ -5595,7 +5854,8 @@
                 "properties": {
                   "identifier": {
                     "type": "string",
-                    "description": "Identifier for humans and machines"
+                    "description": "Identifier for humans and machines",
+                    "pattern": "\\w([\\w-.]*\\w)?"
                   },
                   "members": {
                     "type": "array",
@@ -5626,7 +5886,7 @@
       },
       "delete": {
         "summary": "Deletes the service account by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidGroupUuid",
+        "operationId": "deleteFlantTenantTenant_uuidGroupUuid",
         "tags": [
           "secrets"
         ],
@@ -5637,7 +5897,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/identity_sharing": {
+    "/flant/tenant/{tenant_uuid}/identity_sharing": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5652,7 +5912,7 @@
       ],
       "get": {
         "summary": "Lists all tenant identity sharing IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidIdentity_sharing",
+        "operationId": "getFlantTenantTenant_uuidIdentity_sharing",
         "tags": [
           "secrets"
         ],
@@ -5663,7 +5923,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/identity_sharing/privileged": {
+    "/flant/tenant/{tenant_uuid}/identity_sharing/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5679,7 +5939,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create identity sharing.",
-        "operationId": "postFlant_iamTenantTenant_uuidIdentity_sharingPrivileged",
+        "operationId": "postFlantTenantTenant_uuidIdentity_sharingPrivileged",
         "tags": [
           "secrets"
         ],
@@ -5708,8 +5968,8 @@
                   }
                 },
                 "required": [
-                  "destination_tenant_uuid",
-                  "uuid"
+                  "uuid",
+                  "destination_tenant_uuid"
                 ]
               }
             }
@@ -5722,7 +5982,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/identity_sharing/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/identity_sharing/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5747,7 +6007,7 @@
       ],
       "get": {
         "summary": "Retrieve the identity sharing by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidIdentity_sharingUuid",
+        "operationId": "getFlantTenantTenant_uuidIdentity_sharingUuid",
         "tags": [
           "secrets"
         ],
@@ -5757,9 +6017,46 @@
           }
         }
       },
+      "post": {
+        "summary": "Update  the identity sharing, allowed only change groups",
+        "operationId": "postFlantTenantTenant_uuidIdentity_sharingUuid",
+        "tags": [
+          "secrets"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "description": "ID of sharing groups",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "resource_version": {
+                    "type": "string",
+                    "description": "Resource version"
+                  }
+                },
+                "required": [
+                  "resource_version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
       "delete": {
         "summary": "Deletes the identity sharing by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidIdentity_sharingUuid",
+        "operationId": "deleteFlantTenantTenant_uuidIdentity_sharingUuid",
         "tags": [
           "secrets"
         ],
@@ -5770,7 +6067,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project": {
+    "/flant/tenant/{tenant_uuid}/project": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5785,7 +6082,7 @@
       ],
       "get": {
         "summary": "Lists all projects IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidProject",
+        "operationId": "getFlantTenantTenant_uuidProject",
         "tags": [
           "secrets"
         ],
@@ -5796,7 +6093,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/privileged": {
+    "/flant/tenant/{tenant_uuid}/project/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -5812,7 +6109,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create project with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectPrivileged",
+        "operationId": "postFlantTenantTenant_uuidProjectPrivileged",
         "tags": [
           "secrets"
         ],
@@ -5848,7 +6145,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/feature_flag/{feature_flag_name}": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/feature_flag/{feature_flag_name}": {
       "parameters": [
         {
           "name": "feature_flag_name",
@@ -5884,7 +6181,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Add FeatureFlag to the project.",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
+        "operationId": "postFlantTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
         "tags": [
           "secrets"
         ],
@@ -5896,7 +6193,7 @@
       },
       "delete": {
         "summary": "Remove FeatureFlag from the project.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
+        "operationId": "deleteFlantTenantTenant_uuidProjectProject_uuidFeature_flagFeature_flag_name",
         "tags": [
           "secrets"
         ],
@@ -5907,7 +6204,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/register_server": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/register_server": {
       "parameters": [
         {
           "name": "project_uuid",
@@ -5933,7 +6230,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Register server",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidRegister_server",
+        "operationId": "postFlantTenantTenant_uuidProjectProject_uuidRegister_server",
         "tags": [
           "secrets"
         ],
@@ -5973,7 +6270,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}": {
       "parameters": [
         {
           "name": "project_uuid",
@@ -6008,7 +6305,7 @@
       ],
       "get": {
         "summary": "Read a server",
-        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "operationId": "getFlantTenantTenant_uuidProjectProject_uuidServerServer_uuid",
         "tags": [
           "secrets"
         ],
@@ -6020,7 +6317,7 @@
       },
       "post": {
         "summary": "Update a server",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "operationId": "postFlantTenantTenant_uuidProjectProject_uuidServerServer_uuid",
         "tags": [
           "secrets"
         ],
@@ -6062,7 +6359,7 @@
       },
       "delete": {
         "summary": "Delete a server",
-        "operationId": "deleteFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuid",
+        "operationId": "deleteFlantTenantTenant_uuidProjectProject_uuidServerServer_uuid",
         "tags": [
           "secrets"
         ],
@@ -6073,7 +6370,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/connection_info": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/connection_info": {
       "parameters": [
         {
           "name": "server_uuid",
@@ -6088,7 +6385,7 @@
       ],
       "post": {
         "summary": "Update a server's connection_info",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidConnection_info",
+        "operationId": "postFlantTenantTenant_uuidProjectProject_uuidServerServer_uuidConnection_info",
         "tags": [
           "secrets"
         ],
@@ -6129,7 +6426,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/fingerprint": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/server/{server_uuid}/fingerprint": {
       "parameters": [
         {
           "name": "server_uuid",
@@ -6144,7 +6441,7 @@
       ],
       "get": {
         "summary": "Read a server's fingerprint",
-        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
+        "operationId": "getFlantTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
         "tags": [
           "secrets"
         ],
@@ -6156,7 +6453,7 @@
       },
       "post": {
         "summary": "Update a server's fingerprint",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
+        "operationId": "postFlantTenantTenant_uuidProjectProject_uuidServerServer_uuidFingerprint",
         "tags": [
           "secrets"
         ],
@@ -6183,7 +6480,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{project_uuid}/servers": {
+    "/flant/tenant/{tenant_uuid}/project/{project_uuid}/servers": {
       "parameters": [
         {
           "name": "project_uuid",
@@ -6208,7 +6505,7 @@
       ],
       "get": {
         "summary": "List servers",
-        "operationId": "getFlant_iamTenantTenant_uuidProjectProject_uuidServers",
+        "operationId": "getFlantTenantTenant_uuidProjectProject_uuidServers",
         "tags": [
           "secrets"
         ],
@@ -6219,7 +6516,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/project/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6244,7 +6541,7 @@
       ],
       "get": {
         "summary": "Retrieve the project by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidProjectUuid",
+        "operationId": "getFlantTenantTenant_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -6256,7 +6553,7 @@
       },
       "post": {
         "summary": "Update the project by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectUuid",
+        "operationId": "postFlantTenantTenant_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -6292,7 +6589,7 @@
       },
       "delete": {
         "summary": "Deletes the project by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidProjectUuid",
+        "operationId": "deleteFlantTenantTenant_uuidProjectUuid",
         "tags": [
           "secrets"
         ],
@@ -6303,7 +6600,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/project/{uuid}/restore": {
+    "/flant/tenant/{tenant_uuid}/project/{uuid}/restore": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6328,7 +6625,7 @@
       ],
       "post": {
         "summary": "Restore the project by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidProjectUuidRestore",
+        "operationId": "postFlantTenantTenant_uuidProjectUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -6339,7 +6636,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/role_binding": {
+    "/flant/tenant/{tenant_uuid}/role_binding": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6354,7 +6651,7 @@
       ],
       "get": {
         "summary": "Lists all roleBindings IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidRole_binding",
+        "operationId": "getFlantTenantTenant_uuidRole_binding",
         "tags": [
           "secrets"
         ],
@@ -6365,7 +6662,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/role_binding/privileged": {
+    "/flant/tenant/{tenant_uuid}/role_binding/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6381,7 +6678,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create roleBinding with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingPrivileged",
+        "operationId": "postFlantTenantTenant_uuidRole_bindingPrivileged",
         "tags": [
           "secrets"
         ],
@@ -6395,16 +6692,22 @@
                     "type": "boolean",
                     "description": "allow rolebinding for all projects of tenant"
                   },
-                  "identifier": {
+                  "description": {
                     "type": "string",
-                    "description": "Identifier for humans and machines",
-                    "pattern": "\\w([\\w-.]*\\w)?"
+                    "description": "Description of rolebinding purpose"
                   },
                   "members": {
                     "type": "array",
                     "description": "Members list",
                     "items": {
                       "type": "object"
+                    }
+                  },
+                  "projects": {
+                    "type": "array",
+                    "description": "project uuids list",
+                    "items": {
+                      "type": "string"
                     }
                   },
                   "require_mfa": {
@@ -6430,13 +6733,14 @@
                   }
                 },
                 "required": [
-                  "identifier",
-                  "members",
                   "roles",
                   "ttl",
+                  "projects",
+                  "members",
                   "require_mfa",
                   "any_project",
-                  "uuid"
+                  "uuid",
+                  "description"
                 ]
               }
             }
@@ -6449,7 +6753,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval": {
+    "/flant/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval": {
       "parameters": [
         {
           "name": "role_binding_uuid",
@@ -6474,7 +6778,7 @@
       ],
       "get": {
         "summary": "Lists all approvals for role_binding",
-        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApproval",
+        "operationId": "getFlantTenantTenant_uuidRole_bindingRole_binding_uuidApproval",
         "tags": [
           "secrets"
         ],
@@ -6485,7 +6789,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/role_binding/{role_binding_uuid}/approval/{uuid}": {
       "parameters": [
         {
           "name": "role_binding_uuid",
@@ -6520,7 +6824,7 @@
       ],
       "get": {
         "summary": "Retrieve the role binding approval by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "operationId": "getFlantTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
         "tags": [
           "secrets"
         ],
@@ -6532,7 +6836,7 @@
       },
       "post": {
         "summary": "Update the role binding approval by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "operationId": "postFlantTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
         "tags": [
           "secrets"
         ],
@@ -6569,9 +6873,9 @@
                   }
                 },
                 "required": [
-                  "required_votes",
                   "resource_version",
-                  "approvers"
+                  "approvers",
+                  "required_votes"
                 ]
               }
             }
@@ -6585,7 +6889,7 @@
       },
       "delete": {
         "summary": "Deletes the role binding approval by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
+        "operationId": "deleteFlantTenantTenant_uuidRole_bindingRole_binding_uuidApprovalUuid",
         "tags": [
           "secrets"
         ],
@@ -6596,7 +6900,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/role_binding/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/role_binding/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6621,7 +6925,7 @@
       ],
       "get": {
         "summary": "Retrieve the role binding by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidRole_bindingUuid",
+        "operationId": "getFlantTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -6633,7 +6937,7 @@
       },
       "post": {
         "summary": "Update the role binding by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidRole_bindingUuid",
+        "operationId": "postFlantTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -6647,16 +6951,22 @@
                     "type": "boolean",
                     "description": "allow rolebinding for all projects of tenant"
                   },
-                  "identifier": {
+                  "description": {
                     "type": "string",
-                    "description": "Identifier for humans and machines",
-                    "pattern": "\\w([\\w-.]*\\w)?"
+                    "description": "Description of rolebinding purpose"
                   },
                   "members": {
                     "type": "array",
                     "description": "Members list",
                     "items": {
                       "type": "object"
+                    }
+                  },
+                  "projects": {
+                    "type": "array",
+                    "description": "project uuids list",
+                    "items": {
+                      "type": "string"
                     }
                   },
                   "require_mfa": {
@@ -6681,13 +6991,14 @@
                   }
                 },
                 "required": [
-                  "any_project",
-                  "ttl",
-                  "require_mfa",
+                  "projects",
                   "resource_version",
-                  "identifier",
+                  "description",
                   "members",
-                  "roles"
+                  "roles",
+                  "require_mfa",
+                  "any_project",
+                  "ttl"
                 ]
               }
             }
@@ -6701,7 +7012,7 @@
       },
       "delete": {
         "summary": "Deletes the role binding by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidRole_bindingUuid",
+        "operationId": "deleteFlantTenantTenant_uuidRole_bindingUuid",
         "tags": [
           "secrets"
         ],
@@ -6712,7 +7023,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account": {
+    "/flant/tenant/{tenant_uuid}/service_account": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6727,7 +7038,7 @@
       ],
       "get": {
         "summary": "Lists all serviceAccounts IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidService_account",
+        "operationId": "getFlantTenantTenant_uuidService_account",
         "tags": [
           "secrets"
         ],
@@ -6738,7 +7049,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/privileged": {
+    "/flant/tenant/{tenant_uuid}/service_account/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -6754,7 +7065,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create serviceAccount with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidService_accountPrivileged",
+        "operationId": "postFlantTenantTenant_uuidService_accountPrivileged",
         "tags": [
           "secrets"
         ],
@@ -6793,11 +7104,11 @@
                   }
                 },
                 "required": [
+                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
                   "token_max_ttl",
-                  "uuid",
-                  "identifier"
+                  "uuid"
                 ]
               }
             }
@@ -6810,7 +7121,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass": {
+    "/flant/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -6835,7 +7146,7 @@
       ],
       "get": {
         "summary": "List multipass IDs",
-        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipass",
+        "operationId": "getFlantTenantTenant_uuidService_accountOwner_uuidMultipass",
         "tags": [
           "secrets"
         ],
@@ -6846,7 +7157,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/service_account/{owner_uuid}/multipass/{uuid}": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -6881,7 +7192,7 @@
       ],
       "get": {
         "summary": "Get multipass by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
+        "operationId": "getFlantTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -6893,7 +7204,7 @@
       },
       "delete": {
         "summary": "Delete multipass by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
+        "operationId": "deleteFlantTenantTenant_uuidService_accountOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -6904,7 +7215,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/password": {
+    "/flant/tenant/{tenant_uuid}/service_account/{owner_uuid}/password": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -6929,7 +7240,7 @@
       ],
       "get": {
         "summary": "List password IDs",
-        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidPassword",
+        "operationId": "getFlantTenantTenant_uuidService_accountOwner_uuidPassword",
         "tags": [
           "secrets"
         ],
@@ -6940,7 +7251,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/{owner_uuid}/password/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/service_account/{owner_uuid}/password/{uuid}": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -6975,7 +7286,7 @@
       ],
       "get": {
         "summary": "Get password by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
+        "operationId": "getFlantTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
         "tags": [
           "secrets"
         ],
@@ -6987,7 +7298,7 @@
       },
       "delete": {
         "summary": "Delete password by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
+        "operationId": "deleteFlantTenantTenant_uuidService_accountOwner_uuidPasswordUuid",
         "tags": [
           "secrets"
         ],
@@ -6998,7 +7309,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/service_account/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/service_account/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -7023,7 +7334,7 @@
       ],
       "get": {
         "summary": "Retrieve the service account by ID.",
-        "operationId": "getFlant_iamTenantTenant_uuidService_accountUuid",
+        "operationId": "getFlantTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -7035,7 +7346,7 @@
       },
       "post": {
         "summary": "Update the service account by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidService_accountUuid",
+        "operationId": "postFlantTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -7073,11 +7384,11 @@
                   }
                 },
                 "required": [
-                  "resource_version",
-                  "identifier",
                   "allowed_cidrs",
                   "token_ttl",
-                  "token_max_ttl"
+                  "token_max_ttl",
+                  "resource_version",
+                  "identifier"
                 ]
               }
             }
@@ -7091,7 +7402,7 @@
       },
       "delete": {
         "summary": "Deletes the service account by ID.",
-        "operationId": "deleteFlant_iamTenantTenant_uuidService_accountUuid",
+        "operationId": "deleteFlantTenantTenant_uuidService_accountUuid",
         "tags": [
           "secrets"
         ],
@@ -7102,7 +7413,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user": {
+    "/flant/tenant/{tenant_uuid}/user": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -7117,7 +7428,7 @@
       ],
       "get": {
         "summary": "Lists all users IDs.",
-        "operationId": "getFlant_iamTenantTenant_uuidUser",
+        "operationId": "getFlantTenantTenant_uuidUser",
         "tags": [
           "secrets"
         ],
@@ -7128,7 +7439,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user/privileged": {
+    "/flant/tenant/{tenant_uuid}/user/privileged": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -7144,7 +7455,7 @@
       "x-vault-createSupported": true,
       "post": {
         "summary": "Create user with preexistent ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidUserPrivileged",
+        "operationId": "postFlantTenantTenant_uuidUserPrivileged",
         "tags": [
           "secrets"
         ],
@@ -7185,6 +7496,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "last_name": {
                     "type": "string",
                     "description": "last_name"
@@ -7195,20 +7510,21 @@
                   },
                   "uuid": {
                     "type": "string",
-                    "description": "ID of a user",
+                    "description": "ID of a teammate",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   }
                 },
                 "required": [
                   "first_name",
-                  "mobile_phone",
-                  "identifier",
-                  "uuid",
                   "last_name",
-                  "email",
-                  "additional_phones",
                   "display_name",
-                  "additional_emails"
+                  "mobile_phone",
+                  "email",
+                  "additional_emails",
+                  "identifier",
+                  "additional_phones",
+                  "language",
+                  "uuid"
                 ]
               }
             }
@@ -7221,7 +7537,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user/{owner_uuid}/multipass": {
+    "/flant/tenant/{tenant_uuid}/user/{owner_uuid}/multipass": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -7246,7 +7562,7 @@
       ],
       "get": {
         "summary": "List multipass IDs",
-        "operationId": "getFlant_iamTenantTenant_uuidUserOwner_uuidMultipass",
+        "operationId": "getFlantTenantTenant_uuidUserOwner_uuidMultipass",
         "tags": [
           "secrets"
         ],
@@ -7257,7 +7573,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user/{owner_uuid}/multipass/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/user/{owner_uuid}/multipass/{uuid}": {
       "parameters": [
         {
           "name": "owner_uuid",
@@ -7292,7 +7608,7 @@
       ],
       "get": {
         "summary": "Get multipass by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidUserOwner_uuidMultipassUuid",
+        "operationId": "getFlantTenantTenant_uuidUserOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -7304,7 +7620,7 @@
       },
       "delete": {
         "summary": "Delete multipass by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidUserOwner_uuidMultipassUuid",
+        "operationId": "deleteFlantTenantTenant_uuidUserOwner_uuidMultipassUuid",
         "tags": [
           "secrets"
         ],
@@ -7315,7 +7631,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user/{uuid}": {
+    "/flant/tenant/{tenant_uuid}/user/{uuid}": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -7329,7 +7645,7 @@
         },
         {
           "name": "uuid",
-          "description": "ID of a user",
+          "description": "ID of a teammate",
           "in": "path",
           "schema": {
             "type": "string",
@@ -7340,7 +7656,7 @@
       ],
       "get": {
         "summary": "Retrieve the user by ID",
-        "operationId": "getFlant_iamTenantTenant_uuidUserUuid",
+        "operationId": "getFlantTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
         ],
@@ -7352,7 +7668,7 @@
       },
       "post": {
         "summary": "Update the user by ID",
-        "operationId": "postFlant_iamTenantTenant_uuidUserUuid",
+        "operationId": "postFlantTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
         ],
@@ -7393,6 +7709,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "last_name": {
                     "type": "string",
                     "description": "last_name"
@@ -7408,14 +7728,15 @@
                 },
                 "required": [
                   "first_name",
-                  "mobile_phone",
-                  "identifier",
-                  "display_name",
+                  "resource_version",
                   "last_name",
-                  "additional_phones",
-                  "email",
                   "additional_emails",
-                  "resource_version"
+                  "identifier",
+                  "email",
+                  "additional_phones",
+                  "display_name",
+                  "mobile_phone",
+                  "language"
                 ]
               }
             }
@@ -7429,7 +7750,7 @@
       },
       "delete": {
         "summary": "Deletes the user by ID",
-        "operationId": "deleteFlant_iamTenantTenant_uuidUserUuid",
+        "operationId": "deleteFlantTenantTenant_uuidUserUuid",
         "tags": [
           "secrets"
         ],
@@ -7440,7 +7761,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{tenant_uuid}/user/{uuid}/restore": {
+    "/flant/tenant/{tenant_uuid}/user/{uuid}/restore": {
       "parameters": [
         {
           "name": "tenant_uuid",
@@ -7465,7 +7786,7 @@
       ],
       "post": {
         "summary": "Restore the user by ID.",
-        "operationId": "postFlant_iamTenantTenant_uuidUserUuidRestore",
+        "operationId": "postFlantTenantTenant_uuidUserUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -7476,7 +7797,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{uuid}": {
+    "/flant/tenant/{uuid}": {
       "parameters": [
         {
           "name": "uuid",
@@ -7491,7 +7812,7 @@
       ],
       "get": {
         "summary": "Retrieve the tenant by ID.",
-        "operationId": "getFlant_iamTenantUuid",
+        "operationId": "getFlantTenantUuid",
         "tags": [
           "secrets"
         ],
@@ -7503,7 +7824,7 @@
       },
       "post": {
         "summary": "Update the tenant by ID.",
-        "operationId": "postFlant_iamTenantUuid",
+        "operationId": "postFlantTenantUuid",
         "tags": [
           "secrets"
         ],
@@ -7518,6 +7839,10 @@
                     "description": "Identifier for humans and machines",
                     "pattern": "\\w([\\w-.]*\\w)?"
                   },
+                  "language": {
+                    "type": "string",
+                    "description": "preferred language"
+                  },
                   "resource_version": {
                     "type": "string",
                     "description": "Resource version"
@@ -7525,6 +7850,7 @@
                 },
                 "required": [
                   "identifier",
+                  "language",
                   "resource_version"
                 ]
               }
@@ -7539,7 +7865,7 @@
       },
       "delete": {
         "summary": "Deletes the tenant by ID.",
-        "operationId": "deleteFlant_iamTenantUuid",
+        "operationId": "deleteFlantTenantUuid",
         "tags": [
           "secrets"
         ],
@@ -7550,7 +7876,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{uuid}/available_roles": {
+    "/flant/tenant/{uuid}/available_roles": {
       "parameters": [
         {
           "name": "uuid",
@@ -7565,7 +7891,7 @@
       ],
       "get": {
         "summary": "Retrieve the tenant roles.",
-        "operationId": "getFlant_iamTenantUuidAvailable_roles",
+        "operationId": "getFlantTenantUuidAvailable_roles",
         "tags": [
           "secrets"
         ],
@@ -7576,7 +7902,7 @@
         }
       }
     },
-    "/flant_iam/tenant/{uuid}/restore": {
+    "/flant/tenant/{uuid}/restore": {
       "parameters": [
         {
           "name": "uuid",
@@ -7591,7 +7917,7 @@
       ],
       "post": {
         "summary": "Restore the tenant by ID.",
-        "operationId": "postFlant_iamTenantUuidRestore",
+        "operationId": "postFlantTenantUuidRestore",
         "tags": [
           "secrets"
         ],
@@ -9317,61 +9643,8 @@
         }
       }
     },
-    "/secret/.*": {},
-    "/secret/config": {
-      "description": "Configures settings for the KV store",
-      "x-vault-createSupported": true,
-      "get": {
-        "summary": "Read the backend level settings.",
-        "operationId": "getSecretConfig",
-        "tags": [
-          "secrets"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Configure backend level settings that are applied to every key in the key-value store.",
-        "operationId": "postSecretConfig",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "cas_required": {
-                    "type": "boolean",
-                    "description": "If true, the backend will require the cas parameter to be set for each write"
-                  },
-                  "delete_version_after": {
-                    "type": "integer",
-                    "description": "If set, the length of time before a version is deleted. A negative duration disables the use of delete_version_after on all keys. A zero duration clears the current setting. Accepts a Go duration format string.",
-                    "format": "seconds"
-                  },
-                  "max_versions": {
-                    "type": "integer",
-                    "description": "The number of versions to keep for each key. Defaults to 10"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/data/{path}": {
-      "description": "Write, Read, and Delete data in the Key-Value Store.",
+    "/secret/{path}": {
+      "description": "Pass-through secret storage to the storage backend, allowing you to read/write arbitrary data into secret storage.",
       "parameters": [
         {
           "name": "path",
@@ -9385,174 +9658,8 @@
       ],
       "x-vault-createSupported": true,
       "get": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "getSecretDataPath",
-        "tags": [
-          "secrets"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "postSecretDataPath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "data": {
-                    "type": "object",
-                    "description": "The contents of the data map will be stored and returned on read.",
-                    "format": "map"
-                  },
-                  "options": {
-                    "type": "object",
-                    "description": "Options for writing a KV entry. Set the \"cas\" value to use a Check-And-Set operation. If not set the write will be allowed. If set to 0 a write will only be allowed if the key doesn’t exist. If the index is non-zero the write will only be allowed if the key’s current version matches the version specified in the cas parameter.",
-                    "format": "map"
-                  },
-                  "version": {
-                    "type": "integer",
-                    "description": "If provided during a read, the value at the version number will be returned"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Write, Read, and Delete data in the Key-Value Store.",
-        "operationId": "deleteSecretDataPath",
-        "tags": [
-          "secrets"
-        ],
-        "responses": {
-          "204": {
-            "description": "empty body"
-          }
-        }
-      }
-    },
-    "/secret/delete/{path}": {
-      "description": "Marks one or more versions as deleted in the KV store.",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Marks one or more versions as deleted in the KV store.",
-        "operationId": "postSecretDeletePath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to be archived. The versioned data will not be deleted, but it will no longer be returned in normal get requests.",
-                    "items": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/destroy/{path}": {
-      "description": "Permanently removes one or more versions in the KV store",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Permanently removes one or more versions in the KV store",
-        "operationId": "postSecretDestroyPath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to destroy. Their data will be permanently deleted.",
-                    "items": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/secret/metadata/{path}": {
-      "description": "Configures settings for the KV store",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "get": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "getSecretMetadataPath",
+        "summary": "Pass-through secret storage to the storage backend, allowing you to\nread/write arbitrary data into secret storage.",
+        "operationId": "getSecretPath",
         "tags": [
           "secrets"
         ],
@@ -9573,35 +9680,11 @@
         }
       },
       "post": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "postSecretMetadataPath",
+        "summary": "Pass-through secret storage to the storage backend, allowing you to\nread/write arbitrary data into secret storage.",
+        "operationId": "postSecretPath",
         "tags": [
           "secrets"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "cas_required": {
-                    "type": "boolean",
-                    "description": "If true the key will require the cas parameter to be set on all write requests. If false, the backend’s configuration will be used."
-                  },
-                  "delete_version_after": {
-                    "type": "integer",
-                    "description": "The length of time before a version is deleted. If not set, the backend's configured delete_version_after is used. Cannot be greater than the backend's delete_version_after. A zero duration clears the current setting. A negative duration will cause an error.",
-                    "format": "seconds"
-                  },
-                  "max_versions": {
-                    "type": "integer",
-                    "description": "The number of versions to keep. If not set, the backend’s configured max version is used."
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK"
@@ -9609,59 +9692,14 @@
         }
       },
       "delete": {
-        "summary": "Configures settings for the KV store",
-        "operationId": "deleteSecretMetadataPath",
+        "summary": "Pass-through secret storage to the storage backend, allowing you to\nread/write arbitrary data into secret storage.",
+        "operationId": "deleteSecretPath",
         "tags": [
           "secrets"
         ],
         "responses": {
           "204": {
             "description": "empty body"
-          }
-        }
-      }
-    },
-    "/secret/undelete/{path}": {
-      "description": "Undeletes one or more versions from the KV store.",
-      "parameters": [
-        {
-          "name": "path",
-          "description": "Location of the secret.",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-createSupported": true,
-      "post": {
-        "summary": "Undeletes one or more versions from the KV store.",
-        "operationId": "postSecretUndeletePath",
-        "tags": [
-          "secrets"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "versions": {
-                    "type": "array",
-                    "description": "The versions to unarchive. The versions will be restored and their data will be returned on normal get requests.",
-                    "items": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -12941,147 +12979,6 @@
       },
       "delete": {
         "operationId": "deleteSysQuotasRateLimitName",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "204": {
-            "description": "empty body"
-          }
-        }
-      }
-    },
-    "/sys/raw": {
-      "description": "Write, Read, and Delete data directly in the Storage backend.",
-      "x-vault-sudo": true,
-      "get": {
-        "summary": "Read the value of the key at the given path.",
-        "operationId": "getSysRaw",
-        "tags": [
-          "system"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Update the value of the key at the given path.",
-        "operationId": "postSysRaw",
-        "tags": [
-          "system"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string"
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete the key with given path.",
-        "operationId": "deleteSysRaw",
-        "tags": [
-          "system"
-        ],
-        "responses": {
-          "204": {
-            "description": "empty body"
-          }
-        }
-      }
-    },
-    "/sys/raw/{path}": {
-      "description": "Write, Read, and Delete data directly in the Storage backend.",
-      "parameters": [
-        {
-          "name": "path",
-          "in": "path",
-          "schema": {
-            "type": "string"
-          },
-          "required": true
-        }
-      ],
-      "x-vault-sudo": true,
-      "get": {
-        "summary": "Read the value of the key at the given path.",
-        "operationId": "getSysRawPath",
-        "tags": [
-          "system"
-        ],
-        "parameters": [
-          {
-            "name": "list",
-            "description": "Return a list if `true`",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
-        "summary": "Update the value of the key at the given path.",
-        "operationId": "postSysRawPath",
-        "tags": [
-          "system"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete the key with given path.",
-        "operationId": "deleteSysRawPath",
         "tags": [
           "system"
         ],
