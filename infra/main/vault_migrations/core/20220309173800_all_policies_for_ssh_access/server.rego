@@ -86,7 +86,9 @@ server_uuid = t {
 
 # rules for building vault policies
 rules = [
-	{"path":concat("/",["auth", "flant", "tenant", tenant_uuid, "project", project_uuid,"server", server_uuid, "posix_users"]),"capabilities":["read"]}] {
+	{"path":
+	concat("/",["auth", "flant", "tenant", tenant_uuid, "project", project_uuid,"server", server_uuid, "posix_users"]),
+	"capabilities":["read"]}] {
     allow
 } {
     show_paths

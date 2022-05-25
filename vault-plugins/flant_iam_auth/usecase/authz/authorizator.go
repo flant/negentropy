@@ -168,7 +168,7 @@ func (a *Authorizator) buildVaultPolicies(roleClaims []model.RoleClaim, subject 
 	var result []VaultPolicy
 	var err error
 	for _, rc := range roleClaims {
-		rc, err = a.checkOrFillTenantUUID(rc, subject)
+		rc, err = a.checkTenantUUID(rc, subject)
 		if err != nil {
 			return nil, err
 		}
@@ -195,6 +195,16 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	var policy VaultPolicy
 
 	switch {
+	case rc.Role == "flant.teammate":
+		fallthrough
+	case rc.Role == "flant.admin":
+		fallthrough
+	case rc.Role == "tenant.read":
+		fallthrough
+	case rc.Role == "tenant.manage":
+		fallthrough
+	case rc.Role == "flant.client.manage":
+		fallthrough
 	case rc.Role == "server":
 		fallthrough
 	case rc.Role == "servers.register":
@@ -665,15 +675,13 @@ func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod s
 	return nil, fmt.Errorf("for role:%s authMethod %s is not allowed", roleName, authMethod)
 }
 
-// checkOrFillTenantUUID check or fill tenantUUID un RoleClaim:
+// checkTenantUUID check  tenantUUID in RoleClaim:
 // if it filled - it checks is it owner of subject or is subject shared to this tenant
-// if not filled - fill by  owner of subject
-func (a *Authorizator) checkOrFillTenantUUID(rc model.RoleClaim, subject model.Subject) (model.RoleClaim, error) {
-	if rc.TenantUUID == subject.TenantUUID {
+func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject) (model.RoleClaim, error) {
+	if rc.TenantUUID == "" {
 		return rc, nil
 	}
-	if rc.TenantUUID == "" {
-		rc.TenantUUID = subject.TenantUUID
+	if rc.TenantUUID == subject.TenantUUID {
 		return rc, nil
 	}
 	var isShared bool
