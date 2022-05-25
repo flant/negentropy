@@ -230,17 +230,17 @@ func checkIdentitySharingExists(flantFlowCfg *config.FlantFlowConfig, clientUUID
 	identitySharingExists := false
 	for _, is := range resp.Get("identity_sharings").Array() {
 		if is.Get("destination_tenant_uuid").String() == clientUUID &&
-			len(is.Get("groups").Array()) == 1 && is.Get("groups").Array()[0].Get("uuid").String() == flantFlowCfg.AllFlantGroup {
+			len(is.Get("groups").Array()) == 1 && is.Get("groups").Array()[0].Get("uuid").String() == flantFlowCfg.AllFlantGroupUUID {
 			identitySharingExists = true
 		}
 	}
 	if needExist {
 		Expect(identitySharingExists).To(BeTrue(), fmt.Sprintf("should exists identitySharing for group "+
-			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroup,
+			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroupUUID,
 			flantFlowCfg.FlantTenantUUID, clientUUID, resp.Get("identity_sharings").String()))
 	} else {
 		Expect(identitySharingExists).To(BeFalse(), fmt.Sprintf("should NOT exists identitySharing for group "+
-			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroup,
+			"flant-all [%s] from flant [%s] to new client [%s], collected identity_sharings:\n %s", flantFlowCfg.AllFlantGroupUUID,
 			flantFlowCfg.FlantTenantUUID, clientUUID, resp.Get("identity_sharings").String()))
 	}
 }

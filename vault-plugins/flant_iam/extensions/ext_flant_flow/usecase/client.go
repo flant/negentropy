@@ -58,7 +58,7 @@ func (s *ClientService) Create(t *model.Tenant) (*model.Tenant, error) {
 		DestinationTenantUUID: t.UUID,
 		Version:               uuid.New(),
 		Origin:                consts.OriginFlantFlow,
-		Groups:                []model.GroupUUID{s.liveConfig.AllFlantGroup},
+		Groups:                []model.GroupUUID{s.liveConfig.AllFlantGroupUUID},
 	}
 	return &result, s.identitySharingRepo.Create(is)
 }
@@ -91,7 +91,7 @@ func (s *ClientService) Restore(id model.TenantUUID, fullRestore bool) (*model.T
 	iss, err := s.identitySharingRepo.ListForDestinationTenant(id)
 	for _, is := range iss {
 		if is.SourceTenantUUID == s.liveConfig.FlantTenantUUID && is.Origin == consts.OriginFlantFlow &&
-			len(is.Groups) == 1 && is.Groups[0] == s.liveConfig.AllFlantGroup {
+			len(is.Groups) == 1 && is.Groups[0] == s.liveConfig.AllFlantGroupUUID {
 			if is.Archived() {
 				is.Restore()
 				err = s.identitySharingRepo.Update(is)

@@ -25,6 +25,7 @@ type ConfigAPI interface {
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
 	ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID)
+	ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ReadConfigFlantFlow() config.FlantFlowConfig
@@ -35,6 +36,10 @@ type httpClientBasedConfigAPI struct {
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID) {
+	// start.sh & migrations
+}
+
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName) {
 	// start.sh & migrations
 }
 

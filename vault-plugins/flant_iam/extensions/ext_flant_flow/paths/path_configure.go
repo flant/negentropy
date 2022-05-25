@@ -80,6 +80,26 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			},
 		},
 		{
+			Pattern: path.Join("configure_extension", "flant_flow", "all_flant_group_roles"),
+			Fields: map[string]*framework.FieldSchema{
+				"roles": {
+					Type:        framework.TypeStringSlice,
+					Description: "names of global scoped roles to be set for all teammates",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleConfigAllFlantGroupRoles,
+					Summary:  "Set all Flant teammates roles",
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleConfigAllFlantGroupRoles,
+					Summary:  "Set all Flant teammates roles",
+				},
+			},
+		},
+		{
 			Pattern: path.Join("configure_extension", "flant_flow", "role_rules", framework.GenericNameRegex("specific_team")+"$"),
 			Fields: map[string]*framework.FieldSchema{
 				"specific_team": {
@@ -130,8 +150,8 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 
 func (b *flantFlowConfigureBackend) handleConfigFlantTenant(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Info("handleConfig started")
-	defer b.Logger().Info("handleConfig exit")
+	b.Logger().Info("handleConfigFlantTenant started")
+	defer b.Logger().Info("handleConfigFlantTenant exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	flantUUID := data.Get("flant_tenant_uuid").(string)
@@ -146,8 +166,8 @@ func (b *flantFlowConfigureBackend) handleConfigFlantTenant(ctx context.Context,
 
 func (b *flantFlowConfigureBackend) handleConfigAllFlantGroup(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Info("handleConfig started")
-	defer b.Logger().Info("handleConfig exit")
+	b.Logger().Info("handleConfigAllFlantGroup started")
+	defer b.Logger().Info("handleConfigAllFlantGroup exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	allFlantGroupUUID := data.Get("all_flant_group_uuid").(string)
@@ -160,10 +180,26 @@ func (b *flantFlowConfigureBackend) handleConfigAllFlantGroup(ctx context.Contex
 	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
 }
 
+func (b *flantFlowConfigureBackend) handleConfigAllFlantGroupRoles(ctx context.Context, req *logical.Request,
+	data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Info("handleConfigAllFlantGroupRoles  started")
+	defer b.Logger().Info("handleConfigAllFlantGroupRoles exit")
+	txn := b.storage.Txn(true)
+	defer txn.Commit() //nolint:errcheck
+	allFlantGroupRoles := data.Get("roles").([]string)
+	cfg, err := usecase.Config(txn).SetAllFlantGroupRoles(ctx, req.Storage, allFlantGroupRoles)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	b.setLiveConfig(cfg)
+	b.Logger().Info("handleConfig normal finish")
+	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
+}
+
 func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Info("handleConfig started")
-	defer b.Logger().Info("handleConfig exit")
+	b.Logger().Info("handleConfigSpecificRoles started")
+	defer b.Logger().Info("handleConfigSpecificRoles exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	teamType := data.Get("specific_team").(string)
@@ -184,8 +220,8 @@ func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Contex
 
 func (b *flantFlowConfigureBackend) handleConfigSpecificTeams(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Info("handleConfig started")
-	defer b.Logger().Info("handleConfig exit")
+	b.Logger().Info("handleConfigSpecificTeams started")
+	defer b.Logger().Info("handleConfigSpecificTeams exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
 	teamsMap := data.Get("specific_teams").(map[string]string)

@@ -16,20 +16,22 @@ import (
 )
 
 type ConfigService struct {
-	configProvider config.MutexedConfigManager
-	tenantRepo     *iam_repo.TenantRepository
-	groupRepo      *iam_repo.GroupRepository
-	teamRepo       *repo.TeamRepository
-	roleRepo       *iam_repo.RoleRepository
+	configProvider  config.MutexedConfigManager
+	tenantRepo      *iam_repo.TenantRepository
+	groupRepo       *iam_repo.GroupRepository
+	teamRepo        *repo.TeamRepository
+	roleRepo        *iam_repo.RoleRepository
+	roleBindingRepo *iam_repo.RoleBindingRepository
 }
 
 func Config(db *io.MemoryStoreTxn) *ConfigService {
 	return &ConfigService{
-		configProvider: config.MutexedConfigManager{},
-		tenantRepo:     iam_repo.NewTenantRepository(db),
-		groupRepo:      iam_repo.NewGroupRepository(db),
-		teamRepo:       repo.NewTeamRepository(db),
-		roleRepo:       iam_repo.NewRoleRepository(db),
+		configProvider:  config.MutexedConfigManager{},
+		tenantRepo:      iam_repo.NewTenantRepository(db),
+		groupRepo:       iam_repo.NewGroupRepository(db),
+		teamRepo:        repo.NewTeamRepository(db),
+		roleRepo:        iam_repo.NewRoleRepository(db),
+		roleBindingRepo: iam_repo.NewRoleBindingRepository(db),
 	}
 }
 
@@ -57,7 +59,7 @@ func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logica
 	if cfg.FlantTenantUUID == "" {
 		return nil, fmt.Errorf("%w:flant_tenant_uuid should be set first", consts.ErrNotConfigured)
 	}
-	if cfg.AllFlantGroup != "" {
+	if cfg.AllFlantGroupUUID != "" {
 		return nil, fmt.Errorf("%w:all_flant_group_uuid is already set", consts.ErrInvalidArg)
 	}
 	err = c.groupRepo.Create(&iam_model.Group{
@@ -71,7 +73,55 @@ func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logica
 	if err != nil {
 		return nil, fmt.Errorf("%w:%s", err, allFlantGroupUUID)
 	}
+
 	return c.configProvider.SetAllFlantGroupUUID(ctx, storage, allFlantGroupUUID)
+}
+
+func (c *ConfigService) SetAllFlantGroupRoles(ctx context.Context, storage logical.Storage,
+	allFlantGroupGlobalRoles []iam_model.RoleName) (*config.FlantFlowConfig, error) {
+	cfg, err := c.configProvider.GetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.FlantTenantUUID == "" {
+		return nil, fmt.Errorf("%w:flant_tenant_uuid should be set first", consts.ErrNotConfigured)
+	}
+	if cfg.AllFlantGroupUUID == "" {
+		return nil, fmt.Errorf("%w:all_flant_group_uuid should be set first", consts.ErrNotConfigured)
+	}
+
+	roles := make([]iam_model.BoundRole, 0, len(allFlantGroupGlobalRoles))
+	for _, role := range allFlantGroupGlobalRoles {
+		roles = append(roles, iam_model.BoundRole{Name: role})
+	}
+
+	rbUUID := uuid.New()
+
+	if cfg.AllFlantGroupRoleBindingUUID != "" {
+		rbUUID = cfg.AllFlantGroupRoleBindingUUID
+	}
+
+	cfg, err = c.configProvider.SetAllFlantGroupRoles(ctx, storage, allFlantGroupGlobalRoles, rbUUID)
+	if err != nil {
+		return nil, fmt.Errorf("set all-flant rolebinding uuid: %w", err)
+	}
+
+	err = c.roleBindingRepo.Create(&iam_model.RoleBinding{
+		UUID:            rbUUID,
+		TenantUUID:      cfg.FlantTenantUUID,
+		Version:         uuid.New(),
+		Description:     "all-flant group rolebinding",
+		ValidTill:       0,
+		Groups:          []iam_model.GroupUUID{cfg.AllFlantGroupUUID},
+		ServiceAccounts: nil,
+		Members: []iam_model.MemberNotation{{
+			Type: iam_model.GroupType,
+			UUID: cfg.AllFlantGroupUUID,
+		}},
+		Roles:  roles,
+		Origin: consts.OriginFlantFlow,
+	})
+	return cfg, err
 }
 
 func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, teamType config.SpecializedTeam,

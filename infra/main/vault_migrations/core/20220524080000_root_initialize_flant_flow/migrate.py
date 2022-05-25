@@ -42,6 +42,11 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     if not all_flant_group or all_flant_group == '':
         vault_client.write(path='flant/configure_extension/flant_flow/all_flant_group/' + all_flant_group_uuid)
 
+    print("INFO: setting roles for group 'all@flant'")
+    all_flant_group_rolebinding_uuid = cfg.get("all_flant_group_rolebinding_uuid")
+    if not all_flant_group_rolebinding_uuid or all_flant_group_rolebinding_uuid == '':
+        vault_client.write(path='flant/configure_extension/flant_flow/all_flant_group_roles', roles=['flant.teammate'])
+
     print("INFO: creating role rules")
     rules = cfg.get('roles_for_specific_teams')
     if not rules or not rules.get(devops_team):

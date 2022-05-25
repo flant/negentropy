@@ -29,10 +29,12 @@ var (
 )
 
 type FlantFlowConfig struct {
-	FlantTenantUUID       iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
-	AllFlantGroup         iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
-	SpecificTeams         map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
-	RolesForSpecificTeams map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
+	FlantTenantUUID              iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
+	AllFlantGroupUUID            iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
+	AllFlantGroupRoles           []iam_model.RoleName                     `json:"all_flant_group_roles"`
+	AllFlantGroupRoleBindingUUID iam_model.RoleBindingUUID                `json:"all_flant_group_rolebinding_uuid"`
+	SpecificTeams                map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
+	RolesForSpecificTeams        map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
 }
 
 var (
@@ -48,7 +50,7 @@ func (c *FlantFlowConfig) IsBaseConfigured() error {
 	if c.FlantTenantUUID == "" {
 		return fmt.Errorf("%w:flant_tenant_uuid is empty", consts.ErrNotConfigured)
 	}
-	if c.AllFlantGroup == "" {
+	if c.AllFlantGroupUUID == "" {
 		return fmt.Errorf("%w:all_flant_group_uuid is empty", consts.ErrNotConfigured)
 	}
 	if c.RolesForSpecificTeams == nil {
@@ -167,11 +169,29 @@ func (c *MutexedConfigManager) SetAllFlantGroupUUID(ctx context.Context, storage
 	if err != nil {
 		return nil, err
 	}
-	if config.AllFlantGroup != "" {
-		return nil, fmt.Errorf("all flant group is already set:%s", config.AllFlantGroup)
+	if config.AllFlantGroupUUID != "" {
+		return nil, fmt.Errorf("all flant group is already set:%s", config.AllFlantGroupUUID)
 	}
 
-	config.AllFlantGroup = allFlantGroupUUID
+	config.AllFlantGroupUUID = allFlantGroupUUID
+
+	return c.unSafeSaveConfig(ctx, storage, config)
+}
+
+func (c *MutexedConfigManager) SetAllFlantGroupRoles(ctx context.Context, storage logical.Storage, roles []iam_model.RoleName,
+	allFlantGroupsRoleBindingUUID iam_model.RoleBindingUUID) (*FlantFlowConfig, error) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	config, err := c.unSafeGetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	if config.AllFlantGroupRoleBindingUUID != "" {
+		return nil, fmt.Errorf("all flant group rolebinding is already set:%s", config.AllFlantGroupRoleBindingUUID)
+	}
+
+	config.AllFlantGroupRoleBindingUUID = allFlantGroupsRoleBindingUUID
+	config.AllFlantGroupRoles = roles
 
 	return c.unSafeSaveConfig(ctx, storage, config)
 }

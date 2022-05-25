@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/logical"
@@ -20,6 +21,7 @@ type ConfigAPI interface {
 	ConfigureExtensionServerAccess(params map[string]interface{})
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
 	ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID)
+	ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ReadConfigFlantFlow() config.FlantFlowConfig
@@ -28,6 +30,22 @@ type ConfigAPI interface {
 type backendBasedConfigAPI struct {
 	backend *logical.Backend
 	storage *logical.Storage
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName) {
+	resp, err := b.request(logical.CreateOperation, "configure_extension/flant_flow/all_flant_group_roles",
+		map[string]interface{}{},
+		map[string]interface{}{"roles": allFlantGroupRoles})
+	Expect(err).ToNot(HaveOccurred())
+	if bodyStr, ok := resp["http_raw_body"].(string); ok {
+		valid := gjson.Valid(bodyStr)
+		Expect(valid).To(BeTrue())
+		body := gjson.Parse(bodyStr)
+		if errMsg := body.Get("data.error").String(); errMsg != "" {
+			err = fmt.Errorf(errMsg)
+			Expect(err).ToNot(HaveOccurred())
+		}
+	}
 }
 
 func (b *backendBasedConfigAPI) ReadConfigFlantFlow() config.FlantFlowConfig {
