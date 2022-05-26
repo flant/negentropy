@@ -29,6 +29,7 @@ type ConfigAPI interface {
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ReadConfigFlantFlow() config.FlantFlowConfig
+	ConfigureExtensionFlantFlowClientPrimaryAdminsRoles(adminRoles []model.RoleName)
 }
 
 type httpClientBasedConfigAPI struct {
@@ -52,6 +53,10 @@ func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowRoleRules(rules map
 }
 
 func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {
+	// start.sh & migrations
+}
+
+func (h httpClientBasedConfigAPI) ConfigureExtensionFlantFlowClientPrimaryAdminsRoles(adminRoles []model.RoleName) {
 	// start.sh & migrations
 }
 

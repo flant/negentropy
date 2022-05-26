@@ -71,7 +71,9 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	var teammate ext_model.FullTeammate
 
 	It("Interact flant_flow and flant_iam, using Admin client", func() {
-		client = specs.CreateRandomClient(lib.NewFlowClientAPI(adminClient))
+		clientPrimaryAdmin := iam_specs.CreateRandomUser(lib.NewUserAPI(adminClient), cfg.FlantTenant.UUID)
+
+		client = specs.CreateRandomClient(lib.NewFlowClientAPI(adminClient), clientPrimaryAdmin.UUID)
 		saRegisterServer := iam_specs.CreateRandomServiceAccount(lib.NewServiceAccountAPI(adminClient), client.UUID)
 		iam_specs.CreateRoleBinding(lib.NewRoleBindingAPI(adminClient),
 			model.RoleBinding{

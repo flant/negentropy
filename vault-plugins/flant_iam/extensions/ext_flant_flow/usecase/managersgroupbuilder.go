@@ -57,7 +57,7 @@ func (d managersBuilder) OnCreateTeam(team model.Team) (model.Team, error) {
 		TenantUUID: d.flantTenantUUID,
 		Identifier: team.Identifier + "_" + d.GroupType(),
 		Groups:     groups,
-		Members:    buildMembers(groups),
+		Members:    buildMembers(iam_model.GroupType, groups),
 	}
 	err = d.groupService.Create(g)
 	if err != nil {

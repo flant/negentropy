@@ -44,7 +44,13 @@ func (c *ConfigService) SetFlantTenantUUID(ctx context.Context, storage logical.
 	if cfg.FlantTenantUUID != "" {
 		return nil, fmt.Errorf("%w:flant_tenant_uuid is already set", consts.ErrInvalidArg)
 	}
-	if _, err := c.tenantRepo.GetByID(flantUUID); err != nil {
+	if err = c.tenantRepo.Create(&iam_model.Tenant{
+		UUID:       flantUUID,
+		Version:    uuid.New(),
+		Identifier: "flant",
+		Language:   "english",
+		Origin:     consts.OriginFlantFlowPredefined,
+	}); err != nil {
 		return nil, fmt.Errorf("%w:%s", err, flantUUID)
 	}
 	return c.configProvider.SetFlantTenantUUID(ctx, storage, flantUUID)
@@ -68,7 +74,7 @@ func (c *ConfigService) SetAllFlantGroupUUID(ctx context.Context, storage logica
 		Version:        uuid.New(),
 		Identifier:     "all",
 		FullIdentifier: "all@group.flant",
-		Origin:         consts.OriginFlantFlow,
+		Origin:         consts.OriginFlantFlowPredefined,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w:%s", err, allFlantGroupUUID)
@@ -122,6 +128,18 @@ func (c *ConfigService) SetAllFlantGroupRoles(ctx context.Context, storage logic
 		Origin: consts.OriginFlantFlow,
 	})
 	return cfg, err
+}
+
+func (c *ConfigService) SetPrimaryAdministratorsRoles(ctx context.Context, storage logical.Storage,
+	roles []iam_model.RoleName) (*config.FlantFlowConfig, error) {
+	cfg, err := c.configProvider.GetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.FlantTenantUUID == "" {
+		return nil, fmt.Errorf("%w:flant_tenant_uuid should be set first", consts.ErrNotConfigured)
+	}
+	return c.configProvider.SetPrimaryAdministratorsRoles(ctx, storage, roles)
 }
 
 func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, teamType config.SpecializedTeam,

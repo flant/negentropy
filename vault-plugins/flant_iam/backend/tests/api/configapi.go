@@ -24,12 +24,29 @@ type ConfigAPI interface {
 	ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName)
 	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
+	ConfigureExtensionFlantFlowClientPrimaryAdminsRoles(adminRoles []model.RoleName)
 	ReadConfigFlantFlow() config.FlantFlowConfig
 }
 
 type backendBasedConfigAPI struct {
 	backend *logical.Backend
 	storage *logical.Storage
+}
+
+func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowClientPrimaryAdminsRoles(adminRoles []model.RoleName) {
+	resp, err := b.request(logical.CreateOperation, "configure_extension/flant_flow/client_primary_administrators_roles",
+		map[string]interface{}{},
+		map[string]interface{}{"roles": adminRoles})
+	Expect(err).ToNot(HaveOccurred())
+	if bodyStr, ok := resp["http_raw_body"].(string); ok {
+		valid := gjson.Valid(bodyStr)
+		Expect(valid).To(BeTrue())
+		body := gjson.Parse(bodyStr)
+		if errMsg := body.Get("data.error").String(); errMsg != "" {
+			err = fmt.Errorf(errMsg)
+			Expect(err).ToNot(HaveOccurred())
+		}
+	}
 }
 
 func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName) {
