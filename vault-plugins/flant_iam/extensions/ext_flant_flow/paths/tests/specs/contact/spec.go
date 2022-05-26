@@ -17,6 +17,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -30,15 +31,19 @@ var (
 	TeamAPI    tests.TestAPI
 	GroupAPI   tests.TestAPI
 	ConfigAPI  testapi.ConfigAPI
+	UserAPI    tests.TestAPI
 )
 
 var _ = Describe("Contact", func() {
 	var client model.Client
 	var flantFlowCfg *config.FlantFlowConfig
+	var flantUser iam_model.User
+
 	BeforeSuite(func() {
 		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
-		client = specs.CreateRandomClient(ClientAPI)
+		flantUser = iam_specs.CreateRandomUser(UserAPI, flantFlowCfg.FlantTenantUUID)
+		client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 		specs.TryCreateProjects(ProjectAPI, client.UUID, fixtures.Projects()...)
 	}, 1.0)
 
@@ -90,7 +95,7 @@ var _ = Describe("Contact", func() {
 			tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, "%d >= 400")
 		})
 		It("Can be same identifier at other tenant", func() {
-			client = specs.CreateRandomClient(ClientAPI)
+			client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 			tryCreateRandomContactAtTenantWithIdentifier(client.UUID, identifier, "%d == 201")
 		})
 	})
@@ -229,7 +234,7 @@ var _ = Describe("Contact", func() {
 		})
 
 		It("cant be restored after deleting client", func() {
-			otherClient := specs.CreateRandomClient(ClientAPI)
+			otherClient := specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 			contact := specs.CreateRandomContact(TestAPI, otherClient.UUID)
 			deleteContact(contact)
 			ClientAPI.Delete(tests.Params{

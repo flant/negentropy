@@ -40,6 +40,11 @@ func (b clientBackend) paths() []*framework.Path {
 				"language": {
 					Type:        framework.TypeString,
 					Description: "preferred language",
+					Required:    false,
+				},
+				"primary_administrators": {
+					Type:        framework.TypeStringSlice,
+					Description: "users uuids to be set as administrators of the created client",
 					Required:    true,
 				},
 			},
@@ -71,6 +76,11 @@ func (b clientBackend) paths() []*framework.Path {
 				"language": {
 					Type:        framework.TypeString,
 					Description: "preferred language",
+					Required:    true,
+				},
+				"primary_administrators": {
+					Type:        framework.TypeStringSlice,
+					Description: "users uuids to be set as administrators of the created client",
 					Required:    true,
 				},
 			},
@@ -198,11 +208,12 @@ func (b *clientBackend) handleCreate(expectID bool) framework.OperationFunc {
 			Identifier: data.Get("identifier").(string),
 			Language:   data.Get("language").(string),
 		}
+		primaryAdmnistrators := data.Get("primary_administrators").([]string)
 
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		if client, err = usecase.Clients(tx, b.getLiveConfig()).Create(client); err != nil {
+		if client, err = usecase.Clients(tx, b.getLiveConfig()).Create(client, primaryAdmnistrators); err != nil {
 			err = fmt.Errorf("cannot create client:%w", err)
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)

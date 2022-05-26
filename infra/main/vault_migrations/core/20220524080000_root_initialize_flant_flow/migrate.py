@@ -10,7 +10,6 @@ class Vault(TypedDict):
 
 
 flant_tenant_uuid = "be0ba0d8-7be7-49c8-8609-c62ac1f14597"
-flant_identifier = "flant"
 devops_team = "DevOps"
 l1_team_name = "L1"
 l1_team_id = "L1"
@@ -31,10 +30,10 @@ def upgrade(vault_name: str, vaults: List[Vault]):
 
     cfg = vault_client.read(path='flant/configure_extension/flant_flow').get('data').get('flant_flow_cfg')
 
-    print("INFO: creating tenant '{}' with uuid '{}'".format(flant_identifier, flant_tenant_uuid))
+    print("INFO: creating tenant 'flant' with uuid '{}'".format(flant_tenant_uuid))
     flant = cfg.get('flant_tenant_uuid')
     if not flant or flant == '':
-        vault_client.write(path='flant/client/privileged', uuid=flant_tenant_uuid, identifier=flant_identifier)
+        # flant tenant will be created automatically
         vault_client.write(path='flant/configure_extension/flant_flow/flant_tenant/' + flant_tenant_uuid)
 
     print("INFO: creating group 'all@flant' with uuid '{}'".format(all_flant_group_uuid))
@@ -73,3 +72,9 @@ def upgrade(vault_name: str, vaults: List[Vault]):
         vault_client.write(path='flant/configure_extension/flant_flow/specific_teams',
                            specific_teams={okmeter_team_name: okmeter_team_uuid})
         print("INFO: team '{}' with uuid '{}' created".format(okmeter_team_name, okmeter_team_uuid))
+
+    print("INFO: configuring client primary administrators roles")
+    primary_administrators_roles = cfg.get("client_primary_administrators_roles")
+    if not primary_administrators_roles or len(primary_administrators_roles) == 0:
+        vault_client.write(path='flant/configure_extension/flant_flow/client_primary_administrators_roles',
+                           roles=['flant.client.manage'])

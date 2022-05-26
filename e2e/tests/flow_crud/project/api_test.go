@@ -20,6 +20,7 @@ func Test_projectCRUD(t *testing.T) {
 	project.GroupAPI = lib.NewGroupAPI(rootClient)
 	project.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 	project.RoleBindingAPI = lib.NewRoleBindingAPI(rootClient)
+	project.UserAPI = lib.NewUserAPI(rootClient)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Project")

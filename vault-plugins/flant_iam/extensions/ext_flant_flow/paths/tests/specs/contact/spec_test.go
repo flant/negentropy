@@ -20,6 +20,7 @@ func Test_contactCRUD(t *testing.T) {
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
 	GroupAPI = testapi.NewGroupAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
+	UserAPI = testapi.NewUserAPI(&backend)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD: Contact")

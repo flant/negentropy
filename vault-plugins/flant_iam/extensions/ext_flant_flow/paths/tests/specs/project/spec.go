@@ -16,6 +16,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/paths/tests/specs"
+	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -31,17 +32,20 @@ var (
 	GroupAPI       tests.TestAPI
 	ConfigAPI      testapi.ConfigAPI
 	RoleBindingAPI tests.TestAPI
+	UserAPI        tests.TestAPI
 )
 
 var _ = Describe("Project", func() {
 	var client model.Client
 	var flantFlowCfg *config.FlantFlowConfig
 	var devopsTeam model.Team
+	var flantUser iam_model.User
 
 	BeforeSuite(func() {
 		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
-		client = specs.CreateRandomClient(ClientAPI)
+		flantUser = iam_specs.CreateRandomUser(UserAPI, flantFlowCfg.FlantTenantUUID)
+		client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 		devopsTeam = specs.CreateDevopsTeam(TeamAPI)
 	}, 1.0)
 
@@ -90,7 +94,7 @@ var _ = Describe("Project", func() {
 			tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, "%d >= 400")
 		})
 		It("Can be same identifier at other tenant", func() {
-			client = specs.CreateRandomClient(ClientAPI)
+			client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 			tryCreateRandomProjectAtClientWithIdentifier(client.UUID, identifier, "%d == 201")
 		})
 	})
@@ -295,7 +299,7 @@ var _ = Describe("Project", func() {
 		})
 
 		It("cant be restored after deleting client", func() {
-			otherClient := specs.CreateRandomClient(ClientAPI)
+			otherClient := specs.CreateRandomClient(ClientAPI, flantUser.UUID)
 			project := specs.CreateRandomProject(TestAPI, otherClient.UUID)
 			deleteProject(project)
 			ClientAPI.Delete(tests.Params{
