@@ -260,7 +260,7 @@ var _ = Describe("Teammate", func() {
 func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID model2.UserUUID, shouldBe bool) {
 	allFlantGroupResp := GroupAPI.Read(tests.Params{
 		"tenant": cfg.FlantTenantUUID,
-		"group":  cfg.AllFlantGroup,
+		"group":  cfg.AllFlantGroupUUID,
 	}, nil)
 
 	userFound := false
@@ -271,10 +271,10 @@ func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID mode
 	}
 	if shouldBe {
 		Expect(userFound).To(BeTrue(), fmt.Sprintf("after creating teammate [%s], he should be in users of "+
-			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.users").String()))
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroupUUID, allFlantGroupResp.Get("group.users").String()))
 	} else {
 		Expect(userFound).To(BeFalse(), fmt.Sprintf("after deleting teammate [%s], he should be deleted from users of "+
-			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.users").String()))
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroupUUID, allFlantGroupResp.Get("group.users").String()))
 	}
 
 	memberFound := false
@@ -285,10 +285,10 @@ func checkTeammateInAllFlantGroup(cfg *config.FlantFlowConfig, teammateUUID mode
 	}
 	if shouldBe {
 		Expect(memberFound).To(BeTrue(), fmt.Sprintf("after creating teammate [%s], he should be in members of "+
-			"allFlantGroup [%s], got memebers:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.members").String()))
+			"allFlantGroup [%s], got memebers:\n%s", teammateUUID, cfg.AllFlantGroupUUID, allFlantGroupResp.Get("group.members").String()))
 	} else {
 		Expect(userFound).To(BeFalse(), fmt.Sprintf("after deleting teammate [%s], he should be deleted from members of "+
-			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroup, allFlantGroupResp.Get("group.members").String()))
+			"allFlantGroup [%s], got users:\n%s", teammateUUID, cfg.AllFlantGroupUUID, allFlantGroupResp.Get("group.members").String()))
 	}
 }
 

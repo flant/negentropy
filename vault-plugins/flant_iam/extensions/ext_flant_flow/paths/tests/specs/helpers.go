@@ -139,6 +139,7 @@ func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI 
 		config.Okmeter: teamOkmeter.UUID,
 	}
 	configAPI.ConfigureExtensionFlantFlowSpecificTeams(teams)
+
 	*cfg = configAPI.ReadConfigFlantFlow()
 	return cfg
 }
@@ -150,6 +151,8 @@ func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, grou
 	rules := map[string][]string{config.Devops: {r1.Name}}
 	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(uuid.New())
+	globalRole := iam_specs.CreateRandomRole(roleAPI)
+	configAPI.ConfigureExtensionFlantFlowAllFlantGroupRoles([]string{globalRole.Name})
 	cfg := configAPI.ReadConfigFlantFlow()
 	return &cfg
 }

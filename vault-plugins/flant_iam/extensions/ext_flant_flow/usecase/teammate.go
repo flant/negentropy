@@ -62,7 +62,7 @@ func (s *TeammateService) Create(t *model.FullTeammate) (*model.FullTeammate, er
 }
 
 func (s *TeammateService) addTeammateToFlantAllGroup(teammate *model.Teammate) error {
-	flantAllGroup, err := s.groupRepo.GetByID(s.liveConfig.AllFlantGroup)
+	flantAllGroup, err := s.groupRepo.GetByID(s.liveConfig.AllFlantGroupUUID)
 	if err != nil {
 		return err
 	}

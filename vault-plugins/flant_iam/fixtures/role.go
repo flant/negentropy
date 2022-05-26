@@ -86,8 +86,8 @@ func RandomRoleCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := rolesSet[rand.Intn(len(rolesSet))]
 	return map[string]interface{}{
-		"name":                         "name_" + RandomStr(),
-		"description":                  "description_" + RandomStr(),
+		"name":                         "role_" + RandomStr(),
+		"description":                  "role_description_" + RandomStr(),
 		"scope":                        sample.Scope,
 		"options_schema":               sample.OptionsSchema,
 		"require_one_of_feature_flags": sample.RequireOneOfFeatureFlags,
