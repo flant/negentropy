@@ -91,11 +91,31 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleConfigAllFlantGroupRoles,
-					Summary:  "Set all Flant teammates roles",
+					Summary:  "Set all Flant teammates global roles",
 				},
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.handleConfigAllFlantGroupRoles,
-					Summary:  "Set all Flant teammates roles",
+					Summary:  "Set all Flant teammates global roles",
+				},
+			},
+		},
+		{
+			Pattern: path.Join("configure_extension", "flant_flow", "client_primary_administrators_roles"),
+			Fields: map[string]*framework.FieldSchema{
+				"roles": {
+					Type:        framework.TypeStringSlice,
+					Description: "names of tenant scoped roles, to be set for specified primary_administrators at creating client",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleConfigPrimaryClientAdministratorsRoles,
+					Summary:  "Set client primary administrators roles",
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.handleConfigPrimaryClientAdministratorsRoles,
+					Summary:  "Set client primary administrators roles",
 				},
 			},
 		},
@@ -188,6 +208,22 @@ func (b *flantFlowConfigureBackend) handleConfigAllFlantGroupRoles(ctx context.C
 	defer txn.Commit() //nolint:errcheck
 	allFlantGroupRoles := data.Get("roles").([]string)
 	cfg, err := usecase.Config(txn).SetAllFlantGroupRoles(ctx, req.Storage, allFlantGroupRoles)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	b.setLiveConfig(cfg)
+	b.Logger().Info("handleConfig normal finish")
+	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
+}
+
+func (b *flantFlowConfigureBackend) handleConfigPrimaryClientAdministratorsRoles(ctx context.Context, req *logical.Request,
+	data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Info("handleConfigPrimaryClientAdministratorsRoles  started")
+	defer b.Logger().Info("handleConfigPrimaryClientAdministratorsRoles exit")
+	txn := b.storage.Txn(true)
+	defer txn.Commit() //nolint:errcheck
+	primaryAdministratorsRoles := data.Get("roles").([]string)
+	cfg, err := usecase.Config(txn).SetPrimaryAdministratorsRoles(ctx, req.Storage, primaryAdministratorsRoles)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

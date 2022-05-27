@@ -17,8 +17,9 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-func CreateRandomClient(clientsAPI tests.TestAPI) ext_model.Client {
+func CreateRandomClient(clientsAPI tests.TestAPI, adminUUID model.UserUUID) ext_model.Client {
 	createPayload := fixtures.RandomClientCreatePayload()
+	createPayload["primary_administrators"] = []string{adminUUID}
 	createdData := clientsAPI.Create(tests.Params{}, nil, createPayload)
 	rawClient := createdData.Get("client")
 	data := []byte(rawClient.String())
@@ -145,14 +146,15 @@ func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI 
 }
 
 func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
-	tenant := iam_specs.CreateRandomTenant(tenantAPI)
-	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(tenant.UUID)
+	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(uuid.New())
 	r1 := iam_specs.CreateRandomRole(roleAPI)
 	rules := map[string][]string{config.Devops: {r1.Name}}
 	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(uuid.New())
 	globalRole := iam_specs.CreateRandomRole(roleAPI)
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupRoles([]string{globalRole.Name})
+	primaryClientAdminRole := iam_specs.CreateRandomRole(roleAPI)
+	configAPI.ConfigureExtensionFlantFlowClientPrimaryAdminsRoles([]string{primaryClientAdminRole.Name})
 	cfg := configAPI.ReadConfigFlantFlow()
 	return &cfg
 }

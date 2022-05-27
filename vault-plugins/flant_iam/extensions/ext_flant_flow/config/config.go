@@ -29,12 +29,13 @@ var (
 )
 
 type FlantFlowConfig struct {
-	FlantTenantUUID              iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
-	AllFlantGroupUUID            iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
-	AllFlantGroupRoles           []iam_model.RoleName                     `json:"all_flant_group_roles"`
-	AllFlantGroupRoleBindingUUID iam_model.RoleBindingUUID                `json:"all_flant_group_rolebinding_uuid"`
-	SpecificTeams                map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
-	RolesForSpecificTeams        map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
+	FlantTenantUUID                  iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
+	AllFlantGroupUUID                iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
+	AllFlantGroupRoles               []iam_model.RoleName                     `json:"all_flant_group_roles"`
+	AllFlantGroupRoleBindingUUID     iam_model.RoleBindingUUID                `json:"all_flant_group_rolebinding_uuid"`
+	SpecificTeams                    map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
+	RolesForSpecificTeams            map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
+	ClientPrimaryAdministratorsRoles []iam_model.RoleName                     `json:"client_primary_administrators_roles"`
 }
 
 var (
@@ -70,6 +71,9 @@ func (c *FlantFlowConfig) IsConfigured() error {
 	}
 	if c.SpecificTeams == nil {
 		return fmt.Errorf("%w:SpecificTeams:nil", consts.ErrNotConfigured)
+	}
+	if len(c.ClientPrimaryAdministratorsRoles) == 0 {
+		return fmt.Errorf("%w:empty ClientPrimaryAdministratorsRoles]", consts.ErrNotConfigured)
 	}
 	if err := allKeysInMap(MandatorySpecificTeams, c.SpecificTeams); err != nil {
 		return fmt.Errorf("%w:MandatorySpecificTeams:%s", consts.ErrNotConfigured, err.Error())
@@ -218,5 +222,18 @@ func (c *MutexedConfigManager) UpdateSpecificRoleRules(ctx context.Context, stor
 		return nil, err
 	}
 	config.RolesForSpecificTeams[teamType] = roles
+	return c.unSafeSaveConfig(ctx, storage, config)
+}
+
+func (c *MutexedConfigManager) SetPrimaryAdministratorsRoles(ctx context.Context, storage logical.Storage,
+	roles []iam_model.RoleName) (*FlantFlowConfig, error) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	config, err := c.unSafeGetConfig(ctx, storage)
+	if err != nil {
+		return nil, err
+	}
+	config.ClientPrimaryAdministratorsRoles = roles
+
 	return c.unSafeSaveConfig(ctx, storage, config)
 }

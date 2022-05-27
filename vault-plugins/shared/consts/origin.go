@@ -3,10 +3,11 @@ package consts
 type ObjectOrigin string
 
 const (
-	OriginIAM          ObjectOrigin = "iam"
-	OriginServerAccess ObjectOrigin = "server_access"
-	OriginFlantFlow    ObjectOrigin = "flant_flow"
-	OriginAUTH         ObjectOrigin = "auth"
+	OriginFlantFlowPredefined              = "flant_flow_predefined"
+	OriginIAM                 ObjectOrigin = "iam"
+	OriginServerAccess        ObjectOrigin = "server_access"
+	OriginFlantFlow           ObjectOrigin = "flant_flow"
+	OriginAUTH                ObjectOrigin = "auth"
 )
 
 func ValidateOrigin(origin ObjectOrigin) error {

@@ -20,6 +20,8 @@ func Test_teammateCRUD(t *testing.T) {
 	contact.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	contact.GroupAPI = lib.NewGroupAPI(rootClient)
 	contact.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
+	contact.UserAPI = lib.NewUserAPI(rootClient)
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CRUD flant_flow: Contact")
 }
