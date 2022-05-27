@@ -26,10 +26,8 @@ var (
 	TestAPI    tests.TestAPI
 	ClientAPI  tests.TestAPI
 	ProjectAPI tests.TestAPI
-	TenantAPI  tests.TestAPI
 	RoleAPI    tests.TestAPI
 	TeamAPI    tests.TestAPI
-	GroupAPI   tests.TestAPI
 	ConfigAPI  testapi.ConfigAPI
 	UserAPI    tests.TestAPI
 )
@@ -40,7 +38,7 @@ var _ = Describe("Contact", func() {
 	var flantUser iam_model.User
 
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(RoleAPI, TeamAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		flantUser = iam_specs.CreateRandomUser(UserAPI, flantFlowCfg.FlantTenantUUID)
 		client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)

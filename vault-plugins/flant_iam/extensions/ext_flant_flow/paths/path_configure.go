@@ -2,6 +2,7 @@ package paths
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
@@ -120,27 +121,24 @@ func (b *flantFlowConfigureBackend) paths() []*framework.Path {
 			},
 		},
 		{
-			Pattern: path.Join("configure_extension", "flant_flow", "role_rules", framework.GenericNameRegex("specific_team")+"$"),
+			Pattern: path.Join("configure_extension", "flant_flow", "service_packs_roles_specification"),
 			Fields: map[string]*framework.FieldSchema{
-				"specific_team": {
-					Type:        framework.TypeNameString,
-					Description: fmt.Sprintf("Specific team type. Mandatory keys:%v", config.MandatoryRoleRulesForSpecificTeams),
-					Required:    true,
-				},
-				"specific_roles": {
-					Type:        framework.TypeStringSlice,
-					Description: "Set of roles for specific team type. Passed roles will be used for automatically created rolebindings",
-					Required:    true,
+				"specification": {
+					Type: framework.TypeMap,
+					Description: fmt.Sprintf(`Service pack roles specification in form:
+{"service_pack_name":{"team linked group type":[{BoundRole1}, {BoundRole2}]}}
+mandatory service packs:%v`, config.MandatoryServicePacks),
+					Required: true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleConfigSpecificRoles,
-					Summary:  "Set specific iam.roles for flant_flow extension",
+					Callback: b.handleConfigServicePacksRolesSpecification,
+					Summary:  "Set specification for servicepacks, to control rolebindings autocreation",
 				},
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleConfigSpecificRoles,
-					Summary:  "Set specific iam.roles for flant_flow extension",
+					Callback: b.handleConfigServicePacksRolesSpecification,
+					Summary:  "Set specification for servicepacks, to control rolebindings autocreation",
 				},
 			},
 		},
@@ -232,19 +230,23 @@ func (b *flantFlowConfigureBackend) handleConfigPrimaryClientAdministratorsRoles
 	return logical.RespondWithStatusCode(nil, req, http.StatusOK)
 }
 
-func (b *flantFlowConfigureBackend) handleConfigSpecificRoles(ctx context.Context, req *logical.Request,
+func (b *flantFlowConfigureBackend) handleConfigServicePacksRolesSpecification(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Info("handleConfigSpecificRoles started")
-	defer b.Logger().Info("handleConfigSpecificRoles exit")
+	b.Logger().Info("handleConfigServicePacksRolesSpecification started")
+	defer b.Logger().Info("handleConfigServicePacksRolesSpecification exit")
 	txn := b.storage.Txn(true)
 	defer txn.Commit() //nolint:errcheck
-	teamType := data.Get("specific_team").(string)
-	roles := data.Get("specific_roles").([]string)
-	if len(roles) == 0 {
-		return backentutils.ResponseErr(req,
-			fmt.Errorf("%w: mandatory param 'specific_roles' not passed, or is empty", consts.ErrInvalidArg))
+	rawSpecification := data.Get("specification")
+	d, err := json.Marshal(rawSpecification)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
 	}
-	cfg, err := usecase.Config(txn).UpdateSpecificRoles(ctx, req.Storage, teamType, roles)
+	var specification config.ServicePacksRolesSpecification
+	err = json.Unmarshal(d, &specification)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	cfg, err := usecase.Config(txn).UpdateServicePacksRolesSpecification(ctx, req.Storage, specification)
 	if err != nil {
 		return backentutils.ResponseErr(req, err)
 	}

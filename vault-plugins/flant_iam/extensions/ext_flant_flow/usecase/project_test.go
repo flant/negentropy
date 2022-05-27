@@ -15,10 +15,21 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-var cfg config.FlantFlowConfig = config.FlantFlowConfig{
-	FlantTenantUUID:       fixtures.TenantUUID1,
-	SpecificTeams:         nil,
-	RolesForSpecificTeams: map[config.SpecializedTeam][]iam.RoleName{config.Devops: []string{"ssh"}},
+var cfg = config.FlantFlowConfig{
+	FlantTenantUUID: fixtures.TenantUUID1,
+	SpecificTeams:   nil,
+	ServicePacksRolesSpecification: config.ServicePacksRolesSpecification{
+		model.DevOps: {
+			DirectMembersGroupType: []iam.BoundRole{{
+				Name:    "ssh",
+				Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"},
+			}},
+			ManagersGroupType: []iam.BoundRole{{
+				Name:    "flant.client.manage",
+				Options: nil,
+			}},
+		},
+	},
 }
 
 func createProjects(t *testing.T, srv *ProjectService, projects ...model.Project) {

@@ -22,7 +22,7 @@ type ConfigAPI interface {
 	ConfigureExtensionFlantFlowFlantTenantUUID(flantTenantUUID model.TenantUUID)
 	ConfigureExtensionFlantFlowAllFlantGroupUUID(allFlantGroupUUID model.GroupUUID)
 	ConfigureExtensionFlantFlowAllFlantGroupRoles(allFlantGroupRoles []model.RoleName)
-	ConfigureExtensionFlantFlowRoleRules(roles map[string][]string)
+	ConfigureExtensionServicePacksRolesSpecification(specification config.ServicePacksRolesSpecification)
 	ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string)
 	ConfigureExtensionFlantFlowClientPrimaryAdminsRoles(adminRoles []model.RoleName)
 	ReadConfigFlantFlow() config.FlantFlowConfig
@@ -111,13 +111,11 @@ func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowAllFlantGroupUUID(all
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowRoleRules(rules map[string][]string) {
-	for team, roles := range rules {
-		_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/role_rules/"+team,
-			map[string]interface{}{},
-			map[string]interface{}{"specific_roles": roles})
-		Expect(err).ToNot(HaveOccurred())
-	}
+func (b *backendBasedConfigAPI) ConfigureExtensionServicePacksRolesSpecification(specification config.ServicePacksRolesSpecification) {
+	_, err := b.request(logical.UpdateOperation, "configure_extension/flant_flow/service_packs_roles_specification",
+		map[string]interface{}{},
+		map[string]interface{}{"specification": specification})
+	Expect(err).ToNot(HaveOccurred())
 }
 
 func (b *backendBasedConfigAPI) ConfigureExtensionFlantFlowSpecificTeams(teams map[string]string) {

@@ -22,7 +22,6 @@ import (
 
 var (
 	TestAPI            tests.TestAPI
-	TenantAPI          tests.TestAPI
 	RoleAPI            tests.TestAPI
 	TeamAPI            tests.TestAPI
 	GroupAPI           tests.TestAPI
@@ -36,7 +35,7 @@ var _ = Describe("Client", func() {
 	var flantFlowCfg *config.FlantFlowConfig
 	var flantUser model.User
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(RoleAPI, TeamAPI, ConfigAPI)
 		flantUser = iam_specs.CreateRandomUser(UserAPI, flantFlowCfg.FlantTenantUUID)
 		fmt.Printf("cfg:\n%#v\n", flantFlowCfg)
 	}, 1.0)

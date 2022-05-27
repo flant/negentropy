@@ -12,6 +12,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	ext_usecase "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/tests"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
@@ -129,8 +130,8 @@ func CreateRandomContact(contactAPI tests.TestAPI, clientID ext_model.TeamUUID) 
 	return contact
 }
 
-func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
-	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, groupAPI, configAPI)
+func ConfigureFlantFlow(roleApi tests.TestAPI, teamAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	cfg := BaseConfigureFlantFlow(roleApi, configAPI)
 	teamL1 := CreateRandomTeam(teamAPI)
 	teamMk8s := CreateRandomTeam(teamAPI)
 	teamOkmeter := CreateRandomTeam(teamAPI)
@@ -145,11 +146,23 @@ func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI 
 	return cfg
 }
 
-func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func BaseConfigureFlantFlow(roleAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(uuid.New())
 	r1 := iam_specs.CreateRandomRole(roleAPI)
-	rules := map[string][]string{config.Devops: {r1.Name}}
-	configAPI.ConfigureExtensionFlantFlowRoleRules(rules) // TODO fill later
+	r2 := iam_specs.CreateRandomRole(roleAPI)
+	servicePackSpecification := config.ServicePacksRolesSpecification{
+		ext_model.DevOps: {
+			ext_usecase.DirectMembersGroupType: []model.BoundRole{{
+				Name:    r1.Name,
+				Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"},
+			}},
+			ext_usecase.ManagersGroupType: []model.BoundRole{{
+				Name:    r2.Name,
+				Options: nil,
+			}},
+		},
+	}
+	configAPI.ConfigureExtensionServicePacksRolesSpecification(servicePackSpecification) // TODO fill later
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupUUID(uuid.New())
 	globalRole := iam_specs.CreateRandomRole(roleAPI)
 	configAPI.ConfigureExtensionFlantFlowAllFlantGroupRoles([]string{globalRole.Name})

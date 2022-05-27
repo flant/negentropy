@@ -13,7 +13,6 @@ import (
 func Test_clientCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	client.TestAPI = lib.NewFlowClientAPI(rootClient)
-	client.TenantAPI = lib.NewTenantAPI(rootClient)
 	client.RoleAPI = lib.NewRoleAPI(rootClient)
 	client.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	client.GroupAPI = lib.NewGroupAPI(rootClient)

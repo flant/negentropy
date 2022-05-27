@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -29,18 +30,34 @@ var (
 )
 
 type FlantFlowConfig struct {
-	FlantTenantUUID                  iam_model.TenantUUID                     `json:"flant_tenant_uuid"`
-	AllFlantGroupUUID                iam_model.GroupUUID                      `json:"all_flant_group_uuid"`
-	AllFlantGroupRoles               []iam_model.RoleName                     `json:"all_flant_group_roles"`
-	AllFlantGroupRoleBindingUUID     iam_model.RoleBindingUUID                `json:"all_flant_group_rolebinding_uuid"`
-	SpecificTeams                    map[SpecializedTeam]model.TeamUUID       `json:"specific_teams"`
-	RolesForSpecificTeams            map[SpecializedTeam][]iam_model.RoleName `json:"roles_for_specific_teams"`
-	ClientPrimaryAdministratorsRoles []iam_model.RoleName                     `json:"client_primary_administrators_roles"`
+	FlantTenantUUID                  iam_model.TenantUUID               `json:"flant_tenant_uuid"`
+	AllFlantGroupUUID                iam_model.GroupUUID                `json:"all_flant_group_uuid"`
+	AllFlantGroupRoles               []iam_model.RoleName               `json:"all_flant_group_roles"`
+	AllFlantGroupRoleBindingUUID     iam_model.RoleBindingUUID          `json:"all_flant_group_rolebinding_uuid"`
+	SpecificTeams                    map[SpecializedTeam]model.TeamUUID `json:"specific_teams"`
+	ClientPrimaryAdministratorsRoles []iam_model.RoleName               `json:"client_primary_administrators_roles"`
+	ServicePacksRolesSpecification   ServicePacksRolesSpecification     `json:"service_packs_roles_specification"`
+}
+
+type ServicePacksRolesSpecification map[model.ServicePackName]map[model.LinkedGroupType][]iam_model.BoundRole
+
+func (s ServicePacksRolesSpecification) allMandatoryServicePacksAreSet() error {
+	m := s
+	if m == nil {
+		m = map[model.ServicePackName]map[model.LinkedGroupType][]iam_model.BoundRole{}
+	}
+	err := multierror.Error{}
+	for _, servicePackName := range MandatoryServicePacks {
+		if _, ok := m[servicePackName]; !ok {
+			err.Errors = append(err.Errors, fmt.Errorf("need '%s' in servicepacks roles specification", servicePackName))
+		}
+	}
+	return err.ErrorOrNil()
 }
 
 var (
-	MandatorySpecificTeams             = []SpecializedTeam{L1, Mk8s, Okmeter}
-	MandatoryRoleRulesForSpecificTeams = []SpecializedTeam{Devops} // TODO
+	MandatorySpecificTeams = []SpecializedTeam{L1, Mk8s, Okmeter}
+	MandatoryServicePacks  = []model.ServicePackName{model.DevOps}
 )
 
 // IsBaseConfigured returns true if prohibited to use any of client paths, returns false if allowed only use configure path
@@ -54,12 +71,12 @@ func (c *FlantFlowConfig) IsBaseConfigured() error {
 	if c.AllFlantGroupUUID == "" {
 		return fmt.Errorf("%w:all_flant_group_uuid is empty", consts.ErrNotConfigured)
 	}
-	if c.RolesForSpecificTeams == nil {
+	if c.ServicePacksRolesSpecification == nil {
 		return fmt.Errorf("%w:RolesForSpecificTeams:nil", consts.ErrNotConfigured)
 	}
 
-	if err := allKeysInMapOfArray(MandatoryRoleRulesForSpecificTeams, c.RolesForSpecificTeams); err != nil {
-		return fmt.Errorf("%w:MandatoryRoleRulesForSpecificTeams:%s", consts.ErrNotConfigured, err.Error())
+	if err := c.ServicePacksRolesSpecification.allMandatoryServicePacksAreSet(); err != nil {
+		return fmt.Errorf("%w:check service_packs_roles_specification:%s", consts.ErrNotConfigured, err.Error())
 	}
 	return nil
 }
@@ -90,15 +107,6 @@ func allKeysInMap(ks []string, m map[string]string) error {
 	return nil
 }
 
-func allKeysInMapOfArray(ks []string, m map[string][]string) error {
-	for _, k := range ks {
-		if _, ok := m[k]; !ok {
-			return fmt.Errorf("key %q not found", k)
-		}
-	}
-	return nil
-}
-
 type MutexedConfigManager struct {
 	m          sync.RWMutex
 	liveConfig *FlantFlowConfig
@@ -117,9 +125,9 @@ func (c *MutexedConfigManager) unSafeGetConfig(ctx context.Context, storage logi
 	}
 	if storedConfigEntry == nil {
 		return &FlantFlowConfig{
-			FlantTenantUUID:       "",
-			SpecificTeams:         map[SpecializedTeam]model.TeamUUID{},
-			RolesForSpecificTeams: map[SpecializedTeam][]iam_model.RoleName{},
+			FlantTenantUUID:                "",
+			SpecificTeams:                  map[SpecializedTeam]model.TeamUUID{},
+			ServicePacksRolesSpecification: map[model.ServicePackName]map[model.LinkedGroupType][]iam_model.BoundRole{},
 		}, nil
 	}
 
@@ -213,15 +221,15 @@ func (c *MutexedConfigManager) UpdateSpecificTeams(ctx context.Context, storage 
 	return c.unSafeSaveConfig(ctx, storage, config)
 }
 
-func (c *MutexedConfigManager) UpdateSpecificRoleRules(ctx context.Context, storage logical.Storage,
-	teamType SpecializedTeam, roles []iam_model.RoleName) (*FlantFlowConfig, error) {
+func (c *MutexedConfigManager) UpdateServicePacksRolesSpecification(ctx context.Context, storage logical.Storage,
+	servicePacksRolesSpecification ServicePacksRolesSpecification) (*FlantFlowConfig, error) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	config, err := c.unSafeGetConfig(ctx, storage)
 	if err != nil {
 		return nil, err
 	}
-	config.RolesForSpecificTeams[teamType] = roles
+	config.ServicePacksRolesSpecification = servicePacksRolesSpecification
 	return c.unSafeSaveConfig(ctx, storage, config)
 }
 
