@@ -21,7 +21,7 @@ type Team struct {
 
 type LinkedGroup struct {
 	GroupUUID iam_model.GroupUUID `json:"uuid"`
-	Type      string              `json:"type"`
+	Type      LinkedGroupType     `json:"type"`
 }
 
 func (u *Team) ObjType() string {

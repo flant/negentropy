@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -130,23 +131,33 @@ var _ = Describe("Project", func() {
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
 
-	It("after devops_service_pack rolebinding DevOps exists, and contain DirectGroup, "+
-		"after changing devops_team_uuid, this rb is deleted", func() {
-		rolebidingsData := RoleBindingAPI.List(tests.Params{
+	It("after devops_service_pack all rolebindings by specification exists, and contains specific groups, "+
+		"after changing devops_team_uuid, these rbs are deleted", func() {
+		rolebindingsData := RoleBindingAPI.List(tests.Params{
 			"tenant": client.UUID,
 		}, nil).Get("role_bindings")
-		roleBindingUUID := ""
-		for _, rolebindingData := range rolebidingsData.Array() {
+		var roleBindingsUUIDs []iam_model.RoleBindingUUID
+		neededRolebindings := buildNeededRolebindings(flantFlowCfg.ServicePacksRolesSpecification, devopsTeam.Groups)
+
+		for _, rolebindingData := range rolebindingsData.Array() {
 			if rolebindingData.Get("description").String() == model.DevOps && rolebindingData.Get("archiving_timestamp").String() == "0" {
-				for _, grData := range rolebindingData.Get("members").Array() {
-					if grData.Get("uuid").String() == devopsTeam.Groups[0].GroupUUID {
-						roleBindingUUID = rolebindingData.Get("uuid").String()
-						break
-					}
-				}
+				members := rolebindingData.Get("members").Array()
+				Expect(members).To(HaveLen(1))
+				Expect(members[0].Map()).To(HaveKey("uuid"))
+				groupUUID := members[0].Get("uuid").String()
+				expectedBoundRoles := neededRolebindings[groupUUID]
+				rolesRaw := rolebindingData.Get("roles").String()
+				var actualBoundedRoles []iam_model.BoundRole
+				Expect(json.Unmarshal([]byte(rolesRaw), &actualBoundedRoles)).ToNot(HaveOccurred())
+				Expect(actualBoundedRoles).To(Equal(expectedBoundRoles), fmt.Sprintf("Expect bound roles:\n%#v\n got:\n %#v", expectedBoundRoles, actualBoundedRoles))
+				delete(neededRolebindings, groupUUID)
+				roleBindingsUUIDs = append(roleBindingsUUIDs, rolebindingData.Get("uuid").String())
 			}
 		}
-		Expect(roleBindingUUID).ToNot(BeEmpty())
+		Expect(neededRolebindings).To(BeEmpty(), fmt.Sprintf("Expect collect all rolebindings by specification:\n%#v\nnot found:\n%#v",
+			flantFlowCfg.ServicePacksRolesSpecification, neededRolebindings))
+
+		// Changing
 		devopsTeam2 := specs.CreateDevopsTeam(TeamAPI)
 		updatePayload := map[string]interface{}{
 			"devops_team":      devopsTeam2.UUID,
@@ -159,11 +170,15 @@ var _ = Describe("Project", func() {
 			"project":      project.UUID,
 			"expectStatus": tests.ExpectExactStatus(200),
 		}, nil, updatePayload)
-		rolebidingData := RoleBindingAPI.Read(tests.Params{
-			"tenant":       client.UUID,
-			"role_binding": roleBindingUUID,
-		}, nil).Get("role_binding")
-		Expect(rolebidingData.Get("archiving_timestamp").String()).ToNot(Equal("0"))
+
+		// check all rbs are deleted
+		for _, roleBindingUUID := range roleBindingsUUIDs {
+			rolebidingData := RoleBindingAPI.Read(tests.Params{
+				"tenant":       client.UUID,
+				"role_binding": roleBindingUUID,
+			}, nil).Get("role_binding")
+			Expect(rolebidingData.Get("archiving_timestamp").String()).ToNot(Equal("0"), fmt.Sprintf("not deleted rolebinding:%s", rolebidingData.String()))
+		}
 	})
 
 	It("can be read", func() {
@@ -323,6 +338,19 @@ var _ = Describe("Project", func() {
 		})
 	})
 })
+
+func buildNeededRolebindings(specification config.ServicePacksRolesSpecification,
+	teamGroups []model.LinkedGroup) map[iam_model.GroupUUID][]iam_model.BoundRole {
+	neededRolebindings := map[iam_model.GroupUUID][]iam_model.BoundRole{}
+	for groupType, boundRoles := range specification[model.DevOps] {
+		for _, g := range teamGroups {
+			if g.Type == groupType {
+				neededRolebindings[g.GroupUUID] = boundRoles
+			}
+		}
+	}
+	return neededRolebindings
+}
 
 func tryCreateRandomProjectAtClientWithIdentifier(clientUUID string,
 	projectIdentifier interface{}, statusCodeCondition string) {

@@ -10,7 +10,6 @@ class Vault(TypedDict):
 
 
 flant_tenant_uuid = "be0ba0d8-7be7-49c8-8609-c62ac1f14597"
-devops_team = "DevOps"
 l1_team_name = "L1"
 l1_team_id = "L1"
 l1_team_uuid = "885909a2-a578-421f-b090-34273fdcadda"
@@ -46,11 +45,14 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     if not all_flant_group_rolebinding_uuid or all_flant_group_rolebinding_uuid == '':
         vault_client.write(path='flant/configure_extension/flant_flow/all_flant_group_roles', roles=['flant.teammate'])
 
-    print("INFO: creating role rules")
-    rules = cfg.get('roles_for_specific_teams')
-    if not rules or not rules.get(devops_team):
-        vault_client.write(path='flant/configure_extension/flant_flow/role_rules/' + devops_team,
-                           specific_roles=['ssh.open'])  # ssh.open includes roles: servers.query, tenant.read.auth
+    print("INFO: set service_packs_roles_specification")
+    spec = cfg.get('service_packs_roles_specification')
+    if not spec or not spec.get("devops_service_pack"):
+        vault_client.write(path='flant/configure_extension/flant_flow/service_packs_roles_specification',
+                           specification={"devops_service_pack": {
+                               "direct": [{"name": "ssh.open", "options": {"max_ttl": "1600m", "ttl": "800m"}}],
+                               # ssh.open includes roles: servers.query, tenant.read.auth
+                               "managers": [{"name": "flant.client.manage"}]}})
 
     print("INFO: configure teams")
     teams = cfg.get('specific_teams')

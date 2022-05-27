@@ -142,14 +142,18 @@ func (c *ConfigService) SetPrimaryAdministratorsRoles(ctx context.Context, stora
 	return c.configProvider.SetPrimaryAdministratorsRoles(ctx, storage, roles)
 }
 
-func (c *ConfigService) UpdateSpecificRoles(ctx context.Context, storage logical.Storage, teamType config.SpecializedTeam,
-	roles []iam_model.RoleName) (*config.FlantFlowConfig, error) {
-	for _, roleName := range roles {
-		if _, err := c.roleRepo.GetByID(roleName); err != nil {
-			return nil, fmt.Errorf("%w:%s", err, roleName)
+func (c *ConfigService) UpdateServicePacksRolesSpecification(ctx context.Context, storage logical.Storage,
+	servicePacksRolesSpecification config.ServicePacksRolesSpecification) (*config.FlantFlowConfig, error) {
+	for _, servicePackRules := range servicePacksRolesSpecification {
+		for _, groupsRules := range servicePackRules {
+			for _, boundRole := range groupsRules {
+				if _, err := c.roleRepo.GetByID(boundRole.Name); err != nil {
+					return nil, fmt.Errorf("%w:%s", err, boundRole.Name)
+				}
+			}
 		}
 	}
-	return c.configProvider.UpdateSpecificRoleRules(ctx, storage, teamType, roles)
+	return c.configProvider.UpdateServicePacksRolesSpecification(ctx, storage, servicePacksRolesSpecification)
 }
 
 func (c *ConfigService) UpdateSpecificTeams(ctx context.Context, storage logical.Storage, teamsMap map[string]string) (*config.FlantFlowConfig, error) {

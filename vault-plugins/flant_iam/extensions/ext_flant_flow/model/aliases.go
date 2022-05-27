@@ -56,3 +56,5 @@ var (
 	AllowedContactRoles             = []ContactRole{RegularContact, AuthorizedContact, Representative, Plenipotentiary}
 	ContactRoles                    = map[ContactRole]struct{}{RegularContact: {}, AuthorizedContact: {}, Representative: {}, Plenipotentiary: {}}
 )
+
+type LinkedGroupType = string
