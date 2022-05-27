@@ -24,7 +24,6 @@ import (
 var (
 	TestAPI tests.TestAPI
 
-	TenantAPI tests.TestAPI
 	RoleAPI   tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 
@@ -35,7 +34,7 @@ var (
 var _ = Describe("Team", func() {
 	var flantFlowCfg *config.FlantFlowConfig
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TestAPI, GroupAPI, ConfigAPI)
+		flantFlowCfg = specs.ConfigureFlantFlow(RoleAPI, TestAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 	}, 1.0)
 	Describe("payload", func() {

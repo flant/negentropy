@@ -14,10 +14,8 @@ func Test_teammateCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	autorb.RoleAPI = lib.NewRoleAPI(rootClient)
 	autorb.TeamAPI = lib.NewFlowTeamAPI(rootClient)
-	autorb.TenantAPI = lib.NewTenantAPI(rootClient)
 	autorb.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 
-	autorb.GroupAPI = lib.NewGroupAPI(rootClient)
 	autorb.RoleBindingAPI = lib.NewRoleBindingAPI(rootClient)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "flant_flow: autorolebindings")

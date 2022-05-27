@@ -129,8 +129,8 @@ func CreateRandomContact(contactAPI tests.TestAPI, clientID ext_model.TeamUUID) 
 	return contact
 }
 
-func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
-	cfg := BaseConfigureFlantFlow(tenantAPI, roleApi, groupAPI, configAPI)
+func ConfigureFlantFlow(roleApi tests.TestAPI, teamAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+	cfg := BaseConfigureFlantFlow(roleApi, configAPI)
 	teamL1 := CreateRandomTeam(teamAPI)
 	teamMk8s := CreateRandomTeam(teamAPI)
 	teamOkmeter := CreateRandomTeam(teamAPI)
@@ -145,7 +145,7 @@ func ConfigureFlantFlow(tenantAPI tests.TestAPI, roleApi tests.TestAPI, teamAPI 
 	return cfg
 }
 
-func BaseConfigureFlantFlow(tenantAPI tests.TestAPI, roleAPI tests.TestAPI, groupAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
+func BaseConfigureFlantFlow(roleAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	configAPI.ConfigureExtensionFlantFlowFlantTenantUUID(uuid.New())
 	r1 := iam_specs.CreateRandomRole(roleAPI)
 	rules := map[string][]string{config.Devops: {r1.Name}}

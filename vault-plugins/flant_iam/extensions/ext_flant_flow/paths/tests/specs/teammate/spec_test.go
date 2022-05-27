@@ -15,7 +15,6 @@ func Test_teammateCRUD(t *testing.T) {
 	TestAPI = api.NewTeammateAPI(&backend, &storage)
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
-	TenantAPI = testapi.NewTenantAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 
 	GroupAPI = testapi.NewGroupAPI(&backend)

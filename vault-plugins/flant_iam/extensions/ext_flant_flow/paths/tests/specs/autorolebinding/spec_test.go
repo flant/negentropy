@@ -14,10 +14,8 @@ func Test_teammateCRUD(t *testing.T) {
 	backend, storage := testapi.TestBackendWithStorage()
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
-	TenantAPI = testapi.NewTenantAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 
-	GroupAPI = testapi.NewGroupAPI(&backend)
 	RoleBindingAPI = testapi.NewRoleBindingAPI(&backend)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "flow: autorolebindings")

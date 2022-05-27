@@ -13,7 +13,6 @@ import (
 func Test_teamCRUD(t *testing.T) {
 	backend, storage := testapi.TestBackendWithStorage()
 	TestAPI = api.NewTeamAPI(&backend, &storage)
-	TenantAPI = testapi.NewTenantAPI(&backend)
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 

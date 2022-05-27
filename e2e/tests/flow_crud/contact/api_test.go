@@ -15,10 +15,8 @@ func Test_teammateCRUD(t *testing.T) {
 	contact.ClientAPI = lib.NewFlowClientAPI(rootClient)
 	contact.TestAPI = lib.NewFlowContactAPI(rootClient)
 	contact.ProjectAPI = lib.NewFlowProjectAPI(rootClient)
-	contact.TenantAPI = lib.NewTenantAPI(rootClient)
 	contact.RoleAPI = lib.NewRoleAPI(rootClient)
 	contact.TeamAPI = lib.NewFlowTeamAPI(rootClient)
-	contact.GroupAPI = lib.NewGroupAPI(rootClient)
 	contact.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 	contact.UserAPI = lib.NewUserAPI(rootClient)
 

@@ -15,10 +15,8 @@ func Test_contactCRUD(t *testing.T) {
 	TestAPI = api.NewContactAPI(&backend, &storage)
 	ClientAPI = api.NewClientAPI(&backend, &storage)
 	ProjectAPI = api.NewProjectAPI(&backend, &storage)
-	TenantAPI = testapi.NewTenantAPI(&backend)
 	RoleAPI = testapi.NewRoleAPI(&backend)
 	TeamAPI = api.NewTeamAPI(&backend, &storage)
-	GroupAPI = testapi.NewGroupAPI(&backend)
 	ConfigAPI = testapi.NewBackendBasedConfigAPI(&backend, &storage)
 	UserAPI = testapi.NewUserAPI(&backend)
 

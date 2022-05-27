@@ -17,10 +17,7 @@ var (
 	TeamAPI tests.TestAPI
 	RoleAPI tests.TestAPI
 
-	TenantAPI tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
-
-	GroupAPI tests.TestAPI
 
 	RoleBindingAPI tests.TestAPI
 )
@@ -29,7 +26,7 @@ var _ = Describe("Teammate", func() {
 	var cfg *config.FlantFlowConfig
 
 	BeforeSuite(func() {
-		cfg = specs.ConfigureFlantFlow(TenantAPI, RoleAPI, TeamAPI, GroupAPI, ConfigAPI)
+		cfg = specs.ConfigureFlantFlow(RoleAPI, TeamAPI, ConfigAPI)
 	}, 1.0)
 
 	It("if flant-all roles are set, some roles are set for flant-all group", func() {

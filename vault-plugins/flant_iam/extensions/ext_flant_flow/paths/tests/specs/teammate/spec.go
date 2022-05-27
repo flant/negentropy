@@ -25,7 +25,6 @@ var (
 	TestAPI   tests.TestAPI
 	TeamAPI   tests.TestAPI
 	RoleAPI   tests.TestAPI
-	TenantAPI tests.TestAPI
 	ConfigAPI testapi.ConfigAPI
 
 	GroupAPI tests.TestAPI
@@ -36,7 +35,7 @@ var _ = Describe("Teammate", func() {
 	var cfg *config.FlantFlowConfig
 
 	BeforeSuite(func() {
-		cfg = specs.BaseConfigureFlantFlow(TenantAPI, RoleAPI, GroupAPI, ConfigAPI)
+		cfg = specs.BaseConfigureFlantFlow(RoleAPI, ConfigAPI)
 		team = specs.CreateRandomTeam(TeamAPI)
 	}, 1.0)
 
