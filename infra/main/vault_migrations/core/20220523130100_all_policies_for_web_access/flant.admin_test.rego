@@ -100,9 +100,15 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
+                "create"
+            ],
+            "path": "flant/team/+/teammate"
+        },
+        {
+            "capabilities": [
                 "read"
             ],
-            "path": "flant/team/+/teammate/"
+            "path": "flant/teammate/"
         },
         {
             "capabilities": [
@@ -267,9 +273,15 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
+                "create"
+            ],
+            "path": "flant/team/+/teammate"
+        },
+        {
+            "capabilities": [
                 "read"
             ],
-            "path": "flant/team/+/teammate/"
+            "path": "flant/teammate/"
         },
         {
             "capabilities": [
