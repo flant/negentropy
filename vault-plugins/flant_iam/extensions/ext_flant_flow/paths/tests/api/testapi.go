@@ -26,3 +26,7 @@ func NewProjectAPI(b *logical.Backend, s *logical.Storage) tests.TestAPI {
 func NewContactAPI(b *logical.Backend, s *logical.Storage) tests.TestAPI {
 	return &tests.BackendBasedAPI{Backend: b, Url: &url2.ContactEndpointBuilder{}, Storage: s}
 }
+
+func NewTeammateAllAPI(b *logical.Backend, s *logical.Storage) tests.TestAPI {
+	return &tests.BackendBasedAPI{Backend: b, Url: &url2.TeammateListAllEndpointBuilder{}, Storage: s}
+}

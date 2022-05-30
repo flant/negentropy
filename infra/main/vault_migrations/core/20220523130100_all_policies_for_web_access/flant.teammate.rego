@@ -35,6 +35,7 @@ rules = [
     {"path":"flant/client/+","capabilities":["read"]},
 	{"path":"flant/team/","capabilities":["read"]},
     {"path":"flant/team/+","capabilities":["read"]},
+    {"path":"flant/teammate/","capabilities":["read"]},
 	{"path":"flant/team/+/teammate/","capabilities":["read"]},
     {"path":"flant/team/+/teammate/+","capabilities":["read"]}
 ] {

@@ -51,44 +51,50 @@ test_allow_by_input_one_check_errors {
 
 test_allow_by_input_one_check_rules {
     # we got array here
-    rules== [
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/client/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/client/+"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+/teammate/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+/teammate/+"
-                }
-            ]
+    rules == [
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/client/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/client/+"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/teammate/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+/teammate/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+/teammate/+"
+        }
+    ]
      with input as ok_input_one
      with data.effective_roles as effective_roles
 }
@@ -194,44 +200,50 @@ test_forbid_by_show_paths_check_errors {
 
 test_forbid_by_show_paths_check_rules {
     # we got array here
-    rules== [
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/client/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/client/+"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+/teammate/"
-                },
-                {
-                    "capabilities": [
-                        "read"
-                    ],
-                    "path": "flant/team/+/teammate/+"
-                }
-            ]
+    rules == [
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/client/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/client/+"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/teammate/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+/teammate/"
+        },
+        {
+            "capabilities": [
+                "read"
+            ],
+            "path": "flant/team/+/teammate/+"
+        }
+    ]
      with input as show_paths_input
      with data.effective_roles as effective_roles
 }

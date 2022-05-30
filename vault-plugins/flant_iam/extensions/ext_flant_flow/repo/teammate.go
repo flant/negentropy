@@ -205,3 +205,21 @@ func (r *TeammateRepository) Restore(id iam_model.UserUUID) (*model.Teammate, er
 	}
 	return teammate, nil
 }
+
+func (r *TeammateRepository) ListAll(showArchived bool) ([]*model.Teammate, error) {
+	iter, err := r.db.Get(model.TeammateType, PK)
+	if err != nil {
+		return nil, err
+	}
+	list := []*model.Teammate{}
+	err = r.Iter(iter, func(teammate *model.Teammate) (bool, error) {
+		if showArchived || teammate.NotArchived() {
+			list = append(list, teammate)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}

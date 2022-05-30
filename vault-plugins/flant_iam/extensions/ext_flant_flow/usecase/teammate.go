@@ -164,6 +164,25 @@ func (s *TeammateService) List(teamID model.TeamUUID, showArchived bool) ([]*mod
 	return result, nil
 }
 
+func (s *TeammateService) ListAll(showArchived bool) ([]*DenormalizedFullTeammate, error) {
+	tms, err := s.repo.ListAll(showArchived)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*DenormalizedFullTeammate, len(tms))
+	for i := range tms {
+		user, err := s.userService.GetByID(tms[i].UserUUID)
+		if err != nil {
+			return nil, err
+		}
+		result[i], err = s.makeDenormalizedFullTeammate(user, tms[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
 func (s *TeammateService) Restore(id iam_model.UserUUID) (*model.FullTeammate, error) {
 	user, err := s.userService.Restore(id)
 	if err != nil {
@@ -216,5 +235,25 @@ func makeFullTeammate(user *iam_model.User, tm *model.Teammate) (*model.FullTeam
 		GithubAccount:   tm.GithubAccount,
 		TelegramAccount: tm.TelegramAccount,
 		HabrAccount:     tm.HabrAccount,
+	}, nil
+}
+
+type DenormalizedFullTeammate struct {
+	model.FullTeammate
+	TeamIdentifier string `json:"team_identifier"`
+}
+
+func (s *TeammateService) makeDenormalizedFullTeammate(user *iam_model.User, tm *model.Teammate) (*DenormalizedFullTeammate, error) {
+	fullTeammate, err := makeFullTeammate(user, tm)
+	if err != nil {
+		return nil, err
+	}
+	team, err := s.teamRepo.GetByID(tm.TeamUUID)
+	if err != nil {
+		return nil, err
+	}
+	return &DenormalizedFullTeammate{
+		FullTeammate:   *fullTeammate,
+		TeamIdentifier: team.Identifier,
 	}, nil
 }

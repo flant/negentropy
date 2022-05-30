@@ -38,7 +38,8 @@ rules = [
 	{"path":"flant/team/","capabilities":["read"]},
     {"path":"flant/team/+","capabilities":["read", "update", "delete"]},
     {"path":"flant/team/+/teammate","capabilities":["create"]},
-	{"path":"flant/team/+/teammate/","capabilities":["read"]},
+	{"path":"flant/team/+/teammate","capabilities":["create"]},
+    {"path":"flant/teammate/","capabilities":["read"]},
     {"path":"flant/team/+/teammate/+","capabilities":["read", "update", "delete"]}
 ] {
     allow
@@ -74,4 +75,3 @@ to_seconds_number(t) = x {
      value = to_number(trim_right(lower_t, "hms"))
      x = value*3600 ; endswith(lower_t, "h")
 }
-
