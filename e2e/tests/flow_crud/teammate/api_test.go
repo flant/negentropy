@@ -14,6 +14,7 @@ func Test_teammateCRUD(t *testing.T) {
 	rootClient := lib.NewConfiguredIamVaultClient()
 	teammate.TeamAPI = lib.NewFlowTeamAPI(rootClient)
 	teammate.TestAPI = lib.NewFlowTeammateAPI(rootClient)
+	teammate.TestListAllAPI = lib.NewFlowTeammateListAllAPI(rootClient)
 	teammate.RoleAPI = lib.NewRoleAPI(rootClient)
 	teammate.ConfigAPI = lib.NewHttpClientBasedConfigAPI(rootClient)
 

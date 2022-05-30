@@ -22,10 +22,11 @@ import (
 )
 
 var (
-	TestAPI   tests.TestAPI
-	TeamAPI   tests.TestAPI
-	RoleAPI   tests.TestAPI
-	ConfigAPI testapi.ConfigAPI
+	TestAPI        tests.TestAPI
+	TestListAllAPI tests.TestAPI
+	TeamAPI        tests.TestAPI
+	RoleAPI        tests.TestAPI
+	ConfigAPI      testapi.ConfigAPI
 
 	GroupAPI tests.TestAPI
 )
@@ -160,6 +161,24 @@ var _ = Describe("Teammate", func() {
 				teammatesArray := json.Get("teammates").Array()
 				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(teammatesArray,
 					iam_specs.ConvertToGJSON(teammate), "extensions") // server_access extension has map inside, so no guarantees to equity
+				Expect(len(teammatesArray)).To(BeNumerically(">", 0))
+				Expect(teammatesArray[0].Map()).ToNot(HaveKey("origin"))
+			},
+		}, url.Values{})
+	})
+
+	It("can be listed by 'list_all'", func() {
+		teammate := specs.CreateRandomTeammate(TestAPI, team)
+		denormalizedTeammate := usecase.DenormalizedFullTeammate{
+			FullTeammate:   teammate,
+			TeamIdentifier: team.Identifier,
+		}
+
+		TestListAllAPI.List(tests.Params{
+			"expectPayload": func(json gjson.Result) {
+				teammatesArray := json.Get("teammates").Array()
+				iam_specs.CheckArrayContainsElementByUUIDExceptKeys(teammatesArray,
+					iam_specs.ConvertToGJSON(denormalizedTeammate), "extensions") // server_access extension has map inside, so no guarantees to equity
 				Expect(len(teammatesArray)).To(BeNumerically(">", 0))
 				Expect(teammatesArray[0].Map()).ToNot(HaveKey("origin"))
 			},

@@ -168,7 +168,7 @@ func (b teammateBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.checkBaseConfigured(b.handleList),
-					Summary:  "Lists all teammates IDs.",
+					Summary:  "Lists teammates of team",
 				},
 			},
 		},
@@ -223,6 +223,23 @@ func (b teammateBackend) paths() []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.checkBaseConfigured(b.handleRestore),
 					Summary:  "Restore the teammate by ID.",
+				},
+			},
+		},
+		// List all
+		{
+			Pattern: "teammate/",
+			Fields: map[string]*framework.FieldSchema{
+				"show_archived": {
+					Type:        framework.TypeBool,
+					Description: "Option to list archived teammates",
+					Required:    false,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.checkBaseConfigured(b.handleListAll),
+					Summary:  "Lists all teammates",
 				},
 			},
 		},
@@ -416,5 +433,27 @@ func (b *teammateBackend) handleRestore(_ context.Context, req *logical.Request,
 	resp := &logical.Response{Data: map[string]interface{}{
 		"teammate": teammate,
 	}}
+	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+}
+
+func (b *teammateBackend) handleListAll(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("list all teammates", "path", req.Path)
+	var showArchived bool
+	rawShowArchived, ok := data.GetOk("show_archived")
+	if ok {
+		showArchived = rawShowArchived.(bool)
+	}
+
+	tx := b.storage.Txn(false)
+	teammates, err := usecase.Teammates(tx, b.getLiveConfig()).ListAll(showArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"teammates": teammates,
+		},
+	}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
