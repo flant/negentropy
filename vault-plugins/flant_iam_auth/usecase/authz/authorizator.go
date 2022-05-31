@@ -188,34 +188,20 @@ func (a *Authorizator) buildVaultPolicies(roleClaims []model.RoleClaim, subject 
 }
 
 func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject model.Subject, rc model.RoleClaim) (*VaultPolicy, error) {
-	if rc.TenantUUID == "" {
-		rc.TenantUUID = subject.TenantUUID
-	}
-
 	var policy VaultPolicy
 
 	switch {
-	case rc.Role == "flant.teammate":
-		fallthrough
-	case rc.Role == "flant.admin":
-		fallthrough
-	case rc.Role == "tenant.read":
-		fallthrough
-	case rc.Role == "tenant.manage":
-		fallthrough
-	case rc.Role == "flant.client.manage":
-		fallthrough
-	case rc.Role == "server":
-		fallthrough
-	case rc.Role == "servers.register":
-		fallthrough
-	case rc.Role == "tenants.list.auth": // only default paths: list tenants and token_owner
-		fallthrough
-	case rc.Role == "tenant.read.auth":
-		fallthrough
-	case rc.Role == "ssh.open":
-		fallthrough
-	case rc.Role == "servers.query":
+	case rc.Role == "flant.teammate" ||
+		rc.Role == "flant.admin" ||
+		rc.Role == "tenant.read" ||
+		rc.Role == "tenant.manage" ||
+		rc.Role == "flant.client.manage" ||
+		rc.Role == "server" ||
+		rc.Role == "servers.register" ||
+		rc.Role == "tenants.list.auth" || // only default paths: list tenants and token_owner
+		rc.Role == "tenant.read.auth" ||
+		rc.Role == "ssh.open" ||
+		rc.Role == "servers.query":
 		role, effectiveRoles, err := a.checkScopeAndCollectEffectiveRoles(rc, subject)
 		if err != nil {
 			return nil, err
@@ -253,6 +239,7 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 			Rules: regoResult.VaultRules,
 		}
 		a.Logger.Debug(fmt.Sprintf("REMOVE IT VaultPolicy= %#v", policy))
+		return &policy, nil
 
 	case rc.Role == "iam_read" && rc.TenantUUID != "":
 		policy = VaultPolicy{
