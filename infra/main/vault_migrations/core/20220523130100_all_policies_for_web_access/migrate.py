@@ -15,16 +15,17 @@ class Vault(TypedDict):
 
 
 policies = [
-    {'name': 'flant.teammate', 'roles': ['flant.teammate'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['oidc'],
+    {'name': 'flant.teammate', 'roles': ['flant.teammate'], 'claim_schema': 'TODO',
+     'allowed_auth_methods': ['okta-jwt'],
      'rego_file': 'flant.teammate.rego'},
-    {'name': 'flant.admin', 'roles': ['flant.admin'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['oidc'],
+    {'name': 'flant.admin', 'roles': ['flant.admin'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['okta-jwt'],
      'rego_file': 'flant.admin.rego'},
     {'name': 'flant.client.manage', 'roles': ['flant.client.manage'], 'claim_schema': 'TODO',
-     'allowed_auth_methods': ['oidc'],
+     'allowed_auth_methods': ['okta-jwt'],
      'rego_file': 'flant.client.manage.rego'},
-    {'name': 'tenant.manage', 'roles': ['tenant.manage'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['oidc'],
+    {'name': 'tenant.manage', 'roles': ['tenant.manage'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['okta-jwt'],
      'rego_file': 'tenant.manage.rego'},
-    {'name': 'tenant.read', 'roles': ['tenant.read'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['oidc'],
+    {'name': 'tenant.read', 'roles': ['tenant.read'], 'claim_schema': 'TODO', 'allowed_auth_methods': ['okta-jwt'],
      'rego_file': 'tenant.read.rego'}
 ]
 
