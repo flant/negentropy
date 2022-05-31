@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
+	github.com/flant/negentropy/authd v0.0.0
 	github.com/flant/negentropy/cli v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0
@@ -14,7 +15,6 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/tidwall/gjson v1.8.1
 	gopkg.in/square/go-jose.v2 v2.6.0
-	github.com/flant/negentropy/authd v0.0.0
 )
 
 replace (

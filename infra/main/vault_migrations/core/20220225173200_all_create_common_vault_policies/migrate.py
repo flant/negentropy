@@ -21,3 +21,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: create list_tenants policy at '{}' vault".format(vault_name))
     vault_client.sys.create_or_update_policy(name="list_tenants",
                                              policy="""path "auth/flant/tenant/" {capabilities = ["list"]}""")
+    print("INFO: create check_permissions policy at '{}' vault".format(vault_name))
+    vault_client.sys.create_or_update_policy(name="check_permissions",
+                                             policy="""path "auth/flant/check_permissions" {capabilities = ["create", "update"]}""")

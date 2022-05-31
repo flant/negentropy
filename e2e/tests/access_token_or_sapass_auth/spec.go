@@ -2,6 +2,7 @@ package access_token_or_sapass_auth
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
 )
 
 var rootVaultAddr = lib.GetRootVaultUrl()
@@ -53,7 +56,7 @@ var _ = Describe("Process of getting access through:", func() {
 				Expect(statusCode).To(Equal(403))
 			})
 		})
-		Context("getting VST with flant_iam against valid jwt of vaild user", func() {
+		Context("getting VST with role against valid jwt of valid user and implementing web access", func() {
 			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID)
 			Expect(err).ToNot(HaveOccurred())
 			vst := tools.LoginAccessToken(true, map[string]interface{}{
@@ -62,12 +65,55 @@ var _ = Describe("Process of getting access through:", func() {
 					{"role": "tenants.list.auth"},
 				},
 			}, rootVaultAddr).ClientToken
-			fmt.Printf("VST=%s", vst)
+			fmt.Printf("VST=%s\n", vst)
+
 			It("getting access to tenant list at auth vault", func() {
 				resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(statusCode).To(Equal(200))
 				Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
+			})
+			It("getting access to vst_owner path", func() {
+				resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamAuthPluginPath+"/vst_owner")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(statusCode).To(Equal(200))
+				Expect(string(resp)).To(ContainSubstring("\"data\":{\"user\":{"))
+				Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
+				Expect(string(resp)).To(ContainSubstring(cfg.User.UUID))
+				Expect(string(resp)).To(ContainSubstring(cfg.User.FullIdentifier))
+				Expect(string(resp)).To(ContainSubstring(cfg.User.Identifier))
+			})
+			It("getting acccess to check_permissions", func() {
+				resp, err := makeRequestWithPayload(vst, rootVaultAddr, lib.IamAuthPluginPath+"/check_permissions",
+					map[string]interface{}{
+						"method": "okta-jwt",
+						"roles": []model.RoleClaim{
+							{
+								Role:       "tenant.read",
+								TenantUUID: cfg.User.TenantUUID,
+							},
+							{
+								Role: "tenants.list.auth",
+							},
+						}})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp).To(HaveKey("permissions"))
+				results := resp["permissions"]
+				rawData, err := json.Marshal(results)
+				Expect(err).ToNot(HaveOccurred())
+				var permissions []authz.RoleClaimResult
+				err = json.Unmarshal(rawData, &permissions)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(permissions).To(HaveLen(2))
+				permission1 := permissions[0]
+				Expect(permission1.Role).To(Equal("tenant.read"))
+				Expect(permission1.AllowLogin).To(BeFalse())
+				Expect(permission1.RolebindingExists).To(BeFalse())
+				permission2 := permissions[1]
+				Expect(permission2.Role).To(Equal("tenants.list.auth"))
+				Expect(permission2.AllowLogin).To(BeTrue())
+				Expect(permission2.RolebindingExists).To(BeFalse())
 			})
 		})
 	})
@@ -134,8 +180,8 @@ func loginServiceAccountPass(positiveCase bool, params map[string]interface{}) *
 	return nil
 }
 
-func makeRequest(token string, method string, vault_url string, request_url string) ([]byte, error, int) {
-	url := vault_url + "/v1/" + request_url
+func makeRequest(token string, method string, vaultUrl string, requestUrl string) ([]byte, error, int) {
+	url := vaultUrl + "/v1/" + requestUrl
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
@@ -155,4 +201,15 @@ func makeRequest(token string, method string, vault_url string, request_url stri
 		return nil, err, 0
 	}
 	return body, nil, res.StatusCode
+}
+
+func makeRequestWithPayload(token string, vaultUrl string, requestUrl string, payload map[string]interface{}) (map[string]interface{}, error) {
+	cl := configure.GetClientWithToken(token, vaultUrl)
+	secret, err := cl.Logical().Write(requestUrl, payload)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return secret.Data, nil
 }
