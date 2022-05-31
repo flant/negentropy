@@ -93,6 +93,13 @@ test_allow_by_input_one_check_rules {
                 "read"
             ],
             "path": "flant/team/+/teammate/+"
+        },
+        {
+            "capabilities": [
+                "create",
+                "update"
+            ],
+            "path": "flant/tenant/be0ba0d8-7be7-49c8-8609-c62ac1f14597/user/+/multipass"
         }
     ]
      with input as ok_input_one
@@ -242,6 +249,13 @@ test_forbid_by_show_paths_check_rules {
                 "read"
             ],
             "path": "flant/team/+/teammate/+"
+        },
+        {
+            "capabilities": [
+                "create",
+                "update"
+            ],
+            "path": "flant/tenant/be0ba0d8-7be7-49c8-8609-c62ac1f14597/user/+/multipass"
         }
     ]
      with input as show_paths_input

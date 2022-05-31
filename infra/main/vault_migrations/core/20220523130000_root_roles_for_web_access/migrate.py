@@ -29,3 +29,4 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault_client.write(path='flant/role/flant.client.manage/include/tenant.manage')
     vault_client.write(path='flant/role/tenant.manage/include/tenant.read')
     vault_client.write(path='flant/role/flant.admin/include/flant.teammate')
+    vault_client.write(path='flant/role/flant.teammate/include/tenant.read')

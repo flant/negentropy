@@ -57,7 +57,7 @@ rules = [
 
     # flow project:
 	{"path":concat("/",["flant", "client", tenant_uuid, "project"]), #  create project
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "client", tenant_uuid, "project", "+"]), #  read, update, delete project
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "client", tenant_uuid, "project/"]), #  list project
@@ -65,7 +65,7 @@ rules = [
 
 	# iam project:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "project"]), #  create project
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "project", "+"]), #  read, update, delete project
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "project/"]), #  list project
@@ -73,7 +73,7 @@ rules = [
 
 	# iam group:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "group"]), #  create group
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "group", "+"]), #  read, update, delete group
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "group/"]), #  list group
@@ -81,7 +81,7 @@ rules = [
 
 	# iam identity_sharing:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "identity_sharing"]), #  create identity_sharing
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "identity_sharing", "+"]), #  read, update, delete identity_sharing
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "identity_sharing/"]), #  list identity_sharing
@@ -89,7 +89,7 @@ rules = [
 
 	# iam role_binding:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "role_binding"]), #  create role_binding
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "role_binding", "+"]), #  read, update, delete role_binding
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "role_binding/"]), #  list role_binding
@@ -97,7 +97,7 @@ rules = [
 
 	# iam service_account:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account"]), #  create service_account
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account", "+"]), #  read, update, delete service_account
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "service_account/"]), #  list service_account
@@ -105,7 +105,7 @@ rules = [
 
 	# iam service_account password:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account", "+", "password"]), #  create service_account password
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account",  "+", "password", "+"]), #  read, delete service_account  password
 	"capabilities":["read", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "service_account",  "+", "password/"]), #  list service_account password
@@ -113,7 +113,7 @@ rules = [
 
 	# iam service_account multipass:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account", "+", "multipass"]), #  create service_account multipass
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "service_account",  "+", "multipass", "+"]), #  read, delete service_account  multipass
 	"capabilities":["read", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "service_account",  "+", "multipass/"]), #  list service_account multipass
@@ -121,7 +121,7 @@ rules = [
 
 	# iam user:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "user"]), #  create user
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "user", "+"]), #  read, update, delete user
 	"capabilities":["read", "update", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "user/"]), #  list user
@@ -129,7 +129,7 @@ rules = [
 
 	# iam user multipass:
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "user", "+", "multipass"]), #  create user multipass
-	"capabilities":["create"]},
+	"capabilities":["create", "update"]},
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "user",  "+", "multipass", "+"]), #  read, delete user  multipass
 	"capabilities":["read", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "user",  "+", "multipass/"]), #  list user multipass

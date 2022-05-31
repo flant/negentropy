@@ -31,14 +31,13 @@ errors[err] {
 
 # rules for building vault policies
 rules = [
-	{"path":"flant/client","capabilities":["create"]},
+	{"path":"flant/client","capabilities":["create", "update"]},
 	{"path":"flant/client/","capabilities":["read"]},
     {"path":"flant/client/+","capabilities":["read", "update", "delete"]},
-    {"path":"flant/team","capabilities":["create"]},
+    {"path":"flant/team","capabilities":["create", "update"]},
 	{"path":"flant/team/","capabilities":["read"]},
     {"path":"flant/team/+","capabilities":["read", "update", "delete"]},
-    {"path":"flant/team/+/teammate","capabilities":["create"]},
-	{"path":"flant/team/+/teammate","capabilities":["create"]},
+    {"path":"flant/team/+/teammate","capabilities":["create", "update"]},
     {"path":"flant/teammate/","capabilities":["read"]},
     {"path":"flant/team/+/teammate/+","capabilities":["read", "update", "delete"]}
 ] {

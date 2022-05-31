@@ -78,7 +78,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/project"
         },
@@ -98,7 +99,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/group"
         },
@@ -118,7 +120,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/identity_sharing"
         },
@@ -138,7 +141,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/role_binding"
         },
@@ -158,7 +162,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/service_account"
         },
@@ -178,7 +183,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/service_account/+/password"
         },
@@ -197,7 +203,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/service_account/+/multipass"
         },
@@ -216,7 +223,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/user"
         },
@@ -236,7 +244,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/t1/user/+/multipass"
         },
@@ -388,7 +397,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/project"
         },
@@ -408,7 +418,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/group"
         },
@@ -428,7 +439,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/identity_sharing"
         },
@@ -448,7 +460,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/role_binding"
         },
@@ -468,7 +481,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/service_account"
         },
@@ -488,7 +502,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/service_account/+/password"
         },
@@ -507,7 +522,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/service_account/+/multipass"
         },
@@ -526,7 +542,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/user"
         },
@@ -546,7 +563,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/tenant/<tenant_uuid>/user/+/multipass"
         },

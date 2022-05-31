@@ -96,7 +96,7 @@ func CreateRandomTenant(tenantsAPI api.TestAPI) model.Tenant {
 func CreateRandomUser(userAPI api.TestAPI, tenantID model.TenantUUID) model.User {
 	createPayload := fixtures.RandomUserCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
-	createPayload["tenant_uuid"] = "user_" + uuid.New()
+	createPayload["identifier"] = "user_" + uuid.New()
 	createdData := userAPI.Create(api.Params{
 		"tenant": tenantID,
 	}, nil, createPayload)
