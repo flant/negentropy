@@ -54,7 +54,8 @@ test_allow_by_input_one_check_rules {
     rules == [
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/client"
         },
@@ -74,7 +75,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/team"
         },
@@ -94,13 +96,8 @@ test_allow_by_input_one_check_rules {
         },
         {
             "capabilities": [
-                "create"
-            ],
-            "path": "flant/team/+/teammate"
-        },
-        {
-            "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/team/+/teammate"
         },
@@ -227,7 +224,8 @@ test_forbid_by_show_paths_check_rules {
     rules == [
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/client"
         },
@@ -247,7 +245,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/team"
         },
@@ -267,13 +266,8 @@ test_forbid_by_show_paths_check_rules {
         },
         {
             "capabilities": [
-                "create"
-            ],
-            "path": "flant/team/+/teammate"
-        },
-        {
-            "capabilities": [
-                "create"
+                "create",
+                "update"
             ],
             "path": "flant/team/+/teammate"
         },

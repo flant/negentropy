@@ -37,7 +37,9 @@ rules = [
     {"path":"flant/team/+","capabilities":["read"]},
     {"path":"flant/teammate/","capabilities":["read"]},
 	{"path":"flant/team/+/teammate/","capabilities":["read"]},
-    {"path":"flant/team/+/teammate/+","capabilities":["read"]}
+    {"path":"flant/team/+/teammate/+","capabilities":["read"]},
+    {"path":concat("/",["flant", "tenant", "be0ba0d8-7be7-49c8-8609-c62ac1f14597", "user", "+", "multipass"]), #  create own multipass
+    	"capabilities":["create", "update"]},
 ] {
     allow
 } {

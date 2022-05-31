@@ -662,7 +662,7 @@ func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod s
 	return nil, fmt.Errorf("for role:%s authMethod %s is not allowed", roleName, authMethod)
 }
 
-// checkTenantUUID check  tenantUUID in RoleClaim:
+// checkTenantUUID checks  tenantUUID in RoleClaim:
 // if it filled - it checks is it owner of subject or is subject shared to this tenant
 func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject) (model.RoleClaim, error) {
 	if rc.TenantUUID == "" {
