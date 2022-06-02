@@ -7,6 +7,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -73,6 +74,86 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 
 func (a *Authorizator) identityApi() *api.IdentityAPI {
 	return api.NewIdentityAPI(a.vaultClientProvider, a.Logger.Named("LoginIdentityApi"))
+}
+
+type RoleClaimResult struct {
+	model.RoleClaim
+	RolebindingExists bool   `json:"rolebinding_exists"`
+	AllowLogin        bool   `json:"allow_login"`
+	RequireMFA        bool   `json:"require_mfa,omitempty"`
+	NeedApprovals     bool   `json:"need_approvals,omitempty"`
+	Err               string `json:"error,omitempty"`
+}
+
+func (a *Authorizator) CheckPermissions(authMethodName string, subject model.Subject, roleClaims []model.RoleClaim) []RoleClaimResult {
+	rowResults := a.checkPermissions(authMethodName, subject, roleClaims)
+	results := make([]RoleClaimResult, 0, len(rowResults))
+	for _, rowResult := range rowResults {
+		result := RoleClaimResult{
+			RoleClaim:         rowResult.loginClaim,
+			RolebindingExists: len(rowResult.effectiveRoles) > 0,
+			AllowLogin:        rowResult.regoresult.Allow,
+		}
+		if rowResult.err != nil {
+			result.Err = rowResult.err.Error()
+		}
+		if rowResult.regoresult.BestEffectiveRole != nil {
+			result.RequireMFA = rowResult.regoresult.BestEffectiveRole.RequireMFA
+			result.NeedApprovals = rowResult.regoresult.BestEffectiveRole.NeedApprovals > 0
+		}
+
+		results = append(results, result)
+	}
+	return results
+}
+
+type tryLoginResult struct {
+	loginClaim     model.RoleClaim
+	regoresult     RegoResult
+	effectiveRoles []iam_usecase.EffectiveRole
+	err            error
+}
+
+// checkPermissions validate all permissions request and store results
+func (a *Authorizator) checkPermissions(authMethodName string, subject model.Subject, roleClaims []model.RoleClaim) []tryLoginResult {
+	result := make([]tryLoginResult, 0, len(roleClaims))
+	var err error
+	for _, rc := range roleClaims {
+		item := tryLoginResult{
+			loginClaim: rc,
+		}
+
+		err = a.checkTenantUUID(rc, subject)
+		if err != nil {
+			item.err = err
+			result = append(result, item)
+			continue
+		}
+
+		item.effectiveRoles, err = a.checkScopeAndCollectEffectiveRoles(rc, subject)
+		if err != nil {
+			item.err = err
+			result = append(result, item)
+			continue
+		}
+
+		negentropyPolicy, err := a.seekAndValidatePolicy(rc.Role, authMethodName)
+		if err != nil {
+			item.err = err
+			result = append(result, item)
+			continue
+		}
+
+		regoResult, err := a.applyNegentropyPolicy(subject, rc, *negentropyPolicy, item.effectiveRoles)
+		if err != nil {
+			item.err = err
+			result = append(result, item)
+			continue
+		}
+		item.regoresult = *regoResult
+		result = append(result, item)
+	}
+	return result
 }
 
 func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
@@ -150,11 +231,34 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 }
 
 func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []model.RoleClaim, subject model.Subject, authMethod string) error {
-	extraPolicies, err := a.buildVaultPolicies(roleClaims, subject, authMethod)
-	if err != nil {
-		return err
+	loginItems := a.checkPermissions(authMethod, subject, roleClaims)
+	multiError := multierror.Error{}
+	allow := true
+	// TODO what about multifactor ?
+
+	for _, loginItem := range loginItems {
+		if !loginItem.regoresult.Allow {
+			allow = false
+		}
+		if loginItem.err != nil {
+			multiError.Errors = append(multiError.Errors, loginItem.err)
+		}
 	}
-	err = a.createDynamicPolicies(extraPolicies)
+	if !allow || multiError.Len() > 0 {
+		return fmt.Errorf("not allowed: %s", multiError.Error())
+	}
+
+	extraPolicies := make([]VaultPolicy, 0, len(loginItems))
+	for _, loginItem := range loginItems {
+		if loginItem.err == nil && loginItem.regoresult.Allow {
+			extraPolicies = append(extraPolicies, VaultPolicy{
+				Name:  fmt.Sprintf("%s_by_%s", loginItem.loginClaim.Role, subject.UUID),
+				Rules: loginItem.regoresult.VaultRules,
+			})
+		}
+	}
+
+	err := a.createDynamicPolicies(extraPolicies)
 	if err != nil {
 		return err
 	}
@@ -164,31 +268,9 @@ func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []m
 	return nil
 }
 
-func (a *Authorizator) buildVaultPolicies(roleClaims []model.RoleClaim, subject model.Subject, authMethod string) ([]VaultPolicy, error) {
-	var result []VaultPolicy
-	var err error
-	for _, rc := range roleClaims {
-		rc, err = a.checkTenantUUID(rc, subject)
-		if err != nil {
-			return nil, err
-		}
-		negentropyPolicy, err := a.seekAndValidatePolicy(rc.Role, authMethod)
-		if err != nil {
-			return nil, err
-		}
-		policy, err := a.buildVaultPolicy(*negentropyPolicy, subject, rc)
-		if err != nil {
-			return nil, err
-		}
-		if policy != nil {
-			result = append(result, *policy)
-		}
-	}
-	return result, nil
-}
-
-func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject model.Subject, rc model.RoleClaim) (*VaultPolicy, error) {
-	role, effectiveRoles, err := a.checkScopeAndCollectEffectiveRoles(rc, subject)
+func (a *Authorizator) applyNegentropyPolicy(subject model.Subject, rc model.RoleClaim, negentropyPolicy model.Policy,
+	effectiveRoles []iam_usecase.EffectiveRole) (*RegoResult, error) {
+	role, err := a.RoleRepo.GetByID(rc.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -213,33 +295,29 @@ func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject m
 	} else {
 		a.Logger.Debug(fmt.Sprintf("regoResult:%#v\n", *regoResult))
 	}
+
 	if !regoResult.Allow {
 		err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v, errors, returned by rego:%v",
-			subject.Type, subject.UUID, role.Name, rc, regoResult.Errors)
+			subject.Type, subject.UUID, rc.Role, rc, regoResult.Errors)
 		a.Logger.Error(err.Error())
 		return nil, err
 	}
 
-	policy := VaultPolicy{
-		Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
-		Rules: regoResult.VaultRules,
-	}
-	a.Logger.Debug(fmt.Sprintf("REMOVE IT VaultPolicy= %#v", policy))
-	return &policy, nil
+	return regoResult, nil
 }
 
 // check role scope and passed claim, if correct, collect  effectiveRoles
-func (a *Authorizator) checkScopeAndCollectEffectiveRoles(rc model.RoleClaim, subject model.Subject) (*iam.Role, []iam_usecase.EffectiveRole, error) {
+func (a *Authorizator) checkScopeAndCollectEffectiveRoles(rc model.RoleClaim, subject model.Subject) ([]iam_usecase.EffectiveRole, error) {
 	role, err := a.RoleRepo.GetByID(rc.Role)
 	if err != nil {
 		err = fmt.Errorf("error catching role %s:%w", rc.Role, err)
 		a.Logger.Error(err.Error())
-		return nil, nil, err
+		return nil, err
 	}
 	scope, err := checkAndEvaluateScope(role, rc.TenantUUID, rc.ProjectUUID)
 	if err != nil {
 		a.Logger.Error(err.Error())
-		return nil, nil, err
+		return nil, err
 	}
 
 	var effectiveRoles []iam_usecase.EffectiveRole
@@ -270,9 +348,9 @@ func (a *Authorizator) checkScopeAndCollectEffectiveRoles(rc model.RoleClaim, su
 		err = fmt.Errorf("error searching, subject_type=%s, subject_uuid=%s, role=%s :%w",
 			subject.Type, subject.UUID, role.Name, err)
 		a.Logger.Error(err.Error())
-		return nil, nil, err
+		return nil, err
 	}
-	return role, effectiveRoles, nil
+	return effectiveRoles, nil
 }
 
 const (
@@ -495,12 +573,12 @@ func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod s
 
 // checkTenantUUID checks  tenantUUID in RoleClaim:
 // if it filled - it checks is it owner of subject or is subject shared to this tenant
-func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject) (model.RoleClaim, error) {
+func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject) error {
 	if rc.TenantUUID == "" {
-		return rc, nil
+		return nil
 	}
 	if rc.TenantUUID == subject.TenantUUID {
-		return rc, nil
+		return nil
 	}
 	var isShared bool
 	var err error
@@ -510,10 +588,10 @@ func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject
 		isShared, err = a.RolesResolver.IsServiceAccountSharedWithTenant(subject.UUID, rc.TenantUUID)
 	}
 	if err != nil {
-		return model.RoleClaim{}, err
+		return err
 	}
 	if !isShared {
-		return model.RoleClaim{}, fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
+		return fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
 	}
-	return rc, nil
+	return nil
 }
