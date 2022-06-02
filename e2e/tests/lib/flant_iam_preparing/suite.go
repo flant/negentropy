@@ -225,6 +225,9 @@ type CheckingEnvironmentTeammate struct {
 	Admin       model.User
 }
 
+const FlantAdminRole = "flant.admin"
+const FlantClientManageRole = "flant.client.manage"
+
 func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
 	var result CheckingEnvironmentTeammate
 	// create flant tenant
@@ -236,6 +239,20 @@ func (st *Suite) PrepareForTeammateGotSSHAccess() CheckingEnvironmentTeammate {
 
 	// create some user at the tenant
 	result.Admin = specs.CreateRandomUser(lib.NewUserAPI(st.IamVaultClient), result.FlantTenant.UUID)
+	rb := specs.CreateRoleBinding(lib.NewRoleBindingAPI(st.IamVaultClient),
+		model.RoleBinding{
+			TenantUUID:  FlantTenantUUID,
+			Description: "flant_iam_preparing for e2e teammmate ssh testing",
+			ValidTill:   10_000_000_000,
+			Members: []model.MemberNotation{{
+				Type: "user",
+				UUID: result.Admin.UUID,
+			}},
+			Roles: []model.BoundRole{{Name: FlantAdminRole, Options: map[string]interface{}{}},
+				{Name: FlantClientManageRole, Options: map[string]interface{}{}}},
+		})
+	fmt.Printf("Created admin rolebinding:%#v\n", rb)
+
 	fmt.Printf("Created admin:%#v\n", result.Admin)
 	return result
 }

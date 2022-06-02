@@ -188,195 +188,43 @@ func (a *Authorizator) buildVaultPolicies(roleClaims []model.RoleClaim, subject 
 }
 
 func (a *Authorizator) buildVaultPolicy(negentropyPolicy model.Policy, subject model.Subject, rc model.RoleClaim) (*VaultPolicy, error) {
-	var policy VaultPolicy
-
-	switch {
-	case rc.Role == "flant.teammate" ||
-		rc.Role == "flant.admin" ||
-		rc.Role == "tenant.read" ||
-		rc.Role == "tenant.manage" ||
-		rc.Role == "flant.client.manage" ||
-		rc.Role == "server" ||
-		rc.Role == "servers.register" ||
-		rc.Role == "tenants.list.auth" || // only default paths: list tenants and token_owner
-		rc.Role == "tenant.read.auth" ||
-		rc.Role == "ssh.open" ||
-		rc.Role == "servers.query":
-		role, effectiveRoles, err := a.checkScopeAndCollectEffectiveRoles(rc, subject)
-		if err != nil {
-			return nil, err
-		}
-		ctx := context.Background()
-		regoClaims := map[string]interface{}{
-			"role":         rc.Role,
-			"tenant_uuid":  rc.TenantUUID,
-			"project_uuid": rc.ProjectUUID,
-		}
-		for k, v := range rc.Claim {
-			regoClaims[k] = v
-		}
-
-		extensionsData, err := a.ExtensionsDataProvider.CollectExtensionsData(role.EnrichingExtensions, subject, rc)
-
-		regoResult, err := ApplyRegoPolicy(ctx, negentropyPolicy, subject, extensionsData, effectiveRoles, regoClaims)
-
-		if err != nil {
-			err = fmt.Errorf("error appliing rego policy:%w", err)
-			a.Logger.Error(err.Error())
-			return nil, err
-		} else {
-			a.Logger.Debug(fmt.Sprintf("regoResult:%#v\n", *regoResult))
-		}
-		if !regoResult.Allow {
-			err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v, errors, returned by rego:%v",
-				subject.Type, subject.UUID, role.Name, rc, regoResult.Errors)
-			a.Logger.Error(err.Error())
-			return nil, err
-		}
-
-		policy = VaultPolicy{
-			Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
-			Rules: regoResult.VaultRules,
-		}
-		a.Logger.Debug(fmt.Sprintf("REMOVE IT VaultPolicy= %#v", policy))
-		return &policy, nil
-
-	case rc.Role == "iam_read" && rc.TenantUUID != "":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
-			Rules: []Rule{{
-				Path: "flant/tenant/" + rc.TenantUUID + "*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/role/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/feature_flag/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "iam_write" && rc.TenantUUID != "":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
-			Rules: []Rule{{
-				Path:   "flant/tenant/" + rc.TenantUUID + "*",
-				Read:   true,
-				List:   true,
-				Create: true,
-				Update: true,
-				Delete: true,
-			}, {
-				Path: "flant/role/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/feature_flag/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "iam_read_all":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
-			Rules: []Rule{{
-				Path: "flant/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/role/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/feature_flag/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "iam_write_all":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
-			Rules: []Rule{{
-				Path:   "flant/*",
-				Read:   true,
-				List:   true,
-				Create: true,
-				Update: true,
-				Delete: true,
-			}, {
-				Path: "flant/role/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/feature_flag/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "iam_auth_read" && rc.TenantUUID != "":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("%s_tenant_%s_by_%s", rc.Role, rc.TenantUUID, subject.UUID),
-			Rules: []Rule{{
-				Path: "auth/flant/tenant/" + rc.TenantUUID + "*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "flow_read":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("flow_read_by_%s", subject.UUID),
-			Rules: []Rule{{
-				Path: "flant/client/*",
-				Read: true,
-				List: true,
-			}, {
-				Path: "flant/team/*",
-				Read: true,
-				List: true,
-			}},
-		}
-
-	case rc.Role == "flow_write":
-		policy = VaultPolicy{
-			Name: fmt.Sprintf("flow_write_by_%s", subject.UUID),
-			Rules: []Rule{{
-				Path:   "flant/client",
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-				List:   true,
-			}, {
-				Path:   "flant/client/*",
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-				List:   true,
-			}, {
-				Path:   "flant/team",
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-				List:   true,
-			}, {
-				Path:   "flant/team/*",
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-				List:   true,
-			}},
-		}
+	role, effectiveRoles, err := a.checkScopeAndCollectEffectiveRoles(rc, subject)
+	if err != nil {
+		return nil, err
 	}
+	ctx := context.Background()
+	regoClaims := map[string]interface{}{
+		"role":         rc.Role,
+		"tenant_uuid":  rc.TenantUUID,
+		"project_uuid": rc.ProjectUUID,
+	}
+	for k, v := range rc.Claim {
+		regoClaims[k] = v
+	}
+
+	extensionsData, err := a.ExtensionsDataProvider.CollectExtensionsData(role.EnrichingExtensions, subject, rc)
+
+	regoResult, err := ApplyRegoPolicy(ctx, negentropyPolicy, subject, extensionsData, effectiveRoles, regoClaims)
+
+	if err != nil {
+		err = fmt.Errorf("error appliing rego policy:%w", err)
+		a.Logger.Error(err.Error())
+		return nil, err
+	} else {
+		a.Logger.Debug(fmt.Sprintf("regoResult:%#v\n", *regoResult))
+	}
+	if !regoResult.Allow {
+		err = fmt.Errorf("not allowed: subject_type=%s, subject_uuid=%s, rolename=%s, claims=%v, errors, returned by rego:%v",
+			subject.Type, subject.UUID, role.Name, rc, regoResult.Errors)
+		a.Logger.Error(err.Error())
+		return nil, err
+	}
+
+	policy := VaultPolicy{
+		Name:  fmt.Sprintf("%s_by_%s", rc.Role, subject.UUID),
+		Rules: regoResult.VaultRules,
+	}
+	a.Logger.Debug(fmt.Sprintf("REMOVE IT VaultPolicy= %#v", policy))
 	return &policy, nil
 }
 
@@ -621,24 +469,7 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 	return &authzRes, nil
 }
 
-// TODO REMOVE IT AFTER IMPLEMENT ALL:
-var tmpNotSeekPoliciesRoles = map[string]struct{}{
-	"iam_read":      {},
-	"iam_write":     {},
-	"iam_read_all":  {},
-	"iam_write_all": {},
-	"iam_auth_read": {},
-	"flow_read":     {},
-	"flow_write":    {},
-}
-
 func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod string) (*model.Policy, error) {
-	if _, tmpSkip := tmpNotSeekPoliciesRoles[roleName]; tmpSkip { // TODO  tmp stub
-		fmt.Printf("====================Attantion! ===========================\n")
-		fmt.Printf("skipped searching negentropy policy for role %s\n", roleName)
-		fmt.Printf("====================Attantion! ===========================\n")
-		return &model.Policy{}, nil // TODO  tmp stub
-	} // TODO  tmp stub
 	policies, err := a.PolicyRepo.ListActiveForRole(roleName)
 	if err != nil {
 		return nil, err

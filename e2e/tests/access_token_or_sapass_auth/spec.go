@@ -36,7 +36,7 @@ var _ = Describe("Process of getting access through:", func() {
 			Expect(err).ToNot(HaveOccurred())
 			tools.LoginAccessToken(false, map[string]interface{}{"method": "okta-jwt", "jwt": accessToken}, rootVaultAddr)
 		})
-		Context("getting VST against valid jwt of vaild user", func() {
+		Context("getting VST against valid jwt of valid user", func() {
 			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -59,18 +59,12 @@ var _ = Describe("Process of getting access through:", func() {
 			vst := tools.LoginAccessToken(true, map[string]interface{}{
 				"method": "okta-jwt", "jwt": accessToken,
 				"roles": []map[string]interface{}{
-					{"role": "iam_read", "tenant_uuid": cfg.Tenant.UUID},
+					{"role": "tenants.list.auth"},
 				},
 			}, rootVaultAddr).ClientToken
 			fmt.Printf("VST=%s", vst)
 			It("getting access to tenant list at auth vault", func() {
 				resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamAuthPluginPath+"/tenant/?list=true")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(statusCode).To(Equal(200))
-				Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))
-			})
-			It("getting access to read tenant at auth vault", func() {
-				resp, err, statusCode := makeRequest(vst, "GET", rootVaultAddr, lib.IamPluginPath+"/tenant/"+cfg.Tenant.UUID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(statusCode).To(Equal(200))
 				Expect(string(resp)).To(ContainSubstring(cfg.Tenant.UUID))

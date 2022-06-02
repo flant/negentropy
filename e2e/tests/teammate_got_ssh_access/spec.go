@@ -59,7 +59,8 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		adminVST := tools.LoginAccessToken(true, map[string]interface{}{
 			"method": "okta-jwt", "jwt": adminAccessToken,
 			"roles": []map[string]interface{}{
-				{"role": "flow_write"}, {"role": "iam_write_all"},
+				{"role": flant_iam_preparing.FlantAdminRole},
+				{"role": flant_iam_preparing.FlantClientManageRole, "tenant_uuid": flant_iam_preparing.FlantTenantUUID},
 			},
 		}, lib.GetRootVaultUrl()).ClientToken
 		adminClient = lib.NewIamVaultClient(adminVST)
@@ -69,13 +70,29 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	var saRegisterServerPassword model.ServiceAccountPassword
 	var devopsTeam ext_model.Team
 	var teammate ext_model.FullTeammate
+	var primaryAdminClient *http.Client
 
-	It("Interact flant_flow and flant_iam, using Admin client", func() {
+	It("Interact flant_flow and flant_iam, using Admin client & clientPrimaryAdmin client", func() {
 		clientPrimaryAdmin := iam_specs.CreateRandomUser(lib.NewUserAPI(adminClient), cfg.FlantTenant.UUID)
 
 		client = specs.CreateRandomClient(lib.NewFlowClientAPI(adminClient), clientPrimaryAdmin.UUID)
-		saRegisterServer := iam_specs.CreateRandomServiceAccount(lib.NewServiceAccountAPI(adminClient), client.UUID)
-		iam_specs.CreateRoleBinding(lib.NewRoleBindingAPI(adminClient),
+
+		time.Sleep(time.Second * 2)
+
+		// login by primaryAdmin
+		primaryAdminAccessToken, err := tools.GetOIDCAccessToken(clientPrimaryAdmin.UUID)
+		Expect(err).ToNot(HaveOccurred())
+
+		prAdminVST := tools.LoginAccessToken(true, map[string]interface{}{
+			"method": "okta-jwt", "jwt": primaryAdminAccessToken,
+			"roles": []map[string]interface{}{
+				{"role": flant_iam_preparing.FlantClientManageRole, "tenant_uuid": client.UUID},
+			},
+		}, lib.GetRootVaultUrl()).ClientToken
+		primaryAdminClient = lib.NewIamVaultClient(prAdminVST)
+
+		saRegisterServer := iam_specs.CreateRandomServiceAccount(lib.NewServiceAccountAPI(primaryAdminClient), client.UUID)
+		iam_specs.CreateRoleBinding(lib.NewRoleBindingAPI(primaryAdminClient),
 			model.RoleBinding{
 				TenantUUID:  client.UUID,
 				Description: "teammate got ssh access testing",
@@ -89,18 +106,17 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 				Roles:      []model.BoundRole{{Name: flant_iam_preparing.RegisterServerRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 			})
 
-		saRegisterServerPassword = iam_specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(adminClient),
+		saRegisterServerPassword = iam_specs.CreateServiceAccountPassword(lib.NewServiceAccountPasswordAPI(primaryAdminClient),
 			saRegisterServer, "server_register", 100*time.Second, []string{flant_iam_preparing.RegisterServerRole})
 
 		devopsTeam = specs.CreateDevopsTeam(lib.NewFlowTeamAPI(adminClient))
 		teammate = specs.CreateRandomTeammate(lib.NewFlowTeammateAPI(adminClient), devopsTeam)
-
 	})
 
 	var project *ext_model.Project
 
 	It("Create project with devops service_pack, using admin client", func() {
-		projectAPI := lib.NewFlowProjectAPI(adminClient)
+		projectAPI := lib.NewFlowProjectAPI(primaryAdminClient)
 		createPayload := map[string]interface{}{
 			"tenant_uuid":   client.UUID,
 			"service_packs": []string{ext_model.DevOps},
@@ -198,7 +214,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		teammateVST := tools.LoginAccessToken(true, map[string]interface{}{
 			"method": "okta-jwt", "jwt": teammateAccessToken,
 			"roles": []map[string]interface{}{
-				{"role": "iam_write", "tenant_uuid": cfg.FlantTenant.UUID},
+				{"role": "flant.teammate"},
 			},
 		}, lib.GetRootVaultUrl()).ClientToken
 
@@ -307,7 +323,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("lost access after changing devops team", func() {
 		checkChangeDevopsTeam := func(newTeamUUID string, usersLen int) {
-			updatedData := lib.NewFlowProjectAPI(adminClient).Update(tests.Params{
+			updatedData := lib.NewFlowProjectAPI(primaryAdminClient).Update(tests.Params{
 				"client":  client.UUID,
 				"project": project.UUID,
 			}, nil, map[string]interface{}{
@@ -319,7 +335,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			project.Version = updatedData.Get("project.resource_version").String()
 			println("updatedData = " + updatedData.String())
 			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
-			rbsListData := lib.NewRoleBindingAPI(adminClient).List(tests.Params{
+			rbsListData := lib.NewRoleBindingAPI(primaryAdminClient).List(tests.Params{
 				"tenant": client.UUID,
 			}, map[string][]string{})
 			println("rbsListData = " + rbsListData.String())
