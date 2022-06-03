@@ -3,6 +3,8 @@ package authz
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/storage/inmem"
@@ -22,8 +24,8 @@ type RegoResult struct {
 	Errors            []string
 	BestEffectiveRole *iam_usecase.EffectiveRole
 	VaultRules        []Rule
-	TTL               string
-	MaxTTL            string
+	TTL               time.Duration
+	MaxTTL            time.Duration
 }
 
 type rawRegoResult struct {
@@ -76,8 +78,6 @@ func ApplyRegoPolicy(ctx context.Context, negentropyPolicy model.Policy, subject
 		return &result, nil
 	}
 	result.VaultRules = rawResult.VaultRules
-	result.TTL = rawResult.TTL
-	result.MaxTTL = rawResult.MaxTTL
 	bestRole, goodRole, someRole := rangeRoles(rawResult.FilteredRoles)
 	switch {
 	case bestRole != nil:
@@ -86,6 +86,20 @@ func ApplyRegoPolicy(ctx context.Context, negentropyPolicy model.Policy, subject
 		result.BestEffectiveRole = goodRole
 	case someRole != nil:
 		result.BestEffectiveRole = someRole
+	}
+
+	result.TTL, err = time.ParseDuration(rawResult.TTL)
+	if err != nil {
+		result.Allow = false
+		result.BestEffectiveRole = nil
+		result.Errors = append(result.Errors, fmt.Sprintf("parsing ttl:%s", err.Error()))
+	}
+
+	result.MaxTTL, err = time.ParseDuration(rawResult.MaxTTL)
+	if err != nil {
+		result.Allow = false
+		result.BestEffectiveRole = nil
+		result.Errors = append(result.Errors, fmt.Sprintf("parsing max_ttl:%s", err.Error()))
 	}
 
 	return &result, nil

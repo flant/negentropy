@@ -3,6 +3,7 @@ package authz
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -261,8 +262,8 @@ func Test_ReturnAllNeededPathsReturnNotNeedMFAOrApprovals(t *testing.T) {
 	require.Equal(t, result.Errors, []string{})
 	require.Equal(t, uuid1, result.BestEffectiveRole.RoleBindingUUID)
 	require.Equal(t, sshVaultRules, result.VaultRules)
-	require.Equal(t, "100s", result.TTL)
-	require.Equal(t, "200s", result.MaxTTL)
+	require.Equal(t, time.Duration(100000000000), result.TTL)
+	require.Equal(t, time.Duration(200000000000), result.MaxTTL)
 }
 
 func Test_ChooseBestWithNotNeedApprovals(t *testing.T) {

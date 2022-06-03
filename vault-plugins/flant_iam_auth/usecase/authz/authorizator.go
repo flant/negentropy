@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-hclog"
@@ -185,7 +186,7 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 	method.PopulateTokenAuth(authzRes)
 
-	err = a.addDynamicPolicies(authzRes, roleClaims, subject, method.Name)
+	err = a.addDynamicPolicy(authzRes, roleClaims, subject, method.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -230,12 +231,12 @@ func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod
 	return authzRes, tokenOwnerFullIdentifier, nil
 }
 
-func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []model.RoleClaim, subject model.Subject, authMethod string) error {
+// addDynamicPolicy build ONE vault policy for all roleClaims if all are allowed
+func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []model.RoleClaim, subject model.Subject, authMethod string) error {
 	loginItems := a.checkPermissions(authMethod, subject, roleClaims)
 	multiError := multierror.Error{}
 	allow := true
 	// TODO what about multifactor ?
-
 	for _, loginItem := range loginItems {
 		if !loginItem.regoresult.Allow {
 			allow = false
@@ -248,23 +249,28 @@ func (a *Authorizator) addDynamicPolicies(authzRes *logical.Auth, roleClaims []m
 		return fmt.Errorf("not allowed: %s", multiError.Error())
 	}
 
-	extraPolicies := make([]VaultPolicy, 0, len(loginItems))
+	var ttl, maxTTL time.Duration
+
+	extraPolicy := VaultPolicy{}
 	for _, loginItem := range loginItems {
-		if loginItem.err == nil && loginItem.regoresult.Allow {
-			extraPolicies = append(extraPolicies, VaultPolicy{
-				Name:  fmt.Sprintf("%s_by_%s", loginItem.loginClaim.Role, subject.UUID),
-				Rules: loginItem.regoresult.VaultRules,
-			})
+		extraPolicy.Rules = append(extraPolicy.Rules, loginItem.regoresult.VaultRules...)
+		if ttl > loginItem.regoresult.TTL || ttl == 0 {
+			ttl = loginItem.regoresult.TTL
+		}
+		if maxTTL > loginItem.regoresult.MaxTTL || maxTTL == 0 {
+			maxTTL = loginItem.regoresult.MaxTTL
 		}
 	}
 
-	err := a.createDynamicPolicies(extraPolicies)
+	extraPolicy.AddValidTillToName(time.Now().Add(maxTTL))
+
+	err := a.createDynamicPolicy(extraPolicy)
 	if err != nil {
 		return err
 	}
-	for _, p := range extraPolicies {
-		authzRes.Policies = append(authzRes.Policies, p.Name)
-	}
+	authzRes.Policies = append(authzRes.Policies, extraPolicy.Name)
+	authzRes.MaxTTL = maxTTL
+	authzRes.TTL = ttl
 	return nil
 }
 
@@ -505,18 +511,16 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 	}, entityId, nil
 }
 
-func (a *Authorizator) createDynamicPolicies(policies []VaultPolicy) error {
-	for _, p := range policies {
-		err := backoff.Retry(func() error {
-			client, err := a.vaultClientProvider.APIClient(nil)
-			if err != nil {
-				return err
-			}
-			return client.Sys().PutPolicy(p.Name, p.PolicyRules())
-		}, io.FiveSecondsBackoff())
+func (a *Authorizator) createDynamicPolicy(p VaultPolicy) error {
+	err := backoff.Retry(func() error {
+		client, err := a.vaultClientProvider.APIClient(nil)
 		if err != nil {
-			return fmt.Errorf("put policy %s:%w", p.Name, err)
+			return err
 		}
+		return client.Sys().PutPolicy(p.Name, p.PolicyRules())
+	}, io.FiveSecondsBackoff())
+	if err != nil {
+		return fmt.Errorf("put policy %s:%w", p.Name, err)
 	}
 	return nil
 }
