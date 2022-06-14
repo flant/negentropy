@@ -24,6 +24,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -284,8 +285,9 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 	}
 
 	b.serverAccessBackend.SetEntityIDResolver(b.entityIDResolver)
-	logger.Debug("normal finish")
+	authz.RunVaultPoliciesGarbageCollector(b.accessVaultProvider, config.Logger.Named("VaultPoliciesGarbageCollector"))
 
+	logger.Debug("normal finish")
 	return nil
 }
 
