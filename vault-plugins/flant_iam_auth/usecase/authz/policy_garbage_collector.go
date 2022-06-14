@@ -8,26 +8,16 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
-type VaultClientProvider interface {
-	APIClient(logical.Storage) (*api.Client, error)
-}
-
 var period = time.Minute * 5
 
-func RunVaultPoliciesGarbageCollector(vaultClientProvider VaultClientProvider, logger hclog.Logger) {
-	var apiClient *api.Client
-	var err error
-gettingApiClient:
+func RunVaultPoliciesGarbageCollector(vaultClientProvider *client.VaultClientController, logger hclog.Logger) {
 	for {
-		apiClient, err = vaultClientProvider.APIClient(nil)
+		apiClient, err := (*vaultClientProvider).APIClient(nil)
 		switch {
-		case err == nil && apiClient != nil:
-			break gettingApiClient
 		case err != nil && !errors.Is(err, client.ErrNotInit):
 			logger.Error(fmt.Sprintf("error getting apiClient:%s", err.Error()))
 		case err == nil && apiClient == nil:
@@ -35,9 +25,12 @@ gettingApiClient:
 		case errors.Is(err, client.ErrNotInit):
 			logger.Debug(fmt.Sprintf("getting apiClient:%s", err.Error()))
 		}
-		time.Sleep(time.Second * 5)
+		if err == nil && apiClient != nil {
+			checkAndRemoveOverduePolicies(newVaultAPIClientBasedService(apiClient), logger)
+		} else {
+			time.Sleep(time.Second * 30)
+		}
 	}
-	go checkAndRemoveOverduePolicies(newVaultAPIClientBasedService(apiClient), logger)
 }
 
 type VaultPolicyService interface {
@@ -73,17 +66,15 @@ func newVaultAPIClientBasedService(vaultAPIClient *api.Client) VaultPolicyServic
 }
 
 func checkAndRemoveOverduePolicies(vaultPolicyService VaultPolicyService, logger hclog.Logger) {
-	for {
-		nextLoopStartTimeStamp := time.Now().Add(period)
-		allPolicies, err := vaultPolicyService.ListVaultPolicies()
-		if err != nil {
-			logger.Error(fmt.Sprintf("collecting vault policies:%s", err.Error()))
-		} else {
-			overduePolicies := collectOverduePolicies(allPolicies, logger)
-			deletePolicies(overduePolicies, vaultPolicyService, logger)
-		}
-		time.Sleep(time.Until(nextLoopStartTimeStamp))
+	nextLoopStartTimeStamp := time.Now().Add(period)
+	allPolicies, err := vaultPolicyService.ListVaultPolicies()
+	if err != nil {
+		logger.Error(fmt.Sprintf("collecting vault policies:%s", err.Error()))
+	} else {
+		overduePolicies := collectOverduePolicies(allPolicies, logger)
+		deletePolicies(overduePolicies, vaultPolicyService, logger)
 	}
+	time.Sleep(time.Until(nextLoopStartTimeStamp))
 }
 
 func collectOverduePolicies(policies []string, logger hclog.Logger) []string {
@@ -91,7 +82,7 @@ func collectOverduePolicies(policies []string, logger hclog.Logger) []string {
 	for _, policy := range policies {
 		overdue, err := IsVaultPolicyOverdue(policy)
 		if err != nil {
-			logger.Error(fmt.Sprintf("checking valut policy for overdue: %s", err.Error()))
+			logger.Error(fmt.Sprintf("checking vault policy for overdue: %s", err.Error()))
 		}
 		if overdue {
 			overduePolicies = append(overduePolicies, policy)
@@ -105,6 +96,7 @@ const bunch = 50
 // deletePolicies delete policies with pauses to not overload  vault
 func deletePolicies(policies []string, service VaultPolicyService, logger hclog.Logger) {
 	if len(policies) == 0 {
+		logger.Info("no policies for deleting")
 		return
 	}
 	if len(policies) < bunch {

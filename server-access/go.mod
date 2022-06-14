@@ -6,7 +6,7 @@ require (
 	github.com/flant/negentropy/authd v0.0.0
 	github.com/flant/negentropy/cli v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
-	github.com/gojuno/minimock/v3 v3.0.8
+	github.com/gojuno/minimock/v3 v3.0.10
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/jmoiron/sqlx v1.3.3
