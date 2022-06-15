@@ -143,7 +143,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 		storage.RunKafkaSourceMainLoops()
 
-		go authz.RunVaultPoliciesGarbageCollector(&b.accessVaultProvider, conf.Logger.Named("VaultPoliciesGarbageCollector"))
+		go authz.RunVaultPoliciesGarbageCollector(b.accessVaultProvider, conf.Logger.Named("VaultPoliciesGarbageCollector"))
 
 	} else {
 		logger.Info("first run Factory, skipping kafka operations on MemoryStore and running garbage collector")
