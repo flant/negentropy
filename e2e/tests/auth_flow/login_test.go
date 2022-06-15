@@ -17,7 +17,7 @@ func assertVaultUser(user *iam.User, auth *api.SecretAuth) {
 	entityID, err := identityApi.EntityApi().GetID(user.FullIdentifier)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(auth.EntityID).To(BeEquivalentTo(entityID))
-	Expect(auth.Policies).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
+	Expect(auth.Policies[1:]).To(BeEquivalentTo([]string{methodReaderOnlyPolicyName}))
 }
 
 func assertHasAccess(token string) {

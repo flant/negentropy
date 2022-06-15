@@ -23,6 +23,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 type Authorizator struct {
@@ -251,7 +252,7 @@ func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []mod
 
 	var ttl, maxTTL time.Duration
 
-	extraPolicy := VaultPolicy{}
+	extraPolicy := VaultPolicy{Name: uuid.New()}
 	for _, loginItem := range loginItems {
 		extraPolicy.Rules = append(extraPolicy.Rules, loginItem.regoresult.VaultRules...)
 		if ttl > loginItem.regoresult.TTL || ttl == 0 {
@@ -512,6 +513,9 @@ func (a *Authorizator) getAlias(uuid string, source *model.AuthSource) (*logical
 }
 
 func (a *Authorizator) createDynamicPolicy(p VaultPolicy) error {
+	if len(p.Rules) == 0 {
+		return nil
+	}
 	err := backoff.Retry(func() error {
 		client, err := a.vaultClientProvider.APIClient(nil)
 		if err != nil {
