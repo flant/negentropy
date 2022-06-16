@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Rule represents atomic rule for vault policy
@@ -78,6 +79,30 @@ func buildStringSlice(name string, slice []string, skipEmpty bool) string {
 type VaultPolicy struct {
 	Name  string `json:"name,omitempty"`
 	Rules []Rule `json:"rules"`
+}
+
+const policyNameDateFormat = "2006-01-02T15:04:05"
+
+// AddValidTillToName adds suffix _valid_till_timestamp at UTC
+func (p *VaultPolicy) AddValidTillToName(validTill time.Time) {
+	p.Name = p.Name + "_till_" + validTill.UTC().Format(policyNameDateFormat)
+}
+
+// IsVaultPolicyOverdue returns true if suffix  _valid_till_timestamp contains past time
+// returns error if can't parse timestamp
+func IsVaultPolicyOverdue(policyName string) (bool, error) {
+	items := strings.Split(policyName, "_till_")
+	if len(items) == 1 {
+		return false, nil
+	}
+	if len(items) > 2 {
+		return false, fmt.Errorf("double '_till_' at policy_name:%s", policyName)
+	}
+	timeStamp, err := time.Parse(policyNameDateFormat, items[1])
+	if err != nil {
+		return false, fmt.Errorf("parsing policy_name=%s :%w", policyName, err)
+	}
+	return timeStamp.Before(time.Now().UTC()), nil
 }
 
 // PolicyRules collects all rules into form used to passed to vault

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -53,4 +54,34 @@ func Test_Unmarshall(t *testing.T) {
 		"d56b1dfc8e81b509b007d0465f291524ccd4a5fb99f15eda5ecb6b57c47ba793",
 	}}, RequiredParameters: []string{"valid_principals"}, Create: false, Update: true, Read: false, Delete: false, List: false}}
 	require.Equal(t, expected, rules)
+}
+
+func Test_IsVaultPolicyOverdue_True(t *testing.T) {
+	p := VaultPolicy{}
+	p.AddValidTillToName(time.Now().Add(-time.Minute))
+
+	l, err := IsVaultPolicyOverdue(p.Name)
+
+	require.NoError(t, err)
+	require.Equal(t, true, l)
+}
+
+func Test_IsVaultPolicyOverdue_False(t *testing.T) {
+	p := VaultPolicy{}
+	p.AddValidTillToName(time.Now().Add(time.Minute))
+
+	l, err := IsVaultPolicyOverdue(p.Name)
+
+	require.NoError(t, err)
+	require.Equal(t, false, l)
+}
+
+func Test_IsVaultPolicyOverdue_False2(t *testing.T) {
+	p := VaultPolicy{}
+	// p.AddValidTillToName(time.Now().Add(time.Minute)) // do not add _till_ suffix
+
+	l, err := IsVaultPolicyOverdue(p.Name)
+
+	require.NoError(t, err)
+	require.Equal(t, false, l)
 }

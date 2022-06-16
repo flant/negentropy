@@ -24,6 +24,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn"
 	factory2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/factory"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authz"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -73,7 +74,7 @@ type flantIamAuthBackend struct {
 	l            sync.RWMutex
 	provider     *oidc.Provider
 	oidcRequests *cache.Cache
-	authnFactoty *factory2.AuthenticatorFactory
+	authnFactory *factory2.AuthenticatorFactory
 
 	jwtTypesValidators map[string]openapi.Validator
 
@@ -142,8 +143,10 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 		storage.RunKafkaSourceMainLoops()
 
+		go authz.RunVaultPoliciesGarbageCollector(b.accessVaultProvider, conf.Logger.Named("VaultPoliciesGarbageCollector"))
+
 	} else {
-		logger.Info("first run Factory, skipping kafka operations on MemoryStore")
+		logger.Info("first run Factory, skipping kafka operations on MemoryStore and running garbage collector")
 	}
 
 	b.storage = storage
@@ -202,7 +205,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return allErrors
 	}
 
-	b.authnFactoty = factory2.NewAuthenticatorFactory(b.jwtController, conf.Logger)
+	b.authnFactory = factory2.NewAuthenticatorFactory(b.jwtController, conf.Logger)
 
 	b.serverAccessBackend = extension_server_access.NewServerAccessBackend(b, storage)
 
@@ -259,6 +262,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		),
 		Clean: b.cleanup,
 	}
+
 	logger.Debug("normal finish")
 
 	return b, nil
@@ -284,8 +288,8 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 	}
 
 	b.serverAccessBackend.SetEntityIDResolver(b.entityIDResolver)
-	logger.Debug("normal finish")
 
+	logger.Debug("normal finish")
 	return nil
 }
 
@@ -319,7 +323,7 @@ func (b *flantIamAuthBackend) reset() {
 		b.provider.Done()
 	}
 	b.provider = nil
-	b.authnFactoty.Reset()
+	b.authnFactory.Reset()
 	b.l.Unlock()
 }
 

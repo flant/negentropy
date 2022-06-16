@@ -100,7 +100,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	}
 
 	logger.Debug("Choice method type")
-	authenticator, authSource, err := b.authnFactoty.GetAuthenticator(ctx, method, txn)
+	authenticator, authSource, err := b.authnFactory.GetAuthenticator(ctx, method, txn)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -163,7 +163,7 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("authMethodConfig %s does not exist during renewal", methodName)
 	}
 
-	authenticator, _, err := b.authnFactoty.GetAuthenticator(ctx, method, txn)
+	authenticator, _, err := b.authnFactory.GetAuthenticator(ctx, method, txn)
 	if err != nil {
 		return nil, err
 	}
