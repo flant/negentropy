@@ -29,8 +29,8 @@ func LoginAccessToken(positiveCase bool, params map[string]interface{}, vaultAdd
 	return nil
 }
 
-func GetOIDCAccessToken(userUUID string) (string, error) {
-	url := "http://localhost:9998/custom_access_token?uuid=" + userUUID
+func GetOIDCAccessToken(userUUID string, userEmail string) (string, error) {
+	url := "http://localhost:9998/custom_access_token?uuid=" + userUUID + "&email=" + userEmail
 	method := "GET"
 
 	client := &http.Client{}
