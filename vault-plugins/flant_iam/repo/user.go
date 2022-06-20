@@ -248,3 +248,22 @@ func (r *UserRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, id
 	}
 	return nil, consts.ErrNotFound
 }
+
+func (r *UserRepository) GetByEmail(email string) (*model.User, error) {
+	//  TODO rewrite with special index with multitenant-user staff
+	var user *model.User
+	err := r.Iter(func(u *model.User) (bool, error) {
+		if u.Email == email {
+			user = u
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, consts.ErrNotFound
+	}
+	return user, nil
+}
