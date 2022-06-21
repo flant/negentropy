@@ -26,7 +26,17 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
+type UndefinedTenantForMultiTenantUserError struct {
+	UserDescriptor   string
+	AvailableTenants []iam.Tenant
+}
+
+func (e UndefinedTenantForMultiTenantUserError) Error() string {
+	return fmt.Sprintf("user %s owned by several tenants, specify one tenant and repeat")
+}
+
 type Authorizator struct {
+	TenantRepo    *iam_repo.TenantRepository
 	UserRepo      *iam_repo.UserRepository
 	SaRepo        *iam_repo.ServiceAccountRepository
 	EntityRepo    *repo.EntityRepo
@@ -58,8 +68,9 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 	return &Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 
-		SaRepo:   iam_repo.NewServiceAccountRepository(txn),
-		UserRepo: iam_repo.NewUserRepository(txn),
+		TenantRepo: iam_repo.NewTenantRepository(txn),
+		SaRepo:     iam_repo.NewServiceAccountRepository(txn),
+		UserRepo:   iam_repo.NewUserRepository(txn),
 
 		EaRepo:        repo.NewEntityAliasRepo(txn),
 		EntityRepo:    repo.NewEntityRepo(txn),
@@ -159,11 +170,11 @@ func (a *Authorizator) checkPermissions(authMethodName string, subject model.Sub
 }
 
 func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
-	roleClaims []model.RoleClaim) (*logical.Auth, error) {
+	subjectTenantUUID string, roleClaims []model.RoleClaim) (*logical.Auth, error) {
 	subjectDescriptor := authnResult.UUID
 	a.Logger.Debug(fmt.Sprintf("Start authz for %s", subjectDescriptor))
 
-	authzRes, fullId, subjectUUID, err := a.authorizeTokenOwner(subjectDescriptor, method, source)
+	authzRes, fullId, subjectUUID, err := a.authorizeTokenOwner(subjectDescriptor, subjectTenantUUID, method, source)
 	if err != nil {
 		return nil, err
 	}
@@ -203,13 +214,31 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	return authzRes, nil
 }
 
-func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.AuthMethod, source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, subjectUUID string, err error) {
+func (a *Authorizator) authorizeTokenOwner(subjectDescriptor string, subjectTenantUUID iam.TenantUUID, method *model.AuthMethod,
+	source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, subjectUUID string, err error) {
 	var user *iam.User
 	switch method.UserClaim {
 	case "email":
-		user, err = a.UserRepo.GetByEmail(descriptor)
+		var users []*iam.User
+		users, err = a.UserRepo.GetByEmail(subjectDescriptor)
+		if len(users) == 1 {
+			user = users[0]
+		} else if len(users) > 0 {
+			if subjectDescriptor == "" {
+				return nil, "", "", UndefinedTenantForMultiTenantUserError{
+					UserDescriptor:   subjectDescriptor,
+					AvailableTenants: a.buildTenants(users),
+				}
+			}
+			for _, u := range users {
+				if u.TenantUUID == subjectTenantUUID {
+					user = u
+					break
+				}
+			}
+		}
 	case "uuid", "sub", "":
-		user, err = a.UserRepo.GetByID(descriptor)
+		user, err = a.UserRepo.GetByID(subjectDescriptor)
 	default:
 		return nil, "", "", fmt.Errorf("method.UserClaim '%s' is not supported", method.UserClaim)
 	}
@@ -218,16 +247,16 @@ func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.Auth
 	}
 	if user != nil && user.NotArchived() {
 		tokenOwnerFullIdentifier = user.FullIdentifier
-		a.Logger.Debug(fmt.Sprintf("Found user %s for %s descriptor", tokenOwnerFullIdentifier, descriptor))
+		a.Logger.Debug(fmt.Sprintf("Found user %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeUser(user, method, source)
 		subjectUUID = user.UUID
 	} else {
 		// not found user try to found service account
-		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", descriptor))
+		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", subjectDescriptor))
 		var sa *iam.ServiceAccount
-		sa, err = a.SaRepo.GetByID(descriptor)
+		sa, err = a.SaRepo.GetByID(subjectDescriptor)
 		if errors.Is(err, consts.ErrNotFound) || sa == nil || sa.Archived() {
-			return nil, "", "", fmt.Errorf("not found active iam entity %s", descriptor)
+			return nil, "", "", fmt.Errorf("not found active iam entity %s", subjectDescriptor)
 		}
 		if err != nil {
 			return nil, "", "", err
@@ -235,7 +264,7 @@ func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.Auth
 
 		tokenOwnerFullIdentifier = sa.FullIdentifier
 
-		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s descriptor", tokenOwnerFullIdentifier, descriptor))
+		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeServiceAccount(sa, method, source)
 		subjectUUID = sa.UUID
 	}
@@ -612,4 +641,21 @@ func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject
 		return fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
 	}
 	return nil
+}
+
+func (a *Authorizator) buildTenants(users []*iam.User) []iam.Tenant {
+	multiErr := multierror.Error{}
+	var tenants []iam.Tenant
+	for _, user := range users {
+		t, err := a.TenantRepo.GetByID(user.TenantUUID)
+		if err != nil {
+			multiErr.Errors = append(multiErr.Errors, err)
+		} else {
+			tenants = append(tenants, *t)
+		}
+	}
+	if len(multiErr.Errors) > 0 {
+		tenants = append(tenants, iam.Tenant{Identifier: fmt.Sprintf("got error collecting tenants for multitenant user:%s", multiErr.Error())})
+	}
+	return tenants
 }

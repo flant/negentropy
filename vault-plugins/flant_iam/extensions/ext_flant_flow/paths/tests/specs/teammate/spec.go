@@ -210,6 +210,7 @@ var _ = Describe("Teammate", func() {
 			"role_at_team":     teammate.RoleAtTeam,
 			"identifier":       teammate.Identifier,
 			"new_team_uuid":    newTeam.UUID,
+			"email":            teammate.Email,
 		}
 		updateData := TestAPI.Update(tests.Params{
 			"team":     teammate.TeamUUID,

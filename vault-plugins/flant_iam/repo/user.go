@@ -12,17 +12,36 @@ import (
 )
 
 const TenantUUIDUserIdIndex = "tenant_uuid_user_id"
+const TenantUUIDUserEmailIndex = "tenant_uuid_user_email"
+const EmailIndex = "email"
 
 func UserSchema() *memdb.DBSchema {
-	tenantUUIDUserIdIndexer := []hcmemdb.Indexer{
-		&hcmemdb.StringFieldIndex{
-			Field:     "TenantUUID",
-			Lowercase: true,
+	tenantUUIDUserIdIndexer := &hcmemdb.CompoundIndex{
+		Indexes: []hcmemdb.Indexer{
+			&hcmemdb.StringFieldIndex{
+				Field:     "TenantUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "Identifier",
+				Lowercase: true,
+			},
 		},
-		&hcmemdb.StringFieldIndex{
-			Field:     "Identifier",
-			Lowercase: true,
+		AllowMissing: false,
+	}
+
+	tenantUUIDUserEmailIndexer := &hcmemdb.CompoundIndex{
+		Indexes: []hcmemdb.Indexer{
+			&hcmemdb.StringFieldIndex{
+				Field:     "TenantUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "Email",
+				Lowercase: true,
+			},
 		},
+		AllowMissing: false,
 	}
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -51,7 +70,19 @@ func UserSchema() *memdb.DBSchema {
 					},
 					TenantUUIDUserIdIndex: {
 						Name:    TenantUUIDUserIdIndex,
-						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDUserIdIndexer},
+						Indexer: tenantUUIDUserIdIndexer,
+						Unique:  true,
+					},
+					TenantUUIDUserEmailIndex: {
+						Name:    TenantUUIDUserEmailIndex,
+						Indexer: tenantUUIDUserEmailIndexer,
+						Unique:  true,
+					},
+					EmailIndex: {
+						Name: EmailIndex,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Email",
+						},
 					},
 				},
 			},
@@ -232,10 +263,23 @@ func (r *UserRepository) Restore(id model.UserUUID) (*model.User, error) {
 }
 
 func (r *UserRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, identifier string) (*model.User, error) {
-	iter, err := r.db.Get(model.UserType, TenantUUIDUserIdIndex, tenantUUID, identifier)
+	raw, err := r.db.First(model.UserType, TenantUUIDUserIdIndex, tenantUUID, identifier)
 	if err != nil {
 		return nil, err
 	}
+	if raw == nil {
+		return nil, consts.ErrNotFound
+	}
+	return raw.(*model.User), nil
+}
+
+func (r *UserRepository) GetByEmail(email string) ([]*model.User, error) {
+	iter, err := r.db.Get(model.UserType, EmailIndex, email)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*model.User{}
 	for {
 		raw := iter.Next()
 		if raw == nil {
@@ -243,27 +287,8 @@ func (r *UserRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, id
 		}
 		obj := raw.(*model.User)
 		if obj.NotArchived() {
-			return obj, nil
+			list = append(list, obj)
 		}
 	}
-	return nil, consts.ErrNotFound
-}
-
-func (r *UserRepository) GetByEmail(email string) (*model.User, error) {
-	//  TODO rewrite with special index with multitenant-user staff
-	var user *model.User
-	err := r.Iter(func(u *model.User) (bool, error) {
-		if u.Email == email {
-			user = u
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, consts.ErrNotFound
-	}
-	return user, nil
+	return list, nil
 }

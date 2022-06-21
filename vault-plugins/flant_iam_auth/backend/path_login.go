@@ -47,6 +47,11 @@ func pathLogin(b *flantIamAuthBackend) *framework.Path {
 				Type:        framework.TypeSlice,
 				Description: "Requested roles",
 			},
+
+			"tenant_uuid": {
+				Type:        framework.TypeNameString,
+				Description: "Tenant uuid for login multitenant user",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -72,6 +77,8 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	if methodName == "" {
 		return backentutils.ResponseErr(req, fmt.Errorf("%w:missing method", consts.ErrInvalidArg))
 	}
+
+	subjectTenantUUID := d.Get("tenant_uuid").(string)
 
 	roleClaims, err := getRoleClaims(d)
 	if err != nil {
@@ -115,7 +122,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
 
 	logger.Debug("Start Authorize")
-	authzRes, err := authorizator.Authorize(authnRes, method, authSource, roleClaims)
+	authzRes, err := authorizator.Authorize(authnRes, method, authSource, subjectTenantUUID, roleClaims)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Not authz, err: %v", err))
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
@@ -196,9 +203,9 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 
 const (
 	pathLoginHelpSyn = `
-	Authenticates to Vault using a JWT (or OIDC) token.
+	Authenticates to Vault using a JWT (or OIDC) token, or service_account password
 	`
 	pathLoginHelpDesc = `
-Authenticates JWTs.
+Authenticates to Vault using a JWT (or OIDC) token, or service_account password
 `
 )
