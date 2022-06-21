@@ -276,6 +276,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode')
     parser.add_argument('--okta-uuid', dest='okta_uuid')
+    parser.add_argument('--okta-email', dest='okta_email')
     args = parser.parse_args()
 
     if args.mode == 'single':
@@ -322,6 +323,7 @@ if __name__ == "__main__":
 
     if args.okta_uuid:
         print("DEBUG: OKTA UUID is", args.okta_uuid)
+        print("DEBUG: OKTA EMAIL IS", args.okta_email)
         create_privileged_team_proto(root_vault)
         create_privileged_teammate_to_proto_team(root_vault, args.okta_uuid, args.okta_email)
 

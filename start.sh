@@ -67,17 +67,17 @@ elif [[ $MODE == "local" ]]; then
 
   echo DEBUG: OKTA UUID is $OKTA_UUID
 
-    if [[ -f okta-email ]]; then
-      OKTA_EMAIL=$(cat okta-email)
-    fi
+  if [[ -f okta-email ]]; then
+    OKTA_EMAIL=$(cat okta-email)
+  fi
 
-    if [[ -z OKTA_EMAIL ]]; then
-      echo -n "Enter your OKTA EMAIL: "
-      read -r OKTA_EMAIL
-      echo OKTA_EMAIL > okta-OKTA_EMAIL
-    fi
+  if [[ -z $OKTA_EMAIL ]]; then
+    echo -n "Enter your OKTA EMAIL: "
+    read -r OKTA_EMAIL
+    echo $OKTA_EMAIL > okta-email
+  fi
 
-    echo DEBUG: OKTA EMAIL is OKTA_EMAIL
+  echo DEBUG: OKTA EMAIL is OKTA_EMAIL
 fi
 
 pip3 install virtualenv
