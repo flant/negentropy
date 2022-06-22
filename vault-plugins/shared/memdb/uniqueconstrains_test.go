@@ -3,7 +3,6 @@ package memdb
 import (
 	"testing"
 
-	"github.com/hashicorp/go-memdb"
 	hcmemdb "github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 )
@@ -33,25 +32,27 @@ type unarchivable struct {
 	UncontrolledField string
 }
 
-const identifierIndex = "identifier_index"
-const compoundIndex = "compound_index"
+const (
+	identifierIndex = "identifier_index"
+	compoundIndex   = "compound_index"
+)
 
 func testShema() *DBSchema {
 	return &DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			archivableType: {
 				Name: archivableType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					identifierIndex: {
 						Name: identifierIndex,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
 						},
 					},
@@ -59,23 +60,23 @@ func testShema() *DBSchema {
 			},
 			unarchivableType: {
 				Name: unarchivableType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					identifierIndex: {
 						Name: identifierIndex,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
 						},
 					},
 					compoundIndex: {
 						Name: compoundIndex,
-						Indexer: &memdb.CompoundIndex{
+						Indexer: &hcmemdb.CompoundIndex{
 							Indexes: []hcmemdb.Indexer{
 								&hcmemdb.StringFieldIndex{
 									Field:     "UUID",

@@ -11,8 +11,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-const TenantUUIDUserIdIndex = "tenant_uuid_user_id"
-const EmailIndex = "email"
+const (
+	TenantUUIDUserIdIndex = "tenant_uuid_user_id"
+	EmailIndex            = "email"
+)
 
 func UserSchema() *memdb.DBSchema {
 	tenantUUIDUserIdIndexer := &hcmemdb.CompoundIndex{
