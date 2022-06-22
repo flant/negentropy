@@ -35,7 +35,7 @@ var _ = Describe("Process of getting access through:", func() {
 			tools.LoginAccessToken(false, map[string]interface{}{"method": "okta-jwt", "jwt": fakeToken}, rootVaultAddr)
 		})
 		It("fail with valid access_token issued by oidc, with invalid user email", func() {
-			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID, "fake_email@mail.ru")
+			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID, "fake_email@gmail.com")
 			Expect(err).ToNot(HaveOccurred())
 			tools.LoginAccessToken(false, map[string]interface{}{"method": "okta-jwt", "jwt": accessToken}, rootVaultAddr)
 		})

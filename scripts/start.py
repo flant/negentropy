@@ -309,7 +309,7 @@ if __name__ == "__main__":
     create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
     create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
                            "00000661-0000-4000-A000-000000000000",
-                           "user_for_authd_tests@mail.ru")
+                           "user_for_authd_tests@gmail.com")
     multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
                                       "00000661-0000-4000-A000-000000000000", 3600)
     file = open(multipass_file_path, "w")

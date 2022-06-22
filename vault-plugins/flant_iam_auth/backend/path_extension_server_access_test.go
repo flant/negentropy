@@ -475,6 +475,7 @@ func createUserAndSa(tx *io.MemoryStoreTxn, tenant string) (iam_model.UserUUID, 
 		TenantUUID:     tenant,
 		Identifier:     "vasya",
 		FullIdentifier: "vasya@tenant1",
+		Email:          "vasya@gmail.com",
 		Version:        uuid.New(),
 		Extensions: map[consts.ObjectOrigin]*iam_model.Extension{
 			consts.OriginServerAccess: {

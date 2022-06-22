@@ -266,7 +266,7 @@ func (s *AuthStorage) SetUserinfoFromScopes(ctx context.Context, userinfo oidc.U
 	fmt.Printf("userinfo = %#v\n", s.UserExtraData[subject])
 
 	userinfo.SetAddress(oidc.NewUserInfoAddress("Test 789\nPostfach 2", "", "", "", "", ""))
-	emailStr := "predefined@mail.com"
+	emailStr := "predefined@gmail.com"
 	email, emailIsSet := s.UserExtraData[subject]["email"]
 	if emailIsSet {
 		emailStr = email.(string)

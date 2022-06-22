@@ -79,6 +79,7 @@ func prepareUser(t *testing.T, txn *io.MemoryStoreTxn, tenantUUID model.TenantUU
 		Version:        "1",
 		Identifier:     "user1",
 		FullIdentifier: "user1@test",
+		Email:          "user@gmail.com",
 	}
 	err := txn.Insert(model.UserType, user)
 	dieOnErr(t, err)
