@@ -71,6 +71,9 @@ type DBSchema struct {
 	// prohibited to place the same Relation into CascadeDeletes and CheckingRelations
 	// prohibited to use the same dataType as map key and as value in Relation.RelatedDataType
 	CheckingRelations map[dataType][]Relation
+	// check at Insert and Restore:
+	// ResultIterator should be empty or contains only Archived objects or object self
+	UniqueConstraints map[dataType][]indexName
 }
 
 type (
@@ -229,6 +232,25 @@ func (s *DBSchema) validateExistenceIndexes() error {
 			return err
 		}
 	}
+	for tableName, idxNames := range s.UniqueConstraints {
+		table, found := s.Tables[tableName]
+		if !found {
+			return fmt.Errorf("%w: wrong table name at unique constrains: %q", ErrInvalidSchema, tableName)
+		}
+		for _, idxName := range idxNames {
+			if idxName == PK {
+				return fmt.Errorf("%w: unique_constrains should not be PK", ErrInvalidSchema)
+			}
+			idx, found := table.Indexes[idxName]
+			if !found {
+				return fmt.Errorf("%w: not found index %q passed as unique_constrain for %q table", ErrInvalidSchema, idxName, tableName)
+			}
+			if idx.Unique {
+				return fmt.Errorf("%w: allow to use at unique_constrains only 'Unique=false' indexes: passed %q index at %q table", ErrInvalidSchema, idxName, tableName)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -318,13 +340,29 @@ func MergeDBSchemasAndValidate(schemas ...*DBSchema) (*DBSchema, error) {
 
 func MergeDBSchemas(validate bool, schemas ...*DBSchema) (*DBSchema, error) {
 	tables := map[string]*hcmemdb.TableSchema{}
+	uniqueConstrains := map[dataType][]indexName{}
 
 	for i := range schemas {
-		for name, table := range schemas[i].Tables {
-			if _, found := tables[name]; found {
-				return nil, fmt.Errorf("%w:table %q already there", ErrMergeSchema, name)
+		for tableName, table := range schemas[i].Tables {
+			if _, found := tables[tableName]; found {
+				return nil, fmt.Errorf("%w: table %q already there", ErrMergeSchema, tableName)
 			}
-			tables[name] = table
+			tables[tableName] = table
+		}
+		for tableName, indexNames := range schemas[i].UniqueConstraints {
+			if _, found := uniqueConstrains[tableName]; found {
+				return nil, fmt.Errorf("%w: unique_constrains %q already there", ErrMergeSchema, tableName)
+			}
+			for _, idxName := range indexNames {
+				if idxName == PK {
+					return nil, fmt.Errorf("%w: unique_constrains should not be PK", ErrInvalidSchema)
+				}
+				idx := tables[tableName].Indexes[idxName]
+				if idx.Unique {
+					return nil, fmt.Errorf("%w: allow to use at unique_constrains only not 'Unique=true' indexes: passed %s index at %s table", ErrInvalidSchema, idxName, tableName)
+				}
+			}
+			uniqueConstrains[tableName] = indexNames
 		}
 	}
 
@@ -348,6 +386,7 @@ func MergeDBSchemas(validate bool, schemas ...*DBSchema) (*DBSchema, error) {
 		MandatoryForeignKeys: mergeRelationFunc(func(s *DBSchema) mapRelations { return s.MandatoryForeignKeys }, schemas...),
 		CascadeDeletes:       mergeRelationFunc(func(s *DBSchema) mapRelations { return s.CascadeDeletes }, schemas...),
 		CheckingRelations:    mergeRelationFunc(func(s *DBSchema) mapRelations { return s.CheckingRelations }, schemas...),
+		UniqueConstraints:    uniqueConstrains,
 	}
 
 	if validate {

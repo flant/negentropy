@@ -60,9 +60,13 @@ func (t *Txn) Insert(table string, objPtr interface{}) error {
 // insert provide Insert operation into memdb with checking MandatoryForeignKey,
 // insertion successful, if related records exists and aren't archived, or archived with suitable marks
 func (t *Txn) insert(table string, objPtr interface{}, allowedArchiveMark ArchiveMark) error {
-	err := t.checkForeignKeys(table, objPtr, allowedArchiveMark)
+	err := t.checkUniqueConstraints(table, objPtr)
 	if err != nil {
-		return fmt.Errorf("insert:%w", err)
+		return fmt.Errorf("insert: checkUniqueConstraints: %w", err)
+	}
+	err = t.checkForeignKeys(table, objPtr, allowedArchiveMark)
+	if err != nil {
+		return fmt.Errorf("insert: checkForeignKeys: %w", err)
 	}
 	return t.Txn.Insert(table, objPtr)
 }
@@ -444,6 +448,89 @@ func (t *Txn) CleanChildrenSliceIndexes(table string, objPtr interface{}) error 
 		return fmt.Errorf("cleanChildrenSliceIndexes:%w", err)
 	}
 	return nil
+}
+
+type storable interface {
+	ObjType() string
+	ObjId() string
+}
+
+// check uniqueConstraints among other unarchived records
+func (t *Txn) checkUniqueConstraints(table string, objPtr interface{}) error {
+	if a, isArchivable := objPtr.(Archivable); isArchivable && a.Archived() { // check only valid insertion
+		return nil
+	}
+	objID := ""
+	if s, isStorable := objPtr.(storable); isStorable {
+		objID = s.ObjId()
+	}
+	var indexesToCheck []*hcmemdb.IndexSchema
+	for _, idxName := range t.schema.UniqueConstraints[table] {
+		indexesToCheck = append(indexesToCheck, t.schema.Tables[table].Indexes[idxName])
+	}
+	if len(indexesToCheck) != 0 {
+		for _, idx := range indexesToCheck {
+			vals, err := collectValsForIndexes(objPtr, idx.Indexer)
+			if err != nil {
+				return fmt.Errorf("collecting vals for index %s at table %s: %w", idx.Name, table, err)
+			}
+			err = t.checkIdxIsEmpty(table, idx.Name, vals, objID)
+			if err != nil {
+				return fmt.Errorf("checkUniqueConstraints: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (t *Txn) checkIdxIsEmpty(table string, idxName string, vals []interface{}, savedObjID string) error {
+	iter, err := t.Get(table, idxName, vals...)
+	if err != nil {
+		return fmt.Errorf("checkIdxIsEmpty, index: %q at table %q: %w", idxName, table, err)
+	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		if s, isStorable := raw.(storable); isStorable {
+			if s.ObjId() == savedObjID { // it is replaced obj, skip
+				continue
+			}
+		}
+		a, isArchivable := raw.(Archivable)
+		if !isArchivable || a.NotArchived() {
+			return fmt.Errorf("fail unique constraint: %q at table %q", idxName, table)
+		}
+	}
+	return nil
+}
+
+func collectValsForIndexes(objPtr interface{}, indexes ...hcmemdb.Indexer) ([]interface{}, error) {
+	var vals []interface{}
+	for _, idx := range indexes {
+		singleFieldName := ""
+		switch t := idx.(type) {
+		case *hcmemdb.UUIDFieldIndex:
+			singleFieldName = t.Field
+		case *hcmemdb.StringFieldIndex:
+			singleFieldName = t.Field
+		case *hcmemdb.CompoundIndex:
+			extraVals, err := collectValsForIndexes(objPtr, t.Indexes...)
+			if err != nil {
+				return nil, err
+			}
+			vals = append(vals, extraVals)
+		default:
+			return nil, fmt.Errorf("index type %t is not supported for unique constarain", idx)
+		}
+		if singleFieldName != "" {
+			valueIface := reflect.ValueOf(objPtr)
+			fieldValue := valueIface.Elem().FieldByName(singleFieldName).Interface()
+			vals = append(vals, fieldValue)
+		}
+	}
+	return vals, nil
 }
 
 func checkPtrAndReturnIndirect(objPtr interface{}) (obj interface{}, err error) {
