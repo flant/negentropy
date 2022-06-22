@@ -60,12 +60,24 @@ elif [[ $MODE == "local" ]]; then
   fi
 
   if [[ -z $OKTA_UUID ]]; then
-    echo -n "Enter OKTA UUID: "
+    echo -n "Enter your OKTA UUID: "
     read -r OKTA_UUID
     echo $OKTA_UUID > okta-uuid
   fi
 
   echo DEBUG: OKTA UUID is $OKTA_UUID
+
+  if [[ -f okta-email ]]; then
+    OKTA_EMAIL=$(cat okta-email)
+  fi
+
+  if [[ -z $OKTA_EMAIL ]]; then
+    echo -n "Enter your OKTA EMAIL: "
+    read -r OKTA_EMAIL
+    echo $OKTA_EMAIL > okta-email
+  fi
+
+  echo DEBUG: OKTA EMAIL is OKTA_EMAIL
 fi
 
 pip3 install virtualenv
@@ -73,7 +85,7 @@ virtualenv scripts/environment
 source scripts/environment/bin/activate
 pip3 install -r scripts/requirements.txt
 if [[ $MODE == "local" ]]; then
-  python3 scripts/start.py --mode $MODE --okta-uuid $OKTA_UUID
+  python3 scripts/start.py --mode $MODE --okta-uuid $OKTA_UUID --okta-email $OKTA_EMAIL
 else
   python3 scripts/start.py --mode $MODE
 fi

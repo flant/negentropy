@@ -310,6 +310,7 @@ func testUser(uuid string) *model.User {
 		TenantUUID: tenantUUID,
 		Version:    "1",
 		Identifier: uuid,
+		Email:      uuid + "@gmail.com",
 	}
 }
 

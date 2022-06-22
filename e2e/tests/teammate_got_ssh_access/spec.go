@@ -292,6 +292,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 				"role_at_team":     teammate.RoleAtTeam,
 				"identifier":       teammate.Identifier,
 				"new_team_uuid":    newTeamUUID,
+				"email":            teammate.Email,
 			})
 			teammate.Version = updatedData.Get("teammate.resource_version").String()
 			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())

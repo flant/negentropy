@@ -157,7 +157,7 @@ def create_privileged_team_proto(vault: Vault):
     print("proto team uuid  '{}' created".format(proto_team_uuid))
 
 
-def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, identifier: str):
+def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, teammate_email: str):
     """create user if not exists"""
     base_path = "flant/team/{}/teammate/".format(proto_team_uuid)
     vault_client = hvac.Client(url=vault.url, token=vault.token)
@@ -165,11 +165,12 @@ def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, i
     if resp:
         print("teammate with uuid '{}' already exists".format(teammate_uuid))
         return
-    vault_client.write(path=base_path + "privileged", uuid=teammate_uuid, identifier=identifier, role_at_team="member")
+    vault_client.write(path=base_path + "privileged", uuid=teammate_uuid, identifier=teammate_email.split("@")[0],
+                       email=teammate_email, role_at_team="member")
     print("teammate with uuid '{}' created".format(teammate_uuid))
     flant_tenant_uuid = "be0ba0d8-7be7-49c8-8609-c62ac1f14597"
     resp = vault_client.write(path=f"flant/tenant/{flant_tenant_uuid}/role_binding",
-                              description=f"flant.admin for primary user: {identifier}",
+                              description=f"flant.admin for primary user: {teammate_email}",
                               members=[{
                                   "uuid": teammate_uuid,
                                   "type": "user",
@@ -181,7 +182,8 @@ def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, i
                               )
     print("'flant.admin' role for teammate with uuid '{}' is available".format(teammate_uuid))
 
-def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, identifier: str):
+
+def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, email: str):
     """create user if not exists"""
     base_path = "flant/tenant/{}/user/".format(tenant_uuid)
     vault_client = hvac.Client(url=vault.url, token=vault.token)
@@ -189,7 +191,7 @@ def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, ident
     if resp:
         print("user with uuid '{}' already exists".format(user_uuid))
         return
-    vault_client.write(path=base_path + "privileged", uuid=user_uuid, identifier=identifier)
+    vault_client.write(path=base_path + "privileged", uuid=user_uuid, identifier=email.split("@")[0], email=email)
     print("user with uuid '{}' created".format(user_uuid))
 
 
@@ -274,6 +276,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode')
     parser.add_argument('--okta-uuid', dest='okta_uuid')
+    parser.add_argument('--okta-email', dest='okta_email')
     args = parser.parse_args()
 
     if args.mode == 'single':
@@ -306,7 +309,7 @@ if __name__ == "__main__":
     create_privileged_tenant(iam_vault, "00000991-0000-4000-A000-000000000000", "tenant_for_authd_tests")
     create_privileged_user(iam_vault, "00000991-0000-4000-A000-000000000000",
                            "00000661-0000-4000-A000-000000000000",
-                           "user_for_authd_tests")
+                           "user_for_authd_tests@mail.ru")
     multipass = create_user_multipass(iam_vault, "00000991-0000-4000-A000-000000000000",
                                       "00000661-0000-4000-A000-000000000000", 3600)
     file = open(multipass_file_path, "w")
@@ -320,8 +323,9 @@ if __name__ == "__main__":
 
     if args.okta_uuid:
         print("DEBUG: OKTA UUID is", args.okta_uuid)
+        print("DEBUG: OKTA EMAIL IS", args.okta_email)
         create_privileged_team_proto(root_vault)
-        create_privileged_teammate_to_proto_team(root_vault, args.okta_uuid, "local-admin")
+        create_privileged_teammate_to_proto_team(root_vault, args.okta_uuid, args.okta_email)
 
     # single mode code run
     if len(vaults) < 2:
