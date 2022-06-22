@@ -17,6 +17,7 @@ var (
 	ErrMergeSchema        = fmt.Errorf("merging DBSchema")
 	ErrClearingChildSlice = fmt.Errorf("cleaning child StringSlice field")
 	ErrNotPtr             = fmt.Errorf("not pointer passed")
+	ErrUniqueConstraint   = fmt.Errorf("fail unique constraint")
 )
 
 type MemDB struct {
@@ -62,11 +63,11 @@ func (t *Txn) Insert(table string, objPtr interface{}) error {
 func (t *Txn) insert(table string, objPtr interface{}, allowedArchiveMark ArchiveMark) error {
 	err := t.checkUniqueConstraints(table, objPtr)
 	if err != nil {
-		return fmt.Errorf("insert: checkUniqueConstraints: %w", err)
+		return fmt.Errorf("insert %#v: %w", objPtr, err)
 	}
 	err = t.checkForeignKeys(table, objPtr, allowedArchiveMark)
 	if err != nil {
-		return fmt.Errorf("insert: checkForeignKeys: %w", err)
+		return fmt.Errorf("insert %#v: %w", objPtr, err)
 	}
 	return t.Txn.Insert(table, objPtr)
 }
@@ -500,7 +501,7 @@ func (t *Txn) checkIdxIsEmpty(table string, idxName string, vals []interface{}, 
 		}
 		a, isArchivable := raw.(Archivable)
 		if !isArchivable || a.NotArchived() {
-			return fmt.Errorf("fail unique constraint: %q at table %q", idxName, table)
+			return fmt.Errorf("%w: %q at table %q", ErrUniqueConstraint, idxName, table)
 		}
 	}
 	return nil
@@ -520,7 +521,7 @@ func collectValsForIndexes(objPtr interface{}, indexes ...hcmemdb.Indexer) ([]in
 			if err != nil {
 				return nil, err
 			}
-			vals = append(vals, extraVals)
+			vals = append(vals, extraVals...)
 		default:
 			return nil, fmt.Errorf("index type %t is not supported for unique constarain", idx)
 		}

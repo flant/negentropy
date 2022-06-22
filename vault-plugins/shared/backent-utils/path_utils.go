@@ -61,6 +61,7 @@ func MapErrorToHTTPStatusCode(err error) int {
 		consts.ErrInvalidArg:      http.StatusBadRequest,
 		memdb.ErrNotEmptyRelation: http.StatusBadRequest,
 		memdb.ErrForeignKey:       http.StatusBadRequest,
+		memdb.ErrUniqueConstraint: http.StatusBadRequest,
 
 		consts.ErrNotFound: http.StatusNotFound,
 

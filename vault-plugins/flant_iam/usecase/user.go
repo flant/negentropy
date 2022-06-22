@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -37,13 +36,6 @@ func (s *UserService) Create(user *model.User) error {
 	tenant, err := s.tenantRepo.GetByID(s.tenantUUID)
 	if err != nil {
 		return err
-	}
-	_, err = s.usersRepo.GetByIdentifierAtTenant(user.TenantUUID, user.Identifier)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return err
-	}
-	if err == nil {
-		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, user.Identifier, user.TenantUUID)
 	}
 	user.Version = iam_repo.NewResourceVersion()
 	user.FullIdentifier = user.Identifier + "@" + tenant.Identifier

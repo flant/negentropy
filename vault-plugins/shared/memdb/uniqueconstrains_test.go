@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,10 +30,11 @@ const unarchivableType = "unarchivable"
 type unarchivable struct {
 	UUID              string `json:"uuid"` // PK
 	Identifier        string `json:"identifier"`
-	UncontrolledFiled string
+	UncontrolledField string
 }
 
 const identifierIndex = "identifier_index"
+const compoundIndex = "compound_index"
 
 func testShema() *DBSchema {
 	return &DBSchema{
@@ -71,12 +73,27 @@ func testShema() *DBSchema {
 							Field: "Identifier",
 						},
 					},
+					compoundIndex: {
+						Name: compoundIndex,
+						Indexer: &memdb.CompoundIndex{
+							Indexes: []hcmemdb.Indexer{
+								&hcmemdb.StringFieldIndex{
+									Field:     "UUID",
+									Lowercase: true,
+								},
+								&hcmemdb.StringFieldIndex{
+									Field:     "Identifier",
+									Lowercase: true,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		UniqueConstraints: map[dataType][]indexName{
-			"archivable":   {"identifier_index"},
-			"unarchivable": {"identifier_index"},
+			archivableType:   {identifierIndex},
+			unarchivableType: {identifierIndex, compoundIndex},
 		},
 	}
 }

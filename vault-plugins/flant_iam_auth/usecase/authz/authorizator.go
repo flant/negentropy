@@ -203,13 +203,14 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	return authzRes, nil
 }
 
-func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.AuthMethod, source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, subjectUUID string, err error) {
+func (a *Authorizator) authorizeTokenOwner(subjectDescriptor string, method *model.AuthMethod,
+	source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, subjectUUID string, err error) {
 	var user *iam.User
 	switch method.UserClaim {
 	case "email":
-		user, err = a.UserRepo.GetByEmail(descriptor)
+		user, err = a.UserRepo.GetByEmail(subjectDescriptor)
 	case "uuid", "sub", "":
-		user, err = a.UserRepo.GetByID(descriptor)
+		user, err = a.UserRepo.GetByID(subjectDescriptor)
 	default:
 		return nil, "", "", fmt.Errorf("method.UserClaim '%s' is not supported", method.UserClaim)
 	}
@@ -218,16 +219,16 @@ func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.Auth
 	}
 	if user != nil && user.NotArchived() {
 		tokenOwnerFullIdentifier = user.FullIdentifier
-		a.Logger.Debug(fmt.Sprintf("Found user %s for %s descriptor", tokenOwnerFullIdentifier, descriptor))
+		a.Logger.Debug(fmt.Sprintf("Found user %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeUser(user, method, source)
 		subjectUUID = user.UUID
 	} else {
 		// not found user try to found service account
-		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", descriptor))
+		a.Logger.Debug(fmt.Sprintf("Not found active user for %s descriptor. Try find service account", subjectDescriptor))
 		var sa *iam.ServiceAccount
-		sa, err = a.SaRepo.GetByID(descriptor)
+		sa, err = a.SaRepo.GetByID(subjectDescriptor)
 		if errors.Is(err, consts.ErrNotFound) || sa == nil || sa.Archived() {
-			return nil, "", "", fmt.Errorf("not found active iam entity %s", descriptor)
+			return nil, "", "", fmt.Errorf("not found active iam entity %s", subjectDescriptor)
 		}
 		if err != nil {
 			return nil, "", "", err
@@ -235,7 +236,7 @@ func (a *Authorizator) authorizeTokenOwner(descriptor string, method *model.Auth
 
 		tokenOwnerFullIdentifier = sa.FullIdentifier
 
-		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s descriptor", tokenOwnerFullIdentifier, descriptor))
+		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeServiceAccount(sa, method, source)
 		subjectUUID = sa.UUID
 	}
