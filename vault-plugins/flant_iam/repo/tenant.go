@@ -61,7 +61,7 @@ func TenantSchema() *memdb.DBSchema {
 				},
 			},
 		},
-		CascadeDeletes: map[string][]memdb.Relation{
+		CascadeDeletes: map[memdb.DataType][]memdb.Relation{
 			model.TenantType: {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: DestinationTenantUUIDIndex},
@@ -74,8 +74,11 @@ func TenantSchema() *memdb.DBSchema {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 			},
 		},
-		CheckingRelations: map[string][]memdb.Relation{
+		CheckingRelations: map[memdb.DataType][]memdb.Relation{
 			model.TenantType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: SourceTenantUUIDIndex}},
+		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			model.TenantType: {TenantIdentifier},
 		},
 	}
 }

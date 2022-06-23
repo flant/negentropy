@@ -83,7 +83,7 @@ func getTXN(t *testing.T) *Txn {
 				},
 			},
 		},
-		CascadeDeletes: map[dataType][]Relation{
+		CascadeDeletes: map[DataType][]Relation{
 			childTable: {{
 				OriginalDataTypeFieldName:     "UUID",
 				RelatedDataType:               testTable,

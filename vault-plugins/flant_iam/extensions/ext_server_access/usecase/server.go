@@ -70,14 +70,6 @@ func (s *ServerService) Create(
 		return "", "", err
 	}
 
-	rawServer, err := s.serverRepo.GetByID(tenantUUID, projectUUID, serverID)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return "", "", err
-	}
-	if rawServer != nil {
-		return "", "", fmt.Errorf("server with identifier %q already exists in project %q", serverID, project.Identifier)
-	}
-
 	groupIdentifier := nameForProjectLevelObjects(tenant.Identifier, project.Identifier)
 	group, getGroupErr := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, groupIdentifier)
 	if getGroupErr != nil && !errors.Is(getGroupErr, consts.ErrNotFound) {

@@ -32,11 +32,7 @@ func Teams(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *TeamServi
 }
 
 func (s *TeamService) Create(t *model.Team) error {
-	_, err := s.repo.GetByIdentifier(t.Identifier)
-	if !errors.Is(err, consts.ErrNotFound) {
-		return fmt.Errorf("%w: %s", consts.ErrAlreadyExists, t.Identifier)
-	}
-	err = s.validateParentTeamUUID(t)
+	err := s.validateParentTeamUUID(t)
 	if err != nil {
 		return err
 	}

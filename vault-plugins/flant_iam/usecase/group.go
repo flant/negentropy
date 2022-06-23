@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -45,13 +44,6 @@ func (s *GroupService) Create(group *model.Group) error {
 	tenant, err := s.tenantsRepo.GetByID(s.tenantUUID)
 	if err != nil {
 		return err
-	}
-	_, err = s.repo.GetByIdentifierAtTenant(group.TenantUUID, group.Identifier)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return err
-	}
-	if err == nil {
-		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, group.Identifier, group.TenantUUID)
 	}
 	if group.Version != "" {
 		return consts.ErrBadVersion

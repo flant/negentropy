@@ -1,9 +1,6 @@
 package usecase
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -26,13 +23,6 @@ func Tenants(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *TenantService {
 func (s *TenantService) Create(tenant *model.Tenant) error {
 	tenant.Version = iam_repo.NewResourceVersion()
 	tenant.Origin = s.Origin
-	_, err := s.repo.GetByIdentifier(tenant.Identifier)
-	if !errors.Is(err, consts.ErrNotFound) {
-		return fmt.Errorf("%w: %s", consts.ErrAlreadyExists, tenant.Identifier)
-	}
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return err
-	}
 	return s.repo.Create(tenant)
 }
 
