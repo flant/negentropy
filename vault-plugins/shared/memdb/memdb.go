@@ -501,7 +501,7 @@ func (t *Txn) checkIdxIsEmpty(table string, idxName string, vals []interface{}, 
 		}
 		a, isArchivable := raw.(Archivable)
 		if !isArchivable || a.NotArchived() {
-			return fmt.Errorf("%w: %q at table %q", ErrUniqueConstraint, idxName, table)
+			return fmt.Errorf("%w: %q at table %q: %#v already exists", ErrUniqueConstraint, idxName, table, vals)
 		}
 	}
 	return nil
