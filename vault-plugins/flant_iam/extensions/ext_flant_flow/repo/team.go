@@ -62,6 +62,9 @@ func TeamSchema() *memdb.DBSchema {
 				},
 			},
 		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			model.TeamType: {TeamIdentifier},
+		},
 	}
 }
 
