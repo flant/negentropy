@@ -92,7 +92,7 @@ func testShema() *DBSchema {
 				},
 			},
 		},
-		UniqueConstraints: map[dataType][]indexName{
+		UniqueConstraints: map[DataType][]IndexName{
 			archivableType:   {identifierIndex},
 			unarchivableType: {identifierIndex, compoundIndex},
 		},

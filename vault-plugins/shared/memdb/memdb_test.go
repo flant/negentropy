@@ -11,7 +11,7 @@ import (
 func prepareTxn(t *testing.T) *Txn {
 	schema := &DBSchema{
 		Tables: testTables(),
-		MandatoryForeignKeys: map[dataType][]Relation{
+		MandatoryForeignKeys: map[DataType][]Relation{
 			childType1: {{
 				OriginalDataTypeFieldName: "ParentUUID", RelatedDataType: parentType, RelatedDataTypeFieldIndexName: PK,
 			}},
@@ -22,13 +22,13 @@ func prepareTxn(t *testing.T) *Txn {
 				OriginalDataTypeFieldName: "Parents", RelatedDataType: parentType, RelatedDataTypeFieldIndexName: PK,
 			}},
 		},
-		CascadeDeletes: map[dataType][]Relation{
+		CascadeDeletes: map[DataType][]Relation{
 			parentType: {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: childType2, RelatedDataTypeFieldIndexName: parentTypeForeignKey},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: childType3, RelatedDataTypeFieldIndexName: parentsIndex},
 			},
 		},
-		CheckingRelations: map[dataType][]Relation{
+		CheckingRelations: map[DataType][]Relation{
 			parentType: {{
 				OriginalDataTypeFieldName: "UUID", RelatedDataType: childType1, RelatedDataTypeFieldIndexName: parentTypeForeignKey,
 			}},
@@ -366,7 +366,7 @@ func Test_CascadeRestoreOKJustWithRightTimeStampAndHash(t *testing.T) {
 }
 
 func Test_validateCyclicOK(t *testing.T) {
-	rels := map[dataType]map[RelationKey]struct{}{
+	rels := map[DataType]map[RelationKey]struct{}{
 		"t1": {RelationKey{RelatedDataType: "t2"}: {}},
 		"t2": {RelationKey{RelatedDataType: "t3"}: {}, RelationKey{RelatedDataType: "t4"}: {}},
 		"t3": {RelationKey{RelatedDataType: "t4"}: {}},
@@ -379,7 +379,7 @@ func Test_validateCyclicOK(t *testing.T) {
 }
 
 func Test_validateCyclicFail(t *testing.T) {
-	rels := map[dataType]map[RelationKey]struct{}{
+	rels := map[DataType]map[RelationKey]struct{}{
 		"t1": {RelationKey{RelatedDataType: "t2"}: {}},
 		"t2": {RelationKey{RelatedDataType: "t3"}: {}, RelationKey{RelatedDataType: "t6"}: {}},
 		"t3": {RelationKey{RelatedDataType: "t4"}: {}},
@@ -394,7 +394,7 @@ func Test_validateCyclicFail(t *testing.T) {
 }
 
 func Test_validateForeignKeysFail(t *testing.T) {
-	rels := map[dataType][]Relation{
+	rels := map[DataType][]Relation{
 		"t1": {{RelatedDataTypeFieldIndexName: "not_id"}},
 	}
 
@@ -406,12 +406,12 @@ func Test_validateForeignKeysFail(t *testing.T) {
 
 func Test_validateUniquenessChildRelationsFail(t *testing.T) {
 	schema := &DBSchema{
-		CascadeDeletes: map[dataType][]Relation{
+		CascadeDeletes: map[DataType][]Relation{
 			parentType: {{
 				OriginalDataTypeFieldName: "UUID", RelatedDataType: childType2, RelatedDataTypeFieldIndexName: parentTypeForeignKey,
 			}},
 		},
-		CheckingRelations: map[dataType][]Relation{
+		CheckingRelations: map[DataType][]Relation{
 			parentType: {{
 				OriginalDataTypeFieldName: "UUID", RelatedDataType: childType2, RelatedDataTypeFieldIndexName: parentTypeForeignKey,
 			}},
@@ -421,11 +421,11 @@ func Test_validateUniquenessChildRelationsFail(t *testing.T) {
 	_, err := schema.validateUniquenessChildRelations()
 
 	require.Error(t, err)
-	require.Equal(t, "validateUniquenessChildRelations:relation memdb.Relation{OriginalDataTypeFieldName:\"UUID\", RelatedDataType:\"child2\", RelatedDataTypeFieldIndexName:\"parent_uuid\", indexIsSliceFieldIndex:false, BuildRelatedCustomType:(func(interface {}) (interface {}, error))(nil)} is repeated for parent dataType", err.Error())
+	require.Equal(t, "validateUniquenessChildRelations:relation memdb.Relation{OriginalDataTypeFieldName:\"UUID\", RelatedDataType:\"child2\", RelatedDataTypeFieldIndexName:\"parent_uuid\", indexIsSliceFieldIndex:false, BuildRelatedCustomType:(func(interface {}) (interface {}, error))(nil)} is repeated for parent DataType", err.Error())
 }
 
 func Test_validateExistenceIndexesFail(t *testing.T) {
-	rels := map[dataType][]Relation{
+	rels := map[DataType][]Relation{
 		"t1": {Relation{
 			OriginalDataTypeFieldName:     "ParentID",
 			RelatedDataType:               parentType,
@@ -442,12 +442,12 @@ func Test_validateExistenceIndexesFail(t *testing.T) {
 func Test_validateCyclicFailForChildrenRels(t *testing.T) {
 	schema := &DBSchema{
 		Tables: testTables(),
-		CascadeDeletes: map[dataType][]Relation{
+		CascadeDeletes: map[DataType][]Relation{
 			parentType: {{
 				OriginalDataTypeFieldName: "UUID", RelatedDataType: childType2, RelatedDataTypeFieldIndexName: parentTypeForeignKey,
 			}},
 		},
-		CheckingRelations: map[dataType][]Relation{
+		CheckingRelations: map[DataType][]Relation{
 			parentType: {{
 				OriginalDataTypeFieldName: "UUID", RelatedDataType: childType2, RelatedDataTypeFieldIndexName: parentTypeForeignKey,
 			}},
