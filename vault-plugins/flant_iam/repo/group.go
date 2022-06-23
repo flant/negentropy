@@ -54,7 +54,6 @@ func GroupSchema() *memdb.DBSchema {
 					},
 					UserInGroupIndex: {
 						Name:         UserInGroupIndex,
-						Unique:       false,
 						AllowMissing: true,
 						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Users",
@@ -62,7 +61,6 @@ func GroupSchema() *memdb.DBSchema {
 					},
 					ServiceAccountInGroupIndex: {
 						Name:         ServiceAccountInGroupIndex,
-						Unique:       false,
 						AllowMissing: true,
 						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "ServiceAccounts",
@@ -70,7 +68,6 @@ func GroupSchema() *memdb.DBSchema {
 					},
 					GroupInGroupIndex: {
 						Name:         GroupInGroupIndex,
-						Unique:       false,
 						AllowMissing: true,
 						Indexer: &hcmemdb.StringSliceFieldIndex{
 							Field: "Groups",
@@ -98,6 +95,9 @@ func GroupSchema() *memdb.DBSchema {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: GroupInRoleBindingApprovalIndex},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: GroupUUIDIdentitySharingIndex},
 			},
+		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			model.GroupType: {TenantUUIDGroupIdIndex},
 		},
 	}
 }
