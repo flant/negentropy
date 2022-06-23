@@ -48,8 +48,7 @@ func ServiceAccountSchema() *memdb.DBSchema {
 						},
 					},
 					fullIdentifierIndex: {
-						Name:   fullIdentifierIndex,
-						Unique: true,
+						Name: fullIdentifierIndex,
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field:     "FullIdentifier",
 							Lowercase: true,
@@ -73,6 +72,9 @@ func ServiceAccountSchema() *memdb.DBSchema {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountPasswordType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
 			},
+		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			model.ServiceAccountType: {fullIdentifierIndex, TenantUUIDServiceAccountIdIndex},
 		},
 	}
 }

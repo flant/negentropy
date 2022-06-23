@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -37,13 +36,6 @@ func (s *ServiceAccountService) Create(sa *model.ServiceAccount) error {
 	tenant, err := s.tenantRepo.GetByID(sa.TenantUUID)
 	if err != nil {
 		return err
-	}
-	_, err = s.repo.GetByIdentifierAtTenant(sa.TenantUUID, sa.Identifier)
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return err
-	}
-	if err == nil {
-		return fmt.Errorf("%w: identifier:%s at tenant:%s", consts.ErrAlreadyExists, sa.Identifier, sa.TenantUUID)
 	}
 	if sa.Version != "" {
 		return consts.ErrBadVersion
@@ -114,12 +106,6 @@ func (s *ServiceAccountService) Update(sa *model.ServiceAccount) error {
 
 	return s.repo.Update(sa)
 }
-
-/*
-TODO
-	* При удалении необходимо удалить все “вложенные” объекты (Token и ServiceAccountPassword).
-	* При удалении необходимо удалить из всех связей (из групп, из role_binding’ов, из approval’ов и пр.)
-*/
 
 func (s *ServiceAccountService) Delete(id model.ServiceAccountUUID) error {
 	sa, err := s.repo.GetByID(id)
