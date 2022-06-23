@@ -3,7 +3,7 @@ package memdb
 import (
 	"testing"
 
-	"github.com/hashicorp/go-memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,27 +29,30 @@ const unarchivableType = "unarchivable"
 type unarchivable struct {
 	UUID              string `json:"uuid"` // PK
 	Identifier        string `json:"identifier"`
-	UncontrolledFiled string
+	UncontrolledField string
 }
 
-const identifierIndex = "identifier_index"
+const (
+	identifierIndex = "identifier_index"
+	compoundIndex   = "compound_index"
+)
 
 func testShema() *DBSchema {
 	return &DBSchema{
-		Tables: map[string]*memdb.TableSchema{
+		Tables: map[string]*hcmemdb.TableSchema{
 			archivableType: {
 				Name: archivableType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					identifierIndex: {
 						Name: identifierIndex,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
 						},
 					},
@@ -57,26 +60,41 @@ func testShema() *DBSchema {
 			},
 			unarchivableType: {
 				Name: unarchivableType,
-				Indexes: map[string]*memdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{
 					PK: {
 						Name:   PK,
 						Unique: true,
-						Indexer: &memdb.UUIDFieldIndex{
+						Indexer: &hcmemdb.UUIDFieldIndex{
 							Field: "UUID",
 						},
 					},
 					identifierIndex: {
 						Name: identifierIndex,
-						Indexer: &memdb.StringFieldIndex{
+						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Identifier",
+						},
+					},
+					compoundIndex: {
+						Name: compoundIndex,
+						Indexer: &hcmemdb.CompoundIndex{
+							Indexes: []hcmemdb.Indexer{
+								&hcmemdb.StringFieldIndex{
+									Field:     "UUID",
+									Lowercase: true,
+								},
+								&hcmemdb.StringFieldIndex{
+									Field:     "Identifier",
+									Lowercase: true,
+								},
+							},
 						},
 					},
 				},
 			},
 		},
 		UniqueConstraints: map[dataType][]indexName{
-			"archivable":   {"identifier_index"},
-			"unarchivable": {"identifier_index"},
+			archivableType:   {identifierIndex},
+			unarchivableType: {identifierIndex, compoundIndex},
 		},
 	}
 }

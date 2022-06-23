@@ -34,13 +34,13 @@ var _ = Describe("Process of getting access through:", func() {
 			fakeToken := "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vb2lkYy1tb2NrOjk5OTgiLCJzdWIiOiJzdWJqZWN0XzIwMjEtMTItMTQgMTI6MjM6NDQuMTY0MjgyODQzICswMDAwIFVUQyBtPSsyODYzLjAxMTY2MTY5MyIsImF1ZCI6WyJhdWQ2NjYiXSwianRpIjoiaWQiLCJleHAiOjE2Mzk0ODQ5MjQsImlhdCI6MTYzOTQ4NDYyNCwibmJmIjoxNjM5NDg0NjI0LCJwcml2YXRlX2NsYWltIjoidGVzdCJ9.Mg9U-UciCjqqEeuu6SOKTfs36SpqciHM2ailkyWsVc0oSKxDQObivMPTtV04rD0PIqNe7Dp-2dmr9xqvfX8nFv-_TWthM-lhsknquPW-okM616KZf9lzjI08ZhzT1zksJYAu7Pz0dqSYYvirnu4MU3dPxmG16kzwwmhF13G01Is8s820wEkVgwWzi3FWJvu18cliovGd_5rwd4_hdDwKT3a_mfNEw8e7ZVC-l3irzmOstD56vsnwfOfprtKDUbnlOY9dDBd82gQ0jU7i8iLsQyYAJUrQb-uK0AX22fyIg-MFtj-TXUQF9PJ-3sOR4VrItu6Re65ZCZc0NvVvqbRv5w"
 			tools.LoginAccessToken(false, map[string]interface{}{"method": "okta-jwt", "jwt": fakeToken}, rootVaultAddr)
 		})
-		It("fail with valid access_token issued by oidc, with invalid user uuid", func() {
-			accessToken, err := tools.GetOIDCAccessToken("00000001-0001-4001-A001-000000000001")
+		It("fail with valid access_token issued by oidc, with invalid user email", func() {
+			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID, "fake_email@gmail.com")
 			Expect(err).ToNot(HaveOccurred())
 			tools.LoginAccessToken(false, map[string]interface{}{"method": "okta-jwt", "jwt": accessToken}, rootVaultAddr)
 		})
 		Context("getting VST against valid jwt of valid user", func() {
-			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID)
+			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID, cfg.User.Email)
 			Expect(err).ToNot(HaveOccurred())
 
 			vst := tools.LoginAccessToken(true, map[string]interface{}{"method": "okta-jwt", "jwt": accessToken}, rootVaultAddr).ClientToken
@@ -57,7 +57,7 @@ var _ = Describe("Process of getting access through:", func() {
 			})
 		})
 		Context("getting VST with role against valid jwt of valid user and implementing web access", func() {
-			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID)
+			accessToken, err := tools.GetOIDCAccessToken(cfg.User.UUID, cfg.User.Email)
 			Expect(err).ToNot(HaveOccurred())
 			vst := tools.LoginAccessToken(true, map[string]interface{}{
 				"method": "okta-jwt", "jwt": accessToken,

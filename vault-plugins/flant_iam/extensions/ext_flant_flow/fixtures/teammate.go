@@ -27,8 +27,8 @@ func Teammates() []model.FullTeammate {
 			User: iam_model.User{
 				UUID:           TeammateUUID1,
 				Identifier:     "user1",
-				FullIdentifier: "user1@test",
-				Email:          "user1@mail.com",
+				FullIdentifier: "user1@flant",
+				Email:          "user1@gmail.com",
 				Origin:         "test",
 				TenantUUID:     FlantUUID,
 				Language:       "english",
@@ -40,8 +40,8 @@ func Teammates() []model.FullTeammate {
 			User: iam_model.User{
 				UUID:           TeammateUUID2,
 				Identifier:     "user2",
-				FullIdentifier: "user2@test",
-				Email:          "user2@mail.com",
+				FullIdentifier: "user2@flant",
+				Email:          "user2@gmail.com",
 				Origin:         "test",
 				TenantUUID:     FlantUUID,
 				Language:       "german",
@@ -53,8 +53,8 @@ func Teammates() []model.FullTeammate {
 			User: iam_model.User{
 				UUID:           TeammateUUID3,
 				Identifier:     "user3",
-				FullIdentifier: "user3@test",
-				Email:          "user3@mail.com",
+				FullIdentifier: "user3@flant",
+				Email:          "user3@gmail.com",
 				Origin:         "test",
 				TenantUUID:     FlantUUID,
 				Language:       "russian",
@@ -66,8 +66,8 @@ func Teammates() []model.FullTeammate {
 			User: iam_model.User{
 				UUID:           TeammateUUID4,
 				Identifier:     "user4",
-				FullIdentifier: "user4@test",
-				Email:          "user4@mail.com",
+				FullIdentifier: "user4@flant",
+				Email:          "user4@gmail.com",
 				Origin:         "test",
 				TenantUUID:     FlantUUID,
 				Language:       "french",
@@ -78,9 +78,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID5,
-				Identifier:     "user4",
-				FullIdentifier: "user4@test",
-				Email:          "user4@mail.com",
+				Identifier:     "user5",
+				FullIdentifier: "user5@flant",
+				Email:          "user5@gmail.com",
 				Origin:         "test",
 				TenantUUID:     FlantUUID,
 				Language:       "albanian",

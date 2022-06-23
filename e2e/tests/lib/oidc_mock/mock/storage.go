@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/caos/oidc/pkg/oidc"
@@ -250,15 +251,27 @@ func (s *AuthStorage) AuthorizeClientIDSecret(_ context.Context, id string, _ st
 
 func (s *AuthStorage) SetUserinfoFromToken(ctx context.Context, userinfo oidc.UserInfoSetter, tokenID, subject, origin string) error {
 	userinfo.SetSubject(subject)
+	fmt.Printf("SetUserinfoFromToken \n")
+	fmt.Printf("subject = %s\n", subject)
+	fmt.Printf("userinfo = %#v\n", s.UserExtraData[subject])
 	for k, v := range s.UserExtraData[subject] {
 		userinfo.AppendClaims(k, v)
 	}
-	return s.SetUserinfoFromScopes(ctx, userinfo, "", "", []string{})
+	return s.SetUserinfoFromScopes(ctx, userinfo, "", subject, []string{})
 }
 
-func (s *AuthStorage) SetUserinfoFromScopes(ctx context.Context, userinfo oidc.UserInfoSetter, _, _ string, _ []string) error {
+func (s *AuthStorage) SetUserinfoFromScopes(ctx context.Context, userinfo oidc.UserInfoSetter, _, subject string, _ []string) error {
+	fmt.Printf("SetUserinfoFromScopes \n")
+	fmt.Printf("subject = %s\n", subject)
+	fmt.Printf("userinfo = %#v\n", s.UserExtraData[subject])
+
 	userinfo.SetAddress(oidc.NewUserInfoAddress("Test 789\nPostfach 2", "", "", "", "", ""))
-	userinfo.SetEmail("test", true)
+	emailStr := "predefined@gmail.com"
+	email, emailIsSet := s.UserExtraData[subject]["email"]
+	if emailIsSet {
+		emailStr = email.(string)
+	}
+	userinfo.SetEmail(emailStr, true)
 	userinfo.SetPhone("0791234567", true)
 	userinfo.SetName("Test")
 	userinfo.AppendClaims("private_claim", "test")

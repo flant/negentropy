@@ -11,19 +11,26 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-const TenantUUIDUserIdIndex = "tenant_uuid_user_id"
+const (
+	TenantUUIDUserIdIndex = "tenant_uuid_user_id"
+	EmailIndex            = "email"
+)
 
 func UserSchema() *memdb.DBSchema {
-	tenantUUIDUserIdIndexer := []hcmemdb.Indexer{
-		&hcmemdb.StringFieldIndex{
-			Field:     "TenantUUID",
-			Lowercase: true,
+	tenantUUIDUserIdIndexer := &hcmemdb.CompoundIndex{
+		Indexes: []hcmemdb.Indexer{
+			&hcmemdb.StringFieldIndex{
+				Field:     "TenantUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "Identifier",
+				Lowercase: true,
+			},
 		},
-		&hcmemdb.StringFieldIndex{
-			Field:     "Identifier",
-			Lowercase: true,
-		},
+		AllowMissing: false,
 	}
+
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
 			model.UserType: {
@@ -51,7 +58,13 @@ func UserSchema() *memdb.DBSchema {
 					},
 					TenantUUIDUserIdIndex: {
 						Name:    TenantUUIDUserIdIndex,
-						Indexer: &hcmemdb.CompoundIndex{Indexes: tenantUUIDUserIdIndexer},
+						Indexer: tenantUUIDUserIdIndexer,
+					},
+					EmailIndex: {
+						Name: EmailIndex,
+						Indexer: &hcmemdb.StringFieldIndex{
+							Field: "Email",
+						},
 					},
 				},
 			},
@@ -66,6 +79,9 @@ func UserSchema() *memdb.DBSchema {
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: UserInRoleBindingApprovalIndex},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: OwnerForeignPK},
 			},
+		},
+		UniqueConstraints: map[string][]string{
+			model.UserType: {TenantUUIDUserIdIndex, EmailIndex},
 		},
 	}
 }
@@ -236,6 +252,25 @@ func (r *UserRepository) GetByIdentifierAtTenant(tenantUUID model.TenantUUID, id
 	if err != nil {
 		return nil, err
 	}
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*model.User)
+		if obj.NotArchived() {
+			return obj, nil
+		}
+	}
+	return nil, consts.ErrNotFound
+}
+
+func (r *UserRepository) GetByEmail(email string) (*model.User, error) {
+	iter, err := r.db.Get(model.UserType, EmailIndex, email)
+	if err != nil {
+		return nil, err
+	}
+
 	for {
 		raw := iter.Next()
 		if raw == nil {

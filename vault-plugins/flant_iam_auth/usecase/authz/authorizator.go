@@ -160,17 +160,17 @@ func (a *Authorizator) checkPermissions(authMethodName string, subject model.Sub
 
 func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthMethod, source *model.AuthSource,
 	roleClaims []model.RoleClaim) (*logical.Auth, error) {
-	subjectUUID := authnResult.UUID
-	a.Logger.Debug(fmt.Sprintf("Start authz for %s", subjectUUID))
+	subjectDescriptor := authnResult.UUID
+	a.Logger.Debug(fmt.Sprintf("Start authz for %s", subjectDescriptor))
 
-	authzRes, fullId, err := a.authorizeTokenOwner(subjectUUID, method, source)
+	authzRes, fullId, subjectUUID, err := a.authorizeTokenOwner(subjectDescriptor, method, source)
 	if err != nil {
 		return nil, err
 	}
 
 	if authzRes == nil {
-		a.Logger.Warn(fmt.Sprintf("Nil autzRes %s", subjectUUID))
-		return nil, fmt.Errorf("not authz %s", subjectUUID)
+		a.Logger.Warn(fmt.Sprintf("Nil autzRes %s", subjectDescriptor))
+		return nil, fmt.Errorf("not authz %s", subjectDescriptor)
 	}
 
 	a.Logger.Debug(fmt.Sprintf("Start getting vault entity and entity alias %s", fullId))
@@ -203,33 +203,44 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 	return authzRes, nil
 }
 
-func (a *Authorizator) authorizeTokenOwner(uuid string, method *model.AuthMethod, source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, err error) {
-	user, err := a.UserRepo.GetByID(uuid)
+func (a *Authorizator) authorizeTokenOwner(subjectDescriptor string, method *model.AuthMethod,
+	source *model.AuthSource) (authzRes *logical.Auth, tokenOwnerFullIdentifier string, subjectUUID string, err error) {
+	var user *iam.User
+	switch method.UserClaim {
+	case "email":
+		user, err = a.UserRepo.GetByEmail(subjectDescriptor)
+	case "uuid", "sub", "":
+		user, err = a.UserRepo.GetByID(subjectDescriptor)
+	default:
+		return nil, "", "", fmt.Errorf("method.UserClaim '%s' is not supported", method.UserClaim)
+	}
 	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	if user != nil && user.NotArchived() {
 		tokenOwnerFullIdentifier = user.FullIdentifier
-		a.Logger.Debug(fmt.Sprintf("Found user %s for %s uuid", tokenOwnerFullIdentifier, uuid))
+		a.Logger.Debug(fmt.Sprintf("Found user %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeUser(user, method, source)
+		subjectUUID = user.UUID
 	} else {
 		// not found user try to found service account
-		a.Logger.Debug(fmt.Sprintf("Not found active user for %s uuid. Try find service account", uuid))
+		a.Logger.Debug(fmt.Sprintf("Not found active user for %s descriptor. Try find service account", subjectDescriptor))
 		var sa *iam.ServiceAccount
-		sa, err = a.SaRepo.GetByID(uuid)
-		if errors.Is(err, consts.ErrNotFound) || sa.Archived() {
-			return nil, "", fmt.Errorf("not found active iam entity %s", uuid)
+		sa, err = a.SaRepo.GetByID(subjectDescriptor)
+		if errors.Is(err, consts.ErrNotFound) || sa == nil || sa.Archived() {
+			return nil, "", "", fmt.Errorf("not found active iam entity %s", subjectDescriptor)
 		}
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 
 		tokenOwnerFullIdentifier = sa.FullIdentifier
 
-		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s uuid", tokenOwnerFullIdentifier, uuid))
+		a.Logger.Debug(fmt.Sprintf("Found service account %s for %s descriptor", tokenOwnerFullIdentifier, subjectDescriptor))
 		authzRes, err = a.authorizeServiceAccount(sa, method, source)
+		subjectUUID = sa.UUID
 	}
-	return authzRes, tokenOwnerFullIdentifier, nil
+	return authzRes, tokenOwnerFullIdentifier, subjectUUID, nil
 }
 
 // addDynamicPolicy build ONE vault policy for all roleClaims if all are allowed

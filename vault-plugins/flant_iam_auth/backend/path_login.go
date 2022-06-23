@@ -196,9 +196,9 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 
 const (
 	pathLoginHelpSyn = `
-	Authenticates to Vault using a JWT (or OIDC) token.
+	Authenticates to Vault using a JWT (or OIDC) token, or service_account password
 	`
 	pathLoginHelpDesc = `
-Authenticates JWTs.
+Authenticates to Vault using a JWT (or OIDC) token, or service_account password
 `
 )

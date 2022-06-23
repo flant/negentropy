@@ -53,7 +53,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("Configuring flant_flow, using Admin account", func() {
 		// login c oidc
-		adminAccessToken, err := tools.GetOIDCAccessToken(cfg.Admin.UUID)
+		adminAccessToken, err := tools.GetOIDCAccessToken(cfg.Admin.UUID, cfg.Admin.Email)
 		Expect(err).ToNot(HaveOccurred())
 
 		adminVST := tools.LoginAccessToken(true, map[string]interface{}{
@@ -80,7 +80,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		time.Sleep(time.Second * 2)
 
 		// login by primaryAdmin
-		primaryAdminAccessToken, err := tools.GetOIDCAccessToken(clientPrimaryAdmin.UUID)
+		primaryAdminAccessToken, err := tools.GetOIDCAccessToken(clientPrimaryAdmin.UUID, clientPrimaryAdmin.Email)
 		Expect(err).ToNot(HaveOccurred())
 
 		prAdminVST := tools.LoginAccessToken(true, map[string]interface{}{
@@ -208,7 +208,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	var teammateClient *http.Client
 
 	It("Teammate login negentropy", func() {
-		teammateAccessToken, err := tools.GetOIDCAccessToken(teammate.UUID)
+		teammateAccessToken, err := tools.GetOIDCAccessToken(teammate.UUID, teammate.Email)
 		Expect(err).ToNot(HaveOccurred())
 
 		teammateVST := tools.LoginAccessToken(true, map[string]interface{}{
@@ -292,6 +292,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 				"role_at_team":     teammate.RoleAtTeam,
 				"identifier":       teammate.Identifier,
 				"new_team_uuid":    newTeamUUID,
+				"email":            teammate.Email,
 			})
 			teammate.Version = updatedData.Get("teammate.resource_version").String()
 			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())

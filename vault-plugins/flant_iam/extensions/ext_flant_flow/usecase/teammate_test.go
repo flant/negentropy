@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,9 @@ func createTeammates(t *testing.T, tx *io.MemoryStoreTxn, teammates ...model.Ful
 	for _, teammate := range teammates {
 		tmp := teammate
 		tmp.Version = uuid.New()
-		tmp.FullIdentifier = uuid.New()
+		tmp.Identifier = "Teammate_" + uuid.New()
+		tmp.FullIdentifier = tmp.Identifier + "@flant"
+		tmp.Email = fmt.Sprintf("%s@ex.com", tmp.Identifier)
 		err := userRepo.Create(&tmp.User)
 		require.NoError(t, err)
 		err = teammateRepo.Create(tmp.ExtractTeammate())

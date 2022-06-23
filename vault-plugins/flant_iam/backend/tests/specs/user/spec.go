@@ -94,6 +94,20 @@ var _ = Describe("User", func() {
 		})
 	})
 
+	Context("uniqueness of user email", func() {
+		email := uuid.New() + "@gmail.com"
+		It("Can be created user with some email", func() {
+			tryCreateRandomUserAtTenantWithEmail(tenant.UUID, email, "%d == 201")
+		})
+		It("Can not be the same email at the same tenant", func() {
+			tryCreateRandomUserAtTenantWithEmail(tenant.UUID, email, "%d >= 400")
+		})
+		It("Can not be the same email email at other tenant", func() {
+			tenant2 := specs.CreateRandomTenant(TenantAPI)
+			tryCreateRandomUserAtTenantWithEmail(tenant2.UUID, email, "%d == 400")
+		})
+	})
+
 	It("can be read", func() {
 		user := specs.CreateRandomUser(TestAPI, tenant.UUID)
 		createdData := specs.ConvertToGJSON(user)
@@ -270,6 +284,19 @@ func tryCreateRandomUserAtTenantWithIdentifier(tenantUUID string,
 	userIdentifier interface{}, statusCodeCondition string) {
 	payload := fixtures.RandomUserCreatePayload()
 	payload["identifier"] = userIdentifier
+
+	params := api.Params{
+		"tenant":       tenantUUID,
+		"expectStatus": api.ExpectStatus(statusCodeCondition),
+	}
+
+	TestAPI.Create(params, nil, payload)
+}
+
+func tryCreateRandomUserAtTenantWithEmail(tenantUUID string,
+	email interface{}, statusCodeCondition string) {
+	payload := fixtures.RandomUserCreatePayload()
+	payload["email"] = email
 
 	params := api.Params{
 		"tenant":       tenantUUID,
