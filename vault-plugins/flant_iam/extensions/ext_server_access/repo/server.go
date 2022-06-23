@@ -11,30 +11,41 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
+const (
+	TenantUUIDProjectUUIDServerIdentifierIndex = "tenant_project_server_identifier"
+	TenantUUIDProjectUUIDIndex                 = "tenant_project"
+)
+
 func ServerSchema() *memdb.DBSchema {
-	var serverIdentifierMultiIndexer []hcmemdb.Indexer
-
-	tenantUUIDIndex := &hcmemdb.StringFieldIndex{
-		Field:     "TenantUUID",
-		Lowercase: true,
+	serverIdentifierMultiIndexer := &hcmemdb.CompoundIndex{
+		Indexes: []hcmemdb.Indexer{
+			&hcmemdb.StringFieldIndex{
+				Field:     "TenantUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "ProjectUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "Identifier",
+				Lowercase: true,
+			},
+		},
 	}
-	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, tenantUUIDIndex)
 
-	projectUUIDIndex := &hcmemdb.StringFieldIndex{
-		Field:     "ProjectUUID",
-		Lowercase: true,
+	tenantProjectMultiIndexer := &hcmemdb.CompoundIndex{
+		Indexes: []hcmemdb.Indexer{
+			&hcmemdb.StringFieldIndex{
+				Field:     "TenantUUID",
+				Lowercase: true,
+			},
+			&hcmemdb.StringFieldIndex{
+				Field:     "ProjectUUID",
+				Lowercase: true,
+			},
+		},
 	}
-	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, projectUUIDIndex)
-
-	serverIdentifierIndex := &hcmemdb.StringFieldIndex{
-		Field:     "Identifier",
-		Lowercase: true,
-	}
-	serverIdentifierMultiIndexer = append(serverIdentifierMultiIndexer, serverIdentifierIndex)
-
-	var tenantProjectMultiIndexer []hcmemdb.Indexer
-	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, tenantUUIDIndex)
-	tenantProjectMultiIndexer = append(tenantProjectMultiIndexer, projectUUIDIndex)
 
 	return &memdb.DBSchema{
 		Tables: map[string]*hcmemdb.TableSchema{
@@ -62,18 +73,13 @@ func ServerSchema() *memdb.DBSchema {
 							Lowercase: true,
 						},
 					},
-					"identifier": {
-						Name: "identifier",
-						Indexer: &hcmemdb.CompoundIndex{
-							Indexes: serverIdentifierMultiIndexer,
-						},
-						Unique: true,
+					TenantUUIDProjectUUIDServerIdentifierIndex: {
+						Name:    TenantUUIDProjectUUIDServerIdentifierIndex,
+						Indexer: serverIdentifierMultiIndexer,
 					},
-					"tenant_project": {
-						Name: "tenant_project",
-						Indexer: &hcmemdb.CompoundIndex{
-							Indexes: tenantProjectMultiIndexer,
-						},
+					TenantUUIDProjectUUIDIndex: {
+						Name:    TenantUUIDProjectUUIDIndex,
+						Indexer: tenantProjectMultiIndexer,
 					},
 				},
 			},
@@ -88,6 +94,9 @@ func ServerSchema() *memdb.DBSchema {
 		CascadeDeletes: map[string][]memdb.Relation{
 			iam_model.TenantType:  {{OriginalDataTypeFieldName: "UUID", RelatedDataType: ext_model.ServerType, RelatedDataTypeFieldIndexName: iam_repo.TenantForeignPK}},
 			iam_model.ProjectType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: ext_model.ServerType, RelatedDataTypeFieldIndexName: iam_repo.ProjectForeignPK}},
+		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			ext_model.ServerType: {TenantUUIDProjectUUIDServerIdentifierIndex},
 		},
 	}
 }
@@ -119,8 +128,9 @@ func (r *ServerRepository) GetByUUID(id string) (*ext_model.Server, error) {
 	return server, nil
 }
 
-func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, id string) (*ext_model.Server, error) {
-	raw, err := r.db.First(ext_model.ServerType, "identifier", tenant_uuid, project_uuid, id)
+func (r *ServerRepository) GetByID(tenant_uuid, project_uuid, identifier string) (*ext_model.Server, error) {
+	raw, err := r.db.First(ext_model.ServerType, TenantUUIDProjectUUIDServerIdentifierIndex,
+		tenant_uuid, project_uuid, identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +169,7 @@ func (r *ServerRepository) List(tenantID, projectID string, showArchived bool) (
 
 	switch {
 	case tenantID != "" && projectID != "":
-		iter, err = r.db.Get(ext_model.ServerType, "tenant_project", tenantID, projectID)
+		iter, err = r.db.Get(ext_model.ServerType, TenantUUIDProjectUUIDIndex, tenantID, projectID)
 
 	case tenantID != "":
 		iter, err = r.db.Get(ext_model.ServerType, iam_repo.TenantForeignPK, tenantID)
