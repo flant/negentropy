@@ -83,6 +83,9 @@ func ProjectSchema() *memdb.DBSchema {
 		CascadeDeletes: map[string][]memdb.Relation{
 			model.ProjectType: {{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: ProjectInRoleBindingIndex}},
 		},
+		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
+			model.ProjectType: {TenantUUIDProjectIdIndex},
+		},
 	}
 }
 
