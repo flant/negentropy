@@ -181,6 +181,18 @@ def create_privileged_teammate_to_proto_team(vault: Vault, teammate_uuid: str, t
                               }],
                               )
     print("'flant.admin' role for teammate with uuid '{}' is available".format(teammate_uuid))
+    resp = vault_client.write(path=f"flant/tenant/{flant_tenant_uuid}/role_binding",
+                              description=f"tenant.manage for primary user: {teammate_email}",
+                              members=[{
+                                  "uuid": teammate_uuid,
+                                  "type": "user",
+                              }],
+                              roles=[{
+                                  "name": "tenant.manage",
+                                  "options": {},
+                              }],
+                              )
+    print("'tenant.manage' role for teammate with uuid '{}' is available".format(teammate_uuid))
 
 
 def create_privileged_user(vault: Vault, tenant_uuid: str, user_uuid: str, email: str):
