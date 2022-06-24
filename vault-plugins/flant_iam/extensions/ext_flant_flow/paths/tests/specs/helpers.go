@@ -116,20 +116,6 @@ func TryCreateProjects(projectAPI tests.TestAPI, clientID ext_model.ClientUUID, 
 	}
 }
 
-func CreateRandomContact(contactAPI tests.TestAPI, clientID ext_model.TeamUUID) ext_model.FullContact {
-	createPayload := fixtures.RandomContactCreatePayload()
-	createPayload["tenant_uuid"] = clientID
-	createdData := contactAPI.Create(tests.Params{
-		"client": clientID,
-	}, nil, createPayload)
-	rawContact := createdData.Get("contact")
-	data := []byte(rawContact.String())
-	var contact ext_model.FullContact
-	err := json.Unmarshal(data, &contact)
-	Expect(err).ToNot(HaveOccurred())
-	return contact
-}
-
 func ConfigureFlantFlow(roleApi tests.TestAPI, teamAPI tests.TestAPI, configAPI testapi.ConfigAPI) *config.FlantFlowConfig {
 	cfg := BaseConfigureFlantFlow(roleApi, configAPI)
 	teamL1 := CreateRandomTeam(teamAPI)

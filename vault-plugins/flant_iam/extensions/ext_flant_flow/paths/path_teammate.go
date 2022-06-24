@@ -82,9 +82,10 @@ func teammateBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) m
 			Required:    true,
 		},
 		"role_at_team": {
-			Type:        framework.TypeString,
-			Description: "role at team",
-			Required:    true,
+			Type:          framework.TypeString,
+			Description:   "role at team",
+			Required:      true,
+			AllowedValues: model.AllowedRolesAtTeam,
 		},
 		"gitlab.com": {
 			Type:        framework.TypeString,

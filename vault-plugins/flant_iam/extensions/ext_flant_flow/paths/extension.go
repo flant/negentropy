@@ -55,7 +55,6 @@ func FlantFlowPaths(ctx context.Context, conf *logical.BackendConfig, storage *s
 		teammatePaths(b),
 		clientPaths(b),
 		projectPaths(b),
-		contactPaths(b),
 
 		flantFlowConfigurePaths(b),
 	)

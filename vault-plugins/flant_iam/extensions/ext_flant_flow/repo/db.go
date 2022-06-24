@@ -16,7 +16,6 @@ func GetSchema() (*memdb.DBSchema, error) {
 	return memdb.MergeDBSchemas(false,
 		TeamSchema(),
 		TeammateSchema(),
-		ContactSchema(),
 		ServicePackSchema(),
 	)
 }
