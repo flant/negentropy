@@ -2,7 +2,6 @@ package paths
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/hashicorp/go-hclog"
@@ -12,9 +11,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/usecase"
-	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
-	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
@@ -98,23 +95,6 @@ func (e *flantFlowExtension) checkConfigured(pathHandler framework.OperationFunc
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		if err := e.getLiveConfig().IsConfigured(); err != nil {
 			return backentutils.ResponseErr(req, err)
-		}
-		return pathHandler(ctx, req, data)
-	}
-}
-
-//
-func (e *flantFlowExtension) checkFlantFlowClient(pathHandler framework.OperationFunc) framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		txn := e.storage.Txn(false)
-		tenantRepo := iam_repo.NewTenantRepository(txn)
-		tenantUUID := data.Get(clientUUIDKey).(string)
-		tenant, err := tenantRepo.GetByID(tenantUUID)
-		if err != nil {
-			return backentutils.ResponseErr(req, err)
-		}
-		if tenant.Origin != consts.OriginFlantFlow {
-			return backentutils.ResponseErr(req, fmt.Errorf("%w:wrong client uuid", consts.ErrBadOrigin))
 		}
 		return pathHandler(ctx, req, data)
 	}

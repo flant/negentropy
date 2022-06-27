@@ -13,8 +13,9 @@ var (
 	Deckhouse               ServicePackName = "deckhouse_service_pack"
 	Okmeter                 ServicePackName = "okmeter_service_pack"
 	Consulting              ServicePackName = "consulting_service_pack"
-	AllowedServicePackNames                 = []interface{}{L1, DevOps, Mk8s, Deckhouse, Okmeter, Consulting}
-	ServicePackNames                        = map[ServicePackName]struct{}{L1: {}, DevOps: {}, Mk8s: {}, Deckhouse: {}, Okmeter: {}, Consulting: {}}
+	InternalProject         ServicePackName = "internal_project_service_pack"
+	AllowedServicePackNames                 = []interface{}{L1, DevOps, Mk8s, Deckhouse, Okmeter, Consulting, InternalProject}
+	ServicePackNames                        = map[ServicePackName]struct{}{L1: {}, DevOps: {}, Mk8s: {}, Deckhouse: {}, Okmeter: {}, Consulting: {}, InternalProject: {}}
 )
 
 type ServicePackCFG interface{}
@@ -31,6 +32,10 @@ type DeckhouseServicePackCFG struct{}
 type OkmeterServicePackCFG struct{}
 
 type ConsultingServicePackCFG struct{}
+
+type InternalProjectServicePackCFG struct {
+	Team TeamUUID `json:"team"`
+}
 
 func ParseServicePacks(servicePacks map[ServicePackName]interface{}) (map[ServicePackName]ServicePackCFG, error) {
 	result := map[ServicePackName]ServicePackCFG{}
@@ -68,6 +73,10 @@ func ParseServicePacks(servicePacks map[ServicePackName]interface{}) (map[Servic
 			cfg := &ConsultingServicePackCFG{}
 			err = json.Unmarshal(bytes, &cfg)
 			result[k] = cfg
+		case InternalProject:
+			cfg := &InternalProjectServicePackCFG{}
+			err = json.Unmarshal(bytes, &cfg)
+			result[k] = cfg
 		}
 		if err != nil {
 			return nil, err
@@ -84,6 +93,18 @@ func TryGetDevopsCFG(servicePacks map[ServicePackName]ServicePackCFG) (cfg *Devo
 	c, ok := rawCFG.(DevopsServicePackCFG)
 	if !ok {
 		return nil, fmt.Errorf("wrong cfg format: expected  DevopsServicePackCFG, got: %T", rawCFG), true
+	}
+	return &c, nil, true
+}
+
+func TryGetInternalProjectCFG(servicePacks map[ServicePackName]ServicePackCFG) (cfg *InternalProjectServicePackCFG, err error, found bool) {
+	rawCFG, ok := servicePacks[InternalProject]
+	if !ok {
+		return nil, nil, false
+	}
+	c, ok := rawCFG.(InternalProjectServicePackCFG)
+	if !ok {
+		return nil, fmt.Errorf("wrong cfg format: expected  InternalProjectServicePackCFG, got: %T", rawCFG), true
 	}
 	return &c, nil, true
 }

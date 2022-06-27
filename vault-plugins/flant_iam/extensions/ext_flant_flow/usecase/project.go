@@ -16,6 +16,7 @@ type ProjectService struct {
 	*iam_usecase.ProjectService
 	teamRepo               *repo.TeamRepository
 	servicePacksController ServicePackController
+	liveConfig             *config.FlantFlowConfig
 }
 
 func Projects(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *ProjectService {
@@ -23,13 +24,15 @@ func Projects(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *Projec
 		ProjectService:         iam_usecase.Projects(db, consts.OriginFlantFlow),
 		teamRepo:               repo.NewTeamRepository(db),
 		servicePacksController: NewServicePackController(db, liveConfig),
+		liveConfig:             liveConfig,
 	}
 }
 
 type ProjectParams struct {
-	IamProject       *iam.Project
-	ServicePackNames map[model.ServicePackName]struct{}
-	DevopsTeamUUID   model.TeamUUID
+	IamProject              *iam.Project
+	ServicePackNames        map[model.ServicePackName]struct{}
+	DevopsTeamUUID          model.TeamUUID
+	InternalProjectTeamUUID model.TeamUUID
 }
 
 // build servicePacks with CFGs
@@ -49,7 +52,20 @@ func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.Serv
 			servicepacks[spn] = model.DevopsServicePackCFG{
 				DevopsTeam: params.DevopsTeamUUID,
 			}
-		// TODO: others
+		case model.InternalProject:
+			if params.IamProject.TenantUUID != s.liveConfig.FlantTenantUUID {
+				return nil, fmt.Errorf("%w: service_pack %s is allowed only for flant internal projects", consts.ErrInvalidArg, model.InternalProject)
+			}
+			if params.InternalProjectTeamUUID == "" {
+				return nil, fmt.Errorf("%w: service_pack %q needs passed team", consts.ErrInvalidArg, spn)
+			}
+			if _, err := s.teamRepo.GetByID(params.InternalProjectTeamUUID); err != nil {
+				return nil, fmt.Errorf(" service_pack %s: team: %s:%w", spn, params.InternalProjectTeamUUID, err)
+			}
+			servicepacks[spn] = model.InternalProjectServicePackCFG{
+				Team: params.InternalProjectTeamUUID,
+			}
+
 		default:
 			servicepacks[spn] = nil
 		}

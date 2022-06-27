@@ -181,6 +181,39 @@ var _ = Describe("Project", func() {
 		}
 	})
 
+	It("can be created with internal service pack", func() {
+		flantUUID := flantFlowCfg.FlantTenantUUID
+		createPayload := fixtures.RandomProjectCreatePayload()
+		createPayload["tenant_uuid"] = flantUUID
+		createPayload["internal_project_team"] = devopsTeam.UUID
+		createPayload["service_packs"] = []string{model.InternalProject}
+
+		params := tests.Params{
+			"client":       flantUUID,
+			"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
+			"expectPayload": func(json gjson.Result) {
+				projectData := json.Get("project")
+				Expect(projectData.Map()).To(HaveKey("uuid"))
+				Expect(projectData.Map()).To(HaveKey("tenant_uuid"))
+				Expect(projectData.Map()).To(HaveKey("resource_version"))
+				Expect(projectData.Map()).To(HaveKey("identifier"))
+				Expect(projectData.Map()).To(HaveKey("feature_flags"))
+				Expect(projectData.Map()).To(HaveKey("archiving_timestamp"))
+				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
+				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
+				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
+				Expect(projectData.Map()).ToNot(HaveKey("origin"))
+				project = model.Project{
+					UUID:       projectData.Get("uuid").String(),
+					TenantUUID: projectData.Get("tenant_uuid").String(),
+					Version:    projectData.Get("resource_version").String(),
+					Identifier: projectData.Get("identifier").String(),
+				}
+			},
+		}
+		TestAPI.Create(params, url.Values{}, createPayload)
+	})
+
 	It("can be read", func() {
 		project := specs.CreateRandomProject(TestAPI, client.UUID)
 		createdData := iam_specs.ConvertToGJSON(project)

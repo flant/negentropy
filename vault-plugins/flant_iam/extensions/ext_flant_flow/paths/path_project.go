@@ -52,16 +52,20 @@ func (b projectBackend) paths() []*framework.Path {
 				},
 				"devops_team": {
 					Type:        framework.TypeString,
-					Description: "Devops team uuid",
+					Description: "Devops team uuid, in case of passed devops_service_pack",
+				},
+				"internal_project_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed internal_project_service_pack",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create project.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(false))),
+					Callback: b.checkConfigured(b.handleCreate(false)),
 					Summary:  "Create project.",
 				},
 			},
@@ -93,16 +97,20 @@ func (b projectBackend) paths() []*framework.Path {
 				},
 				"devops_team": {
 					Type:        framework.TypeString,
-					Description: "Devops team uuid",
+					Description: "Devops team uuid, in case of passed devops_service_pack",
+				},
+				"internal_project_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed internal_project_service_pack",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create project with preexistent ID.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleCreate(true))),
+					Callback: b.checkConfigured(b.handleCreate(true)),
 					Summary:  "Create project with preexistent ID.",
 				},
 			},
@@ -161,21 +169,25 @@ func (b projectBackend) paths() []*framework.Path {
 				},
 				"devops_team": {
 					Type:        framework.TypeString,
-					Description: "Devops team uuid",
+					Description: "Devops team uuid, in case of passed devops_service_pack",
+				},
+				"internal_project_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed internal_project_service_pack",
 				},
 			},
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleUpdate)),
+					Callback: b.checkConfigured(b.handleUpdate),
 					Summary:  "Update the project by ID.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRead)),
+					Callback: b.checkConfigured(b.handleRead),
 					Summary:  "Retrieve the project by ID.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleDelete)),
+					Callback: b.checkConfigured(b.handleDelete),
 					Summary:  "Deletes the project by ID.",
 				},
 			},
@@ -198,7 +210,7 @@ func (b projectBackend) paths() []*framework.Path {
 			ExistenceCheck: b.handleExistence,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.checkFlantFlowClient(b.checkConfigured(b.handleRestore)),
+					Callback: b.checkConfigured(b.handleRestore),
 					Summary:  "Restore the project by ID.",
 				},
 			},
@@ -265,6 +277,7 @@ func getProjectParams(data *framework.FieldData, expectID, expectVersion bool) (
 		return nil, err
 	}
 	devopsTeamUUID := data.Get("devops_team").(model.TeamUUID)
+	internalProjectTeamUUID := data.Get("internal_project_team").(model.TeamUUID)
 	return &usecase.ProjectParams{
 		IamProject: &iam_model.Project{
 			UUID:       id,
@@ -272,8 +285,9 @@ func getProjectParams(data *framework.FieldData, expectID, expectVersion bool) (
 			Version:    version,
 			Identifier: data.Get("identifier").(string),
 		},
-		ServicePackNames: servicePacks,
-		DevopsTeamUUID:   devopsTeamUUID,
+		ServicePackNames:        servicePacks,
+		DevopsTeamUUID:          devopsTeamUUID,
+		InternalProjectTeamUUID: internalProjectTeamUUID,
 	}, nil
 }
 
