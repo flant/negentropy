@@ -55,12 +55,12 @@ func rbBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[str
 		},
 		"ttl": {
 			Type:        framework.TypeDurationSecond,
-			Description: "TTL in seconds",
+			Description: "TTL in seconds, infinite if passed 0, or not passed",
 			Required:    true,
 		},
 		"require_mfa": {
 			Type:        framework.TypeBool,
-			Description: "Requires multi-factor authentication",
+			Description: "Requires multi-factor authentication, false if not passed",
 			Required:    true,
 		},
 		"any_project": {
@@ -213,7 +213,11 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
 		}
-		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+		b.Logger().Debug(fmt.Sprintf("passed TTL=%d", ttl)) // TODO REMOVE
+		var expiration int64 = 0
+		if ttl > 0 {
+			expiration = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+		}
 
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
@@ -270,7 +274,16 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 		id := data.Get("uuid").(string)
 
 		ttl := data.Get("ttl").(int)
-		expiration := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+		if ttl < 0 {
+			err := fmt.Errorf("%w: passed ttl<0", consts.ErrInvalidArg)
+			b.Logger().Error(err.Error())
+			return backentutils.ResponseErr(req, err)
+		}
+		b.Logger().Debug(fmt.Sprintf("passed TTL=%d", ttl)) // TODO REMOVE
+		var expiration int64 = 0
+		if ttl > 0 {
+			expiration = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+		}
 
 		members, err := parseMembers(data.Get("members"))
 		if err != nil {
