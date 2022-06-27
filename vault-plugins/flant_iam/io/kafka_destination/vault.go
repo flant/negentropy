@@ -83,7 +83,6 @@ func (vkd *VaultKafkaDestination) isValidObjectType(objType string) bool {
 
 		ext_ff_model.TeamType,
 		ext_ff_model.TeammateType,
-		ext_ff_model.ContactType,
 		ext_ff_model.ServicePackType:
 		return true
 

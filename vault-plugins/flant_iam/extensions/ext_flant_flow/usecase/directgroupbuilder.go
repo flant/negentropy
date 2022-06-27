@@ -82,7 +82,7 @@ func (d directBuilder) OnCreateTeam(team model.Team) (model.Team, error) {
 	g := &iam_model.Group{
 		UUID:       uuid.New(),
 		TenantUUID: d.flantTenantUUID,
-		Identifier: team.Identifier + "_" + d.GroupType(),
+		Identifier: team.Identifier + "-team",
 	}
 	err := d.groupService.Create(g)
 	if err != nil {

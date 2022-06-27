@@ -16,8 +16,6 @@ func HandleFlantFlowObjects(txn *memdb.Txn, objType string, data []byte) (handle
 		object = &ext_model.Team{}
 	case ext_model.TeammateType:
 		object = &ext_model.Teammate{}
-	case ext_model.ContactType:
-		object = &ext_model.Contact{}
 	case ext_model.ServicePackType:
 		object = &ext_model.ServicePack{}
 	default:

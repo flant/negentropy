@@ -45,16 +45,4 @@ var (
 	}
 )
 
-// Contact roles
-type ContactRole = string
-
-var (
-	RegularContact      ContactRole = "contact"
-	AuthorizedContact   ContactRole = "authorized_contact"
-	Representative      ContactRole = "representative"
-	Plenipotentiary     ContactRole = "plenipotentiary"
-	AllowedContactRoles             = []ContactRole{RegularContact, AuthorizedContact, Representative, Plenipotentiary}
-	ContactRoles                    = map[ContactRole]struct{}{RegularContact: {}, AuthorizedContact: {}, Representative: {}, Plenipotentiary: {}}
-)
-
 type LinkedGroupType = string
