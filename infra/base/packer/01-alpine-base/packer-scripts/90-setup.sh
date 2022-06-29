@@ -44,5 +44,5 @@ EOF
 
 chmod +x /bin/update-hostname
 
-# Default shell bash
+# Set bash as default shell
 sed -i 's#/bin/ash#/bin/bash#g' /etc/passwd

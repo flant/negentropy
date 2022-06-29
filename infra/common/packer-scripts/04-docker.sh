@@ -11,8 +11,8 @@ cat <<'EOF' > /etc/docker/daemon.json
 {
   "log-driver": "json-file",
   "log-opts": {
-    "max-file": "1",
-    "max-size": "1m"
+    "max-file": "10",
+    "max-size": "100m"
   },
   "max-concurrent-downloads": 3
 }

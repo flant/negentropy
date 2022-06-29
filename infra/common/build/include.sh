@@ -1,5 +1,3 @@
-# TODO: add common/build to calculate checksums
-
 # Calculates cumulative checksum for all used in image's configuration file common scripts.
 # $1 - image path
 function used_common_scripts_checksum()

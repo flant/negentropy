@@ -21,12 +21,12 @@ variable "image_sources_checksum" {
 
 variable "iso_checksum" {
   type    = string
-  default = "e6bbcab275b704bc6521781f2342fff084700b458711fdf315a5816d9885943c"
+  default = "11cb6ceec4967e0089c44268d2cc7b4efbad74f40d962ecec558e1a8fb6f2ac9"
 }
 
 variable "iso_file" {
   type    = string
-  default = "https://dl-cdn.alpinelinux.org/alpine/v3.13/releases/x86_64/alpine-virt-3.13.5-x86_64.iso"
+  default = "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.4-x86_64.iso"
 }
 
 variable "name" {
@@ -36,7 +36,7 @@ variable "name" {
 
 variable "version" {
   type    = string
-  default = "3.13.5"
+  default = "3.15.4"
 }
 
 variable "disk_size" {
@@ -144,7 +144,9 @@ build {
       "../../../common/packer-scripts/01-vector.sh",
       "../../../common/packer-scripts/05-google-cloud-sdk.sh",
       "../../../common/packer-scripts/07-logrotate.sh",
-      "packer-scripts/90-setup.sh"
+      "packer-scripts/90-setup.sh",
+      "packer-scripts/91-cloud-init.sh",
+      "packer-scripts/99-ssh.sh"
     ]
   }
 

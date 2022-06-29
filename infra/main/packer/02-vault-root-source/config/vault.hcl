@@ -4,13 +4,13 @@ storage "gcs" {
 }
 
 listener "tcp" {
-  address         = "$INTERNAL_ADDRESS:443"
-  cluster_address = "$INTERNAL_ADDRESS:444"
+  address         = "$INTERNAL_ADDRESS:8200"
+  cluster_address = "$INTERNAL_ADDRESS:8201"
   tls_cert_file   = "/tmp/internal.crt"
   tls_key_file    = "/tmp/internal.key"
 }
 
-api_addr = "https://$INTERNAL_ADDRESS:443"
+api_addr = "https://$INTERNAL_ADDRESS:8200"
 
 seal "gcpckms" {
   project = "$GCP_PROJECT"

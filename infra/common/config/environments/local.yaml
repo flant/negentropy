@@ -1,7 +1,11 @@
-environment: docker
-kafka_endpoints: kafka:9093
-oidc_url: https://login.flant.com
-kafka_use_ssl: true
-kafka_ssl_ca_path: /etc/ca.crt
-kafka_ssl_client_private_key_path: /etc/client.key
-kafka_ssl_client_certificate_path: /etc/client.crt
+---
+apiVersion: negentropy.io/v1
+kind: MigrationConfiguration
+variables:
+  # Environment variables names in lowercase. In migration engine their names will be converted to uppercase with prefix "NEGENTROPY_" at the beginning
+  kafka_endpoints: kafka:9093
+  oidc_url: https://login.flant.com
+  kafka_use_ssl: true
+  kafka_ssl_ca_path: /etc/ca.crt
+  kafka_ssl_client_private_key_path: /etc/client.key
+  kafka_ssl_client_certificate_path: /etc/client.crt
