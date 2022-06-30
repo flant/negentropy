@@ -261,8 +261,20 @@ test_allow_by_input_one_check_rules {
                 "read"
             ],
             "path": "flant/tenant/t1/user/+/multipass/"
+        },
+        {
+         "capabilities": [
+             "read",
+         ],
+         "path": "flant/role/+"
+        },
+        {
+         "capabilities": [
+             "read"
+         ],
+         "path": "flant/role/"
         }
-    ]
+]
      with input as ok_input_one
      with data.effective_roles as effective_roles
 }
@@ -580,6 +592,18 @@ test_forbid_by_show_paths_check_rules {
                 "read"
             ],
             "path": "flant/tenant/<tenant_uuid>/user/+/multipass/"
+        },
+        {
+         "capabilities": [
+             "read",
+         ],
+         "path": "flant/role/+"
+        },
+        {
+         "capabilities": [
+             "read"
+         ],
+         "path": "flant/role/"
         }
     ]
     with input as show_paths_input
