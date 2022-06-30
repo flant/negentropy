@@ -10,6 +10,11 @@
 /opt/kafka/bin/kafka-topics.sh --list --command-config /tmp/kafka/client-ssl.properties -bootstrap-server $FQDN:9093
 ```
 
+## Show consumer groups
+```bash
+/opt/kafka/bin/kafka-consumer-groups.sh --command-config /tmp/kafka/client-ssl.properties -bootstrap-server $FQDN:9093 --all-groups --describe
+```
+
 ## Produce messages to the topic
 This will open terminal where you will be able to type any strings and produce them by typing return.
 ```bash
