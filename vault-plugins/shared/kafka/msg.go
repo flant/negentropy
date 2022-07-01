@@ -216,13 +216,16 @@ func LastOffsetByNewConsumer(consumer *kafka.Consumer, topicName string) (lastOf
 	}
 	ch := consumer.Events()
 	var msg *kafka.Message
-	ev := <-ch
-	switch e := ev.(type) {
-	case *kafka.Message:
-		msg = e
-	default:
-		// do nothing
+	for msg == nil {
+		ev := <-ch
+		switch e := ev.(type) {
+		case *kafka.Message:
+			msg = e
+		default:
+			fmt.Printf("TODO REMOVE IT! event: => %#v", ev)
+		}
 	}
+
 	lastOffsetAtTopic := msg.TopicPartition.Offset
 	return int64(lastOffsetAtTopic), partition, nil
 }
