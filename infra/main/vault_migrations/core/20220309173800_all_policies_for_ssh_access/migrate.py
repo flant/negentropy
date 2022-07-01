@@ -40,6 +40,7 @@ time.sleep(5)
 
 
 def upgrade(vault_name: str, vaults: List[Vault]):
+    time.sleep(5)  # provide time to collect roles through kafka topic
     import os
     folder = os.path.dirname(os.path.realpath(__file__))
     vault = next(v for v in vaults if v['name'] == vault_name)

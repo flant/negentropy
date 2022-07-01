@@ -126,9 +126,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 	if backentutils.IsLoading(conf) {
 		logger.Info("final run Factory, apply kafka operations on MemoryStore")
-
-		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, self.NewObjectHandler(entityApi, conf.Logger), conf.Logger))
 		storage.AddKafkaSource(kafka_source.NewRootKafkaSource(mb, root.NewObjectHandler(conf.Logger), conf.Logger))
+		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, self.NewObjectHandler(entityApi, conf.Logger), conf.Logger))
 		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
 		storage.AddKafkaSource(kafka_source.NewMultipassGenerationSource(mb, conf.Logger))
 
