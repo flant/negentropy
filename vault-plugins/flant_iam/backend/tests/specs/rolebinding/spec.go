@@ -216,6 +216,26 @@ var _ = Describe("Role binding", func() {
 
 		TestAPI.Create(params, url.Values{}, createPayload)
 	})
+
+	It("can't be created with ForbiddenUseInRolebinding role on board", func() {
+		roleName := uuid.New()
+		RoleAPI.Create(api.Params{}, url.Values{}, map[string]interface{}{
+			"name":                  roleName,
+			"description":           "role_" + roleName,
+			"scope":                 model.RoleScopeTenant,
+			"forbindden_direct_use": true,
+		})
+		rbPayload := fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID)
+		rbPayload["roles"] = []map[string]interface{}{{
+			"name":    roleName,
+			"options": map[string]interface{}{},
+		}}
+
+		TestAPI.Create(api.Params{
+			"tenant":       tenant.UUID,
+			"expectStatus": api.ExpectExactStatus(400),
+		}, url.Values{}, rbPayload)
+	})
 })
 
 func tryCreateRandomRoleBindingAtTenantWithUserAndDescription(tenantUUID, userUUID string,
