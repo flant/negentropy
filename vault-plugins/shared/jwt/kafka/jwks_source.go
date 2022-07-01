@@ -88,7 +88,9 @@ func (rk *JWKSKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 
 	err := rk.verifySign(signature, msg.Value)
 	if err != nil {
-		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+		rk.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
+			msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
+		return nil
 	}
 
 	jwks := &model.JWKS{}
