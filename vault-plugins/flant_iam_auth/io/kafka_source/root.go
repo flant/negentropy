@@ -53,7 +53,7 @@ func (rk *RootKafkaSource) Restore(txn *memdb.Txn) error {
 	groupID := replicaName
 	restorationConsumer := rk.kf.GetRestorationReader()
 	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
-
+	rk.logger.Debug(fmt.Sprintf("TODO REMOVE! rootTopic = %s, groupID=%s", rootTopic, groupID))
 	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
 	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
 	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, rootTopic, txn, rk.restoreMsgHandler, rk.logger)
