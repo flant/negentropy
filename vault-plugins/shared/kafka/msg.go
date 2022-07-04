@@ -222,10 +222,9 @@ func LastOffsetByNewConsumer(consumer *kafka.Consumer, topicName string) (lastOf
 		case *kafka.Message:
 			msg = e
 		default:
-			fmt.Printf("TODO REMOVE IT! event: => %#v", ev)
+			fmt.Printf("Collected from topic %s unsupported event: %#v\n", topicName, ev)
 		}
 	}
-
 	lastOffsetAtTopic := msg.TopicPartition.Offset
 	return int64(lastOffsetAtTopic), partition, nil
 }
