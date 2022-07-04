@@ -30,7 +30,8 @@ type Role struct {
 
 	RequireOneOfFeatureFlags []FeatureFlagName `json:"require_one_of_feature_flags"`
 	IncludedRoles            []IncludedRole    `json:"included_roles"`
-	// FIXME add version?
+
+	ForbinddenDirectUse bool `json:"forbindden_direct_use"`
 }
 
 type IncludedRole struct {

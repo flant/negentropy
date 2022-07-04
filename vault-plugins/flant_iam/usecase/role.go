@@ -90,8 +90,13 @@ func (s *RoleService) Include(roleID model.RoleName, subRole *model.IncludedRole
 	}
 
 	// validate source exists
-	if _, err := repo.GetByID(subRole.Name); err != nil {
+	sub, err := repo.GetByID(subRole.Name)
+	if err != nil {
 		return err
+	}
+
+	if role.ForbinddenDirectUse && !sub.ForbinddenDirectUse {
+		return fmt.Errorf("target role is fordidden for using in rolebindings, can't contain allowed for rolebinding role: %#v", sub)
 	}
 
 	// TODO validate the template

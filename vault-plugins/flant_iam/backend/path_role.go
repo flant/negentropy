@@ -77,6 +77,11 @@ func (b roleBackend) paths() []*framework.Path {
 					Description: "Enumerated flags, one of which is required in the scope to use role.",
 					Required:    true,
 				},
+				"forbindden_direct_use": {
+					Type:        framework.TypeBool,
+					Description: "forbindden direct use this role in rolebinding",
+					Required:    true,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -136,6 +141,11 @@ func (b roleBackend) paths() []*framework.Path {
 				"options_schema": {
 					Type:        framework.TypeString,
 					Description: "JSON schema of the role options",
+					Required:    true,
+				},
+				"forbindden_direct_use": {
+					Type:        framework.TypeBool,
+					Description: "forbindden direct use this role in rolebinding",
 					Required:    true,
 				},
 			},
@@ -203,6 +213,7 @@ func (b *roleBackend) handleCreate() framework.OperationFunc {
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
+			ForbinddenDirectUse:      data.Get("forbindden_direct_use").(bool),
 		}
 
 		tx := b.storage.Txn(true)
@@ -235,6 +246,7 @@ func (b *roleBackend) handleUpdate() framework.OperationFunc {
 			Description:              data.Get("description").(string),
 			OptionsSchema:            data.Get("options_schema").(string),
 			RequireOneOfFeatureFlags: data.Get("require_one_of_feature_flags").([]string),
+			ForbinddenDirectUse:      data.Get("forbindden_direct_use").(bool),
 		}
 
 		err := usecase.Roles(tx).Update(role)

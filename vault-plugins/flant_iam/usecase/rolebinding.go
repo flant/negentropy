@@ -12,9 +12,10 @@ import (
 )
 
 type RoleBindingService struct {
-	db          *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
-	repo        *iam_repo.RoleBindingRepository
-	tenantsRepo *iam_repo.TenantRepository
+	db              *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	repo            *iam_repo.RoleBindingRepository
+	tenantsRepo     *iam_repo.TenantRepository
+	roleRepoository *iam_repo.RoleRepository
 
 	memberFetcher        *MembersFetcher
 	memberNotationMapper MemberNotationMapper
@@ -23,10 +24,12 @@ type RoleBindingService struct {
 
 func RoleBindings(db *io.MemoryStoreTxn) *RoleBindingService {
 	return &RoleBindingService{
-		db:                   db,
-		repo:                 iam_repo.NewRoleBindingRepository(db),
-		memberFetcher:        NewMembersFetcher(db),
-		tenantsRepo:          iam_repo.NewTenantRepository(db),
+		db:              db,
+		repo:            iam_repo.NewRoleBindingRepository(db),
+		memberFetcher:   NewMembersFetcher(db),
+		tenantsRepo:     iam_repo.NewTenantRepository(db),
+		roleRepoository: iam_repo.NewRoleRepository(db),
+
 		memberNotationMapper: NewMemberNotationMapper(db),
 		projectMapper:        NewProjectMapper(db),
 	}
@@ -39,6 +42,9 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) (*DenormalizedRoleBin
 	}
 	if rb.Version != "" {
 		return nil, consts.ErrBadVersion
+	}
+	if err := s.checkRoles(rb.Roles); err != nil {
+		return nil, err
 	}
 	rb.Version = iam_repo.NewResourceVersion()
 
@@ -64,6 +70,9 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) (*DenormalizedRoleBin
 func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBinding, error) {
 	// Validate
 	stored, err := s.repo.GetByID(rb.UUID)
+	if err := s.checkRoles(rb.Roles); err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -222,4 +231,17 @@ func (s *RoleBindingService) denormalizeRoleBinding(rb *model.RoleBinding) (*Den
 		Roles:       rb.Roles,
 		Origin:      rb.Origin,
 	}, nil
+}
+
+func (s *RoleBindingService) checkRoles(roles []model.BoundRole) error {
+	for _, r := range roles {
+		role, err := s.roleRepoository.GetByID(r.Name)
+		if err != nil {
+			return fmt.Errorf("%s:%w", r.Name, err)
+		}
+		if role.ForbinddenDirectUse {
+			return fmt.Errorf("%w:%s - prohibited direct use in rolebinding", consts.ErrInvalidArg, r.Name)
+		}
+	}
+	return nil
 }
