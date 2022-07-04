@@ -41,8 +41,8 @@ func TestPublicKeyGet(t *testing.T) {
 
 		r, err := rsa.GenerateKey(rand.Reader, 256)
 		require.NoError(t, err)
-		tb.broker.config.EncryptionPrivateKey = r
-		tb.broker.config.EncryptionPublicKey = &r.PublicKey
+		tb.broker.KafkaConfig.EncryptionPrivateKey = r
+		tb.broker.KafkaConfig.EncryptionPublicKey = &r.PublicKey
 
 		req := &logical.Request{
 			Storage:   storage,
@@ -60,7 +60,7 @@ func TestPublicKeyGet(t *testing.T) {
 		assert.True(t, r.PublicKey.Equal(kafkaPublicKey))
 
 		t.Run("after vault reboot", func(t *testing.T) {
-			dd, _ := json.Marshal(tb.broker.config)
+			dd, _ := json.Marshal(tb.broker.KafkaConfig)
 			err = storage.Put(cctx, &logical.StorageEntry{Key: kafkaConfigPath, Value: dd, SealWrap: true})
 			require.NoError(t, err)
 			mb, err := NewMessageBroker(cctx, storage, log.NewNullLogger())

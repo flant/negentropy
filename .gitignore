@@ -56,3 +56,5 @@ e2e/tools/*
 
 # okta uuid
 okta-uuid
+/kafka-consumer/id_rsa
+/kafka-consumer/id_rsa.pub
