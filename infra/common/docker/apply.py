@@ -10,6 +10,7 @@ import subprocess
 import time
 import base64
 import hvac
+import requests
 
 from google.oauth2 import service_account
 from google.cloud import storage
@@ -138,7 +139,7 @@ def generate_terraform_order(type: str, order: str) -> list:
         result = list
     return (result)
 
-def check_vault_is_ready(vault_url: str, attempts: int = 2) -> bool:
+def check_vault_is_ready(vault_url: str, attempts: int = 5) -> bool:
     for i in range(attempts):
         try:
             client = hvac.Client(url=vault_url)
@@ -148,6 +149,21 @@ def check_vault_is_ready(vault_url: str, attempts: int = 2) -> bool:
             time.sleep(1)
             continue
     raise Exception("%s attempts were failed, vault at %s is unreachable" % (attempts, vault_url))
+
+def check_kafka_is_ready(kafka_url: str, attempts: int = 10) -> bool:
+    kafka_healthcheck_metric_name = 'kafka_server_kafkaserver_brokerstate'
+    kafka_healthcheck_metric_value = '3.0'
+    for i in range(attempts):
+        try:
+            response = requests.get(kafka_url).text
+            for s in response.split("\n"):
+                if s.startswith(kafka_healthcheck_metric_name):
+                    if s.split(" ")[1].strip() == kafka_healthcheck_metric_value:
+                        return (True)
+        except Exception:
+            time.sleep(1)
+            continue
+    raise Exception("%s attempts were failed, kafka at %s is unreachable or not ready" % (attempts, kafka_url))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -164,7 +180,7 @@ def main():
 
     vault_list_with_status = []
     for vault_name in vault_list:
-        vault_list_with_status.append({'name': vault_name, 'initialized': check_blob_exists(terraform_state_bucket, 'negentropy-vault-'+vault_name+'-recovery-keys')})
+        vault_list_with_status.append({'name': vault_name, 'initialized': check_blob_exists(terraform_state_bucket, 'negentropy-vault-' + vault_name + '-recovery-keys')})
     print("DEBUG: vault_list_with_status is", vault_list_with_status)
 
     for vault in vault_list_with_status:
@@ -183,47 +199,43 @@ def main():
     print("• [base] run packer")
     run_command("./build.sh", "../../base/packer")
 
-    # TODO: use argument (from argparser) in paths to terraform state instead of condition
-    terraform_output = {}
-    if args.type == 'configurator':
-        print("• [configurator] run packer")
-        run_command("./build.sh", "../../configurator/packer")
-        for target in terraform_order:
-            print("• [configurator] [%s] terraform init" % target)
-            run_command("terraform init -backend-config bucket=%s-terraform-state" % google_project_id, "../../configurator/terraform/"+target)
-            print("• [configurator] [%s] terraform plan" % target)
-            run_command("terraform plan", "../../configurator/terraform/"+target)
-            print("• [configurator] [%s] terraform apply" % target)
-            run_command("terraform apply -auto-approve", "../../configurator/terraform/"+target)
-            name_with_ip = json.loads(run_command("terraform output -json private_static_ip", "../../configurator/terraform/"+target))
-            terraform_output.update(name_with_ip)
-    elif args.type == 'main':
-        print("• [main] run packer")
-        run_command("./build.sh", "../../main/packer")
-        for target in terraform_order:
-            if '99-load-balancers' in target:
-                terraform_config_path = '../config/environments/' + args.env + '.yaml'
-                terraform_config = list(yaml.safe_load_all(open(terraform_config_path, "r")))
-                cfg = next(i for i in terraform_config if i["kind"] == "TerraformConfiguration")
-                for k, v in cfg['variables'].items():
-                    os.environ["TF_VAR_" + k] = str(v).lower()
-            print("• [main] [%s] terraform init" % target)
-            run_command("terraform init -backend-config bucket=%s-terraform-state" % google_project_id, "../../main/terraform/"+target)
-            print("• [main] [%s] terraform plan" % target)
-            run_command("terraform plan", "../../main/terraform/"+target)
-            print("• [main] [%s] terraform apply" % target)
-            run_command("terraform apply -auto-approve", "../../main/terraform/"+target)
-            if 'vault' in target:
-                name_with_ip = json.loads(run_command("terraform output -json private_static_ip", "../../main/terraform/"+target))
-                terraform_output.update(name_with_ip)
-    print("DEBUG: terraform_output is", terraform_output)
+    print("• [configurator] run packer")
+    run_command("./build.sh", "../../" + args.type + "/packer")
+
+    terraform_config_path = '../config/environments/' + args.env + '.yaml'
+    terraform_config = list(yaml.safe_load_all(open(terraform_config_path, "r")))
+    cfg = next(i for i in terraform_config if i["kind"] == "TerraformConfiguration")
+    for k, v in cfg['variables'].items():
+        os.environ["TF_VAR_" + k] = str(v).lower()
+
+    terraform_vault_output = {}
+    for target in terraform_order:
+        print("• [" + args.type + "] [%s] terraform init" % target)
+        run_command("terraform init -backend-config bucket=%s-terraform-state" % google_project_id, "../../" + args.type + "/terraform/" + target)
+        print("• [" + args.type + "] [%s] terraform plan" % target)
+        run_command("terraform plan", "../../" + args.type + "/terraform/" + target)
+        print("• [" + args.type + "] [%s] terraform apply" % target)
+        run_command("terraform apply -auto-approve", "../../" + args.type + "/terraform/"+target)
+        if 'vault' in target:
+            vault_name_with_ip = json.loads(run_command("terraform output -json private_static_ip", "../../" + args.type + "/terraform/" + target))
+            terraform_vault_output.update(vault_name_with_ip)
+            if terraform_order == 'update':
+                for k,v in vault_name_with_ip.items():
+                    while check_vault_is_ready(vault_url='https://' + v + ':8200') != True:
+                        time.sleep(1)
+        if 'kafka' in target and terraform_order == 'update':
+            kafka_name_with_ip = json.loads(run_command("terraform output -json private_static_ip", "../../" + args.type + "/terraform/" + target))
+            for k,v in kafka_name_with_ip.items():
+                while check_kafka_is_ready(kafka_url=v) != True:
+                    time.sleep(1)
+    print("DEBUG: terraform_vault_output is", terraform_vault_output)
 
     vault_urls = []
-    for vault in terraform_output:
+    for vault in terraform_vault_output:
         if 'root-source' not in vault:
-            vault_urls.append({'name': vault, 'url': 'https://%s:8200' % terraform_output[vault]})
+            vault_urls.append({'name': vault, 'url': 'https://%s:8200' % terraform_vault_output[vault]})
         else:
-            vault_url = 'https://%s:8200' % terraform_output[vault]
+            vault_url = 'https://%s:8200' % terraform_vault_output[vault]
             while check_vault_is_ready(vault_url=vault_url) != True:
                 time.sleep(1)
             client = hvac.Client(url=vault_url)
