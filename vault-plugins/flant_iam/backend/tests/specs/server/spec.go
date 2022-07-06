@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -173,29 +174,58 @@ var _ = Describe("Server", func() {
 	})
 
 	It("can be deleted", func() {
-		// TODO fix bug
-		// TestAPI.Delete(api.Params{
-		//	"tenant":  tenant.UUID,
-		//	"project": project.UUID,
-		//	"server":  serverUUID,
-		// }, nil)
-		//
-		// deletedData := TestAPI.Read(api.Params{
-		//	"tenant":       tenant.UUID,
-		//	"project":      project.UUID,
-		//	"server":       serverUUID,
-		//	"expectStatus": api.ExpectExactStatus(200),
-		// }, nil)
-		// Expect(deletedData.Get("group.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
+		TestAPI.Delete(api.Params{
+			"tenant":  tenant.UUID,
+			"project": project.UUID,
+			"server":  serverUUID,
+		}, nil)
+
+		deletedData := TestAPI.Read(api.Params{
+			"tenant":       tenant.UUID,
+			"project":      project.UUID,
+			"server":       serverUUID,
+			"expectStatus": api.ExpectExactStatus(200),
+		}, nil)
+		Expect(deletedData.Get("server.archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 	})
 
 	Context("after deletion", func() {
 		It("can't be deleted", func() {
-			// TODO fix delete first
+			srv := tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, project.UUID, uuid.New(), "%d == 201")
+			TestAPI.Delete(api.Params{
+				"tenant":  tenant.UUID,
+				"project": project.UUID,
+				"server":  srv.UUID,
+			}, nil)
+
+			TestAPI.Delete(api.Params{
+				"tenant":       tenant.UUID,
+				"project":      project.UUID,
+				"server":       srv.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil)
 		})
 
 		It("can't be updated", func() {
-			// TODO fix delete first
+			srv := tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenant.UUID, project.UUID, uuid.New(), "%d == 201")
+			TestAPI.Delete(api.Params{
+				"tenant":  tenant.UUID,
+				"project": project.UUID,
+				"server":  srv.UUID,
+			}, nil)
+
+			updatePayload := api.Params{
+				"identifier":       "testServerIdentifierUpdated",
+				"labels":           map[string]string{"system": "ubuntu20", "type": "metal"},
+				"resource_version": srv.Version,
+			}
+
+			TestAPI.Update(api.Params{
+				"tenant":       tenant.UUID,
+				"project":      project.UUID,
+				"server":       srv.UUID,
+				"expectStatus": api.ExpectExactStatus(400),
+			}, nil, updatePayload)
 		})
 	})
 })
@@ -222,7 +252,7 @@ func createRoleForExtServAccess(roleName string) {
 }
 
 func tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenantUUID string, projectUUID string,
-	serverIdentifier interface{}, statusCodeCondition string) {
+	serverIdentifier interface{}, statusCodeCondition string) *ext_model.Server {
 	payload := api.Params{
 		"identifier": serverIdentifier,
 		"labels":     map[string]string{"system": "ubuntu20"},
@@ -233,6 +263,21 @@ func tryCreateRandomServerAtTenantAndProjectWithIdentifier(tenantUUID string, pr
 		"project":      projectUUID,
 		"expectStatus": api.ExpectStatus(statusCodeCondition),
 	}
-
-	TestAPI.Create(params, nil, payload)
+	createdData := TestAPI.Create(params, nil, payload)
+	if statusCodeCondition != "%d == 201" {
+		return nil
+	}
+	srvUUID := createdData.Get("uuid").String()
+	readData := TestAPI.Read(api.Params{
+		"tenant":       tenantUUID,
+		"project":      projectUUID,
+		"server":       srvUUID,
+		"expectStatus": api.ExpectExactStatus(http.StatusOK),
+	}, nil)
+	rawSrv := readData.Get("server")
+	data := []byte(rawSrv.String())
+	var server ext_model.Server
+	err := json.Unmarshal(data, &server)
+	Expect(err).ToNot(HaveOccurred())
+	return &server
 }

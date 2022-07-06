@@ -161,6 +161,8 @@ func (s *ServerService) Create(
 		serviceAccount = newServiceAccount
 	}
 
+	server.ServiceAccountUUID = serviceAccount.UUID
+
 	var isSAInGroup bool
 	for _, saInGroup := range group.ServiceAccounts {
 		if saInGroup == serviceAccount.UUID {
@@ -222,6 +224,7 @@ func (s *ServerService) Update(server *model.Server) error {
 	}
 	server.Version = iam_repo.NewResourceVersion()
 	server.MultipassUUID = stored.MultipassUUID
+	server.ServiceAccountUUID = stored.ServiceAccountUUID
 	project, err := s.projectsService.GetByID(server.ProjectUUID)
 	if err != nil {
 		return err
@@ -264,7 +267,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		return err
 	}
 
-	multipassService := usecase.ServiceAccountMultipasses(s.tx, consts.OriginServerAccess, tenant.UUID, server.MultipassUUID)
+	multipassService := usecase.ServiceAccountMultipasses(s.tx, consts.OriginServerAccess, tenant.UUID, server.ServiceAccountUUID)
 
 	mp, err := multipassService.GetByID(server.MultipassUUID)
 	if err != nil {
@@ -283,7 +286,7 @@ func (s *ServerService) Delete(serverUUID string) error {
 		serversPresentInProject bool
 	)
 
-	sa, err := s.serviceAccountRepo.GetByIdentifier(tenant.UUID, nameForServerRelatedProjectLevelObjects(project.Identifier, server.Identifier))
+	sa, err := s.serviceAccountRepo.GetByID(server.ServiceAccountUUID)
 	if err != nil {
 		return err
 	}

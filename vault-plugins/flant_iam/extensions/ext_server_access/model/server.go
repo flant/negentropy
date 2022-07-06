@@ -13,12 +13,13 @@ type ServerUUID = string
 type Server struct {
 	memdb.ArchiveMark
 
-	UUID          ServerUUID `json:"uuid"` // ID
-	TenantUUID    string     `json:"tenant_uuid"`
-	ProjectUUID   string     `json:"project_uuid"`
-	Version       string     `json:"resource_version"`
-	Identifier    string     `json:"identifier"`
-	MultipassUUID string     `json:"multipass_uuid"`
+	UUID               ServerUUID `json:"uuid"` // ID
+	TenantUUID         string     `json:"tenant_uuid"`
+	ProjectUUID        string     `json:"project_uuid"`
+	Version            string     `json:"resource_version"`
+	Identifier         string     `json:"identifier"`
+	ServiceAccountUUID string     `json:"service_account_uuid"`
+	MultipassUUID      string     `json:"multipass_uuid"`
 
 	Fingerprint string            `json:"fingerprint"`
 	Labels      map[string]string `json:"labels"`
