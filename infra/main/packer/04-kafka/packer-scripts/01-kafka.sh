@@ -37,36 +37,40 @@ cat <<'EOF' > /etc/init.d/kafka
 name="Kafka broker"
 description="Kafka distributed messaging system"
 
-logfile="/var/log/kafka.log"
-
 command="/opt/kafka/bin/kafka-server-start.sh"
 command_args="/tmp/kafka/server.properties"
-
-command_background=yes
-pidfile=/run/kafka.pid
-
 command_user="kafka:kafka"
 
-start() {
-	ebegin "Starting kafka ..."
-	start-stop-daemon --start --background --user kafka --group kafka \
-	  --chdir /opt/kafka --stdout $logfile --stderr $logfile -m \
-    --pidfile $pidfile \
-    --env KAFKA_OPTS="-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7073:/etc/kafka/server.metrics.yml" \
-    --env KAFKA_HEAP_OPTS="$KAFKA_HEAP_OPTS" \
-    --env LOG_DIR="/data/logs/kafka" \
-    --exec $command -- $command_args
-	eend $?
-}
+supervisor=supervise-daemon
+output_log="/var/log/kafka.log"
+error_log="/var/log/kafka.log"
+respawn_max=0
+respawn_delay=10
 
 depend() {
-	after zookeeper
+  need net
+  after zookeeper
 }
 
 start_pre() {
-	checkpath -f -m 0644 -o "$command_user" "$logfile" \
-    && /bin/update-hostname \
+  checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
+    && /bin/update-hostname &> /dev/null \
     && /etc/kafka/scripts/configure-kafka.sh
+}
+
+# Custom start function, because it is necessary to set specific environment variables (e.g. KAFKA_OPTS)
+start() {
+  ebegin "Starting $name"
+  ${supervisor} ${RC_SVCNAME} --start \
+    --stdout "$output_log" \
+    --stderr "$error_log" \
+    --respawn-delay "$respawn_delay" \
+    --respawn-max "$respawn_max" \
+    --user "$command_user" \
+    --env KAFKA_OPTS="-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7073:/etc/kafka/server.metrics.yml" \
+    --env KAFKA_HEAP_OPTS="$KAFKA_HEAP_OPTS" \
+    "$command" -- "$command_args"
+  eend $?
 }
 EOF
 

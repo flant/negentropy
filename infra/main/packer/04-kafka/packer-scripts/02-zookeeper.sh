@@ -9,40 +9,43 @@ cat <<'EOF' > /etc/init.d/zookeeper
 name="Zookeeper"
 description="Zookeeper for Kafka distributed messaging system"
 
-logfile="/var/log/zookeeper.log"
-
 command="/opt/kafka/bin/zookeeper-server-start.sh"
 command_args="/tmp/kafka/zookeeper.properties"
-
-command_background=yes
-pidfile=/run/zookeeper.pid
-
 command_user="kafka:kafka"
 
-start() {
-	ebegin "Starting zookeeper ..."
-	start-stop-daemon --start --background --user kafka --group kafka \
-	  --chdir /opt/kafka --stdout $logfile --stderr $logfile -m \
-    --pidfile $pidfile \
-    --env KAFKA_OPTS="-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7074:/etc/kafka/zookeeper.metrics.yml" \
-    --env KAFKA_HEAP_OPTS="$ZOOKEEPER_HEAP_OPTS" \
-    --env LOG_DIR="/data/logs/zookeeper" \
-    --exec $command -- $command_args
-	eend $?
-}
+supervisor=supervise-daemon
+output_log="/var/log/zookeeper.log"
+error_log="/var/log/zookeeper.log"
+respawn_max=0
+respawn_delay=10
 
 depend() {
   need net
-	after bootmisc
+  after bootmisc
 }
 
 start_pre() {
-	checkpath -f -m 0644 -o "$command_user" "$logfile" \
-    && /bin/update-hostname \
-    && /etc/kafka/scripts/mount-data-disk.sh &> /var/log/kafka-mount-data-disk.log \
+  checkpath -f -m 0644 -o "$command_user" "$output_log" "$error_log" \
+    && /bin/update-hostname &> /dev/null \
+    && /etc/kafka/scripts/mount-data-disk.sh &> /var/log/mount-data-disk.log \
     && /etc/kafka/scripts/configure-zookeeper.sh \
-    && /etc/kafka/scripts/boostrap-stores.sh &> /var/log/kafka-boostrap-stores.log \
+    && /etc/kafka/scripts/boostrap-stores.sh &> /var/log/boostrap-stores.log \
     && /etc/kafka/scripts/renew-certificate-schedule.sh
+}
+
+# Custom start function, because it is necessary to set specific environment variables (e.g. KAFKA_OPTS)
+start() {
+  ebegin "Starting $name"
+  ${supervisor} ${RC_SVCNAME} --start \
+    --stdout "$output_log" \
+    --stderr "$error_log" \
+    --respawn-delay "$respawn_delay" \
+    --respawn-max "$respawn_max" \
+    --user "$command_user" \
+    --env KAFKA_OPTS="-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7074:/etc/kafka/zookeeper.metrics.yml" \
+    --env KAFKA_HEAP_OPTS="$ZOOKEEPER_HEAP_OPTS" \
+    "$command" -- "$command_args"
+  eend $?
 }
 EOF
 
