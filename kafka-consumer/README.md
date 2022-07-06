@@ -12,26 +12,31 @@ flant negentropy kafka-consumer daemon provide data transport from kafka into mi
 
 - /OPT/kafka-consumer should be delivered to server which have access both to negentropy kafka and microservice
 - kafka-consumer should be configured:
-    * kafka endpoint and topic
-    * path to microservice endpoint
+  * kafka endpoint and topic
+  * path to microservice endpoint
 
 ## Development
 
 for tests and debug:
 
 - run negentropy instance: from root project folder: ```./start.sh e2e```
-- generate rsa key pair: run from kafka-consumer
-  folder: ```ssh-keygen -q -t rsa -N '' -f ./id_rsa -m PEM -e > id_rsa.pem <<<y >/dev/null 2>&1```
+- generate rsa key pair in PEM: run from kafka-consumer folder:
+
+``` ssh-keygen  -t rsa -m PEM -N '' -f ./id_rsa  <<<y >/dev/null 2>&1 
+ssh-keygen  -e -f ./id_rsa  -m PEM > ./id_rsa.pub ```
 - get token for root-vault:   
   ```cat /tmp/vaults | jq '[.[]|select(.name=="root")][0].token'```
 - create special replica kafka topic for consumer reading:
   ```
-  curl --location --request POST 'localhost:8300/v1/flant/replica/NAME' \
-  --header 'X-Vault-Token: TOKEN' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-  "type":"Vault",
-  "public_key":"-----BEGIN RSA PUBLIC KEY-----\\nMIIBigKCAYEA4cS4zynvKjYPzVVz921JXWLuElks/cs6CBvJK9UAWdapAg4P+Hb8\\ni2ZycG/r4UEjeffpfBQlwqbE75v29mpxhidE+c6Qs5zJfe5+lyIh0AW+m9TC9IFO\\n6o6NV/Z8foyH+oPzf1ZgKcuTXUc7xlRNK2niun9HJHzrUOLVN1CmBbwu0jyXY+Jq\\n8hl5NYsHLuvGwciyBLERtrIM6bp6a0fLl1ypsloZYW80MyTl7oX6V+sdoQlIIBcJ\\nlCevWMqn9NqhlFSCtL0fdQHJLXOqo6H6WZrEIwWbWGjd0iMTtXIcUPbZ04YUEtCf\\nlsV4YewaoXdANZDJRc798UeBuya8AjWiCt+4/TKdCjlpYmhJ2eCrAhGU0sAFoc81\\nmfJmJb/8OgfwOAzJ8BgGYshukwEXUvQX6V8P5EbTQT97N/rjPQyBFkZh61qv5+MM\\naiIfu2D/wOprDg2mibhehbMV7SarUdVLgIhd8FJ46CsA9riuAR0w0ICe5ndt2M6s\\n80Vn72rBbU47AgMBAAE=\\n-----END RSA PUBLIC KEY-----"}'```
+
+curl --location --request POST 'localhost:8300/v1/flant/replica/NAME' \
+--header 'X-Vault-Token: TOKEN' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+"type":"Vault",
+"public_key":"-----BEGIN RSA PUBLIC
+KEY-----\\nMIIBigKCAYEA4cS4zynvKjYPzVVz921JXWLuElks/cs6CBvJK9UAWdapAg4P+Hb8\\ni2ZycG/r4UEjeffpfBQlwqbE75v29mpxhidE+c6Qs5zJfe5+lyIh0AW+m9TC9IFO\\n6o6NV/Z8foyH+oPzf1ZgKcuTXUc7xlRNK2niun9HJHzrUOLVN1CmBbwu0jyXY+Jq\\n8hl5NYsHLuvGwciyBLERtrIM6bp6a0fLl1ypsloZYW80MyTl7oX6V+sdoQlIIBcJ\\nlCevWMqn9NqhlFSCtL0fdQHJLXOqo6H6WZrEIwWbWGjd0iMTtXIcUPbZ04YUEtCf\\nlsV4YewaoXdANZDJRc798UeBuya8AjWiCt+4/TKdCjlpYmhJ2eCrAhGU0sAFoc81\\nmfJmJb/8OgfwOAzJ8BgGYshukwEXUvQX6V8P5EbTQT97N/rjPQyBFkZh61qv5+MM\\naiIfu2D/wOprDg2mibhehbMV7SarUdVLgIhd8FJ46CsA9riuAR0w0ICe5ndt2M6s\\n80Vn72rBbU47AgMBAAE=\\n-----END
+RSA PUBLIC KEY-----"}'```
   * TOKEN is a token gotten at previous step (without quotes)
   * NAME is a name of replica, topic-name will be "root_source.NAME"
   * public_key is a public part of pair, which was generated at early step and save at ./id_rsa.pub
