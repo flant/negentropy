@@ -8,6 +8,7 @@ CLI_DIR="$(realpath $(dirname "$0"))/cli"
 SERVER_ACCESSD_DIR="$(realpath $(dirname "$0"))/server-access"
 NSS_DIR="$(realpath $(dirname "$0"))/server-access/server-access-nss"
 OIDC_MOCK_DIR="$(realpath $(dirname "$0"))/e2e/tests/lib/oidc_mock"
+KAFKA_CONSUMER_DIR="$(realpath $(dirname "$0"))/kafka-consumer"
 
 function build_plugin() {
   PLUGIN_NAME="$1"
@@ -122,6 +123,42 @@ function build_oidc_mock() {
     go build -o /src/build/oidc-mock cmd/server.go
 }
 
+function build_kafka_consumer() {
+  echo "Building kafka-consumer"
+
+  mkdir -p $KAFKA_CONSUMER_DIR/build
+  mkdir -p /tmp/kafka-consumer-build
+
+  docker run --rm \
+    --platform=linux/amd64 \
+    -w /go/src/app/kafka-consumer \
+    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
+    -v $KAFKA_CONSUMER_DIR/build:/src/build \
+    -v $KAFKA_CONSUMER_DIR:/go/src/app/authd \
+    -v /tmp/kafka-consumer-build:/go/pkg/mod \
+    -e GO111MODULE=on \
+    golang:1.16.8-alpine \
+    go build -o /src/build/kafka-consumer cmd/consumer/main.go
+}
+
+function build_kafka_consumer() {
+  echo "Building kafka-consumer"
+
+  mkdir -p $KAFKA_CONSUMER_DIR/build
+  mkdir -p /tmp/kafka-consumer-build
+
+  docker run --rm -it \
+    --platform=linux/amd64 \
+    -w /go/src/app/kafka-consumer \
+    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
+    -v $KAFKA_CONSUMER_DIR/build:/src/build \
+    -v $KAFKA_CONSUMER_DIR:/go/src/app/kafka-consumer \
+    -v /tmp/kafka-consumer-build:/go/pkg/mod \
+    -e GO111MODULE=on \
+    golang:1.16 \
+    go build -o /src/build/consumer cmd/consumer/main.go
+}
+
 function build_vault() {
 
   echo "Building vault"
@@ -175,6 +212,10 @@ while [[ $# -gt 0 ]]; do
     TARGET="oidc-mock"
     break
     ;;
+    kafka-consumer)
+    TARGET="kafka-consumer"
+    break
+    ;;
     vault)
     ARG="$2"
     TARGET="vault"
@@ -213,6 +254,10 @@ fi
 
 if [ "$TARGET" == "oidc-mock" ]; then
   build_oidc_mock
+fi
+
+if [ "$TARGET" == "kafka-consumer" ]; then
+  build_kafka_consumer
 fi
 
 if [ "$TARGET" == "vault" ]; then

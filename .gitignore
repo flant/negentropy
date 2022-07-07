@@ -43,6 +43,11 @@ server-access/server-access-nss/target/
 # oidc mock
 e2e/tests/lib/oidc_mock/build/
 
+# kafka consumer
+kafka-consumer/build/
+kafka-consumer/id_rsa
+kafka-consumer/id_rsa.pub
+
 # e2e
 e2e/tests/**/*.log
 e2e/tools/*
@@ -50,7 +55,3 @@ e2e/tools/*
 # okta uuid
 okta-uuid
 okta-email
-
-# kafka consumer
-kafka-consumer/id_rsa
-kafka-consumer/id_rsa.pub
