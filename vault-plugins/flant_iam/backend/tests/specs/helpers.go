@@ -2,12 +2,14 @@ package specs
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/usecase"
@@ -386,4 +388,31 @@ func ShareGroupToTenant(identitySharingAPI api.TestAPI, group model.Group, targe
 	}
 	is := identitySharingAPI.Create(params, url.Values{}, data).Get("identity_sharing")
 	return is
+}
+
+func CreateRandomServer(serverApi api.TestAPI, tenantUUID string, projectUUID string) (srv ext_model.Server, saJWT string) {
+	payload := api.Params{
+		"identifier": "server_" + uuid.New(),
+		"labels":     map[string]string{"l1": "v1"},
+	}
+
+	params := api.Params{
+		"tenant":  tenantUUID,
+		"project": projectUUID,
+	}
+	createdData := serverApi.Create(params, nil, payload)
+	srvUUID := createdData.Get("uuid").String()
+	saJWT = createdData.Get("multipassJWT").String()
+	readData := serverApi.Read(api.Params{
+		"tenant":       tenantUUID,
+		"project":      projectUUID,
+		"server":       srvUUID,
+		"expectStatus": api.ExpectExactStatus(http.StatusOK),
+	}, nil)
+	rawSrv := readData.Get("server")
+	data := []byte(rawSrv.String())
+	var server ext_model.Server
+	err := json.Unmarshal(data, &server)
+	Expect(err).ToNot(HaveOccurred())
+	return server, saJWT
 }

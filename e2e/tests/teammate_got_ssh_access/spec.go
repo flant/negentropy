@@ -348,15 +348,6 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		checkChangeDevopsTeam(devopsTeam2.UUID, 0)
 		checkChangeDevopsTeam(devopsTeam.UUID, 1)
 	})
-
-	It("lost access after deleting server from project", func() {
-		//TODO
-	})
-
-	It("lost access after deleting project", func() {
-		//TODO
-	})
-
 })
 
 func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUID, serverUUID ext.ServerUUID) ext.Server {

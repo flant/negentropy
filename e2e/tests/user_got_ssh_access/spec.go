@@ -9,8 +9,12 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
+	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 var testServerAndClientSuite tsc.Suite
@@ -96,6 +100,36 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					return fmt.Sprintf("/opt/cli/bin/cli  ssh -t %s -p %s\n", cfg.Tenant.Identifier, cfg.Project.Identifier)
 				}),
 		)
+		It("user loosing access after deleting server", func() {
+			serverApi := lib.NewServerAPI(lib.NewConfiguredIamVaultClient())
+			server, saJWT := specs.CreateRandomServer(serverApi, cfg.Tenant.UUID, cfg.Project.UUID)
+			waitKafkaFlow(saJWT, true, 40)
+			checkUserLoginForSignCert(true, server.TenantUUID, server.ProjectUUID, server.UUID)
+
+			serverApi.Delete(api.Params{
+				"tenant":  server.TenantUUID,
+				"project": server.ProjectUUID,
+				"server":  server.UUID,
+			}, nil)
+
+			waitKafkaFlow(saJWT, false, 40)
+			checkUserLoginForSignCert(false, server.TenantUUID, server.ProjectUUID, server.UUID)
+		})
+
+		It("user loosing access after deleting project", func() {
+			// TODO it is prohibited now deleting project with child objects
+			//checkUserLoginForSignCert(true, cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, cfg.TestServer.UUID)
+			//
+			//projectApi := lib.NewProjectAPI(lib.NewConfiguredIamVaultClient())
+			//projectApi.Delete(api.Params{
+			//	"tenant":  cfg.TestServer.TenantUUID,
+			//	"project": cfg.TestServer.ProjectUUID,
+			//}, nil)
+			//
+			//waitKafkaFlow(cfg.TestServerServiceAccountMultipassJWT, false, 40)
+			//checkUserLoginForSignCert(false, cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, cfg.TestServer.UUID)
+			//
+		})
 	})
 })
 
@@ -108,4 +142,55 @@ func writeLogToFile(output []string, logFilePath string) {
 		logFile.WriteString(s)
 	}
 	logFile.Close()
+}
+
+const SSHOpenRole = "ssh.open"
+
+func checkUserLoginForSignCert(positiveCase bool, tenantUUID, projectUUID, serverUUID string) {
+	params := map[string]interface{}{
+		"method": "multipass",
+		"jwt":    cfg.UserMultipassJWT,
+		"roles": []interface{}{
+			map[string]interface{}{
+				"role":         SSHOpenRole,
+				"tenant_uuid":  tenantUUID,
+				"project_uuid": projectUUID,
+				"claim": map[string]interface{}{
+					"ttl":     "720m",
+					"max_ttl": "1440m",
+					"servers": []string{serverUUID},
+				},
+			},
+		}}
+
+	cl := configure.GetClientWithToken("", lib.GetAuthVaultUrl())
+	cl.ClearToken()
+
+	secret, err := cl.Logical().Write(lib.IamAuthPluginPath+"/login", params)
+
+	if positiveCase {
+		Expect(err).ToNot(HaveOccurred())
+		Expect(secret).ToNot(BeNil())
+		Expect(secret.Auth).ToNot(BeNil())
+
+	} else {
+		Expect(err).To(HaveOccurred())
+	}
+}
+
+func waitKafkaFlow(multipassJWT string, waitSuccess bool, maxAttempts int) {
+	var f func() error
+	if waitSuccess {
+		f = func() error { return lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl()) }
+	} else {
+		f = func() error {
+			err := lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl())
+			if err != nil {
+				return nil
+			}
+			return fmt.Errorf("success login")
+		}
+	}
+	err := lib.Repeat(f, maxAttempts)
+	Expect(err).ToNot(HaveOccurred())
 }
