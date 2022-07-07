@@ -131,7 +131,13 @@ rules = [
 	{"path":concat("/",["flant", "tenant", tenant_uuid, "user",  "+", "multipass", "+"]), #  read, delete user  multipass
 	"capabilities":["read", "delete"]},
     {"path":concat("/",["flant", "tenant", tenant_uuid, "user",  "+", "multipass/"]), #  list user multipass
-	"capabilities":["read"]}
+	"capabilities":["read"]},
+
+    # roles
+    {"path":concat("/",["flant", "role", "+"]), #  read role
+    "capabilities":["read"]},
+    {"path":concat("/",["flant", "role/"]), #  list role
+    "capabilities":["read"]}
 ] {
     allow
 } {
