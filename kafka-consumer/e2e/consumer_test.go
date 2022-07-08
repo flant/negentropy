@@ -1,4 +1,4 @@
-package main
+package e2e
 
 import (
 	"encoding/json"
@@ -7,32 +7,66 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"testing"
+	"time"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
 
-func main() {
-	http.HandleFunc("/asdf", objectHandler)
-	println("server is started, endpoint: http://localhost:9200/asdf, will process 100 requests")
-	err := http.ListenAndServe(":9200", nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
-	}
+func Test_Consumer(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Consumer read kafka and put to http-gateway")
 }
+
+var tenants []model.Tenant
+var messages = 10
+var endChan = make(chan struct{})
+
+var _ = BeforeSuite(func() {
+	rootClient := lib.NewConfiguredIamVaultClient()
+	tenantAPI := lib.NewTenantAPI(rootClient)
+	for i := 0; i < messages; i++ {
+		tenant := specs.CreateRandomTenant(tenantAPI)
+		tenants = append(tenants, tenant)
+	}
+}, 1.0)
+
+var _ = It("objectHandler should got all of messages", func() {
+	go func() {
+		http.HandleFunc("/asdf", objectHandler)
+		fmt.Printf("server is started, endpoint: http://localhost:9200/asdf, will process %d requests\n", messages)
+		err := http.ListenAndServe(":9200", nil)
+		if errors.Is(err, http.ErrServerClosed) {
+			fmt.Printf("server closed\n")
+		} else if err != nil {
+			fmt.Printf("error starting server: %s\n", err)
+			os.Exit(1)
+		}
+	}()
+
+	go func() {
+		time.Sleep(time.Second * 30)
+		endChan <- struct{}{}
+		fmt.Println("exit by timeout")
+	}()
+
+	<-endChan
+	Expect(counter).To(Equal(messages), "should count all messages")
+	Expect(errCounter).To(Equal(0), "shoud not be errors")
+})
 
 var counter = 0
 var errCounter = 0
 
 func objectHandler(rw http.ResponseWriter, req *http.Request) {
-	if counter > 100 {
-		if errCounter == 0 {
-			os.Exit(0)
-		}
-		println("err count:", errCounter)
-		os.Exit(1)
+	if counter < messages {
+		counter += 1
 	}
-	counter += 1
 	err := processRequest(rw, req)
 	if err != nil {
 		errCounter += 1
@@ -42,6 +76,9 @@ func objectHandler(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		println("ok, counter =", counter)
 		rw.WriteHeader(200)
+	}
+	if counter == messages {
+		endChan <- struct{}{}
 	}
 }
 
