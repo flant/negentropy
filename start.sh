@@ -17,16 +17,16 @@ function usage {
 
 case "$1" in
   single)
-    export MODE="single"
+    MODE="single"
     ;;
   e2e)
-    export MODE="e2e"
+    MODE="e2e"
     ;;
   debug)
-    export MODE="debug"
+    MODE="debug"
     ;;
   local)
-    export MODE="local"
+    MODE="local"
     ;;
   --help|-h|"")
     usage && exit 0
@@ -77,7 +77,7 @@ elif [[ $MODE == "local" ]]; then
     echo $OKTA_EMAIL > okta-email
   fi
 
-  echo DEBUG: OKTA EMAIL is OKTA_EMAIL
+  echo DEBUG: OKTA EMAIL is $OKTA_EMAIL
 fi
 
 pip3 install virtualenv

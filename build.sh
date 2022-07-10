@@ -2,13 +2,7 @@
 
 set -e
 
-PLUGINS_DIR="$(realpath $(dirname "$0"))/vault-plugins"
-AUTHD_DIR="$(realpath $(dirname "$0"))/authd"
-CLI_DIR="$(realpath $(dirname "$0"))/cli"
-SERVER_ACCESSD_DIR="$(realpath $(dirname "$0"))/server-access"
-NSS_DIR="$(realpath $(dirname "$0"))/server-access/server-access-nss"
-OIDC_MOCK_DIR="$(realpath $(dirname "$0"))/e2e/tests/lib/oidc_mock"
-KAFKA_CONSUMER_DIR="$(realpath $(dirname "$0"))/kafka-consumer"
+SCRIPTDIR="$(realpath $(dirname "$0"))"
 
 function build_plugin() {
   PLUGIN_NAME="$1"
@@ -16,18 +10,18 @@ function build_plugin() {
 
   echo "Building $PLUGIN_NAME"
   if [[ $PLUGIN_NAME == "flant_iam_auth" ]]; then
-    EXTRA_MOUNT="-v $PLUGINS_DIR/flant_iam:/go/src/app/flant_iam"
+    EXTRA_MOUNT="-v $SCRIPTDIR/vault-plugins/flant_iam:/go/src/app/flant_iam"
   fi
 
-  mkdir -p $PLUGINS_DIR/build
+  mkdir -p $SCRIPTDIR/vault-plugins/build
   mkdir -p /tmp/vault-plugins-build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/app/$PLUGIN_NAME \
-    -v $PLUGINS_DIR/build:/src/build \
-    -v $PLUGINS_DIR/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
-    -v $PLUGINS_DIR/shared:/go/src/app/shared \
+    -v $SCRIPTDIR/vault-plugins/build:/src/build \
+    -v $SCRIPTDIR/vault-plugins/$PLUGIN_NAME:/go/src/app/$PLUGIN_NAME \
+    -v $SCRIPTDIR/vault-plugins/shared:/go/src/app/shared \
     -v /tmp/vault-plugins-build:/go/pkg/mod \
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
@@ -38,15 +32,15 @@ function build_plugin() {
 function build_authd() {
   echo "Building authd"
 
-  mkdir -p $AUTHD_DIR/build
+  mkdir -p $SCRIPTDIR/authd/build
   mkdir -p /tmp/authd-build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/app/authd \
-    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
-    -v $AUTHD_DIR/build:/src/build \
-    -v $AUTHD_DIR:/go/src/app/authd \
+    -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
+    -v $SCRIPTDIR/authd/build:/src/build \
+    -v $SCRIPTDIR/authd:/go/src/app/authd \
     -v /tmp/authd-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
@@ -56,16 +50,16 @@ function build_authd() {
 function build_cli() {
   echo "Building cli"
 
-  mkdir -p $CLI_DIR/build
+  mkdir -p $SCRIPTDIR/cli/build
   mkdir -p /tmp/cli-build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/app/cli \
-    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
-    -v $AUTHD_DIR:/go/src/app/authd \
-    -v $CLI_DIR/build:/src/build \
-    -v $CLI_DIR:/go/src/app/cli \
+    -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
+    -v $SCRIPTDIR/authd:/go/src/app/authd \
+    -v $SCRIPTDIR/cli/build:/src/build \
+    -v $SCRIPTDIR/cli:/go/src/app/cli \
     -v /tmp/cli-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
@@ -75,17 +69,17 @@ function build_cli() {
 function build_server_accessd() {
   echo "Building server-accessd"
 
-  mkdir -p $SERVER_ACCESSD_DIR/flant-server-accessd/build
+  mkdir -p $SCRIPTDIR/server-access/flant-server-accessd/build
   mkdir -p /tmp/server-accessd-build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/server-accessd \
-    -v $AUTHD_DIR:/go/src/authd \
-    -v $SERVER_ACCESSD_DIR/flant-server-accessd/build:/src/build \
-    -v $SERVER_ACCESSD_DIR:/go/src/server-accessd \
-    -v $CLI_DIR:/go/src/cli \
-    -v $PLUGINS_DIR:/go/src/vault-plugins \
+    -v $SCRIPTDIR/authd:/go/src/authd \
+    -v $SCRIPTDIRDIR/server-access/flant-server-accessd/build:/src/build \
+    -v $SCRIPTDIR/server-access:/go/src/server-accessd \
+    -v $SCRIPTDIR/cli:/go/src/cli \
+    -v $SCRIPTDIR/vault-plugins:/go/src/vault-plugins \
     -v /tmp/server-accessd-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
@@ -95,12 +89,12 @@ function build_server_accessd() {
 function build_nss() {
   echo "Building nss"
 
-  mkdir -p $NSS_DIR/build
+  mkdir -p $SCRIPTDIR/server-access/server-access-nss/build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /app \
-    -v $NSS_DIR:/app \
+    -v $SCRIPTDIR/server-access/server-access-nss:/app \
     rust:1.54 \
     bash -c "cargo build --lib --release --features dynamic_paths && \
              strip -s target/release/libnss_flantauth.so && \
@@ -110,14 +104,14 @@ function build_nss() {
 function build_oidc_mock() {
   echo "Building oidc-mock"
 
-  mkdir -p $OIDC_MOCK_DIR/build
+  mkdir -p $SCRIPTDIR/e2e/tests/lib/oidc_mock/build
   mkdir -p /tmp/oidc-mock-build
 
   docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/oidc-mock \
-    -v $OIDC_MOCK_DIR/build:/src/build \
-    -v $OIDC_MOCK_DIR:/go/src/oidc-mock \
+    -v $SCRIPTDIR/e2e/tests/lib/oidc_mock/build:/src/build \
+    -v $SCRIPTDIR/e2e/tests/lib/oidc_mock:/go/src/oidc-mock \
     -v /tmp/oidc-mock-build:/go/pkg/mod \
     golang:1.16-alpine \
     go build -o /src/build/oidc-mock cmd/server.go
@@ -126,33 +120,18 @@ function build_oidc_mock() {
 function build_kafka_consumer() {
   echo "Building kafka-consumer"
 
-  mkdir -p $KAFKA_CONSUMER_DIR/build
-  mkdir -p /tmp/kafka-consumer-build
-
-  docker run --rm \
-    --platform=linux/amd64 \
-    -w /go/src/app/kafka-consumer \
-    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
-    -v $KAFKA_CONSUMER_DIR/build:/src/build \
-    -v $KAFKA_CONSUMER_DIR:/go/src/app/authd \
-    -v /tmp/kafka-consumer-build:/go/pkg/mod \
-    -e GO111MODULE=on \
-    golang:1.16.8-alpine \
-    go build -o /src/build/kafka-consumer cmd/consumer/main.go
-}
-
-function build_kafka_consumer() {
-  echo "Building kafka-consumer"
-
-  mkdir -p $KAFKA_CONSUMER_DIR/build
+  mkdir -p $SCRIPTDIR/kafka-consumer/build
   mkdir -p /tmp/kafka-consumer-build
 
   docker run --rm -it \
     --platform=linux/amd64 \
     -w /go/src/app/kafka-consumer \
-    -v $PLUGINS_DIR:/go/src/app/vault-plugins \
-    -v $KAFKA_CONSUMER_DIR/build:/src/build \
-    -v $KAFKA_CONSUMER_DIR:/go/src/app/kafka-consumer \
+    -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
+    -v $SCRIPTDIR/authd:/go/src/app/authd \
+    -v $SCRIPTDIR/cli:/go/src/app/cli \
+    -v $SCRIPTDIR/e2e:/go/src/app/e2e \
+    -v $SCRIPTDIR/kafka-consumer/build:/src/build \
+    -v $SCRIPTDIR/kafka-consumer:/go/src/app/kafka-consumer \
     -v /tmp/kafka-consumer-build:/go/pkg/mod \
     -e GO111MODULE=on \
     golang:1.16 \
@@ -183,6 +162,7 @@ function build_all() {
   build_server_accessd
   build_nss
   build_oidc_mock
+  build_kafka_consumer
   build_vault
 }
 

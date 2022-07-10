@@ -16,7 +16,6 @@ services:
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
       - VAULT_CLIENT_TIMEOUT=120s
-
     command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK
@@ -45,7 +44,6 @@ services:
     environment:
       - VAULT_ADDR=http://127.0.0.1:8300
       - VAULT_CLIENT_TIMEOUT=120s
-
     command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK

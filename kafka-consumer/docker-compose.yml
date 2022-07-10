@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  kafka-consumer:
+    image: ubuntu:20.04
+    platform: linux/amd64
+    container_name: kafka-consumer
+    volumes:
+      - "../docker/kafka/ca.crt:/tmp/ca.crt:ro"
+      - "../docker/kafka/client.crt:/tmp/client.crt:ro"
+      - "../docker/kafka/client.key:/tmp/client.key:ro"
+      - "./build/consumer:/bin/consumer:ro"
+    environment:
+      - KAFKA_CFG_SERVERS=kafka:9093
+      - KAFKA_CFG_USE_SSL=true
+      - KAFKA_CFG_CA_PATH=/tmp/ca.crt
+      - KAFKA_CFG_PRIVATE_CERT_PATH=/tmp/client.crt
+      - KAFKA_CFG_PRIVATE_KEY_PATH=/tmp/client.key
+      - CLIENT_CFG_TOPIC=${CLIENT_CFG_TOPIC}
+      - CLIENT_CFG_GROUP_ID=${CLIENT_CFG_GROUP_ID}
+      - CLIENT_CFG_ENCRYPTION_PRIVATE_KEY=${CLIENT_CFG_ENCRYPTION_PRIVATE_KEY}
+      - CLIENT_CFG_ENCRYPTION_PUBLIC_KEY=${CLIENT_CFG_ENCRYPTION_PUBLIC_KEY}
+      - HTTP_URL=${HTTP_URL}
+    command: /bin/consumer
+
+networks:
+  default:
+    name: negentropy
+    external: true
