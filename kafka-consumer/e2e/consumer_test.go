@@ -38,8 +38,8 @@ var _ = BeforeSuite(func() {
 
 var _ = It("objectHandler should got all of messages", func() {
 	go func() {
-		http.HandleFunc("/asdf", objectHandler)
-		fmt.Printf("server is started, endpoint: http://localhost:9200/asdf, will process %d requests\n", messages)
+		http.HandleFunc("/foobar", objectHandler)
+		fmt.Printf("server is started, endpoint: http://localhost:9200/foobar, will process %d requests\n", messages)
 		err := http.ListenAndServe(":9200", nil)
 		if errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("server closed\n")

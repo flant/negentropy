@@ -11,15 +11,15 @@ services:
       - "../docker/kafka/client.key:/tmp/client.key:ro"
       - "./build/consumer:/bin/consumer:ro"
     environment:
-      - KAFKA_CFG_SERVERS=kafka:9093
-      - KAFKA_CFG_USE_SSL=true
-      - KAFKA_CFG_CA_PATH=/tmp/ca.crt
-      - KAFKA_CFG_PRIVATE_CERT_PATH=/tmp/client.crt
-      - KAFKA_CFG_PRIVATE_KEY_PATH=/tmp/client.key
-      - CLIENT_CFG_TOPIC=${CLIENT_CFG_TOPIC}
-      - CLIENT_CFG_GROUP_ID=${CLIENT_CFG_GROUP_ID}
-      - CLIENT_CFG_ENCRYPTION_PRIVATE_KEY=${CLIENT_CFG_ENCRYPTION_PRIVATE_KEY}
-      - CLIENT_CFG_ENCRYPTION_PUBLIC_KEY=${CLIENT_CFG_ENCRYPTION_PUBLIC_KEY}
+      - KAFKA_ENDPOINTS=kafka:9093
+      - KAFKA_USE_SSL=true
+      - KAFKA_CA_PATH=/tmp/ca.crt
+      - KAFKA_PRIVATE_CERT_PATH=/tmp/client.crt
+      - KAFKA_PRIVATE_KEY_PATH=/tmp/client.key
+      - CLIENT_TOPIC=${CLIENT_TOPIC}
+      - CLIENT_GROUP_ID=${CLIENT_GROUP_ID}
+      - CLIENT_ENCRYPTION_PUBLIC_KEY=${CLIENT_ENCRYPTION_PUBLIC_KEY}
+      - CLIENT_ENCRYPTION_PRIVATE_KEY=${CLIENT_ENCRYPTION_PRIVATE_KEY}
       - HTTP_URL=${HTTP_URL}
     command: /bin/consumer
 

@@ -16,16 +16,16 @@ import (
 const serverKafka = "localhost:9094"
 
 // environments variables to pass params
-const kafkaCfgServers = "KAFKA_CFG_SERVERS"                               // example: http://localhost:9094
-const kafkaCfgUseSSL = "KAFKA_CFG_USE_SSL"                                // example: true
-const kafkaCfgCaPath = "KAFKA_CFG_CA_PATH"                                // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
-const kafkaCfgPrivateKeyPath = "KAFKA_CFG_PRIVATE_KEY_PATH"               // example: /Users/admin/flant/negentropy/docker/kafka/client.key
-const kafkaCfgPrivateCertPath = "KAFKA_CFG_PRIVATE_CERT_PATH"             // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
-const clientCfgTopic = "CLIENT_CFG_TOPIC"                                 // example: root_source.bush
-const clientCfgGroupID = "CLIENT_CFG_GROUP_ID"                            // example: bush
-const clientCfgEncryptionPrivateKey = "CLIENT_CFG_ENCRYPTION_PRIVATE_KEY" // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
-const clientCfgEncryptionPublicKey = "CLIENT_CFG_ENCRYPTION_PUBLIC_KEY"   // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
-const httpUrl = "HTTP_URL"                                                // example: localhost:9200/asdf
+const kafkaEndpoints = "KAFKA_ENDPOINTS"                                  // example: http://localhost:9094
+const kafkaUseSSL = "KAFKA_USE_SSL"                                       // example: true
+const kafkaCaPath = "KAFKA_CA_PATH"                                       // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
+const kafkaPrivateKeyPath = "KAFKA_PRIVATE_KEY_PATH"                      // example: /Users/admin/flant/negentropy/docker/kafka/client.key
+const kafkaPrivateCertPath = "KAFKA_PRIVATE_CERT_PATH"                    // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
+const clientTopic = "CLIENT_TOPIC"                                        // example: root_source.foobar
+const clientGroupID = "CLIENT_GROUP_ID"                                   // example: foobar
+const clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY"        // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
+const clientEncryptionPublicKey = "CLIENT_ENCRYPTION_PUBLIC_KEY"          // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
+const httpUrl = "HTTP_URL"                                                // example: localhost:9200/foobar
 
 func main() {
 	viper.SetDefault("author", "https://www.flant.com")
@@ -38,9 +38,9 @@ func main() {
 			return err
 		}
 		logger.Info(fmt.Sprintf("collected kafka cfg: %#v", kafkaCFG))
-		kafkaTopic := os.Getenv(clientCfgTopic)
+		kafkaTopic := os.Getenv(clientTopic)
 		logger.Info(fmt.Sprintf("Topic to reading: %s", kafkaTopic))
-		clientGroupID := os.Getenv(clientCfgGroupID)
+		clientGroupID := os.Getenv(clientGroupID)
 		logger.Info(fmt.Sprintf("GroupID: %s", clientGroupID))
 		httpURL := os.Getenv(httpUrl)
 		logger.Info(fmt.Sprintf("http gate url: %s", httpURL))
@@ -64,16 +64,16 @@ func main() {
 		Short: "Flant negentropy kafka-consumer",
 		Long: `Flant integration kafka-consumer
 	Configure run by passing environment variables:
-KAFKA_CFG_SERVERS                               // example: localhost:9094
-KAFKA_CFG_USE_SSL                               // bool
-KAFKA_CFG_CA_PATH                               // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
-KAFKA_CFG_PRIVATE_KEY_PATH                      // example: /Users/admin/flant/negentropy/docker/kafka/client.key
-KAFKA_CFG_PRIVATE_CERT_PATH                     // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
-CLIENT_CFG_TOPIC                                // example: root_source.bush
-CLIENT_CFG_GROUP_ID                             // example: bush
-CLIENT_CFG_ENCRYPTION_PRIVATE_KEY               // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
-CLIENT_CFG_ENCRYPTION_PUBLIC_KEY"               // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
-HTTP_URL										// example: "localhost:9200/asdf
+KAFKA_ENDPOINTS                               // example: localhost:9094
+KAFKA_USE_SSL                               // bool
+KAFKA_CA_PATH                               // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
+KAFKA_PRIVATE_KEY_PATH                      // example: /Users/admin/flant/negentropy/docker/kafka/client.key
+KAFKA_PRIVATE_CERT_PATH                     // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
+CLIENT_TOPIC                                // example: root_source.bush
+CLIENT_GROUP_ID                             // example: bush
+CLIENT_ENCRYPTION_PRIVATE_KEY               // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
+CLIENT_ENCRYPTION_PUBLIC_KEY"               // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
+HTTP_URL										// example: "localhost:9200/foobar
 
 	Find more information at https://flant.com
 `,
@@ -88,18 +88,18 @@ HTTP_URL										// example: "localhost:9200/asdf
 }
 
 func collectKafkaBrokerCFG() (*sharedkafka.BrokerConfig, error) {
-	endpoints := os.Getenv(kafkaCfgServers)
-	useSSLraw := os.Getenv(kafkaCfgUseSSL)
+	endpoints := os.Getenv(kafkaEndpoints)
+	useSSLraw := os.Getenv(kafkaUseSSL)
 	var useSSL bool
 	if useSSLraw == "true" {
 		useSSL = true
 	}
-	clientEncryptionPrivateKey, err := internal.ParseRSAPrivateKey(os.Getenv(clientCfgEncryptionPrivateKey))
+	clientEncryptionPrivateKey, err := internal.ParseRSAPrivateKey(os.Getenv(clientEncryptionPrivateKey))
 	if err != nil {
 		return nil, err
 	}
 
-	clientEncryptionPublicKey, err := internal.ParseRSAPubKey(os.Getenv(clientCfgEncryptionPublicKey))
+	clientEncryptionPublicKey, err := internal.ParseRSAPubKey(os.Getenv(clientEncryptionPublicKey))
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +108,9 @@ func collectKafkaBrokerCFG() (*sharedkafka.BrokerConfig, error) {
 		Endpoints: strings.Split(endpoints, ","),
 		SSLConfig: &sharedkafka.SSLConfig{
 			UseSSL:                useSSL,
-			CAPath:                os.Getenv(kafkaCfgCaPath),
-			ClientPrivateKeyPath:  os.Getenv(kafkaCfgPrivateKeyPath),
-			ClientCertificatePath: os.Getenv(kafkaCfgPrivateCertPath),
+			CAPath:                os.Getenv(kafkaCaPath),
+			ClientPrivateKeyPath:  os.Getenv(kafkaPrivateKeyPath),
+			ClientCertificatePath: os.Getenv(kafkaPrivateCertPath),
 		},
 		EncryptionPrivateKey: clientEncryptionPrivateKey,
 		EncryptionPublicKey:  clientEncryptionPublicKey,

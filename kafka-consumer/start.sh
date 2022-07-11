@@ -12,7 +12,7 @@ case "$1" in
   e2e)
     MODE="e2e"
     QUERY_NAME="e2e"
-    HTTP_URL="http://kafka-consumer-e2e:9200/asdf"
+    HTTP_URL="http://kafka-consumer-e2e:9200/foobar"
     ;;
   --help|-h|"")
     usage && exit 0
@@ -49,10 +49,10 @@ curl --location --request POST "http://localhost:8300/v1/flant/replica/$QUERY_NA
 --header "Content-Type: application/json" \
 --data-raw '{"type":"Vault","public_key":"'"$RSA_PUBLIC_KEY"'"}' &> /dev/null
 
-export CLIENT_CFG_TOPIC=root_source.$QUERY_NAME
-export CLIENT_CFG_GROUP_ID=$QUERY_NAME
-export CLIENT_CFG_ENCRYPTION_PRIVATE_KEY=$RSA_PRIVATE_KEY
-export CLIENT_CFG_ENCRYPTION_PUBLIC_KEY=$ROOT_VAULT_PUBLIC_KEY
+export CLIENT_TOPIC=root_source.$QUERY_NAME
+export CLIENT_GROUP_ID=$QUERY_NAME
+export CLIENT_ENCRYPTION_PUBLIC_KEY=$ROOT_VAULT_PUBLIC_KEY
+export CLIENT_ENCRYPTION_PRIVATE_KEY=$RSA_PRIVATE_KEY
 export HTTP_URL=$HTTP_URL
 
 docker-compose up -d
