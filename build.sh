@@ -123,7 +123,7 @@ function build_kafka_consumer() {
   mkdir -p $SCRIPTDIR/kafka-consumer/build
   mkdir -p /tmp/kafka-consumer-build
 
-  docker run --rm -it \
+  docker run --rm \
     --platform=linux/amd64 \
     -w /go/src/app/kafka-consumer \
     -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
