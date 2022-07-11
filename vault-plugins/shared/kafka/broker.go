@@ -67,15 +67,15 @@ type MessageBroker struct {
 	transProducerSync sync.Once
 	transProducer     *kafka.Producer
 
-	config       BrokerConfig
+	KafkaConfig  BrokerConfig
 	PluginConfig PluginConfig
 
-	logger log.Logger
+	Logger log.Logger
 }
 
 func NewMessageBroker(ctx context.Context, storage logical.Storage, parentLogger log.Logger) (*MessageBroker, error) {
 	mb := &MessageBroker{
-		logger: parentLogger.Named("MessageBroker"),
+		Logger: parentLogger.Named("MessageBroker"),
 	}
 	// load encryption private key
 	se, err := storage.Get(ctx, kafkaConfigPath)
@@ -90,7 +90,7 @@ func NewMessageBroker(ctx context.Context, storage logical.Storage, parentLogger
 			return nil, err
 		}
 
-		mb.config = config
+		mb.KafkaConfig = config
 	}
 
 	se, err = storage.Get(ctx, PluginConfigPath)
@@ -114,9 +114,9 @@ func NewMessageBroker(ctx context.Context, storage logical.Storage, parentLogger
 }
 
 func (mb *MessageBroker) CheckConfig() {
-	if len(mb.config.Endpoints) > 0 &&
-		mb.config.EncryptionPublicKey != nil &&
-		mb.config.EncryptionPrivateKey != nil &&
+	if len(mb.KafkaConfig.Endpoints) > 0 &&
+		mb.KafkaConfig.EncryptionPublicKey != nil &&
+		mb.KafkaConfig.EncryptionPrivateKey != nil &&
 		mb.PluginConfig.SelfTopicName != "" {
 		mb.isConfigured = true
 	}
@@ -127,7 +127,7 @@ func (mb *MessageBroker) Configured() bool {
 }
 
 func (mb *MessageBroker) withSSLConfig(config *kafka.ConfigMap) *kafka.ConfigMap {
-	return mb.config.SSLConfig.addSSLConfig(config)
+	return mb.KafkaConfig.SSLConfig.addSSLConfig(config)
 }
 
 func (mb *MessageBroker) CheckConnection(endpoints []string) error {
@@ -169,7 +169,7 @@ type BrokerConfig struct {
 
 	SSLConfig *SSLConfig `json:"ssl_config,omitempty"`
 
-	// Self pair of keys from this vault plugin instance
+	// Self pair of keys from this vault plugin instance (or plugin privateKey and root publicKey for root source reading)
 	EncryptionPrivateKey *rsa.PrivateKey `json:"encrypt_private_key,omitempty"`
 	EncryptionPublicKey  *rsa.PublicKey  `json:"encrypt_public_key,omitempty"`
 }
@@ -225,19 +225,19 @@ type PluginConfig struct {
 }
 
 func (mb *MessageBroker) EncryptionPrivateKey() *rsa.PrivateKey {
-	return mb.config.EncryptionPrivateKey
+	return mb.KafkaConfig.EncryptionPrivateKey
 }
 
 func (mb *MessageBroker) GetEndpoints() []string {
-	return mb.config.Endpoints
+	return mb.KafkaConfig.Endpoints
 }
 
 func (mb *MessageBroker) EncryptionPublicKey() *rsa.PublicKey {
-	return mb.config.EncryptionPublicKey
+	return mb.KafkaConfig.EncryptionPublicKey
 }
 
 func (mb *MessageBroker) GetEncryptionPublicKeyStrict() (string, error) {
-	k := mb.config.EncryptionPublicKey
+	k := mb.KafkaConfig.EncryptionPublicKey
 	if k == nil {
 		return "", fmt.Errorf("cannot getting kafka public key. may be kafka is not configure")
 	}
@@ -254,7 +254,7 @@ func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
 }
 
 func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) *kafka.Consumer {
-	brokers := strings.Join(mb.config.Endpoints, ",")
+	brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 	c, err := kafka.NewConsumer(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 consumerGroupID,
@@ -288,8 +288,8 @@ func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
 }
 
 func (mb *MessageBroker) SendMessages(msgs []Message, sourceInput *SourceInputMessage) error {
-	mb.logger.Debug("SendMessages - started")
-	defer mb.logger.Debug("SendMessages - exit")
+	mb.Logger.Debug("SendMessages - started")
+	defer mb.Logger.Debug("SendMessages - exit")
 	if sourceInput != nil && (sourceInput.IgnoreBody || len(msgs) == 0) {
 		return mb.sendOffset(sourceInput)
 	}
@@ -356,7 +356,7 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 			_ = p.AbortTransaction(ctx)
 			return err
 		} else if err.(kafka.Error).IsRetriable() {
-			mb.logger.Info(fmt.Sprintf("got err.(kafka.Error).IsRetriable():%s, retry in 5 seconds", err.Error()))
+			mb.Logger.Info(fmt.Sprintf("got err.(kafka.Error).IsRetriable():%s, retry in 5 seconds", err.Error()))
 			time.Sleep(500 * time.Millisecond)
 			return mb.sendMessages(msgs, source) // FIXME: not the best recursive call
 		}
@@ -389,7 +389,7 @@ func (mb *MessageBroker) prepareMessage(msg Message) *kafka.Message {
 
 func (mb *MessageBroker) getProducer() *kafka.Producer {
 	mb.producerSync.Do(func() {
-		brokers := strings.Join(mb.config.Endpoints, ",")
+		brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			// "batch.size": 16384,
@@ -406,7 +406,7 @@ func (mb *MessageBroker) getProducer() *kafka.Producer {
 
 func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 	mb.transProducerSync.Do(func() {
-		brokers := strings.Join(mb.config.Endpoints, ",")
+		brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			"transactional.id":  mb.PluginConfig.SelfTopicName,
@@ -427,7 +427,7 @@ func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
 }
 
 func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config map[string]string) error {
-	brokers := strings.Join(mb.config.Endpoints, ",")
+	brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 	ac, err := kafka.NewAdminClient(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
 	}))
@@ -437,9 +437,9 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 
 	repFactor := 1
 	inSyncReplicas := 1
-	if len(mb.config.Endpoints) > 1 {
-		repFactor = len(mb.config.Endpoints)
-		inSyncReplicas = len(mb.config.Endpoints) - 1
+	if len(mb.KafkaConfig.Endpoints) > 1 {
+		repFactor = len(mb.KafkaConfig.Endpoints)
+		inSyncReplicas = len(mb.KafkaConfig.Endpoints) - 1
 	}
 
 	tc := kafka.TopicSpecification{
@@ -474,7 +474,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 }
 
 func (mb *MessageBroker) DeleteTopic(ctx context.Context, topicName string) error {
-	brokers := strings.Join(mb.config.Endpoints, ",")
+	brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 	ac, err := kafka.NewAdminClient(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
 	}))
@@ -507,7 +507,7 @@ func (mb *MessageBroker) Close() {
 func (mb *MessageBroker) TopicExists(topic string) (bool, error) {
 	groupID := fmt.Sprintf("temp_group_%d", time.Now().Unix())
 	consumer := mb.getUnsubscribedConsumer(groupID)
-	defer DeferredСlose(consumer, mb.logger)
+	defer DeferredСlose(consumer, mb.Logger)
 	var err error = nil
 	var meta *kafka.Metadata = nil
 

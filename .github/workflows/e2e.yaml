@@ -37,10 +37,18 @@ jobs:
       - name: Build
         run: bash build.sh
 
-      - name: Setup Vault
+      - name: Setup Negentropy
         run: bash start.sh e2e
 
-      - name: Tests
+      - name: Run Negentropy E2E tests
+        run: bash run-e2e-tests.sh
+
+      - name: Setup kafka consumer
+        working-directory: kafka-consumer
+        run: bash start.sh e2e
+
+      - name: Run kafka consumer E2E tests
+        working-directory: kafka-consumer
         run: bash run-e2e-tests.sh
 
       - name: Save docker logs

@@ -1,10 +1,3 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
 # IDE
 .vscode
 .idea
@@ -12,11 +5,11 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
 # Python bytecode
 __pycache__
+
+# Python virtualenv
+scripts/environment/
 
 # Terraform and packer stuff
 infra/**/packer_cache
@@ -50,9 +43,15 @@ server-access/server-access-nss/target/
 # oidc mock
 e2e/tests/lib/oidc_mock/build/
 
+# kafka consumer
+kafka-consumer/build/
+kafka-consumer/id_rsa
+kafka-consumer/id_rsa.pub
+
 # e2e
 e2e/tests/**/*.log
 e2e/tools/*
 
 # okta uuid
 okta-uuid
+okta-email

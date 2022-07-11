@@ -21,13 +21,13 @@ const (
 )
 
 func (mb *MessageBroker) handlePublicKeyRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	if mb.config.EncryptionPublicKey == nil {
+	if mb.KafkaConfig.EncryptionPublicKey == nil {
 		return nil, logical.CodedError(http.StatusNotFound, "public key does not exist. Run /kafka/configure_access first")
 	}
 	pemdata := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PUBLIC KEY",
-			Bytes: x509.MarshalPKCS1PublicKey(mb.config.EncryptionPublicKey),
+			Bytes: x509.MarshalPKCS1PublicKey(mb.KafkaConfig.EncryptionPublicKey),
 		},
 	)
 
@@ -44,25 +44,25 @@ func (mb *MessageBroker) handleConfigureAccess(ctx context.Context, req *logical
 	if len(endpoints) == 0 {
 		return nil, logical.CodedError(http.StatusBadRequest, "endpoints required")
 	}
-	mb.config.Endpoints = endpoints
+	mb.KafkaConfig.Endpoints = endpoints
 	sslConfig, err := parseSSLCfg(data)
 	if err != nil {
-		mb.logger.Error(err.Error())
+		mb.Logger.Error(err.Error())
 		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
 	}
-	mb.config.SSLConfig = sslConfig
+	mb.KafkaConfig.SSLConfig = sslConfig
 	// TODO: check kafka connection
 	// generate encryption keys
-	if mb.config.EncryptionPrivateKey == nil {
+	if mb.KafkaConfig.EncryptionPrivateKey == nil {
 		pk, err := rsa.GenerateKey(rand.Reader, 4096)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, err.Error())
 		}
-		mb.config.EncryptionPrivateKey = pk
-		mb.config.EncryptionPublicKey = &pk.PublicKey
+		mb.KafkaConfig.EncryptionPrivateKey = pk
+		mb.KafkaConfig.EncryptionPublicKey = &pk.PublicKey
 	}
 
-	d, err := json.Marshal(mb.config)
+	d, err := json.Marshal(mb.KafkaConfig)
 	if err != nil {
 		return nil, err
 	}
