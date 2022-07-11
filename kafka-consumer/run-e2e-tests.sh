@@ -6,7 +6,7 @@ SCRIPTDIR="$(realpath ../$(dirname "$0"))"
 ROOT_VAULT_TOKEN=$(cat /tmp/vaults | jq -r '[.[]|select(.name=="root")][0].token')
 ROOT_VAULT_URL=http://vault-root:8300
 
-docker run --rm -it \
+docker run --rm \
   --platform=linux/amd64 \
   --name kafka-consumer-e2e \
   --network=negentropy \
