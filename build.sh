@@ -76,7 +76,7 @@ function build_server_accessd() {
     --platform=linux/amd64 \
     -w /go/src/server-accessd \
     -v $SCRIPTDIR/authd:/go/src/authd \
-    -v $SCRIPTDIRDIR/server-access/flant-server-accessd/build:/src/build \
+    -v $SCRIPTDIR/server-access/flant-server-accessd/build:/src/build \
     -v $SCRIPTDIR/server-access:/go/src/server-accessd \
     -v $SCRIPTDIR/cli:/go/src/cli \
     -v $SCRIPTDIR/vault-plugins:/go/src/vault-plugins \
