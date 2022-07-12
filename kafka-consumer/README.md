@@ -47,25 +47,22 @@ KEY-----\\nMIIBigKCAYEA4cS4zynvKjYPzVVz921JXWLuElks/cs6CBvJK9UAWdapAg4P+Hb8\\ni2
 RSA PUBLIC KEY-----"}'
 ```
 - configure consumer by setting environment variables:
-  * KAFKA_CFG_SERVERS: localhost:9094
-  * KAFKA_CFG_USE_SSL: true
-  * KAFKA_CFG_CA_PATH: ../docker/kafka/ca.crt
-  * KAFKA_CFG_PRIVATE_KEY_PATH: ../docker/kafka/client.key
-  * KAFKA_CFG_PRIVATE_CERT_PATH: ../docker/kafka/client.crt
-  * CLIENT_CFG_TOPIC: root_source.bush (if `NAME` in previous step was `bush`)
-  * CLIENT_CFG_GROUP_ID: bush
-  * CLIENT_CFG_ENCRYPTION_PRIVATE_KEY: a private part of pair which was generated at early step and is saved at `./id_rsa`
-  * CLIENT_CFG_ENCRYPTION_PUBLIC_KEY: public key from iam. Get it by `curl -s -H "X-Vault-Token: TOKEN" http://127.0.0.1:8300/v1/flant/kafka/public_key | jq -r .data.public_key`
+  * KAFKA_ENDPOINTS: localhost:9094
+  * KAFKA_USE_SSL: true
+  * KAFKA_CA_PATH: ../docker/kafka/ca.crt
+  * KAFKA_PRIVATE_KEY_PATH: ../docker/kafka/client.key
+  * KAFKA_PRIVATE_CERT_PATH: ../docker/kafka/client.crt
+  * CLIENT_TOPIC: root_source.bush (if `NAME` in previous step was `bush`)
+  * CLIENT_GROUP_ID: bush
+  * CLIENT_ENCRYPTION_PRIVATE_KEY: a private part of pair which was generated at early step and is saved at `./id_rsa`
+  * CLIENT_ENCRYPTION_PUBLIC_KEY: public key from iam. Get it by `curl -s -H "X-Vault-Token: TOKEN" http://127.0.0.1:8300/v1/flant/kafka/public_key | jq -r .data.public_key`
   * HTTP_URL: http://localhost:9200/asdf
-- run http mock:
-```
-go run kafka-consumer/e2e/mock/gate_mock.go
 ```
 - run consumer:
 ```
 go run kafka-consumer/cmd/consumer/main.go
 ```
-- run e2e tests (from root directory):
+- run kafka consumer e2e tests:
 ```
-./run-e2e-tests.sh
+go test ./...
 ```
