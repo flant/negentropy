@@ -170,7 +170,6 @@ func (c *Client) OpenVaultSession(loginRequest *v1.LoginRequest) error {
 		defer resp.Body.Close()
 		b, _ := io.ReadAll(resp.Body)
 		msg := string(b)
-		fmt.Println(string(b))
 		if resp.StatusCode == http.StatusForbidden {
 			return fmt.Errorf("%w, err: %s \nlogin request: %#v \nmsg:%s", consts.ErrAccessForbidden, err.Error(), loginRequest, msg)
 		}
