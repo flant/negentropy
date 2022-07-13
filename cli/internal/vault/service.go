@@ -22,7 +22,7 @@ type VaultService interface {
 	UpdateTenants(map[iam.TenantUUID]iam.Tenant, model.StringSet) (map[iam.TenantUUID]iam.Tenant, error)
 	// UpdateProjects update oldProjects by vault requests, according specified identifiers given by args
 	UpdateProjects(map[iam.ProjectUUID]iam.Project, map[iam.TenantUUID]iam.Tenant,
-		model.StringSet) (map[iam.ProjectUUID]iam.Project, error)
+		model.StringSet) (map[iam.TenantUUID]iam.Tenant, map[iam.ProjectUUID]iam.Project, error)
 }
 
 type vaultService struct {
@@ -81,7 +81,7 @@ func (v *vaultService) updateServerListByTenantAndProject(filter model.ServerFil
 		break // the only one uuid should be presented
 	}
 
-	projects, err := v.UpdateProjects(oldServerlist.Projects, tenants, filter.ProjectIdentifiers)
+	tenants, projects, err := v.UpdateProjects(oldServerlist.Projects, tenants, filter.ProjectIdentifiers)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenantAndProject, collecting project: %w", err)
 	}
@@ -130,7 +130,7 @@ func (v *vaultService) updateServerListByTenant(filter model.ServerFilter, oldSe
 		break // the only one uuid should be presented
 	}
 
-	projects, err := v.UpdateProjects(oldServerlist.Projects, tenants, nil)
+	tenants, projects, err := v.UpdateProjects(oldServerlist.Projects, tenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByTenant, collecting project: %w", err)
 	}
@@ -156,7 +156,7 @@ func (v *vaultService) updateServerListByProject(filter model.ServerFilter, oldS
 		return nil, fmt.Errorf("updateServerListByProject, collecting tenant: %w", err)
 	}
 
-	projects, err := v.UpdateProjects(oldServerlist.Projects, allTenants, filter.ProjectIdentifiers)
+	allTenants, projects, err := v.UpdateProjects(oldServerlist.Projects, allTenants, filter.ProjectIdentifiers)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerListByProject, collecting project: %w", err)
 	}
@@ -185,8 +185,7 @@ func (v *vaultService) updateServerList(filter model.ServerFilter, oldServerlist
 	if err != nil {
 		return nil, fmt.Errorf("updateServerList, collecting tenant: %w", err)
 	}
-
-	allProjects, err := v.UpdateProjects(oldServerlist.Projects, allTenants, nil)
+	allTenants, allProjects, err := v.UpdateProjects(oldServerlist.Projects, allTenants, nil)
 	if err != nil {
 		return nil, fmt.Errorf("updateServerList, collecting project: %w", err)
 	}
@@ -261,15 +260,21 @@ func (v *vaultService) UpdateTenants(oldTenants map[iam.TenantUUID]iam.Tenant,
 	return result, nil
 }
 
-// UpdateProjects return user projects synchronized with vault
+// UpdateProjects return user projects and tenants synchronized with vault
 func (v *vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Project, tenants map[iam.TenantUUID]iam.Tenant,
-	projectIdentifiers model.StringSet) (map[iam.ProjectUUID]iam.Project, error) {
+	projectIdentifiers model.StringSet) (map[iam.TenantUUID]iam.Tenant, map[iam.ProjectUUID]iam.Project, error) {
+	resultTenants := map[iam.TenantUUID]iam.Tenant{}
 	result := map[iam.ProjectUUID]iam.Project{}
 	var projects []auth.Project
-	for tenantUUID := range tenants {
+	for tenantUUID, tenant := range tenants {
 		ps, err := v.cl.GetProjects(tenantUUID)
+		if errors.Is(err, consts.ErrAccessForbidden) {
+			// this tenant is prohibited, doesn't add it to list
+			continue
+		}
+		resultTenants[tenantUUID] = tenant
 		if err != nil {
-			return nil, fmt.Errorf("UpdateProjects: %w", err)
+			return nil, nil, fmt.Errorf("UpdateProjects: %w", err)
 		}
 		projects = append(projects, ps...)
 	}
@@ -281,7 +286,7 @@ func (v *vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Projec
 			oldProject.Version != p.Version {
 			tmp, err := v.cl.GetProjectByUUID(p.TenantUUID, p.UUID)
 			if err != nil {
-				return nil, fmt.Errorf("UpdateProjects: %w", err)
+				return nil, nil, fmt.Errorf("UpdateProjects: %w", err)
 			}
 			project = *tmp
 		} else {
@@ -291,5 +296,5 @@ func (v *vaultService) UpdateProjects(oldProjects map[iam.ProjectUUID]iam.Projec
 			result[project.UUID] = project
 		}
 	}
-	return result, nil
+	return resultTenants, result, nil
 }
