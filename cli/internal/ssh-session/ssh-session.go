@@ -34,7 +34,7 @@ type VaultAuthReader interface {
 	UpdateTenants(map[iam.TenantUUID]iam.Tenant, model.StringSet) (map[iam.TenantUUID]iam.Tenant, error)
 	// UpdateProjects update oldProjects by vault requests, according specified identifiers given by args
 	UpdateProjects(map[iam.ProjectUUID]iam.Project, map[iam.TenantUUID]iam.Tenant,
-		model.StringSet) (map[iam.ProjectUUID]iam.Project, error)
+		model.StringSet) (map[iam.TenantUUID]iam.Tenant, map[iam.ProjectUUID]iam.Project, error)
 }
 
 type Session struct {

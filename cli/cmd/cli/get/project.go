@@ -112,7 +112,7 @@ func getProjectData(onlyCache bool, cache *model.Cache, serverFilter model.Serve
 		if err != nil {
 			return nil, nil, err
 		}
-		projects, err = vaultService.UpdateProjects(cache.Projects, tenants, serverFilter.ProjectIdentifiers)
+		tenants, projects, err = vaultService.UpdateProjects(cache.Projects, tenants, serverFilter.ProjectIdentifiers)
 		if err != nil {
 			return nil, nil, err
 		}
