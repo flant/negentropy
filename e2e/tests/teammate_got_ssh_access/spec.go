@@ -266,8 +266,8 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 		writeLogToFile(output, fmt.Sprintf("cli.log"))
 
-		Expect(s.DirectoryAtContainerNotExistOrEmpty(s.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-			"/tmp/flint files doesn't exist after closing cli")
+		Expect(s.DirectoryAtContainerNotExistOrEmpty(s.TestClientContainer, "/tmp/flint/flant")).To(BeTrue(),
+			"/tmp/flint/flant files doesn't exist after closing cli")
 
 		Expect(s.CheckFileExistAtContainer(s.TestServerContainer, testFilePath, "f")).
 			ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")

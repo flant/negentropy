@@ -93,7 +93,7 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	homeDirRelPath := identifier
 
 	if pb.tenantID != objectTenantID {
-		// name = fullIdentifier // TODO maybe fix simultaneously with ssh_config at cli
+		name = fullIdentifier
 		repo := iam_repo.NewTenantRepository(pb.tx)
 		tenant, err := repo.GetByID(objectTenantID)
 		if err != nil {

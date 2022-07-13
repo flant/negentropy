@@ -26,7 +26,24 @@ func RenderKnownHostsRow(s ext.Server) string {
 
 func RenderSSHConfigEntry(project iam.Project, s ext.Server, user auth.User) string {
 	entryBuffer := bytes.Buffer{}
-	tmpl, err := template.New("ssh_config_entry").Parse(`
+	var tmpl *template.Template
+	var err error
+	if project.TenantUUID != user.TenantUUID {
+		tmpl, err = template.New("ssh_config_entry").Parse(`
+Host {{.Project.Identifier}}.{{.Server.Identifier}}
+  ForwardAgent yes
+  User {{.User.FullIdentifier}}
+  Hostname {{.Server.ConnectionInfo.Hostname}}
+{{- if .Server.ConnectionInfo.Port }}
+  Port {{.Server.ConnectionInfo.Port}}
+{{- end }}
+{{- if .Server.ConnectionInfo.JumpHostname }}
+  ProxyCommand ssh {{.ServerConnectionInfo.JumpHostname}} -W %h:%p
+{{- end }}
+
+`)
+	} else {
+		tmpl, err = template.New("ssh_config_entry").Parse(`
 Host {{.Project.Identifier}}.{{.Server.Identifier}}
   ForwardAgent yes
   User {{.User.Identifier}}
@@ -39,6 +56,8 @@ Host {{.Project.Identifier}}.{{.Server.Identifier}}
 {{- end }}
 
 `)
+	}
+
 	if err != nil {
 		panic(err)
 	}

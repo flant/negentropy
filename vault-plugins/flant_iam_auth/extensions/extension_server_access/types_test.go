@@ -99,8 +99,7 @@ func TestUserToPosix(t *testing.T) {
 	assert.Contains(t, posix1.Password, "$6$")
 
 	posix2, _ := builder.userToPosix(user2)
-	// assert.Equal(t, "vasya@tenant2", posix2.Name) // TODO  return adding @tenant_identifier after fixing cli
-	assert.Equal(t, "vasya", posix2.Name)
+	assert.Equal(t, "vasya@tenant2", posix2.Name)
 	assert.Equal(t, 56, posix2.UID)
 	assert.Equal(t, "/home/tenant2/vasya", posix2.HomeDir)
 	assert.Contains(t, posix2.Password, "$6$")
