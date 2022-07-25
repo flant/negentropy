@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
+
 	"github.com/hashicorp/vault/sdk/logical"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -60,6 +62,17 @@ func (b *BackendBasedAPI) request(operation logical.Operation, url string, param
 	}
 
 	resp, requestErr := (*b.Backend).HandleRequest(context.Background(), request)
+
+	if requestErr == nil {
+		if errRaw, gotErrMsg := resp.Data["error"]; gotErrMsg {
+			errMsg := errRaw.(string)
+			if strings.HasSuffix(errMsg, " field does not match the formatting rules") {
+				requestErr = fmt.Errorf("%w: %s", consts.ErrInvalidArg, errMsg)
+			} else {
+				requestErr = fmt.Errorf("%s", errMsg)
+			}
+		}
+	}
 
 	if requestErr != nil {
 		statusCodeInt := backentutils.MapErrorToHTTPStatusCode(requestErr)
