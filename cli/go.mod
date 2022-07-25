@@ -7,13 +7,13 @@ require (
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
-	github.com/google/uuid v1.2.0
-	github.com/hashicorp/vault/api v1.1.1
-	github.com/spf13/cobra v1.2.1
+	github.com/google/uuid v1.3.0
+	github.com/hashicorp/vault/api v1.7.2
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.8.1
-	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210415154028-4f45737414dc
+	github.com/spf13/viper v1.12.0
+	github.com/stretchr/testify v1.8.0
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
 replace (

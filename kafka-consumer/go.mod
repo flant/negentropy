@@ -4,17 +4,16 @@ go 1.16
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/confluentinc/confluent-kafka-go v1.6.1
+	github.com/confluentinc/confluent-kafka-go v1.9.1
 	github.com/flant/negentropy/e2e v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
-	github.com/hashicorp/go-hclog v1.2.0
-	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.10.1
-	github.com/spf13/cobra v1.2.1
+	github.com/hashicorp/go-hclog v1.2.1
+	github.com/onsi/ginkgo v1.16.5
+	github.com/onsi/gomega v1.20.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.7.1
-
+	github.com/stretchr/testify v1.8.0
 )
 
 replace (
