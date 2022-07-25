@@ -1,6 +1,6 @@
 module github.com/flant/negentropy/e2e
 
-go 1.16
+go 1.17
 
 require (
 	github.com/docker/docker v20.10.17+incompatible

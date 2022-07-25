@@ -25,7 +25,7 @@ export CRC32C_PURE_PYTHON=1
 python3 -m pip install -r requirements.txt
 
 # Go
-GO_VERSION="1.16"
+GO_VERSION="1.17"
 export GOPATH="/opt/golang"
 export GOROOT="$GOPATH/local/go${GO_VERSION}"
 mkdir -p $GOROOT

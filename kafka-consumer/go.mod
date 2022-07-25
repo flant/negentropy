@@ -1,6 +1,6 @@
 module github.com/flant/negentropy/kafka-consumer
 
-go 1.16
+go 1.17
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible

@@ -1,6 +1,6 @@
 module github.com/flant/negentropy/e2e/tests/lib/oidc_mock
 
-go 1.16
+go 1.17
 
 require (
 	github.com/caos/oidc v1.0.0

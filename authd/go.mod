@@ -1,6 +1,6 @@
 module github.com/flant/negentropy/authd
 
-go 1.15
+go 1.17
 
 require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
