@@ -9,14 +9,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/flant/negentropy/vault-plugins/shared/consts"
-
 	"github.com/hashicorp/vault/sdk/logical"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 type Params = map[string]interface{}
