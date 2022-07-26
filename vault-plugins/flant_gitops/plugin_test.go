@@ -139,6 +139,8 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 		}
 	}
 
+	fmt.Println("POINT 1 ================")
+
 	// comfigure flant_gitops plugin itself
 	{
 		testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
@@ -241,7 +243,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
 	}
-
+	fmt.Println("POINT 2 ================")
 	var periodicTaskUUIDs []string
 
 	invokePeriodicRun(t, ctx, b, testLogger, storage)
@@ -256,7 +258,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			t.Fatalf("expected VAULT_ADDR to equal %q, got: %s", expectedVaultAddr, lines[0])
 		}
 	}
-
+	fmt.Println("POINT 3 ================")
 	if match, _ := testLogger.Grep("VAULT_CACERT"); !match {
 		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
 	}
@@ -272,7 +274,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 	if match, _ := testLogger.Grep("VAULT_REQUEST_TOKEN_GET_BUCKET2"); !match {
 		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
 	}
-
+	fmt.Println("POINT 4 ================")
 	if match, data := testLogger.GetDataByMarkers("VAULT_CACERT BEGIN", "VAULT_CACERT END"); !match {
 		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
 	} else if string(data) != string(vaultCaCrtData) {
@@ -293,7 +295,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			t.Fatalf("expected data.key1 to equal value1, got:\n%s\n", data)
 		}
 	}
-
+	fmt.Println("POINT 5 ================")
 	if match, data := testLogger.GetDataByMarkers("VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP BEGIN", "VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP END"); !match {
 		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
 	} else {
@@ -308,6 +310,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			t.Fatalf("expected data.key2 to equal value2, got:\n%s\n", data)
 		}
 	}
+	fmt.Println("POINT 6 ================")
 }
 
 func RunVaultCommand(t *testing.T, args ...string) []byte {
