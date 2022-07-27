@@ -15,6 +15,9 @@ require (
 	github.com/onsi/gomega v1.20.0
 	github.com/tidwall/gjson v1.14.1
 	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+require (
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
@@ -34,6 +37,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -95,8 +99,9 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
+	golang.org/x/tools v0.1.9 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
+	google.golang.org/genproto v0.0.0-20220616135557-88e70c0c3a90 // indirect
 	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

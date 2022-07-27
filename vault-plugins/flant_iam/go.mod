@@ -15,7 +15,10 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.14.1
-	k8s.io/apimachinery v0.24.3
+	k8s.io/apimachinery v0.22.2
+)
+
+require (
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -73,7 +76,6 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared

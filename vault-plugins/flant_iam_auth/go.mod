@@ -30,7 +30,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	gopkg.in/square/go-jose.v2 v2.6.0
 	gotest.tools v2.2.0+incompatible
-	k8s.io/apimachinery v0.24.3
+	k8s.io/apimachinery v0.22.2
 )
 
 require (
@@ -110,7 +110,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
