@@ -22,7 +22,7 @@ require (
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
-	github.com/open-policy-agent/opa v0.42.2
+	github.com/open-policy-agent/opa v0.35.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.8.0
@@ -31,8 +31,10 @@ require (
 	gopkg.in/square/go-jose.v2 v2.6.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/apimachinery v0.24.3
+)
+
+require (
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
-	github.com/agnivade/levenshtein v1.0.1 // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
@@ -90,7 +92,6 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/vektah/gqlparser/v2 v2.4.5 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
@@ -98,11 +99,11 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220503193339-ba3ae3f07e29 // indirect
+	google.golang.org/genproto v0.0.0-20220616135557-88e70c0c3a90 // indirect
 	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
