@@ -53,7 +53,7 @@ func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles 
 		return nil, fmt.Errorf("collectingEffectiveRoles: %w", err)
 	}
 
-	var rolesResults = map[iam_model.RoleName]tenantsResultMap{}
+	rolesResults := map[iam_model.RoleName]tenantsResultMap{}
 	rolesResults, err = c.mapToEffectiveRoleResult(effectiveRoles)
 	if err != nil {
 		return nil, fmt.Errorf("mappingEffectiveRoles: %w", err)
@@ -61,8 +61,10 @@ func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles 
 	return c.buildEffectiveRoleResults(rolesResults)
 }
 
-type projectsResultMap = map[iam_model.ProjectUUID]EffectiveRoleProjectResult
-type tenantsResultMap = map[iam_model.TenantUUID]projectsResultMap
+type (
+	projectsResultMap = map[iam_model.ProjectUUID]EffectiveRoleProjectResult
+	tenantsResultMap  = map[iam_model.TenantUUID]projectsResultMap
+)
 
 func (c *EffectiveRoleChecker) buildEffectiveRoleResults(rolesResults map[iam_model.RoleName]tenantsResultMap) ([]EffectiveRoleResult, error) {
 	result := make([]EffectiveRoleResult, 0, len(rolesResults))
