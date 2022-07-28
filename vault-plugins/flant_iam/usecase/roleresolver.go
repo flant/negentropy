@@ -188,7 +188,12 @@ func (r *roleResolver) collectAllRoleBindingsForUser(
 	if err != nil {
 		return nil, err
 	}
-	roleBindings := groupsRBs
+	roleBindings := map[model.RoleBindingUUID]*model.RoleBinding{}
+	for uuid, rb := range groupsRBs {
+		if rb.ValidTill == 0 || rb.ValidTill > time.Now().Unix() {
+			roleBindings[uuid] = rb
+		}
+	}
 	for uuid, rb := range userRBs {
 		if rb.ValidTill == 0 || rb.ValidTill > time.Now().Unix() {
 			roleBindings[uuid] = rb
@@ -211,9 +216,16 @@ func (r *roleResolver) collectAllRoleBindingsForServiceAccount(
 	if err != nil {
 		return nil, err
 	}
-	roleBindings := groupsRBs
+	roleBindings := map[model.RoleBindingUUID]*model.RoleBinding{}
+	for uuid, rb := range groupsRBs {
+		if rb.ValidTill == 0 || rb.ValidTill > time.Now().Unix() {
+			roleBindings[uuid] = rb
+		}
+	}
 	for uuid, rb := range serviceAccountRBs {
-		roleBindings[uuid] = rb
+		if rb.ValidTill == 0 || rb.ValidTill > time.Now().Unix() {
+			roleBindings[uuid] = rb
+		}
 	}
 	return roleBindings, nil
 }

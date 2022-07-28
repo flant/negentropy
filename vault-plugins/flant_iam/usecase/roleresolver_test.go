@@ -50,6 +50,7 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
+		approvalInformer:     repo.NewRoleBindingApprovalRepository(tx),
 	}
 
 	hasRole, effectiveRoles, err := rr.CheckUserForRolebindingsAtProject(fixtures.UserUUID1, fixtures.RoleName1,
@@ -57,8 +58,16 @@ func Test_CheckUserForProjectScopedRole(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
-	expectedEffectiveRoles := []EffectiveRole{}
-	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID2, fixtures.RbUUID3},
+		roleBindingsUUIDsFromEffectiveRoles(effectiveRoles))
+}
+
+func roleBindingsUUIDsFromEffectiveRoles(ers []EffectiveRole) []string {
+	result := []string{}
+	for _, er := range ers {
+		result = append(result, er.RoleBindingUUID)
+	}
+	return result
 }
 
 func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
@@ -84,6 +93,7 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
+		approvalInformer:     repo.NewRoleBindingApprovalRepository(tx),
 	}
 
 	hasRole, effectiveRoles, err := rr.CheckServiceAccountForRolebindingsAtProject(fixtures.ServiceAccountUUID1, fixtures.RoleName1,
@@ -91,8 +101,8 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
-	expectedEffectiveRoles := []EffectiveRole{}
-	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
+	require.ElementsMatch(t, []string{fixtures.RbUUID1, fixtures.RbUUID3, fixtures.RbUUID5},
+		roleBindingsUUIDsFromEffectiveRoles(effectiveRoles))
 }
 
 func Test_CheckUserForTenantScopedRole(t *testing.T) {
@@ -102,6 +112,7 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
+		approvalInformer:     repo.NewRoleBindingApprovalRepository(tx),
 	}
 
 	hasRole, effectiveRoles, err := rr.CheckUserForRolebindingsAtTenant(fixtures.UserUUID2, fixtures.RoleName9,
@@ -109,8 +120,8 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
-	expectedEffectiveRoles := []EffectiveRole{}
-	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
+	require.ElementsMatch(t, []string{fixtures.RbUUID7, fixtures.RbUUID8},
+		roleBindingsUUIDsFromEffectiveRoles(effectiveRoles))
 }
 
 func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
@@ -120,6 +131,7 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
 		roleBindingsInformer: repo.NewRoleBindingRepository(tx),
+		approvalInformer:     repo.NewRoleBindingApprovalRepository(tx),
 	}
 
 	hasRole, effectiveRoles, err := rr.CheckServiceAccountForRolebindingsAtTenant(fixtures.ServiceAccountUUID2,
@@ -127,8 +139,8 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, hasRole)
-	expectedEffectiveRoles := []EffectiveRole{}
-	require.Equal(t, expectedEffectiveRoles, effectiveRoles)
+	require.ElementsMatch(t, []string{fixtures.RbUUID6, fixtures.RbUUID7},
+		roleBindingsUUIDsFromEffectiveRoles(effectiveRoles))
 }
 
 func Test_FindMembersWithProjectScopedRole(t *testing.T) {
