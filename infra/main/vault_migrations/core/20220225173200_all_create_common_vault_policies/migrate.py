@@ -24,3 +24,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: create check_permissions policy at '{}' vault".format(vault_name))
     vault_client.sys.create_or_update_policy(name="check_permissions",
                                              policy="""path "auth/flant/check_permissions" {capabilities = ["create", "update"]}""")
+    print("INFO: create check_effective_roles policy at '{}' vault".format(vault_name))
+    vault_client.sys.create_or_update_policy(name="check_effective_roles",
+                                             policy="""path "auth/flant/check_effective_roles" {capabilities = ["create", "update"]}""")
