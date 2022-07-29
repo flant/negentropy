@@ -88,10 +88,6 @@ func (r *roleResolver) CollectUserEffectiveRoles(userUUID model.UserUUID, roles 
 	}
 
 	for _, roleName := range roles {
-		role, err := r.roleInformer.GetByID(roleName)
-		if err != nil {
-			return nil, err
-		}
 		effectiveRoles := []EffectiveRole{}
 		_, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
 		if err != nil {
@@ -106,7 +102,7 @@ func (r *roleResolver) CollectUserEffectiveRoles(userUUID model.UserUUID, roles 
 					TenantUUID:      roleBinding.TenantUUID,
 					ValidTill:       roleBinding.ValidTill,
 					RequireMFA:      roleBinding.RequireMFA,
-					AnyProject:      roleBinding.AnyProject || role.Scope == model.RoleScopeTenant,
+					AnyProject:      roleBinding.AnyProject,
 					Projects:        roleBinding.Projects,
 					NeedApprovals:   r.approvalInformer.RoleBindingApprovalCount(roleBinding.UUID),
 					Options:         nil, // do not feel
