@@ -28,7 +28,7 @@ func roleFixture(t *testing.T, store *io.MemoryStore) {
 }
 
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
-	tx := runFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, roleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindDirectParentRoles(fixtures.RoleName1)
@@ -38,7 +38,7 @@ func Test_Role_findDirectIncludingRoles(t *testing.T) {
 }
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
-	tx := runFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, roleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindAllAncestorsRoles(fixtures.RoleName1)
@@ -170,7 +170,7 @@ func Test_excludeRole(t *testing.T) {
 }
 
 func Test_Role_IsArchived(t *testing.T) {
-	tx := runFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, roleFixture).Txn(true)
 	err := (&RoleService{tx}).Delete(fixtures.RoleName4)
 	require.NoError(t, err)
 
@@ -181,7 +181,7 @@ func Test_Role_IsArchived(t *testing.T) {
 }
 
 func Test_DeleteRole_Failed(t *testing.T) {
-	tx := runFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, roleFixture).Txn(true)
 
 	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
 

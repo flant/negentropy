@@ -28,13 +28,13 @@ func NewEffectiveRoleChecker(txn *io.MemoryStoreTxn) *EffectiveRoleChecker {
 
 type EffectiveRoleResult struct {
 	Role    iam_model.RoleName          `json:"role"`
-	Tenants []EffectiveRoleTenantResult `json:"tenants,omitempty"`
+	Tenants []EffectiveRoleTenantResult `json:"tenants"`
 }
 
 type EffectiveRoleTenantResult struct {
 	TenantUUID       iam_model.TenantUUID         `json:"uuid"`
 	TenantIdentifier string                       `json:"identifier"`
-	Projects         []EffectiveRoleProjectResult `json:"projects,omitempty"`
+	Projects         []EffectiveRoleProjectResult `json:"projects"`
 }
 
 type EffectiveRoleProjectResult struct {
@@ -58,7 +58,7 @@ func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles 
 	if err != nil {
 		return nil, fmt.Errorf("mappingEffectiveRoles: %w", err)
 	}
-	return c.buildEffectiveRoleResults(rolesResults)
+	return c.buildEffectiveRoleResults(roles, rolesResults)
 }
 
 type (
@@ -66,9 +66,10 @@ type (
 	tenantsResultMap  = map[iam_model.TenantUUID]projectsResultMap
 )
 
-func (c *EffectiveRoleChecker) buildEffectiveRoleResults(rolesResults map[iam_model.RoleName]tenantsResultMap) ([]EffectiveRoleResult, error) {
+func (c *EffectiveRoleChecker) buildEffectiveRoleResults(roleNames []iam_model.RoleName, rolesResults map[iam_model.RoleName]tenantsResultMap) ([]EffectiveRoleResult, error) {
 	result := make([]EffectiveRoleResult, 0, len(rolesResults))
-	for roleName, tenantsMap := range rolesResults {
+	for _, roleName := range roleNames {
+		tenantsMap := rolesResults[roleName]
 		tenantsResults, err := c.buildEffectiveRoleTenantsResults(tenantsMap)
 		if err != nil {
 			return nil, fmt.Errorf("building EffectiveRoleTenantResult: %w", err)
@@ -78,7 +79,6 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleResults(rolesResults map[iam_mo
 			Tenants: tenantsResults,
 		})
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Role < result[j].Role })
 	return result, nil
 }
 
@@ -135,6 +135,7 @@ func (c *EffectiveRoleChecker) mapToEffectiveRoleResult(effectiveRoles map[iam_m
 			if err != nil {
 				return nil, err
 			}
+			tenantsResults[er.TenantUUID] = projectsResuts
 		}
 		result[roleName] = tenantsResults
 	}

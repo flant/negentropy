@@ -34,5 +34,4 @@ require (
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared
-
 replace github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0 => ../flant_iam

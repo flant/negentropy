@@ -6,29 +6,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createProjects(t *testing.T, repo *ProjectService, projects ...model.Project) {
-	for _, project := range projects {
-		tmp := project
-		err := repo.Create(&tmp)
-		require.NoError(t, err)
-	}
-}
-
-func projectFixture(t *testing.T, store *io.MemoryStore) {
-	tx := store.Txn(true)
-	repo := Projects(tx, consts.OriginIAM)
-	createProjects(t, repo, fixtures.Projects()...)
-	err := tx.Commit()
-	require.NoError(t, err)
-}
-
 func Test_ProjectList(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, projectFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, ProjectFixture).Txn(true)
 
 	projects, err := Projects(tx, consts.OriginIAM).List(fixtures.TenantUUID1, false)
 

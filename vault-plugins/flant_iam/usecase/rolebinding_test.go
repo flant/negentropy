@@ -50,7 +50,7 @@ func roleBindingsUUIDsFromMap(rbs map[model.RoleBindingUUID]*model.RoleBinding) 
 }
 
 func Test_RoleBindingList(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 
 	rbs, err := RoleBindings(tx).List(fixtures.TenantUUID1, false)
@@ -63,7 +63,7 @@ func Test_RoleBindingList(t *testing.T) {
 }
 
 func Test_FindDirectRoleBindingsForUser(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
@@ -74,7 +74,7 @@ func Test_FindDirectRoleBindingsForUser(t *testing.T) {
 }
 
 func Test_FindDirectRoleBindingsForServiceAccount(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
@@ -85,7 +85,7 @@ func Test_FindDirectRoleBindingsForServiceAccount(t *testing.T) {
 }
 
 func Test_FindDirectRoleBindingsForGroups(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
@@ -96,7 +96,7 @@ func Test_FindDirectRoleBindingsForGroups(t *testing.T) {
 }
 
 func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
@@ -108,7 +108,7 @@ func Test_FindDirectRoleBindingsForRoles(t *testing.T) {
 }
 
 func Test_FindDirectRoleBindingsForProject(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture).Txn(true)
 	repo := iam_repo.NewRoleBindingRepository(tx)
 
@@ -120,7 +120,7 @@ func Test_FindDirectRoleBindingsForProject(t *testing.T) {
 }
 
 func Test_RoleBindingListAfterDeleteUser(t *testing.T) {
-	db := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	db := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture)
 	tx := db.Txn(true)
 	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)
@@ -139,7 +139,7 @@ func Test_RoleBindingListAfterDeleteUser(t *testing.T) {
 }
 
 func Test_RoleBindingListAfterDeleteUserFail(t *testing.T) {
-	db := runFixtures(t, tenantFixture, userFixture, serviceAccountFixture, groupFixture, projectFixture, roleFixture,
+	db := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, ProjectFixture, roleFixture,
 		roleBindingFixture)
 	tx := db.Txn(true)
 	err := Users(tx, fixtures.TenantUUID1, "test").Delete(fixtures.UserUUID1)

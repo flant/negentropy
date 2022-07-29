@@ -30,7 +30,7 @@ func serviceAccountFixture(t *testing.T, store *io.MemoryStore) {
 }
 
 func Test_ServiceAccountList(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, serviceAccountFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, serviceAccountFixture).Txn(true)
 	repo := iam_repo.NewServiceAccountRepository(tx)
 
 	serviceAccounts, err := repo.List(fixtures.TenantUUID1, false)
