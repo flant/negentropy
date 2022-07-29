@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
-	"github.com/flant/negentropy/vault-plugins/shared/consts"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
