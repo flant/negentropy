@@ -7,12 +7,14 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemoryStore)) *io.MemoryStore {
+func RunFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemoryStore)) *io.MemoryStore {
 	schema, err := iam_repo.GetSchema()
 	require.NoError(t, err)
 	store, err := io.NewMemoryStore(schema, nil, hclog.NewNullLogger())
@@ -21,6 +23,38 @@ func runFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemorySt
 		fixture(t, store)
 	}
 	return store
+}
+
+func createTenants(t *testing.T, repo *iam_repo.TenantRepository, tenants ...model.Tenant) {
+	for _, tenant := range tenants {
+		tmp := tenant
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func TenantFixture(t *testing.T, store *io.MemoryStore) {
+	tx := store.Txn(true)
+	repo := iam_repo.NewTenantRepository(tx)
+	createTenants(t, repo, fixtures.Tenants()...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
+func createProjects(t *testing.T, repo *ProjectService, projects ...model.Project) {
+	for _, project := range projects {
+		tmp := project
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func ProjectFixture(t *testing.T, store *io.MemoryStore) {
+	tx := store.Txn(true)
+	repo := Projects(tx, consts.OriginIAM)
+	createProjects(t, repo, fixtures.Projects()...)
+	err := tx.Commit()
+	require.NoError(t, err)
 }
 
 func toMemberNotation(m iam_repo.Model) model.MemberNotation {

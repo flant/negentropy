@@ -31,7 +31,7 @@ func userFixture(t *testing.T, store *io.MemoryStore) {
 }
 
 func Test_UserList(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, userFixture).Txn(true)
 	repo := iam_repo.NewUserRepository(tx)
 
 	users, err := repo.List(fixtures.TenantUUID1, false)
@@ -45,7 +45,7 @@ func Test_UserList(t *testing.T) {
 }
 
 func Test_forbidDoublingEmailAtTenant(t *testing.T) {
-	tx := runFixtures(t, tenantFixture, userFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, userFixture).Txn(true)
 	repo := iam_repo.NewUserRepository(tx)
 	oldUser := fixtures.Users()[0]
 	extraUserWithSameEmail := &model.User{

@@ -25,5 +25,6 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault_client.write(path='auth/flant/auth_method/okta-jwt', method_type='access_token', source='okta-oidc',
                        bound_audiences='https://login.flant.com', token_ttl='30m', token_max_ttl='1440m',
                        user_claim='email',
-                       token_policies=["vst_owner", "list_tenants", "token_renew", "check_permissions"],
+                       token_policies=["vst_owner", "list_tenants", "token_renew", "check_permissions",
+                                       "check_effective_roles"],
                        token_no_default_policy='True')

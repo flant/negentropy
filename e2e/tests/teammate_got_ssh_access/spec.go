@@ -18,6 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	"github.com/flant/negentropy/e2e/tests/lib/tools"
@@ -206,12 +207,13 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	})
 
 	var teammateClient *http.Client
+	var teammateVST string
 
 	It("Teammate login negentropy", func() {
 		teammateAccessToken, err := tools.GetOIDCAccessToken(teammate.UUID, teammate.Email)
 		Expect(err).ToNot(HaveOccurred())
 
-		teammateVST := tools.LoginAccessToken(true, map[string]interface{}{
+		teammateVST = tools.LoginAccessToken(true, map[string]interface{}{
 			"method": "okta-jwt", "jwt": teammateAccessToken,
 			"roles": []map[string]interface{}{
 				{"role": "flant.teammate"},
@@ -219,6 +221,62 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		}, lib.GetRootVaultUrl()).ClientToken
 
 		teammateClient = lib.NewIamVaultClient(teammateVST)
+	})
+
+	It("Teammate check effective roles", func() {
+		cl := configure.GetClientWithToken(teammateVST, lib.GetRootVaultUrl())
+		roles := []string{"flant.admin", "flant.client.manage", "servers.query", "ssh.open", "tenant.manage", "tenant.read", "tenant.read.auth", "tenants.list.auth"}
+		payload := map[string]interface{}{"roles": roles}
+
+		requestUrl := lib.IamAuthPluginPath + "/check_effective_roles"
+		tsc.Try(5, func() error { // need here retries due to data kafka-flow delay
+			secret, err := cl.Logical().Write(requestUrl, payload)
+			Expect(err).ToNot(HaveOccurred())
+
+			ers := secret.Data["effective_roles"].([]interface{})
+			Expect(ers).To(HaveLen(len(roles)))
+			tenantCounts := map[string]int{
+				"servers.query":       1,
+				"ssh.open":            1,
+				"tenant.read":         1,
+				"tenant.read.auth":    1,
+				"flant.client.manage": 1,
+				"tenant.manage":       1,
+			}
+			projectCounts := map[string]int{
+				"servers.query":       1,
+				"ssh.open":            1,
+				"tenant.read.auth":    1,
+				"flant.client.manage": 1,
+				"tenant.manage":       1,
+			}
+
+			for i := range ers {
+				role := roles[i]
+				er := ers[i].(map[string]interface{})
+				Expect(er["role"]).To(Equal(role))
+				Expect(er).To(HaveKey("tenants"))
+				tenants := er["tenants"].([]interface{})
+				if len(tenants) != tenantCounts[role] {
+					return fmt.Errorf("returns wrong amount of permitetd tenants: %d for role: %q, expected: %d",
+						len(tenants), role, tenantCounts[role])
+				}
+				if tenantCounts[role] > 0 {
+					tenant := tenants[0].(map[string]interface{})
+					Expect(tenant).To(HaveKey("uuid"))
+					Expect(tenant).To(HaveKey("identifier"))
+					Expect(tenant).To(HaveKey("projects"))
+					projects := tenant["projects"].([]interface{})
+					Expect(len(projects)).To(Equal(projectCounts[role]))
+					if len(projects) > 0 {
+						project := projects[0].(map[string]interface{})
+						Expect(project).To(HaveKey("uuid"))
+						Expect(project).To(HaveKey("identifier"))
+					}
+				}
+			}
+			return nil
+		})
 	})
 
 	var multipassJWT string

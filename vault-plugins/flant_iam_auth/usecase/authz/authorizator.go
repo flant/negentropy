@@ -35,6 +35,8 @@ type Authorizator struct {
 	PolicyRepo    *repo.PolicyRepository
 	RolesResolver iam_usecase.RoleResolver
 
+	EffectiveRoleChecker *EffectiveRoleChecker
+
 	ExtensionsDataProvider ExtensionsDataProvider
 
 	MountAccessor *vault.MountAccessorGetter
@@ -66,6 +68,8 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 		RoleRepo:      iam_repo.NewRoleRepository(txn),
 		PolicyRepo:    repo.NewPolicyRepository(txn),
 		RolesResolver: iam_usecase.NewRoleResolver(txn),
+
+		EffectiveRoleChecker: NewEffectiveRoleChecker(txn),
 
 		ExtensionsDataProvider: NewExtensionsDataProvider(txn),
 
