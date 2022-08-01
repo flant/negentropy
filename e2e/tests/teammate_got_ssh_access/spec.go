@@ -229,44 +229,54 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		payload := map[string]interface{}{"roles": roles}
 
 		requestUrl := lib.IamAuthPluginPath + "/check_effective_roles"
-		secret, err := cl.Logical().Write(requestUrl, payload)
-		Expect(err).ToNot(HaveOccurred())
+		tsc.Try(5, func() error { // need here retries due to data kafka-flow delay
+			secret, err := cl.Logical().Write(requestUrl, payload)
+			Expect(err).ToNot(HaveOccurred())
 
-		ers := secret.Data["effective_roles"].([]interface{})
-		Expect(ers).To(HaveLen(len(roles)))
-		tenantCounts := map[string]int{
-			"servers.query":    1,
-			"ssh.open":         1,
-			"tenant.read":      1,
-			"tenant.read.auth": 1,
-		}
-		projectCounts := map[string]int{
-			"servers.query":    1,
-			"ssh.open":         1,
-			"tenant.read.auth": 1,
-		}
+			ers := secret.Data["effective_roles"].([]interface{})
+			Expect(ers).To(HaveLen(len(roles)))
+			tenantCounts := map[string]int{
+				"servers.query":       1,
+				"ssh.open":            1,
+				"tenant.read":         1,
+				"tenant.read.auth":    1,
+				"flant.client.manage": 1,
+				"tenant.manage":       1,
+			}
+			projectCounts := map[string]int{
+				"servers.query":       1,
+				"ssh.open":            1,
+				"tenant.read.auth":    1,
+				"flant.client.manage": 1,
+				"tenant.manage":       1,
+			}
 
-		for i := range ers {
-			role := roles[i]
-			er := ers[i].(map[string]interface{})
-			Expect(er["role"]).To(Equal(role))
-			Expect(er).To(HaveKey("tenants"))
-			tenants := er["tenants"].([]interface{})
-			Expect(len(tenants)).To(Equal(tenantCounts[role]), role)
-			if tenantCounts[role] > 0 {
-				tenant := tenants[0].(map[string]interface{})
-				Expect(tenant).To(HaveKey("uuid"))
-				Expect(tenant).To(HaveKey("identifier"))
-				Expect(tenant).To(HaveKey("projects"))
-				projects := tenant["projects"].([]interface{})
-				Expect(len(projects)).To(Equal(projectCounts[role]))
-				if len(projects) > 0 {
-					project := projects[0].(map[string]interface{})
-					Expect(project).To(HaveKey("uuid"))
-					Expect(project).To(HaveKey("identifier"))
+			for i := range ers {
+				role := roles[i]
+				er := ers[i].(map[string]interface{})
+				Expect(er["role"]).To(Equal(role))
+				Expect(er).To(HaveKey("tenants"))
+				tenants := er["tenants"].([]interface{})
+				if len(tenants) != tenantCounts[role] {
+					return fmt.Errorf("returns wrong amount of permitetd tenants: %d for role: %q, expected: %d",
+						len(tenants), role, tenantCounts[role])
+				}
+				if tenantCounts[role] > 0 {
+					tenant := tenants[0].(map[string]interface{})
+					Expect(tenant).To(HaveKey("uuid"))
+					Expect(tenant).To(HaveKey("identifier"))
+					Expect(tenant).To(HaveKey("projects"))
+					projects := tenant["projects"].([]interface{})
+					Expect(len(projects)).To(Equal(projectCounts[role]))
+					if len(projects) > 0 {
+						project := projects[0].(map[string]interface{})
+						Expect(project).To(HaveKey("uuid"))
+						Expect(project).To(HaveKey("identifier"))
+					}
 				}
 			}
-		}
+			return nil
+		})
 	})
 
 	var multipassJWT string
