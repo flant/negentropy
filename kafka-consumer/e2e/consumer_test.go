@@ -20,7 +20,7 @@ import (
 
 func Test_Consumer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Consumer read kafka and put to http-gateway")
+	RunSpecs(t, "Consumer read kafka and post to http-gateway")
 }
 
 var tenants []model.Tenant
@@ -39,7 +39,7 @@ var _ = BeforeSuite(func() {
 var _ = It("objectHandler should got all of messages", func() {
 	go func() {
 		http.HandleFunc("/foobar", objectHandler)
-		fmt.Printf("server is started, endpoint: http://localhost:9200/foobar, will process %d requests\n", messages)
+		fmt.Printf("gateway server is started, endpoint: http://localhost:9200/foobar, will process %d requests\n", messages)
 		err := http.ListenAndServe(":9200", nil)
 		if errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("server closed\n")
@@ -57,30 +57,40 @@ var _ = It("objectHandler should got all of messages", func() {
 
 	<-endChan
 	Expect(counter).To(Equal(messages), "should count all messages")
-	Expect(errCounter).To(Equal(0), "shoud not be errors")
+	Expect(errCounter).To(Equal(0), "should not be errors")
 })
 
 var counter = 0
 var errCounter = 0
+var testErr = fmt.Errorf("test-error")
 
 func objectHandler(rw http.ResponseWriter, req *http.Request) {
-	if counter < messages {
-		counter += 1
-	}
 	err := processRequest(rw, req)
 	if err != nil {
-		errCounter += 1
 		println("error:", err.Error())
 		rw.WriteHeader(400)
+		println("gateway returns 400")
 		rw.Write([]byte(err.Error())) // nolint:errcheck
+		if !errors.Is(err, testErr) {
+			errCounter += 1
+		}
 	} else {
+		counter += 1
 		println("ok, counter =", counter)
+		println("gateway returns 200")
 		rw.WriteHeader(200)
+
 	}
 	if counter == messages {
 		endChan <- struct{}{}
 	}
 }
+
+var testcaseErrorResponse = struct {
+	needStartTest  bool
+	testInProgress bool
+	keyToRepeat    string
+}{needStartTest: true}
 
 func processRequest(rw http.ResponseWriter, req *http.Request) error {
 	if req.Method != "POST" {
@@ -105,6 +115,7 @@ func processRequest(rw http.ResponseWriter, req *http.Request) error {
 	if !ok {
 		return fmt.Errorf(fmt.Sprintf("key: %#v should be string", data["key"])) // nolint:errcheck
 	}
+	fmt.Printf("got key=%s\n", key)
 
 	object, ok := data["object"].(string)
 	if !ok {
@@ -117,6 +128,18 @@ func processRequest(rw http.ResponseWriter, req *http.Request) error {
 
 	if !strings.Contains(object, splitted[1]) {
 		return fmt.Errorf("object: %s should contains key: %s", object, splitted[1]) // nolint:errcheck
+	}
+	if testcaseErrorResponse.needStartTest {
+		testcaseErrorResponse.needStartTest = false
+		testcaseErrorResponse.testInProgress = true
+		testcaseErrorResponse.keyToRepeat = key
+		return testErr
+	}
+	if testcaseErrorResponse.testInProgress {
+		testcaseErrorResponse.testInProgress = false
+		if key != testcaseErrorResponse.keyToRepeat {
+			return fmt.Errorf("wrong key: expected %s, got %s", testcaseErrorResponse.keyToRepeat, key)
+		}
 	}
 	return nil
 }
