@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -32,6 +33,7 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
+		time.Sleep(time.Second * 5)
 	})
 }, 1.0)
 
@@ -41,8 +43,12 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 		DescribeTable("cli ssh command variations",
 			func(buildCliCmd func(cfg flant_iam_preparing.CheckingEnvironment) string) {
 				d := testServerAndClientSuite
-				// Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-				//	"/tmp/flint files doesn't exist before start")
+				d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
+					"/bin/bash", "-c",
+					"rm -rf /tmp/flint",
+				}, nil)
+				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+					"/tmp/flint files doesn't exist before start")
 
 				runningCliCmd := buildCliCmd(cfg)
 				sshCmd := fmt.Sprintf("ssh -oStrictHostKeyChecking=accept-new %s.%s", cfg.Project.Identifier,
@@ -65,11 +71,11 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				writeLogToFile(output, fmt.Sprintf("cli%d.log", testCounter))
 				testCounter++
 
-				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
-					"/tmp/flint files doesn't exist after closing cli")
-
 				Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
 					ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
+
+				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+					"/tmp/flint files doesn't exist after closing cli")
 
 				Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).
 					ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
