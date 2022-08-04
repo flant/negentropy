@@ -3,6 +3,7 @@ package ssh_session
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -256,6 +257,9 @@ func (s *Session) RefreshClientCertificates() error {
 	}
 
 	signedCertificates, err := s.generateAndSignSSHCertificateSetForServers(servers)
+	if err != nil {
+		return fmt.Errorf("RefreshClientCertificates: generateAndSignSSHCertificateSetForServers: %w", err)
+	}
 	for _, signedCertificate := range signedCertificates {
 		err = s.SSHAgent.Add(*signedCertificate)
 		if err != nil {
@@ -341,7 +345,13 @@ func (s *Session) syncRoutine() error {
 	if err != nil {
 		return fmt.Errorf("syncRoutine: %w", err)
 	}
-	err = s.RefreshClientCertificates()
+	err = errors.New("tmp")
+	counter := 0
+	for err != nil && counter < 15 {
+		counter++
+		err = s.RefreshClientCertificates()
+		time.Sleep(time.Millisecond * 50)
+	}
 	if err != nil {
 		return fmt.Errorf("syncRoutine: %w", err)
 	}

@@ -33,7 +33,6 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
 		testServerAndClientSuite.PrepareClientForSSHTesting(cfg)
-		time.Sleep(time.Second * 5)
 	})
 }, 1.0)
 
@@ -46,7 +45,8 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				d.ExecuteCommandAtContainer(d.TestClientContainer, []string{
 					"/bin/bash", "-c",
 					"rm -rf /tmp/flint",
-				}, nil)
+				}, []string{})
+				time.Sleep(time.Millisecond * 100)
 				Expect(d.DirectoryAtContainerNotExistOrEmpty(d.TestClientContainer, "/tmp/flint")).To(BeTrue(),
 					"/tmp/flint files doesn't exist before start")
 
