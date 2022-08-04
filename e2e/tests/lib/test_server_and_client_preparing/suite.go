@@ -322,7 +322,7 @@ func (s *Suite) ExecuteCommandAtContainer(container *types.Container, cmd []stri
 	defer resp.Close()
 
 	go func() {
-		time.Sleep(time.Millisecond * 2000)
+		time.Sleep(time.Millisecond * 3000)
 		for _, input := range extraInputToSTDIN {
 			time.Sleep(time.Millisecond * 100)
 			resp.Conn.Write([]byte(input + "\n"))
