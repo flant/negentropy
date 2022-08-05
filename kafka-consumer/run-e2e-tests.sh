@@ -18,5 +18,5 @@ docker run --rm \
   -v $SCRIPTDIR/kafka-consumer:/go/src/app/kafka-consumer \
   -e ROOT_VAULT_TOKEN=$ROOT_VAULT_TOKEN \
   -e ROOT_VAULT_URL=$ROOT_VAULT_URL \
-  golang:1.16 \
-  go test -v ./...
+  golang:1.17 \
+  go test ./...
