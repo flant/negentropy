@@ -34,9 +34,6 @@ type Suite struct {
 	cliPath                 string
 	ServerAccessdPath       string
 
-	RootVaultInternalURL string
-	AuthVaultInternalURL string
-
 	dockerCli *client.Client
 
 	TestServerContainer *types.Container
@@ -50,8 +47,6 @@ func (s *Suite) BeforeSuite() {
 	s.ServerAccessdPath = "/opt/server-access/bin/server-accessd"
 	s.testServerContainerName = "test-server"
 	s.testClientContainerName = "test-client"
-	s.RootVaultInternalURL = getFromEnv("ROOT_VAULT_INTERNAL_URL")
-	s.AuthVaultInternalURL = getFromEnv("AUTH_VAULT_INTERNAL_URL")
 
 	// Open connections, create clients
 	var err error
@@ -77,7 +72,13 @@ func getFromEnv(envName string) string {
 var ServerSocketCFG string
 
 //go:embed server_main.yaml
-var ServerMainCFGTPL string
+var serverMainCFGTPL string
+
+func ServerMainAuthdCFG() string {
+	t, err := template.New("").Parse(serverMainCFGTPL)
+	Expect(err).ToNot(HaveOccurred(), "template should be ok")
+	return mainAuthdCFG(t, "", "")
+}
 
 func (s *Suite) CheckServerBinariesAndFoldersExists() {
 	err := s.CheckFileExistAtContainer(s.TestServerContainer, s.AuthdPath, "f")
@@ -118,10 +119,16 @@ func (s *Suite) PrepareServerForSSHTesting(cfg fip.CheckingEnvironment) {
 }
 
 //go:embed client_sock1.yaml
-var clientSocketCFG string
+var ClientSocketCFG string
 
 //go:embed client_main.yaml
-var clientMainCFGTPL string
+var сlientMainCFGTPL string
+
+func ClientMainAuthdCFG() string {
+	t, err := template.New("").Parse(сlientMainCFGTPL)
+	Expect(err).ToNot(HaveOccurred(), "template should be ok")
+	return mainAuthdCFG(t, "", "")
+}
 
 func (s *Suite) CheckClientBinariesAndFoldersExists() {
 	err := s.CheckFileExistAtContainer(s.TestClientContainer, s.AuthdPath, "f")
@@ -138,19 +145,13 @@ func (s *Suite) CheckClientBinariesAndFoldersExists() {
 
 func (s *Suite) PrepareClientForSSHTesting(cfg fip.CheckingEnvironment) {
 	s.CheckClientBinariesAndFoldersExists()
-
-	t, err := template.New("").Parse(clientMainCFGTPL)
-	Expect(err).ToNot(HaveOccurred(), "template should be ok")
-	var clientMainCFG bytes.Buffer
-	err = t.Execute(&clientMainCFG, *s)
-	Expect(err).ToNot(HaveOccurred(), "template should be executed")
-
-	err = s.WriteFileToContainer(s.TestClientContainer,
-		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCFG.String())
+	clientMainCfg := ClientMainAuthdCFG()
+	err := s.WriteFileToContainer(s.TestClientContainer,
+		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCfg)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.WriteFileToContainer(s.TestClientContainer,
-		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", clientSocketCFG)
+		"/etc/flant/negentropy/authd-conf.d/sock1.yaml", ClientSocketCFG)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
 
 	err = s.WriteFileToContainer(s.TestClientContainer,
@@ -484,4 +485,21 @@ func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
 	principalHash.Write([]byte(userUUID))
 	principalSum := principalHash.Sum(nil)
 	return fmt.Sprintf("%x", principalSum)
+}
+
+func mainAuthdCFG(tpl *template.Template, defaultSocketDirectory, jwtPath string) string {
+	var mainCFG bytes.Buffer
+	err := tpl.Execute(&mainCFG, struct {
+		DefaultSocketDirectory string
+		JwtPath                string
+		RootVaultInternalURL   string
+		AuthVaultInternalURL   string
+	}{
+		DefaultSocketDirectory: defaultSocketDirectory,
+		JwtPath:                jwtPath,
+		RootVaultInternalURL:   getFromEnv("ROOT_VAULT_INTERNAL_URL"),
+		AuthVaultInternalURL:   getFromEnv("AUTH_VAULT_INTERNAL_URL"),
+	})
+	Expect(err).ToNot(HaveOccurred(), "template should be executed")
+	return mainCFG.String()
 }
