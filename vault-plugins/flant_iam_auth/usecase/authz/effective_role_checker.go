@@ -16,6 +16,7 @@ type EffectiveRoleChecker struct {
 	TenantRepo    *iam_repo.TenantRepository
 	ProjectRepo   *iam_repo.ProjectRepository
 	RolesResolver iam_usecase.RoleResolver
+	RoleRepo      *iam_repo.RoleRepository
 }
 
 func NewEffectiveRoleChecker(txn *io.MemoryStoreTxn) *EffectiveRoleChecker {
@@ -23,6 +24,7 @@ func NewEffectiveRoleChecker(txn *io.MemoryStoreTxn) *EffectiveRoleChecker {
 		TenantRepo:    iam_repo.NewTenantRepository(txn),
 		ProjectRepo:   iam_repo.NewProjectRepository(txn),
 		RolesResolver: iam_usecase.NewRoleResolver(txn),
+		RoleRepo:      iam_repo.NewRoleRepository(txn),
 	}
 }
 
@@ -34,14 +36,16 @@ type EffectiveRoleResult struct {
 type EffectiveRoleTenantResult struct {
 	TenantUUID       iam_model.TenantUUID         `json:"uuid"`
 	TenantIdentifier string                       `json:"identifier"`
+	TenantOptions    map[string][]interface{}     `json:"tenant_options,omitempty"`
 	Projects         []EffectiveRoleProjectResult `json:"projects"`
 }
 
 type EffectiveRoleProjectResult struct {
-	ProjectUUID       iam_model.ProjectUUID `json:"uuid"`
-	ProjectIdentifier string                `json:"identifier"`
-	RequireMFA        bool                  `json:"require_mfa,omitempty"`
-	NeedApprovals     bool                  `json:"need_approvals,omitempty"`
+	ProjectUUID       iam_model.ProjectUUID    `json:"uuid"`
+	ProjectIdentifier string                   `json:"identifier"`
+	ProjectOptions    map[string][]interface{} `json:"project_options,omitempty"`
+	RequireMFA        bool                     `json:"require_mfa,omitempty"`
+	NeedApprovals     bool                     `json:"need_approvals,omitempty"`
 }
 
 func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles []iam_model.RoleName) ([]EffectiveRoleResult, error) {
@@ -63,7 +67,11 @@ func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles 
 
 type (
 	projectsResultMap = map[iam_model.ProjectUUID]EffectiveRoleProjectResult
-	tenantsResultMap  = map[iam_model.TenantUUID]projectsResultMap
+	tenantResult      struct {
+		projects      projectsResultMap
+		tenantOptions map[string][]interface{}
+	}
+	tenantsResultMap = map[iam_model.TenantUUID]tenantResult
 )
 
 func (c *EffectiveRoleChecker) buildEffectiveRoleResults(roleNames []iam_model.RoleName, rolesResults map[iam_model.RoleName]tenantsResultMap) ([]EffectiveRoleResult, error) {
@@ -84,12 +92,12 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleResults(roleNames []iam_model.R
 
 func (c *EffectiveRoleChecker) buildEffectiveRoleTenantsResults(tenants tenantsResultMap) ([]EffectiveRoleTenantResult, error) {
 	result := make([]EffectiveRoleTenantResult, 0, len(tenants))
-	for tenantUUID, projectsMap := range tenants {
+	for tenantUUID, tenantResult := range tenants {
 		tenant, err := c.TenantRepo.GetByID(tenantUUID)
 		if err != nil {
 			return nil, fmt.Errorf("getting tenant by uuid=%s: %w", tenantUUID, err)
 		}
-		projectsResults, err := c.buildEffectiveRoleProjectsResults(projectsMap)
+		projectsResults, err := c.buildEffectiveRoleProjectsResults(tenantResult.projects)
 		if err != nil {
 			return nil, fmt.Errorf("building EffectiveRoleProjectResult: %w", err)
 		}
@@ -97,6 +105,7 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleTenantsResults(tenants tenantsR
 			TenantUUID:       tenantUUID,
 			TenantIdentifier: tenant.Identifier,
 			Projects:         projectsResults,
+			TenantOptions:    tenantResult.tenantOptions,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].TenantIdentifier < result[j].TenantIdentifier })
@@ -115,6 +124,7 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleProjectsResults(projects projec
 			ProjectIdentifier: project.Identifier,
 			RequireMFA:        projectResult.RequireMFA,
 			NeedApprovals:     projectResult.NeedApprovals,
+			ProjectOptions:    projectResult.ProjectOptions,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ProjectIdentifier < result[j].ProjectIdentifier })
@@ -123,27 +133,49 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleProjectsResults(projects projec
 
 func (c *EffectiveRoleChecker) mapToEffectiveRoleResult(effectiveRoles map[iam_model.RoleName][]iam_usecase.EffectiveRole) (map[iam_model.RoleName]tenantsResultMap, error) {
 	result := map[iam_model.RoleName]tenantsResultMap{}
-	var err error
 	for roleName, ers := range effectiveRoles {
+		role, err := c.RoleRepo.GetByID(roleName)
+		if err != nil {
+			return nil, err
+		}
 		tenantsResults := tenantsResultMap{}
 		for _, er := range ers {
-			projectsResuts, exist := tenantsResults[er.TenantUUID]
+			tenant, exist := tenantsResults[er.TenantUUID]
 			if !exist {
-				projectsResuts = projectsResultMap{}
+				tenant = tenantResult{
+					projects:      projectsResultMap{},
+					tenantOptions: map[string][]interface{}{},
+				}
 			}
-			projectsResuts, err = c.enrichTenantResult(projectsResuts, er)
+			isTenantOptions := role.Scope == iam_model.RoleScopeTenant || er.AnyProject
+			if isTenantOptions {
+				tenant.tenantOptions = concatenateOptions(tenant.tenantOptions, er.Options)
+			}
+			tenant.projects, err = c.enrichTenantResult(tenant.projects, er, !isTenantOptions)
 			if err != nil {
 				return nil, err
 			}
-			tenantsResults[er.TenantUUID] = projectsResuts
+			tenantsResults[er.TenantUUID] = tenant
 		}
 		result[roleName] = tenantsResults
 	}
 	return result, nil
 }
 
+func concatenateOptions(options map[string][]interface{}, erOptions map[string]interface{}) map[string][]interface{} {
+	for k, v := range erOptions {
+		values, keyExists := options[k]
+		if keyExists {
+			options[k] = append(values, v)
+		} else {
+			options[k] = []interface{}{v}
+		}
+	}
+	return options
+}
+
 func (c *EffectiveRoleChecker) enrichTenantResult(projectsResults map[iam_model.ProjectUUID]EffectiveRoleProjectResult,
-	er iam_usecase.EffectiveRole) (projectsResultMap, error) {
+	er iam_usecase.EffectiveRole, isProjectOptions bool) (projectsResultMap, error) {
 	projectsOfER := er.Projects
 	var err error
 	if er.AnyProject {
@@ -156,9 +188,10 @@ func (c *EffectiveRoleChecker) enrichTenantResult(projectsResults map[iam_model.
 		effectiveRoleProjectResult, exists := projectsResults[projectUUID]
 		if !exists {
 			effectiveRoleProjectResult = EffectiveRoleProjectResult{
-				ProjectUUID:   projectUUID,
-				RequireMFA:    er.RequireMFA,
-				NeedApprovals: er.NeedApprovals > 0,
+				ProjectUUID:    projectUUID,
+				RequireMFA:     er.RequireMFA,
+				NeedApprovals:  er.NeedApprovals > 0,
+				ProjectOptions: map[string][]interface{}{},
 			}
 		} else {
 			if !er.RequireMFA {
@@ -167,6 +200,9 @@ func (c *EffectiveRoleChecker) enrichTenantResult(projectsResults map[iam_model.
 			if er.NeedApprovals == 0 {
 				effectiveRoleProjectResult.NeedApprovals = false
 			}
+		}
+		if isProjectOptions {
+			effectiveRoleProjectResult.ProjectOptions = concatenateOptions(effectiveRoleProjectResult.ProjectOptions, er.Options)
 		}
 		projectsResults[projectUUID] = effectiveRoleProjectResult
 	}
