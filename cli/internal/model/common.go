@@ -18,11 +18,6 @@ type ServerFilter struct {
 	ServerIdentifiers  []string
 }
 
-type VaultSSHSignRequest struct {
-	PublicKey       string `json:"public_key"`
-	ValidPrincipals string `json:"valid_principals"`
-}
-
 // func to specify a restrictions for a valid ServerFilter
 // return error if Params invalid, it finishes and fails validation
 type serverFilterChecker func(ServerFilter) error

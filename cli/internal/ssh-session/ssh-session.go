@@ -21,6 +21,7 @@ import (
 	"github.com/flant/negentropy/cli/internal/consts"
 	"github.com/flant/negentropy/cli/internal/model"
 	"github.com/flant/negentropy/cli/internal/vault"
+	"github.com/flant/negentropy/cli/pkg"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
@@ -174,7 +175,7 @@ func (s *Session) signCertificate(privateRSA *rsa.PrivateKey, pubkey ssh.PublicK
 		return nil, err
 	}
 
-	vaultReq := model.VaultSSHSignRequest{
+	vaultReq := pkg.VaultSSHSignRequest{
 		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
 		ValidPrincipals: strings.Join(principals, ","),
 	}

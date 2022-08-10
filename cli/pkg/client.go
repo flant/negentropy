@@ -8,13 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/flant/negentropy/authd"
-
-	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
-
 	vault_api "github.com/hashicorp/vault/api"
 
-	"github.com/flant/negentropy/cli/internal/model"
+	"github.com/flant/negentropy/authd"
+	authdapi "github.com/flant/negentropy/authd/pkg/api/v1"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	auth "github.com/flant/negentropy/vault-plugins/flant_iam_auth/extensions/extension_server_access/model"
@@ -33,7 +30,7 @@ type VaultClient interface {
 	GetSafeServersByTenant(tenantUUID iam.TenantUUID, serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error)
 	GetSafeServers(serverIdentifiers []string, labelSelector string) ([]auth_ext.SafeServer, error)
 	SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
-		serverUUIDs []ext.ServerUUID, vaultReq model.VaultSSHSignRequest) ([]byte, error)
+		serverUUIDs []ext.ServerUUID, vaultReq VaultSSHSignRequest) ([]byte, error)
 	GetTenantByUUID(tenantUUID string) (*iam.Tenant, error)
 	GetProjectByUUID(tenantUUID string, projectUUID string) (*iam.Project, error)
 	GetTenantByIdentifier(tenantIdentifier string) (*iam.Tenant, error)
@@ -41,6 +38,11 @@ type VaultClient interface {
 	RegisterServer(server ext.Server) (ext.ServerUUID, iam.MultipassJWT, error)
 	UpdateServerConnectionInfo(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
 		serverUUID ext.ServerUUID, connInfo ext.ConnectionInfo) (*ext.Server, error)
+}
+
+type VaultSSHSignRequest struct {
+	PublicKey       string `json:"public_key"`
+	ValidPrincipals string `json:"valid_principals"`
 }
 
 type vaultClient struct {
@@ -250,7 +252,7 @@ func (vc *vaultClient) GetUser() (*auth.User, error) {
 }
 
 func (vc *vaultClient) SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
-	serverUUIDs []ext.ServerUUID, vaultReq model.VaultSSHSignRequest) ([]byte, error) {
+	serverUUIDs []ext.ServerUUID, vaultReq VaultSSHSignRequest) ([]byte, error) {
 	err := vc.checkForRolesAndUpdateClient(authdapi.RoleWithClaim{
 		Role:        SSHOpenRole,
 		TenantUUID:  tenantUUID,
