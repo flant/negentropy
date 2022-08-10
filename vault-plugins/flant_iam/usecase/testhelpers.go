@@ -57,6 +57,22 @@ func ProjectFixture(t *testing.T, store *io.MemoryStore) {
 	require.NoError(t, err)
 }
 
+func createRoles(t *testing.T, repo *iam_repo.RoleRepository, roles ...model.Role) {
+	for _, role := range roles {
+		tmp := role
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func RoleFixture(t *testing.T, store *io.MemoryStore) {
+	tx := store.Txn(true)
+	repo := iam_repo.NewRoleRepository(tx)
+	createRoles(t, repo, fixtures.Roles()...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
 func toMemberNotation(m iam_repo.Model) model.MemberNotation {
 	return model.MemberNotation{
 		Type: m.ObjType(),
