@@ -20,7 +20,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     if "approle/" not in enabled_auth_methods:
         vault_client.sys.enable_auth_method(method_type="approle")
     vault_client.auth.approle.create_or_update_approle(role_name="full", mount_point="approle",
-                                                       secret_id_ttl="15d", token_ttl="15m",
+                                                       secret_id_ttl="360h", token_ttl="15m",
                                                        token_policies=["full"])
     role_id = vault_client.auth.approle.read_role_id(role_name="full", mount_point="approle").get("data").get("role_id")
     secret_id = vault_client.auth.approle.generate_secret_id(role_name="full", mount_point="approle").get("data").get(
@@ -28,5 +28,5 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     print("INFO: configure auth/flant/configure_vault_access at '{}' vault".format(vault_name))
     vault_client.write(path='auth/flant/configure_vault_access', vault_addr=vault['url'],
                        vault_tls_server_name='vault_host',
-                       role_name='full', secret_id_ttl='15d', approle_mount_point='/auth/approle/',
+                       role_name='full', secret_id_ttl='360h', approle_mount_point='/auth/approle/',
                        role_id=role_id, secret_id=secret_id, vault_api_ca='')
