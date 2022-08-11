@@ -77,7 +77,7 @@ var serverMainCFGTPL string
 func ServerMainAuthdCFG() string {
 	t, err := template.New("").Parse(serverMainCFGTPL)
 	Expect(err).ToNot(HaveOccurred(), "template should be ok")
-	return mainAuthdCFG(t, "", "")
+	return mainAuthdCFG(t, nil)
 }
 
 func (s *Suite) CheckServerBinariesAndFoldersExists() {
@@ -124,10 +124,10 @@ var ClientSocketCFG string
 //go:embed client_main.yaml
 var сlientMainCFGTPL string
 
-func ClientMainAuthdCFG() string {
+func ClientMainAuthdCFG(mainAuthdCfg *MainAuthdCfgV1) string {
 	t, err := template.New("").Parse(сlientMainCFGTPL)
 	Expect(err).ToNot(HaveOccurred(), "template should be ok")
-	return mainAuthdCFG(t, "", "")
+	return mainAuthdCFG(t, mainAuthdCfg)
 }
 
 func (s *Suite) CheckClientBinariesAndFoldersExists() {
@@ -145,7 +145,7 @@ func (s *Suite) CheckClientBinariesAndFoldersExists() {
 
 func (s *Suite) PrepareClientForSSHTesting(cfg fip.CheckingEnvironment) {
 	s.CheckClientBinariesAndFoldersExists()
-	clientMainCfg := ClientMainAuthdCFG()
+	clientMainCfg := ClientMainAuthdCFG(nil)
 	err := s.WriteFileToContainer(s.TestClientContainer,
 		"/etc/flant/negentropy/authd-conf.d/main.yaml", clientMainCfg)
 	Expect(err).ToNot(HaveOccurred(), "file should be written")
@@ -487,19 +487,22 @@ func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
 	return fmt.Sprintf("%x", principalSum)
 }
 
-func mainAuthdCFG(tpl *template.Template, defaultSocketDirectory, jwtPath string) string {
+type MainAuthdCfgV1 struct {
+	DefaultSocketDirectory string
+	JwtPath                string
+	RootVaultInternalURL   string
+	AuthVaultInternalURL   string
+}
+
+func mainAuthdCFG(tpl *template.Template, mainAuthdCfg *MainAuthdCfgV1) string {
 	var mainCFG bytes.Buffer
-	err := tpl.Execute(&mainCFG, struct {
-		DefaultSocketDirectory string
-		JwtPath                string
-		RootVaultInternalURL   string
-		AuthVaultInternalURL   string
-	}{
-		DefaultSocketDirectory: defaultSocketDirectory,
-		JwtPath:                jwtPath,
-		RootVaultInternalURL:   getFromEnv("ROOT_VAULT_INTERNAL_URL"),
-		AuthVaultInternalURL:   getFromEnv("AUTH_VAULT_INTERNAL_URL"),
-	})
+	if mainAuthdCfg == nil {
+		mainAuthdCfg = &MainAuthdCfgV1{
+			RootVaultInternalURL: getFromEnv("ROOT_VAULT_INTERNAL_URL"),
+			AuthVaultInternalURL: getFromEnv("AUTH_VAULT_INTERNAL_URL"),
+		}
+	}
+	err := tpl.Execute(&mainCFG, mainAuthdCfg)
 	Expect(err).ToNot(HaveOccurred(), "template should be executed")
 	return mainCFG.String()
 }
