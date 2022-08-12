@@ -88,7 +88,7 @@ principals[principal] {
     	show_paths
 }
 
-valid_principals = concat(",", principals)
+valid_principals = concat(",", sort(principals))
 
 # rules for building vault policies
 rules = [

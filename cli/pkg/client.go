@@ -98,9 +98,7 @@ func (vc *vaultClient) checkForRolesAndUpdateClient(neededRoles ...authdapi.Role
 	for _, role := range neededRoles {
 		exists := false
 		for _, existedRole := range vc.roles {
-			if existedRole.Role == role.Role &&
-				existedRole.TenantUUID == role.TenantUUID &&
-				existedRole.ProjectUUID == role.ProjectUUID {
+			if existedRole.Equal(role) {
 				exists = true
 				break
 			}

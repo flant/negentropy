@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -174,6 +175,8 @@ func (s *Session) signCertificate(privateRSA *rsa.PrivateKey, pubkey ssh.PublicK
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Strings(principals) // need this due to rego policy engine limitations
 
 	vaultReq := pkg.VaultSSHSignRequest{
 		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),

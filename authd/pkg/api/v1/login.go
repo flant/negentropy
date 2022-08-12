@@ -105,6 +105,22 @@ type RoleWithClaim struct {
 	Claim       map[string]interface{} `json:"claim"`
 }
 
+func (rvc RoleWithClaim) Equal(otherRVC RoleWithClaim) bool {
+	if rvc.Role != otherRVC.Role || rvc.TenantUUID != otherRVC.TenantUUID || rvc.ProjectUUID != otherRVC.ProjectUUID {
+		return false
+	}
+	// check claim
+	if len(rvc.Claim) != len(otherRVC.Claim) {
+		return false
+	}
+	for k, v := range rvc.Claim {
+		if otherRVC.Claim[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 // Client helpers
 func NewLoginRequest() *LoginRequest {
 	return &LoginRequest{}
