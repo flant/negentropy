@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -439,6 +440,10 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 			}
 			resp, err = b.HandleRequest(context.Background(), req)
 			if tt.expectErr {
+				errMsg := resp.Data["error"]
+				if err == nil && errMsg != "" {
+					err = fmt.Errorf("%s", errMsg)
+				}
 				require.Error(t, err)
 				return
 			}

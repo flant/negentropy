@@ -15,6 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 type Params = map[string]interface{}
@@ -60,6 +61,17 @@ func (b *BackendBasedAPI) request(operation logical.Operation, url string, param
 	}
 
 	resp, requestErr := (*b.Backend).HandleRequest(context.Background(), request)
+
+	if requestErr == nil {
+		if errRaw, gotErrMsg := resp.Data["error"]; gotErrMsg {
+			errMsg := errRaw.(string)
+			if strings.HasSuffix(errMsg, " field does not match the formatting rules") {
+				requestErr = fmt.Errorf("%w: %s", consts.ErrInvalidArg, errMsg)
+			} else {
+				requestErr = fmt.Errorf("%s", errMsg)
+			}
+		}
+	}
 
 	if requestErr != nil {
 		statusCodeInt := backentutils.MapErrorToHTTPStatusCode(requestErr)

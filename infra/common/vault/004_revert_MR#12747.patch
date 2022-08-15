@@ -1,0 +1,185 @@
+diff --git a/vault/identity_store_aliases.go b/vault/identity_store_aliases.go
+index b717f83ea..39ccade4a 100644
+--- a/vault/identity_store_aliases.go
++++ b/vault/identity_store_aliases.go
+@@ -268,12 +268,6 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
+ 		}
+ 	}
+
+-	for _, currentAlias := range entity.Aliases {
+-		if currentAlias.MountAccessor == mountAccessor {
+-			return logical.ErrorResponse("Alias already exists for requested entity and mount accessor"), nil
+-		}
+-	}
+-
+ 	var alias *identity.Alias
+ 	switch local {
+ 	case true:
+@@ -326,29 +320,6 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
+
+ 	alias.LastUpdateTime = ptypes.TimestampNow()
+
+-	// Get our current entity, which may be the same as the new one if the
+-	// canonical ID hasn't changed
+-	currentEntity, err := i.MemDBEntityByAliasID(alias.ID, true)
+-	if err != nil {
+-		return nil, err
+-	}
+-	if currentEntity == nil {
+-		return logical.ErrorResponse("given alias is not associated with an entity"), nil
+-	}
+-
+-	if currentEntity.NamespaceID != alias.NamespaceID {
+-		return logical.ErrorResponse("alias and entity do not belong to the same namespace"), logical.ErrPermissionDenied
+-	}
+-
+-	// If the accessor is being changed but the entity is not, check if the entity
+-	// already has an alias corresponding to the new accessor
+-	if mountAccessor != alias.MountAccessor && (canonicalID == "" || canonicalID == alias.CanonicalID) {
+-		for _, currentAlias := range currentEntity.Aliases {
+-			if currentAlias.MountAccessor == mountAccessor {
+-				return logical.ErrorResponse("Alias cannot be updated as the entity already has an alias for the given 'mount_accessor' "), nil
+-			}
+-		}
+-	}
+ 	// If we're changing one or the other or both of these, make sure that
+ 	// there isn't a matching alias already, and make sure it's in the same
+ 	// namespace.
+@@ -383,6 +354,21 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
+ 		return nil, fmt.Errorf("invalid mount accessor %q", alias.MountAccessor)
+ 	}
+
++	// revert deletion
++	// Get our current entity, which may be the same as the new one if the
++	// canonical ID hasn't changed
++	currentEntity, err := i.MemDBEntityByAliasID(alias.ID, true)
++	if err != nil {
++		return nil, err
++	}
++	if currentEntity == nil {
++		return logical.ErrorResponse("given alias is not associated with an entity"), nil
++	}
++	if currentEntity.NamespaceID != alias.NamespaceID {
++		return logical.ErrorResponse("alias associated with an entity in a different namespace"), logical.ErrPermissionDenied
++	}
++	// end revert deletion
++
+ 	newEntity := currentEntity
+ 	if canonicalID != "" && canonicalID != alias.CanonicalID {
+ 		// Don't allow moving local aliases between entities.
+@@ -401,13 +387,6 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
+ 			return logical.ErrorResponse("given 'canonical_id' associated with entity in a different namespace from the alias"), logical.ErrPermissionDenied
+ 		}
+
+-		// Check if the entity the alias is being updated to, already has an alias for the mount
+-		for _, alias := range newEntity.Aliases {
+-			if alias.MountAccessor == mountAccessor {
+-				return logical.ErrorResponse("Alias cannot be updated as the given entity already has an alias for this mount "), nil
+-			}
+-		}
+-
+ 		// Update the canonical ID value and move it from the current entity to the new one
+ 		alias.CanonicalID = newEntity.ID
+ 		newEntity.Aliases = append(newEntity.Aliases, alias)
+diff --git a/vault/identity_store_entities.go b/vault/identity_store_entities.go
+index cc85d0179..8014bb897 100644
+--- a/vault/identity_store_entities.go
++++ b/vault/identity_store_entities.go
+@@ -773,14 +773,6 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
+ 		i.localNode.HAState() == consts.PerfStandby
+ 	var fromEntityGroups []*identity.Group
+
+-	toEntityAccessors := make(map[string]struct{})
+-
+-	for _, alias := range toEntity.Aliases {
+-		if _, ok := toEntityAccessors[alias.MountAccessor]; !ok {
+-			toEntityAccessors[alias.MountAccessor] = struct{}{}
+-		}
+-	}
+-
+ 	for _, fromEntityID := range sanitizedFromEntityIDs {
+ 		if fromEntityID == toEntity.ID {
+ 			return errors.New("to_entity_id should not be present in from_entity_ids"), nil
+@@ -810,10 +802,6 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
+ 				return nil, fmt.Errorf("failed to update alias during merge: %w", err)
+ 			}
+
+-			if _, ok := toEntityAccessors[alias.MountAccessor]; ok {
+-				i.logger.Warn("skipping from_entity alias during entity merge as to_entity has an alias with its accessor", "from_entity", fromEntityID, "skipped_alias", alias.ID)
+-				continue
+-			}
+ 			// Add the alias to the desired entity
+ 			toEntity.Aliases = append(toEntity.Aliases, alias)
+ 		}
+diff --git a/vault/identity_store_util.go b/vault/identity_store_util.go
+index ae08bd387..8c53283cf 100644
+--- a/vault/identity_store_util.go
++++ b/vault/identity_store_util.go
+@@ -326,7 +326,6 @@ func (i *IdentityStore) loadEntities(ctx context.Context) error {
+ 	}
+ 	i.logger.Debug("entities collected", "num_existing", len(existing))
+
+-	duplicatedAccessors := make(map[string]struct{})
+ 	// Make the channels used for the worker pool
+ 	broker := make(chan string)
+ 	quit := make(chan bool)
+@@ -446,14 +445,6 @@ LOOP:
+ 					}
+ 				}
+
+-				mountAccessors := getAccessorsOnDuplicateAliases(entity.Aliases)
+-
+-				for _, accessor := range mountAccessors {
+-					if _, ok := duplicatedAccessors[accessor]; !ok {
+-						duplicatedAccessors[accessor] = struct{}{}
+-					}
+-				}
+-
+ 				localAliases, err := i.parseLocalAliases(entity.ID)
+ 				if err != nil {
+ 					return fmt.Errorf("failed to load local aliases from storage: %v", err)
+@@ -479,18 +470,6 @@ LOOP:
+ 		return err
+ 	}
+
+-	// Flatten the map into a list of keys, in order to log them
+-	duplicatedAccessorsList := make([]string, len(duplicatedAccessors))
+-	accessorCounter := 0
+-	for accessor := range duplicatedAccessors {
+-		duplicatedAccessorsList[accessorCounter] = accessor
+-		accessorCounter++
+-	}
+-
+-	if len(duplicatedAccessorsList) > 0 {
+-		i.logger.Warn("One or more entities have multiple aliases on the same mount(s), remove duplicates to avoid ACL templating issues", "mount_accessors", duplicatedAccessorsList)
+-	}
+-
+ 	if i.logger.IsInfo() {
+ 		i.logger.Info("entities restored")
+ 	}
+@@ -498,25 +477,6 @@ LOOP:
+ 	return nil
+ }
+
+-// getAccessorsOnDuplicateAliases returns a list of accessors by checking aliases in
+-// the passed in list which belong to the same accessor(s)
+-func getAccessorsOnDuplicateAliases(aliases []*identity.Alias) []string {
+-	accessorCounts := make(map[string]int)
+-	var mountAccessors []string
+-
+-	for _, alias := range aliases {
+-		accessorCounts[alias.MountAccessor] += 1
+-	}
+-
+-	for accessor, accessorCount := range accessorCounts {
+-		if accessorCount > 1 {
+-			mountAccessors = append(mountAccessors, accessor)
+-		}
+-	}
+-
+-	return mountAccessors
+-}
+-
+ // upsertEntityInTxn either creates or updates an existing entity. The
+ // operations will be updated in both MemDB and storage. If 'persist' is set to
+ // false, then storage will not be updated. When an alias is transferred from

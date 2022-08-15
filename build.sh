@@ -25,7 +25,7 @@ function build_plugin() {
     -v /tmp/vault-plugins-build:/go/pkg/mod \
     $EXTRA_MOUNT \
     -e CGO_ENABLED=1 \
-    tetafro/golang-gcc:1.16-alpine \
+    tetafro/golang-gcc:1.17-alpine \
     go build -tags musl -o /src/build/$PLUGIN_NAME cmd/$PLUGIN_NAME/main.go
 }
 
@@ -43,7 +43,7 @@ function build_authd() {
     -v $SCRIPTDIR/authd:/go/src/app/authd \
     -v /tmp/authd-build:/go/pkg/mod \
     -e GO111MODULE=on \
-    golang:1.16 \
+    golang:1.17 \
     go build -o /src/build/authd cmd/authd/main.go
 }
 
@@ -62,7 +62,7 @@ function build_cli() {
     -v $SCRIPTDIR/cli:/go/src/app/cli \
     -v /tmp/cli-build:/go/pkg/mod \
     -e GO111MODULE=on \
-    golang:1.16 \
+    golang:1.17 \
     go build -o /src/build/cli cmd/cli/main.go
 }
 
@@ -82,7 +82,7 @@ function build_server_accessd() {
     -v $SCRIPTDIR/vault-plugins:/go/src/vault-plugins \
     -v /tmp/server-accessd-build:/go/pkg/mod \
     -e GO111MODULE=on \
-    golang:1.16 \
+    golang:1.17 \
     go build -o /src/build/server-accessd flant-server-accessd/cmd/main.go flant-server-accessd/cmd/initcmd.go
 }
 
@@ -113,7 +113,7 @@ function build_oidc_mock() {
     -v $SCRIPTDIR/e2e/tests/lib/oidc_mock/build:/src/build \
     -v $SCRIPTDIR/e2e/tests/lib/oidc_mock:/go/src/oidc-mock \
     -v /tmp/oidc-mock-build:/go/pkg/mod \
-    golang:1.16-alpine \
+    golang:1.17-alpine \
     go build -o /src/build/oidc-mock cmd/server.go
 }
 
@@ -134,7 +134,7 @@ function build_kafka_consumer() {
     -v $SCRIPTDIR/kafka-consumer:/go/src/app/kafka-consumer \
     -v /tmp/kafka-consumer-build:/go/pkg/mod \
     -e GO111MODULE=on \
-    golang:1.16 \
+    golang:1.17 \
     go build -o /src/build/consumer cmd/consumer/main.go
 }
 
@@ -147,7 +147,7 @@ function build_vault() {
     -w /app/infra/common/vault \
     -v $(pwd):/app \
     $EXTRA_MOUNT \
-    golang:1.16.8-alpine \
+    golang:1.17.12-alpine \
     sh -c "apk add bash git make musl-dev gcc patch && ./build_vault.sh $ARG"
 }
 

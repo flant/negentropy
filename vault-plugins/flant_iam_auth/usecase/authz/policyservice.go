@@ -81,7 +81,7 @@ type VaultPolicy struct {
 	Rules []Rule `json:"rules"`
 }
 
-const policyNameDateFormat = "2006-01-02T15:04:05"
+const policyNameDateFormat = "2006-01-02t15:04:05"
 
 // AddValidTillToName adds suffix _valid_till_timestamp at UTC
 func (p *VaultPolicy) AddValidTillToName(validTill time.Time) {

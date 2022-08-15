@@ -2,6 +2,7 @@ package rolebindingapproval
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 
 	. "github.com/onsi/ginkgo"
@@ -35,20 +36,11 @@ var _ = Describe("Role binding approval", func() {
 	)
 
 	var roleBindingID string
-	BeforeSuite(func() {
-		specs.CreateRoles(RoleAPI, fixtures.Roles()...)
-		tenant = specs.CreateRandomTenant(TenantAPI)
-		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
-		sa = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
-		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
-		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
-		roleBindingID = res.Get("role_binding.uuid").String()
-	})
 
 	var createdRBA gjson.Result
 	var updatedRBA gjson.Result
 
-	It("can be created", func() {
+	rbaaCreator := func() {
 		approvers := []map[string]interface{}{
 			{"type": "user", "uuid": user.UUID},
 			{"type": "service_account", "uuid": sa.UUID},
@@ -66,10 +58,7 @@ var _ = Describe("Role binding approval", func() {
 				ap := js.Get("approval")
 				Expect(ap.Get("required_votes").Int()).To(BeEquivalentTo(3))
 				Expect(ap.Get("approvers").Array()).To(HaveLen(3))
-				approversBytes, err := json.Marshal(approvers)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(ap.Get("approvers").Array()).To(Equal(gjson.ParseBytes(approversBytes).Array()))
+				checkApprovers(approvers, ap)
 			},
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
@@ -78,6 +67,21 @@ var _ = Describe("Role binding approval", func() {
 
 		createdData := TestAPI.Create(params, url.Values{}, data)
 		createdRBA = createdData.Get("approval")
+	}
+
+	BeforeSuite(func() {
+		specs.CreateRoles(RoleAPI, fixtures.Roles()...)
+		tenant = specs.CreateRandomTenant(TenantAPI)
+		user = specs.CreateRandomUser(UserAPI, tenant.UUID)
+		sa = specs.CreateRandomServiceAccount(ServiceAccountAPI, tenant.UUID)
+		group = specs.CreateRandomGroupWithUser(GroupAPI, tenant.UUID, user.UUID)
+		res := RoleBindingAPI.Create(api.Params{"tenant": tenant.UUID}, url.Values{}, fixtures.RandomRoleBindingCreatePayloadWithUser(user.UUID))
+		roleBindingID = res.Get("role_binding.uuid").String()
+		rbaaCreator()
+	})
+
+	It("can be created", func() {
+		rbaaCreator()
 	})
 
 	It("can be read", func() {
@@ -94,12 +98,13 @@ var _ = Describe("Role binding approval", func() {
 
 	It("can be updated", func() {
 		// Created before
+		approvers := []map[string]interface{}{
+			{"type": "service_account", "uuid": sa.UUID},
+			{"type": "group", "uuid": group.UUID},
+		}
 		updatePayload := map[string]interface{}{
-			"required_votes": 3,
-			"approvers": []map[string]interface{}{
-				{"type": "service_account", "uuid": sa.UUID},
-				{"type": "group", "uuid": group.UUID},
-			},
+			"required_votes":   3,
+			"approvers":        approvers,
 			"resource_version": createdRBA.Get("resource_version").String(),
 		}
 
@@ -111,10 +116,7 @@ var _ = Describe("Role binding approval", func() {
 				ap := js.Get("approval")
 				Expect(ap.Get("required_votes").Int()).To(BeEquivalentTo(3))
 				Expect(ap.Get("approvers").Array()).To(HaveLen(2))
-				approversBytes, err := json.Marshal(updatePayload["approvers"])
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(ap.Get("approvers").Array()).To(Equal(gjson.ParseBytes(approversBytes).Array()))
+				checkApprovers(approvers, ap)
 			},
 		}, nil, updatePayload)
 		updatedRBA = updatedData.Get("approval")
@@ -167,3 +169,12 @@ var _ = Describe("Role binding approval", func() {
 		})
 	})
 })
+
+func checkApprovers(approvers []map[string]interface{}, approval gjson.Result) {
+	approversBytes, err := json.Marshal(approvers)
+	Expect(err).ToNot(HaveOccurred())
+	approversStr := string(approversBytes)
+	approversFromGjson := approval.Get("approvers").String()
+
+	Expect(specs.AreEqualJSON(approversStr, approversFromGjson)).To(BeTrue(), fmt.Sprintf("%s should be equal %s", approversStr, approversFromGjson))
+}

@@ -17,7 +17,7 @@ type VaultService interface {
 	GetUser() (*auth.User, error)
 	// UpdateServersByFilter returns ServerList synchronized with vault, according filter, using given ServerList as cache
 	UpdateServersByFilter(model.ServerFilter, *model.ServerList) (*model.ServerList, error)
-	SignPublicSSHCertificate(iam.TenantUUID, iam.ProjectUUID, []ext.ServerUUID, model.VaultSSHSignRequest) ([]byte, error)
+	SignPublicSSHCertificate(iam.TenantUUID, iam.ProjectUUID, []ext.ServerUUID, pkg.VaultSSHSignRequest) ([]byte, error)
 	// UpdateTenants update oldTenants by vault requests, according specified identifiers given by args
 	UpdateTenants(map[iam.TenantUUID]iam.Tenant, model.StringSet) (map[iam.TenantUUID]iam.Tenant, error)
 	// UpdateProjects update oldProjects by vault requests, according specified identifiers given by args
@@ -66,7 +66,7 @@ func (v *vaultService) UpdateServersByFilter(filter model.ServerFilter, oldServe
 }
 
 func (v *vaultService) SignPublicSSHCertificate(tenantUUID iam.TenantUUID, projectUUID iam.ProjectUUID,
-	serverUUIDs []ext.ServerUUID, req model.VaultSSHSignRequest) ([]byte, error) {
+	serverUUIDs []ext.ServerUUID, req pkg.VaultSSHSignRequest) ([]byte, error) {
 
 	return v.cl.SignPublicSSHCertificate(tenantUUID, projectUUID, serverUUIDs, req)
 }

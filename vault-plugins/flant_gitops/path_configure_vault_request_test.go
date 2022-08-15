@@ -64,6 +64,7 @@ func (s *PathConfigureVaultRequestCallbacksSuite) Test_CreateOrUpdate_NoRequestP
 
 	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
+	resp.Warnings = nil // delete warnings
 	assert.Equal(logical.ErrorResponse(`%q field value must begin with "/", got: `, fieldNameVaultRequestPath), resp)
 }
 
@@ -76,6 +77,7 @@ func (s *PathConfigureVaultRequestCallbacksSuite) Test_CreateOrUpdate_InvalidReq
 
 	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
+	resp.Warnings = nil // delete warnings
 	assert.Equal(logical.ErrorResponse(`%q field value must begin with "/", got: 123`, fieldNameVaultRequestPath), resp)
 }
 
@@ -88,6 +90,7 @@ func (s *PathConfigureVaultRequestCallbacksSuite) Test_CreateOrUpdate_InvalidMet
 
 	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
+	resp.Warnings = nil // delete warnings
 	assert.Equal(logical.ErrorResponse("%q field value must be one of GET, POST, LIST, PUT or DELETE, got: 123", fieldNameVaultRequestMethod), resp)
 }
 
@@ -100,6 +103,7 @@ func (s *PathConfigureVaultRequestCallbacksSuite) Test_CreateOrUpdate_WrapTTLToo
 
 	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
+	resp.Warnings = nil // delete warnings
 	assert.Equal(logical.ErrorResponse("%q field value must be no less than %ds, got: 1s", fieldNameVaultRequestWrapTTL, vaultRequestWrapTTLMinSec), resp)
 }
 

@@ -1,11 +1,9 @@
 package test_server_and_client_preparing
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"text/template"
 	"time"
 
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
@@ -75,17 +73,9 @@ func RunAndCheckAuthdAtServer(s Suite, testServerServiceAccountMultipassJWT iam.
 		return fmt.Errorf("folder:%s should be created, but got error: %w", path, err)
 	}
 
-	t, err := template.New("").Parse(ServerMainCFGTPL)
-	if err != nil {
-		return fmt.Errorf("template should be ok:%w", err)
-	}
-	var serverMainCFG bytes.Buffer
-	err = t.Execute(&serverMainCFG, s)
-	if err != nil {
-		return fmt.Errorf("template should be executed:%w", err)
-	}
+	serverMainCfg := ServerMainAuthdCFG()
 	mainCfgPath := "/etc/flant/negentropy/authd-conf.d/main.yaml"
-	err = s.WriteFileToContainer(s.TestServerContainer, mainCfgPath, serverMainCFG.String())
+	err = s.WriteFileToContainer(s.TestServerContainer, mainCfgPath, serverMainCfg)
 	if err != nil {
 		return fmt.Errorf("file:%s sshould be written, but got error: %w", mainCfgPath, err)
 	}

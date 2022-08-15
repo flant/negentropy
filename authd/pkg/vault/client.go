@@ -70,6 +70,9 @@ func (c *Client) LoginWithJWTAndClaims(ctx context.Context, jwt string, claimedR
 
 	resp, err := cl.RawRequestWithContext(ctx, req)
 	if err != nil {
+		if resp == nil {
+			return nil, err
+		}
 		if resp.StatusCode == http.StatusForbidden {
 			return nil, client_error.NewHTTPError(err, http.StatusForbidden, []string{"vault returns 403 status"})
 		}

@@ -2,8 +2,10 @@ package specs
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -35,12 +37,34 @@ func IsSubsetExceptKeys(subset gjson.Result, set gjson.Result, keys ...string) {
 	}
 }
 
-func CheckArrayContainsElement(array []gjson.Result, element gjson.Result) {
-	var mapArray []map[string]gjson.Result
-	for i := range array {
-		mapArray = append(mapArray, array[i].Map())
+func AreEqualJSON(s1, s2 string) (bool, error) {
+	var o1 interface{}
+	var o2 interface{}
+
+	var err error
+	err = json.Unmarshal([]byte(s1), &o1)
+	if err != nil {
+		return false, fmt.Errorf("Error mashalling string 1 :: %s", err.Error())
 	}
-	Expect(mapArray).To(ContainElement(element.Map()))
+	err = json.Unmarshal([]byte(s2), &o2)
+	if err != nil {
+		return false, fmt.Errorf("Error mashalling string 2 :: %s", err.Error())
+	}
+
+	return reflect.DeepEqual(o1, o2), nil
+}
+
+func CheckArrayContainsElement(array []gjson.Result, element gjson.Result) {
+	var found bool
+	var err error
+	for i := range array {
+		found, err = AreEqualJSON(element.String(), array[i].String())
+		Expect(err).ToNot(HaveOccurred())
+		if found {
+			break
+		}
+	}
+	Expect(found).To(BeTrue(), fmt.Sprintf("%s should be in %#v", element.String(), array))
 }
 
 func CheckArrayContainsElementByUUIDExceptKeys(array []gjson.Result, element gjson.Result, keys ...string) {

@@ -190,7 +190,7 @@ func (sks *SelfKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCon
 		}
 		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
-			panic(err)
+			sks.logger.Error(fmt.Sprintf("vault-plugins/flant_iam_auth/io/kafka_source/self.go:  (sks *SelfKafkaSource) messageHandler error: %s", err.Error()))
 		}
 	}
 }

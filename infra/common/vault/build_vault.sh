@@ -38,7 +38,7 @@ clone_vault_git_repository
 check_vault_binary_exist
 
 pushd vault
-git checkout v1.7.1
+git checkout v1.11.1
 git reset --hard
 go mod edit -require github.com/flant/negentropy/vault-plugins/shared@v0.0.1 -replace github.com/flant/negentropy/vault-plugins/shared@v0.0.1=../../../../vault-plugins/shared
 go mod edit -require github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0=../../../../vault-plugins/flant_gitops
@@ -47,8 +47,8 @@ go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0
 patch -p1 < ../001_bucket_count.patch
 patch -p1 < ../002_add_flant_plugins.patch
 patch -p1 < ../003_add_loading_info_to_cfg.patch
-go get k8s.io/client-go@v0.21.1 # TODO: fix this workaround. Next step crashes without installing more recent version of client-go
-go mod tidy
+patch -p1 < ../004_revert_MR#12747.patch
+go mod tidy -e -go=1.16 && go mod tidy -e -go=1.17
 make bootstrap
 make dev
 code=$?

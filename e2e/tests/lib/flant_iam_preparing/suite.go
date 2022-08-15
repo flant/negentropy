@@ -41,6 +41,7 @@ type CheckingEnvironment struct {
 	UserRolebinding                      model.RoleBinding
 	TestServerServiceAccountMultipassJWT model.MultipassJWT
 	TestServer                           model2.Server
+	TestServer2                          model2.Server
 	UserMultipassJWT                     model.MultipassJWT
 }
 
@@ -131,7 +132,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	fmt.Printf("Created testServer Server:%#v\n", result.TestServer)
 
 	// register as a server 'test_server2' using serviceAccount & add connection info
-	_, _ = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
+	result.TestServer2, _ = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
 	fmt.Printf("Created test-server2")
 
 	// create and get multipass for a user
