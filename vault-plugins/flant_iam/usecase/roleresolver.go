@@ -89,24 +89,29 @@ func (r *roleResolver) CollectUserEffectiveRoles(userUUID model.UserUUID, roles 
 
 	for _, roleName := range roles {
 		effectiveRoles := []EffectiveRole{}
-		_, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
+		targetRoles, roleBindingsForRoles, err := r.collectAllRolesAndRoleBindings(roleName)
 		if err != nil {
 			return nil, err
 		}
 		for _, roleBinding := range roleBindings {
 			_, rbHasRole := roleBindingsForRoles[roleBinding.UUID]
 			if rbHasRole {
-				effectiveRoles = append(effectiveRoles, EffectiveRole{
-					RoleName:        roleName,
-					RoleBindingUUID: roleBinding.UUID,
-					TenantUUID:      roleBinding.TenantUUID,
-					ValidTill:       roleBinding.ValidTill,
-					RequireMFA:      roleBinding.RequireMFA,
-					AnyProject:      roleBinding.AnyProject,
-					Projects:        roleBinding.Projects,
-					NeedApprovals:   r.approvalInformer.RoleBindingApprovalCount(roleBinding.UUID),
-					Options:         nil, // do not feel
-				})
+				for _, boundRole := range roleBinding.Roles {
+					if roleOptionsTemplatesChain, target := targetRoles[boundRole.Name]; target {
+						effectiveRoles = append(effectiveRoles, EffectiveRole{
+							RoleName:        roleName,
+							RoleBindingUUID: roleBinding.UUID,
+							TenantUUID:      roleBinding.TenantUUID,
+							ValidTill:       roleBinding.ValidTill,
+							RequireMFA:      roleBinding.RequireMFA,
+							AnyProject:      roleBinding.AnyProject,
+							Projects:        roleBinding.Projects,
+							NeedApprovals:   r.approvalInformer.RoleBindingApprovalCount(roleBinding.UUID),
+							Options:         applyRoleOptionsTemplatesChain(boundRole.Options, roleOptionsTemplatesChain),
+						})
+						break
+					}
+				}
 			}
 		}
 		result[roleName] = effectiveRoles

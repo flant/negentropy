@@ -8,27 +8,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func createRoles(t *testing.T, repo *iam_repo.RoleRepository, roles ...model.Role) {
-	for _, role := range roles {
-		tmp := role
-		err := repo.Create(&tmp)
-		require.NoError(t, err)
-	}
-}
-
-func roleFixture(t *testing.T, store *io.MemoryStore) {
-	tx := store.Txn(true)
-	repo := iam_repo.NewRoleRepository(tx)
-	createRoles(t, repo, fixtures.Roles()...)
-	err := tx.Commit()
-	require.NoError(t, err)
-}
-
 func Test_Role_findDirectIncludingRoles(t *testing.T) {
-	tx := RunFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, RoleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindDirectParentRoles(fixtures.RoleName1)
@@ -38,7 +21,7 @@ func Test_Role_findDirectIncludingRoles(t *testing.T) {
 }
 
 func Test_Role_FindAllIncludingRoles(t *testing.T) {
-	tx := RunFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, RoleFixture).Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 
 	roles, err := repo.FindAllAncestorsRoles(fixtures.RoleName1)
@@ -170,7 +153,7 @@ func Test_excludeRole(t *testing.T) {
 }
 
 func Test_Role_IsArchived(t *testing.T) {
-	tx := RunFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, RoleFixture).Txn(true)
 	err := (&RoleService{tx}).Delete(fixtures.RoleName4)
 	require.NoError(t, err)
 
@@ -181,7 +164,7 @@ func Test_Role_IsArchived(t *testing.T) {
 }
 
 func Test_DeleteRole_Failed(t *testing.T) {
-	tx := RunFixtures(t, roleFixture).Txn(true)
+	tx := RunFixtures(t, RoleFixture).Txn(true)
 
 	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
 

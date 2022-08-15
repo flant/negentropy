@@ -15,9 +15,9 @@ const (
 	RoleName5  = "RoleName5"
 	RoleName6  = "RoleName6"
 	RoleName7  = "RoleName7"
-	RoleName8  = "RoleName8"
-	RoleName9  = "RoleName9"
-	RoleName10 = "RoleName10"
+	RoleName8  = "RoleName8"  // tenant scope
+	RoleName9  = "RoleName9"  // tenant scope
+	RoleName10 = "RoleName10" // tenant scope
 )
 
 func Roles() []model.Role {
