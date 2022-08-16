@@ -368,7 +368,7 @@ def upgrade_vaults(vaults: List[VaultParams], migration_dir: str, migration_conf
 
 def run_migrations(migrations: List[Migration], vaults: List[VaultParams],
                    vault_filter: Callable[[str, List[VaultParams]], List[VaultParams]] = None, version: str = None):
-    """run all paased migration at vaults according passed vault_fliter and version"""
+    """run all passed migration at vaults according passed vault_filter and version"""
     for m in migrations:
         if version and m.get_version() > version:
             break

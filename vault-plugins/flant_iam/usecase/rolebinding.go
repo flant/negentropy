@@ -246,7 +246,7 @@ func (s *RoleBindingService) checkRoles(roles []model.BoundRole) error {
 			return fmt.Errorf("%w:%s - prohibited direct use in rolebinding", consts.ErrInvalidArg, br.Name)
 		}
 		if err = checkOptions(role.OptionsSchema, br.Options); err != nil {
-			return fmt.Errorf("%w: check options for role %q: %s - prohibited direct use in rolebinding", consts.ErrInvalidArg, br.Name, err.Error())
+			return fmt.Errorf("%w: check options for role %q: %s", consts.ErrInvalidArg, br.Name, err.Error())
 		}
 	}
 	return nil
