@@ -33,7 +33,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       
       - name: Check panics in vault_plugins
-        run: ! grep -r panic vault-plugins/ | grep -Ev "nolint\:panic\_check|\_test\.go|\/tests\/|vault"
+        run: sh -c '! grep -r panic vault-plugins/ | grep -Ev "nolint\:panic\_check|\_test\.go|\/tests\/|vault"'
 
       - name: Install golang-ci lint
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.38.0
