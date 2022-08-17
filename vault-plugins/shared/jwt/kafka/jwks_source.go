@@ -48,8 +48,14 @@ func (rk *JWKSKafkaSource) Restore(txn *memdb.Txn) error {
 	replicaName := rk.kf.PluginConfig.SelfTopicName
 	groupID := replicaName
 
-	restorationConsumer := rk.kf.GetRestorationReader()
-	runConsumer := rk.kf.GetUnsubscribedRunConsumer(groupID)
+	restorationConsumer, err := rk.kf.GetRestorationReader()
+	if err != nil {
+		return err
+	}
+	runConsumer, err := rk.kf.GetUnsubscribedRunConsumer(groupID)
+	if err != nil {
+		return err
+	}
 
 	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
 	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
@@ -112,8 +118,11 @@ func (rk *JWKSKafkaSource) Run(store *io.MemoryStore) {
 	rk.logger.Debug("Watcher - start", "replica_name", replicaName)
 	defer rk.logger.Debug("Watcher - stop", "replica_name", replicaName)
 	groupID := replicaName
-	runConsumer := rk.kf.GetSubscribedRunConsumer(groupID, topicName)
-
+	runConsumer, err := rk.kf.GetSubscribedRunConsumer(groupID, topicName)
+	if err != nil {
+		// it is critical error, if it happens, there is no way to restart it without repairing
+		rk.logger.Error(fmt.Sprintf("critical error: %s", err.Error()))
+	}
 	rk.run = true
 	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
 	sharedkafka.RunMessageLoop(runConsumer, rk.messageHandler(store), rk.stopC, rk.logger)

@@ -245,15 +245,15 @@ func (mb *MessageBroker) GetEncryptionPublicKeyStrict() (string, error) {
 	return utils.DecodePemKey(k), nil
 }
 
-func (mb *MessageBroker) GetKafkaProducer() *kafka.Producer {
-	return mb.getProducer()
-}
+// func (mb *MessageBroker) GetKafkaProducer() (*kafka.Producer, error) {
+//	return mb.getProducer()
+// }
 
-func (mb *MessageBroker) GetKafkaTransactionalProducer() *kafka.Producer {
+func (mb *MessageBroker) GetKafkaTransactionalProducer() (*kafka.Producer, error) {
 	return mb.getTransactionalProducer()
 }
 
-func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) *kafka.Consumer {
+func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) (*kafka.Consumer, error) {
 	brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
 	c, err := kafka.NewConsumer(mb.withSSLConfig(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
@@ -264,26 +264,29 @@ func (mb *MessageBroker) getUnsubscribedConsumer(consumerGroupID string) *kafka.
 		"go.events.channel.enable": true,
 	}))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return c
+	return c, nil
 }
 
-func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) *kafka.Consumer {
+func (mb *MessageBroker) GetUnsubscribedRunConsumer(consumerGroupID string) (*kafka.Consumer, error) {
 	return mb.getUnsubscribedConsumer(consumerGroupID)
 }
 
-func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) *kafka.Consumer {
-	c := mb.GetUnsubscribedRunConsumer(consumerGroupID)
-	err := c.Subscribe(topicName, nil)
+func (mb *MessageBroker) GetSubscribedRunConsumer(consumerGroupID, topicName string) (*kafka.Consumer, error) {
+	c, err := mb.GetUnsubscribedRunConsumer(consumerGroupID)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return c
+	err = c.Subscribe(topicName, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // GetRestorationReader returns Unsubscribed for any topic consumer
-func (mb *MessageBroker) GetRestorationReader() *kafka.Consumer {
+func (mb *MessageBroker) GetRestorationReader() (*kafka.Consumer, error) {
 	return mb.getUnsubscribedConsumer(fmt.Sprintf("restoration_reader_%d", time.Now().Unix()))
 }
 
@@ -308,8 +311,11 @@ func (mb *MessageBroker) sendOffset(sourceInput *SourceInputMessage) error {
 
 	ctx := context.Background()
 
-	p := mb.GetKafkaTransactionalProducer()
-	err := p.BeginTransaction()
+	p, err := mb.GetKafkaTransactionalProducer()
+	if err != nil {
+		return err
+	}
+	err = p.BeginTransaction()
 	if err != nil {
 		return err
 	}
@@ -326,8 +332,11 @@ func (mb *MessageBroker) sendOffset(sourceInput *SourceInputMessage) error {
 func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage) error {
 	ctx := context.Background()
 
-	p := mb.GetKafkaTransactionalProducer()
-	err := p.BeginTransaction()
+	p, err := mb.GetKafkaTransactionalProducer()
+	if err != nil {
+		return err
+	}
+	err = p.BeginTransaction()
 	if err != nil {
 		return err
 	}
@@ -387,43 +396,47 @@ func (mb *MessageBroker) prepareMessage(msg Message) *kafka.Message {
 	return km
 }
 
-func (mb *MessageBroker) getProducer() *kafka.Producer {
+func (mb *MessageBroker) getProducer() (*kafka.Producer, error) {
+	var err error = nil
+	var p *kafka.Producer
 	mb.producerSync.Do(func() {
 		brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
-		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
+		p, err = kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			// "batch.size": 16384,
 			"client.id": mb.PluginConfig.SelfTopicName + ".producer",
 		}))
 		if err != nil {
-			panic(err)
+			return
 		}
 		mb.producer = p
 	})
 
-	return mb.producer
+	return mb.producer, err
 }
 
-func (mb *MessageBroker) getTransactionalProducer() *kafka.Producer {
+func (mb *MessageBroker) getTransactionalProducer() (*kafka.Producer, error) {
+	var err error
+	var p *kafka.Producer
 	mb.transProducerSync.Do(func() {
 		brokers := strings.Join(mb.KafkaConfig.Endpoints, ",")
-		p, err := kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
+		p, err = kafka.NewProducer(mb.withSSLConfig(&kafka.ConfigMap{
 			"bootstrap.servers": brokers,
 			"transactional.id":  mb.PluginConfig.SelfTopicName,
 			// "batch.size": 16384,
 			"client.id": mb.PluginConfig.SelfTopicName + ".transactional_producer",
 		}))
 		if err != nil {
-			panic(err)
+			return
 		}
 		err = p.InitTransactions(context.TODO())
 		if err != nil {
-			panic(err)
+			return
 		}
 		mb.transProducer = p
 	})
 
-	return mb.transProducer
+	return mb.transProducer, nil
 }
 
 func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config map[string]string) error {
@@ -506,9 +519,12 @@ func (mb *MessageBroker) Close() {
 // TopicExists
 func (mb *MessageBroker) TopicExists(topic string) (bool, error) {
 	groupID := fmt.Sprintf("temp_group_%d", time.Now().Unix())
-	consumer := mb.getUnsubscribedConsumer(groupID)
+	consumer, err := mb.getUnsubscribedConsumer(groupID)
+	if err != nil {
+		return false, err
+	}
 	defer DeferredСlose(consumer, mb.Logger)
-	var err error = nil
+
 	var meta *kafka.Metadata = nil
 
 	for meta == nil {

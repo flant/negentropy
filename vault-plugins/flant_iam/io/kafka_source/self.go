@@ -39,7 +39,10 @@ func (mks *SelfKafkaSource) Name() string {
 }
 
 func (mks *SelfKafkaSource) Restore(txn *memdb.Txn) error {
-	restorationConsumer := mks.kf.GetRestorationReader()
+	restorationConsumer, err := mks.kf.GetRestorationReader()
+	if err != nil {
+		return err
+	}
 	defer sharedkafka.DeferredСlose(restorationConsumer, mks.logger)
 	return sharedkafka.RunRestorationLoop(restorationConsumer, nil, mks.kf.PluginConfig.SelfTopicName,
 		txn, mks.restorationHandler, mks.logger)

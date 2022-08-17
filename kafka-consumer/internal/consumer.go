@@ -100,8 +100,10 @@ func (mks *NegentropyKafkaSource) msgHandler(sourceConsumer *kafka.Consumer, msg
 func (mks *NegentropyKafkaSource) Run() {
 	mks.logger.Debug("Watcher - start", "topic", mks.topicName, "groupID", mks.groupID)
 	defer mks.logger.Debug("Watcher - stop", "topic", mks.topicName, "groupID", mks.groupID)
-	runConsumer := mks.kf.GetSubscribedRunConsumer(mks.groupID, mks.topicName)
-
+	runConsumer, err := mks.kf.GetSubscribedRunConsumer(mks.groupID, mks.topicName)
+	if err != nil {
+		panic(err) // it is critical error for application which can be crashed
+	}
 	defer sharedkafka.DeferredСlose(runConsumer, mks.logger)
 	sharedkafka.RunMessageLoop(runConsumer, mks.msgHandler, mks.stopC, mks.logger)
 }

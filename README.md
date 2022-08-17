@@ -97,5 +97,5 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
 # E2E tests:
 
 ```shell
-./run-e2e-tests.sh
+./run-e2e-tests.sh 
 ```
