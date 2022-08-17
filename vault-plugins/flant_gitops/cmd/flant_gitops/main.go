@@ -19,7 +19,7 @@ func main() {
 
 	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		panic(fmt.Sprintf("failed to open trdl.log file: %s", err))
+		panic(fmt.Sprintf("failed to open trdl.log file: %s", err)) // nolint:panic_check
 	}
 
 	hclog.DefaultOptions = &hclog.LoggerOptions{

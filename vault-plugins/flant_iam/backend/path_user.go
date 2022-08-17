@@ -89,7 +89,7 @@ func userBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[s
 	}
 	for fieldName, fieldSchema := range extraFields {
 		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
-			panic(fmt.Sprintf("path_contact wrong schema: duplicate field name:%s", fieldName))
+			panic(fmt.Sprintf("path_contact wrong schema: duplicate field name:%s", fieldName)) // nolint:panic_check
 		}
 		fs[fieldName] = fieldSchema
 	}

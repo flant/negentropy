@@ -65,7 +65,7 @@ func rbaBaseAndExtraFields(extraFields map[string]*framework.FieldSchema) map[st
 	}
 	for fieldName, fieldSchema := range extraFields {
 		if _, alreadyDefined := fs[fieldName]; alreadyDefined {
-			panic(fmt.Sprintf("path_rolebinding_approval wrong schema: duplicate field name:%s", fieldName))
+			panic(fmt.Sprintf("path_rolebinding_approval wrong schema: duplicate field name:%s", fieldName)) // nolint:panic_check
 		}
 		fs[fieldName] = fieldSchema
 	}

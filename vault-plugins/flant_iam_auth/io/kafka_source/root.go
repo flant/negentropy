@@ -182,7 +182,7 @@ func (rk *RootKafkaSource) msgHandler(store *io.MemoryStore) func(sourceConsumer
 		}
 		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
-			panic(err)
+			rk.logger.Error(fmt.Sprintf("retries failed:%s", err.Error()))
 		}
 	}
 }

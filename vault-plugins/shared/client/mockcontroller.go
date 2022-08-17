@@ -13,7 +13,7 @@ type MockVaultClientController struct {
 }
 
 func (m *MockVaultClientController) GetApiConfig(ctx context.Context, storage logical.Storage) (*VaultApiConf, error) {
-	panic("implement me")
+	panic("implement me") // nolint:panic_check
 }
 
 func (m *MockVaultClientController) APIClient(storage logical.Storage) (*api.Client, error) {
@@ -21,13 +21,13 @@ func (m *MockVaultClientController) APIClient(storage logical.Storage) (*api.Cli
 }
 
 func (m *MockVaultClientController) ReInit(storage logical.Storage) error {
-	panic("implement me")
+	panic("implement me") // nolint:panic_check
 }
 
 func (m *MockVaultClientController) OnPeriodical(ctx context.Context, request *logical.Request) error {
-	panic("implement me")
+	panic("implement me") // nolint:panic_check
 }
 
 func (m *MockVaultClientController) HandleConfigureVaultAccess(ctx context.Context, request *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	panic("implement me")
+	panic("implement me") // nolint:panic_check
 }

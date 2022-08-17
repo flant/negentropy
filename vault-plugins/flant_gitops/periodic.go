@@ -272,13 +272,13 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 				return nil
 			}(); err != nil {
 				if closeErr := contextWriter.CloseWithError(err); closeErr != nil {
-					panic(closeErr)
+					panic(closeErr) // nolint:panic_check
 				}
 				return
 			}
 
 			if err := contextWriter.Close(); err != nil {
-				panic(err)
+				panic(err) // nolint:panic_check
 			}
 		}()
 

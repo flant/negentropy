@@ -91,7 +91,7 @@ func toMemberNotations(ms ...iam_repo.Model) []model.MemberNotation {
 func makeMemberNotations(memberType string, uuids []string) []model.MemberNotation {
 	validTypes := map[string]struct{}{model.ServiceAccountType: {}, model.UserType: {}, model.GroupType: {}}
 	if _, valid := validTypes[memberType]; !valid {
-		panic(fmt.Errorf("member_type %s is invalid", memberType))
+		panic(fmt.Errorf("member_type %s is invalid", memberType)) // nolint:panic_check
 	}
 	result := make([]model.MemberNotation, len(uuids))
 	for i := range uuids {

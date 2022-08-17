@@ -165,7 +165,7 @@ func (rk *JWKSKafkaSource) messageHandler(store *io.MemoryStore) func(sourceCons
 		}
 		err = backoff.Retry(operation, io.ThirtySecondsBackoff())
 		if err != nil {
-			panic(err)
+			rk.logger.Error(fmt.Sprintf("retries failed:%s", err.Error()))
 		}
 	}
 }

@@ -163,7 +163,7 @@ func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore
 		}
 		err = backoff.Retry(operation, sharedio.ThirtySecondsBackoff())
 		if err != nil {
-			panic(err)
+			rk.logger.Error(fmt.Sprintf("retries failed:%s", err.Error()))
 		}
 	}
 }

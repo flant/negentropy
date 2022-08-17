@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -12,6 +10,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 type KeyPairService struct {
@@ -204,19 +203,6 @@ func (s *KeyPairService) shouldRotateOrGenNew() (rotate, generate bool, err erro
 	return false, false, nil
 }
 
-// newUUID generates random string
-func newUUID() string {
-	u := make([]byte, 16)
-	if _, err := io.ReadFull(rand.Reader, u); err != nil {
-		panic(err)
-	}
-
-	u[8] = (u[8] | 0x80) & 0xBF
-	u[6] = (u[6] | 0x40) & 0x4F
-
-	return hex.EncodeToString(u)
-}
-
 func generateKeys(conf *model.Config) (*model.JSONWebKey, *model.JSONWebKey, error) {
 	pubKey, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -232,7 +218,7 @@ func generateKeys(conf *model.Config) (*model.JSONWebKey, *model.JSONWebKey, err
 	priv := model.JSONWebKey{
 		JSONWebKey: jose.JSONWebKey{
 			Key:       key,
-			KeyID:     newUUID(),
+			KeyID:     uuid.New(),
 			Algorithm: string(jose.EdDSA),
 			Use:       "sig",
 		},
@@ -245,7 +231,7 @@ func generateKeys(conf *model.Config) (*model.JSONWebKey, *model.JSONWebKey, err
 	pub := model.JSONWebKey{
 		JSONWebKey: jose.JSONWebKey{
 			Key:       pubKey,
-			KeyID:     newUUID(),
+			KeyID:     uuid.New(),
 			Algorithm: string(jose.EdDSA),
 			Use:       "sig",
 		},
