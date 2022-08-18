@@ -15,7 +15,7 @@ type CustomTypeFieldIndexer struct {
 // FromObject used to evaluate values to put to index tree
 func (c *CustomTypeFieldIndexer) FromObject(obj interface{}) (bool, []byte, error) {
 	if c.FromCustomType == nil {
-		panic("FromCustomType is mandatory field")
+		panic("FromCustomType is mandatory field") // nolint:panic_check
 	}
 	v := reflect.ValueOf(obj)
 	v = reflect.Indirect(v) // Dereference the pointer if any
@@ -49,7 +49,7 @@ func (c *CustomTypeFieldIndexer) FromObject(obj interface{}) (bool, []byte, erro
 // FromArgs used to evaluate value for searching at index tree
 func (c *CustomTypeFieldIndexer) FromArgs(args ...interface{}) ([]byte, error) {
 	if c.FromCustomType == nil {
-		panic("FromCustomType is mandatory field")
+		panic("FromCustomType is mandatory field") // nolint:panic_check
 	}
 	if len(args) != 1 {
 		return nil, fmt.Errorf("must provide only a single argument")
@@ -72,7 +72,7 @@ type CustomTypeSliceFieldIndexer struct {
 
 func (c *CustomTypeSliceFieldIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
 	if c.FromCustomType == nil {
-		panic("FromCustomType is mandatory field")
+		panic("FromCustomType is mandatory field") // nolint:panic_check
 	}
 	v := reflect.ValueOf(obj)
 	v = reflect.Indirect(v) // Dereference the pointer if any
@@ -111,7 +111,7 @@ func (c *CustomTypeSliceFieldIndexer) FromObject(obj interface{}) (bool, [][]byt
 // FromArgs used to evaluate value for searching at index tree
 func (c *CustomTypeSliceFieldIndexer) FromArgs(args ...interface{}) ([]byte, error) {
 	if c.FromCustomType == nil {
-		panic("FromCustomType is mandatory field")
+		panic("FromCustomType is mandatory field") // nolint:panic_check
 	}
 	if len(args) != 1 {
 		return nil, fmt.Errorf("must provide only a single argument")

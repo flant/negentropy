@@ -292,6 +292,14 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 	})
 
 	It("cli ssh command works", func() {
+		s.ExecuteCommandAtContainer(s.TestClientContainer, []string{
+			"/bin/bash", "-c",
+			"rm -rf /tmp/flint",
+		}, []string{})
+		time.Sleep(time.Millisecond * 100)
+		Expect(s.DirectoryAtContainerNotExistOrEmpty(s.TestClientContainer, "/tmp/flint")).To(BeTrue(),
+			"/tmp/flint files doesn't exist before start")
+
 		cfg := flant_iam_preparing.CheckingEnvironment{
 			Tenant: client,
 			Project: model.Project{

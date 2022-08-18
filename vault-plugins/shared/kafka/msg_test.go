@@ -79,7 +79,8 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 		err = tryWithTimeOut(timeout, func() <-chan struct{} {
 			c := make(chan struct{})
 			go func() {
-				mainConsumer := broker.GetSubscribedRunConsumer(mainReadingGroupID, topic)
+				mainConsumer, err := broker.GetSubscribedRunConsumer(mainReadingGroupID, topic)
+				assert.NoError(t, err, testcase.description+":creating run consumer")
 				mainRead(t, broker, mainConsumer, testcase.countMainRead)
 				go func() {
 					mainConsumer.Close()
@@ -96,9 +97,11 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 		err = tryWithTimeOut(50, func() <-chan struct{} {
 			c := make(chan struct{})
 			go func() {
-				newConsumer := broker.GetRestorationReader()
-				runConsumer := broker.GetUnsubscribedRunConsumer(mainReadingGroupID)
-				err := RunRestorationLoop(newConsumer,
+				newConsumer, err := broker.GetRestorationReader()
+				assert.NoError(t, err, testcase.description+":getting restoration reader")
+				runConsumer, err := broker.GetUnsubscribedRunConsumer(mainReadingGroupID)
+				assert.NoError(t, err, testcase.description+":getting unsubscribed consumer")
+				err = RunRestorationLoop(newConsumer,
 					runConsumer,
 					topic,
 					nil,
@@ -132,8 +135,10 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 		err = tryWithTimeOut(50, func() <-chan struct{} {
 			c := make(chan struct{})
 			go func() {
-				runConsumer := broker.GetUnsubscribedRunConsumer(mainReadingGroupID)
-				newConsumer := broker.GetRestorationReader()
+				runConsumer, err := broker.GetUnsubscribedRunConsumer(mainReadingGroupID)
+				assert.NoError(t, err, "getting unsubscribed consumer")
+				newConsumer, err := broker.GetRestorationReader()
+				assert.NoError(t, err, "getting restoration reader")
 				lastOffset, edgeOffset, _, err := LastAndEdgeOffsetsByRunConsumer(runConsumer, newConsumer, topic)
 				assert.NoError(t, err, testcase.description+":call LastAndEdgeOffsetsByRunConsumers")
 				assert.Equal(t, testcase.lastOffset, lastOffset)
@@ -177,7 +182,8 @@ func TestLastOffsetByNewConsumer(t *testing.T) {
 	assert.NoError(t, err, "creating topic")
 	fillTopic(t, broker, 15)
 
-	newConsumer := broker.GetRestorationReader()
+	newConsumer, err := broker.GetRestorationReader()
+	assert.NoError(t, err, "getting restoration reader")
 	l, p, err := LastOffsetByNewConsumer(newConsumer, topic)
 
 	require.NoError(t, err, "LastOffsetByNewConsumer")
@@ -195,7 +201,8 @@ func TestLastOffsetByNewConsumerEmptyTopic(t *testing.T) {
 	err := broker.CreateTopic(context.TODO(), topic, nil)
 	assert.NoError(t, err, "creating topic")
 
-	newConsumer := broker.GetRestorationReader()
+	newConsumer, err := broker.GetRestorationReader()
+	assert.NoError(t, err, "getting restoration reader")
 	l, p, err := LastOffsetByNewConsumer(newConsumer, topic)
 
 	require.NoError(t, err, "LastOffsetByNewConsumer")

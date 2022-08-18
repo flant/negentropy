@@ -30,7 +30,7 @@ func (e *flantFlowExtension) Logger() hclog.Logger {
 func FlantFlowDBSchema() *memdb.DBSchema {
 	schema, err := repo.GetSchema()
 	if err != nil {
-		panic("error in flant_flow DBSchema:" + err.Error())
+		panic("error in flant_flow DBSchema:" + err.Error()) //nolint:panic_check
 	}
 	return schema
 }

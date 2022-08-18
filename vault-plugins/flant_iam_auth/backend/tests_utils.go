@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -62,11 +63,7 @@ func randomStr() string {
 	rand.Seed(time.Now().UnixNano())
 
 	entityName := make([]byte, 20)
-	_, err := rand.Read(entityName)
-	if err != nil {
-		panic("not generate entity name")
-	}
-
+	rand.Read(entityName) // nolint:errcheck
 	return hex.EncodeToString(entityName)
 }
 
@@ -220,7 +217,7 @@ func assertResponseCode(t *testing.T, r *api.Response, code int) {
 type mockEntityIDResolver struct{}
 
 func (m mockEntityIDResolver) RevealEntityIDOwner(_ authn2.EntityID, _ *io.MemoryStoreTxn, _ logical.Storage) (*authn2.EntityIDOwner, error) {
-	panic("if now need RevealEntityIDOwner, implement it")
+	return nil, errors.New("if now need RevealEntityIDOwner, implement it")
 }
 
 func (m mockEntityIDResolver) AvailableTenantsByEntityID(_ authn2.EntityID, txn *io.MemoryStoreTxn, _ logical.Storage) (map[model.TenantUUID]struct{}, error) {

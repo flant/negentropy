@@ -69,10 +69,7 @@ func randomStr() string {
 	rand.Seed(time.Now().UnixNano())
 
 	entityName := make([]byte, 20)
-	_, err := rand.Read(entityName)
-	if err != nil {
-		panic("not generate entity name")
-	}
+	rand.Read(entityName) // nolint:errcheck
 
 	return hex.EncodeToString(entityName)
 }

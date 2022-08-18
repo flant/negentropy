@@ -97,5 +97,13 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
 # E2E tests:
 
 ```shell
-./run-e2e-tests.sh
+./run-e2e-tests.sh 
 ```
+
+# Review checklist
+
+1) No panic which can run at vault-plugins except:
+    - panic run (or not)  depends on code compositions only
+    - panic run (or not) in tests runs
+    - panic at flant-gitops plugin  
+      Check there is no panic with comment '// nolint:check_panic' at others places
