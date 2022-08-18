@@ -1,0 +1,27 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: vault-auth
+data:
+  vault.hcl: |-
+    storage "file" {
+      path = "/tmp/vault/data"
+    }
+
+    listener "tcp" {
+      address = "0.0.0.0:8200"
+      tls_disable = "true"
+      max_request_duration = "120s"
+    }
+
+    api_addr = "http://vault-auth:8200"
+
+    cluster_name = "auth"
+
+    ui = false
+
+    log_level = "debug"
