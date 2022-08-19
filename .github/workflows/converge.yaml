@@ -7,11 +7,6 @@ jobs:
     name: "Build and Deploy"
     runs-on: ubuntu-latest
     steps:
-      - name: Dump github context
-        run:   echo "$GITHUB_CONTEXT"
-        shell: bash
-        env:
-         GITHUB_CONTEXT: ${{ toJson(github) }}
       - name: Set vars
         run: |
           [[ "${GITHUB_REF#*/*/}" == "main" ]] && echo "WERF_ENV=stage" >> ${GITHUB_ENV} || echo "WERF_ENV=dev" >> ${GITHUB_ENV}
@@ -29,4 +24,4 @@ jobs:
           env: ${{ env.WERF_ENV }}
           kube-config-base64-data: ${{ secrets.KUBE_CONFIG_BASE64_DATA }}
         env:
-          WERF_REPO: ${{ secrets.REGISTRY }}/${{ github.repository }}
+          WERF_REPO: ${{ secrets.REGISTRY }}/${{ github.event.repository.name }}
