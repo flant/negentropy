@@ -1,2 +1,17 @@
-namespace: n8y-dev
-vaultImage: vault:1.7.1
+port: 
+  _default: 8200
+replicas:
+  root_vault:
+    _default: 1
+  auth_vault:
+    _default: 3
+
+resources:
+  requests:
+    cpu:
+      _default: 30m
+    memory:
+      _default: 64Mi
+  limits:
+    memory:
+      _default: 512Mi

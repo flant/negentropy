@@ -2,28 +2,28 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: vault-auth
+  name: vault-root
   namespace: {{ .Values.namespace }}
   labels:
-    app: vault-auth
+    app: vault-root
 spec:
-  replicas: 3
-  serviceName: vault-auth
+  replicas: 1
+  serviceName: vault-root
   selector:
     matchLabels:
-      app: vault-auth
+      app: vault-root
   template:
     metadata:
       labels:
-        app: vault-auth
+        app: vault-root
     spec:
       terminationGracePeriodSeconds: 5
       containers:
-        - name: vault-auth
-          image: {{ .Values.vaultImage }}
+        - name: vault-root
+          image: {{ .Values.werf.image.vault }}
           command: [ 'vault', 'server', '-config', '/etc/vault.hcl' ]
           ports:
-          - name: auth
+          - name: root
             containerPort: 8200
             protocol: TCP
           securityContext:
@@ -41,5 +41,5 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: vault-auth
+          name: vault-root
           defaultMode: 0644
