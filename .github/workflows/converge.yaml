@@ -24,4 +24,4 @@ jobs:
           env: ${{ env.WERF_ENV }}
           kube-config-base64-data: ${{ secrets.KUBE_CONFIG_BASE64_DATA }}
         env:
-          WERF_REPO: ${{ secrets.REGISTRY }}/negentropy-dev/${{ github.event.repository.name }}
+          WERF_REPO: ${{ secrets.REGISTRY }}/negentropy-dev/negentropy-dev
