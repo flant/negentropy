@@ -27,13 +27,14 @@ import (
 )
 
 type Authorizator struct {
-	UserRepo      *iam_repo.UserRepository
-	SaRepo        *iam_repo.ServiceAccountRepository
-	EntityRepo    *repo.EntityRepo
-	EaRepo        *repo.EntityAliasRepo
-	RoleRepo      *iam_repo.RoleRepository
-	PolicyRepo    *repo.PolicyRepository
-	RolesResolver iam_usecase.RoleResolver
+	UserRepo               *iam_repo.UserRepository
+	SaRepo                 *iam_repo.ServiceAccountRepository
+	EntityRepo             *repo.EntityRepo
+	EaRepo                 *repo.EntityAliasRepo
+	RoleRepo               *iam_repo.RoleRepository
+	RoleBindingsRepository *iam_repo.RoleBindingRepository
+	PolicyRepo             *repo.PolicyRepository
+	RolesResolver          iam_usecase.RoleResolver
 
 	EffectiveRoleChecker *EffectiveRoleChecker
 
@@ -63,11 +64,12 @@ func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultCl
 		SaRepo:   iam_repo.NewServiceAccountRepository(txn),
 		UserRepo: iam_repo.NewUserRepository(txn),
 
-		EaRepo:        repo.NewEntityAliasRepo(txn),
-		EntityRepo:    repo.NewEntityRepo(txn),
-		RoleRepo:      iam_repo.NewRoleRepository(txn),
-		PolicyRepo:    repo.NewPolicyRepository(txn),
-		RolesResolver: iam_usecase.NewRoleResolver(txn),
+		EaRepo:                 repo.NewEntityAliasRepo(txn),
+		EntityRepo:             repo.NewEntityRepo(txn),
+		RoleRepo:               iam_repo.NewRoleRepository(txn),
+		RoleBindingsRepository: iam_repo.NewRoleBindingRepository(txn),
+		PolicyRepo:             repo.NewPolicyRepository(txn),
+		RolesResolver:          iam_usecase.NewRoleResolver(txn),
 
 		EffectiveRoleChecker: NewEffectiveRoleChecker(txn),
 
@@ -285,6 +287,10 @@ func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []mod
 		return err
 	}
 	authzRes.Policies = append(authzRes.Policies, extraPolicy.Name)
+	err = a.registerUsedRoleBindings(authzRes, loginItems)
+	if err != nil {
+		return err
+	}
 	authzRes.MaxTTL = maxTTL
 	authzRes.TTL = ttl
 	return nil
@@ -546,7 +552,6 @@ func (a *Authorizator) createDynamicPolicy(p VaultPolicy) error {
 
 func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn, subject model.Subject) (*logical.Auth, error) {
 	// check is user/sa still active
-	// TODO check rolebinding still active
 	var owner memdb.Archivable
 	var err error
 	switch subject.Type {
@@ -562,6 +567,11 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 	}
 	if owner.Archived() {
 		return nil, fmt.Errorf("tokenOwner is deleted")
+	}
+
+	err = a.checkRolebindings(auth)
+	if err != nil {
+		return nil, fmt.Errorf("need relogin: %w", err)
 	}
 	authzRes := *auth
 	authzRes.TTL = method.TokenTTL
@@ -617,4 +627,79 @@ func (a *Authorizator) checkTenantUUID(rc model.RoleClaim, subject model.Subject
 		return fmt.Errorf("role_claim: %#v has invalid tenant_uuid", rc)
 	}
 	return nil
+}
+
+type roleBindingVersion struct {
+	RoleBindingUUID iam.RoleBindingUUID `json:"uuid"`
+	Version         string              `json:"version"`
+}
+
+const rolebindingsOfAuth = "rolebindings"
+
+// registerUsedRoleBindings store used in success login rolebindings at InternalData
+func (a *Authorizator) registerUsedRoleBindings(authRes *logical.Auth, loginItems []tryLoginResult) error {
+	rolebindings := make([]roleBindingVersion, 0, len(loginItems))
+	for _, i := range loginItems {
+		if i.regoresult.BestEffectiveRole == nil {
+			continue
+		}
+		rb, err := a.RoleBindingsRepository.GetByID(i.regoresult.BestEffectiveRole.RoleBindingUUID)
+		if err != nil {
+			return err
+		}
+		rolebindings = append(rolebindings, roleBindingVersion{
+			RoleBindingUUID: rb.UUID,
+			Version:         rb.Version,
+		})
+	}
+	authRes.InternalData[rolebindingsOfAuth] = rolebindings
+	return nil
+}
+
+// checkRolebindings checks are all rolebindings active and didn't changed
+func (a *Authorizator) checkRolebindings(auth *logical.Auth) error {
+	rawRolebindings, exists := auth.InternalData[rolebindingsOfAuth]
+	if !exists {
+		return fmt.Errorf("auth doesn't contains key :%q", rolebindingsOfAuth)
+	}
+	rawRolebindings2, ok := rawRolebindings.([]interface{})
+	if !ok {
+		return fmt.Errorf("auth contains wrong type of :%q", rolebindingsOfAuth)
+	}
+	rolebindings := makeRoleBindingVersions(rawRolebindings2)
+	errs := multierror.Error{}
+	for _, rbv := range rolebindings {
+		rolebinding, err := a.RoleBindingsRepository.GetByID(rbv.RoleBindingUUID)
+		if err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("error getting rolebinding %s", rbv.RoleBindingUUID))
+			continue
+		}
+		if rolebinding.Archived() {
+			errs.Errors = append(errs.Errors, fmt.Errorf("rolebinding %s is archived", rbv.RoleBindingUUID))
+			continue
+		}
+		if rolebinding.ValidTill != 0 && rolebinding.ValidTill < time.Now().Unix() {
+			errs.Errors = append(errs.Errors, fmt.Errorf("rolebinding %s is outdated", rbv.RoleBindingUUID))
+			continue
+		}
+		if rolebinding.Version != rbv.Version {
+			errs.Errors = append(errs.Errors, fmt.Errorf("rolebinding %s is changed", rbv.RoleBindingUUID))
+			continue
+		}
+	}
+	return errs.ErrorOrNil()
+}
+
+func makeRoleBindingVersions(data []interface{}) []roleBindingVersion {
+	result := make([]roleBindingVersion, 0, len(data))
+	for _, d := range data {
+		t := d.(map[string]interface{})
+		version, _ := t["version"].(string)
+		uuid, _ := t["uuid"].(string)
+		result = append(result, roleBindingVersion{
+			RoleBindingUUID: uuid,
+			Version:         version,
+		})
+	}
+	return result
 }

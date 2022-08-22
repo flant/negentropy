@@ -99,9 +99,9 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 
 const TestServerIdentifier = "test-server"
 const TestServerIdentifier2 = "test-server2"
+const SshRole = "ssh.open"
 
 func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
-	const sshRole = "ssh.open"
 
 	result := st.PrepareForLoginTesting()
 
@@ -123,7 +123,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 			Members:     result.Group.Members,
 			Projects:    []string{result.Project.UUID},
 			AnyProject:  false,
-			Roles:       []model.BoundRole{{Name: sshRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
+			Roles:       []model.BoundRole{{Name: SshRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.UserRolebinding)
 
@@ -137,7 +137,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 
 	// create and get multipass for a user
 	_, result.UserMultipassJWT = specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
-		result.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
+		result.User, "test", 100*time.Second, 1000*time.Second, []string{SshRole})
 	fmt.Printf("user JWToken: : %#v\n", result.UserMultipassJWT)
 	return result
 }

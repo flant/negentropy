@@ -125,6 +125,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 
 	logger.Debug(fmt.Sprintf("Authorize successful! %s - %s/%s", authzRes.DisplayName, authzRes.EntityID, authzRes.Alias.ID))
 
+	authzRes.Renewable = true
 	return &logical.Response{
 		Auth: authzRes,
 	}, nil
@@ -148,6 +149,8 @@ func getRoleClaims(d *framework.FieldData) ([]model.RoleClaim, error) {
 
 func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger := b.NamedLogger("renew")
+	logger.Debug(fmt.Sprintf("TODO REMOVE! enter renew, %#v", req.Auth))
+
 	methodName := req.Auth.InternalData["flantIamAuthMethod"].(string)
 	if methodName == "" {
 		return nil, errors.New("failed to fetch auth_method during renewal")
@@ -170,11 +173,14 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 
 	can, err := authenticator.CanRenew(req.Auth)
 	if err != nil {
+		logger.Error(err.Error())
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	if !can {
-		return logical.ErrorResponse("Can'not prolong renew"), nil
+		txt := "Can't prolong renew"
+		logger.Debug(txt)
+		return logical.ErrorResponse(txt), nil
 	}
 
 	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
