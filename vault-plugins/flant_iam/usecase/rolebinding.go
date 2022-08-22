@@ -82,6 +82,10 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBin
 	if rb.Origin != stored.Origin {
 		return nil, consts.ErrBadOrigin
 	}
+	if stored.Version != rb.Version {
+		return nil, consts.ErrBadVersion
+	}
+	rb.Version = iam_repo.NewResourceVersion()
 	if stored.TenantUUID != rb.TenantUUID {
 		return nil, consts.ErrNotFound
 	}
@@ -99,7 +103,6 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBin
 	if rb.Extensions == nil {
 		rb.Extensions = stored.Extensions
 	}
-	rb.Description = stored.Description
 
 	// Store
 	err = s.repo.Update(rb)
