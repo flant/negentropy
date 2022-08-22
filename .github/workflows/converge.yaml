@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
       - name: Docker login
         run: |
-          echo "${{ secrets.GAR_JSON_KEY_BASE64 }}" | docker login -u _json_key_base64 --password-stdin ${{ secrets.REGISTRY }}
+          echo "${{ secrets.GAR_JSON_KEY_BASE64 }}" | docker login -u _json_key_base64 --password-stdin https://europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev
       - name: Werf converge
         uses: werf/actions/converge@v1.2
         with:
@@ -24,4 +24,4 @@ jobs:
           env: ${{ env.WERF_ENV }}
           kube-config-base64-data: ${{ secrets.KUBE_CONFIG_BASE64_DATA }}
         env:
-          WERF_REPO: https://europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev
+          WERF_REPO: europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev
