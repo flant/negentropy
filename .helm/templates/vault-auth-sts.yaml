@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vault-auth
+  labels:
+    app: vault-auth
+spec:
+  replicas: 3
+  serviceName: vault-auth
+  selector:
+    matchLabels:
+      app: vault-auth
+  template:
+    metadata:
+      labels:
+        app: vault-auth
+    spec:
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: vault-auth
+          image: {{ .Values.werf.image.vault }}
+          command: [ 'vault', 'server', '-config', '/etc/vault.hcl' ]
+          ports:
+          - name: auth
+            containerPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+            protocol: TCP
+          securityContext:
+{{- include "vault.securitycontext" . | nindent 12 }}
+          env:
+{{- include "vault.env" . | nindent 10 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vault.hcl
+              subPath: vault.hcl
+              readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: vault-auth
+          defaultMode: 0644
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-auth
+  labels:
+    app: vault-auth
+spec:
+  clusterIP: None
+  ports:
+  - name: auth
+    port: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+    protocol: TCP
+    targetPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+  selector:
+    app: vault-auth
