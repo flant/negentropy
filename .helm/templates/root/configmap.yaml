@@ -13,12 +13,12 @@ data:
     }
 
     listener "tcp" {
-      address = "0.0.0.0:8200"
+      address = "0.0.0.0:{{ include "fl.value" (list $ . $.Values.port) }}"
       tls_disable = "true"
       max_request_duration = "120s"
     }
 
-    api_addr = "http://vault-root:8200"
+    api_addr = "http://vault-root:{{ include "fl.value" (list $ . $.Values.port) }}"
 
     cluster_name = "root-source"
 

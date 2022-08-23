@@ -10,8 +10,8 @@ spec:
   clusterIP: None
   ports:
   - name: auth
-    port: 8200
+    port: {{ include "fl.value" (list $ . $.Values.port) }}
     protocol: TCP
-    targetPort: 8200
+    targetPort: {{ include "fl.value" (list $ . $.Values.port) }}
   selector:
     app: vault-auth
