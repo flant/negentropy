@@ -1,3 +1,4 @@
+{{- $vault_port := pluck .Values.werf.env .Values.vault_port | first | default .Values.vault_port._default }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -23,7 +24,7 @@ spec:
           command: [ 'vault', 'server', '-config', '/etc/vault.hcl' ]
           ports:
           - name: auth
-            containerPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+            containerPort: {{ $vault_port }}
             protocol: TCP
           securityContext:
 {{- include "vault.securitycontext" . | nindent 12 }}
@@ -50,8 +51,8 @@ spec:
   clusterIP: None
   ports:
   - name: auth
-    port: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+    port: {{ $vault_port }}
     protocol: TCP
-    targetPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
+    targetPort: {{ $vault_port }}
   selector:
     app: vault-auth
