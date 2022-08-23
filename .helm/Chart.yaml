@@ -3,4 +3,3 @@ dependencies:
 - name: flant-lib
   condition: flant-lib.enabled
   repository: https://charts.flant.com/common/github
-  version: ~1
