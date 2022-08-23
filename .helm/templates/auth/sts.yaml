@@ -3,7 +3,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: vault-auth
-  namespace: {{ .Values.namespace }}
   labels:
     app: vault-auth
 spec:
@@ -27,12 +26,9 @@ spec:
             containerPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
             protocol: TCP
           securityContext:
-            capabilities:
-              add:
-                - IPC_LOCK
+{{- include "vault.securitycontext" . | nindent 12 }}
           env:
-            - name: VAULT_LOG_LEVEL
-              value: debug
+{{- include "vault.env" . | nindent 10 }}
           volumeMounts:
             - name: config
               mountPath: /etc/vault.hcl

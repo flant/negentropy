@@ -1,4 +1,4 @@
-port: 
+vault_port: 
   _default: 8200
 replicas:
   root_vault:
