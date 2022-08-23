@@ -10,8 +10,8 @@ spec:
   clusterIP: None
   ports:
   - name: root
-    port: 8300
+    port: 8200
     protocol: TCP
-    targetPort: 8300
+    targetPort: 8200
   selector:
     app: vault-root
