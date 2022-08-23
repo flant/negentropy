@@ -1,4 +1,4 @@
-{{- define "vault.envs" }}
+{{- define "vault.env" }}
 env:
   - name: VAULT_LOG_LEVEL
     value: debug
