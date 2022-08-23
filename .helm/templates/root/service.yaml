@@ -10,8 +10,8 @@ spec:
   clusterIP: None
   ports:
   - name: root
-    port: {{ include "fl.value" (list $ . $.Values.port) }}
+    port: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
     protocol: TCP
-    targetPort: {{ include "fl.value" (list $ . $.Values.port) }}
+    targetPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
   selector:
     app: vault-root

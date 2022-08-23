@@ -13,12 +13,12 @@ data:
     }
 
     listener "tcp" {
-      address = "0.0.0.0:{{ include "fl.value" (list $ . $.Values.port) }}"
+      address = "0.0.0.0:{{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}"
       tls_disable = "true"
       max_request_duration = "120s"
     }
 
-    api_addr = "http://vault-root:{{ include "fl.value" (list $ . $.Values.port) }}"
+    api_addr = "http://vault-root:{{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}"
 
     cluster_name = "root-source"
 

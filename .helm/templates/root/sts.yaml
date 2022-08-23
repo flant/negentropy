@@ -24,7 +24,7 @@ spec:
           command: [ 'vault', 'server', '-config', '/etc/vault.hcl' ]
           ports:
           - name: root
-            containerPort: {{ include "fl.value" (list $ . $.Values.port) }}
+            containerPort: {{ pluck .Values.werf.env .Values.port | first | default .Values.port._default }}
             protocol: TCP
           securityContext:
             capabilities:
