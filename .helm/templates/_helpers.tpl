@@ -7,7 +7,7 @@ env:
 {{- end }}
 {{- define "vault.securitycontext" }}
 readOnlyRootFilesystem: true
-runAsNonRoot: true
+# runAsNonRoot: true
 capabilities:
   add:
     - IPC_LOCK
