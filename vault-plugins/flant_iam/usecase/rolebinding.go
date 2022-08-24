@@ -43,15 +43,15 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) (*DenormalizedRoleBin
 	if rb.Version != "" {
 		return nil, consts.ErrBadVersion
 	}
-	if err := s.checkRoles(rb.Roles); err != nil {
-		return nil, err
-	}
 	rb.Version = iam_repo.NewResourceVersion()
 
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
-		return nil, fmt.Errorf("RoleBindingService.Create:%s", err)
+		return nil, fmt.Errorf("RoleBindingService.Create:%w", err)
+	}
+	if err := s.checkRoles(rb.Roles); err != nil {
+		return nil, err
 	}
 	// TODO check - owned or shared
 	rb.Groups = subj.Groups
@@ -70,9 +70,6 @@ func (s *RoleBindingService) Create(rb *model.RoleBinding) (*DenormalizedRoleBin
 func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBinding, error) {
 	// Validate
 	stored, err := s.repo.GetByID(rb.UUID)
-	if err := s.checkRoles(rb.Roles); err != nil {
-		return nil, err
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +89,9 @@ func (s *RoleBindingService) Update(rb *model.RoleBinding) (*DenormalizedRoleBin
 	// Refill data
 	subj, err := s.memberFetcher.Fetch(rb.Members)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.checkRoles(rb.Roles); err != nil {
 		return nil, err
 	}
 	// TODO check - owned or shared
@@ -237,13 +237,16 @@ func (s *RoleBindingService) denormalizeRoleBinding(rb *model.RoleBinding) (*Den
 }
 
 func (s *RoleBindingService) checkRoles(roles []model.BoundRole) error {
-	for _, r := range roles {
-		role, err := s.roleRepoository.GetByID(r.Name)
+	for _, br := range roles {
+		role, err := s.roleRepoository.GetByID(br.Name)
 		if err != nil {
-			return fmt.Errorf("%s:%w", r.Name, err)
+			return fmt.Errorf("%s:%w", br.Name, err)
 		}
 		if role.ForbinddenDirectUse {
-			return fmt.Errorf("%w:%s - prohibited direct use in rolebinding", consts.ErrInvalidArg, r.Name)
+			return fmt.Errorf("%w:%s - prohibited direct use in rolebinding", consts.ErrInvalidArg, br.Name)
+		}
+		if err = checkOptions(role.OptionsSchema, br.Options); err != nil {
+			return fmt.Errorf("%w: check options for role %q: %s - prohibited direct use in rolebinding", consts.ErrInvalidArg, br.Name, err.Error())
 		}
 	}
 	return nil

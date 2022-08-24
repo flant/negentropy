@@ -94,3 +94,14 @@ func checkPropertyTypes(oldProperties openapi3.Schemas, newProperties openapi3.S
 	}
 	return nil
 }
+
+func checkOptions(optionSchemaJson string, options map[string]interface{}) error {
+	if optionSchemaJson == "" {
+		return nil
+	}
+	schema, err := buildSchema(optionSchemaJson)
+	if err != nil {
+		return err
+	}
+	return schema.VisitJSON(options)
+}

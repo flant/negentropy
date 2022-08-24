@@ -92,3 +92,31 @@ func Test_checkBackwardsCompatibility(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func Test_checkOptions(t *testing.T) {
+	schema := `{"type":"object","required":["team_uuid"],"properties":{"id":{"format":"int64","type":"integer"},"team_uuid":{"pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$","type":"string"}}}`
+
+	t.Run("allow suitable value", func(t *testing.T) {
+		err := checkOptions(schema, map[string]interface{}{"team_uuid": "d8602a1c-c8cb-49f9-b1e9-e6fc764a7fcc"})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("forbid unsuitable value", func(t *testing.T) {
+		err := checkOptions(schema, map[string]interface{}{"team_uuid": "not_uuid"})
+
+		require.Error(t, err)
+	})
+
+	t.Run("forbid if not pass required value", func(t *testing.T) {
+		err := checkOptions(schema, map[string]interface{}{"uuid": "d8602a1c-c8cb-49f9-b1e9-e6fc764a7fcc"})
+
+		require.Error(t, err)
+	})
+
+	t.Run("forbid unsuitable value_2", func(t *testing.T) {
+		err := checkOptions(schema, map[string]interface{}{"team_uuid": "d8602a1c-c8cb-49f9-b1e9-e6fc764a7fcc", "id": "not_integer"})
+
+		require.Error(t, err)
+	})
+}
