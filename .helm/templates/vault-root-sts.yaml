@@ -1,4 +1,4 @@
-{{- include "globals" }}
+{{- include "globals" . }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
