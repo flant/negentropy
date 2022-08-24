@@ -11,12 +11,12 @@ class Vault(TypedDict):
 
 # {role:{'scope':scope, 'tenant_is_optional':bool, 'project_is_optional':bool}}
 roles = {'billing.cfo': {'scope': 'tenant', 'tenant_is_optional': True},
-         'billing.billing-methods.manage': {'scope': 'tenant', 'tenant_is_optional': True},
+         'billing.billing_methods.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.documents.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.invoices.generate': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.acts.generate': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.acts.delete': {'scope': 'tenant', 'tenant_is_optional': True},
-         'billing.special-billings.manage': {'scope': 'tenant', 'tenant_is_optional': True},
+         'billing.special_billings.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.sku.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.tariffs.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.teams.manage': {'scope': 'tenant', 'tenant_is_optional': True}
@@ -34,7 +34,7 @@ def upgrade(vault_name: str, vaults: List[Vault]):
                    'billing.invoices.generate',
                    'billing.acts.generate',
                    'billing.acts.delete',
-                   'billing.special-billings.manage',
+                   'billing.special_billings.manage',
                    'billing.sku.manage',
                    'billing.tariffs.manage',
                    'billing.teams.manage']
