@@ -16,7 +16,7 @@ spec:
         app: {{ .Chart.Name }}-python-migrations
     spec:
       containers:
-      - image: {{ .Values.werv.image.migrations }}
+      - image: {{ .Values.werf.image.migrations }}
         name: migration
         command:
         - sleep
