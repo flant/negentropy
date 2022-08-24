@@ -37,7 +37,7 @@ capabilities:
   subPath: vault.hcl
   readOnly: true
 - name: kafka-secrets
-  mountPath: 
+  mountPath: {{ .secrets_path }}
 {{- end -}}
 
 {{- define "vault.volumes" -}}
