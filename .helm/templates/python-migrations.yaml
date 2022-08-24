@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Chart.Name }}-python-migrations
+  name: {{ .Chart.Name }}-python-migrations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}-python-migrations
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}-python-migrations
+    spec:
+      containers:
+      - image: {{ .Values.werv.image.migrations }}
+        name: migration
+        command:
+        - sleep
+        - "10000"
