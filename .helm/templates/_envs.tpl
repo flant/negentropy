@@ -4,7 +4,7 @@
 {{- $_ := set . "vault_port" (pluck .Values.werf.env .Values.vault_port | first | default .Values.vault_port._default) }}
 {{- end }}
 
-{{- define "vault.env" }}
+{{- define "vault.env" -}}
 - name: VAULT_LOG_LEVEL
   value: debug
 - name: RLIMIT_CORE
@@ -21,23 +21,26 @@
   value: {{ print "%s/user.crt" .secrets_path }}
 - name: NEGENTROPY_OIDC_URL
   value: ""
-{{- end }}
-{{- define "vault.securitycontext" }}
+{{- end -}}
+
+{{- define "vault.securitycontext" -}}
 readOnlyRootFilesystem: true
 # runAsNonRoot: true
 capabilities:
   add:
     - IPC_LOCK
-{{- end }}
-{{- define "vault.volumemounts" }}
+{{- end -}}
+
+{{- define "vault.volumemounts" -}}
 - name: config
   mountPath: /etc/vault.hcl
   subPath: vault.hcl
   readOnly: true
 - name: kafka-secrets
   mountPath: 
-{{- end }}
-{{- define "vault.volumes" }}
+{{- end -}}
+
+{{- define "vault.volumes" -}}
 - name: config
   configMap:
     name: vault-auth
@@ -45,4 +48,4 @@ capabilities:
   - name: kafka-secrets
     secret:
       secretName: vault
-{{- end }}
+{{- end -}}
