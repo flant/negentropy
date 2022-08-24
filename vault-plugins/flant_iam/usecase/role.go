@@ -31,6 +31,9 @@ func (s *RoleService) Create(role *model.Role) error {
 	if err := role.ValidateScope(); err != nil {
 		return fmt.Errorf("%w: %s", consts.ErrInvalidArg, err.Error())
 	}
+	if err := checkRoleOptionSchema(role.OptionsSchema); err != nil {
+		return fmt.Errorf("%w: %s", consts.ErrInvalidArg, err.Error())
+	}
 	return repo.Create(role)
 }
 
@@ -58,7 +61,9 @@ func (s *RoleService) Update(updated *model.Role) error {
 	updated.ProjectIsOptional = stored.ProjectIsOptional // type cannot be changed
 
 	// TODO validate feature flags: role must not become unaccessible in the scope where it is used
-	// TODO forbid backwards-incompatible changes of the options schema
+	if err := checkBackwardsCompatibility(stored.OptionsSchema, updated.OptionsSchema); err != nil {
+		return err
+	}
 
 	return repo.Update(updated)
 }
