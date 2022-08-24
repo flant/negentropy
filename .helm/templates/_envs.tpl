@@ -5,23 +5,22 @@
 {{- end }}
 
 {{- define "vault.env" }}
-env:
-  - name: VAULT_LOG_LEVEL
-    value: debug
-  - name: RLIMIT_CORE
-    value: "0"
-  - name: NEGENTROPY_KAFKA_ENDPOINTS
-    value: {{ print "%s-kafka-bootstrap" .kafka_name }}
-  - name: NEGENTROPY_KAFKA_USE_SSL
-    value: "true"
-  - name: NEGENTROPY_KAFKA_SSL_CA_PATH
-    value: {{ print "%s/ca.crt" .secrets_path }}
-  - name: NEGENTROPY_KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH
-    value: {{ print "%s/user.key" .secrets_path }}
-  - name: NEGENTROPY_KAFKA_SSL_CLIENT_CERTIFICATE_PATH
-    value: {{ print "%s/user.crt" .secrets_path }}
-  - name: NEGENTROPY_OIDC_URL
-    value: ""
+- name: VAULT_LOG_LEVEL
+  value: debug
+- name: RLIMIT_CORE
+  value: "0"
+- name: NEGENTROPY_KAFKA_ENDPOINTS
+  value: {{ print "%s-kafka-bootstrap" .kafka_name }}
+- name: NEGENTROPY_KAFKA_USE_SSL
+  value: "true"
+- name: NEGENTROPY_KAFKA_SSL_CA_PATH
+  value: {{ print "%s/ca.crt" .secrets_path }}
+- name: NEGENTROPY_KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH
+  value: {{ print "%s/user.key" .secrets_path }}
+- name: NEGENTROPY_KAFKA_SSL_CLIENT_CERTIFICATE_PATH
+  value: {{ print "%s/user.crt" .secrets_path }}
+- name: NEGENTROPY_OIDC_URL
+  value: ""
 {{- end }}
 {{- define "vault.securitycontext" }}
 readOnlyRootFilesystem: true
