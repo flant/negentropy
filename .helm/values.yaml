@@ -1,5 +1,10 @@
 vault_port: 
   _default: 8200
+secrets_path:
+  _default: "/tmp/secrets"
+kafka:
+  name:
+    _default: "ng"
 replicas:
   root_vault:
     _default: 1

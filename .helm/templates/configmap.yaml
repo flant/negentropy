@@ -1,4 +1,4 @@
-{{- $vault_port := pluck .Values.werf.env .Values.vault_port | first | default .Values.vault_port._default }}
+{{- include "globals" }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -13,12 +13,12 @@ data:
     }
 
     listener "tcp" {
-      address = "0.0.0.0:{{ $vault_port }}"
+      address = "0.0.0.0:{{ .vault_port }}"
       tls_disable = "true"
       max_request_duration = "120s"
     }
 
-    api_addr = "http://vault-auth:{{ $vault_port }}"
+    api_addr = "http://vault-auth:{{ .vault_port }}"
 
     cluster_name = "auth"
 
@@ -39,12 +39,12 @@ data:
     }
 
     listener "tcp" {
-      address = "0.0.0.0:{{ $vault_port }}"
+      address = "0.0.0.0:{{ .vault_port }}"
       tls_disable = "true"
       max_request_duration = "120s"
     }
 
-    api_addr = "http://vault-root:{{ $vault_port }}"
+    api_addr = "http://vault-root:{{ .vault_port }}"
 
     cluster_name = "root-source"
 
