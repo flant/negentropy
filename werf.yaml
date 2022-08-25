@@ -1,4 +1,4 @@
-{{- $vault_tag := "v1.7.1" }}
+{{- $vault_tag := "v1.11.1" }}
 ---
 configVersion: 1
 project: negentropy
