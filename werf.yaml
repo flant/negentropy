@@ -38,8 +38,8 @@ shell:
     patch -p1 < ../001_bucket_count.patch
     patch -p1 < ../002_add_flant_plugins.patch
     patch -p1 < ../003_add_loading_info_to_cfg.patch
-    go get k8s.io/client-go@v0.21.1 # TODO: fix this workaround. Next step crashes without installing more recent version of client-go
-    go mod tidy
+    patch -p1 < ../004_revert_MR#12747.patch
+    go mod tidy -e -go=1.16 && go mod tidy -e -go=1.17
     make bootstrap
     VAULT_GIT_COMMIT=$(git ls-remote -t https://github.com/hashicorp/vault.git refs/tags/{{ $vault_tag }}|awk '{print $1}')
     gox -osarch="linux/amd64" -gcflags "${GCFLAGS}" -ldflags "${LD_FLAGS}-X github.com/hashicorp/vault/sdk/version.GitCommit=${VAULT_GIT_COMMIT}" -output "bin/vault" -tags="vault musl" -gocmd="go" .
