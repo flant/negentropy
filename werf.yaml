@@ -17,7 +17,7 @@ docker:
   WORKDIR: /app
 ---
 artifact: vault-build
-from: golang:1.16.8-alpine
+from: golang:1.17.13-alpine
 git:
 - add: /
   to: /app
