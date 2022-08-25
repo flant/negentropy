@@ -28,7 +28,6 @@ func buildSchema(schemaJson string) (*openapi3.Schema, error) {
 		return nil, fmt.Errorf("option_schema validation: %w", err)
 	}
 	return &schema, nil
-
 }
 
 // checkBackwardsCompatibility checks that new one doesn't demands new required options and doesn't change old types and formats
