@@ -24,9 +24,6 @@ git:
 - url: https://github.com/hashicorp/vault.git
   to: /app/infra/common/vault/vault
   tag: {{ $vault_tag }}
-  stageDependencies:
-    setup:
-    - 'infra/common/vault/*'
 shell:
   install:
   - apk add bash git make musl-dev gcc patch

@@ -17,11 +17,11 @@ spec:
     matchLabels:
       app: {{ .Chart.Name }}-migrate
   template:
-    restartPolicy: Never
     metadata:
       labels:
         app: {{ .Chart.Name }}-migrate
     spec:
+      restartPolicy: Never
       containers:
       - image: {{ .Values.werf.image.migrations }}
         name: migration
