@@ -49,9 +49,14 @@ shell:
 ---
 image: migrations
 from: alpine:3.14.2
+docker:
+  WORKDIR: /app
 git:
 - add: /
   to: /app
+  includePaths:
+  - scripts
+  - infra
   stageDependencies:
     install:
     - 'scripts/requirements.txt'
