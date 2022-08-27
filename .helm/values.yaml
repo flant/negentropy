@@ -2,6 +2,8 @@ vault_port:
   _default: 8200
 secrets_path:
   _default: "/tmp/secrets"
+ca_path:
+  _default: "/tmp/ca"
 kafka:
   name:
     _default: "ng"

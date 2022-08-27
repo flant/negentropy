@@ -1,6 +1,7 @@
 {{- define "globals" }}
 {{- $_ := set . "kafka_name" (pluck .Values.werf.env .Values.kafka.name | first | default .Values.kafka.name._default) }}
 {{- $_ := set . "secrets_path" (pluck .Values.werf.env .Values.secrets_path | first | default .Values.secrets_path._default) }}
+{{- $_ := set . "ca_path" (pluck .Values.werf.env .Values.ca_path | first | default .Values.ca_path._default) }}
 {{- $_ := set . "vault_port" (pluck .Values.werf.env .Values.vault_port | first | default .Values.vault_port._default) }}
 {{- end }}
 
@@ -14,7 +15,7 @@
 - name: NEGENTROPY_KAFKA_USE_SSL
   value: "true"
 - name: NEGENTROPY_KAFKA_SSL_CA_PATH
-  value: {{ printf "%s/ca.crt" .secrets_path }}
+  value: {{ printf "%s/ca.crt" .ca_path }}
 - name: NEGENTROPY_KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH
   value: {{ printf "%s/user.key" .secrets_path }}
 - name: NEGENTROPY_KAFKA_SSL_CLIENT_CERTIFICATE_PATH
@@ -38,6 +39,10 @@ capabilities:
   readOnly: true
 - name: kafka-secrets
   mountPath: {{ .secrets_path }}
+- name: kafka-ca
+  mountPath: {{ .ca_path }}
+- name: tmp
+  mountPath: /tmp/vault
 {{- end -}}
 
 {{- define "vault.volumes" -}}
@@ -48,4 +53,9 @@ capabilities:
 - name: kafka-secrets
   secret:
     secretName: vault
+- name: kafka-ca
+  secret:
+    secretName: {{ printf "%s-cluster-ca-cert" .kafka_name }}
+- emptyDir: {}
+  name: tmp    
 {{- end -}}
