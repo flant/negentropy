@@ -51,3 +51,21 @@ data:
     ui = false
 
     log_level = "debug"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migration
+  labels:
+    app: migration
+data:
+  kube.yaml: |-
+    apiVersion: negentropy.io/v1
+    kind: MigrationConfiguration
+    variables:
+      kafka_endpoints: {{ .kafka_name }}-kafka-bootstrap:9093
+      oidc_url: {{ .oidc_url }}
+      kafka_use_ssl: true
+      kafka_ssl_ca_path: {{ printf "%s/ca.crt" .ca_path }}
+      kafka_ssl_client_private_key_path: {{ printf "%s/user.key" .secrets_path }}
+      kafka_ssl_client_certificate_path: {{ printf "%s/user.crt" .secrets_path }}

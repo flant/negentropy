@@ -54,7 +54,7 @@ git:
   to: /app
   stageDependencies:
     install:
-    - '**/*'
+    - 'scripts/requirements.txt'
 shell:
   beforeInstall:
   - apk add bash curl ca-certificates gnupg jq py3-pip vim

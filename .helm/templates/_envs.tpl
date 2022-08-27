@@ -3,6 +3,8 @@
 {{- $_ := set . "secrets_path" (pluck .Values.werf.env .Values.secrets_path | first | default .Values.secrets_path._default) }}
 {{- $_ := set . "ca_path" (pluck .Values.werf.env .Values.ca_path | first | default .Values.ca_path._default) }}
 {{- $_ := set . "vault_port" (pluck .Values.werf.env .Values.vault_port | first | default .Values.vault_port._default) }}
+{{- $_ := set . "oidc_url" (pluck .Values.werf.env .Values.oidc_url | first | default .Values.oidc_url._default) }}
+
 {{- end }}
 
 {{- define "vault.env" -}}
@@ -21,7 +23,7 @@
 - name: NEGENTROPY_KAFKA_SSL_CLIENT_CERTIFICATE_PATH
   value: {{ printf "%s/user.crt" .secrets_path }}
 - name: NEGENTROPY_OIDC_URL
-  value: ""
+  value: "{{ .oidc_url }}"
 {{- end -}}
 
 {{- define "vault.securitycontext" -}}

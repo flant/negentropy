@@ -1,3 +1,4 @@
+{{- include "globals" . }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -21,3 +22,12 @@ spec:
         command:
         - sleep
         - "10000"
+          env:
+{{- include "vault.env" . | nindent 10 }}
+          volumeMounts:
+          - name: migration
+            mountPath: /app/infra/common/config/environments/kube.yaml
+      volumes:
+      - name: migration
+        configMap:
+          name: migration

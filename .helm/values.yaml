@@ -4,6 +4,8 @@ secrets_path:
   _default: "/tmp/secrets"
 ca_path:
   _default: "/tmp/ca"
+oidc_url:
+  _default: "https://login.flant.com"
 kafka:
   name:
     _default: "ng"
@@ -11,7 +13,7 @@ replicas:
   root_vault:
     _default: 1
   auth_vault:
-    _default: 3
+    _default: 1
 
 resources:
   requests:

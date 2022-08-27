@@ -6,7 +6,7 @@ variables:
   kafka_endpoints: ng-kafka-bootstrap:9093
   oidc_url: https://login.flant.com
   kafka_use_ssl: true
-  kafka_ssl_ca_path: /tmp/secrets/ca.crt
+  kafka_ssl_ca_path: /tmp/ca/ca.crt
   kafka_ssl_client_private_key_path: /tmp/secrets/user.key
   kafka_ssl_client_certificate_path: /tmp/secrets/user.crt
 ---
