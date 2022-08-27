@@ -55,4 +55,5 @@ git:
 shell:
   beforeInstall:
   - apk add bash curl ca-certificates gnupg jq py3-pip vim
+  install:
   - python3 -m pip install -r /app/scripts/requirements.txt
