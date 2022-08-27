@@ -3,12 +3,12 @@ apiVersion: negentropy.io/v1
 kind: MigrationConfiguration
 variables:
   # Environment variables names in lowercase. In migration engine their names will be converted to uppercase with prefix "NEGENTROPY_" at the beginning
-  kafka_endpoints: negentropy-kafka-1.negentropy.flant.local:9093,negentropy-kafka-2.negentropy.flant.local:9093,negentropy-kafka-3.negentropy.flant.local:9093
+  kafka_endpoints: ng-kafka-bootstrap:9093
   oidc_url: https://login.flant.com
   kafka_use_ssl: true
-  kafka_ssl_ca_path: /tmp/ca-certificates/ca.crt
-  kafka_ssl_client_private_key_path: /tmp/internal.key
-  kafka_ssl_client_certificate_path: /tmp/internal.crt
+  kafka_ssl_ca_path: /tmp/secrets/ca.crt
+  kafka_ssl_client_private_key_path: /tmp/secrets/user.key
+  kafka_ssl_client_certificate_path: /tmp/secrets/user.crt
 ---
 apiVersion: negentropy.io/v1
 kind: PackerConfiguration
