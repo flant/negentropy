@@ -3,8 +3,6 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  labels:
-    app: {{ .Chart.Name }}-migrate
   name: {{ .Chart.Name }}-migrate
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -13,13 +11,9 @@ metadata:
 spec:
   activeDeadlineSeconds: 360
   backoffLimit: 1
-  selector:
-    matchLabels:
-      app: {{ .Chart.Name }}-migrate
   template:
     metadata:
-      labels:
-        app: {{ .Chart.Name }}-migrate
+      name: {{ .Chart.Name }}-migrate
     spec:
       restartPolicy: Never
       containers:
