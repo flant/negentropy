@@ -7,7 +7,7 @@ metadata:
   labels:
     app: vault-auth
 spec:
-  replicas: 3
+  replicas: 1
   serviceName: vault-auth
   selector:
     matchLabels:

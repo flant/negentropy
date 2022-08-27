@@ -51,7 +51,8 @@ git:
   to: /app
   stageDependencies:
     install:
-    - infra/common/*
+    - '**/*'
 shell:
   beforeInstall:
-  - apk add bash curl ca-certificates gnupg jq py3-pip vim make gcc g++ git gcompat musl-dev libffi-dev python3-dev patch
+  - apk add bash curl ca-certificates gnupg jq py3-pip vim
+  - python3 -m pip install -r /app/scripts/requirements.txt

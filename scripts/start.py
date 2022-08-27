@@ -295,8 +295,8 @@ if __name__ == "__main__":
         single_vault = Vault(name="root", url="http://127.0.0.1:8200", token="root")
         vaults = [single_vault]
     else:
-        root_vault = Vault(name="root", url="http://127.0.0.1:8300", token="")
-        auth_vault = Vault(name="auth", url="http://127.0.0.1:8200", token="")
+        root_vault = Vault(name="root", url="http://vault-root:8200", token="")
+        auth_vault = Vault(name="auth", url="http://vault-auth:8200", token="")
         vaults = [root_vault, auth_vault]
 
     for vault in vaults:
