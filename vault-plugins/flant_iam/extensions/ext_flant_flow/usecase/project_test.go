@@ -86,7 +86,7 @@ func Test_makeProjectCastingThroughBytes(t *testing.T) {
 		FeatureFlags: []iam.FeatureFlagName{"f1"},
 		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 			model.DevOps: model.DevopsServicePackCFG{
-				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+				Team: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 			},
 		},
 	}
@@ -119,7 +119,7 @@ func Test_makeProjectDirectCasting(t *testing.T) {
 		FeatureFlags: []iam.FeatureFlagName{"f1"},
 		ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
 			model.DevOps: model.DevopsServicePackCFG{
-				DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+				Team: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 			},
 		},
 	}

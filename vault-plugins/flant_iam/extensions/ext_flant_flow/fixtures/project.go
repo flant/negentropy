@@ -58,7 +58,7 @@ func Projects() []model.Project {
 			TenantUUID: TenantUUID2,
 			Identifier: "pr5",
 			ServicePacks: map[model.ServicePackName]model.ServicePackCFG{
-				model.Consulting: nil,
+				model.Okmeter: nil,
 			},
 		},
 	}

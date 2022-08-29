@@ -58,6 +58,10 @@ func (b projectBackend) paths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "Team uuid, in case of passed internal_project_service_pack",
 				},
+				"consulting_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed consulting_service_pack",
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
@@ -102,6 +106,10 @@ func (b projectBackend) paths() []*framework.Path {
 				"internal_project_team": {
 					Type:        framework.TypeString,
 					Description: "Team uuid, in case of passed internal_project_service_pack",
+				},
+				"consulting_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed consulting_service_pack",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -174,6 +182,10 @@ func (b projectBackend) paths() []*framework.Path {
 				"internal_project_team": {
 					Type:        framework.TypeString,
 					Description: "Team uuid, in case of passed internal_project_service_pack",
+				},
+				"consulting_team": {
+					Type:        framework.TypeString,
+					Description: "Team uuid, in case of passed consulting_service_pack",
 				},
 			},
 			ExistenceCheck: b.handleExistence,
@@ -278,6 +290,7 @@ func getProjectParams(data *framework.FieldData, expectID, expectVersion bool) (
 	}
 	devopsTeamUUID := data.Get("devops_team").(model.TeamUUID)
 	internalProjectTeamUUID := data.Get("internal_project_team").(model.TeamUUID)
+	consultingTeamUUID := data.Get("consulting_team").(model.TeamUUID)
 	return &usecase.ProjectParams{
 		IamProject: &iam_model.Project{
 			UUID:       id,
@@ -288,6 +301,7 @@ func getProjectParams(data *framework.FieldData, expectID, expectVersion bool) (
 		ServicePackNames:        servicePacks,
 		DevopsTeamUUID:          devopsTeamUUID,
 		InternalProjectTeamUUID: internalProjectTeamUUID,
+		ConsultingTeamUUID:      consultingTeamUUID,
 	}, nil
 }
 
