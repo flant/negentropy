@@ -33,6 +33,7 @@ type ProjectParams struct {
 	ServicePackNames        map[model.ServicePackName]struct{}
 	DevopsTeamUUID          model.TeamUUID
 	InternalProjectTeamUUID model.TeamUUID
+	ConsultingTeamUUID      model.TeamUUID
 }
 
 // build servicePacks with CFGs
@@ -50,7 +51,7 @@ func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.Serv
 				return nil, fmt.Errorf("%w: service_pack %s: wrong passed team type: %s", consts.ErrInvalidArg, spn, team.TeamType)
 			}
 			servicepacks[spn] = model.DevopsServicePackCFG{
-				DevopsTeam: params.DevopsTeamUUID,
+				Team: params.DevopsTeamUUID,
 			}
 		case model.InternalProject:
 			if params.IamProject.TenantUUID != s.liveConfig.FlantTenantUUID {
@@ -65,9 +66,19 @@ func (s *ProjectService) buildServicePacks(params ProjectParams) (map[model.Serv
 			servicepacks[spn] = model.InternalProjectServicePackCFG{
 				Team: params.InternalProjectTeamUUID,
 			}
+		case model.Consulting:
+			if params.ConsultingTeamUUID == "" {
+				return nil, fmt.Errorf("%w: service_pack %q needs passed consulting_team", consts.ErrInvalidArg, spn)
+			}
+			if _, err := s.teamRepo.GetByID(params.ConsultingTeamUUID); err != nil {
+				return nil, fmt.Errorf("service_pack %s: consulting_team: %s:%w", spn, params.ConsultingTeamUUID, err)
+			}
+			servicepacks[spn] = model.ConsultingServicePackCFG{
+				Team: params.ConsultingTeamUUID,
+			}
 
 		default:
-			servicepacks[spn] = nil
+			servicepacks[spn] = s.buildServicePackCfgByName(spn)
 		}
 	}
 	if len(servicepacks) == 0 {
@@ -266,4 +277,18 @@ func (s *ProjectService) Restore(pid model.ProjectUUID) (*model.Project, error) 
 		return nil, err
 	}
 	return makeProject(iamProject)
+}
+
+func (s *ProjectService) buildServicePackCfgByName(spn model.ServicePackName) model.ServicePackCFG {
+	switch spn {
+	case model.L1:
+		return model.L1ServicePackCFG{Team: s.liveConfig.SpecificTeams[config.L1]}
+	case model.Mk8s:
+		return model.Mk8sServicePackCFG{Team: s.liveConfig.SpecificTeams[config.Mk8s]}
+	case model.Okmeter:
+		return model.OkmeterServicePackCFG{Team: s.liveConfig.SpecificTeams[config.Okmeter]}
+	case model.Deckhouse:
+		return model.DeckhouseServicePackCFG{Team: s.liveConfig.SpecificTeams[config.Mk8s]}
+	}
+	return nil
 }

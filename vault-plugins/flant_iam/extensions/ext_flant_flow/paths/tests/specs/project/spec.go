@@ -36,12 +36,11 @@ var (
 
 var _ = Describe("Project", func() {
 	var client model.Client
-	var flantFlowCfg *config.FlantFlowConfig
+	flantFlowCfg := specs.ConfigureFlantFlow(RoleAPI, TeamAPI, ConfigAPI)
 	var devopsTeam model.Team
 	var flantUser iam_model.User
 
 	BeforeSuite(func() {
-		flantFlowCfg = specs.ConfigureFlantFlow(RoleAPI, TeamAPI, ConfigAPI)
 		fmt.Printf("%#v\n", flantFlowCfg)
 		flantUser = iam_specs.CreateRandomUser(UserAPI, flantFlowCfg.FlantTenantUUID)
 		client = specs.CreateRandomClient(ClientAPI, flantUser.UUID)
@@ -120,6 +119,13 @@ var _ = Describe("Project", func() {
 				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
 				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
 				Expect(projectData.Map()).ToNot(HaveKey("origin"))
+				spsData := projectData.Get("service_packs")
+				Expect(spsData.Map()).To(HaveKey(model.DevOps))
+				cfgData := spsData.Get(model.DevOps)
+				Expect(cfgData.Map()).To(HaveKey("team"))
+				team := cfgData.Get("team").String()
+				Expect(team).To(Equal(devopsTeam.UUID))
+
 				project = model.Project{
 					UUID:       projectData.Get("uuid").String(),
 					TenantUUID: projectData.Get("tenant_uuid").String(),
@@ -181,37 +187,71 @@ var _ = Describe("Project", func() {
 		}
 	})
 
-	It("can be created with internal service pack", func() {
-		flantUUID := flantFlowCfg.FlantTenantUUID
-		createPayload := fixtures.RandomProjectCreatePayload()
-		createPayload["tenant_uuid"] = flantUUID
-		createPayload["internal_project_team"] = devopsTeam.UUID
-		createPayload["service_packs"] = []string{model.InternalProject}
+	Describe("service_packs with specified team", func() {
+		devopsTeam = specs.CreateDevopsTeam(TeamAPI)
+		DescribeTable("team uuid in service_pack",
+			func(servicePackName, teamUUID, teamPayloadKey string) {
+				func(servicePackName, teamUUID, teamPayloadKey string) {
+					flantUUID := flantFlowCfg.FlantTenantUUID
+					createPayload := fixtures.RandomProjectCreatePayload()
+					createPayload["tenant_uuid"] = flantUUID
+					createPayload[teamPayloadKey] = teamUUID
+					createPayload["service_packs"] = []string{servicePackName}
 
-		params := tests.Params{
-			"client":       flantUUID,
-			"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
-			"expectPayload": func(json gjson.Result) {
-				projectData := json.Get("project")
-				Expect(projectData.Map()).To(HaveKey("uuid"))
-				Expect(projectData.Map()).To(HaveKey("tenant_uuid"))
-				Expect(projectData.Map()).To(HaveKey("resource_version"))
-				Expect(projectData.Map()).To(HaveKey("identifier"))
-				Expect(projectData.Map()).To(HaveKey("feature_flags"))
-				Expect(projectData.Map()).To(HaveKey("archiving_timestamp"))
-				Expect(projectData.Map()).To(HaveKey("archiving_hash"))
-				Expect(projectData.Get("uuid").String()).To(HaveLen(36))
-				Expect(projectData.Get("resource_version").String()).To(HaveLen(36))
-				Expect(projectData.Map()).ToNot(HaveKey("origin"))
-				project = model.Project{
-					UUID:       projectData.Get("uuid").String(),
-					TenantUUID: projectData.Get("tenant_uuid").String(),
-					Version:    projectData.Get("resource_version").String(),
-					Identifier: projectData.Get("identifier").String(),
-				}
+					params := tests.Params{
+						"client":       flantUUID,
+						"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
+						"expectPayload": func(json gjson.Result) {
+							projectData := json.Get("project")
+							Expect(projectData.Map()).To(HaveKey("service_packs"))
+							spsData := projectData.Get("service_packs")
+							Expect(spsData.Map()).To(HaveKey(servicePackName))
+							cfgData := spsData.Get(servicePackName)
+							Expect(cfgData.Map()).To(HaveKey("team"))
+							team := cfgData.Get("team").String()
+							Expect(team).To(Equal(teamUUID))
+						},
+					}
+					TestAPI.Create(params, url.Values{}, createPayload)
+				}(servicePackName, teamUUID, teamPayloadKey)
 			},
-		}
-		TestAPI.Create(params, url.Values{}, createPayload)
+			Entry("Devops service_pack", model.DevOps, devopsTeam.UUID, "devops_team"),
+			Entry("Internal service_pack", model.InternalProject, devopsTeam.UUID, "internal_project_team"),
+			Entry("Consulting service_pack", model.Consulting, devopsTeam.UUID, "consulting_team"),
+		)
+	})
+
+	Describe("service_packs with predefined team", func() {
+		DescribeTable("team uuid in service_pack",
+			func(servicePackName, teamUUID string) {
+				func(servicePackName, teamUUID string) {
+					flantUUID := flantFlowCfg.FlantTenantUUID
+					createPayload := fixtures.RandomProjectCreatePayload()
+					createPayload["tenant_uuid"] = flantUUID
+					createPayload["service_packs"] = []string{servicePackName}
+
+					params := tests.Params{
+						"client":       flantUUID,
+						"expectStatus": tests.ExpectExactStatus(http.StatusCreated),
+						"expectPayload": func(json gjson.Result) {
+							projectData := json.Get("project")
+							Expect(projectData.Map()).To(HaveKey("service_packs"))
+							spsData := projectData.Get("service_packs")
+							Expect(spsData.Map()).To(HaveKey(servicePackName))
+							cfgData := spsData.Get(servicePackName)
+							Expect(cfgData.Map()).To(HaveKey("team"))
+							team := cfgData.Get("team").String()
+							Expect(team).To(Equal(teamUUID))
+						},
+					}
+					TestAPI.Create(params, url.Values{}, createPayload)
+				}(servicePackName, teamUUID)
+			},
+			Entry("L1 service_pack", model.L1, flantFlowCfg.SpecificTeams[config.L1]),
+			Entry("OkMeter service_pack", model.Okmeter, flantFlowCfg.SpecificTeams[config.Okmeter]),
+			Entry("Mk8 service_pack", model.Mk8s, flantFlowCfg.SpecificTeams[config.Mk8s]),
+			Entry("Deckhouse service_pack", model.Deckhouse, flantFlowCfg.SpecificTeams[config.Mk8s]),
+		)
 	})
 
 	It("can be read", func() {

@@ -11,7 +11,7 @@ func Test_TeammateList(t *testing.T) {
 	servicePacks := map[ServicePackName]ServicePackCFG{
 		L1: nil,
 		DevOps: DevopsServicePackCFG{
-			DevopsTeam: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+			Team: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
 		},
 		Mk8s:       nil,
 		Deckhouse:  nil,

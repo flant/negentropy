@@ -20,22 +20,19 @@ var (
 
 type ServicePackCFG interface{}
 
-type DevopsServicePackCFG struct {
-	DevopsTeam TeamUUID `json:"devops_team"`
-}
-type L1ServicePackCFG struct{}
-
-type Mk8sServicePackCFG struct{}
-
-type DeckhouseServicePackCFG struct{}
-
-type OkmeterServicePackCFG struct{}
-
-type ConsultingServicePackCFG struct{}
-
-type InternalProjectServicePackCFG struct {
+type BaseConfig struct {
 	Team TeamUUID `json:"team"`
 }
+
+type (
+	DevopsServicePackCFG          BaseConfig
+	L1ServicePackCFG              BaseConfig
+	Mk8sServicePackCFG            BaseConfig
+	DeckhouseServicePackCFG       BaseConfig
+	OkmeterServicePackCFG         BaseConfig
+	ConsultingServicePackCFG      BaseConfig
+	InternalProjectServicePackCFG BaseConfig
+)
 
 func ParseServicePacks(servicePacks map[ServicePackName]interface{}) (map[ServicePackName]ServicePackCFG, error) {
 	result := map[ServicePackName]ServicePackCFG{}

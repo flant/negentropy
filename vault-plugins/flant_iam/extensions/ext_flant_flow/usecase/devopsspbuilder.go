@@ -29,7 +29,7 @@ func (d devopsServicePackBuilder) OnCreateProject(project model.Project) error {
 			return err
 		}
 		// just create sharing if needs
-		groups, is, err := d.createIdentitySharing(project.TenantUUID, d.liveConfig.FlantTenantUUID, devopsCFG.DevopsTeam)
+		groups, is, err := d.createIdentitySharing(project.TenantUUID, d.liveConfig.FlantTenantUUID, devopsCFG.Team)
 		if err != nil {
 			return err
 		}
