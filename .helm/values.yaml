@@ -1,5 +1,7 @@
 vault_port: 
   _default: 8200
+vault_cluster_port:
+  _default: 8201
 secrets_path:
   _default: "/tmp/secrets"
 ca_path:
