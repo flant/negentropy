@@ -127,7 +127,7 @@ func createRole(t *testing.T, roleName string, b logical.Backend) *logical.Respo
 			"name":                         roleName,
 			"description":                  "test_role",
 			"scope":                        "project",
-			"options_schema":               "<1>",
+			"options_schema":               "",
 			"require_one_of_feature_flags": []string{},
 			"archived":                     true,
 		},

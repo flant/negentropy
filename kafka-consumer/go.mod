@@ -25,6 +25,9 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/getkin/kin-openapi v0.98.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
@@ -50,7 +53,10 @@ require (
 	github.com/hashicorp/vault/sdk v0.5.3 // indirect
 	github.com/hashicorp/yamux v0.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/invopop/yaml v0.1.0 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
