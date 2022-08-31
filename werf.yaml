@@ -13,6 +13,9 @@ import:
   add: /app/infra/common/vault/vault/bin/vault
   to: /bin/vault
   before: install
+- artifact: vault-build
+  add: /vault
+  before: install
 docker:
   WORKDIR: /app
 ---
@@ -43,6 +46,11 @@ shell:
     make bootstrap
     VAULT_GIT_COMMIT=$(git ls-remote -t https://github.com/hashicorp/vault.git refs/tags/{{ $vault_tag }}|awk '{print $1}')
     gox -osarch="linux/amd64" -gcflags "${GCFLAGS}" -ldflags "${LD_FLAGS}-X github.com/hashicorp/vault/sdk/version.GitCommit=${VAULT_GIT_COMMIT}" -output "bin/vault" -tags="vault musl" -gocmd="go" .
+
+    mkdir -p /vault/plugins
+    
+    cd /app/vault-plugins/flant_gitops
+    go build -o /vault/plugins/vault-plugin-flant-gitops cmd/flant_gitops/main.go
 ---
 image: migrations
 from: alpine:3.14.2
