@@ -20,9 +20,15 @@ spec:
       - image: {{ .Values.werf.image.migrations }}
         name: migration
         command:
-        - sh
+        - bash
         - -c
-        - echo "python3 scripts/start.py --mode=kube"
+        - |
+          repeat=1; while  [ $repeat -ne 0 ] ; do result=$(curl -sf http://vault-root:8200/v1/sys/init ); repeat=$? ; sleep 1; done;
+          if [ "$(echo "$result" | jq -r .initialized)" == "false" ] ; then 
+            python3 scripts/start.py --mode=kube;
+          else
+            echo "Already initialized"
+          fi
         env:
 {{- include "vault.env" . | nindent 10 }}
         volumeMounts:
