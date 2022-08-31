@@ -33,6 +33,10 @@ spec:
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
       volumes:
+      - name: config
+        configMap:
+          name: vault-auth
+          defaultMode: 0644
 {{- include "vault.volumes" . | nindent 6 }}
 ---
 apiVersion: v1

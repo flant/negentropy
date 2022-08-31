@@ -48,10 +48,6 @@ capabilities:
 {{- end -}}
 
 {{- define "vault.volumes" -}}
-- name: config
-  configMap:
-    name: vault-auth
-    defaultMode: 0644
 - name: kafka-secrets
   secret:
     secretName: vault
