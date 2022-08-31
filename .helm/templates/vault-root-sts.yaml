@@ -46,7 +46,6 @@ metadata:
   labels:
     app: vault-root
 spec:
-  clusterIP: None
   ports:
   - name: tcp
     port: {{ .vault_port }}
