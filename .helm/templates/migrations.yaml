@@ -22,7 +22,7 @@ spec:
         command:
         - sh
         - -c
-        - python3 scripts/start.py --mode=kube
+        - true #python3 scripts/start.py --mode=kube
         env:
 {{- include "vault.env" . | nindent 10 }}
         volumeMounts:
