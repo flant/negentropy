@@ -19,6 +19,7 @@ data:
     }
 
     api_addr = "http://vault-auth:{{ .vault_port }}"
+    plugin_directory = "/vault/plugins"
 
     cluster_name = "auth"
 
@@ -45,6 +46,7 @@ data:
     }
 
     api_addr = "http://vault-root:{{ .vault_port }}"
+    plugin_directory = "/vault/plugins"
 
     cluster_name = "root-source"
 
