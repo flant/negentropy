@@ -10,6 +10,8 @@ vault:
     _default: "8200"
   cluster_port:
     _default: "8201"
+  scheme:
+    _default: "http"
   data_path:
     _default: "/vault/data"
   storage_class:
