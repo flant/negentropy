@@ -5,11 +5,11 @@ vault:
     auth:
       _default: 1
   ha:
-    _default: "false"
+    _default: false
   port: 
-    _default: 8200
+    _default: "8200"
   cluster_port:
-    _default: 8201
+    _default: "8201"
   data_path:
     _default: "/vault/data"
   storage_class:

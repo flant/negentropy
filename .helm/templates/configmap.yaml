@@ -29,11 +29,11 @@ metadata:
     app: vault-root
 data:
   vault.hcl: |-
-{{- if (.vault_ha) -}}
+{{ if (.vault_ha) }}
     storage "raft" {
-{{- else -}}
+{{ else }}
     storage "file" {
-{{- end -}}
+{{ end }}
       path = {{ .vault_data_path | quote }}
     }
 
