@@ -14,6 +14,12 @@
   value: debug
 - name: RLIMIT_CORE
   value: "0"
+- name: VAULT_SEAL_TYPE
+  value: "gcpckms"
+- name: VAULT_GCPCKMS_SEAL_KEY_RING
+  value: "vault"
+- name: VAULT_GCPCKMS_SEAL_CRYPTO_KEY
+  name: "vault-unseal"
 - name: HOST_IP
   valueFrom:
     fieldRef:
