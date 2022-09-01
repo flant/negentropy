@@ -73,13 +73,6 @@ capabilities:
   mountPath: {{ .vault_data_path }}
 {{- end -}}
 
-{{- define "vault.volumes" -}}
-- name: config
-  configMap:
-    name: vault-auth
-    defaultMode: 0644
-{{- end -}}
-
 {{- define "vault.volumeclaimtemplate" -}}
 volumeClaimTemplates:
 - metadata:
