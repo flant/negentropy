@@ -34,7 +34,7 @@ spec:
           env:
 {{- include "vault.env" . | nindent 10 }}
           volumeMounts:
-{{- include "vault.volumemounts" . | nindent 6 }}
+{{- include "vault.volumemounts" . | nindent 10 }}
       volumes:
       - name: config
         configMap:
