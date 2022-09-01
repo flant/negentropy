@@ -13,11 +13,9 @@ import:
   add: /app/infra/common/vault/vault/bin/vault
   to: /bin/vault
   before: install
-docker:
-  WORKDIR: /app
 ---
 artifact: vault-build
-from: golang:1.17.13-alpine
+from: golang:1.17.12-alpine
 git:
 - add: /
   to: /app

@@ -30,6 +30,7 @@ spec:
 {{- include "vault.securitycontext" . | nindent 12 }}
           env:
 {{- include "vault.env" . | nindent 10 }}
+{{- include "vault.lifecycle" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
       volumes:
@@ -38,6 +39,7 @@ spec:
           name: vault-auth
           defaultMode: 0644
 {{- include "vault.volumes" . | nindent 6 }}
+{{- include "vault.volumeclaimtemplate" . | nindent 2 }}
 ---
 apiVersion: v1
 kind: Service

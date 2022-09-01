@@ -26,6 +26,11 @@ spec:
           - name: tcp
             containerPort: {{ .vault_port }}
             protocol: TCP
+{{- if (.vault_ha) -}}
+          - name: cluster
+            containerPort: {{ .vault_cluster_port }}
+            protocol: TCP
+{{- end -}}
           securityContext:
 {{- include "vault.securitycontext" . | nindent 12 }}
           env:
@@ -38,6 +43,7 @@ spec:
           name: vault-root
           defaultMode: 0644
 {{- include "vault.volumes" . | nindent 6 }}
+{{- include "vault.volumeclaimtemplate" . | nindent 2 }}
 ---
 apiVersion: v1
 kind: Service
@@ -51,5 +57,11 @@ spec:
     port: {{ .vault_port }}
     protocol: TCP
     targetPort: {{ .vault_port }}
+{{- if (.vault_ha) -}}
+  - name: cluster
+    port: {{ .vault_cluster_port }}
+    protocol: TCP
+    targetPort: {{ .vault_cluster_port }}
+{{- end -}}
   selector:
     app: vault-root

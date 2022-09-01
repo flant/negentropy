@@ -1,21 +1,24 @@
-vault_port: 
-  _default: 8200
-vault_cluster_port:
-  _default: 8201
-secrets_path:
-  _default: "/tmp/secrets"
-ca_path:
-  _default: "/tmp/ca"
-oidc_url:
-  _default: "https://login.flant.com"
+vault:
+  replicas:
+    root:
+      _default: 1
+    auth:
+      _default: 1
+  ha:
+    _default: "false"
+  port: 
+    _default: 8200
+  cluster_port:
+    _default: 8201
+  data_path:
+    _default: "/vault/data"
+  storage_class:
+    _default: "pd-standard-not-replicated"
+  storage_size:
+    _default: "10Gi"
 kafka:
   name:
     _default: "ng"
-replicas:
-  root_vault:
-    _default: 1
-  auth_vault:
-    _default: 1
 
 resources:
   requests:

@@ -9,7 +9,7 @@ metadata:
 data:
   vault.hcl: |-
     storage "file" {
-      path = "/tmp/vault/data"
+      path = {{ .vault_data_path | quote }}
     }
 
     listener "tcp" {
@@ -17,15 +17,9 @@ data:
       tls_disable = "true"
       max_request_duration = "120s"
     }
-
-    api_addr = "http://vault-auth:{{ .vault_port }}"
-    plugin_directory = "/vault/plugins"
-
+    disable_mlock = true
     cluster_name = "auth"
-
     ui = false
-
-    log_level = "debug"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -35,39 +29,25 @@ metadata:
     app: vault-root
 data:
   vault.hcl: |-
+{{- if (.vault_ha) -}}
+    storage "raft" {
+{{- else -}}
     storage "file" {
-      path = "/tmp/vault/data"
+{{- end -}}
+      path = {{ .vault_data_path | quote }}
     }
 
     listener "tcp" {
       address = "0.0.0.0:{{ .vault_port }}"
+      cluster_address = "0.0.0.0:{{ .vault_cluster_port }}"
       tls_disable = "true"
       max_request_duration = "120s"
     }
 
     api_addr = "http://vault-root:{{ .vault_port }}"
-    plugin_directory = "/vault/plugins"
-
-    cluster_name = "root-source"
-
+    disable_mlock = true
+    cluster_name = "root"
+{{- if (.vault_ha) -}}
+    service_registration "kubernetes"
+{{- end -}}
     ui = false
-
-    log_level = "debug"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: migration
-  labels:
-    app: migration
-data:
-  kube.yaml: |-
-    apiVersion: negentropy.io/v1
-    kind: MigrationConfiguration
-    variables:
-      kafka_endpoints: {{ .kafka_name }}-kafka-bootstrap:9093
-      oidc_url: {{ .oidc_url }}
-      kafka_use_ssl: true
-      kafka_ssl_ca_path: {{ printf "%s/ca.crt" .ca_path }}
-      kafka_ssl_client_private_key_path: {{ printf "%s/user.key" .secrets_path }}
-      kafka_ssl_client_certificate_path: {{ printf "%s/user.crt" .secrets_path }}
