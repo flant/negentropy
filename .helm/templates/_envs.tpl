@@ -5,7 +5,6 @@
 {{- $_ := set . "vault_data_path" (pluck .Values.werf.env .Values.vault.data_path | first | default .Values.vault.data_path._default) -}}
 {{- $_ := set . "vault_storage_class" (pluck .Values.werf.env .Values.vault.storage_class | first | default .Values.vault.storage_class._default) -}}
 {{- $_ := set . "vault_storage_size" (pluck .Values.werf.env .Values.vault.storage_size | first | default .Values.vault.storage_size._default) -}}
-{{- $_ := set . "vault_storage_type" (pluck .Values.werf.env .Values.vault.storage_type | first | default .Values.vault.storage_type._default) -}}
 {{- $_ := set . "vault_ha" (pluck .Values.werf.env .Values.vault.ha | first | default .Values.vault.ha._default) -}}
 {{- end -}}
 
