@@ -92,11 +92,11 @@ volumeClaimTemplates:
     storageClassName: {{ .vault_storage_class }}
 {{- end -}}
 
-{{- define "vault.probes" -}}
+#{{- define "vault.probes" -}}
 #to do probes https://github.com/hashicorp/vault-helm/blob/9efd98a30f9d13ff003b91dd445339f9d99c424a/templates/server-statefulset.yaml
-{{- end -}}
+#{{- end -}}
 
-{{- define "vault.lifecycle"-}}
+{{- define "vault.lifecycle" -}}
 lifecycle:
   # Vault container doesn't receive SIGTERM from Kubernetes
   # and after the grace period ends, Kube sends SIGKILL.  This
