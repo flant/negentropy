@@ -33,6 +33,8 @@ spec:
 {{- include "vault.securitycontext" . | nindent 12 }}
           env:
 {{- include "vault.env" . | nindent 10 }}
+{{- include "vault.lifecycle" . | nindent 10 }}
+{{- include "vault.probes" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
       volumes:

@@ -19,7 +19,11 @@
 - name: VAULT_GCPCKMS_SEAL_KEY_RING
   value: "vault"
 - name: VAULT_GCPCKMS_SEAL_CRYPTO_KEY
-  name: "vault-unseal"
+  value: "vault-unseal"
+- name: GOOGLE_PROJECT
+  value: "negentropy-dev"
+- name: GOOGLE_REGION
+  value: "europe"
 - name: HOST_IP
   valueFrom:
     fieldRef:
@@ -91,9 +95,31 @@ volumeClaimTemplates:
     storageClassName: {{ .vault_storage_class }}
 {{- end -}}
 
-#{{- define "vault.probes" -}}
-#to do probes https://github.com/hashicorp/vault-helm/blob/9efd98a30f9d13ff003b91dd445339f9d99c424a/templates/server-statefulset.yaml
-#{{- end -}}
+{{- define "vault.probes" -}}
+readinessProbe:
+  # Check status; unsealed vault servers return 0
+  # The exit code reflects the seal status:
+  #   0 - unsealed
+  #   1 - error
+  #   2 - sealed
+  exec:
+    command: ["/bin/sh", "-ec", "vault status -tls-skip-verify"]
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+livenessProbe:
+  httpGet:
+    path: "/v1/sys/health?standbyok=true"
+    port: 8200
+    scheme: {{ .vault_scheme | upper }}
+  failureThreshold: 2
+  initialDelaySeconds: 60
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+{{- end -}}
 
 {{- define "vault.lifecycle" -}}
 lifecycle:
