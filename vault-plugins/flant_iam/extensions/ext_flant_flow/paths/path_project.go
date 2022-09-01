@@ -379,7 +379,15 @@ func (b *projectBackend) handleRead(_ context.Context, req *logical.Request, dat
 		return backentutils.ResponseErr(req, err)
 	}
 
-	resp := &logical.Response{Data: map[string]interface{}{"project": project}}
+	sps, err := usecase.ServicePacks(tx).GetByProject(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+
+	resp := &logical.Response{Data: map[string]interface{}{
+		"project":       project,
+		"service_packs": sps,
+	}}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
 }
 

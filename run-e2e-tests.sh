@@ -31,5 +31,5 @@ echo DEBUG: ROOT_VAULT_INTERNAL_URL is $ROOT_VAULT_INTERNAL_URL
 echo DEBUG: AUTH_VAULT_INTERNAL_URL is $AUTH_VAULT_INTERNAL_URL
 
 go mod download
-go run tests/restoration_speed/test.go
+
 go run github.com/onsi/ginkgo/ginkgo run ./...

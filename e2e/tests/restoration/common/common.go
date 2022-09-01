@@ -1,89 +1,21 @@
-package main
+package common
 
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
-	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
 )
-
-var feedingMultipliers = []int{10, 20, 30}
-
-// var feedingMultipliers = []int{1_000, 10_000, 50_000, 100_000}
-
-type Result struct {
-	FeedMultiplier  int           // feed multiplier
-	RootIAMFactory  time.Duration // root vault IAM factory second run
-	RootAUTHFactory time.Duration // root vault AUTH factory second run
-	AuthAUTHFactory time.Duration // auth vault AUTH factory second run
-}
-
-func main() {
-	// to use e2e test libs
-	RegisterFailHandler(Fail)
-	defer GinkgoRecover()
-
-	result := []Result{}
-	s := Suite{}
-	s.BeforeSuite()
-	// check plugins alive
-	dieOnErr(s.rootVault.TouchIAM())
-	dieOnErr(s.rootVault.TouchAUTH())
-	dieOnErr(s.authVault.TouchAUTH())
-	feedingAmmount := 0
-	for _, multiplier := range feedingMultipliers {
-		toFeed := multiplier - feedingAmmount
-		feed(toFeed)
-
-		// stop containers
-		dieOnErr(s.rootVault.StopContainer())
-		dieOnErr(s.authVault.StopContainer())
-
-		// up containers
-		dieOnErr(s.rootVault.StartContainer())
-		dieOnErr(s.authVault.StartContainer())
-
-		time.Sleep(time.Second * 3)
-
-		// reader := bufio.NewReader(os.Stdin)
-		// fmt.Print("Check topics and press Enter")
-		// reader.ReadString('\n')
-
-		// unseal vaults
-		dieOnErr(s.rootVault.Unseal())
-		dieOnErr(s.authVault.Unseal())
-
-		// wake up plugins
-		s.rootVault.TouchIAM()
-		s.rootVault.TouchAUTH()
-		s.authVault.TouchAUTH()
-
-		// wait plugins
-		dieOnErr(repeat(s.rootVault.TouchIAM, 10))
-		dieOnErr(repeat(s.rootVault.TouchAUTH, 10))
-		dieOnErr(repeat(s.authVault.TouchAUTH, 10))
-
-		result = append(result, s.CollectMetrics(multiplier))
-		feedingAmmount += toFeed
-	}
-	fmt.Printf("         N     RootIAMFactory    RootAUTHFactory    AuthAUTHFactory\n")
-	for _, r := range result {
-		fmt.Printf("%10d %18s %18s %18s\n", r.FeedMultiplier, r.RootIAMFactory.String(), r.RootAUTHFactory.String(), r.AuthAUTHFactory.String())
-	}
-}
 
 func repeat(f func() error, maxAttempts int) error {
 	err := f()
@@ -107,38 +39,35 @@ type Suite struct {
 }
 
 type Vault struct {
-	containerName string
-	vaultURL      string
-	vaultToken    string
+	ContainerName string
+	VaultName     string `json:"name"`
+	VaultURL      string `json:"url"`
+	VaultToken    string `json:"token"`
 	container     *types.Container
-	unsealKeys    []string
+	UnsealKeys    []string `json:"keys"`
 
 	dockerCli *client.Client
 }
 
-func NewVault(dockerCli *client.Client, containerName string, vaultURLEnv string, vaultTokenEnv string, unsealKeysFileName string) *Vault {
-	vault := &Vault{
-		containerName: containerName,
-		vaultURL:      getFromEnv(vaultURLEnv),
-		vaultToken:    getFromEnv(vaultTokenEnv),
-		dockerCli:     dockerCli,
-	}
+func NewVault(dockerCli *client.Client, containerName string, vaultName string) *Vault {
+	vault := ReadVaultFromFile(vaultName)
+	vault.ContainerName = containerName
+	vault.dockerCli = dockerCli
 
 	// Open connections, create client
 	var err error
 
-	vault.container, err = getContainerByName(dockerCli, vault.containerName)
-	dieOnErr(err)
+	vault.container, err = getContainerByName(dockerCli, vault.ContainerName)
+	DieOnErr(err)
 
-	vault.unsealKeys = readUnsealKeys(unsealKeysFileName)
-	return vault
+	return &vault
 }
 
 func (v *Vault) Unseal() error {
 	for i := 0; i < 3; i++ {
 		executeCommandAtContainer(v.dockerCli, v.container, []string{
-			"/bin/sh", "-c", "vault operator unseal " + v.unsealKeys[i],
-		}, nil, []string{"VAULT_TOKEN=" + v.vaultToken})
+			"/bin/sh", "-c", "vault operator unseal " + v.UnsealKeys[i],
+		}, nil, []string{"VAULT_TOKEN=" + v.VaultToken})
 	}
 	return nil
 }
@@ -154,14 +83,14 @@ func (v *Vault) StartContainer() error {
 }
 
 func (v *Vault) TouchIAM() error {
-	url := v.vaultURL + "/v1/flant_iam/tenant/"
+	url := v.VaultURL + "/v1/flant/tenant/"
 	req, err := http.NewRequest("GET", url, nil)
-	dieOnErr(err)
-	req.Header["X-Vault-Token"] = []string{v.vaultToken}
+	DieOnErr(err)
+	req.Header["X-Vault-Token"] = []string{v.VaultToken}
 	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
-	dieOnErr(err)
+	DieOnErr(err)
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
 	}
@@ -169,14 +98,14 @@ func (v *Vault) TouchIAM() error {
 }
 
 func (v *Vault) TouchAUTH() error {
-	url := v.vaultURL + "/v1/auth/flant/auth_method/multipass"
+	url := v.VaultURL + "/v1/auth/flant/auth_method/multipass"
 	req, err := http.NewRequest("GET", url, nil)
-	dieOnErr(err)
-	req.Header["X-Vault-Token"] = []string{v.vaultToken}
+	DieOnErr(err)
+	req.Header["X-Vault-Token"] = []string{v.VaultToken}
 	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
-	dieOnErr(err)
+	DieOnErr(err)
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
 	}
@@ -189,7 +118,7 @@ func (v *Vault) LastFactoryDuration(pluginName string) time.Duration {
 		ShowStderr: true,
 		Details:    true,
 	})
-	dieOnErr(err)
+	DieOnErr(err)
 
 	sc := bufio.NewScanner(reader)
 	startedString := ""
@@ -204,12 +133,12 @@ func (v *Vault) LastFactoryDuration(pluginName string) time.Duration {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		dieOnErr(err)
+		DieOnErr(err)
 	}
 	startTime, err := timeStamp(startedString)
-	dieOnErr(err)
+	DieOnErr(err)
 	normalFinishTime, err := timeStamp(normalFinishString)
-	dieOnErr(err)
+	DieOnErr(err)
 	return normalFinishTime.Sub(startTime)
 }
 
@@ -222,23 +151,26 @@ func (s *Suite) BeforeSuite() {
 	var err error
 	s.dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
-	dieOnErr(err)
+	DieOnErr(err)
 
-	s.rootVault = NewVault(s.dockerCli,
-		"vault-root",
-		"ROOT_VAULT_URL",
-		"ROOT_VAULT_TOKEN",
-		"/tmp/vault_root_operator_output")
+	s.rootVault = NewVault(s.dockerCli, "vault-root", "root")
 
-	s.authVault = NewVault(s.dockerCli,
-		"vault-auth",
-		"AUTH_VAULT_URL",
-		"AUTH_VAULT_TOKEN",
-		"/tmp/vault_auth_operator_output")
+	s.authVault = NewVault(s.dockerCli, "vault-auth", "auth")
+	// check plugins alive
+	DieOnErr(s.rootVault.TouchIAM())
+	DieOnErr(s.rootVault.TouchAUTH())
+	DieOnErr(s.authVault.TouchAUTH())
 }
 
-func (s *Suite) CollectMetrics(caseFeedMultiplier int) Result {
-	return Result{
+type RestorationDurationResult struct {
+	FeedMultiplier  int           // feed multiplier
+	RootIAMFactory  time.Duration // root vault IAM factory second run
+	RootAUTHFactory time.Duration // root vault AUTH factory second run
+	AuthAUTHFactory time.Duration // auth vault AUTH factory second run
+}
+
+func (s *Suite) CollectMetrics(caseFeedMultiplier int) RestorationDurationResult {
+	return RestorationDurationResult{
 		FeedMultiplier:  caseFeedMultiplier,
 		RootIAMFactory:  s.rootVault.LastFactoryDuration("IAM"),
 		RootAUTHFactory: s.rootVault.LastFactoryDuration("AUTH"),
@@ -246,24 +178,34 @@ func (s *Suite) CollectMetrics(caseFeedMultiplier int) Result {
 	}
 }
 
-func readUnsealKeys(file string) []string {
-	dat, err := os.ReadFile(file)
-	dieOnErr(err)
-	ss := strings.Split(string(dat), "\n")
-	var result []string
-	for _, s := range ss {
-		if strings.HasPrefix(s, "Unseal Key ") {
-			l := strings.Split(s, ":")
-			if len(l) != 2 {
-				panic("Invalid string: " + s)
-			}
-			result = append(result, strings.TrimSpace(l[1]))
-		}
-	}
-	if len(result) < 3 {
-		panic("wrong amount Unseal keys, need at least 3, collect:" + strconv.Itoa(len(result)))
-	}
-	return result
+func (s *Suite) RestartVaults() {
+	// stop containers
+	DieOnErr(s.rootVault.StopContainer())
+	DieOnErr(s.authVault.StopContainer())
+
+	// up containers
+	DieOnErr(s.rootVault.StartContainer())
+	DieOnErr(s.authVault.StartContainer())
+
+	time.Sleep(time.Second * 3)
+
+	// reader := bufio.NewReader(os.Stdin)
+	// fmt.Print("Check topics and press Enter")
+	// reader.ReadString('\n')
+
+	// unseal vaults
+	DieOnErr(s.rootVault.Unseal())
+	DieOnErr(s.authVault.Unseal())
+
+	// wake up plugins
+	s.rootVault.TouchIAM()
+	s.rootVault.TouchAUTH()
+	s.authVault.TouchAUTH()
+
+	// wait plugins
+	DieOnErr(repeat(s.rootVault.TouchIAM, 10))
+	DieOnErr(repeat(s.rootVault.TouchAUTH, 10))
+	DieOnErr(repeat(s.authVault.TouchAUTH, 10))
 }
 
 func getContainerByName(dockerCli *client.Client, name string) (*types.Container, error) {
@@ -285,16 +227,9 @@ func getContainerByName(dockerCli *client.Client, name string) (*types.Container
 	return nil, errors.New("Container with name " + name + " not found")
 }
 
-func getFromEnv(envName string) string {
-	value := os.Getenv(envName)
-	if value == "" {
-		panic(fmt.Sprintf("required environment variable %s is not set", envName))
-	}
-	return value
-}
-
-func dieOnErr(err error) {
+func DieOnErr(err error) {
 	if err != nil {
+		fmt.Printf("critical error: %s", err.Error())
 		panic(err)
 	}
 }
@@ -311,10 +246,10 @@ func executeCommandAtContainer(dockerCli *client.Client, container *types.Contai
 	}
 
 	IDResp, err := dockerCli.ContainerExecCreate(ctx, container.ID, config)
-	dieOnErr(err)
+	DieOnErr(err)
 
 	resp, err := dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	dieOnErr(err)
+	DieOnErr(err)
 	defer resp.Close()
 
 	go func() {
@@ -337,19 +272,24 @@ func executeCommandAtContainer(dockerCli *client.Client, container *types.Contai
 		fmt.Printf("command: \n %s \n ==> has been succeseed at  at container  %s \n", cmd, container.Names)
 		return output
 	}
-	dieOnErr(err)
+	DieOnErr(err)
 	return nil
 }
 
-func feed(n int) {
-	rootClient := lib.NewConfiguredIamVaultClient()
-	tenantApi := lib.NewTenantAPI(rootClient)
-	userApi := lib.NewUserAPI(rootClient)
-	tenant := specs.CreateRandomTenant(tenantApi)
-	for i := 0; i < n; i++ {
-		if i%10 == 0 {
-			fmt.Printf("%d/%d\n", n, i)
+const vaultsFilePath = "/tmp/vaults"
+
+func ReadVaultFromFile(vaultName string) Vault {
+	data, err := os.ReadFile(vaultsFilePath)
+	DieOnErr(err)
+	var vaults []Vault
+	err = json.Unmarshal(data, &vaults)
+	DieOnErr(err)
+	for _, v := range vaults {
+		if v.VaultName == vaultName {
+			os.Setenv(strings.ToUpper(vaultName)+"_VAULT_TOKEN", v.VaultToken) // nolint:errcheck
+			os.Setenv(strings.ToUpper(vaultName)+"_VAULT_URL", v.VaultURL)     // nolint:errcheck
+			return v
 		}
-		specs.CreateRandomUser(userApi, tenant.UUID)
 	}
+	panic(fmt.Sprintf("vault with name %s not found at %s", vaultName, vaultsFilePath))
 }

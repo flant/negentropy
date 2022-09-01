@@ -118,6 +118,9 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	publicKeyStr = strings.ReplaceAll(strings.TrimSpace(publicKeyStr), "\\n", "\n")
 
 	pb, _ := pem.Decode([]byte(publicKeyStr))
+	if pb == nil {
+		return backentutils.ResponseErrMessage(req, "can't decode given public_key", http.StatusBadRequest)
+	}
 	pk, err := x509.ParsePKCS1PublicKey(pb.Bytes)
 	if err != nil {
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
