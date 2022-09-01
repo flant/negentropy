@@ -17,6 +17,12 @@ data:
       tls_disable = "true"
       max_request_duration = "120s"
     }
+    seal "gcpckms" {
+      project = "negentropy-dev"
+      region = "europe"
+      key_ring = "vault"
+      crypto_key  = "vault-unseal"
+    }
     disable_mlock = true
     cluster_name = "auth"
     ui = false
@@ -43,7 +49,12 @@ data:
       tls_disable = "true"
       max_request_duration = "120s"
     }
-
+    seal "gcpckms" {
+      project = "negentropy-dev"
+      region = "europe"
+      key_ring = "vault"
+      crypto_key  = "vault-unseal"
+    }
     api_addr = "http://vault-root:{{ .vault_port }}"
     disable_mlock = true
     cluster_name = "root"
