@@ -13,7 +13,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	api "github.com/flant/negentropy/vault-plugins/shared/tests"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 var (
@@ -62,7 +61,6 @@ var _ = Describe("Role binding approval", func() {
 			},
 			"tenant":       tenant.UUID,
 			"role_binding": roleBindingID,
-			"uuid":         uuid.New(),
 		}
 
 		createdData := TestAPI.Create(params, url.Values{}, data)
