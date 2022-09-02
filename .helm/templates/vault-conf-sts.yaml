@@ -8,11 +8,11 @@ metadata:
   labels:
     app: {{ $vault_name }}
 spec:
-{{- if (.vault_ha) -}}
+{{ if (.vault_ha) }}
   replicas: 3
-{{- else -}}
+{{ else }}
   replicas: 1
-{{- end -}}
+{{ end }}
   serviceName: {{ $vault_name }}
   selector:
     matchLabels:
