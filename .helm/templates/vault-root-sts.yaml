@@ -7,11 +7,11 @@ metadata:
   labels:
     app: vault-root
 spec:
-{{- if (.vault_ha) -}}
+{{ if (.vault_ha) }}
   replicas: 3
-{{- else -}}
+{{ else }}
   replicas: 1
-{{- end -}}
+{{ end }}
   serviceName: vault-root
   selector:
     matchLabels:

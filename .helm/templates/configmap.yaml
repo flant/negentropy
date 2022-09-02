@@ -44,9 +44,9 @@ data:
     api_addr = "http://vault-root:{{ .vault_port }}"
     disable_mlock = true
     cluster_name = "root"
-{{- if (.vault_ha) -}}
+{{ if (.vault_ha) }}
     service_registration "kubernetes"
-{{- end -}}
+{{ end }}
     ui = false
 ---
 apiVersion: v1
@@ -73,7 +73,7 @@ data:
     api_addr = "http://vault-conf:{{ .vault_port }}"
     disable_mlock = true
     cluster_name = "conf"
-{{- if (.vault_ha) -}}
+{{ if (.vault_ha) }}
     service_registration "kubernetes"
-{{- end -}}
+{{ end }}
     ui = false
