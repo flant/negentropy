@@ -42,11 +42,18 @@ spec:
 {{- include "vault.probes" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
+          - mountPath: /vault/userconfig/{{ $vault_name }}-tls
+            name: {{ $vault_name }}-tls
+            readOnly: true
       volumes:
       - name: config
         configMap:
           name: {{ $vault_name }}
           defaultMode: 0644
+      - name: {{ $vault_name }}-tls
+        secret:
+          defaultMode: 420
+          secretName: {{ $vault_name }}-tls
 {{- include "vault.volumeclaimtemplate" . | nindent 2 }}
 ---
 apiVersion: v1
