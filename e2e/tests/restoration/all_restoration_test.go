@@ -371,11 +371,12 @@ var creators = []objectCreator{
 	serviceAccountCreator, serviceAccountPasswordCreator,
 	featureFlagCreator,
 	groupCreator, identitySharingCreator,
-	rolebindingCreator, rolebindingApprovalCreator,
+	roleCreator, rolebindingCreator, rolebindingApprovalCreator,
 	projectCreator,
 	serverCreator,
 	teamCreator, teammateCreator,
 	clientCreator, flantFlowProjectCreator,
+	replicaCreator,
 	authSourceCreator, authMethodCreator,
 	policyCreator,
 }
@@ -412,21 +413,22 @@ func TestRestoration(t *testing.T) {
 	}
 	defer GinkgoRecover()
 	fmt.Println("=== restarting vaults ===")
+	// time.Sleep(time.Second * 3)
 	s.RestartVaults()
 	for objectIdentifier, checker := range checkers {
 		t.Run("restoration_"+objectIdentifier, func(t *testing.T) { checker(iamClient, t) })
 	}
+	fmt.Println("===  todo remove vaults ===") //TODO remove
 	t.Run("check restoration jwks/jwt and entity/entity_alias staff",
 		func(t *testing.T) {
 			multipassJWT := store.getObject("multipass-jwt").(string)
-			//project := store.getObject("project").(model.Project)
-			println("==========")
+			println("==TODO REMOVE========") // TODO
 			println(multipassJWT)
 			println("==========")
 			vst := access_token_or_sapass_auth.Login(true, map[string]interface{}{
 				"method": "multipass", "jwt": multipassJWT,
 				"roles": []map[string]interface{}{},
-			}, lib.GetRootVaultUrl(), 50).ClientToken
+			}, lib.GetRootVaultUrl(), 10).ClientToken
 			fmt.Printf("vst:%#v", vst)
 		})
 }

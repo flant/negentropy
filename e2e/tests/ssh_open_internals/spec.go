@@ -54,10 +54,10 @@ var _ = Describe("Process of getting ssh access to server by a cli", func() {
 			cl.SetToken(secret.ClientToken)
 
 			ssh := cl.SSHWithMountPoint("ssh")
-			s, err := ssh.SignKey("signer", data)
+			_, err := ssh.SignKey("signer", data)
 
 			Expect(err).ToNot(HaveOccurred())
-			fmt.Printf("principals: %s key: %#v\n", principals, s)
+			fmt.Printf("principals: %s\n", principals)
 		}
 	})
 

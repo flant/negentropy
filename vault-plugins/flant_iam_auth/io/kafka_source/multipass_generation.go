@@ -55,10 +55,11 @@ func (rk *MultipassGenerationKafkaSource) Restore(txn *memdb.Txn) error {
 	if err != nil {
 		return err
 	}
+	rk.logger.Debug(fmt.Sprintf("TODO REMOVE: groupID: %s", groupID))
 
 	defer sharedkafka.DeferredСlose(restorationConsumer, rk.logger)
 	defer sharedkafka.DeferredСlose(runConsumer, rk.logger)
-	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic,
+	return sharedkafka.RunRestorationLoopWITH_LOGS(restorationConsumer, runConsumer, io.MultipassNumberGenerationTopic,
 		txn, rk.restoreMsgHandler, rk.logger)
 }
 
@@ -152,8 +153,8 @@ func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore
 
 		err := rk.verifySign(signature, msg.Value)
 		if err != nil {
-			rk.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d\n",
-				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset))
+			rk.logger.Warn(fmt.Sprintf("wrong signature. Skipping message: %s in topic: %s at offset %d, err:%s\n",
+				msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset, err.Error()))
 			return
 		}
 
@@ -180,7 +181,8 @@ func (rk *MultipassGenerationKafkaSource) msgHandler(store *sharedio.MemoryStore
 
 func (rk *MultipassGenerationKafkaSource) verifySign(signature []byte, data []byte) error {
 	hashed := sha256.Sum256(data)
-
+	rk.logger.Debug("TODO REMOVE: (rk *MultipassGenerationKafkaSource) verifySign")
+	rk.logger.Debug(fmt.Sprintf("TODO REMOVE: len(rk.kf.PluginConfig.PeersPublicKeys): %d\n", len(rk.kf.PluginConfig.PeersPublicKeys)))
 	for _, pub := range rk.kf.PluginConfig.PeersPublicKeys {
 		err := sharedkafka.VerifySignature(signature, pub, hashed)
 		if err == nil {
@@ -188,7 +190,7 @@ func (rk *MultipassGenerationKafkaSource) verifySign(signature []byte, data []by
 		}
 	}
 
-	return fmt.Errorf("no public key for signature found")
+	return fmt.Errorf("no public key for signature found TODO REMOVE") // TODO REMOVE
 }
 
 func (rk *MultipassGenerationKafkaSource) processMessage(source *sharedkafka.SourceInputMessage, store *sharedio.MemoryStore, msg *sharedkafka.MsgDecoded) error {
