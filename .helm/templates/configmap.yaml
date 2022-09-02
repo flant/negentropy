@@ -67,7 +67,8 @@ data:
     listener "tcp" {
       address = "0.0.0.0:{{ .vault_port }}"
       cluster_address = "0.0.0.0:{{ .vault_cluster_port }}"
-      tls_disable = "true"
+      tls_cert_file = "/tmp/internal.crt"
+      tls_key_file = "/tmp/internal.key"
       max_request_duration = "120s"
     }
     api_addr = "http://vault-conf:{{ .vault_port }}"
