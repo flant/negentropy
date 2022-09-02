@@ -1,9 +1,4 @@
 vault:
-  replicas:
-    root:
-      _default: 1
-    auth:
-      _default: 1
   ha:
     _default: false
   port: 

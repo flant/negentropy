@@ -48,3 +48,32 @@ data:
     service_registration "kubernetes"
 {{- end -}}
     ui = false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-conf
+  labels:
+    app: vault-conf
+data:
+  vault.hcl: |-
+{{ if (.vault_ha) }}
+    storage "raft" {
+{{ else }}
+    storage "file" {
+{{ end }}
+      path = {{ .vault_data_path | quote }}
+    }
+    listener "tcp" {
+      address = "0.0.0.0:{{ .vault_port }}"
+      cluster_address = "0.0.0.0:{{ .vault_cluster_port }}"
+      tls_disable = "true"
+      max_request_duration = "120s"
+    }
+    api_addr = "http://vault-conf:{{ .vault_port }}"
+    disable_mlock = true
+    cluster_name = "conf"
+{{- if (.vault_ha) -}}
+    service_registration "kubernetes"
+{{- end -}}
+    ui = false
