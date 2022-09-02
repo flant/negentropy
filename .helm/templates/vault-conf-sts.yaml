@@ -87,5 +87,41 @@ spec:
   commonName: {{ $vault_name }}
   dnsNames:
   - {{ $vault_name }}
+{{ if (.vault_ha) }}
+{{ range $i,$e := until 3 }}
+  - {{ printf "%s-$i.%s.%s.svc.cluster.local" $vault_name $vault_name .Values.werf.namespace }}
+{{ end }}
+{{ else }}
   - {{ printf "%s-0.%s.%s.svc.cluster.local" $vault_name $vault_name .Values.werf.namespace }}
+{{ end }}
   - {{ printf "%s.%s.svc.cluster.local" $vault_name .Values.werf.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $vault_name }}
+  labels:
+    app: {{ $vault_name }}
+data:
+  vault.hcl: |-
+{{ if (.vault_ha) }}
+    storage "raft" {
+{{ else }}
+    storage "file" {
+{{ end }}
+      path = {{ .vault_data_path | quote }}
+    }
+    listener "tcp" {
+      address = "0.0.0.0:{{ .vault_port }}"
+      cluster_address = "0.0.0.0:{{ .vault_cluster_port }}"
+      tls_cert_file = "/vault/userconfig/{{ $vault_name }}-tls/tls.crt"
+      tls_key_file  = "/vault/userconfig/{{ $vault_name }}-tls/tls.key"
+      max_request_duration = "120s"
+    }
+    api_addr = {{ printf "%s://%s:%s" $vault_scheme $vault_name .vault_port}}
+    disable_mlock = true
+    cluster_name = "conf"
+{{ if (.vault_ha) }}
+    service_registration "kubernetes"
+{{ end }}
+    ui = false
