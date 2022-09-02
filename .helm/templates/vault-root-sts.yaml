@@ -118,7 +118,6 @@ data:
       tls_key_file  = "/vault/userconfig/{{ $vault_name }}-tls/tls.key"
       max_request_duration = "120s"
     }
-    api_addr = {{ printf "%s://%s:%s" $vault_scheme $vault_name .vault_port}}
     disable_mlock = true
     cluster_name = "root"
 {{ if (.vault_ha) }}

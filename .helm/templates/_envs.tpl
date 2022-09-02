@@ -6,7 +6,6 @@
 {{- $_ := set . "vault_storage_class" (pluck .Values.werf.env .Values.vault.storage_class | first | default .Values.vault.storage_class._default) -}}
 {{- $_ := set . "vault_storage_size" (pluck .Values.werf.env .Values.vault.storage_size | first | default .Values.vault.storage_size._default) -}}
 {{- $_ := set . "vault_ha" (pluck .Values.werf.env .Values.vault.ha | first | default .Values.vault.ha._default) -}}
-{{- $_ := set . "vault_scheme" (pluck .Values.werf.env .Values.vault.scheme | first | default .Values.vault.scheme._default) -}}
 {{- end -}}
 
 {{- define "vault.env" -}}
@@ -33,9 +32,9 @@
     fieldRef:
       fieldPath: status.podIP
 - name: VAULT_ADDR
-  value: {{ printf "%s://127.0.0.1:%s" .vault_scheme .vault_port | quote }}
+  value: {{ printf "https://127.0.0.1:%s" .vault_port | quote }}
 - name: VAULT_API_ADDR
-  value: {{ printf "%s://$(POD_IP):%s" .vault_scheme .vault_port | quote }}
+  value: {{ printf "https://$(POD_IP):%s" .vault_port | quote }}
 - name: VAULT_LOG_FORMAT
   value: "json"
 - name: SKIP_CHOWN
@@ -113,7 +112,7 @@ livenessProbe:
   httpGet:
     path: "/v1/sys/health?standbyok=true"
     port: 8200
-    scheme: {{ .vault_scheme | upper }}
+    scheme: "HTTPS"
   failureThreshold: 2
   initialDelaySeconds: 60
   periodSeconds: 5
