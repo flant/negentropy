@@ -16,6 +16,9 @@ data:
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
     vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
     vault=$!
+    while ! vault status ; do
+      sleep 2
+    done
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
       vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
