@@ -70,7 +70,7 @@ import:
   before: install
 git:
 - add: /infra/common/vault/recovery-pgp-keys
-  to: /etc
+  to: /etc/
 shell:
   beforeInstall:
   - apk add bash curl ca-certificates jq vim
