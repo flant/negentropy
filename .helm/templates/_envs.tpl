@@ -6,7 +6,7 @@
 {{- $_ := set . "vault_storage_class" (pluck .Values.werf.env .Values.vault.storage_class | first | default .Values.vault.storage_class._default) -}}
 {{- $_ := set . "vault_storage_size" (pluck .Values.werf.env .Values.vault.storage_size | first | default .Values.vault.storage_size._default) -}}
 {{- $_ := set . "vault_ha" (pluck .Values.werf.env .Values.vault.ha | first | default .Values.vault.ha._default) -}}
-{{- $_ := set . "vault_bucket" (pluck .Values.werf.env .Values.vault.bucket | first | default printf .Values.vault.bucket._default .Values.werf.env) -}}
+{{- $_ := set . "vault_bucket" (pluck .Values.werf.env .Values.vault.bucket | first | default (printf .Values.vault.bucket._default .Values.werf.env)) -}}
 {{- end -}}
 
 {{- define "vault.env" -}}
