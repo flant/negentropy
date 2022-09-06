@@ -1,4 +1,6 @@
 vault:
+  bucket:
+    _default: vault
   ha:
     _default: false
   port: 

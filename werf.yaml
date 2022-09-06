@@ -60,3 +60,14 @@ shell:
   - apk add bash curl ca-certificates gnupg jq py3-pip vim
   install:
   - python3 -m pip install -r /app/scripts/requirements.txt
+---
+image: vault-init
+from: google/cloud-sdk:400.0.0-alpine
+import:
+- artifact: vault-build
+  add: /app/infra/common/vault/vault/bin/vault
+  to: /bin/vault
+  before: install
+shell:
+  beforeInstall:
+  - apk add bash curl ca-certificates jq vim
