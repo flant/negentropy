@@ -27,7 +27,7 @@ data:
       vault auth enable cert
       vault write auth/cert/certs/auth display_name='auth' policies='auth' certificate=@vault-conf-ca.pem ttl='3600'
       echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
-      cat "$KEYFILE"
+      vault token revoke -self
       until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
        sleep 2
       done
