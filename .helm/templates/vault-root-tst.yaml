@@ -26,7 +26,7 @@ spec:
       initContainers:
         - name: init
           image: {{ pluck "vault-init" .Values.werf.image | first }}
-          command: ["bash","-c","/init.sh"]
+          command: ["/init.sh"]
           securityContext:
 {{- include "vault.securitycontext" . | nindent 12 }}
           env:
@@ -70,7 +70,7 @@ spec:
       - name: init
         configMap:
           name: vault-init
-          defaultMode: 0644
+          defaultMode: 0755
       - name: {{ $vault_name }}-tls
         secret:
           defaultMode: 420

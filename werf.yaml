@@ -68,6 +68,9 @@ import:
   add: /app/infra/common/vault/vault/bin/vault
   to: /bin/vault
   before: install
+git:
+- add: /infra/common/vault/recovery-pgp-keys
+  to: /etc
 shell:
   beforeInstall:
   - apk add bash curl ca-certificates jq vim

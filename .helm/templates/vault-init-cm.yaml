@@ -8,20 +8,27 @@ data:
     #!/bin/bash
 
     cd /tmp
-    until [ -f "ca.pem" ]; do
+    until [ -f "vault-conf-ca.pem" ]; do
       echo "Retrieving CA"
-      gsutil cp gs://${BUCKET}/ca.pem .
+      gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
       sleep 2
     done
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
-    vault server -config /tmp/vault.hcl &
+    vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
+    vault=$!
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
-      vault_init_out="$(vault operator init -recovery-shares=1  -recovery-threshold=1 -recovery-pgp-keys="/etc/recovery-pgp-keys/carol-pub-key.asc")"
+      vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
+      vault_init_out="$(vault operator init -recovery-shares=1  -recovery-threshold=1 -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
       export VAULT_TOKEN=$(echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}')
       echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "$KEYFILE"
+      vault auth enable cert
+      vault write auth/cert/certs/auth display_name='auth' policies='auth' certificate=@vault-conf-ca.pem ttl='3600'
+      echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
       cat "$KEYFILE"
       until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
        sleep 2
       done
     fi
+    kill $vault
+    wait $vault
