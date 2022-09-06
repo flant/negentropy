@@ -19,6 +19,23 @@ spec:
         app: {{ $vault_name }}
     spec:
       terminationGracePeriodSeconds: 5
+      initContainers:
+        - name: init
+          image: {{ pluck "vault-init" .Values.werf.image | first }}
+          command: ["/init.sh"]
+          securityContext:
+{{- include "vault.securitycontext" . | nindent 12 }}
+          env:
+{{- include "vault.env" . | nindent 10 }}
+          volumeMounts:
+{{- include "vault.volumemounts" . | nindent 10 }}
+          - mountPath: /vault/userconfig/{{ $vault_name }}-tls
+            name: {{ $vault_name }}-tls
+            readOnly: true
+          - mountPath: /init.sh
+            name: init
+            subPath: init.sh
+            readOnly: true
       containers:
         - name: {{ $vault_name }}
           image: {{ .Values.werf.image.vault }}
@@ -43,6 +60,10 @@ spec:
         configMap:
           name: {{ $vault_name }}
           defaultMode: 0644
+      - name: init
+        configMap:
+          name: vault-init
+          defaultMode: 0755
       - name: {{ $vault_name }}-tls
         secret:
           defaultMode: 420

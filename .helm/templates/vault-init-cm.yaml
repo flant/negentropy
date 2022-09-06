@@ -19,7 +19,9 @@ data:
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
       vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
-      vault_init_out="$(vault operator init -recovery-shares=1  -recovery-threshold=1 -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
+      recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
+      recovery_threshold="${recovery_shares}"
+      vault_init_out="$(vault operator init -recovery-shares="${recovery_shares}"  -recovery-threshold="${recovery_threshold}" -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
       export VAULT_TOKEN=$(echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}')
       echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "$KEYFILE"
       vault auth enable cert

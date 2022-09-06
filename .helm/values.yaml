@@ -1,6 +1,6 @@
 vault:
   bucket:
-    _default: vault
+    _default: "negentropy-%s-vault"
   ha:
     _default: false
   port: 
