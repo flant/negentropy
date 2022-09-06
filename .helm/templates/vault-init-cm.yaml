@@ -8,18 +8,19 @@ data:
     #!/bin/bash
 
     cd /tmp
-    until [ -f "vault-conf-ca.pem" ]; do
-      echo "Retrieving CA"
-      gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
-      sleep 2
-    done
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
     vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
     vault=$!
-    while ! curl $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 ; do
+    echo "Wait vault for check status"
+    while ! curl -s $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 ; do
       sleep 2
     done
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
+      until [ -f "vault-conf-ca.pem" ]; do
+        echo "Retrieving CA"
+        gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
+        sleep 2
+      done
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
       vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
       recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
