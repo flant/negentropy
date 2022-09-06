@@ -23,7 +23,7 @@ spec:
         app: {{ $vault_name }}
     spec:
       terminationGracePeriodSeconds: 5
-      initContiners:
+      initContainers:
         - name: init
           image: {{ pluck "vault-init" .Values.werf.image | first }}
           command: ["bash","-c","/init.sh"]
