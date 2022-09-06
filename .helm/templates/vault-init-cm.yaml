@@ -16,7 +16,7 @@ data:
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
     vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
     vault=$!
-    while ! vault status ; do
+    while ! curl $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 ; do
       sleep 2
     done
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
