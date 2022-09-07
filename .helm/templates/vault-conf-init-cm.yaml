@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-conf-init
+data:
+  init.sh: |
+    #!/bin/bash
+
+    cd /tmp
+    cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
+    vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
+    vault=$!
+    echo "Wait until vault is auto-unsealed"
+    while ! curl -s $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 ; do
+      sleep 2
+    done
+
+    # auto-init
+    if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
+      until [ -f "vault-conf-ca.pem" ]; do
+        echo "Retrieving CA"
+        gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
+        sleep 2
+      done
+      #init
+      KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
+      vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
+      recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
+      recovery_threshold="${recovery_shares}"
+      vault_init_out="$(vault operator init -recovery-shares="${recovery_shares}"  -recovery-threshold="${recovery_threshold}" -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
+      export VAULT_TOKEN=$(echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}')
+      echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "$KEYFILE"
+ 
+    # create PKI
+    if [ "$(vault secrets list -format=json| jq -r '."vault-cert-auth/"')" = null ]; then
+      vault secrets enable --max-lease-ttl=87600h vault-cert-auth
+      vault write vault-cert-auth/roles/cert-auth allow_any_name='true' max_ttl='1h'
+      #TODO check:
+      #if $(vault read vault-cert-auth/cert/ca)
+      vault write vault-cert-auth/root/generate/internal common_name='negentropy' ttl='87600h'
+
+    # enable cert auth
+      vault auth enable cert
+      vault write auth/cert/certs/auth display_name='auth' policies='auth' certificate=@vault-conf-ca.pem ttl='3600'
+      echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
+      vault token revoke -self
+      until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
+       sleep 2
+      done
+    fi
+    kill $vault
+    wait $vault
