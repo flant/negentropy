@@ -16,10 +16,16 @@ data:
       sleep 2
     done
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
-      until curl -sf http://vault-conf:8200/v1/vault-cert-auth/ca/pem -o vault-conf-ca.pem ; do
+
+      until [ -f "vault-conf-ca.pem" ]; do
         echo "Retrieving CA"
+        gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
         sleep 2
-      done
+      done    
+      #until curl -sf http://vault-conf:8200/v1/vault-cert-auth/ca/pem -o vault-conf-ca.pem ; do
+      #  echo "Retrieving CA"
+      #  sleep 2
+      #done
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
       vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
       recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
