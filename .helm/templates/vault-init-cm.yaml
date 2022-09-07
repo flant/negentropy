@@ -11,7 +11,7 @@ data:
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
     vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
     vault=$!
-    echo "Wait vault for check status"
+    echo "Wait until vault is auto-unsealed"
     while ! curl -s $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 ; do
       sleep 2
     done
