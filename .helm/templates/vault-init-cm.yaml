@@ -16,9 +16,8 @@ data:
       sleep 2
     done
     if [ "$(vault status -format=json | jq -r .initialized)" = "false" ]; then
-      until [ -f "vault-conf-ca.pem" ]; do
+      until curl -sf http://vault-conf:8200/v1/vault-cert-auth/ca/pem -o vault-conf-ca.pem ; do
         echo "Retrieving CA"
-        gsutil cp gs://${BUCKET}/vault-conf-ca.pem .
         sleep 2
       done
       KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
@@ -29,7 +28,7 @@ data:
       export VAULT_TOKEN=$(echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}')
       echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "$KEYFILE"
       vault auth enable cert
-      vault write auth/cert/certs/auth display_name='auth' policies='auth' certificate=@vault-conf-ca.pem ttl='3600'
+      vault write auth/cert/certs/cert-auth display_name='cert-auth' policies='cert-auth' certificate=@vault-conf-ca.pem ttl='3600'
       echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
       vault token revoke -self
       until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
