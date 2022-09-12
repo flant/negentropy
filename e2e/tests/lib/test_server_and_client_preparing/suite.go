@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
 
+	"github.com/flant/negentropy/e2e/tests/lib"
 	fip "github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 )
@@ -476,6 +477,16 @@ func (s *Suite) DirectoryAtContainerNotExistOrEmpty(container *types.Container, 
 		return true
 	}
 	return false
+}
+
+func (s *Suite) DirectoryAtContainerNotExistOrEmptyWithRetry(container *types.Container, directoryPath string, maxAttempts int) error {
+	return lib.Repeat(func() error {
+		if s.DirectoryAtContainerNotExistOrEmpty(container, directoryPath) {
+			return nil
+		} else {
+			return fmt.Errorf("directory %s at container %s is not empty", directoryPath, container.Names[0])
+		}
+	}, maxAttempts)
 }
 
 func calculatePrincipal(serverUUID string, userUUID model.UserUUID) string {
