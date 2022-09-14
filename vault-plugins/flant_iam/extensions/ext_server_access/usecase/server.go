@@ -47,159 +47,58 @@ func (s *ServerService) Create(
 	tenantUUID, projectUUID, serverID string,
 	labels, annotations map[string]string,
 	roles []string,
-) (string, string, error) {
-	var projectBoundRoles []iam_model.BoundRole
-
-	server := &model.Server{
-		UUID:        uuid.New(),
-		TenantUUID:  tenantUUID,
-		ProjectUUID: projectUUID,
-		Version:     iam_repo.NewResourceVersion(),
-		Identifier:  serverID,
-		Labels:      labels,
-		Annotations: annotations,
-	}
-
+) (model.ServerUUID, iam_model.MultipassJWT, error) {
 	tenant, err := s.tenantService.GetByID(tenantUUID)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("tenant: %w", err)
 	}
 
 	project, err := s.projectsService.GetByID(projectUUID)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("project: %w", err)
+	}
+	if project.TenantUUID != tenantUUID {
+		return "", "", fmt.Errorf("%w: not matching tenant_uuid and project_uuid", consts.ErrInvalidArg)
 	}
 
 	groupIdentifier := nameForProjectLevelObjects(tenant.Identifier, project.Identifier)
-	group, getGroupErr := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, groupIdentifier)
-	if getGroupErr != nil && !errors.Is(getGroupErr, consts.ErrNotFound) {
-		return "", "", err
-	}
-	if group == nil {
-		group = &iam_model.Group{
-			UUID:       uuid.New(),
-			TenantUUID: tenant.UUID,
-			Identifier: groupIdentifier,
-			Origin:     consts.OriginServerAccess,
-		}
-		err := s.groupRepo.Create(group)
-		if err != nil {
-			return "", "", err
-		}
-	}
-
-	// create RoleBinding for each role
-	for _, roleName := range roles {
-		role, err := s.roleService.Get(roleName)
-		if err != nil {
-			return "", "", fmt.Errorf("roleService.Get(%q):%w", roleName, err)
-		}
-
-		projectBoundRoles = append(projectBoundRoles, iam_model.BoundRole{
-			Name: role.Name,
-		})
-	}
-
-	if len(projectBoundRoles) != 0 {
-		var (
-			roleBinding *iam_model.RoleBinding
-			err         error
-		)
-
-		// TODO: update existing
-		roleBinding, err = s.roleBindingRepo.FindSpecificRoleBindingAtProject(projectUUID, roles, []string{group.UUID})
-		if err != nil && !errors.Is(err, consts.ErrNotFound) {
-			return "", "", err
-		}
-
-		if roleBinding == nil {
-			newRoleBinding := &iam_model.RoleBinding{
-				UUID:        uuid.New(),
-				TenantUUID:  tenant.ObjId(),
-				Version:     iam_repo.NewResourceVersion(),
-				Origin:      consts.OriginServerAccess,
-				Description: groupIdentifier,
-				Groups:      []iam_model.GroupUUID{group.UUID},
-				Members: []iam_model.MemberNotation{{
-					Type: iam_model.GroupType,
-					UUID: group.UUID,
-				}},
-				Roles:      projectBoundRoles,
-				AnyProject: false,
-				Projects:   []string{projectUUID},
-			}
-
-			err := s.roleBindingRepo.Create(newRoleBinding)
-			if err != nil {
-				return "", "", err
-			}
-		}
-	}
-
-	serviceAccount, err := s.serviceAccountRepo.GetByIdentifier(tenantUUID, nameForServerRelatedProjectLevelObjects(project.Identifier, serverID))
-	if err != nil && !errors.Is(err, consts.ErrNotFound) {
-		return "", "", err
-	}
-
-	if serviceAccount == nil {
-		saIdentifier := nameForServerRelatedProjectLevelObjects(project.Identifier, serverID)
-
-		newServiceAccount := &iam_model.ServiceAccount{
-			UUID:           uuid.New(),
-			Version:        iam_repo.NewResourceVersion(),
-			TenantUUID:     tenant.ObjId(),
-			Origin:         consts.OriginServerAccess,
-			Identifier:     saIdentifier,
-			FullIdentifier: iam_repo.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
-		}
-
-		err := s.serviceAccountRepo.Create(newServiceAccount)
-		if err != nil {
-			return "", "", err
-		}
-
-		serviceAccount = newServiceAccount
-	}
-
-	server.ServiceAccountUUID = serviceAccount.UUID
-
-	var isSAInGroup bool
-	for _, saInGroup := range group.ServiceAccounts {
-		if saInGroup == serviceAccount.UUID {
-			isSAInGroup = true
-		}
-	}
-
-	if !isSAInGroup {
-		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
-		group.Members = append(group.Members, iam_model.MemberNotation{
-			Type: iam_model.ServiceAccountType,
-			UUID: serviceAccount.UUID,
-		})
-	}
-
-	groupService := usecase.Groups(s.tx, tenantUUID, consts.OriginServerAccess)
-
-	err = groupService.Update(group)
+	group, err := s.provideGroupByIdentifier(tenantUUID, groupIdentifier)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("group: %w", err)
+	}
+
+	serviceAccount, err := s.provideServiceAccount(tenant, project.Identifier, serverID, group)
+	if err != nil {
+		return "", "", fmt.Errorf("service_account: %w", err)
+	}
+
+	boundRoles, err := s.provideRolebinding(project, group, roles)
+	if err != nil {
+		return "", "", fmt.Errorf("rolebinding: %w", err)
 	}
 
 	var multipassRoleNames []iam_model.RoleName
-	for _, projectRole := range projectBoundRoles {
+	for _, projectRole := range boundRoles {
 		multipassRoleNames = append(multipassRoleNames, projectRole.Name)
 	}
-
 	multipassService := usecase.Multipasses(s.tx, consts.OriginServerAccess, iam_model.MultipassOwnerServiceAccount, tenantUUID, serviceAccount.UUID)
-
 	// TODO: are these valid?
 	multipassJWT, mp, err := multipassService.CreateWithJWT(multipassIssue, 144*time.Hour, 2000*time.Hour, nil, nil, "TODO")
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("multipass: %w", err)
 	}
 
-	server.Version = iam_repo.NewResourceVersion()
-	server.MultipassUUID = mp.UUID
+	server := &model.Server{
+		UUID:               uuid.New(),
+		TenantUUID:         tenantUUID,
+		ProjectUUID:        projectUUID,
+		Version:            iam_repo.NewResourceVersion(),
+		Identifier:         serverID,
+		Labels:             labels,
+		Annotations:        annotations,
+		ServiceAccountUUID: serviceAccount.UUID,
+		MultipassUUID:      mp.UUID,
+	}
 	err = s.tx.Insert(model.ServerType, server)
 	if err != nil {
 		return "", "", err
@@ -251,7 +150,7 @@ func (s *ServerService) Update(server *model.Server) error {
 	return nil
 }
 
-func (s *ServerService) Delete(serverUUID string) error {
+func (s *ServerService) Delete(serverUUID model.ServerUUID) error {
 	server, err := s.serverRepo.GetByUUID(serverUUID)
 	if err != nil {
 		return err
@@ -372,4 +271,128 @@ func nameForProjectLevelObjects(tenantID string, projectID string) string {
 
 func nameForServerRelatedProjectLevelObjects(projectID, serverID string) string {
 	return "servers/" + projectID + "/" + serverID
+}
+
+// provideGroupByIdentifier returns group by autogenerated identifier, create it if not exists
+func (s *ServerService) provideGroupByIdentifier(tenantUUID iam_model.TenantUUID, groupIdentifier string) (*iam_model.Group, error) {
+	group, err := s.groupRepo.GetByIdentifierAtTenant(tenantUUID, groupIdentifier)
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return nil, err
+	}
+	if group == nil {
+		group = &iam_model.Group{
+			UUID:       uuid.New(),
+			TenantUUID: tenantUUID,
+			Identifier: groupIdentifier,
+			Origin:     consts.OriginServerAccess,
+		}
+		err := s.groupRepo.Create(group)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return group, nil
+}
+
+// provideServiceAccount returns service_account by autogenerated identifier, if not exists, create and add to group
+func (s *ServerService) provideServiceAccount(tenant *iam_model.Tenant, projectIdentifier string, serverIdentifier string, group *iam_model.Group) (*iam_model.ServiceAccount, error) {
+	serviceAccount, err := s.serviceAccountRepo.GetByIdentifier(tenant.UUID, nameForServerRelatedProjectLevelObjects(projectIdentifier, serverIdentifier))
+	if err != nil && !errors.Is(err, consts.ErrNotFound) {
+		return nil, err
+	}
+
+	if serviceAccount == nil {
+		saIdentifier := nameForServerRelatedProjectLevelObjects(projectIdentifier, serverIdentifier)
+
+		newServiceAccount := &iam_model.ServiceAccount{
+			UUID:           uuid.New(),
+			Version:        iam_repo.NewResourceVersion(),
+			TenantUUID:     tenant.UUID,
+			Origin:         consts.OriginServerAccess,
+			Identifier:     saIdentifier,
+			FullIdentifier: iam_repo.CalcServiceAccountFullIdentifier(saIdentifier, tenant.Identifier),
+		}
+		if err := s.serviceAccountRepo.Create(newServiceAccount); err != nil {
+			return nil, err
+		}
+		serviceAccount = newServiceAccount
+	}
+
+	var isSAInGroup bool
+	for _, saInGroup := range group.ServiceAccounts {
+		if saInGroup == serviceAccount.UUID {
+			isSAInGroup = true
+		}
+	}
+
+	if !isSAInGroup {
+		group.ServiceAccounts = append(group.ServiceAccounts, serviceAccount.UUID)
+		group.Members = append(group.Members, iam_model.MemberNotation{
+			Type: iam_model.ServiceAccountType,
+			UUID: serviceAccount.UUID,
+		})
+	}
+
+	groupService := usecase.Groups(s.tx, tenant.UUID, consts.OriginServerAccess)
+
+	if err = groupService.Update(group); err != nil {
+		return nil, err
+	}
+	return serviceAccount, nil
+}
+
+// provideRolebinding provide existing rolebinding, returns roles for multipass issuing
+// project: server should be placed here
+// group: group with service_accounts created for servers at the project
+// roles: role_names of roles should be given to group
+func (s *ServerService) provideRolebinding(project *iam_model.Project, group *iam_model.Group, roles []iam_model.RoleName) ([]iam_model.BoundRole, error) {
+	var projectBoundRoles []iam_model.BoundRole
+	// create RoleBinding for each role
+	for _, roleName := range roles {
+		role, err := s.roleService.Get(roleName)
+		if err != nil {
+			return nil, fmt.Errorf("roleService.Get(%q):%w", roleName, err)
+		}
+
+		projectBoundRoles = append(projectBoundRoles, iam_model.BoundRole{
+			Name: role.Name,
+		})
+	}
+
+	if len(projectBoundRoles) != 0 {
+		var (
+			roleBinding *iam_model.RoleBinding
+			err         error
+		)
+
+		// TODO: update existing
+		roleBinding, err = s.roleBindingRepo.FindSpecificRoleBindingAtProject(project.UUID, roles, []string{group.UUID})
+		if err != nil && !errors.Is(err, consts.ErrNotFound) {
+			return nil, err
+		}
+
+		if roleBinding == nil {
+			newRoleBinding := &iam_model.RoleBinding{
+				UUID:        uuid.New(),
+				TenantUUID:  project.TenantUUID,
+				Version:     iam_repo.NewResourceVersion(),
+				Origin:      consts.OriginServerAccess,
+				Description: group.Identifier,
+				Groups:      []iam_model.GroupUUID{group.UUID},
+				Members: []iam_model.MemberNotation{{
+					Type: iam_model.GroupType,
+					UUID: group.UUID,
+				}},
+				Roles:      projectBoundRoles,
+				AnyProject: false,
+				Projects:   []string{project.UUID},
+			}
+
+			err := s.roleBindingRepo.Create(newRoleBinding)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return projectBoundRoles, nil
 }
