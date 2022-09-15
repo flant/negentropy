@@ -140,7 +140,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(txn *io.MemoryStoreTxn, en
 		return nil, fmt.Errorf("not found entity id for %s", entity.Name)
 	}
 
-	// getting mount accessor - identifer for mount point plugin
+	// getting mount accessor - identifier for mount point plugin
 	mountAccessor, err := a.mountAccessorGetter.MountAccessor()
 	if err != nil {
 		a.logger.Error(fmt.Sprintf("Cannot get mount accessor: %v", err), "name", entityAlias.Name, "err", err)

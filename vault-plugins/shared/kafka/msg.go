@@ -120,16 +120,21 @@ func RunRestorationLoopWITH_LOGS(newConsumer, runConsumer *kafka.Consumer, topic
 	var partition int32
 	var err error
 	if runConsumer != nil {
+		logger.Debug("TODO REMOVE: runConsumer != nil")
 		lastOffset, edgeOffset, partition, err = LastAndEdgeOffsetsByRunConsumer(runConsumer, newConsumer, topicName)
+		logger.Debug("TODO REMOVE: LastAndEdgeOffsetsByRunConsumer", "lastOffset", lastOffset, "edgeOffset", edgeOffset)
 		if err != nil {
 			return fmt.Errorf("getting offset by RunConsumer:%w", err)
 		}
 	} else {
+		logger.Debug("TODO REMOVE: runConsumer == nil")
 		lastOffset, partition, err = LastOffsetByNewConsumer(newConsumer, topicName)
+		logger.Debug("TODO REMOVE: LastOffsetByNewConsumer", "lastOffset", lastOffset, "edgeOffset", edgeOffset)
 		if err != nil {
 			return fmt.Errorf("getting offset by newConsumer:%w", err)
 		}
 	}
+	logger.Debug("TODO REMOVE", "lastOffset", lastOffset, "edgeOffset", edgeOffset)
 
 	if lastOffset == 0 && edgeOffset == 0 {
 		logger.Debug("normal finish: no messages", "topicName", topicName)
@@ -149,7 +154,7 @@ func RunRestorationLoopWITH_LOGS(newConsumer, runConsumer *kafka.Consumer, topic
 		logger.Debug("TODO REMOVE, Enter loop")
 		var msg *kafka.Message
 		ev := <-c
-		logger.Debug(fmt.Sprintf("got event:%#v", ev))
+		logger.Debug(fmt.Sprintf("got event:%s", ev.String()))
 		switch e := ev.(type) {
 		case *kafka.Message:
 			msg = e
