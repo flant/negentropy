@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -100,16 +101,8 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 		}
 
 		// Get docker bridge ip address to access secondary vault dev server from inside docker container
-		{
-			cmd := exec.Command("docker", "network", "inspect", "bridge", "-f", "{{ (index .IPAM.Config 0).Gateway }}")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("docker network inspect command failed: %s\n%s\n", err, output)
-			}
-			dockerBridgeIPAddr = strings.TrimSpace(string(output))
-
-			fmt.Printf("Got dockerBridgeIPAddr=%s\n", dockerBridgeIPAddr)
-		}
+		dockerBridgeIPAddr = getDockerBridgeIPAddr(t)
+		fmt.Printf("Got dockerBridgeIPAddr=%s\n", dockerBridgeIPAddr)
 
 		var err error
 		vaultCaCrtData, err = ioutil.ReadFile("examples/conf/ca-cert.pem")
@@ -139,7 +132,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 		}
 	}
 
-	// comfigure flant_gitops plugin itself
+	// configure flant_gitops plugin itself
 	{
 		testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
 		defer os.RemoveAll(testGitRepoDir)
@@ -308,6 +301,19 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			t.Fatalf("expected data.key2 to equal value2, got:\n%s\n", data)
 		}
 	}
+}
+
+// returns IP-address or url to link from docker-container to host
+func getDockerBridgeIPAddr(t *testing.T) string {
+	if runtime.GOOS == "darwin" {
+		return "docker.for.mac.localhost"
+	}
+	cmd := exec.Command("docker", "network", "inspect", "bridge", "-f", "{{ (index .IPAM.Config 0).Gateway }}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("docker network inspect command failed: %s\n%s\n", err, output)
+	}
+	return strings.TrimSpace(string(output))
 }
 
 func RunVaultCommand(t *testing.T, args ...string) []byte {
