@@ -23,6 +23,7 @@ spec:
         app: {{ $vault_name }}
     spec:
       terminationGracePeriodSeconds: 5
+      serviceAccountName: gitops
       initContainers:
         - name: init
           image: {{ pluck "vault-init" .Values.werf.image | first }}
@@ -33,7 +34,7 @@ spec:
 {{- include "vault.env" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
-          - mountPath: /vault/userconfig/{{ $vault_name }}-tls
+          - mountPath: /vault/userconfig/tls
             name: {{ $vault_name }}-tls
             readOnly: true
           - mountPath: /init.sh
@@ -59,7 +60,7 @@ spec:
 {{- include "vault.probes" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
-          - mountPath: /vault/userconfig/{{ $vault_name }}-tls
+          - mountPath: /vault/userconfig/tls
             name: {{ $vault_name }}-tls
             readOnly: true
       volumes:
@@ -69,7 +70,7 @@ spec:
           defaultMode: 0644
       - name: init
         configMap:
-          name: vault-init
+          name: vault-conf-init
           defaultMode: 0755
       - name: {{ $vault_name }}-tls
         secret:
@@ -116,6 +117,8 @@ spec:
   - {{ printf "%s-0.%s.%s.svc.cluster.local" $vault_name $vault_name .Values.werf.namespace }}
 {{ end }}
   - {{ printf "%s.%s.svc.cluster.local" $vault_name .Values.werf.namespace }}
+  ipAddresses:
+  - 127.0.0.1
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -135,9 +138,9 @@ data:
     listener "tcp" {
       address = "0.0.0.0:{{ .vault_port }}"
       cluster_address = "0.0.0.0:{{ .vault_cluster_port }}"
-      #tls_cert_file = "/vault/userconfig/{{ $vault_name }}-tls/tls.crt"
-      #tls_key_file  = "/vault/userconfig/{{ $vault_name }}-tls/tls.key"
-      tls_disable = true
+      tls_cert_file = "/vault/userconfig/tls/tls.crt"
+      tls_key_file  = "/vault/userconfig/tls/tls.key"
+      tls_disable = false
       max_request_duration = "120s"
     }
     disable_mlock = true

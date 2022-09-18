@@ -35,9 +35,11 @@
     fieldRef:
       fieldPath: status.podIP
 - name: VAULT_ADDR
-  value: {{ printf "http://127.0.0.1:%s" .vault_port | quote }} #change to HTTPS after turning TLS on
+  value: {{ printf "https://127.0.0.1:%s" .vault_port | quote }} #change to HTTPS after turning TLS on
 - name: VAULT_API_ADDR
-  value: {{ printf "http://$(POD_IP):%s" .vault_port | quote }} #change to HTTPS after turning TLS on
+  value: {{ printf "https://$(POD_IP):%s" .vault_port | quote }} #change to HTTPS after turning TLS on
+- name: VAULT_CACERT
+  value: /vault/userconfig/tls/ca.crt
 - name: VAULT_LOG_FORMAT
   value: "json"
 - name: SKIP_CHOWN
@@ -62,7 +64,7 @@
     fieldRef:
       fieldPath: metadata.name
 - name: VAULT_CLUSTER_ADDR
-  value: {{ printf "http://$(HOSTNAME).%s:%s"  .vault_cluster_port | quote }} #change to HTTPS after turning TLS on
+  value: {{ printf "https://$(HOSTNAME).%s:%s"  .vault_cluster_port | quote }} #change to HTTPS after turning TLS on
 {{- end -}}
 {{- end -}}
 
@@ -115,7 +117,7 @@ livenessProbe:
   httpGet:
     path: "/v1/sys/health?standbyok=true"
     port: 8200
-    scheme: "HTTP" #change to HTTPS after turning TLS on
+    scheme: "HTTPS" #change to HTTPS after turning TLS on
   failureThreshold: 2
   initialDelaySeconds: 60
   periodSeconds: 5
