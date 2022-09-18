@@ -34,10 +34,12 @@ spec:
             git clone https://github.com/flant/negentropy.git $HOME/negentropy &&
             cd $HOME/negentropy &&
             git checkout $GIT_COMMIT &&
-            werf converge --env=dev --auto-rollback=true --repo=europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev/negentropy
+            werf converge --env=dev --auto-rollback=true --repo=europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev/negentropy --set vaults_b64_json=${VAULTS_B64_JSON}
         env:
           - name: GIT_COMMIT
             value: COMMIT_PLACEHOLDER
+          - name: VAULTS_B64_JSON
+            value: VAULTS_B64_PLACEHOLDER
           - name: WERF_NAMESPACE
             valueFrom:
               fieldRef:

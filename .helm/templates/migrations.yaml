@@ -1,0 +1,24 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Chart.Name }}-migrate
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "10"
+spec:
+  template:
+    metadata:
+      name: {{ .Chart.Name }}-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migrations
+        image: {{ .Values.werf.image.migrations }}
+        command:
+        - sh
+        - -c
+        - python3 scripts/migrate.py
+        env:
+        - name: VAULTS_B64_JSON
+          value: {{ .Values.vaults_b64_json }}
