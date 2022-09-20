@@ -66,15 +66,15 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 
 	// configure vault access
 	{
-		RunVaultCommand(t, "auth", "enable", "-address", "http://127.0.0.1:8201", "-ca-cert", "examples/conf/ca-cert.pem", "approle")
-		RunVaultCommand(t, "policy", "write", "-address", "http://127.0.0.1:8201", "-ca-cert", "examples/conf/ca-cert.pem", "good", "examples/conf/good.hcl")
-		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "-ca-cert", "examples/conf/ca-cert.pem", "auth/approle/role/good", " secret_id_ttl=30m", "token_ttl=90s", "token_policies=good")
+		RunVaultCommand(t, "auth", "enable", "-address", "http://127.0.0.1:8201", "approle")
+		RunVaultCommand(t, "policy", "write", "-address", "http://127.0.0.1:8201", "good", "examples/conf/good.hcl")
+		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "auth/approle/role/good", " secret_id_ttl=30m", "token_ttl=90s", "token_policies=good")
 
 		var secretID string
 		{
 			var data map[string]interface{}
 
-			jsonData := RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "-ca-cert", "examples/conf/ca-cert.pem", "-format", "json", "-f", "auth/approle/role/good/secret-id")
+			jsonData := RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "-format", "json", "-f", "auth/approle/role/good/secret-id")
 
 			if err := json.Unmarshal(jsonData, &data); err != nil {
 				t.Fatalf("bad json: %s\n%s\n", err, jsonData)
@@ -89,7 +89,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 		{
 			var data map[string]interface{}
 
-			jsonData := RunVaultCommand(t, "read", "-address", "http://127.0.0.1:8201", "-ca-cert", "examples/conf/ca-cert.pem", "-format", "json", "auth/approle/role/good/role-id")
+			jsonData := RunVaultCommand(t, "read", "-address", "http://127.0.0.1:8201", "-format", "json", "auth/approle/role/good/role-id")
 
 			if err := json.Unmarshal(jsonData, &data); err != nil {
 				t.Fatalf("bad json: %s\n%s\n", err, jsonData)
