@@ -27,6 +27,7 @@ const (
 )
 
 func TestPlugin_VaultRequestsOperation(t *testing.T) {
+
 	go func() {
 		if _, err := RunVaultCommandWithError("server", "-dev", "-dev-listen-address", secondaryVaultDevServerAddress, "-dev-root-token-id", secondaryVaultDevServerToken); err != nil {
 			panic(fmt.Sprintf("vault dev server failed: %s", err))
@@ -42,15 +43,12 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 		break
 	}
 
-	systemClockMock := util.NewFixedClock(time.Now())
-	systemClock = systemClockMock
-
 	ctx := context.Background()
 
-	b, storage, testLogger := getTestBackend(t, ctx)
+	b, storage, testLogger, _ := getTestBackend(t, ctx)
 
 	go func() {
-		time.Sleep(1 * time.Minute)
+		time.Sleep(2 * time.Minute)
 
 		req := &logical.Request{
 			Storage:    storage,
@@ -135,7 +133,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 	// configure flant_gitops plugin itself
 	{
 		testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
-		defer os.RemoveAll(testGitRepoDir)
+		defer os.RemoveAll(testGitRepoDir) // nolint:errcheck
 
 		flantGitopsScript := `#!/bin/sh
 	

@@ -11,7 +11,11 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 )
 
-func getTestBackend(t *testing.T, ctx context.Context) (*backend, logical.Storage, *util.TestLogger) {
+// getTestBackend prepare and returns test backend with mocked systemClock
+func getTestBackend(t *testing.T, ctx context.Context) (*backend, logical.Storage, *util.TestLogger, *util.MockClock) {
+	mockedSystemClock, systemClockMock := util.NewMockedClock(time.Now())
+	systemClock = mockedSystemClock // replace value of global variable for system time operating
+
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 
@@ -37,7 +41,7 @@ func getTestBackend(t *testing.T, ctx context.Context) (*backend, logical.Storag
 		t.Fatalf("unable to setup backend: %s", err)
 	}
 
-	return b, config.StorageView, testLogger
+	return b, config.StorageView, testLogger, systemClockMock
 }
 
 func ListTasks(t *testing.T, ctx context.Context, b *backend, storage logical.Storage) []string {

@@ -41,7 +41,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend(conf *logical.BackendConfig) (*backend, error) {
+func newBackend(_ *logical.BackendConfig) (*backend, error) {
 	b := &backend{
 		TasksManager:              tasks_manager.NewManager(),
 		AccessVaultClientProvider: client.NewVaultClientController(hclog.Default()),
@@ -60,10 +60,30 @@ func newBackend(conf *logical.BackendConfig) (*backend, error) {
 				return err
 			}
 
-			if err := b.PeriodicTask(req); err != nil {
-				return err
+			//if err := b.PeriodicTask(req.Storage); err != nil {
+			//	return err
+			//}
+
+			newCommit, err := GitService(ctx, req.Storage, b.Logger()).CheckForNewCommit()
+			if err != nil {
+				return fmt.Errorf("checking gits for signed commits: %w", err)
 			}
 
+			if newCommit == nil {
+				b.Logger().Info("No new signed commits, skip deployment task")
+				return nil
+			}
+
+			b.Logger().Debug("start task for commit: %s")
+			//vaults, err := buildVaultsB64Json(ctx, req.Storage, b.AccessVaultClientProvider, b.Logger())
+			//if err != nil {
+			//	return fmt.Errorf("building vaults_b64_json: %w", err)
+			//}
+
+			//err = proccessCommits(ctx, gitCommits, req.Storage, b.TasksManager, b.Logger())
+			//if err != nil {
+			//	return fmt.Errorf("processing commits: %w", err)
+			//}
 			return nil
 		},
 

@@ -15,15 +15,11 @@ import (
 
 	"github.com/docker/docker/api/types"
 	dockerClient "github.com/docker/docker/client"
-	goGit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 	uuid "github.com/satori/go.uuid"
 	"github.com/werf/logboek"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
-	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
@@ -37,38 +33,25 @@ const (
 	lastPeriodicRunTimestampKey    = "last_periodic_run_timestamp"
 )
 
-func (b *backend) PeriodicTask(req *logical.Request) error {
+func (b *backend) PeriodicTask(storage logical.Storage) error {
 	ctx := context.Background()
+	logger := b.Logger()
 
-	config, err := getConfiguration(ctx, req.Storage)
+	config, err := getConfig(ctx, storage, logger)
 	if err != nil {
-		return fmt.Errorf("unable to get configuration: %s", err)
-	}
-	if config == nil {
-		b.Logger().Info("Configuration not set: skipping periodic task")
-		return nil
+		return err
 	}
 
-	{
-		cfgData, err := json.MarshalIndent(config, "", "  ")
-		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", err, string(cfgData)))
-	}
-
-	gitCredentials, err := trdlGit.GetGitCredential(ctx, req.Storage)
-	if err != nil {
-		return fmt.Errorf("unable to get Git credentials configuration: %s", err)
-	}
-
-	vaultRequests, err := listVaultRequests(ctx, req.Storage)
+	vaultRequests, err := listVaultRequests(ctx, storage)
 	if err != nil {
 		return fmt.Errorf("unable to get all Vault requests configurations: %s", err)
 	}
 
 	for _, cfg := range vaultRequests {
-		b.Logger().Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
+		logger.Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
 	}
 
-	apiConfig, err := b.AccessVaultClientProvider.GetApiConfig(ctx, req.Storage)
+	apiConfig, err := b.AccessVaultClientProvider.GetApiConfig(ctx, storage)
 	if err != nil {
 		return fmt.Errorf("unable to get Vault API config: %s", err)
 	}
@@ -79,7 +62,7 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return nil
 	}
 
-	entry, err := req.Storage.Get(ctx, lastPeriodicRunTimestampKey)
+	entry, err := storage.Get(ctx, lastPeriodicRunTimestampKey)
 	if err != nil {
 		return fmt.Errorf("unable to get key %q from storage: %s", lastPeriodicRunTimestampKey, err)
 	}
@@ -93,18 +76,18 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 	}
 
 	now := systemClock.Now()
-	uuid, err := b.TasksManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
-		err := b.periodicTask(ctx, storage, config, gitCredentials, vaultRequests, apiConfig)
+	uuid, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
+		err := b.periodicTask(ctx, storage, config, vaultRequests, apiConfig)
 		if err != nil {
-			b.Logger().Error(fmt.Sprintf("Periodic task failed: %s", err))
+			logger.Error(fmt.Sprintf("Periodic task failed: %s", err))
 		} else {
-			b.Logger().Info("Periodic task succeeded")
+			logger.Info("Periodic task succeeded")
 		}
 		return err
 	})
 
 	if err == tasks_manager.ErrBusy {
-		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GitPollPeriod))
+		logger.Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GitPollPeriod))
 		return nil
 	}
 
@@ -112,100 +95,23 @@ func (b *backend) PeriodicTask(req *logical.Request) error {
 		return fmt.Errorf("unable to add queue manager periodic task: %s", err)
 	}
 
-	if err := req.Storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
+	if err := storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
 		return fmt.Errorf("unable to put last periodic task run timestamp in storage by key %q: %s", lastPeriodicRunTimestampKey, err)
 	}
 
 	b.LastPeriodicTaskUUID = uuid
-	b.Logger().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
+	logger.Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
 
 	return nil
 }
 
 func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration,
-	gitCredentials *trdlGit.GitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
+	vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
 	b.Logger().Debug("Started periodic task")
-
-	// clone git repository and get head commit
-	var gitRepo *goGit.Repository
-	var headCommit string
-	{
-		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %q", config.GitRepoUrl, config.GitBranch))
-
-		var cloneOptions trdlGit.CloneOptions
-		{
-			cloneOptions.BranchName = config.GitBranch
-			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
-
-			if gitCredentials != nil && gitCredentials.Username != "" && gitCredentials.Password != "" {
-				cloneOptions.Auth = &http.BasicAuth{
-					Username: gitCredentials.Username,
-					Password: gitCredentials.Password,
-				}
-			}
-		}
-
-		var err error
-		if gitRepo, err = trdlGit.CloneInMemory(config.GitRepoUrl, cloneOptions); err != nil {
-			return err
-		}
-
-		r, err := gitRepo.Head()
-		if err != nil {
-			return err
-		}
-
-		headCommit = r.Hash().String()
-		b.Logger().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
-	}
-
-	// define lastSuccessfulCommit
-	var lastSuccessfulCommit string
-	{
-		entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
-		if err != nil {
-			return err
-		}
-
-		if entry != nil && string(entry.Value) != "" {
-			lastSuccessfulCommit = string(entry.Value)
-		} else {
-			lastSuccessfulCommit = config.InitialLastSuccessfulCommit
-		}
-
-		b.Logger().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
-	}
-
-	// skip commit if already processed
-	if lastSuccessfulCommit == headCommit {
-		b.Logger().Debug("Head commit not changed: skipping periodic task")
-		return nil
-	}
-
-	// check that current commit is a descendant of the last successfully processed commit
-	if lastSuccessfulCommit != "" {
-		isAncestor, err := trdlGit.IsAncestor(gitRepo, lastSuccessfulCommit, headCommit)
-		if err != nil {
-			return err
-		}
-
-		if !isAncestor {
-			return fmt.Errorf("unable to run periodic task for git commit %q which is not descendant of the last successfully processed commit %q", headCommit, lastSuccessfulCommit)
-		}
-	}
 
 	// verify head commit pgp signatures
 	{
-		trustedPGPPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
-		if err != nil {
-			return fmt.Errorf("unable to get trusted public keys: %s", err)
-		}
 
-		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, config.RequiredNumberOfVerifiedSignaturesOnCommit); err != nil {
-			return err
-		}
-
-		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
 	}
 
 	vaultRequestEnvs := map[string]string{}
@@ -240,9 +146,9 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 			if err := func() error {
 				tw := tar.NewWriter(contextWriter)
 
-				if err := trdlGit.AddWorktreeFilesToTar(tw, gitRepo); err != nil {
-					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
-				}
+				//if err := trdlGit.AddWorktreeFilesToTar(tw, gitRepo); err != nil {
+				//	return fmt.Errorf("unable to add git worktree files to tar: %s", err)
+				//}
 
 				dockerfileOpts := docker.DockerfileOpts{EnvVars: vaultRequestEnvs}
 
@@ -252,7 +158,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 					vaultCACertPath := path.Join(".flant_gitops", "ca.crt")
 					vaultTLSServerName := apiConfig.APIHost
 
-					if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert + "\n")}); err != nil {
+					if err := writeFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert + "\n")}); err != nil {
 						return fmt.Errorf("unable to write file %q to tar: %s", vaultCACertPath, err)
 					}
 
@@ -319,8 +225,8 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 	}
 
 	if err := storage.Put(ctx, &logical.StorageEntry{
-		Key:   storageKeyLastSuccessfulCommit,
-		Value: []byte(headCommit),
+		Key: storageKeyLastSuccessfulCommit,
+		//Value: []byte(headCommit),
 	}); err != nil {
 		return fmt.Errorf("unable to store %q: %s", storageKeyLastSuccessfulCommit, err)
 	}
@@ -358,7 +264,7 @@ func (b *backend) performWrappedVaultRequest(ctx context.Context, storage logica
 	return secret.WrapInfo.Token, nil
 }
 
-func WriteFilesToTar(tw *tar.Writer, filesData map[string][]byte) error {
+func writeFilesToTar(tw *tar.Writer, filesData map[string][]byte) error {
 	for path, data := range filesData {
 		header := &tar.Header{
 			Format:     tar.FormatGNU,

@@ -18,15 +18,15 @@ import (
 func invokePeriodicRun(t *testing.T, ctx context.Context, b *backend, testLogger *util.TestLogger, storage logical.Storage) {
 	testLogger.Reset()
 
-	req := &logical.Request{
-		Operation:  logical.ReadOperation,
-		Path:       "",
-		Data:       make(map[string]interface{}),
-		Storage:    storage,
-		Connection: &logical.Connection{},
-	}
+	//req := &logical.Request{
+	//	Operation:  logical.ReadOperation,
+	//	Path:       "",
+	//	Data:       make(map[string]interface{}),
+	//	Storage:    storage,
+	//	Connection: &logical.Connection{},
+	//}
 
-	if err := b.PeriodicTask(req); err != nil {
+	if err := b.PeriodicTask(storage); err != nil {
 		t.Fatalf("error running backend periodic task: %s", err)
 	}
 }
@@ -63,12 +63,9 @@ func getLastSuccessfulCommit(t *testing.T, ctx context.Context, storage logical.
 }
 
 func TestPeriodic_PollOperation(t *testing.T) {
-	systemClockMock := util.NewFixedClock(time.Now())
-	systemClock = systemClockMock
-
 	ctx := context.Background()
 
-	b, storage, testLogger := getTestBackend(t, ctx)
+	b, storage, testLogger, systemClockMock := getTestBackend(t, ctx)
 
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -161,12 +158,9 @@ func TestPeriodic_PollOperation(t *testing.T) {
 func TestPeriodic_DockerCommand(t *testing.T) {
 	var periodicTaskUUIDs []string
 
-	systemClockMock := util.NewFixedClock(time.Now())
-	systemClock = systemClockMock
-
 	ctx := context.Background()
 
-	b, storage, testLogger := getTestBackend(t, ctx)
+	b, storage, testLogger, systemClockMock := getTestBackend(t, ctx)
 
 	testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
 	defer os.RemoveAll(testGitRepoDir)
