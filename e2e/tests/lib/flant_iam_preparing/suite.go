@@ -209,7 +209,7 @@ func (st Suite) createRoleIfNotExist(roleName string, scope model.RoleScope) {
 
 func (st Suite) WaitPrepareForSSHTesting(cfg CheckingEnvironment, maxAttempts int) error {
 	f := func() error {
-		return lib.TryLoginByMultipassJWTToAuthVault(cfg.UserMultipassJWT, lib.GetAuthVaultUrl())
+		return lib.TryLoginByMultipassJWTToVault(cfg.UserMultipassJWT, lib.GetAuthVaultUrl())
 	}
 	return lib.Repeat(f, maxAttempts)
 }
@@ -217,7 +217,7 @@ func (st Suite) WaitPrepareForSSHTesting(cfg CheckingEnvironment, maxAttempts in
 func (st Suite) WaitPrepareForLoginTesting(cfg CheckingEnvironment, maxAttempts int) error {
 	_, multipassJWT := specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
 		cfg.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
-	f := func() error { return lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl()) }
+	f := func() error { return lib.TryLoginByMultipassJWTToVault(multipassJWT, lib.GetAuthVaultUrl()) }
 	return lib.Repeat(f, maxAttempts)
 }
 

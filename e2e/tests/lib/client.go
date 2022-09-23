@@ -100,6 +100,15 @@ func NewVaultClient(baseURL string, token string, pluginPath string) *http.Clien
 	return &http.Client{Transport: tr}
 }
 
+func HttpClientWithoutInsequireVerifing() *http.Client {
+	client := http.DefaultClient
+	client.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		}}
+	return client
+}
+
 func GetRootRootToken() string {
 	token := os.Getenv("ROOT_VAULT_TOKEN")
 	if token == "" {
@@ -138,7 +147,7 @@ func WaitDataReachFlantAuthPlugin(maxAttempts int, vaultUrl string) error {
 	user := specs.CreateRandomUser(NewUserAPI(rootIamClient), tenant.UUID)
 	_, multipassJWT := specs.CreateUserMultipass(NewUserMultipassAPI(rootIamClient),
 		user, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
-	f := func() error { return TryLoginByMultipassJWTToAuthVault(multipassJWT, vaultUrl) }
+	f := func() error { return TryLoginByMultipassJWTToVault(multipassJWT, vaultUrl) }
 	return Repeat(f, maxAttempts)
 }
 
@@ -158,7 +167,7 @@ func Repeat(f func() error, maxAttempts int) error {
 	return nil
 }
 
-func TryLoginByMultipassJWTToAuthVault(multipassJWT string, vaultUrl string) error {
+func TryLoginByMultipassJWTToVault(multipassJWT string, vaultUrl string) error {
 	url := vaultUrl + "/v1/auth/flant/login"
 	payload := map[string]interface{}{
 		"method": "multipass",
@@ -168,11 +177,11 @@ func TryLoginByMultipassJWTToAuthVault(multipassJWT string, vaultUrl string) err
 	if err != nil {
 		return nil
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(data))
 	if err != nil {
 		return nil
 	}
-	client := http.DefaultClient
+	client := HttpClientWithoutInsequireVerifing()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil

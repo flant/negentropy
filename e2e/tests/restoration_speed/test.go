@@ -158,7 +158,7 @@ func (v *Vault) TouchIAM() error {
 	req, err := http.NewRequest("GET", url, nil)
 	dieOnErr(err)
 	req.Header["X-Vault-Token"] = []string{v.vaultToken}
-	client := http.DefaultClient
+	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
 	dieOnErr(err)
@@ -173,7 +173,7 @@ func (v *Vault) TouchAUTH() error {
 	req, err := http.NewRequest("GET", url, nil)
 	dieOnErr(err)
 	req.Header["X-Vault-Token"] = []string{v.vaultToken}
-	client := http.DefaultClient
+	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
 	dieOnErr(err)

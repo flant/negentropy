@@ -1,6 +1,7 @@
 package access_token_or_sapass_auth
 
 import (
+	"crypto/tls"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -182,8 +183,10 @@ func loginServiceAccountPass(positiveCase bool, params map[string]interface{}) *
 
 func makeRequest(token string, method string, vaultUrl string, requestUrl string) ([]byte, error, int) {
 	url := vaultUrl + "/v1/" + requestUrl
-
-	client := &http.Client{}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err, 0

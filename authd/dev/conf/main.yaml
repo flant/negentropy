@@ -8,6 +8,6 @@ servers:
     default: true
   - domain: "*.auth.negentropy.example.com"
   - #type: auth
-  #    domain: "http://127.0.0.1:8200"
+  #    domain: "https://localhost:8200"
   - type: auth
-    domain: "http://127.0.0.1:8200"
+    domain: "https://localhost:8200"

@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
@@ -362,7 +361,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			})
 			teammate.Version = updatedData.Get("teammate.resource_version").String()
 			Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
-
+			time.Sleep(time.Second * 2)
 			users, err := getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(users).To(HaveLen(usersLen))
@@ -373,7 +372,10 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 	It("lost access after deleting teammate", func() {
 		teammate2 := specs.CreateRandomTeammate(lib.NewFlowTeammateAPI(lib.NewConfiguredIamVaultClient()), devopsTeam)
+		fmt.Printf("teammate1 %#v\n", teammate)
+		fmt.Printf("teammate2 %#v\n", teammate2)
 		Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+		time.Sleep(time.Second * 2)
 		users, err := getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(users).To(HaveLen(2))
@@ -383,6 +385,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			"teammate": teammate2.UUID,
 		}, nil)
 		Expect(lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())).ToNot(HaveOccurred())
+		time.Sleep(time.Second * 2)
 		users, err = getPosixUsers(lib.NewConfiguredIamAuthVaultClient(), client.UUID, project.UUID, testServer.UUID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(users).To(HaveLen(1))
@@ -417,10 +420,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 })
 
 func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUID, serverUUID ext.ServerUUID) ext.Server {
-	cl, err := api.NewClient(api.DefaultConfig())
-	Expect(err).ToNot(HaveOccurred())
-	cl.SetToken(lib.GetRootRootToken())
-	cl.SetAddress(lib.GetRootVaultUrl())
+	cl := configure.GetClientWithToken(lib.GetRootRootToken(), lib.GetRootVaultUrl())
 	secret, err := cl.Logical().Read(fmt.Sprintf("/flant/tenant/%s/project/%s/server/%s", tenantUUID, projectUUID, serverUUID))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(secret).ToNot(BeNil())

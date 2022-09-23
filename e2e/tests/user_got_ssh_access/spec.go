@@ -187,10 +187,10 @@ func checkUserLoginForSignCert(positiveCase bool, tenantUUID, projectUUID, serve
 func waitKafkaFlow(multipassJWT string, waitSuccess bool, maxAttempts int) {
 	var f func() error
 	if waitSuccess {
-		f = func() error { return lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl()) }
+		f = func() error { return lib.TryLoginByMultipassJWTToVault(multipassJWT, lib.GetAuthVaultUrl()) }
 	} else {
 		f = func() error {
-			err := lib.TryLoginByMultipassJWTToAuthVault(multipassJWT, lib.GetAuthVaultUrl())
+			err := lib.TryLoginByMultipassJWTToVault(multipassJWT, lib.GetAuthVaultUrl())
 			if err != nil {
 				return nil
 			}

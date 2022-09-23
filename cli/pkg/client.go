@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -67,7 +68,10 @@ func DefaultVaultClient() (VaultClient, error) {
 
 func VaultClientAuthorizedWithSAPass(vaultURL string, password iam.ServiceAccountPassword,
 	roles []authdapi.RoleWithClaim) (VaultClient, error) {
-	cl, err := vault_api.NewClient(vault_api.DefaultConfig())
+	cfg := vault_api.DefaultConfig()
+	transport := cfg.HttpClient.Transport.(*http.Transport)
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	cl, err := vault_api.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
