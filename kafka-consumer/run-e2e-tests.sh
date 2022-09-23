@@ -4,7 +4,7 @@ set -e
 
 SCRIPTDIR="$(realpath ../$(dirname "$0"))"
 ROOT_VAULT_TOKEN=$(cat /tmp/vaults | jq -r '[.[]|select(.name=="root")][0].token')
-ROOT_VAULT_URL=http://vault-root:8300
+ROOT_VAULT_URL=https://vault-root:8300
 
 docker run --rm \
   --platform=linux/amd64 \
