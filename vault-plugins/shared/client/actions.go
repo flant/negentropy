@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -16,10 +17,18 @@ import (
 func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	httpClient := api.DefaultConfig().HttpClient
 
-	if accessConf.APICa != "" {
+	if strings.HasPrefix(accessConf.APIURL, "https://127.0.0.1:") ||
+		strings.HasPrefix(accessConf.APIURL, "https://localhost:") {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true, // not_strictly_required_for_local_access
+		}
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig:     tlsConfig,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+	} else if accessConf.CaCert != "" {
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(accessConf.APICa))
-
+		caCertPool.AppendCertsFromPEM([]byte(accessConf.CaCert))
 		// Setup HTTPS client
 		tlsConfig := &tls.Config{
 			RootCAs:    caCertPool,
@@ -29,7 +38,6 @@ func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 			TLSClientConfig:     tlsConfig,
 			TLSHandshakeTimeout: 10 * time.Second,
 		}
-
 		httpClient.Transport = transport
 	}
 
