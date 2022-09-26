@@ -29,4 +29,4 @@ def upgrade(vault_name: str, vaults: List[Vault]):
     vault_client.write(path='auth/flant/configure_vault_access', vault_addr=vault['url'],
                        vault_tls_server_name='vault_host',
                        role_name='full', secret_id_ttl='360h', approle_mount_point='/auth/approle/',
-                       role_id=role_id, secret_id=secret_id, vault_api_ca='')
+                       role_id=role_id, secret_id=secret_id, vault_cacert='')  # not_strictly_required_for_local_access

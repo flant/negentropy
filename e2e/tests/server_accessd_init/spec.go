@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	ext "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
@@ -114,10 +114,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 })
 
 func readServerFromIam(tenantUUID model.TenantUUID, projectUUID model.ProjectUUID, serverUUID ext.ServerUUID) ext.Server {
-	cl, err := api.NewClient(api.DefaultConfig())
-	Expect(err).ToNot(HaveOccurred())
-	cl.SetToken(lib.GetRootRootToken())
-	cl.SetAddress(lib.GetRootVaultUrl())
+	cl := configure.GetClientWithToken(lib.GetRootRootToken(), lib.GetRootVaultUrl())
 	secret, err := cl.Logical().Read(fmt.Sprintf("/flant/tenant/%s/project/%s/server/%s", tenantUUID, projectUUID, serverUUID))
 	Expect(err).ToNot(HaveOccurred())
 	Expect(secret).ToNot(BeNil())

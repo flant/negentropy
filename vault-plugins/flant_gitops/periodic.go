@@ -248,7 +248,7 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 
 				if apiConfig != nil {
 					vaultAddr := apiConfig.APIURL
-					vaultCACert := apiConfig.APICa
+					vaultCACert := apiConfig.CaCert
 					vaultCACertPath := path.Join(".flant_gitops", "ca.crt")
 					vaultTLSServerName := apiConfig.APIHost
 

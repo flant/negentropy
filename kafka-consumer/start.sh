@@ -42,9 +42,9 @@ fi
 
 RSA_PRIVATE_KEY=$(cat ./id_rsa | awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}')
 RSA_PUBLIC_KEY=$(cat ./id_rsa.pub | awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}')
-ROOT_VAULT_PUBLIC_KEY=$(curl -s --header "X-Vault-Token: $ROOT_VAULT_TOKEN" http://127.0.0.1:8300/v1/flant/kafka/public_key | jq -r .data.public_key)
+ROOT_VAULT_PUBLIC_KEY=$(curl -s -k --header "X-Vault-Token: $ROOT_VAULT_TOKEN" https://127.0.0.1:8300/v1/flant/kafka/public_key | jq -r .data.public_key)
 
-curl --location --request POST "http://localhost:8300/v1/flant/replica/$QUERY_NAME" \
+curl -k --location --request POST "https://localhost:8300/v1/flant/replica/$QUERY_NAME" \
 --header "X-Vault-Token: $ROOT_VAULT_TOKEN" \
 --header "Content-Type: application/json" \
 --data-raw '{"type":"Vault","public_key":"'"$RSA_PUBLIC_KEY"'"}' &> /dev/null

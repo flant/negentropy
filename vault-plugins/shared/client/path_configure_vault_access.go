@@ -98,12 +98,12 @@ func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, 
 		return errResp, nil
 	}
 
-	config.APICa, errResp = backendutils.NotEmptyStringParam(d, "vault_cacert")
+	config.CaCert, errResp = backendutils.NotEmptyStringParam(d, "vault_cacert")
 	if errResp != nil {
-		config.APICa = ""
+		config.CaCert = ""
 	}
-	if config.APICa != "" {
-		validPem, _ := pem.Decode([]byte(config.APICa))
+	if config.CaCert != "" {
+		validPem, _ := pem.Decode([]byte(config.CaCert))
 		if validPem == nil {
 			return logical.ErrorResponse("incorrect vault_cacert"), nil
 		}
