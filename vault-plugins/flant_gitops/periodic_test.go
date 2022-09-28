@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
@@ -71,13 +73,11 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "configure",
 		Data: map[string]interface{}{
-			fieldNameGitRepoUrl:    "no-such-repo",
-			fieldNameGitBranch:     "main",
-			fieldNameGitPollPeriod: "5m",
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
-			fieldNameInitialLastSuccessfulCommit:                "",
-			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
-			fieldNameCommands:                                   []string{"echo DONE"},
+			git_repository.FieldNameGitRepoUrl:                                 "no-such-repo",
+			git_repository.FieldNameGitBranch:                                  "main",
+			git_repository.FieldNameGitPollPeriod:                              "5m",
+			git_repository.FieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
+			git_repository.FieldNameInitialLastSuccessfulCommit:                "",
 		},
 		Storage:    storage,
 		Connection: &logical.Connection{},
@@ -169,13 +169,11 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "configure",
 		Data: map[string]interface{}{
-			fieldNameGitRepoUrl:    testGitRepoDir,
-			fieldNameGitBranch:     "main",
-			fieldNameGitPollPeriod: "5m",
-			fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
-			fieldNameInitialLastSuccessfulCommit:                "",
-			fieldNameDockerImage:                                "alpine:3.14.0@sha256:234cb88d3020898631af0ccbbcca9a66ae7306ecd30c9720690858c1b007d2a0",
-			fieldNameCommands:                                   []string{"cat data"},
+			git_repository.FieldNameGitRepoUrl:                                 testGitRepoDir,
+			git_repository.FieldNameGitBranch:                                  "main",
+			git_repository.FieldNameGitPollPeriod:                              "5m",
+			git_repository.FieldNameRequiredNumberOfVerifiedSignaturesOnCommit: 0,
+			git_repository.FieldNameInitialLastSuccessfulCommit:                "",
 		},
 		Storage:    storage,
 		Connection: &logical.Connection{},

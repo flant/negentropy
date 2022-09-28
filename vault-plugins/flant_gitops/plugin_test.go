@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+
 	"github.com/hashicorp/vault/command"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -175,13 +177,11 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "configure",
 			Data: map[string]interface{}{
-				fieldNameGitRepoUrl:    testGitRepoDir,
-				fieldNameGitBranch:     "master",
-				fieldNameGitPollPeriod: "5m",
-				fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
-				fieldNameInitialLastSuccessfulCommit:                "",
-				fieldNameDockerImage:                                "vault:1.7.3@sha256:53e509aaa6f72c54418b2f65f23fdd8a5ddd22bf6521c4b5bf82a8ae4edd0e53",
-				fieldNameCommands:                                   "./flant_gitops.sh",
+				git_repository.FieldNameGitRepoUrl:                                 testGitRepoDir,
+				git_repository.FieldNameGitBranch:                                  "master",
+				git_repository.FieldNameGitPollPeriod:                              "5m",
+				git_repository.FieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
+				git_repository.FieldNameInitialLastSuccessfulCommit:                "",
 			},
 			Storage:    storage,
 			Connection: &logical.Connection{},

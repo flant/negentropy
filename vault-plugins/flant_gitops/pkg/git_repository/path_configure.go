@@ -1,4 +1,4 @@
-package flant_gitops
+package git_repository
 
 import (
 	"context"
@@ -6,89 +6,91 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
+
 	"github.com/fatih/structs"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
 )
 
 const (
-	fieldNameGitRepoUrl                                 = "git_repo_url"
-	fieldNameGitBranch                                  = "git_branch_name"
-	fieldNameGitPollPeriod                              = "git_poll_period"
-	fieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
-	fieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
-	fieldNameDockerImage                                = "docker_image"
-	fieldNameCommands                                   = "commands"
+	FieldNameGitRepoUrl                                 = "git_repo_url"
+	FieldNameGitBranch                                  = "git_branch_name"
+	FieldNameGitPollPeriod                              = "git_poll_period"
+	FieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
+	FieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 
-	storageKeyConfiguration = "configuration"
+	storageKeyConfiguration = "Configuration"
 )
 
-type configuration struct {
+type Configuration struct {
 	GitRepoUrl                                 string        `structs:"git_repo_url" json:"git_repo_url"`
 	GitBranch                                  string        `structs:"git_branch_name" json:"git_branch_name"`
 	GitPollPeriod                              time.Duration `structs:"git_poll_period" json:"git_poll_period"`
 	RequiredNumberOfVerifiedSignaturesOnCommit int           `structs:"required_number_of_verified_signatures_on_commit" json:"required_number_of_verified_signatures_on_commit"`
 	InitialLastSuccessfulCommit                string        `structs:"initial_last_successful_commit" json:"initial_last_successful_commit"`
-	DockerImage                                string        `structs:"docker_image" json:"docker_image"`
-	Commands                                   []string      `structs:"commands" json:"commands"`
 }
 
-func configurePaths(b *backend) []*framework.Path {
+type backend struct {
+	// just for logger provider
+	baseBackend *framework.Backend
+}
+
+func (b *backend) Logger() hclog.Logger {
+	return b.baseBackend.Logger()
+}
+
+func ConfigurePaths(baseBackend *framework.Backend) []*framework.Path {
+	b := backend{
+		baseBackend: baseBackend,
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "^configure/?$",
 			Fields: map[string]*framework.FieldSchema{
-				fieldNameGitRepoUrl: {
+				FieldNameGitRepoUrl: {
 					Type:        framework.TypeString,
 					Description: "Git repo URL. Required for CREATE, UPDATE.",
 				},
-				fieldNameGitBranch: {
+				FieldNameGitBranch: {
 					Type:        framework.TypeString,
 					Default:     "main",
 					Description: "Git repo branch",
 				},
-				fieldNameGitPollPeriod: {
+				FieldNameGitPollPeriod: {
 					Type:        framework.TypeDurationSecond,
 					Default:     "5m",
 					Description: "Period between polls of Git repo",
 				},
-				fieldNameRequiredNumberOfVerifiedSignaturesOnCommit: {
+				FieldNameRequiredNumberOfVerifiedSignaturesOnCommit: {
 					Type:        framework.TypeInt,
 					Default:     0,
 					Description: "Verify that the commit has enough verified signatures",
 				},
-				fieldNameInitialLastSuccessfulCommit: {
+				FieldNameInitialLastSuccessfulCommit: {
 					Type:        framework.TypeString,
 					Description: "Last successful commit",
-				},
-				fieldNameDockerImage: {
-					Type:        framework.TypeString,
-					Description: "Docker image name for the container in which the commands will be executed. Required for CREATE, UPDATE.",
-				},
-				fieldNameCommands: {
-					Type:        framework.TypeCommaStringSlice,
-					Description: "Comma-separated list of commands to execute in Docker container. Can also be passed as a list of strings in JSON payload",
 				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
-					Summary:  "Create new flant_gitops backend configuration.",
+					Summary:  "Create new flant_gitops backend Configuration.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
-					Summary:  "Update the current flant_gitops backend configuration.",
+					Summary:  "Update the current flant_gitops backend Configuration.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureRead,
-					Summary:  "Read the current flant_gitops backend configuration.",
+					Summary:  "Read the current flant_gitops backend Configuration.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.pathConfigureDelete,
-					Summary:  "Delete the current flant_gitops backend configuration.",
+					Summary:  "Delete the current flant_gitops backend Configuration.",
 				},
 			},
 
@@ -101,30 +103,24 @@ func configurePaths(b *backend) []*framework.Path {
 func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("Configuration started...")
 
-	config := configuration{
-		GitRepoUrl:    fields.Get(fieldNameGitRepoUrl).(string),
-		GitBranch:     fields.Get(fieldNameGitBranch).(string),
-		GitPollPeriod: time.Duration(fields.Get(fieldNameGitPollPeriod).(int)) * time.Second,
-		RequiredNumberOfVerifiedSignaturesOnCommit: fields.Get(fieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(int),
-		InitialLastSuccessfulCommit:                fields.Get(fieldNameInitialLastSuccessfulCommit).(string),
-		DockerImage:                                fields.Get(fieldNameDockerImage).(string),
-		Commands:                                   fields.Get(fieldNameCommands).([]string),
-	}
-
-	if err := docker.ValidateImageNameWithDigest(config.DockerImage); err != nil {
-		return logical.ErrorResponse("%q field is invalid: %s", fieldNameDockerImage, err), nil
+	config := Configuration{
+		GitRepoUrl:    fields.Get(FieldNameGitRepoUrl).(string),
+		GitBranch:     fields.Get(FieldNameGitBranch).(string),
+		GitPollPeriod: time.Duration(fields.Get(FieldNameGitPollPeriod).(int)) * time.Second,
+		RequiredNumberOfVerifiedSignaturesOnCommit: fields.Get(FieldNameRequiredNumberOfVerifiedSignaturesOnCommit).(int),
+		InitialLastSuccessfulCommit:                fields.Get(FieldNameInitialLastSuccessfulCommit).(string),
 	}
 
 	if config.GitRepoUrl == "" {
-		return logical.ErrorResponse("%q field value should not be empty", fieldNameGitRepoUrl), nil
+		return logical.ErrorResponse("%q field value should not be empty", FieldNameGitRepoUrl), nil
 	}
 	if _, err := transport.NewEndpoint(config.GitRepoUrl); err != nil {
-		return logical.ErrorResponse("%q field is invalid: %s", fieldNameGitRepoUrl, err), nil
+		return logical.ErrorResponse("%q field is invalid: %s", FieldNameGitRepoUrl, err), nil
 	}
 
 	{
 		cfgData, cfgErr := json.MarshalIndent(config, "", "  ")
-		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", cfgErr, string(cfgData)))
+		b.Logger().Debug(fmt.Sprintf("Got Configuration (err=%v):\n%s", cfgErr, string(cfgData)))
 	}
 
 	if err := putConfiguration(ctx, req.Storage, config); err != nil {
@@ -135,11 +131,11 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 }
 
 func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Reading configuration...")
+	b.Logger().Debug("Reading Configuration...")
 
 	config, err := getConfiguration(ctx, req.Storage)
 	if err != nil {
-		return logical.ErrorResponse("Unable to get configuration: %s", err), nil
+		return logical.ErrorResponse("Unable to get Configuration: %s", err), nil
 	}
 	if config == nil {
 		return nil, nil
@@ -149,16 +145,16 @@ func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _
 }
 
 func (b *backend) pathConfigureDelete(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Deleting configuration...")
+	b.Logger().Debug("Deleting Configuration...")
 
 	if err := deleteConfiguration(ctx, req.Storage); err != nil {
-		return logical.ErrorResponse("Unable to delete configuration: %s", err), nil
+		return logical.ErrorResponse("Unable to delete Configuration: %s", err), nil
 	}
 
 	return nil, nil
 }
 
-func putConfiguration(ctx context.Context, storage logical.Storage, config configuration) error {
+func putConfiguration(ctx context.Context, storage logical.Storage, config Configuration) error {
 	storageEntry, err := logical.StorageEntryJSON(storageKeyConfiguration, config)
 	if err != nil {
 		return err
@@ -171,7 +167,7 @@ func putConfiguration(ctx context.Context, storage logical.Storage, config confi
 	return err
 }
 
-func getConfiguration(ctx context.Context, storage logical.Storage) (*configuration, error) {
+func getConfiguration(ctx context.Context, storage logical.Storage) (*Configuration, error) {
 	storageEntry, err := storage.Get(ctx, storageKeyConfiguration)
 	if err != nil {
 		return nil, err
@@ -180,7 +176,7 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*configurat
 		return nil, nil
 	}
 
-	var config *configuration
+	var config *Configuration
 	if err := storageEntry.DecodeJSON(&config); err != nil {
 		return nil, err
 	}
@@ -192,22 +188,22 @@ func deleteConfiguration(ctx context.Context, storage logical.Storage) error {
 	return storage.Delete(ctx, storageKeyConfiguration)
 }
 
-func configurationStructToMap(config *configuration) map[string]interface{} {
+func configurationStructToMap(config *Configuration) map[string]interface{} {
 	data := structs.Map(config)
-	data[fieldNameGitPollPeriod] = config.GitPollPeriod.Seconds()
+	data[FieldNameGitPollPeriod] = config.GitPollPeriod.Seconds()
 
 	return data
 }
 
 const (
 	configureHelpSyn = `
-Main configuration of the flant_gitops backend.
+Main Configuration of the flant_gitops backend.
 `
 	configureHelpDesc = `
 The flant_gitops periodic function performs periodic run of configured command
 when a new commit arrives into the configured git repository.
 
-This is main configuration for the flant_gitops plugin. Plugin will not
-function when configuration is not set.
+This is main Configuration for the flant_gitops plugin. Plugin will not
+function when Configuration is not set.
 `
 )

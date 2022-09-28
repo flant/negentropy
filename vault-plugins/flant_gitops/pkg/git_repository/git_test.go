@@ -1,4 +1,4 @@
-package flant_gitops
+package git_repository
 
 import (
 	"os"
@@ -14,7 +14,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 )
 
-func repoWithTwoCommits(t *testing.T) (string, *goGit.Repository, []gitCommitHash) {
+func repoWithTwoCommits(t *testing.T) (string, *goGit.Repository, []*gitCommitHash) {
 	testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
 	defer os.RemoveAll(testGitRepoDir)
 
@@ -41,26 +41,26 @@ func repoWithTwoCommits(t *testing.T) (string, *goGit.Repository, []gitCommitHas
 	gitRepo, err := trdlGit.CloneInMemory(testGitRepoDir, cloneOptions)
 	require.NoError(t, err)
 
-	return testGitRepoDir, gitRepo, []gitCommitHash{commit1, commit2}
+	return testGitRepoDir, gitRepo, []*gitCommitHash{&commit1, &commit2}
 }
 
 func Test_git_collectAllCommits(t *testing.T) {
-	//_, gitRepo, expectedCommits := repoWithTwoCommits(t)
-	//
-	//gotCommits, err := collectCommitsFrom(gitRepo, "")
-	//
-	//require.NoError(t, err)
-	//for i := range gotCommits {
-	//	require.Equal(t, expectedCommits[i], gotCommits[i].Hash.String())
-	//}
+	_, gitRepo, expectedCommits := repoWithTwoCommits(t)
+
+	gotCommits, err := collectCommitsFromSomeTillHead(gitRepo, "")
+
+	require.NoError(t, err)
+	for i := range gotCommits {
+		require.Equal(t, expectedCommits[i], gotCommits[i])
+	}
 }
 
 func Test_git_collectOnlyLastCommit(t *testing.T) {
-	//_, gitRepo, expectedCommits := repoWithTwoCommits(t)
-	//
-	//gotCommits, err := collectCommitsFrom(gitRepo, expectedCommits[0])
-	//
-	//require.NoError(t, err)
-	//require.Equal(t, 1, len(gotCommits))
-	//require.Equal(t, expectedCommits[1], gotCommits[0].Hash.String())
+	_, gitRepo, expectedCommits := repoWithTwoCommits(t)
+
+	gotCommits, err := collectCommitsFromSomeTillHead(gitRepo, *expectedCommits[0])
+
+	require.NoError(t, err)
+	require.Equal(t, 1, len(gotCommits))
+	require.Equal(t, expectedCommits[1], gotCommits[0])
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
@@ -31,7 +32,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	}
 
 	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
+		return nil, fmt.Errorf("Configuration passed into backend is nil")
 	}
 
 	if err := b.SetupBackend(ctx, conf); err != nil {
@@ -64,7 +65,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 			//	return err
 			//}
 
-			newCommit, err := GitService(ctx, req.Storage, b.Logger()).CheckForNewCommit()
+			newCommit, err := git_repository.GitService(ctx, req.Storage, b.Logger()).CheckForNewCommit()
 			if err != nil {
 				return fmt.Errorf("checking gits for signed commits: %w", err)
 			}
@@ -88,8 +89,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 		},
 
 		Paths: framework.PathAppend(
-			configurePaths(b),
-			configureVaultRequestPaths(b),
+			git_repository.ConfigurePaths(b.Backend),
 			b.TasksManager.Paths(),
 			git.CredentialsPaths(),
 			pgp.Paths(),

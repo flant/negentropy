@@ -1,4 +1,4 @@
-package flant_gitops
+package git_repository
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 )
 
 type gitCommitHash = string
+
+const storageKeyLastSuccessfulCommit = "storage_key_last_successful_commit"
 
 type gitService struct {
 	ctx     context.Context
@@ -36,7 +38,7 @@ func GitService(ctx context.Context, storage logical.Storage, logger hclog.Logge
 // 2. collect all commits after "last_successful"
 // 3. returns first commit signed with specified amount of PGP, after last processed
 func (g gitService) CheckForNewCommit() (*gitCommitHash, error) {
-	config, err := getConfig(g.ctx, g.storage, g.logger)
+	config, err := GetConfig(g.ctx, g.storage, g.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +56,7 @@ func (g gitService) CheckForNewCommit() (*gitCommitHash, error) {
 }
 
 // getNewCommits returns new commits after "lastProcessed"
-func (g gitService) getNewCommits(config *configuration) (*goGit.Repository, []*gitCommitHash, error) {
+func (g gitService) getNewCommits(config *Configuration) (*goGit.Repository, []*gitCommitHash, error) {
 	lastProcessedCommit, err := g.lastProcessedCommit(config.InitialLastSuccessfulCommit)
 	if err != nil {
 		return nil, nil, err
@@ -78,7 +80,7 @@ func (g gitService) getNewCommits(config *configuration) (*goGit.Repository, []*
 func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, gitCommitHash, error) {
 	gitCredentials, err := trdlGit.GetGitCredential(g.ctx, g.storage)
 	if err != nil {
-		return nil, "", fmt.Errorf("unable to get Git credentials configuration: %s", err)
+		return nil, "", fmt.Errorf("unable to get Git credentials Configuration: %s", err)
 	}
 
 	var cloneOptions trdlGit.CloneOptions
@@ -189,17 +191,17 @@ func (g gitService) getFirstSignedCommit(gitRepo *goGit.Repository, commits []*g
 	return nil, nil
 }
 
-func getConfig(ctx context.Context, storage logical.Storage, logger hclog.Logger) (*configuration, error) {
+func GetConfig(ctx context.Context, storage logical.Storage, logger hclog.Logger) (*Configuration, error) {
 	config, err := getConfiguration(ctx, storage)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get configuration: %w", err)
+		return nil, fmt.Errorf("unable to get Configuration: %w", err)
 	}
 	if config == nil {
-		return nil, fmt.Errorf("configuration not set")
+		return nil, fmt.Errorf("Configuration not set")
 	}
 
 	cfgData, _ := json.MarshalIndent(config, "", "  ") // nolint:errcheck
-	logger.Debug(fmt.Sprintf("Got configuration:\n%s", string(cfgData)))
+	logger.Debug(fmt.Sprintf("Got Configuration:\n%s", string(cfgData)))
 
 	return config, nil
 }
