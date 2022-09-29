@@ -18,6 +18,7 @@ import (
 var systemClock util.Clock = util.NewSystemClock()
 
 const (
+	storageKeyLastStartedCommit    = "last_started_commit"
 	storageKeyLastSuccessfulCommit = "last_successful_commit"
 	lastPeriodicRunTimestampKey    = "last_periodic_run_timestamp"
 )
@@ -31,38 +32,19 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 		return err
 	}
 
-	//vaultRequests, err := listVaultRequests(ctx, storage)
-	//if err != nil {
-	//	return fmt.Errorf("unable to get all Vault requests configurations: %s", err)
-	//}
+	gitCheckintervalExceeded, err := b.checkAndUpdateTimeStamp(ctx, storage, config.GitPollPeriod)
 
-	//for _, cfg := range vaultRequests {
-	//	logger.Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
-	//}
-
-	//apiConfig, err := b.AccessVaultClientProvider.GetApiConfig(ctx, storage)
-	//if err != nil {
-	//	return fmt.Errorf("unable to get Vault API config: %s", err)
-	//}
-
-	//if len(vaultRequests) > 0 && apiConfig == nil {
-	//	reqCfgData, _ := json.MarshalIndent(vaultRequests, "", "  ")
-	//	b.Logger().Info(fmt.Sprintf("Vault API access Configuration not set, but there are Vault requests configured: skipping periodic task:\n%s\n", reqCfgData))
-	//	return nil
-	//}
-
-	entry, err := storage.Get(ctx, lastPeriodicRunTimestampKey)
+	commitHash, err := git_repository.GitService(ctx, storage, b.Logger()).CheckForNewCommit()
 	if err != nil {
-		return fmt.Errorf("unable to get key %q from storage: %s", lastPeriodicRunTimestampKey, err)
+		return fmt.Errorf("obtaining new commit: %#w", err)
 	}
 
-	if entry != nil {
-		lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
-		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < config.GitPollPeriod {
-			b.Logger().Debug("Waiting Git poll period: skipping periodic task")
-			return nil
-		}
+	if commitHash == nil {
+		b.Logger().Debug("No new commits: skipping periodic task")
+		return nil
 	}
+
+	b.Logger().Info("obtain", "commitHash", commitHash)
 
 	now := systemClock.Now()
 	uuid, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
@@ -188,4 +170,28 @@ func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, con
 	}
 
 	return nil
+}
+
+// checkAndUpdateTimeStamp returns true if more then interval were spent, and if true: update stored timestamp
+func (b *backend) checkAndUpdateTimeStamp(ctx context.Context, storage logical.Storage, interval time.Duration) (bool, error) {
+	result := false
+	entry, err := storage.Get(ctx, lastPeriodicRunTimestampKey)
+	if err != nil {
+		return false, fmt.Errorf("unable to get key %q from storage: %w", lastPeriodicRunTimestampKey, err)
+	}
+	var lastRunTimestamp int64
+	if entry != nil {
+		// doesn't check parsing error due to nobody write this value - if error should interpret as '0'
+		lastRunTimestamp, _ = strconv.ParseInt(string(entry.Value), 10, 64) // nolint: errcheck
+	}
+	if systemClock.Since(time.Unix(lastRunTimestamp, 0)) > interval {
+		result = true
+	}
+	if result {
+		now := time.Now()
+		if err := storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
+			return result, err
+		}
+	}
+	return result, nil
 }

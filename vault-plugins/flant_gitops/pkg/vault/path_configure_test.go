@@ -1,9 +1,8 @@
-package git_repository
+package vault
 
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -19,11 +18,10 @@ type PathConfigureCallbacksSuite struct {
 }
 
 var fullValidConfiguration = &Configuration{
-	GitRepoUrl:    "https://github.com/werf/vault-plugin-secrets-trdl.git",
-	GitBranch:     "master",
-	GitPollPeriod: time.Duration(60) * time.Second,
-	RequiredNumberOfVerifiedSignaturesOnCommit: 0,
-	InitialLastSuccessfulCommit:                "",
+	Vaults: []VaultConfiguration{
+		{VaultName: "root", VaultUrl: "https://vault-root:8300"},
+		{VaultName: "auth", VaultUrl: "https://vault-auth:8200"},
+	},
 }
 
 func (s *PathConfigureCallbacksSuite) SetupTest() {
@@ -38,7 +36,7 @@ func (s *PathConfigureCallbacksSuite) SetupTest() {
 
 	b.Paths = ConfigurePaths(b)
 	request := &logical.Request{
-		Path:    "configure/git_repository",
+		Path:    "configure/vaults",
 		Storage: storage,
 		Data:    map[string]interface{}{},
 	}
@@ -46,18 +44,6 @@ func (s *PathConfigureCallbacksSuite) SetupTest() {
 	s.ctx = ctx
 	s.backend = b
 	s.request = request
-}
-
-func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_NoGitRepoURL() {
-	assert := assert.New(s.T())
-
-	s.request.Operation = logical.CreateOperation
-	s.request.Data = configurationStructToMap(fullValidConfiguration)
-	s.request.Data[FieldNameGitRepoUrl] = ""
-
-	resp, err := s.backend.HandleRequest(s.ctx, s.request)
-	assert.Nil(err)
-	assert.Equal(logical.ErrorResponse("%q field value should not be empty", FieldNameGitRepoUrl), resp)
 }
 
 func (s *PathConfigureCallbacksSuite) Test_CreateOrUpdate_FullValidConfig() {
@@ -100,33 +86,6 @@ func (s *PathConfigureCallbacksSuite) Test_Read_HasConfig() {
 	cfg, err := getConfiguration(s.ctx, s.request.Storage)
 	assert.Nil(err)
 	assert.Equal(fullValidConfiguration, cfg)
-}
-
-func (s *PathConfigureCallbacksSuite) Test_Delete_NoConfig() {
-	assert := assert.New(s.T())
-
-	s.request.Operation = logical.DeleteOperation
-
-	resp, err := s.backend.HandleRequest(s.ctx, s.request)
-	assert.Nil(err)
-	assert.Nil(resp)
-}
-
-func (s *PathConfigureCallbacksSuite) Test_Delete_HasConfig() {
-	assert := assert.New(s.T())
-
-	err := putConfiguration(s.ctx, s.request.Storage, *fullValidConfiguration)
-	assert.Nil(err)
-
-	s.request.Operation = logical.DeleteOperation
-
-	resp, err := s.backend.HandleRequest(s.ctx, s.request)
-	assert.Nil(err)
-	assert.Nil(resp)
-
-	cfg, err := getConfiguration(s.ctx, s.request.Storage)
-	assert.Nil(err)
-	assert.Nil(cfg)
 }
 
 func TestPathConfigure(t *testing.T) {

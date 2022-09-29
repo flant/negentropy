@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -90,6 +92,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 
 		Paths: framework.PathAppend(
 			git_repository.ConfigurePaths(b.Backend),
+			vault.ConfigurePaths(b.Backend),
 			b.TasksManager.Paths(),
 			git.CredentialsPaths(),
 			pgp.Paths(),

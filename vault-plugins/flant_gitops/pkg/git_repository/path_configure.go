@@ -21,7 +21,7 @@ const (
 	FieldNameRequiredNumberOfVerifiedSignaturesOnCommit = "required_number_of_verified_signatures_on_commit"
 	FieldNameInitialLastSuccessfulCommit                = "initial_last_successful_commit"
 
-	storageKeyConfiguration = "Configuration"
+	StorageKeyConfiguration = "git_repository_configuration"
 )
 
 type Configuration struct {
@@ -48,7 +48,7 @@ func ConfigurePaths(baseBackend *framework.Backend) []*framework.Path {
 
 	return []*framework.Path{
 		{
-			Pattern: "^configure/?$",
+			Pattern: "^configure/git_repository/?$",
 			Fields: map[string]*framework.FieldSchema{
 				FieldNameGitRepoUrl: {
 					Type:        framework.TypeString,
@@ -78,19 +78,19 @@ func ConfigurePaths(baseBackend *framework.Backend) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
-					Summary:  "Create new flant_gitops backend Configuration.",
+					Summary:  "Create new flant_gitops git_repository configuration.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathConfigureCreateOrUpdate,
-					Summary:  "Update the current flant_gitops backend Configuration.",
+					Summary:  "Update the current flant_gitops git_repository configuration.",
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathConfigureRead,
-					Summary:  "Read the current flant_gitops backend Configuration.",
+					Summary:  "Read the current flant_gitops git_repository configuration.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.pathConfigureDelete,
-					Summary:  "Delete the current flant_gitops backend Configuration.",
+					Summary:  "Delete the current flant_gitops git_repository configuration.",
 				},
 			},
 
@@ -101,7 +101,7 @@ func ConfigurePaths(baseBackend *framework.Backend) []*framework.Path {
 }
 
 func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.Request, fields *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Configuration started...")
+	b.Logger().Debug("Git repository configuration started...")
 
 	config := Configuration{
 		GitRepoUrl:    fields.Get(FieldNameGitRepoUrl).(string),
@@ -131,7 +131,7 @@ func (b *backend) pathConfigureCreateOrUpdate(ctx context.Context, req *logical.
 }
 
 func (b *backend) pathConfigureRead(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	b.Logger().Debug("Reading Configuration...")
+	b.Logger().Debug("Reading git repository configuration...")
 
 	config, err := getConfiguration(ctx, req.Storage)
 	if err != nil {
@@ -155,7 +155,7 @@ func (b *backend) pathConfigureDelete(ctx context.Context, req *logical.Request,
 }
 
 func putConfiguration(ctx context.Context, storage logical.Storage, config Configuration) error {
-	storageEntry, err := logical.StorageEntryJSON(storageKeyConfiguration, config)
+	storageEntry, err := logical.StorageEntryJSON(StorageKeyConfiguration, config)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func putConfiguration(ctx context.Context, storage logical.Storage, config Confi
 }
 
 func getConfiguration(ctx context.Context, storage logical.Storage) (*Configuration, error) {
-	storageEntry, err := storage.Get(ctx, storageKeyConfiguration)
+	storageEntry, err := storage.Get(ctx, StorageKeyConfiguration)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*Configurat
 }
 
 func deleteConfiguration(ctx context.Context, storage logical.Storage) error {
-	return storage.Delete(ctx, storageKeyConfiguration)
+	return storage.Delete(ctx, StorageKeyConfiguration)
 }
 
 func configurationStructToMap(config *Configuration) map[string]interface{} {
@@ -197,13 +197,13 @@ func configurationStructToMap(config *Configuration) map[string]interface{} {
 
 const (
 	configureHelpSyn = `
-Main Configuration of the flant_gitops backend.
+Git repository configuration of the flant_gitops backend.
 `
 	configureHelpDesc = `
 The flant_gitops periodic function performs periodic run of configured command
 when a new commit arrives into the configured git repository.
 
-This is main Configuration for the flant_gitops plugin. Plugin will not
+This is git repository configuration for the flant_gitops plugin. Plugin will not
 function when Configuration is not set.
 `
 )
