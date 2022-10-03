@@ -105,16 +105,22 @@ func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastP
 	return updateLastRunTimeStamp(ctx, storage, newTimeStamp)
 }
 
-// checkStatusPushedTok8sCommit checks is pushed commit finished at k8s
+// checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
 func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.Storage, pushedToK8sCommit string, lastK8sFinishedCommit string) (string, error) {
 	if pushedToK8sCommit == lastK8sFinishedCommit {
 		return lastK8sFinishedCommit, nil
 	}
 	var isFinished bool
-	// TODO
-	// Here k8s client should  works and check is pushedToK8sCommit finish
-	isFinished = true
-	// TODO
+
+	kubeService, err := kube.NewKubeService(ctx, storage)
+	if err != nil {
+		return lastK8sFinishedCommit, err
+	}
+	isFinished, err = kubeService.IsJobFinished(ctx, pushedToK8sCommit)
+	if err != nil {
+		return lastK8sFinishedCommit, err
+	}
+
 	if isFinished {
 		err := util.PutString(ctx, storage, storageKeyLastK8sFinishedCommit, pushedToK8sCommit)
 		if err != nil {
