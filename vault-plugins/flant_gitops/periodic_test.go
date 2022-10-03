@@ -52,16 +52,17 @@ func getRequiredLastPeriodicRunTime(t *testing.T, ctx context.Context, storage l
 }
 
 func getLastSuccessfulCommit(t *testing.T, ctx context.Context, storage logical.Storage) string {
-	entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
-	if err != nil {
-		t.Fatalf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
-	}
-
-	if entry == nil {
-		return ""
-	}
-
-	return string(entry.Value)
+	//entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
+	//if err != nil {
+	//	t.Fatalf("error getting key %q from storage: %s", lastPeriodicRunTimestampKey, err)
+	//}
+	//
+	//if entry == nil {
+	//	return ""
+	//}
+	//
+	//return string(entry.Value)
+	return ""
 }
 
 func TestPeriodic_PollOperation(t *testing.T) {
@@ -100,8 +101,8 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		}
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if periodicTaskUUIDs[len(periodicTaskUUIDs)-1] == "" {
 			t.Fatalf("unexpected empty task uuid after first periodic run")
@@ -121,7 +122,9 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		lastPeriodicRunTimestampBeforeInvokation := getRequiredLastPeriodicRunTime(t, ctx, storage)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+
 		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		lastPeriodicRunTimestamp := getRequiredLastPeriodicRunTime(t, ctx, storage)
@@ -140,7 +143,7 @@ func TestPeriodic_PollOperation(t *testing.T) {
 		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		WaitForTaskCompletion(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		lastPeriodicRunTimestamp := getRequiredLastPeriodicRunTime(t, ctx, storage)
@@ -195,7 +198,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 
 	{
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("OUTPUT1"); !match {
@@ -215,7 +218,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
@@ -240,7 +243,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("OUTPUT2"); !match {
@@ -260,7 +263,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		if match, _ := testLogger.Grep("Head commit not changed: skipping"); !match {
@@ -288,7 +291,7 @@ func TestPeriodic_DockerCommand(t *testing.T) {
 		systemClockMock.NowTime = systemClockMock.NowTime.Add(5 * time.Minute)
 
 		invokePeriodicRun(t, ctx, b, testLogger, storage)
-		periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+		//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 		reason := WaitForTaskFailure(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 		expectedReason := fmt.Sprintf("unable to run periodic task for git commit %q which is not descendant of the last successfully processed commit %q", currentCommit, prevLastSuccessfulCommit)

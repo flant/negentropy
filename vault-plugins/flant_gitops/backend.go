@@ -21,8 +21,6 @@ type backend struct {
 	*framework.Backend
 	TasksManager              *tasks_manager.Manager
 	AccessVaultClientProvider client.VaultClientController
-
-	LastPeriodicTaskUUID string
 }
 
 var _ logical.Factory = Factory
@@ -63,31 +61,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 				return err
 			}
 
-			//if err := b.PeriodicTask(req.Storage); err != nil {
-			//	return err
-			//}
-
-			newCommit, err := git_repository.GitService(ctx, req.Storage, b.Logger()).CheckForNewCommit()
-			if err != nil {
-				return fmt.Errorf("checking gits for signed commits: %w", err)
-			}
-
-			if newCommit == nil {
-				b.Logger().Info("No new signed commits, skip deployment task")
-				return nil
-			}
-
-			b.Logger().Debug("start task for commit: %s")
-			//vaults, err := buildVaultsB64Json(ctx, req.Storage, b.AccessVaultClientProvider, b.Logger())
-			//if err != nil {
-			//	return fmt.Errorf("building vaults_b64_json: %w", err)
-			//}
-
-			//err = proccessCommits(ctx, gitCommits, req.Storage, b.TasksManager, b.Logger())
-			//if err != nil {
-			//	return fmt.Errorf("processing commits: %w", err)
-			//}
-			return nil
+			return b.PeriodicTask(req.Storage)
 		},
 
 		Paths: framework.PathAppend(

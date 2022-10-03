@@ -236,7 +236,7 @@ func TestPlugin_VaultRequestsOperation(t *testing.T) {
 	var periodicTaskUUIDs []string
 
 	invokePeriodicRun(t, ctx, b, testLogger, storage)
-	periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
+	//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
 	WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
 
 	if match, lines := testLogger.Grep("VAULT_ADDR="); !match {

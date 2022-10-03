@@ -23,6 +23,7 @@ const (
 type VaultConfiguration struct {
 	VaultName string `structs:"name" json:"name"`
 	VaultUrl  string `structs:"url" json:"url"`
+	CaCert    string `structs:"vault_cacert" json:"vault_cacert"`
 }
 
 type Configuration struct {
@@ -48,8 +49,9 @@ func ConfigurePaths(baseBackend *framework.Backend) []*framework.Path {
 			Pattern: "^configure/vaults?$",
 			Fields: map[string]*framework.FieldSchema{
 				FieldNameVaults: {
-					Type:        framework.TypeSlice,
-					Description: "Vaults list as json. Required for CREATE, UPDATE. Each vault should has name and url",
+					Type: framework.TypeSlice,
+					Description: "Vaults list as json. Required for CREATE, UPDATE. Each vault should has name and url, " +
+						"also if used https need be passed vault_cacert",
 				},
 			},
 

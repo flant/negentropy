@@ -17,8 +17,6 @@ import (
 
 type gitCommitHash = string
 
-const storageKeyLastSuccessfulCommit = "storage_key_last_successful_commit"
-
 type gitService struct {
 	ctx     context.Context
 	storage logical.Storage
@@ -35,15 +33,15 @@ func GitService(ctx context.Context, storage logical.Storage, logger hclog.Logge
 
 // CheckForNewCommit returns new commit hashes satisfied given rules
 // 1. check defined by cfg repo&branch
-// 2. collect all commits after "last_successful"
+// 2. collect all commits after spicified
 // 3. returns first commit signed with specified amount of PGP, after last processed
-func (g gitService) CheckForNewCommit() (*gitCommitHash, error) {
+func (g gitService) CheckForNewCommitFrom(edgeCommit gitCommitHash) (*gitCommitHash, error) {
 	config, err := GetConfig(g.ctx, g.storage, g.logger)
 	if err != nil {
 		return nil, err
 	}
 
-	gitRepo, newCommits, err := g.getNewCommits(config)
+	gitRepo, newCommits, err := g.getNewCommits(config, edgeCommit)
 	if err != nil {
 		return nil, fmt.Errorf("getting new commits: %w", err)
 	}
@@ -56,11 +54,8 @@ func (g gitService) CheckForNewCommit() (*gitCommitHash, error) {
 }
 
 // getNewCommits returns new commits after "lastProcessed"
-func (g gitService) getNewCommits(config *Configuration) (*goGit.Repository, []*gitCommitHash, error) {
-	lastProcessedCommit, err := g.lastProcessedCommit(config.InitialLastSuccessfulCommit)
-	if err != nil {
-		return nil, nil, err
-	}
+func (g gitService) getNewCommits(config *Configuration, edgeCommit gitCommitHash) (*goGit.Repository, []*gitCommitHash, error) {
+	lastProcessedCommit := g.EdgeCommit(config.InitialLastSuccessfulCommit, edgeCommit)
 
 	// clone git repository and get head commit
 	g.logger.Debug(fmt.Sprintf("Cloning git repo %q branch %q", config.GitRepoUrl, config.GitBranch))
@@ -110,23 +105,15 @@ func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, g
 	return gitRepo, headCommit, nil
 }
 
-// lastProcessedCommit returns last proceeded commit
-func (g gitService) lastProcessedCommit(initialLastSuccessfulCommit gitCommitHash) (gitCommitHash, error) {
-	var lastProcessedCommit string
-
-	entry, err := g.storage.Get(g.ctx, storageKeyLastSuccessfulCommit)
-	if err != nil {
-		return "", err
+// EdgeCommit returns last proceeded commit
+func (g gitService) EdgeCommit(initialLastSuccessfulCommit gitCommitHash, edgeCommit gitCommitHash) gitCommitHash {
+	result := edgeCommit
+	if edgeCommit == "" {
+		result = edgeCommit
 	}
 
-	if entry != nil && string(entry.Value) != "" {
-		lastProcessedCommit = string(entry.Value)
-	} else {
-		lastProcessedCommit = initialLastSuccessfulCommit
-	}
-
-	g.logger.Debug(fmt.Sprintf("Last processed commit: %s", lastProcessedCommit))
-	return lastProcessedCommit, nil
+	g.logger.Debug(fmt.Sprintf("Edge commit: %s", result))
+	return result
 }
 
 // collectCommitsFrom collects commits from commit (not includes it) and check is they are descendant

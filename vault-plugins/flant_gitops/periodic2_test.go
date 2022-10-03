@@ -46,7 +46,7 @@ var testcases = []testCase{
 
 func Test_checkAndUpdateTimeStamp(t *testing.T) {
 	ctx := context.Background()
-	b, storage, _, mockClock := getTestBackend(t, ctx)
+	_, storage, _, mockClock := getTestBackend(t, ctx)
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
 			var savedTimeStamp time.Time
@@ -56,18 +56,10 @@ func Test_checkAndUpdateTimeStamp(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			gotResult, err := b.checkAndUpdateTimeStamp(ctx, storage, tc.interval)
+			gotResult, err := checkExceedingInterval(ctx, storage, tc.interval)
 
 			require.NoError(t, err)
 			require.Equal(t, tc.result, gotResult)
-			gotTimeStamp, err := getAndParseLastRunTimestamp(storage)
-			require.NoError(t, err)
-			if tc.result {
-				require.Equal(t, mockClock.NowTime.Unix(), gotTimeStamp, "if 'true'  timestamp should be changed")
-			} else {
-				require.Equal(t, savedTimeStamp.Unix(), gotTimeStamp, "if 'false' timestamp should not be changed")
-			}
-
 		})
 	}
 }
@@ -76,7 +68,7 @@ func getAndParseLastRunTimestamp(storage logical.Storage) (int64, error) {
 	ctx := context.TODO()
 	entry, err := storage.Get(ctx, lastPeriodicRunTimestampKey)
 	if err != nil {
-		return 0, fmt.Errorf("unable to get key %q from storage: %s", lastPeriodicRunTimestampKey, err)
+		return 0, fmt.Errorf("unable to get key %q from storage: %w", lastPeriodicRunTimestampKey, err)
 	}
 	if entry == nil {
 		return 0, nil

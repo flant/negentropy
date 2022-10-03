@@ -1,14 +1,23 @@
 package vault
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	b64 "encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net/http"
+
+	"github.com/cenkalti/backoff"
+
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
+
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -114,4 +123,64 @@ func parsePublicCertificate(rawPem string) (*pem.Block, error) {
 		return nil, fmt.Errorf("wrong raw block, got nil block after pem.Decode")
 	}
 	return block, nil
+}
+
+// BuildVaultsBase64Env returns prepared value like: '[{"name":"vault-root-1", "url":"http://127.0.0.1:8200/", "token":"hvs.KqN6TSCyx9CFbTxCVCORwASN"}]'
+// encoded with Base64
+// if some vault doesn't response - one warnings is added to second returned value,
+func BuildVaultsBase64Env(ctx context.Context, storage logical.Storage, client *api.Client) (string, []string, error) {
+	vaults, warnings, err := buildVaultsEnv(ctx, storage, client)
+	if err != nil {
+		return vaults, warnings, err
+	}
+	vaultsBase64Json := b64.StdEncoding.EncodeToString([]byte(vaults))
+	return vaultsBase64Json, warnings, nil
+}
+
+// BuildVaultsEnv returns prepared value like: '[{"name":"vault-root-1", "url":"http://127.0.0.1:8200/", "token":"hvs.KqN6TSCyx9CFbTxCVCORwASN"}]'
+// if some vault doesn't response - one warnings is added to second returned value,
+func buildVaultsEnv(ctx context.Context, storage logical.Storage, client *api.Client) (string, []string, error) {
+	certAndKey, err := ObtainCertAndKey(client, "conf")
+	if err != nil {
+		return "", nil, err
+	}
+	vaultsConfig, err := getConfiguration(ctx, storage)
+	var vaults []vaultWithToken
+	var warnings []string
+	for _, v := range vaultsConfig.Vaults {
+		err = backoff.Retry(func() error {
+			vault, err := buildVaultWithToken(v, *certAndKey)
+			if err != nil {
+				return err
+			}
+			vaults = append(vaults, *vault)
+			return nil
+		}, sharedio.TwoMinutesBackoff())
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("collecting token for vault: %s, at %s returns error: %s", v.VaultName, v.VaultUrl, err.Error()))
+		}
+	}
+	data, err := json.Marshal(vaults)
+	if err != nil {
+		return "", nil, err
+	}
+	return fmt.Sprintf("'%s'", string(data)), warnings, nil
+}
+
+type vaultWithToken struct {
+	VaultConfiguration
+	VaultToken string `structs:"token" json:"token"`
+}
+
+// buildVaultWithToken obtain vault by cert authorization and returns token inside vaultWithToken
+func buildVaultWithToken(v VaultConfiguration, certAndKey CertAndKey) (*vaultWithToken, error) {
+	preparedClient, err := ApiClientPreparedForAuthorizationByCert(v.VaultUrl, v.CaCert, certAndKey.CertPem, certAndKey.PrivateKeyPem)
+	if err != nil {
+		return nil, err
+	}
+	secret, err := AuthorizeByCert(preparedClient)
+	return &vaultWithToken{
+		VaultConfiguration: v,
+		VaultToken:         secret.Auth.ClientToken,
+	}, nil
 }
