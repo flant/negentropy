@@ -3,7 +3,6 @@ package flant_gitops
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -44,7 +43,7 @@ var testcases = []testCase{
 	},
 }
 
-func Test_checkAndUpdateTimeStamp(t *testing.T) {
+func Test_checkExceedingInterval(t *testing.T) {
 	ctx := context.Background()
 	_, storage, _, mockClock := getTestBackend(t, ctx)
 	for _, tc := range testcases {
@@ -62,18 +61,6 @@ func Test_checkAndUpdateTimeStamp(t *testing.T) {
 			require.Equal(t, tc.result, gotResult)
 		})
 	}
-}
-
-func getAndParseLastRunTimestamp(storage logical.Storage) (int64, error) {
-	ctx := context.TODO()
-	entry, err := storage.Get(ctx, lastPeriodicRunTimestampKey)
-	if err != nil {
-		return 0, fmt.Errorf("unable to get key %q from storage: %w", lastPeriodicRunTimestampKey, err)
-	}
-	if entry == nil {
-		return 0, nil
-	}
-	return strconv.ParseInt(string(entry.Value), 10, 64)
 }
 
 func setLastRunTimestamp(storage logical.Storage, now time.Time) error {

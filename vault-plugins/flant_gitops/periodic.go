@@ -11,13 +11,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
-
+	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 var systemClock util.Clock = util.NewSystemClock()
@@ -173,6 +174,13 @@ func updateLastRunTimeStamp(ctx context.Context, storage logical.Storage, timeSt
 
 // processCommit
 func (b *backend) processCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
+	// TODO how to deal when we start but doesn't move to  commit is pushed to?
+	err := util.PutString(ctx, storage, storageKeyLastStartedCommit, hashCommit)
+	if err != nil {
+		return err
+	}
+
+	// there are retry inside BuildVaultsBase64Env
 	apiClient, err := b.AccessVaultClientProvider.APIClient(storage)
 	if err != nil {
 		return err
@@ -183,15 +191,22 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 			b.Logger().Warn(w)
 		}
 	}
-	b.Logger().Debug("TODO REMOVE", "vaults", vaultsEnvBase64Json)
-	kubeService, err := kube.NewKubeService(ctx, storage)
+
+	b.Logger().Debug("TODO REMOVE", "vaults", vaultsEnvBase64Json) // TODO
+	err = backoff.Retry(func() error {
+		kubeService, err := kube.NewKubeService(ctx, storage)
+		if err != nil {
+			return err
+		}
+		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json)
+	}, sharedio.TwoMinutesBackoff())
 	if err != nil {
 		return err
 	}
-	err = kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json)
-	if err != nil {
-		return err
-	}
-	b.Logger().Debug("TODO REWRITE!", "jobName", hashCommit)
-	return nil
+
+	b.Logger().Debug("TODO REWRITE!", "jobName", hashCommit) // TODO
+
+	return backoff.Retry(func() error {
+		return util.PutString(ctx, storage, storageKeyLastPushedTok8sCommit, hashCommit)
+	}, sharedio.TwoMinutesBackoff())
 }
