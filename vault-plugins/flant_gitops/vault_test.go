@@ -1,16 +1,11 @@
 package flant_gitops
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
-
-	"github.com/hashicorp/vault/command"
 )
 
 const (
@@ -124,21 +119,4 @@ func Test_vault(t *testing.T) {
 		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "kv/bucket2", "key2=value2")
 
 	}
-}
-
-func RunVaultCommandAtVault(t *testing.T, vaultAddr string, args ...string) []byte {
-	var output bytes.Buffer
-
-	opts := &command.RunOptions{
-		Stdout:  io.MultiWriter(os.Stdout, &output),
-		Stderr:  io.MultiWriter(os.Stderr, &output),
-		Address: vaultAddr,
-	}
-
-	rc := command.RunCustom(args, opts)
-	if rc != 0 {
-		t.Fatalf("vault failed with rc=%d:\n%s\n", rc, output.String())
-	}
-
-	return output.Bytes()
 }

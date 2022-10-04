@@ -1,339 +1,249 @@
 package flant_gitops
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
-
-	"github.com/hashicorp/vault/command"
-	"github.com/hashicorp/vault/sdk/logical"
-
-	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-const (
-	secondaryVaultDevServerAddress = "0.0.0.0:8201"
-	secondaryVaultDevServerToken   = "root"
-)
+func Test(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Vault entities")
+}
 
-func TestPlugin_VaultRequestsOperation(t *testing.T) {
+var _ = Describe("flant_gitops", func() {
+	var confVault ConfVault
+	var rootVault Vault
 
+	BeforeSuite(func() {
+		var err error
+		confVault, err = StartAndConfigureConfVault()
+		Expect(err).ToNot(HaveOccurred())
+		fmt.Printf("%#v\n", confVault)
+
+		rootVault, err = StartAndConfigureRootVault(confVault.caPEM)
+
+		time.Sleep(time.Minute * 5)
+		// Запустим и настроим два волта: conf и root
+		// Оба волта на https
+		// conf :
+		// - pki +
+		// - выпуск серта +
+		// - approle +
+
+		// root :
+		// auht/cert
+		// скормить туда ca от  conf
+
+		// подготовить пустую репу c одним комитом
+		// запустить flant_gitops c моком системных часов и моком кубера
+	}, 1.0)
+
+	Describe("flant_gitops configuring", func() {
+		// во  flant_gitops:
+		// - self_access на conf
+		// - configure/git_repository - включая первый комит из репы
+		// - configure/vaults
+	})
+
+	Describe("flant_gitoos run peridoic functions without any new commits", func() {
+		// здесь подвинем часы, дождёмся по логам периодик ран, поймём что ни хрена
+	})
+
+	Describe("flant_gitoos run peridoic functions with new commit", func() {
+		// Запилим новый комит в репу
+		// здесь подвинем часы, дождёмся по логам периодик ран, поймем что джоба поехала
+		// посмотрим что там джоба прочитала
+		// снова дождёмся по логам периодик ран, поймем что было обращение с проверкой джобы
+		fmt.Printf("\n%#v\n", rootVault)
+	})
+
+})
+
+type Vault struct {
+	name  string
+	addr  string
+	token string
+}
+
+type ConfVault struct {
+	Vault
+	// ca of vault pki
+	caPEM string
+	// secretID for access into vault by flant_gitops
+	secretID string
+	// roleID for access into vault by flant_gitops
+	roleID string
+}
+
+func RunVaultCommandAtVault(vault Vault, args ...string) ([]byte, error) {
+	err := os.Setenv("VAULT_ADDR", vault.addr)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Setenv("VAULT_TOKEN", vault.token)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Setenv("VAULT_CACERT", "examples/conf/ca.crt")
+	if err != nil {
+		return nil, err
+	}
+	output, err := RunVaultCommandWithError(args...)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// StartAndConfigureConfVault runs conf vault
+// activate and configure PKI at vault-cert-auth/roles/cert-auth
+// activate approle and create secretID and roleID
+func StartAndConfigureConfVault() (v ConfVault, err error) {
+	vault := runAndWaitVaultUp("examples/conf/vault-conf.hcl", "8201", "conf")
+
+	confVault := ConfVault{Vault: vault}
+
+	confVault.caPEM, err = applyPKI(confVault.Vault)
+	if err != nil {
+		return ConfVault{}, err
+	}
+
+	confVault.secretID, confVault.roleID, err = gotSecretIDAndRoleIDatApprole(confVault.Vault)
+	if err != nil {
+		return ConfVault{}, err
+	}
+
+	return confVault, nil
+}
+
+// applyPKI enable PKI at conf vault - prepare everything for work flant_gitops and returns ca
+func applyPKI(vault Vault) (caPEM string, err error) {
+	_, err = RunVaultCommandAtVault(vault, "secrets", "enable", "-path", "vault-cert-auth", "pki") // vault secrets enable -path=vault-cert-auth pki
+	if err != nil {
+		return
+	}
+
+	//vault write -field=certificate vault-cert-auth/root/generate/internal  \
+	//common_name="negentropy" \
+	//issuer_name="negentropy-2022"  \
+	//ttl=87600h > negentropy_2022_ca.crt
+	d, err := RunVaultCommandAtVault(vault, "write", "-field=certificate", "vault-cert-auth/root/generate/internal", "common_name=negentropy", "issuer_name=negentropy-2022", "ttl=87600h")
+	if err != nil {
+		return
+	}
+	caPEM = string(d)
+
+	_, err = RunVaultCommandAtVault(vault, "write", "vault-cert-auth/roles/cert-auth", "allow_any_name=true",
+		"max_ttl=1h") // vault write  vault-cert-auth/roles/cert-auth allow_any_name='true' max_ttl='1h'
+	if err != nil {
+		return
+	}
+
+	return caPEM, nil
+}
+
+// runVaultAndWaitVaultUp run vault with specified config at specified port
+// port should be the same as at the config
+func runAndWaitVaultUp(configPath string, port string, name string) Vault {
+	token := "root"
 	go func() {
-		if _, err := RunVaultCommandWithError("server", "-dev", "-dev-listen-address", secondaryVaultDevServerAddress, "-dev-root-token-id", secondaryVaultDevServerToken); err != nil {
+		if _, err := RunVaultCommandWithError("server", "-dev", "-config", configPath,
+			"-dev-root-token-id", token); err != nil {
 			panic(fmt.Sprintf("vault dev server failed: %s", err))
 		}
 	}()
+	vault := Vault{
+		name:  name,
+		addr:  "https://127.0.0.1:" + port,
+		token: token,
+	}
 
-	// Wait until dev server started
 	for {
 		time.Sleep(1 * time.Second)
-		if _, err := RunVaultCommandWithError("status", "-address", "http://127.0.0.1:8201"); err != nil {
+		if _, err := RunVaultCommandAtVault(vault, "status"); err != nil {
 			continue
 		}
 		break
 	}
+	return vault
+}
 
-	ctx := context.Background()
+// gotSecretIDAndRoleIDatApprole activates approle and returns secretID an roleID
+func gotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string, err error) {
+	_, err = RunVaultCommandAtVault(vault, "auth", "enable", "approle")
+	if err != nil {
+		return
+	}
+	_, err = RunVaultCommandAtVault(vault, "policy", "write", "good", "examples/conf/good.hcl")
+	if err != nil {
+		return
+	}
+	_, err = RunVaultCommandAtVault(vault, "write", "auth/approle/role/good", "secret_id_ttl=30m", "token_ttl=90s", "token_policies=good")
+	if err != nil {
+		return
+	}
 
-	b, storage, testLogger, _ := getTestBackend(t, ctx)
-
-	go func() {
-		time.Sleep(2 * time.Minute)
-
-		req := &logical.Request{
-			Storage:    storage,
-			Connection: &logical.Connection{},
-		}
-		if err := b.AccessVaultClientProvider.OnPeriodical(context.Background(), req); err != nil {
-			panic(err.Error())
-		}
-	}()
-
-	var dockerBridgeIPAddr string
-	var vaultCaCrtData []byte
-
-	// configure vault access
-	{
-		RunVaultCommand(t, "auth", "enable", "-address", "http://127.0.0.1:8201", "approle")
-		RunVaultCommand(t, "policy", "write", "-address", "http://127.0.0.1:8201", "good", "examples/conf/good.hcl")
-		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "auth/approle/role/good", " secret_id_ttl=30m", "token_ttl=90s", "token_policies=good")
-
-		var secretID string
-		{
-			var data map[string]interface{}
-
-			jsonData := RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "-format", "json", "-f", "auth/approle/role/good/secret-id")
-
-			if err := json.Unmarshal(jsonData, &data); err != nil {
-				t.Fatalf("bad json: %s\n%s\n", err, jsonData)
-			}
-
-			secretID = data["data"].(map[string]interface{})["secret_id"].(string)
-
-			fmt.Printf("Got secretID: %s\n", secretID)
-		}
-
-		var roleID string
-		{
-			var data map[string]interface{}
-
-			jsonData := RunVaultCommand(t, "read", "-address", "http://127.0.0.1:8201", "-format", "json", "auth/approle/role/good/role-id")
-
-			if err := json.Unmarshal(jsonData, &data); err != nil {
-				t.Fatalf("bad json: %s\n%s\n", err, jsonData)
-			}
-
-			roleID = data["data"].(map[string]interface{})["role_id"].(string)
-
-			fmt.Printf("Got roleID: %s\n", roleID)
-		}
-
-		// Get docker bridge ip address to access secondary vault dev server from inside docker container
-		dockerBridgeIPAddr = getDockerBridgeIPAddr(t)
-		fmt.Printf("Got dockerBridgeIPAddr=%s\n", dockerBridgeIPAddr)
-
-		var err error
-		vaultCaCrtData, err = ioutil.ReadFile("examples/conf/ca-cert.pem")
+	var responseData []byte
+	var data map[string]interface{}
+	{ // secretID
+		responseData, err = RunVaultCommandAtVault(vault, "write", "-format", "json", "-f", "auth/approle/role/good/secret-id")
 		if err != nil {
-			t.Fatal(err.Error())
+			return
 		}
 
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "configure_vault_access",
-			Data: map[string]interface{}{
-				"vault_addr":            fmt.Sprintf("http://%s:8201", dockerBridgeIPAddr),
-				"vault_tls_server_name": "localhost",
-				"role_name":             "good",
-				"secret_id_ttl":         "120m",
-				"approle_mount_point":   "auth/approle",
-				"secret_id":             secretID,
-				"role_id":               roleID,
-				"vault_cacert":          vaultCaCrtData,
-			},
-			Storage:    storage,
-			Connection: &logical.Connection{},
+		if err = json.Unmarshal(responseData, &data); err != nil {
+			return
 		}
-		resp, err := b.HandleRequest(ctx, req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+
+		secretID = data["data"].(map[string]interface{})["secret_id"].(string)
+
+		fmt.Printf("Got secretID: %s\n", secretID)
 	}
 
-	// configure flant_gitops plugin itself
-	{
-		testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
-		defer os.RemoveAll(testGitRepoDir) // nolint:errcheck
-
-		flantGitopsScript := `#!/bin/sh
-	
-	set -e
-	
-	echo flant_gitops.sh BEGIN
-	
-	echo VAULT_ADDR="${VAULT_ADDR}"
-	echo VAULT_CACERT="${VAULT_CACERT}"
-	echo VAULT_TLS_SERVER_NAME="${VAULT_TLS_SERVER_NAME}"
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET1="${VAULT_REQUEST_TOKEN_GET_BUCKET1}"
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET2="${VAULT_REQUEST_TOKEN_GET_BUCKET2}"
-	
-	echo VAULT_CACERT BEGIN
-	cat $VAULT_CACERT
-	echo VAULT_CACERT END
-	
-	echo root | vault login -
-
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET1 UNWRAP BEGIN
-	vault write -format=json sys/wrapping/unwrap token="${VAULT_REQUEST_TOKEN_GET_BUCKET1}"
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET1 UNWRAP END
-	
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP BEGIN
-	vault write -format=json sys/wrapping/unwrap token="${VAULT_REQUEST_TOKEN_GET_BUCKET2}"
-	echo VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP END
-
-	echo flant_gitops.sh END
-	`
-
-		if err := ioutil.WriteFile(filepath.Join(testGitRepoDir, "flant_gitops.sh"), []byte(flantGitopsScript), os.ModePerm); err != nil {
-			t.Fatal(err.Error())
+	{ // roleID
+		responseData, err = RunVaultCommandAtVault(vault, "read", "-format", "json", "auth/approle/role/good/role-id")
+		if err != nil {
+			return
+		}
+		if err = json.Unmarshal(responseData, &data); err != nil {
+			return
 		}
 
-		util.ExecGitCommand(t, testGitRepoDir, "add", ".")
-		util.ExecGitCommand(t, testGitRepoDir, "commit", "-m", "go")
+		roleID = data["data"].(map[string]interface{})["role_id"].(string)
 
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "configure",
-			Data: map[string]interface{}{
-				git_repository.FieldNameGitRepoUrl:                                 testGitRepoDir,
-				git_repository.FieldNameGitBranch:                                  "master",
-				git_repository.FieldNameGitPollPeriod:                              "5m",
-				git_repository.FieldNameRequiredNumberOfVerifiedSignaturesOnCommit: "0",
-				git_repository.FieldNameInitialLastSuccessfulCommit:                "",
-			},
-			Storage:    storage,
-			Connection: &logical.Connection{},
-		}
-		resp, err := b.HandleRequest(ctx, req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		fmt.Printf("Got roleID: %s\n", roleID)
 	}
-
-	// configure test vault requests
-	{
-		RunVaultCommand(t, "secrets", "enable", "-address", "http://127.0.0.1:8201", "kv")
-		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "kv/bucket1", "key1=value1")
-		RunVaultCommand(t, "write", "-address", "http://127.0.0.1:8201", "kv/bucket2", "key2=value2")
-
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "configure/vault_request/get_bucket1",
-			Data: map[string]interface{}{
-				"name":     "get_bucket1",
-				"method":   "GET",
-				"path":     "/v1/kv/bucket1",
-				"wrap_ttl": "1m",
-			},
-			Storage:    storage,
-			Connection: &logical.Connection{},
-		}
-		resp, err := b.HandleRequest(ctx, req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
-
-		req = &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "configure/vault_request/get_bucket2",
-			Data: map[string]interface{}{
-				"name":     "get_bucket2",
-				"method":   "GET",
-				"path":     "/v1/kv/bucket2",
-				"wrap_ttl": "1m",
-			},
-			Storage:    storage,
-			Connection: &logical.Connection{},
-		}
-		resp, err = b.HandleRequest(ctx, req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
-	}
-
-	var periodicTaskUUIDs []string
-
-	invokePeriodicRun(t, ctx, b, testLogger, storage)
-	//periodicTaskUUIDs = append(periodicTaskUUIDs, b.LastPeriodicTaskUUID)
-	WaitForTaskSuccess(t, ctx, b, storage, periodicTaskUUIDs[len(periodicTaskUUIDs)-1])
-
-	if match, lines := testLogger.Grep("VAULT_ADDR="); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	} else {
-		expectedVaultAddr := fmt.Sprintf("http://%s:8201", dockerBridgeIPAddr)
-		if !strings.Contains(lines[0], expectedVaultAddr) {
-			t.Fatalf("expected VAULT_ADDR to equal %q, got: %s", expectedVaultAddr, lines[0])
-		}
-	}
-
-	if match, _ := testLogger.Grep("VAULT_CACERT"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	}
-
-	if match, _ := testLogger.Grep("VAULT_TLS_SERVER_NAME=localhost"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	}
-
-	if match, _ := testLogger.Grep("VAULT_REQUEST_TOKEN_GET_BUCKET1"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	}
-
-	if match, _ := testLogger.Grep("VAULT_REQUEST_TOKEN_GET_BUCKET2"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	}
-
-	if match, data := testLogger.GetDataByMarkers("VAULT_CACERT BEGIN", "VAULT_CACERT END"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	} else if string(data) != string(vaultCaCrtData) {
-		t.Fatalf("expected vault ca cert:\n%s\ngot:\n%s\n", vaultCaCrtData, data)
-	}
-
-	if match, data := testLogger.GetDataByMarkers("VAULT_REQUEST_TOKEN_GET_BUCKET1 UNWRAP BEGIN", "VAULT_REQUEST_TOKEN_GET_BUCKET1 UNWRAP END"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	} else {
-		var dataMap map[string]interface{}
-		if err := json.Unmarshal(data, &dataMap); err != nil {
-			t.Fatalf("expected valid json, got error: %s\n%s\n", err, data)
-		}
-
-		key1Value := dataMap["data"].(map[string]interface{})["key1"].(string)
-
-		if key1Value != "value1" {
-			t.Fatalf("expected data.key1 to equal value1, got:\n%s\n", data)
-		}
-	}
-
-	if match, data := testLogger.GetDataByMarkers("VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP BEGIN", "VAULT_REQUEST_TOKEN_GET_BUCKET2 UNWRAP END"); !match {
-		t.Fatalf("task %s output not contains expected output:\n%s\n", periodicTaskUUIDs[len(periodicTaskUUIDs)-1], strings.Join(testLogger.GetLines(), "\n"))
-	} else {
-		var dataMap map[string]interface{}
-		if err := json.Unmarshal(data, &dataMap); err != nil {
-			t.Fatalf("expected valid json, got error: %s\n%s\n", err, data)
-		}
-
-		key2Value := dataMap["data"].(map[string]interface{})["key2"].(string)
-
-		if key2Value != "value2" {
-			t.Fatalf("expected data.key2 to equal value2, got:\n%s\n", data)
-		}
-	}
+	return
 }
 
-// returns IP-address or url to link from docker-container to host
-func getDockerBridgeIPAddr(t *testing.T) string {
-	if runtime.GOOS == "darwin" {
-		return "docker.for.mac.localhost"
-	}
-	cmd := exec.Command("docker", "network", "inspect", "bridge", "-f", "{{ (index .IPAM.Config 0).Gateway }}")
-	output, err := cmd.CombinedOutput()
+// StartAndConfigureRootVault runs rootVault
+// enabale auht/cert
+// configure it by ca of conf_vault pki
+func StartAndConfigureRootVault(confVaultPkiCa string) (v Vault, err error) {
+	rootVault := runAndWaitVaultUp("examples/conf/vault-root.hcl", "8203", "root")
+
+	_, err = RunVaultCommandAtVault(rootVault, "policy", "write", "good", "examples/conf/good.hcl")
 	if err != nil {
-		t.Fatalf("docker network inspect command failed: %s\n%s\n", err, output)
+		return
 	}
-	return strings.TrimSpace(string(output))
-}
 
-func RunVaultCommand(t *testing.T, args ...string) []byte {
-	output, err := RunVaultCommandWithError(args...)
+	_, err = RunVaultCommandAtVault(rootVault, "auth", "enable", "cert") // vault auth enable cert
 	if err != nil {
-		t.Fatalf("error running vault command '%s': %s", strings.Join(args, " "), err)
-	}
-	return output
-}
-
-func RunVaultCommandWithError(args ...string) ([]byte, error) {
-	var output bytes.Buffer
-
-	opts := &command.RunOptions{
-		Stdout: io.MultiWriter(os.Stdout, &output),
-		Stderr: io.MultiWriter(os.Stderr, &output),
+		return
 	}
 
-	rc := command.RunCustom(args, opts)
-	if rc != 0 {
-		return output.Bytes(), fmt.Errorf("vault failed with rc=%d:\n%s\n", rc, output.String())
+	// vault write auth/cert/certs/negentropy display_name='negentropy' policies='good' certificate='CA'
+	_, err = RunVaultCommandAtVault(rootVault, "write", "auth/cert/certs/negentropy",
+		"display_name=negentropy", "policies=good", "certificate", confVaultPkiCa)
+	if err != nil {
+		return
 	}
 
-	return output.Bytes(), nil
+	return rootVault, nil
 }
