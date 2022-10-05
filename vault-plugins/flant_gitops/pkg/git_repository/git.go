@@ -109,7 +109,7 @@ func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, g
 func (g gitService) EdgeCommit(initialLastSuccessfulCommit gitCommitHash, edgeCommit gitCommitHash) gitCommitHash {
 	result := edgeCommit
 	if edgeCommit == "" {
-		result = edgeCommit
+		result = initialLastSuccessfulCommit
 	}
 
 	g.logger.Debug(fmt.Sprintf("Edge commit: %s", result))

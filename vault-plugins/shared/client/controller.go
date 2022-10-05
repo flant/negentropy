@@ -233,7 +233,7 @@ func (c *vaultClientController) setAccessConfig(ctx context.Context, storage log
 	// login in with new secret id in gen function and save config to storage
 	err = genNewSecretID(ctx, apiClient, storage, curConf, c.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("error replacing secret-id: %w", err)
 	}
 
 	return nil

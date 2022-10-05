@@ -21,7 +21,11 @@ import (
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-var systemClock util.Clock = util.NewSystemClock()
+// for testability
+var (
+	systemClock         util.Clock = util.NewSystemClock()
+	kubeServiceProvider            = kube.NewKubeService
+)
 
 const (
 	//  store commit which is taken into work, but
@@ -42,7 +46,8 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 
 	// TODO probably need to check status of last run task to restart it in case of fail
 
-	logger.Info("got working commits hashes:", lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit)
+	logger.Info("got working commits hashes", "lastStartedCommit", lastStartedCommit,
+		"lastPushedToK8sCommit", lastPushedToK8sCommit, "lastK8sFinishedCommit", lastK8sFinishedCommit)
 
 	if lastStartedCommit != lastPushedToK8sCommit {
 		logger.Info(fmt.Sprintf("commit %s is still not pushed to k8s, skipping periodic function", lastStartedCommit))
@@ -91,7 +96,7 @@ func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastP
 		return nil
 	}
 
-	b.Logger().Info("obtain", "commitHash", commitHash)
+	b.Logger().Info("obtain", "commitHash", *commitHash)
 
 	uuid, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
 		return b.processCommit(ctx, storage, *commitHash)
@@ -113,7 +118,7 @@ func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.S
 	}
 	var isFinished bool
 
-	kubeService, err := kube.NewKubeService(ctx, storage)
+	kubeService, err := kubeServiceProvider(ctx, storage)
 	if err != nil {
 		return lastK8sFinishedCommit, err
 	}
@@ -194,7 +199,7 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 
 	b.Logger().Debug("TODO REMOVE", "vaults", vaultsEnvBase64Json) // TODO
 	err = backoff.Retry(func() error {
-		kubeService, err := kube.NewKubeService(ctx, storage)
+		kubeService, err := kubeServiceProvider(ctx, storage)
 		if err != nil {
 			return err
 		}

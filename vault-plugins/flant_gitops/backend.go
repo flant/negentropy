@@ -48,7 +48,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 		AccessVaultClientProvider: client.NewVaultClientController(hclog.Default()),
 	}
 
-	b.Backend = &framework.Backend{
+	baseBackend := &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        backendHelp,
 
@@ -62,19 +62,20 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 			}
 
 			return b.PeriodicTask(req.Storage)
-		},
+		}}
 
-		Paths: framework.PathAppend(
-			git_repository.ConfigurePaths(b.Backend),
-			vault.ConfigurePaths(b.Backend),
-			b.TasksManager.Paths(),
-			git.CredentialsPaths(),
-			pgp.Paths(),
-			[]*framework.Path{
-				client.PathConfigure(b.AccessVaultClientProvider),
-			},
-		),
-	}
+	baseBackend.Paths = framework.PathAppend(
+		git_repository.ConfigurePaths(baseBackend),
+		vault.ConfigurePaths(baseBackend),
+		b.TasksManager.Paths(),
+		git.CredentialsPaths(),
+		pgp.Paths(),
+		[]*framework.Path{
+			client.PathConfigure(b.AccessVaultClientProvider),
+		},
+	)
+
+	b.Backend = baseBackend
 
 	return b, nil
 }

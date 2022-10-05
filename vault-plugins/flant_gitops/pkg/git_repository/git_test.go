@@ -1,66 +1,50 @@
 package git_repository
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	goGit "github.com/go-git/go-git/v5"
-	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
+	"github.com/stretchr/testify/require"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 )
 
-func repoWithTwoCommits(t *testing.T) (string, *goGit.Repository, []*gitCommitHash) {
-	testGitRepoDir := util.GenerateTmpGitRepo(t, "flant_gitops_test_repo")
-	defer os.RemoveAll(testGitRepoDir)
-
-	util.ExecGitCommand(t, testGitRepoDir, "checkout", "-b", "main")
-	util.WriteFileIntoDir(t, filepath.Join(testGitRepoDir, "data"), []byte("OUTPUT1\n"))
-	util.ExecGitCommand(t, testGitRepoDir, "add", ".")
-	util.ExecGitCommand(t, testGitRepoDir, "commit", "-m", "one")
-	commit1 := strings.TrimSpace(util.ExecGitCommand(t, testGitRepoDir, "rev-parse", "HEAD"))
-
-	//fmt.Printf("Current commit in test repo %s: %s\n", testGitRepoDir, commit1)
-
-	util.WriteFileIntoDir(t, filepath.Join(testGitRepoDir, "data"), []byte("OUTPUT2\n"))
-	util.ExecGitCommand(t, testGitRepoDir, "add", ".")
-	util.ExecGitCommand(t, testGitRepoDir, "commit", "-m", "two")
-	commit2 := strings.TrimSpace(util.ExecGitCommand(t, testGitRepoDir, "rev-parse", "HEAD"))
-
-	//fmt.Printf("Current commit in test repo %s: %s\n", testGitRepoDir, commit2)
-
-	var cloneOptions trdlGit.CloneOptions
-	{
-		cloneOptions.BranchName = "main"
-		cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
-	}
-	gitRepo, err := trdlGit.CloneInMemory(testGitRepoDir, cloneOptions)
+func repoWithTwoCommits(t *testing.T) (*goGit.Repository, []gitCommitHash) {
+	testGitRepo, err := util.NewTestGitRepo("flant_gitops_test_repo")
+	defer testGitRepo.Clean()
 	require.NoError(t, err)
 
-	return testGitRepoDir, gitRepo, []*gitCommitHash{&commit1, &commit2}
+	err = testGitRepo.WriteFileIntoRepoAndCommit("data", []byte("OUTPUT1\n"), "one")
+	require.NoError(t, err)
+
+	err = testGitRepo.WriteFileIntoRepoAndCommit("data", []byte("OUTPUT2\n"), "two")
+	require.NoError(t, err)
+
+	//util.ExecGitCommand(t, testGitRepoDir, "checkout", "-b", "main")
+
+	gitRepo, err := testGitRepo.GetClonedInMemoryGitRepo()
+	require.NoError(t, err)
+
+	return gitRepo, testGitRepo.CommitHashes
 }
 
 func Test_git_collectAllCommits(t *testing.T) {
-	_, gitRepo, expectedCommits := repoWithTwoCommits(t)
+	gitRepo, expectedCommits := repoWithTwoCommits(t)
 
 	gotCommits, err := collectCommitsFromSomeTillHead(gitRepo, "")
 
 	require.NoError(t, err)
 	for i := range gotCommits {
-		require.Equal(t, expectedCommits[i], gotCommits[i])
+		require.Equal(t, expectedCommits[i], *gotCommits[i])
 	}
 }
 
 func Test_git_collectOnlyLastCommit(t *testing.T) {
-	_, gitRepo, expectedCommits := repoWithTwoCommits(t)
+	gitRepo, expectedCommits := repoWithTwoCommits(t)
 
-	gotCommits, err := collectCommitsFromSomeTillHead(gitRepo, *expectedCommits[0])
+	gotCommits, err := collectCommitsFromSomeTillHead(gitRepo, expectedCommits[0])
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotCommits))
-	require.Equal(t, expectedCommits[1], gotCommits[0])
+	require.Equal(t, expectedCommits[1], *gotCommits[0])
 }
