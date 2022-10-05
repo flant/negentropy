@@ -90,5 +90,7 @@ func (r *TestGitRepo) GetClonedInMemoryGitRepo() (*git.Repository, error) {
 }
 
 func (r *TestGitRepo) Clean() {
-	os.RemoveAll(r.RepoDir) // nolint:errcheck
+	if r != nil && r.RepoDir != "" {
+		os.RemoveAll(r.RepoDir) // nolint:errcheck
+	}
 }
