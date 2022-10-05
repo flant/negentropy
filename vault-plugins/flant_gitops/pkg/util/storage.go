@@ -24,7 +24,8 @@ func GetString(ctx context.Context, storage logical.Storage, key string) (string
 func PutString(ctx context.Context, storage logical.Storage, key string, value string) error {
 	return storage.Put(ctx, &logical.StorageEntry{
 		Key:   key,
-		Value: []byte(value)})
+		Value: []byte(value),
+	})
 }
 
 // GetInt64 returns int64 saved into storage by key. The pair of PutInt64
@@ -43,5 +44,6 @@ func GetInt64(ctx context.Context, storage logical.Storage, key string) (int64, 
 func PutInt64(ctx context.Context, storage logical.Storage, key string, value int64) error {
 	return storage.Put(ctx, &logical.StorageEntry{
 		Key:   key,
-		Value: []byte(fmt.Sprintf("%d", value))})
+		Value: []byte(fmt.Sprintf("%d", value)),
+	})
 }

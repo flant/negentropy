@@ -132,6 +132,7 @@ var _ = Describe("flant_gitops", func() {
 			Expect(resp != nil && resp.IsError()).ToNot(BeTrue())
 			printNewLogs(b.Logger)
 		})
+
 		Context("periodic function", func() {
 			It("flant_gitops run periodic functions without any new commits", func() {
 				ctx := context.Background()
@@ -361,10 +362,10 @@ func applyPKI(vault Vault) (caPEM string, err error) {
 		return
 	}
 
-	//vault write -field=certificate vault-cert-auth/root/generate/internal  \
-	//common_name="negentropy" \
-	//issuer_name="negentropy-2022"  \
-	//ttl=87600h > negentropy_2022_ca.crt
+	// vault write -field=certificate vault-cert-auth/root/generate/internal  \
+	// common_name="negentropy" \
+	// issuer_name="negentropy-2022"  \
+	// ttl=87600h > negentropy_2022_ca.crt
 	d, err := RunVaultCommandAtVault(vault, "write", "-field=certificate", "vault-cert-auth/root/generate/internal", "common_name=negentropy", "issuer_name=negentropy-2022", "ttl=87600h")
 	if err != nil {
 		return
@@ -401,7 +402,6 @@ func runAndWaitVaultUp(configPath string, port string, name string) Vault {
 			}
 		}()
 
-		//if _, err := RunVaultCommandWithError("server", "-dev", "-config", configPath,
 		if _, err := RunVaultCommandWithError("server", "-config", configPath); err != nil {
 			panic(fmt.Sprintf("vault server failed: %s", err))
 		}
@@ -422,9 +422,12 @@ func unseal(vault Vault, initOut []byte) (rootToken string) {
 	outs := strings.Split(string(initOut), "\n")
 	// remove garbage in case of debug
 	for i := range outs {
-		outs[i] = strings.Replace(outs[i], "\u001B[0m", "", -1)
+		outs[i] = strings.ReplaceAll(outs[i], "\u001B[0m", "")
 	}
 	// collect keys
+	if len(outs) < 5 {
+		panic(fmt.Sprintf("not found 5 keys at:%s", string(initOut)))
+	}
 	shamir := []string{}
 	for _, s := range outs[0:5] {
 		aims := strings.Split(s, ":")

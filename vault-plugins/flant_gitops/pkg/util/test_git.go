@@ -48,7 +48,6 @@ func ExecGitCommand(repoDir string, args ...string) (string, error) {
 }
 
 func (r *TestGitRepo) WriteFileIntoRepoAndCommit(relativePath string, fileData []byte, commitMessage string) error {
-
 	path := filepath.Join(r.RepoDir, relativePath)
 
 	if err := ioutil.WriteFile(path, fileData, os.ModePerm); err != nil {

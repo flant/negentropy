@@ -9,7 +9,6 @@ import (
 )
 
 func Test_GetString(t *testing.T) {
-
 	type testcase struct {
 		description   string
 		keyToSave     string
@@ -18,7 +17,7 @@ func Test_GetString(t *testing.T) {
 		expectedValue string
 	}
 
-	var tests = []testcase{
+	tests := []testcase{
 		{
 			description:   "normal read",
 			keyToSave:     "k1",
@@ -51,5 +50,4 @@ func Test_PutString(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	err := PutString(ctx, storage, "k1", "v1")
 	require.NoError(t, err)
-
 }

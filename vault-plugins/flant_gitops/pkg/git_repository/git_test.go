@@ -20,8 +20,6 @@ func repoWithTwoCommits(t *testing.T) (*goGit.Repository, []gitCommitHash) {
 	err = testGitRepo.WriteFileIntoRepoAndCommit("data", []byte("OUTPUT2\n"), "two")
 	require.NoError(t, err)
 
-	//util.ExecGitCommand(t, testGitRepoDir, "checkout", "-b", "main")
-
 	gitRepo, err := testGitRepo.GetClonedInMemoryGitRepo()
 	require.NoError(t, err)
 

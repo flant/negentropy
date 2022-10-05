@@ -14,12 +14,10 @@ import (
 	"net/http"
 
 	"github.com/cenkalti/backoff"
-
-	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
-
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 
-	"github.com/hashicorp/vault/api"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 // ApiClientPreparedForAuthorizationByCert returns vault api client authorized by passed vaultRootCaCert, clientCert and clientKey

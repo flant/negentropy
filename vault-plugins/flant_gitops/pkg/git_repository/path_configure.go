@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
-
 	"github.com/fatih/structs"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )

@@ -101,7 +101,6 @@ func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastP
 	uuid, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
 		return b.processCommit(ctx, storage, *commitHash)
 	})
-
 	if err != nil {
 		return fmt.Errorf("unable to add queue manager periodic task: %s", err)
 	}

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -14,6 +12,7 @@ import (
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
@@ -62,7 +61,8 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 			}
 
 			return b.PeriodicTask(req.Storage)
-		}}
+		},
+	}
 
 	baseBackend.Paths = framework.PathAppend(
 		git_repository.ConfigurePaths(baseBackend),

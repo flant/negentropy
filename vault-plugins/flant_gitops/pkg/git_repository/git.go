@@ -72,7 +72,7 @@ func (g gitService) getNewCommits(config *Configuration, edgeCommit gitCommitHas
 }
 
 // cloneGit clones specified repo, checkout specified branch and return head commit of branch
-func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, gitCommitHash, error) {
+func (g gitService) cloneGit(gitRepoUrl, gitBranch string) (*goGit.Repository, gitCommitHash, error) {
 	gitCredentials, err := trdlGit.GetGitCredential(g.ctx, g.storage)
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to get Git credentials Configuration: %s", err)
@@ -80,7 +80,7 @@ func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, g
 
 	var cloneOptions trdlGit.CloneOptions
 	{
-		cloneOptions.BranchName = GitBranch
+		cloneOptions.BranchName = gitBranch
 		// cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth //
 
 		if gitCredentials != nil && gitCredentials.Username != "" && gitCredentials.Password != "" {
@@ -92,7 +92,7 @@ func (g gitService) cloneGit(GitRepoUrl, GitBranch string) (*goGit.Repository, g
 	}
 
 	var gitRepo *goGit.Repository
-	if gitRepo, err = trdlGit.CloneInMemory(GitRepoUrl, cloneOptions); err != nil {
+	if gitRepo, err = trdlGit.CloneInMemory(gitRepoUrl, cloneOptions); err != nil {
 		return nil, "", err
 	}
 
