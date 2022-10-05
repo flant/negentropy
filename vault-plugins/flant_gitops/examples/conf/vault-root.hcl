@@ -14,3 +14,5 @@ log_level = "debug"
 telemetry {
  prometheus_retention_time = "0s"
 }
+
+storage "inmem" {}

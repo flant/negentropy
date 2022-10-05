@@ -156,6 +156,10 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*Configurat
 		return nil, err
 	}
 
+	if config == nil {
+		return nil, fmt.Errorf("%w: vaults configuration is empty", consts.ErrNotConfigured)
+	}
+
 	return config, nil
 }
 
