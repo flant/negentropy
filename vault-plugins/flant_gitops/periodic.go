@@ -196,7 +196,6 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 		}
 	}
 
-	b.Logger().Debug("TODO REMOVE", "vaults", vaultsEnvBase64Json) // TODO
 	err = backoff.Retry(func() error {
 		kubeService, err := kubeServiceProvider(ctx, storage)
 		if err != nil {
@@ -207,8 +206,6 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 	if err != nil {
 		return err
 	}
-
-	b.Logger().Debug("TODO REWRITE!", "jobName", hashCommit) // TODO
 
 	return backoff.Retry(func() error {
 		return util.PutString(ctx, storage, storageKeyLastPushedTok8sCommit, hashCommit)

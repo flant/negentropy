@@ -1,6 +1,7 @@
 package flant_gitops
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	b64 "encoding/base64"
@@ -10,11 +11,15 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/vault/command"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/hashicorp/vault/sdk/physical"
+	physInmem "github.com/hashicorp/vault/sdk/physical/inmem"
+	"github.com/mitchellh/cli"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -150,8 +155,8 @@ var _ = Describe("flant_gitops", func() {
 				Expect(lastStartedCommit).To(Equal(""))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
 				Expect(LastK8sFinishedCommit).To(Equal(""))
-				Expect(b.MockKubeService.ActiveJobs).To(HaveLen(0))
-				Expect(b.MockKubeService.FinishedJobs).To(HaveLen(0))
+				Expect(b.MockKubeService.LenActiveJobs()).To(Equal(0))
+				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(0))
 				printNewLogs(b.Logger)
 			})
 
@@ -168,8 +173,8 @@ var _ = Describe("flant_gitops", func() {
 				Expect(lastStartedCommit).To(Equal(""))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
 				Expect(LastK8sFinishedCommit).To(Equal(""))
-				Expect(b.MockKubeService.ActiveJobs).To(HaveLen(0))
-				Expect(b.MockKubeService.FinishedJobs).To(HaveLen(0))
+				Expect(b.MockKubeService.LenActiveJobs()).To(Equal(0))
+				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(0))
 				printNewLogs(b.Logger)
 			})
 
@@ -185,15 +190,16 @@ var _ = Describe("flant_gitops", func() {
 				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1])) // change is here
 				Expect(lastPushedToK8sCommit).To(Equal(""))
 				Expect(LastK8sFinishedCommit).To(Equal(""))
-				Expect(b.MockKubeService.FinishedJobs).To(HaveLen(0))
+				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(0))
+
 				for i := 0; i < 10; i++ { // waiting finishing task
-					if len(b.MockKubeService.ActiveJobs) > 0 {
+					if b.MockKubeService.LenActiveJobs() > 0 {
 						break
 					}
 					time.Sleep(time.Millisecond * 100)
 				}
-				Expect(b.MockKubeService.ActiveJobs).To(HaveLen(1))                           // change is here
-				Expect(b.MockKubeService.ActiveJobs).To(HaveKey(testGitRepo.CommitHashes[1])) // change is here
+				Expect(b.MockKubeService.LenActiveJobs()).To(Equal(1))                           // change is here
+				Expect(b.MockKubeService.HasActiveJob(testGitRepo.CommitHashes[1])).To(BeTrue()) // change is here
 				printNewLogs(b.Logger)
 			})
 
@@ -208,7 +214,7 @@ var _ = Describe("flant_gitops", func() {
 				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(lastPushedToK8sCommit).To(Equal(testGitRepo.CommitHashes[1])) // change is here
 				Expect(LastK8sFinishedCommit).To(Equal(""))
-				Expect(b.MockKubeService.FinishedJobs).To(HaveLen(0))
+				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(0))
 				printNewLogs(b.Logger)
 			})
 
@@ -225,13 +231,13 @@ var _ = Describe("flant_gitops", func() {
 				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(lastPushedToK8sCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(LastK8sFinishedCommit).To(Equal(testGitRepo.CommitHashes[1])) // change is here
-				Expect(b.MockKubeService.FinishedJobs).To(HaveLen(1))                // change is here
+				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(1))             // change is here
 				printNewLogs(b.Logger)
 			})
 
 			It("passed to k8s vaultsB64Json contains valid vaults creds", func() {
-				job, ok := b.MockKubeService.FinishedJobs[testGitRepo.CommitHashes[1]]
-				Expect(ok).To(BeTrue())
+				job, err := b.MockKubeService.GetFinishedJob(testGitRepo.CommitHashes[1])
+				Expect(err).ToNot(HaveOccurred())
 
 				checkedVaults := parse(job.VaultsB64Json)
 
@@ -310,30 +316,6 @@ type ConfVault struct {
 	roleID string
 }
 
-func RunVaultCommandAtVault(vault Vault, args ...string) ([]byte, error) {
-	err := os.Setenv("VAULT_ADDR", vault.addr)
-	// needs drop to valid work other staff from hashicorp
-	defer os.Setenv("VAULT_ADDR", "") //nolint:errcheck
-	if err != nil {
-		return nil, err
-	}
-	err = os.Setenv("VAULT_TOKEN", vault.token)
-	defer os.Setenv("VAULT_TOKEN", "") //nolint:errcheck
-	if err != nil {
-		return nil, err
-	}
-	err = os.Setenv("VAULT_CACERT", "examples/conf/ca.crt")
-	defer os.Setenv("VAULT_CACERT", "") //nolint:errcheck
-	if err != nil {
-		return nil, err
-	}
-	output, err := RunVaultCommandWithError(args...)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
 // StartAndConfigureConfVault runs conf vault
 // activate and configure PKI at vault-cert-auth/roles/cert-auth
 // activate approle and create secretID and roleID
@@ -379,42 +361,6 @@ func applyPKI(vault Vault) (caPEM string, err error) {
 	}
 
 	return caPEM, nil
-}
-
-// runVaultAndWaitVaultUp run vault with specified config at specified port
-// port should be the same as at the config
-func runAndWaitVaultUp(configPath string, port string, name string) Vault {
-	vault := Vault{
-		name: name,
-		addr: "https://127.0.0.1:" + port,
-	}
-	go func() {
-		// run init and unseal
-		go func() {
-			for {
-				time.Sleep(1 * time.Second)
-				d, err := RunVaultCommandWithError("operator", "init")
-				if err != nil {
-					continue
-				}
-				vault.token = unseal(vault, d)
-				break
-			}
-		}()
-
-		if _, err := RunVaultCommandWithError("server", "-config", configPath); err != nil {
-			panic(fmt.Sprintf("vault server failed: %s", err))
-		}
-	}()
-
-	for {
-		time.Sleep(1 * time.Second)
-		if _, err := RunVaultCommandAtVault(vault, "status"); err != nil {
-			continue
-		}
-		break
-	}
-	return vault
 }
 
 // unseal vault using output of init command, returns root token, collected from  initOut
@@ -539,15 +485,36 @@ func printNewLogs(logger *util.TestLogger) {
 	backendLogLen = len(logs)
 }
 
-func RunVaultCommand(t *testing.T, args ...string) []byte {
+func RunVaultCommandAtVault(vault Vault, args ...string) ([]byte, error) {
+	err := os.Setenv("VAULT_ADDR", vault.addr)
+	// needs drop to valid work other staff from hashicorp
+	defer os.Setenv("VAULT_ADDR", "") //nolint:errcheck
+	if err != nil {
+		return nil, err
+	}
+	err = os.Setenv("VAULT_TOKEN", vault.token)
+	defer os.Setenv("VAULT_TOKEN", "") //nolint:errcheck
+	if err != nil {
+		return nil, err
+	}
+	err = os.Setenv("VAULT_CACERT", "examples/conf/ca.crt")
+	defer os.Setenv("VAULT_CACERT", "") //nolint:errcheck
+	if err != nil {
+		return nil, err
+	}
 	output, err := RunVaultCommandWithError(args...)
 	if err != nil {
-		t.Fatalf("error running vault command '%s': %s", strings.Join(args, " "), err)
+		return nil, err
 	}
-	return output
+	return output, nil
 }
 
+var vaultCLiMutex = &sync.Mutex{}
+
 func RunVaultCommandWithError(args ...string) ([]byte, error) {
+	vaultCLiMutex.Lock()
+	defer vaultCLiMutex.Unlock()
+
 	var output bytes.Buffer
 	var errOutput bytes.Buffer
 
@@ -562,4 +529,74 @@ func RunVaultCommandWithError(args ...string) ([]byte, error) {
 	}
 
 	return output.Bytes(), nil
+}
+
+// runVaultAndWaitVaultUp run vault with specified config at specified port
+// port should be the same as at the config
+func runAndWaitVaultUp(configPath string, port string, name string) Vault {
+	// this function is too complex due to data race problems
+	vault := Vault{
+		name: name,
+		addr: "https://127.0.0.1:" + port,
+	}
+	tokenChan := make(chan string)
+	go func() {
+		// run init and unseal
+		go func() {
+			for {
+				time.Sleep(1 * time.Second)
+				d, err := RunVaultCommandWithError("operator", "init", "-address="+vault.addr, "-ca-cert=examples/conf/ca.crt")
+				if err != nil {
+					continue
+				}
+				tokenChan <- unseal(vault, d)
+				break
+			}
+		}()
+		srvcmd := srvCmd()
+		outcode := srvcmd.Run([]string{"-config", configPath})
+		if outcode != 0 {
+			panic(fmt.Sprintf("vault server failed: %d", outcode))
+		}
+	}()
+	vault.token = <-tokenChan
+	for {
+		time.Sleep(1 * time.Second)
+		if _, err := RunVaultCommandAtVault(vault, "status"); err != nil {
+			continue
+		}
+		break
+	}
+	return vault
+}
+
+// srvCmd returns configured vault server command for running server
+func srvCmd() *command.ServerCommand {
+	var output bytes.Buffer
+	var errOutput bytes.Buffer
+
+	runOpts := &command.RunOptions{
+		Stdout: io.MultiWriter(&output),
+		Stderr: io.MultiWriter(&errOutput),
+	}
+
+	serverCmdUi := &command.VaultUI{
+		Ui: &cli.ColoredUi{
+			ErrorColor: cli.UiColorRed,
+			WarnColor:  cli.UiColorYellow,
+			Ui: &cli.BasicUi{
+				Reader: bufio.NewReader(os.Stdin),
+				Writer: runOpts.Stdout,
+			},
+		},
+	}
+	srvcmd := &command.ServerCommand{
+		BaseCommand: &command.BaseCommand{
+			UI: serverCmdUi,
+		},
+		PhysicalBackends: map[string]physical.Factory{
+			"inmem": physInmem.NewInmem},
+	}
+
+	return srvcmd
 }
