@@ -553,10 +553,10 @@ func runAndWaitVaultUp(configPath string, port string, name string) Vault {
 				break
 			}
 		}()
-		srvcmd := srvCmd()
+		srvcmd, output, errOutput := srvCmd()
 		outcode := srvcmd.Run([]string{"-config", configPath})
 		if outcode != 0 {
-			panic(fmt.Sprintf("vault server failed: %d", outcode))
+			panic(fmt.Sprintf("vault server failed: %d \noutput:\n%s \nerrOutput:\n %s", outcode, output.String(), errOutput.String()))
 		}
 	}()
 	vault.token = <-tokenChan
@@ -570,8 +570,9 @@ func runAndWaitVaultUp(configPath string, port string, name string) Vault {
 	return vault
 }
 
-// srvCmd returns configured vault server command for running server
-func srvCmd() *command.ServerCommand {
+// srvCmd returns configured vault server command for running server and
+// errOutput & output
+func srvCmd() (*command.ServerCommand, *bytes.Buffer, *bytes.Buffer) {
 	var output bytes.Buffer
 	var errOutput bytes.Buffer
 
@@ -599,5 +600,5 @@ func srvCmd() *command.ServerCommand {
 		},
 	}
 
-	return srvcmd
+	return srvcmd, &output, &errOutput
 }

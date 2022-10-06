@@ -16,3 +16,5 @@ telemetry {
 }
 
 storage "inmem" {}
+
+disable_mlock = true
