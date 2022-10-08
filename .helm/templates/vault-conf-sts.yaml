@@ -32,6 +32,9 @@ spec:
 {{- include "vault.securitycontext" . | nindent 12 }}
           env:
 {{- include "vault.env" . | nindent 10 }}
+          envFrom:
+            -  configMapRef:
+                name: bootstrap
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
           - mountPath: /vault/userconfig/tls

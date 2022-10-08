@@ -23,7 +23,8 @@ data:
       # init
       echo "Start init"
       pki_path="vault-cert-auth"
-      KEYFILE="$(hostname)-recovery-keys-encrypted.txt"
+      namespace=$(cat /run/secrets/kubernetes.io/serviceaccount/namespace)
+      KEYFILE="$namespace-$(hostname)-recovery-keys-encrypted.txt"
       vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
       recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
       recovery_threshold="${recovery_shares}"
@@ -40,6 +41,7 @@ data:
         #if $(vault read ${pki_path}/cert/ca)
         vault write ${pki_path}/root/generate/internal common_name='negentropy' ttl='87600h'
       fi
+
       # enable cert auth
       until curl -sf https://127.0.0.1:8200/v1/${pki_path}/ca/pem -o vault-conf-ca.pem --cacert "${VAULT_CACERT}" ; do
         echo "Retrieving CA"
@@ -56,6 +58,23 @@ data:
       until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
         sleep 2
       done
+
+      #init gitops
+
+      vault auth enable approle
+      echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list"]}' | vault policy write good -
+      vault write auth/approle/role/good secret_id_ttl=30m token_ttl=90s token_policies=good
+      vault secrets enable -path=flant-gitops flant_gitops
+      secret_id="$(vault write -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')"
+      role_id="$(vault read -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')"
+
+      vault write flant-gitops/configure_vault_access vault_addr="https://127.0.0.1:8200" vault_tls_server_name="localhost" role_name="good" secret_id_ttl="120m" approle_mount_point="auth/approle" secret_id="$secret_id" role_id="$role_id"
+
+      # NEED VALIDATION !
+      vault write flant-gitops/configure git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="" docker_image="vault:1.7.3@sha256:53e509aaa6f72c54418b2f65f23fdd8a5ddd22bf6521c4b5bf82a8ae4edd0e53"
+      vault read flant-gitops/configure
+
+
     fi
     kill $vault
     wait $vault

@@ -3,8 +3,8 @@
 configVersion: 1
 project: negentropy
 deploy:
-  helmRelease: "[[ project ]]-[[ env ]]"
-  namespace: "[[ project ]]-[[ env ]]"
+  helmRelease: "[[ project ]]"
+  namespace: "[[ env ]]"
 ---
 image: vault
 from: alpine:3.14.2
