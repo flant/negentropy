@@ -1,7 +1,5 @@
 apiVersion: batch/v1
 kind: Job
-metadata:
-  generateName: deploy-job-
 spec:
   template:
     metadata:
