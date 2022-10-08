@@ -212,7 +212,7 @@ func createServiceAccount() *iam.ServiceAccount {
 func createJwtAuthMethod(methodName, userClaim string, source auth_source.SourceForTest, payloadRewrite map[string]interface{}) {
 	payload := map[string]interface{}{
 		"bound_audiences": auth_source.Audience,
-		"token_policies":  []string{"good"},
+		"token_policies":  []string{"full"},
 		"token_type":      "default",
 		"token_ttl":       "1m",
 		"method_type":     model.MethodTypeJWT,
@@ -232,7 +232,7 @@ func createJwtAuthMethod(methodName, userClaim string, source auth_source.Source
 
 func createMultipassAuthMethod(methodName string, payloadRewrite map[string]interface{}) {
 	payload := map[string]interface{}{
-		"token_policies": []string{"good"},
+		"token_policies": []string{"full"},
 		"token_type":     "default",
 		"token_ttl":      "1m",
 		"method_type":    model.MethodTypeMultipass,
@@ -292,10 +292,6 @@ var _ = BeforeSuite(func() {
 	iamClientWithRoot = configure.GetClientWithToken(rootVaultToken, rootVaultAddr)
 
 	identityApi = flant_vault_api.NewIdentityAPI(&client.MockVaultClientController{Client: iamAuthClientWithRoot}, hclog.NewNullLogger())
-
-	role := configure.CreateGoodRole(iamAuthClientWithRoot)
-
-	configure.ConfigureVaultAccess(iamAuthClientWithRoot, lib.IamAuthPluginPath, role)
 
 	var err error
 	switchJwt(true)

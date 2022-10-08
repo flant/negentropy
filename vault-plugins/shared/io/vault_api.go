@@ -6,6 +6,12 @@ import (
 	"github.com/cenkalti/backoff"
 )
 
+func TwoMinutesBackoff() backoff.BackOff {
+	backoffRequest := backoff.NewExponentialBackOff()
+	backoffRequest.MaxElapsedTime = time.Second * 120
+	return backoffRequest
+}
+
 func ThirtySecondsBackoff() backoff.BackOff {
 	backoffRequest := backoff.NewExponentialBackOff()
 	backoffRequest.MaxElapsedTime = time.Second * 30

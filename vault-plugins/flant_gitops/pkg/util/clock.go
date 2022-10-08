@@ -21,18 +21,24 @@ func (c *SystemClock) Since(t time.Time) time.Duration {
 	return time.Since(t)
 }
 
-func NewFixedClock(nowTime time.Time) *FixedClock {
-	return &FixedClock{NowTime: nowTime}
+// NewMockedClock provides mock for test purposes
+func NewMockedClock(nowTime time.Time) (Clock, *MockClock) {
+	mock := &MockClock{NowTime: nowTime}
+	return mock, mock
 }
 
-type FixedClock struct {
+type MockClock struct {
 	NowTime time.Time
 }
 
-func (c *FixedClock) Now() time.Time {
+func (c *MockClock) Now() time.Time {
 	return c.NowTime
 }
 
-func (c *FixedClock) Since(t time.Time) time.Duration {
+func (c *MockClock) Since(t time.Time) time.Duration {
 	return c.NowTime.Sub(t)
+}
+
+func (c *MockClock) SetNowTime(t time.Time) {
+	c.NowTime = t
 }

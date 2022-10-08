@@ -1,383 +1,290 @@
+// Main workflow of the flant_gitops.
+// Check is new commit signed by specific amount of PGP
+// collect vaults with tokens
+// run k8s job
+// check statuses
+
+// The base of workflow consistency:
+// 1) new commit should go through last_started_commit -> {task for commit at task_manager} -> last_pushed_to_k8s_commit -> last_k8s_finished_commit
+// 2) changes last_started_commit -> last_pushed_to_k8s_commit -> last_k8s_finished_commit are written only in main goroutine
+// 3) action of created by commit task should finish as succeeded or failed
+// 4) job at kube should be eventually terminated (by success/failed/timed out)
+// trick: only one place to write data to storage
+
+// Conditions for became new record of last_started_commit:
+// 1) last_started_commit = last_pushed_to_k8s_commit = last_k8s_finished_commit
+// 2) new  suitable commit at git
+
+// Conditions for change last_pushed_to_k8s_commit:
+// A) Normal task finish
+// A1) task for last_started_commit is finished with any status (SUCCEEDED/FAILED/CANCELED)
+// A2) kube has job with name last_started_commit
+// B) Abnormal task finish
+// B1) task for last_started_commit is finished with any status (SUCCEEDED/FAILED/CANCELED)
+// B2) kube doesn't have job with name last_started_commit
+
+// Conditions for change  last_k8s_finished_commit:
+// A) Normal flow
+// A1) Kube has finished job with name last_pushed_to_k8s_commit
+// B) Abnormal flow
+// B1) Kube doesn't have job with name last_pushed_to_k8s_commit and has finished task for commit last_pushed_to_k8s_commit
+
+// Corner cases:
+// 1) No task for last_started_commit (it can happen if vault was downed until task_manager returns uuid of placed task, or periodic function was late to store)
+// 2) ?
+
+// Deal with corner case: retry create task and finish periodic function
+// If it will be dublicate, it is just fail on attempts to place job with the same name at kube
+
 package flant_gitops
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	dockerClient "github.com/docker/docker/client"
-	goGit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/hashicorp/vault/api"
+	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/sdk/logical"
-	uuid "github.com/satori/go.uuid"
-	"github.com/werf/logboek"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/docker"
-	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/task_manager"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
-	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
+	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-var systemClock util.Clock = util.NewSystemClock()
+// for testability
+var (
+	systemClock         util.Clock = util.NewSystemClock()
+	kubeServiceProvider            = kube.NewKubeService
+)
 
 const (
-	storageKeyLastSuccessfulCommit = "last_successful_commit"
-	lastPeriodicRunTimestampKey    = "last_periodic_run_timestamp"
+	//  store commit which is taken into work, but
+	storageKeyLastStartedCommit     = "last_started_commit"
+	storageKeyLastPushedTok8sCommit = "last_pushed_to_k8s_commit"
+	storageKeyLastK8sFinishedCommit = "last_k8s_finished_commit"
+	lastPeriodicRunTimestampKey     = "last_periodic_run_timestamp"
 )
 
-func (b *backend) PeriodicTask(req *logical.Request) error {
+func (b *backend) PeriodicTask(storage logical.Storage) error {
 	ctx := context.Background()
 
-	config, err := getConfiguration(ctx, req.Storage)
+	lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, storage)
 	if err != nil {
-		return fmt.Errorf("unable to get configuration: %s", err)
-	}
-	if config == nil {
-		b.Logger().Info("Configuration not set: skipping periodic task")
-		return nil
+		return err
 	}
 
-	{
-		cfgData, err := json.MarshalIndent(config, "", "  ")
-		b.Logger().Debug(fmt.Sprintf("Got configuration (err=%v):\n%s", err, string(cfgData)))
-	}
+	b.Logger().Info("got working commits hashes", "lastStartedCommit", lastStartedCommit,
+		"lastPushedToK8sCommit", lastPushedToK8sCommit, "lastK8sFinishedCommit", lastK8sFinishedCommit)
 
-	gitCredentials, err := trdlGit.GetGitCredential(ctx, req.Storage)
-	if err != nil {
-		return fmt.Errorf("unable to get Git credentials configuration: %s", err)
-	}
-
-	vaultRequests, err := listVaultRequests(ctx, req.Storage)
-	if err != nil {
-		return fmt.Errorf("unable to get all Vault requests configurations: %s", err)
-	}
-
-	for _, cfg := range vaultRequests {
-		b.Logger().Debug(fmt.Sprintf("Got configured vault request: %#v\n", cfg))
-	}
-
-	apiConfig, err := b.AccessVaultClientProvider.GetApiConfig(ctx, req.Storage)
-	if err != nil {
-		return fmt.Errorf("unable to get Vault API config: %s", err)
-	}
-
-	if len(vaultRequests) > 0 && apiConfig == nil {
-		reqCfgData, _ := json.MarshalIndent(vaultRequests, "", "  ")
-		b.Logger().Info(fmt.Sprintf("Vault API access configuration not set, but there are Vault requests configured: skipping periodic task:\n%s\n", reqCfgData))
-		return nil
-	}
-
-	entry, err := req.Storage.Get(ctx, lastPeriodicRunTimestampKey)
-	if err != nil {
-		return fmt.Errorf("unable to get key %q from storage: %s", lastPeriodicRunTimestampKey, err)
-	}
-
-	if entry != nil {
-		lastRunTimestamp, err := strconv.ParseInt(string(entry.Value), 10, 64)
-		if err == nil && systemClock.Since(time.Unix(lastRunTimestamp, 0)) < config.GitPollPeriod {
-			b.Logger().Debug("Waiting Git poll period: skipping periodic task")
+	if lastStartedCommit != lastPushedToK8sCommit {
+		// check conditions for change lastPushedTok8sCommit
+		cornerCase, err := b.updateLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+		if err != nil {
+			return err
+		}
+		if cornerCase {
 			return nil
 		}
-	}
-
-	now := systemClock.Now()
-	uuid, err := b.TasksManager.RunTask(ctx, req.Storage, func(ctx context.Context, storage logical.Storage) error {
-		err := b.periodicTask(ctx, storage, config, gitCredentials, vaultRequests, apiConfig)
+		// update values
+		_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = collectSavedWorkingCommits(ctx, storage)
 		if err != nil {
-			b.Logger().Error(fmt.Sprintf("Periodic task failed: %s", err))
-		} else {
-			b.Logger().Info("Periodic task succeeded")
+			return err
 		}
-		return err
-	})
-
-	if err == tasks_manager.ErrBusy {
-		b.Logger().Debug(fmt.Sprintf("Will not add new periodic task: there is currently running task which took more than %s", config.GitPollPeriod))
-		return nil
 	}
 
+	err = b.updateK8sFinishedCommit(ctx, storage, lastPushedToK8sCommit, lastK8sFinishedCommit)
 	if err != nil {
-		return fmt.Errorf("unable to add queue manager periodic task: %s", err)
+		return err
+	}
+	_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = collectSavedWorkingCommits(ctx, storage)
+	if err != nil {
+		return err
 	}
 
-	if err := req.Storage.Put(ctx, &logical.StorageEntry{Key: lastPeriodicRunTimestampKey, Value: []byte(fmt.Sprintf("%d", now.Unix()))}); err != nil {
-		return fmt.Errorf("unable to put last periodic task run timestamp in storage by key %q: %s", lastPeriodicRunTimestampKey, err)
-	}
-
-	b.LastPeriodicTaskUUID = uuid
-	b.Logger().Debug(fmt.Sprintf("Added new periodic task with uuid %s", uuid))
-
-	return nil
-}
-
-func (b *backend) periodicTask(ctx context.Context, storage logical.Storage, config *configuration,
-	gitCredentials *trdlGit.GitCredential, vaultRequestsConfig vaultRequests, apiConfig *client.VaultApiConf) error {
-	b.Logger().Debug("Started periodic task")
-
-	// clone git repository and get head commit
-	var gitRepo *goGit.Repository
-	var headCommit string
-	{
-		b.Logger().Debug(fmt.Sprintf("Cloning git repo %q branch %q", config.GitRepoUrl, config.GitBranch))
-
-		var cloneOptions trdlGit.CloneOptions
-		{
-			cloneOptions.BranchName = config.GitBranch
-			cloneOptions.RecurseSubmodules = goGit.DefaultSubmoduleRecursionDepth
-
-			if gitCredentials != nil && gitCredentials.Username != "" && gitCredentials.Password != "" {
-				cloneOptions.Auth = &http.BasicAuth{
-					Username: gitCredentials.Username,
-					Password: gitCredentials.Password,
-				}
-			}
-		}
-
-		var err error
-		if gitRepo, err = trdlGit.CloneInMemory(config.GitRepoUrl, cloneOptions); err != nil {
-			return err
-		}
-
-		r, err := gitRepo.Head()
-		if err != nil {
-			return err
-		}
-
-		headCommit = r.Hash().String()
-		b.Logger().Debug(fmt.Sprintf("Got head commit: %s", headCommit))
-	}
-
-	// define lastSuccessfulCommit
-	var lastSuccessfulCommit string
-	{
-		entry, err := storage.Get(ctx, storageKeyLastSuccessfulCommit)
-		if err != nil {
-			return err
-		}
-
-		if entry != nil && string(entry.Value) != "" {
-			lastSuccessfulCommit = string(entry.Value)
-		} else {
-			lastSuccessfulCommit = config.InitialLastSuccessfulCommit
-		}
-
-		b.Logger().Debug(fmt.Sprintf("Last successful commit: %s", lastSuccessfulCommit))
-	}
-
-	// skip commit if already processed
-	if lastSuccessfulCommit == headCommit {
-		b.Logger().Debug("Head commit not changed: skipping periodic task")
+	if lastK8sFinishedCommit != lastPushedToK8sCommit {
+		b.Logger().Info(fmt.Sprintf("commit %s is still not finished at k8s, skipping periodic function", lastPushedToK8sCommit))
 		return nil
 	}
 
-	// check that current commit is a descendant of the last successfully processed commit
-	if lastSuccessfulCommit != "" {
-		isAncestor, err := trdlGit.IsAncestor(gitRepo, lastSuccessfulCommit, headCommit)
-		if err != nil {
-			return err
-		}
+	b.Logger().Info(fmt.Sprintf("commit %s is finished at k8s, continue periodic function...", lastPushedToK8sCommit))
 
-		if !isAncestor {
-			return fmt.Errorf("unable to run periodic task for git commit %q which is not descendant of the last successfully processed commit %q", headCommit, lastSuccessfulCommit)
-		}
+	return b.processGit(ctx, storage, lastK8sFinishedCommit)
+}
+
+// updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns true, if corner case
+func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (bool, error) {
+	exist, finished, err := task_manager.Service(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
+	if err != nil {
+		return false, err
+	}
+	if !exist { // corner case: unexpected vault crash happens: recreate task for lastStartedCommit
+		b.Logger().Warn(fmt.Sprintf("commit %q has no task, recreate tsk, and interrupt periodic function", lastStartedCommit))
+		err = b.createTask(ctx, storage, lastStartedCommit)
+		return true, err
+	}
+	if !finished {
+		b.Logger().Info(fmt.Sprintf("commit %q is still not pushed to k8s, skipping periodic function", lastStartedCommit))
+		return false, nil
+	}
+	// task is finished, no matter is job at k8s or not: change  last_pushed_to_k8s_commit
+	b.Logger().Info(fmt.Sprintf("task run by commit %q is finished", lastStartedCommit))
+
+	return false, storeLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+}
+
+func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastPushedToK8sCommit string) error {
+	config, err := git_repository.GetConfig(ctx, storage, b.Logger())
+	if err != nil {
+		return err
 	}
 
-	// verify head commit pgp signatures
-	{
-		trustedPGPPublicKeys, err := pgp.GetTrustedPGPPublicKeys(ctx, storage)
-		if err != nil {
-			return fmt.Errorf("unable to get trusted public keys: %s", err)
-		}
-
-		if err := trdlGit.VerifyCommitSignatures(gitRepo, headCommit, trustedPGPPublicKeys, config.RequiredNumberOfVerifiedSignaturesOnCommit); err != nil {
-			return err
-		}
-
-		b.Logger().Debug(fmt.Sprintf("Verified %d commit signatures", config.RequiredNumberOfVerifiedSignaturesOnCommit))
+	gitCheckintervalExceeded, err := checkExceedingInterval(ctx, storage, config.GitPollPeriod)
+	if err != nil {
+		return err
 	}
 
-	vaultRequestEnvs := map[string]string{}
-	for _, requestConfig := range vaultRequestsConfig {
-		{
-			reqData, _ := json.MarshalIndent(requestConfig, "", "  ")
-			b.Logger().Debug(fmt.Sprintf("Performing Vault request with configuration:\n%s\n", string(reqData)))
-		}
-
-		token, err := b.performWrappedVaultRequest(ctx, storage, requestConfig)
-		if err != nil {
-			return fmt.Errorf("unable to perform %q Vault request: %s", requestConfig.Name, err)
-		}
-
-		envName := fmt.Sprintf("VAULT_REQUEST_TOKEN_%s", strings.ReplaceAll(strings.ToUpper(requestConfig.Name), "-", "_"))
-		vaultRequestEnvs[envName] = token
-
-		b.Logger().Info(fmt.Sprintf("Performed %q Vault request", requestConfig.Name))
+	if !gitCheckintervalExceeded {
+		b.Logger().Info("git poll interval not exceeded, finish periodic task")
 	}
 
-	// run docker build with service dockerfile and context
-	{
-		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-		if err != nil {
-			return fmt.Errorf("unable to create docker client: %s", err)
-		}
-
-		serviceDirInContext := ".flant_gitops"
-		serviceDockerfilePath := path.Join(serviceDirInContext, "Dockerfile")
-		contextReader, contextWriter := io.Pipe()
-		go func() {
-			if err := func() error {
-				tw := tar.NewWriter(contextWriter)
-
-				if err := trdlGit.AddWorktreeFilesToTar(tw, gitRepo); err != nil {
-					return fmt.Errorf("unable to add git worktree files to tar: %s", err)
-				}
-
-				dockerfileOpts := docker.DockerfileOpts{EnvVars: vaultRequestEnvs}
-
-				if apiConfig != nil {
-					vaultAddr := apiConfig.APIURL
-					vaultCACert := apiConfig.APICa
-					vaultCACertPath := path.Join(".flant_gitops", "ca.crt")
-					vaultTLSServerName := apiConfig.APIHost
-
-					if err := WriteFilesToTar(tw, map[string][]byte{vaultCACertPath: []byte(vaultCACert + "\n")}); err != nil {
-						return fmt.Errorf("unable to write file %q to tar: %s", vaultCACertPath, err)
-					}
-
-					dockerfileOpts.EnvVars["VAULT_ADDR"] = vaultAddr
-					dockerfileOpts.EnvVars["VAULT_CACERT"] = path.Join("/git", vaultCACertPath)
-					dockerfileOpts.EnvVars["VAULT_TLS_SERVER_NAME"] = vaultTLSServerName
-				}
-
-				if err := docker.GenerateAndAddDockerfileToTar(tw, serviceDockerfilePath, config.DockerImage, config.Commands, dockerfileOpts); err != nil {
-					return fmt.Errorf("unable to add generated Dockerfile to tar: %s", err)
-				}
-
-				if err := tw.Close(); err != nil {
-					return fmt.Errorf("unable to close tar writer: %s", err)
-				}
-
-				return nil
-			}(); err != nil {
-				if closeErr := contextWriter.CloseWithError(err); closeErr != nil {
-					panic(closeErr) // nolint:panic_check
-				}
-				return
-			}
-
-			if err := contextWriter.Close(); err != nil {
-				panic(err) // nolint:panic_check
-			}
-		}()
-
-		b.Logger().Debug(fmt.Sprintf("Running commands %+q in the base image %q", config.Commands, config.DockerImage))
-
-		serviceLabels := map[string]string{
-			"negentropy-flant-gitops-periodic-uuid": uuid.NewV4().String(),
-		}
-
-		response, err := cli.ImageBuild(ctx, contextReader, types.ImageBuildOptions{
-			Dockerfile:  serviceDockerfilePath,
-			Labels:      serviceLabels,
-			NoCache:     true,
-			ForceRemove: true,
-			PullParent:  true,
-			Version:     types.BuilderV1,
-		})
-		if err != nil {
-			return fmt.Errorf("unable to run docker image build: %s", err)
-		}
-
-		var outputBuf bytes.Buffer
-		out := io.MultiWriter(&outputBuf, logboek.Context(ctx).OutStream())
-
-		if err := docker.DisplayFromImageBuildResponse(out, response); err != nil {
-			return fmt.Errorf("error writing Docker command output: %s", err)
-		}
-
-		b.Logger().Debug("Command output BEGIN\n")
-		b.Logger().Debug(outputBuf.String())
-		b.Logger().Debug("Command output END\n")
-
-		b.Logger().Debug(fmt.Sprintf("Commands %+q in the base image %q succeeded", config.Commands, config.DockerImage))
-
-		if err := docker.RemoveImagesByLabels(ctx, cli, serviceLabels); err != nil {
-			return fmt.Errorf("unable to remove service docker image: %s", err)
-		}
+	newTimeStamp := systemClock.Now()
+	commitHash, err := git_repository.GitService(ctx, storage, b.Logger()).CheckForNewCommitFrom(lastPushedToK8sCommit)
+	if err != nil {
+		return fmt.Errorf("obtaining new commit: %w", err)
 	}
 
-	if err := storage.Put(ctx, &logical.StorageEntry{
-		Key:   storageKeyLastSuccessfulCommit,
-		Value: []byte(headCommit),
-	}); err != nil {
-		return fmt.Errorf("unable to store %q: %s", storageKeyLastSuccessfulCommit, err)
+	if commitHash == nil {
+		b.Logger().Debug("No new commits: finish periodic task")
+		return nil
+	}
+	b.Logger().Info("obtain", "commitHash", *commitHash)
+
+	if err := storeLastStartedCommit(ctx, storage, *commitHash); err != nil {
+		return err
+	}
+
+	err = b.createTask(ctx, storage, *commitHash)
+	if err != nil {
+		return err
+	}
+
+	return updateLastRunTimeStamp(ctx, storage, newTimeStamp)
+}
+
+// createTask creates task and store gotten task_uuid
+func (b *backend) createTask(ctx context.Context, storage logical.Storage, commitHash string) error {
+	taskUUID, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
+		return b.processCommit(ctx, storage, commitHash)
+	})
+	if err != nil {
+		return fmt.Errorf("unable to add queue manager task: %s", err)
+	}
+
+	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %s for commitHash: %s", taskUUID, commitHash))
+	return task_manager.Service(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
+}
+
+// checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
+func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.Storage, pushedToK8sCommit string, lastK8sFinishedCommit string) error {
+	if pushedToK8sCommit == lastK8sFinishedCommit {
+		return nil
+	}
+	_, taskFinished, err := task_manager.Service(storage, b.AccessVaultClientProvider).CheckTask(ctx, pushedToK8sCommit)
+	if err != nil {
+		return err
+	}
+
+	kubeService, err := kubeServiceProvider(ctx, storage)
+	if err != nil {
+		return err
+	}
+
+	jobExist, jobFinished, err := kubeService.CheckJob(ctx, pushedToK8sCommit)
+	if err != nil {
+		return err
+	}
+
+	if (taskFinished && !jobExist) || jobFinished {
+		return storeLastK8sFinishedCommit(ctx, storage, pushedToK8sCommit)
 	}
 
 	return nil
 }
 
-func (b *backend) performWrappedVaultRequest(ctx context.Context, storage logical.Storage,
-	vaultReq *vaultRequest) (string, error) {
+// collectSavedWorkingCommits gets, checks  and  returns : lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit
+// possible valid states: 1)  A, B, B  2) A, A, B 3) A, A, A
+func collectSavedWorkingCommits(ctx context.Context, storage logical.Storage) (string, string, string, error) {
+	lastStartedCommit, err := util.GetString(ctx, storage, storageKeyLastStartedCommit)
+	if err != nil {
+		return "", "", "", err
+	}
+	lastPushedToK8sCommit, err := util.GetString(ctx, storage, storageKeyLastPushedTok8sCommit)
+	if err != nil {
+		return "", "", "", err
+	}
+	LastK8sFinishedCommit, err := util.GetString(ctx, storage, storageKeyLastK8sFinishedCommit)
+	if err != nil {
+		return "", "", "", err
+	}
+	// checks
+	if !(lastPushedToK8sCommit == LastK8sFinishedCommit || lastStartedCommit == lastPushedToK8sCommit) {
+		return "", "", "", fmt.Errorf("read wrong combination of working commits: %s, %s, %s",
+			lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit)
+	}
+	return lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, nil
+}
+
+// checkExceedingInterval returns true if more than interval were spent
+func checkExceedingInterval(ctx context.Context, storage logical.Storage, interval time.Duration) (bool, error) {
+	result := false
+	lastRunTimestamp, err := util.GetInt64(ctx, storage, lastPeriodicRunTimestampKey)
+	if err != nil {
+		return false, err
+	}
+	if systemClock.Since(time.Unix(lastRunTimestamp, 0)) > interval {
+		result = true
+	}
+	return result, nil
+}
+
+func updateLastRunTimeStamp(ctx context.Context, storage logical.Storage, timeStamp time.Time) error {
+	return util.PutInt64(ctx, storage, lastPeriodicRunTimestampKey, timeStamp.Unix())
+}
+
+// processCommit aim action with retries
+func (b *backend) processCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
+	// there are retry inside BuildVaultsBase64Env
 	apiClient, err := b.AccessVaultClientProvider.APIClient(storage)
 	if err != nil {
-		return "", fmt.Errorf("unable to get Vault API Client for %q Vault request: %s", vaultReq.Name, err)
+		return err
 	}
-
-	request := apiClient.NewRequest(vaultReq.Method, vaultReq.Path)
-	request.WrapTTL = strconv.FormatFloat(vaultReq.WrapTTL.Seconds(), 'f', 0, 64)
-	if len(vaultReq.Options) > 0 {
-		if err := request.SetJSONBody(vaultReq.Options); err != nil {
-			return "", fmt.Errorf("unable to set %q field json data for %q Vault request: %s",
-				fieldNameVaultRequestOptions, vaultReq.Name, err)
+	vaultsEnvBase64Json, warnings, err := vault.BuildVaultsBase64Env(ctx, storage, apiClient)
+	if len(warnings) > 0 {
+		for _, w := range warnings {
+			b.Logger().Warn(w)
 		}
 	}
-
-	resp, err := apiClient.RawRequestWithContext(ctx, request)
-	if err != nil {
-		return "", fmt.Errorf("unable to perform %q Vault request: %s", vaultReq.Name, err)
-	}
-
-	defer resp.Body.Close()
-	secret, err := api.ParseSecret(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("unable to parse wrap token for %q Vault request: %s", vaultReq.Name, err)
-	}
-
-	return secret.WrapInfo.Token, nil
+	err = backoff.Retry(func() error {
+		kubeService, err := kubeServiceProvider(ctx, storage)
+		if err != nil {
+			return err
+		}
+		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json)
+	}, sharedio.TwoMinutesBackoff())
+	return err
 }
 
-func WriteFilesToTar(tw *tar.Writer, filesData map[string][]byte) error {
-	for path, data := range filesData {
-		header := &tar.Header{
-			Format:     tar.FormatGNU,
-			Name:       path,
-			Size:       int64(len(data)),
-			Mode:       int64(os.ModePerm),
-			ModTime:    time.Now(),
-			AccessTime: time.Now(),
-			ChangeTime: time.Now(),
-		}
+func storeLastStartedCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
+	return util.PutString(ctx, storage, storageKeyLastStartedCommit, hashCommit)
+}
 
-		if err := tw.WriteHeader(header); err != nil {
-			return fmt.Errorf("unable to write tar entry %q header: %s", path, err)
-		}
+func storeLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
+	return util.PutString(ctx, storage, storageKeyLastPushedTok8sCommit, hashCommit)
+}
 
-		if _, err := tw.Write(data); err != nil {
-			return fmt.Errorf("unable to write tar entry %q data: %s", path, err)
-		}
-	}
-
-	return nil
+func storeLastK8sFinishedCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
+	return util.PutString(ctx, storage, storageKeyLastK8sFinishedCommit, hashCommit)
 }

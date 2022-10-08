@@ -96,7 +96,7 @@ func (a *Authenticator) verifyMultipass(uuid, jtiExpected string) (*iam.Multipas
 	a.Logger.Debug(fmt.Sprintf("Try to get multipass with its gen %s", uuid))
 	multipass, multipassGen, err := a.MultipassService.GetWithGeneration(uuid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get multipass: %w", err)
 	}
 
 	if multipass.Salt == "" {

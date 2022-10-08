@@ -38,11 +38,11 @@ func (h *ObjectHandler) HandleAuthSource(txn *io.MemoryStoreTxn, source *model.A
 		l.Debug(fmt.Sprintf("Create new ea mem object for user %s and source %s", user.FullIdentifier, source.Name))
 		err := eaRepo.CreateForUser(user, source)
 		if err != nil {
-			l.Error("Cannot create ea mem object for user an source", user.FullIdentifier, source.Name, err)
+			l.Error("Cannot create ea mem object for user and source", user.FullIdentifier, source.Name, err)
 			return false, err
 		}
 
-		l.Debug("Create new ea mem object for user an source", user.FullIdentifier)
+		l.Debug("Create new ea mem object for user and source", user.FullIdentifier)
 
 		return true, nil
 	})
@@ -59,7 +59,7 @@ func (h *ObjectHandler) HandleAuthSource(txn *io.MemoryStoreTxn, source *model.A
 		l.Debug("Create new ea mem object for SA and source", account.FullIdentifier, source.Name)
 		err := eaRepo.CreateForSA(account, source)
 		if err != nil {
-			l.Error("Cannot create ea mem object for SA an source", account.FullIdentifier, source.Name, err)
+			l.Error("Cannot create ea mem object for SA and source", account.FullIdentifier, source.Name, err)
 			return false, nil
 		}
 

@@ -9,18 +9,18 @@ if (( $vault_counts < 2 )); then
   echo "DEBUG: found single vault instance"
   export ROOT_VAULT_TOKEN=$(cat /tmp/vault_single_token)
   export AUTH_VAULT_TOKEN=$(cat /tmp/vault_single_token)
-  export ROOT_VAULT_URL=http://127.0.0.1:8200
-  export AUTH_VAULT_URL=http://127.0.0.1:8200
-  export ROOT_VAULT_INTERNAL_URL=http://vault:8200
-  export AUTH_VAULT_INTERNAL_URL=http://vault:8200
+  export ROOT_VAULT_URL=https://localhost:8200
+  export AUTH_VAULT_URL=https://localhost:8200
+  export ROOT_VAULT_INTERNAL_URL=https://vault:8200
+  export AUTH_VAULT_INTERNAL_URL=https://vault:8200
 else
   echo "DEBUG: found two separate vaults"
   export ROOT_VAULT_TOKEN=$(cat /tmp/vault_root_token)
   export AUTH_VAULT_TOKEN=$(cat /tmp/vault_auth_token)
-  export ROOT_VAULT_URL=http://127.0.0.1:8300
-  export AUTH_VAULT_URL=http://127.0.0.1:8200
-  export ROOT_VAULT_INTERNAL_URL=http://vault-root:8300
-  export AUTH_VAULT_INTERNAL_URL=http://vault-auth:8200
+  export ROOT_VAULT_URL=https://localhost:8300
+  export AUTH_VAULT_URL=https://localhost:8200
+  export ROOT_VAULT_INTERNAL_URL=https://vault-root:8300
+  export AUTH_VAULT_INTERNAL_URL=https://vault-auth:8200
 fi
 
 echo DEBUG: ROOT_VAULT_TOKEN is $ROOT_VAULT_TOKEN

@@ -62,7 +62,7 @@ var _ = Describe("Process of getting ssh access to server by a cli", func() {
 	})
 
 	It("sign certificate 10 times through authd", func() {
-		stopChan := runAuthdDaemon()
+		stopChan := runAuthdDaemonAtLocalhost()
 		defer func() {
 			stopChan <- struct{}{}
 		}()
@@ -70,8 +70,8 @@ var _ = Describe("Process of getting ssh access to server by a cli", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		authdSocketPath := curFolder + "/" + "authd.sock"
-		os.Setenv("AUTHD_SOCKET_PATH", authdSocketPath)
-
+		err = os.Setenv("AUTHD_SOCKET_PATH", authdSocketPath)
+		Expect(err).ToNot(HaveOccurred())
 		for i := 0; i < 10; i++ {
 
 			cliVaultClient, err := pkg.DefaultVaultClient()
@@ -92,11 +92,13 @@ var _ = Describe("Process of getting ssh access to server by a cli", func() {
 	})
 })
 
-// runAuthdDaemon returns chan for stopping
-func runAuthdDaemon() chan struct{} {
+// runAuthdDaemonAtLocalhost returns chan for stopping
+func runAuthdDaemonAtLocalhost() chan struct{} {
 	curFolder, err := os.Getwd()
 	Expect(err).ToNot(HaveOccurred())
 	err = os.WriteFile("client-jwt", []byte(cfg.UserMultipassJWT), 0600)
+	Expect(err).ToNot(HaveOccurred())
+	err = os.Setenv("VAULT_CACERT", "../../../docker/vault/tls/ca.crt")
 	Expect(err).ToNot(HaveOccurred())
 
 	clientMainCfg := tsc.ClientMainAuthdCFG(&tsc.MainAuthdCfgV1{

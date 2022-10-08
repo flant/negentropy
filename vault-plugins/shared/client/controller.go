@@ -45,7 +45,7 @@ func NewVaultClientController(parentLogger hclog.Logger) VaultClientController {
 	return c
 }
 
-// GetApiConfig get vault api access config (APIURL, APIHost, APICa)
+// GetApiConfig get vault api access config (APIURL, APIHost, CaCert)
 // if configuration not found returns nil pointer
 func (c *vaultClientController) GetApiConfig(ctx context.Context, storage logical.Storage) (*VaultApiConf, error) {
 	conf, err := GetVaultClientConfig(ctx, storage)
@@ -67,7 +67,7 @@ func (c *vaultClientController) GetApiConfig(ctx context.Context, storage logica
 	return &VaultApiConf{
 		APIURL:  conf.APIURL,
 		APIHost: conf.APIHost,
-		APICa:   conf.APICa,
+		CaCert:  conf.CaCert,
 	}, nil
 }
 
@@ -233,7 +233,7 @@ func (c *vaultClientController) setAccessConfig(ctx context.Context, storage log
 	// login in with new secret id in gen function and save config to storage
 	err = genNewSecretID(ctx, apiClient, storage, curConf, c.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("error replacing secret-id: %w", err)
 	}
 
 	return nil

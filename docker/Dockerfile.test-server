@@ -3,6 +3,9 @@ FROM --platform=linux/amd64 ubuntu:20.04
 COPY wrapper.sh /opt
 
 RUN apt-get update && \
-    apt-get install openssh-server --no-install-recommends -y
+    apt-get install openssh-server  ca-certificates  --no-install-recommends -y
+
+COPY vault/tls/ca.crt /vault-ca.crt
+RUN cat /vault-ca.crt >> /etc/ssl/certs/ca-certificates.crt
 
 CMD /opt/wrapper.sh

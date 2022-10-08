@@ -10,7 +10,7 @@ const storagePath = "configure_vault_access"
 type VaultApiConf struct {
 	APIURL  string `json:"vault_api_url"`
 	APIHost string `json:"vault_api_host"`
-	APICa   string `json:"vault_api_ca"`
+	CaCert  string `json:"vault_cacert"`
 }
 
 type vaultAccessConfig struct {

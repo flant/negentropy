@@ -11,10 +11,11 @@ services:
       - "./kafka/ca.crt:/etc/ca.crt:ro"
       - "./kafka/client.crt:/etc/client.crt:ro"
       - "./kafka/client.key:/etc/client.key:ro"
+      - "./vault/tls:/etc/vault-tls"
     ports:
       - 8200:8200
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_ADDR=https://127.0.0.1:8200
       - VAULT_CLIENT_TIMEOUT=120s
 #      - DEBUG=true
     command: vault server -config /etc/vault.hcl
@@ -25,7 +26,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        ["CMD", "nc", "-z", "127.0.0.1:8200"]
+        [ "CMD", "nc", "-z", "https://127.0.0.1:8200" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,10 +41,11 @@ services:
       - "./kafka/ca.crt:/etc/ca.crt:ro"
       - "./kafka/client.crt:/etc/client.crt:ro"
       - "./kafka/client.key:/etc/client.key:ro"
+      - "./vault/tls:/etc/vault-tls"
     ports:
       - 8300:8300
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8300
+      - VAULT_ADDR=https://127.0.0.1:8300
       - VAULT_CLIENT_TIMEOUT=120s
     #      - DEBUG=true
     command: vault server -config /etc/vault.hcl
@@ -54,7 +56,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        ["CMD", "nc", "-z", "127.0.0.1:8300"]
+        [ "CMD", "nc", "-z", "https://127.0.0.1:8300" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -69,11 +71,11 @@ services:
       - "../authd/build:/opt/authd/bin:ro"
       - "../cli/build:/opt/cli/bin:ro"
     command: sleep infinity
-    depends_on:
-      vault-root:
-        condition: service_healthy
-      vault-auth:
-        condition: service_healthy
+  #    depends_on:
+  #      vault-root:
+  #        condition: service_healthy
+  #      vault-auth:
+  #        condition: service_healthy
 
   test-server:
     platform: linux/amd64
@@ -87,11 +89,11 @@ services:
       - "../server-access/server-access-nss/build/libnss_flantauth.so.2:/lib/x86_64-linux-gnu/libnss_flantauth.so.2:ro"
     environment:
       - SERVER_ACCESSD_CONF=/opt/server-access/config.yaml
-    depends_on:
-      vault-root:
-        condition: service_healthy
-      vault-auth:
-        condition: service_healthy
+#    depends_on:
+#      vault-root:
+#        condition: service_healthy
+#      vault-auth:
+#        condition: service_healthy
 
 networks:
   default:
