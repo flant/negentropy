@@ -6,6 +6,7 @@ set -e
 [ -z "$GIT_BRANCH" ] && echo "GIT_BRANCH env variable required" && exit 1
 [ -z "$GIT_REPO" ] && GIT_REPO=https://github.com/flant/negentropy.git
 [ -z "$REQUIRED_NUMBER_OF_SIGNATURES" ] && REQUIRED_NUMBER_OF_SIGNATURES=0
+[ -z "$INITIAL_LAST_SUCCESSFULL_COMMIT" ] && INITIAL_LAST_SUCCESSFULL_COMMIT=""
 [ -z "$GIT_POLL_PERIOD" ] && GIT_POLL_PERIOD=1m
 
 echo "================= CONFIG ================"
@@ -21,7 +22,7 @@ set -x
 
 kubectl create ns $NS
 
-kubectl -n $NS create configmap bootstrap --from-literal=GIT_REPO=$GIT_REPO --from-literal=GIT_BRANCH=$GIT_BRANCH --from-literal=REQUIRED_NUMBER_OF_SIGNATURES=$REQUIRED_NUMBER_OF_SIGNATURES --from-literal=GIT_POLL_PERIOD=$GIT_POLL_PERIOD
+kubectl -n $NS create configmap bootstrap --from-literal=GIT_REPO=$GIT_REPO --from-literal=GIT_BRANCH=$GIT_BRANCH --from-literal=REQUIRED_NUMBER_OF_SIGNATURES=$REQUIRED_NUMBER_OF_SIGNATURES --from-literal=GIT_POLL_PERIOD=$GIT_POLL_PERIOD --from-literal=INITIAL_LAST_SUCCESSFULL_COMMIT="$INITIAL_LAST_SUCCESSFULL_COMMIT"
 
 kubectl -n $NS create sa deploy
 kubectl -n $NS label sa deploy "app.kubernetes.io/managed-by"=Helm
@@ -43,4 +44,4 @@ kubectl -n $NS annotate rolebinding deploy "meta.helm.sh/release-namespace"=$NS
 set +x
 
 echo "========= BOOTSTRAP JOB RUNNING ========="
-echo "To track deploy type: kubectl -n $NS logs logs job.batch/bootstrap -f"
+echo "To track deploy type: kubectl -n $NS logs job.batch/bootstrap -f"

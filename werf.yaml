@@ -19,13 +19,18 @@ from: golang:1.17.12-alpine
 git:
 - add: /
   to: /app
+  stageDependencies:
+    install:
+    - 'vault-plugins/**/go.mod'
+    setup:
+    - 'vault-plugins/**/*'
 - url: https://github.com/hashicorp/vault.git
   to: /app/infra/common/vault/vault
   tag: {{ $vault_tag }}
 shell:
-  install:
+  beforeInstall:
   - apk add bash git make musl-dev gcc patch
-  setup:
+  install:
   - |
     export CGO_ENABLED=1
     cd /app/infra/common/vault/vault
@@ -39,6 +44,10 @@ shell:
     patch -p1 < ../004_revert_MR#12747.patch
     go mod tidy -e -go=1.16 && go mod tidy -e -go=1.17
     make bootstrap
+  setup:
+  - |
+    export CGO_ENABLED=1
+    cd /app/infra/common/vault/vault
     VAULT_GIT_COMMIT=$(git ls-remote -t https://github.com/hashicorp/vault.git refs/tags/{{ $vault_tag }}|awk '{print $1}')
     gox -osarch="linux/amd64" -gcflags "${GCFLAGS}" -ldflags "${LD_FLAGS}-X github.com/hashicorp/vault/sdk/version.GitCommit=${VAULT_GIT_COMMIT}" -output "bin/vault" -tags="vault musl" -gocmd="go" .
 ---

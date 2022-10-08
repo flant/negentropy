@@ -6,6 +6,8 @@ metadata:
 data:
   init.sh: |
     #!/bin/bash
+    
+    set -e
 
     cd /tmp
     cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
@@ -71,8 +73,8 @@ data:
       vault write flant-gitops/configure_vault_access vault_addr="https://127.0.0.1:8200" vault_tls_server_name="localhost" role_name="good" secret_id_ttl="120m" approle_mount_point="auth/approle" secret_id="$secret_id" role_id="$role_id"
 
       # NEED VALIDATION !
-      vault write flant-gitops/configure git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="" docker_image="vault:1.7.3@sha256:53e509aaa6f72c54418b2f65f23fdd8a5ddd22bf6521c4b5bf82a8ae4edd0e53"
-      vault read flant-gitops/configure
+      vault write flant-gitops/configure/git_repository git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="$INITIAL_LAST_SUCCESSFULL_COMMIT"
+      vault read flant-gitops/configure/git_repository
 
 
     fi
