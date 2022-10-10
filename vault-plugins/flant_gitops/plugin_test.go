@@ -25,6 +25,7 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 func Test(t *testing.T) {
@@ -189,18 +190,24 @@ var _ = Describe("flant_gitops", func() {
 
 				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1])) // change is here
+				err = tests.FastRepeat(func() error {
+					if lastStartedCommit != testGitRepo.CommitHashes[1] { // change is here
+						return fmt.Errorf("expected %q equals %q", lastStartedCommit, testGitRepo.CommitHashes[1])
+					}
+					return nil
+				}, 50)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
 				Expect(LastK8sFinishedCommit).To(Equal(""))
 				Expect(b.MockKubeService.LenFinishedJobs()).To(Equal(0))
-
-				for i := 0; i < 10; i++ { // waiting finishing task
-					if b.MockKubeService.LenActiveJobs() > 0 {
-						break
+				err = tests.FastRepeat(func() error {
+					if b.MockKubeService.LenActiveJobs() != 1 { // change is here
+						return fmt.Errorf("expected b.MockKubeService.LenActiveJobs() equals 1, got: %d", b.MockKubeService.LenActiveJobs())
 					}
-					time.Sleep(time.Millisecond * 100)
-				}
-				Expect(b.MockKubeService.LenActiveJobs()).To(Equal(1))                           // change is here
+					return nil
+				}, 50)
+				Expect(err).ToNot(HaveOccurred())
 				Expect(b.MockKubeService.HasActiveJob(testGitRepo.CommitHashes[1])).To(BeTrue()) // change is here
 				printNewLogs(b.Logger)
 			})
