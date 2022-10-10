@@ -52,11 +52,6 @@ data:
       vault auth enable cert
       vault write auth/cert/certs/cert-auth display_name='cert-auth' policies='cert-auth' certificate=@vault-conf-ca.pem ttl='3600'
       echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
-      {{- if eq .Values.werf.env "dev"}}
-      echo "VAULT_TOKEN $VAULT_TOKEN" >> "$KEYFILE"
-      {{- else }}
-      vault token revoke -self
-      {{- end }}
       until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
         sleep 2
       done
@@ -76,6 +71,11 @@ data:
       vault write flant-gitops/configure/git_repository git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="$INITIAL_LAST_SUCCESSFULL_COMMIT"
       vault read flant-gitops/configure/git_repository
 
+      {{- if ne .Values.werf.env "production"}}
+      echo "VAULT_TOKEN $VAULT_TOKEN" >> "$KEYFILE"
+      {{- else }}
+      vault token revoke -self
+      {{- end }}
     fi
     kill $vault
     wait $vault
