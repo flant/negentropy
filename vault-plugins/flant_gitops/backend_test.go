@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/task_manager"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 )
 
@@ -53,6 +54,8 @@ func getTestBackend(ctx context.Context) (*TestableBackend, error) {
 	if err := b.SetupBackend(ctx, config); err != nil {
 		return nil, fmt.Errorf("unable to setup backend: %s", err)
 	}
+
+	taskManagerServiceProvider = task_manager.NewMock(b.Backend)
 
 	return &TestableBackend{
 		B:               b,

@@ -162,7 +162,9 @@ var _ = Describe("flant_gitops", func() {
 
 			It("flant_gitops run periodic functions with new commit, did not exceed interval", func() {
 				ctx := context.Background()
-				err := testGitRepo.WriteFileIntoRepoAndCommit("data", []byte("OUTPUT2\n"), "two")
+				err := updateLastRunTimeStamp(ctx, b.Storage, b.Clock.Now())
+				Expect(err).ToNot(HaveOccurred())
+				err = testGitRepo.WriteFileIntoRepoAndCommit("data", []byte("OUTPUT2\n"), "two")
 				Expect(err).ToNot(HaveOccurred())
 
 				err = b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})

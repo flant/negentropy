@@ -31,18 +31,18 @@ func (m *MockKubeService) RunJob(_ context.Context, hashCommit string, vaultsB64
 	return nil
 }
 
-func (m *MockKubeService) IsJobFinished(_ context.Context, hashCommit string) (bool, error) {
+func (m *MockKubeService) CheckJob(_ context.Context, hashCommit string) (exist, finished, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	_, ok := m.activeJobs[hashCommit]
-	if ok {
-		return false, nil
+	if !ok {
+		return false, false, nil
 	}
 	_, ok = m.finishedJobs[hashCommit]
 	if ok {
-		return true, nil
+		return true, true, nil
 	}
-	return false, fmt.Errorf("job by name: %s: not found", hashCommit)
+	return true, false, nil
 }
 
 func (m *MockKubeService) FinishJob(_ context.Context, hashCommit string) error {
