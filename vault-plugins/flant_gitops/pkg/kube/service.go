@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type (
@@ -43,15 +44,22 @@ func NewKubeService(ctx context.Context, storage logical.Storage) (KubeService, 
 		if err != nil {
 			return nil, fmt.Errorf("failed: %w", err)
 		}
+
 	}
 
 	clientset, err := kubernetes.NewForConfig(kconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s clientset: %w", err)
 	}
+	clientCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&clientcmd.ClientConfigGetter{},
+		&clientcmd.ConfigOverrides{})
+	namespace, _, err := clientCfg.Namespace()
+	if err != nil {
+		return nil, fmt.Errorf("failed to getting config for obtaining pod namespace: %w", err)
+	}
 
 	return &kubeService{
-		kubeNameSpace: "negentropy-dev",
+		kubeNameSpace: namespace,
 		clientset:     clientset,
 	}, nil
 }
