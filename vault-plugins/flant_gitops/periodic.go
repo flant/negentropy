@@ -117,6 +117,7 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 
 // updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns true, if corner case
 func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (bool, error) {
+	b.logTasks(ctx, storage, "before checking task for lastStartedCommit")
 	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
 	if err != nil {
 		return false, err
@@ -186,7 +187,11 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 	}
 
 	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %s for commitHash: %s", taskUUID, commitHash))
-	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
+	// todo remove it
+	b.logTasks(ctx, storage, "before creating tasks")
+	err = taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
+	b.logTasks(ctx, storage, "after creating tasks")
+	return err
 }
 
 // checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
@@ -291,4 +296,15 @@ func storeLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, ha
 
 func storeLastK8sFinishedCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
 	return util.PutString(ctx, storage, storageKeyLastK8sFinishedCommit, hashCommit)
+}
+
+// TODO REMOVE IT
+const storageKeyTasks = "commits_tasks"
+
+func (b *backend) logTasks(ctx context.Context, storage logical.Storage, description string) {
+	tasks, err := util.GetStringMap(ctx, storage, storageKeyTasks)
+	if err != nil {
+		b.Logger().Error(fmt.Sprintf("Getting tasks %q: %s", description, err.Error()))
+	}
+	b.Logger().Debug(fmt.Sprintf("Getting tasks %q: %#v", description, tasks))
 }
