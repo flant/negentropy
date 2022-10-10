@@ -12,11 +12,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/flant/negentropy/vault-plugins/shared/tests"
-
 	. "github.com/onsi/ginkgo"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 type customHeadersTransport struct {

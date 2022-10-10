@@ -33,8 +33,8 @@ func GitService(ctx context.Context, storage logical.Storage, logger hclog.Logge
 
 // CheckForNewCommit returns new commit hashes satisfied given rules
 // 1. check defined by cfg repo&branch
-// 2. collect all commits after spicified
-// 3. returns first commit signed with specified amount of PGP, after last processed
+// 2. collect all commits after specified last_proceeded_commit
+// 3. returns first commit signed with specified amount of PGP, after last_proceeded_commit
 func (g gitService) CheckForNewCommitFrom(edgeCommit gitCommitHash) (*gitCommitHash, error) {
 	config, err := GetConfig(g.ctx, g.storage, g.logger)
 	if err != nil {
@@ -53,7 +53,7 @@ func (g gitService) CheckForNewCommitFrom(edgeCommit gitCommitHash) (*gitCommitH
 	return g.getFirstSignedCommit(gitRepo, newCommits, config.RequiredNumberOfVerifiedSignaturesOnCommit)
 }
 
-// getNewCommits returns new commits after "lastProcessed"
+// getNewCommits returns new commits after last_proceeded_commit
 func (g gitService) getNewCommits(config *Configuration, edgeCommit gitCommitHash) (*goGit.Repository, []*gitCommitHash, error) {
 	lastProcessedCommit := g.EdgeCommit(config.InitialLastSuccessfulCommit, edgeCommit)
 
@@ -105,7 +105,7 @@ func (g gitService) cloneGit(gitRepoUrl, gitBranch string) (*goGit.Repository, g
 	return gitRepo, headCommit, nil
 }
 
-// EdgeCommit returns last proceeded commit
+// EdgeCommit returns last_proceeded_commit
 func (g gitService) EdgeCommit(initialLastSuccessfulCommit gitCommitHash, edgeCommit gitCommitHash) gitCommitHash {
 	result := edgeCommit
 	if edgeCommit == "" {
