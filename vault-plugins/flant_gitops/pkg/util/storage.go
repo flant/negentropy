@@ -51,6 +51,9 @@ func PutInt64(ctx context.Context, storage logical.Storage, key string, value in
 
 // PutStringMap saves map[string]string by key. The pair of GetStringMap
 func PutStringMap(ctx context.Context, storage logical.Storage, key string, value map[string]string) error {
+	if value == nil {
+		return fmt.Errorf("prohibited store nil, use empty map instead")
+	}
 	d, err := json.Marshal(value)
 	if err != nil {
 		return err

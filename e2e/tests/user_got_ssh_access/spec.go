@@ -197,6 +197,6 @@ func waitKafkaFlow(multipassJWT string, waitSuccess bool, maxAttempts int) {
 			return fmt.Errorf("success login")
 		}
 	}
-	err := lib.Repeat(f, maxAttempts)
+	err := api.Repeat(f, maxAttempts)
 	Expect(err).ToNot(HaveOccurred())
 }
