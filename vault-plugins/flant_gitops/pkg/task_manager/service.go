@@ -2,12 +2,14 @@ package task_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 // store map[hashCommit]task_uuid
@@ -68,6 +70,9 @@ func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
 		return false, false, nil
 	}
 	status, err := taskStatusProvider(task)
+	if errors.Is(err, consts.ErrNotFound) {
+		return false, false, nil
+	}
 	if err != nil || tasks == nil {
 		return true, false, fmt.Errorf("getting task %q status: %w", task, err)
 	}
@@ -87,8 +92,11 @@ func (s *service) readTaskStatus(task taskUUID) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if secret == nil || secret.Data == nil {
-		return "", fmt.Errorf("emty response: %#v", secret)
+	if secret == nil {
+		return "", consts.ErrNotFound
+	}
+	if secret.Data == nil {
+		return "", fmt.Errorf("empty data in response: %#v", secret)
 	}
 	return parse(secret.Data)
 }
