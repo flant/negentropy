@@ -2,21 +2,25 @@ package task_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 )
 
 // store map[hashCommit]task_uuid
 const storageKeyTasks = "commits_tasks"
 
-type taskUUID = string
-type hashCommit = string
-type taskExist = bool
-type taskIsFinished = bool
+type (
+	taskUUID       = string
+	hashCommit     = string
+	taskExist      = bool
+	taskIsFinished = bool
+)
 
 type TaskService interface {
 	SaveTask(context.Context, taskUUID, hashCommit) error
@@ -36,7 +40,11 @@ func Service(storage logical.Storage, accessVaultClientProvider client.VaultClie
 }
 
 func (s *service) SaveTask(ctx context.Context, task taskUUID, commit hashCommit) error {
-	tasks, err := util.GetStringMap(ctx, s.storage, storageKeyTasks)
+	return saveTask(ctx, s.storage, task, commit)
+}
+
+func saveTask(ctx context.Context, storage logical.Storage, task taskUUID, commit hashCommit) error {
+	tasks, err := util.GetStringMap(ctx, storage, storageKeyTasks)
 	if err != nil {
 		return fmt.Errorf("getting tasks from storage: %w", err)
 	}
@@ -44,11 +52,16 @@ func (s *service) SaveTask(ctx context.Context, task taskUUID, commit hashCommit
 		tasks = map[hashCommit]taskUUID{}
 	}
 	tasks[commit] = task
-	return util.PutStringMap(ctx, s.storage, storageKeyTasks, tasks)
+	return util.PutStringMap(ctx, storage, storageKeyTasks, tasks)
 }
 
 func (s *service) CheckTask(ctx context.Context, commit hashCommit) (taskExist, taskIsFinished, error) {
-	tasks, err := util.GetStringMap(ctx, s.storage, storageKeyTasks)
+	return checkTask(ctx, s.storage, commit, s.readTaskStatus)
+}
+
+func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
+	taskStatusProvider func(task taskUUID) (string, error)) (taskExist, taskIsFinished, error) {
+	tasks, err := util.GetStringMap(ctx, storage, storageKeyTasks)
 	if err != nil || tasks == nil {
 		return false, false, fmt.Errorf("getting tasks from storage: %w", err)
 	}
@@ -56,7 +69,10 @@ func (s *service) CheckTask(ctx context.Context, commit hashCommit) (taskExist, 
 	if !ok {
 		return false, false, nil
 	}
-	status, err := s.readTaskStatus(task)
+	status, err := taskStatusProvider(task)
+	if errors.Is(err, consts.ErrNotFound) {
+		return false, false, nil
+	}
 	if err != nil || tasks == nil {
 		return true, false, fmt.Errorf("getting task %q status: %w", task, err)
 	}
@@ -76,16 +92,22 @@ func (s *service) readTaskStatus(task taskUUID) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data := secret.Data
-	if data == nil {
-		return "", fmt.Errorf("emty data at response: %#v", secret)
+	if secret == nil {
+		return "", consts.ErrNotFound
 	}
+	if secret.Data == nil {
+		return "", fmt.Errorf("empty data in response: %#v", secret)
+	}
+	return parse(secret.Data)
+}
+
+func parse(data map[string]interface{}) (string, error) {
 	status := data["status"].(string)
 	validStatuses := map[string]struct{}{
 		"QUEUED": {}, "RUNNING": {}, "SUCCEEDED": {}, "FAILED": {}, "CANCELED": {},
 	}
 	if _, ok := validStatuses[status]; !ok {
-		return "", fmt.Errorf("task with uuid %q has invalid status: %s", task, status)
+		return "", fmt.Errorf("invalid status: %s", status)
 	}
 	return status, nil
 }

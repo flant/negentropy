@@ -21,6 +21,7 @@ type Job struct {
 	VaultsB64Json string
 }
 
+// RunJob is a KubeService method
 func (m *MockKubeService) RunJob(_ context.Context, hashCommit string, vaultsB64Json string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -31,20 +32,22 @@ func (m *MockKubeService) RunJob(_ context.Context, hashCommit string, vaultsB64
 	return nil
 }
 
-func (m *MockKubeService) IsJobFinished(_ context.Context, hashCommit string) (bool, error) {
+// CheckJob is a KubeService method
+func (m *MockKubeService) CheckJob(_ context.Context, hashCommit string) (exist, finished, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	_, ok := m.activeJobs[hashCommit]
-	if ok {
-		return false, nil
+	if !ok {
+		return false, false, nil
 	}
 	_, ok = m.finishedJobs[hashCommit]
 	if ok {
-		return true, nil
+		return true, true, nil
 	}
-	return false, fmt.Errorf("job by name: %s: not found", hashCommit)
+	return true, false, nil
 }
 
+// FinishJob is a mock control function
 func (m *MockKubeService) FinishJob(_ context.Context, hashCommit string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -57,6 +60,7 @@ func (m *MockKubeService) FinishJob(_ context.Context, hashCommit string) error 
 	return nil
 }
 
+// GetFinishedJob is a mock control function
 func (m *MockKubeService) GetFinishedJob(hashCommit string) (Job, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -67,6 +71,7 @@ func (m *MockKubeService) GetFinishedJob(hashCommit string) (Job, error) {
 	return Job{HashCommit: job.HashCommit, VaultsB64Json: job.VaultsB64Json}, nil
 }
 
+// HasActiveJob is a mock control function
 func (m *MockKubeService) HasActiveJob(hashCommit string) bool {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -74,6 +79,7 @@ func (m *MockKubeService) HasActiveJob(hashCommit string) bool {
 	return has
 }
 
+// HasFinishedJob is a mock control function
 func (m *MockKubeService) HasFinishedJob(hashCommit string) bool {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -81,12 +87,14 @@ func (m *MockKubeService) HasFinishedJob(hashCommit string) bool {
 	return has
 }
 
+// LenActiveJobs is a mock control function
 func (m *MockKubeService) LenActiveJobs() int {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	return len(m.activeJobs)
 }
 
+// LenFinishedJobs is a mock control function
 func (m *MockKubeService) LenFinishedJobs() int {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

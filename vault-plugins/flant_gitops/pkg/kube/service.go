@@ -15,8 +15,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type exist = bool
-type finished = bool
+type (
+	exist    = bool
+	finished = bool
+)
 
 type KubeService interface {
 	RunJob(ctx context.Context, hashCommit string, vaultsB64Json string) error

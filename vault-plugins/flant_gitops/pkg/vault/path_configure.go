@@ -147,19 +147,19 @@ func getConfiguration(ctx context.Context, storage logical.Storage) (*Configurat
 		return nil, err
 	}
 	if storageEntry == nil {
-		return nil, nil
+		return nil, fmt.Errorf("%w: vaults configuration is empty", consts.ErrNotConfigured)
 	}
 
-	var config *Configuration
+	var config Configuration
 	if err := storageEntry.DecodeJSON(&config); err != nil {
 		return nil, err
 	}
 
-	if config == nil {
+	if config.Vaults == nil {
 		return nil, fmt.Errorf("%w: vaults configuration is empty", consts.ErrNotConfigured)
 	}
 
-	return config, nil
+	return &config, nil
 }
 
 func configurationStructToMap(config *Configuration) map[string]interface{} {

@@ -143,6 +143,9 @@ func buildVaultsEnv(ctx context.Context, storage logical.Storage, client *api.Cl
 		return "", nil, err
 	}
 	vaultsConfig, err := getConfiguration(ctx, storage)
+	if err != nil {
+		return "", nil, err
+	}
 	var vaults []vaultWithToken
 	var warnings []string
 	for _, v := range vaultsConfig.Vaults {
