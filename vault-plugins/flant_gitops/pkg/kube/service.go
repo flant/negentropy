@@ -74,7 +74,7 @@ var jobTemplate string
 
 func (k *kubeService) RunJob(ctx context.Context, hashCommit string, vaultsB64Json string) error {
 	specStr := strings.Replace(jobTemplate, "COMMIT_PLACEHOLDER", hashCommit, 1)
-	specStr = strings.Replace(jobTemplate, "VAULTS_B64_PLACEHOLDER", vaultsB64Json, 1)
+	specStr = strings.Replace(specStr, "VAULTS_B64_PLACEHOLDER", vaultsB64Json, 1)
 
 	var spec batchv1.Job
 	err := yaml.Unmarshal([]byte(specStr), &spec)
