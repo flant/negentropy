@@ -41,7 +41,7 @@ data:
         vault write ${pki_path}/roles/cert-auth allow_any_name='true' max_ttl='1h'
         #TODO check:
         #if $(vault read ${pki_path}/cert/ca)
-        vault write ${pki_path}/root/generate/internal common_name='negentropy' ttl='87600h'
+        vault write ${pki_path}/root/generate/internal common_name='negentropy' ttl='87600h' >/dev/null 2>/dev/null
       fi
 
       # enable cert auth
