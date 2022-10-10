@@ -56,8 +56,9 @@ import (
 
 // for testability
 var (
-	systemClock         util.Clock = util.NewSystemClock()
-	kubeServiceProvider            = kube.NewKubeService
+	systemClock                util.Clock = util.NewSystemClock()
+	kubeServiceProvider                   = kube.NewKubeService
+	taskManagerServiceProvider            = task_manager.Service
 )
 
 const (
@@ -116,7 +117,7 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 
 // updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns true, if corner case
 func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (bool, error) {
-	exist, finished, err := task_manager.Service(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
+	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
 	if err != nil {
 		return false, err
 	}
@@ -148,6 +149,7 @@ func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastP
 
 	if !gitCheckintervalExceeded {
 		b.Logger().Info("git poll interval not exceeded, finish periodic task")
+		return nil
 	}
 
 	newTimeStamp := systemClock.Now()
@@ -184,7 +186,7 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 	}
 
 	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %s for commitHash: %s", taskUUID, commitHash))
-	return task_manager.Service(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
+	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
 }
 
 // checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
@@ -192,7 +194,7 @@ func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.S
 	if pushedToK8sCommit == lastK8sFinishedCommit {
 		return nil
 	}
-	_, taskFinished, err := task_manager.Service(storage, b.AccessVaultClientProvider).CheckTask(ctx, pushedToK8sCommit)
+	_, taskFinished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, pushedToK8sCommit)
 	if err != nil {
 		return err
 	}
@@ -244,6 +246,8 @@ func checkExceedingInterval(ctx context.Context, storage logical.Storage, interv
 	if err != nil {
 		return false, err
 	}
+	t := systemClock.Now().Unix()
+	fmt.Printf("%d\n", t)
 	if systemClock.Since(time.Unix(lastRunTimestamp, 0)) > interval {
 		result = true
 	}

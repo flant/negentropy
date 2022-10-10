@@ -68,7 +68,10 @@ func (s *PathConfigureCallbacksSuite) Test_Read_NoConfig() {
 
 	resp, err := s.backend.HandleRequest(s.ctx, s.request)
 	assert.Nil(err)
-	assert.Nil(resp)
+	assert.NotNil(resp)
+	assert.NotNil(resp.Data)
+	errMsg := resp.Data["error"].(string)
+	assert.Equal("Unable to get Configuration: not configured: vaults configuration is empty", errMsg)
 }
 
 func (s *PathConfigureCallbacksSuite) Test_Read_HasConfig() {
