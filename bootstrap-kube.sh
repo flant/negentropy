@@ -41,7 +41,7 @@ kubectl -n $NS annotate rolebinding deploy "meta.helm.sh/release-name"=negentrop
 kubectl -n $NS annotate rolebinding deploy "meta.helm.sh/release-namespace"=$NS
 
 
-(echo -e "metadata:\n  name: bootstrap" ; curl -s https://raw.githubusercontent.com/flant/negentropy/$GIT_BRANCH/deploy.yaml) | kubectl -n $NS create -f -
+(echo -e "metadata:\n  name: bootstrap" ; curl -s https://raw.githubusercontent.com/flant/negentropy/$GIT_BRANCH/vault-plugins/flant_gitops/pkg/kube/job_template.yaml) | kubectl -n $NS create -f -
 set +x
 
 echo "========= BOOTSTRAP JOB RUNNING ========="
