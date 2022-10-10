@@ -76,7 +76,6 @@ data:
       vault write flant-gitops/configure/git_repository git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="$INITIAL_LAST_SUCCESSFULL_COMMIT"
       vault read flant-gitops/configure/git_repository
 
-
     fi
     kill $vault
     wait $vault
