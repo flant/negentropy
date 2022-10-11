@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/logical"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type (
@@ -44,19 +44,20 @@ func NewKubeService(ctx context.Context, storage logical.Storage) (KubeService, 
 		if err != nil {
 			return nil, fmt.Errorf("failed: %w", err)
 		}
-
 	}
 
 	clientset, err := kubernetes.NewForConfig(kconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s clientset: %w", err)
 	}
-	clientCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&clientcmd.ClientConfigGetter{},
-		&clientcmd.ConfigOverrides{})
-	namespace, _, err := clientCfg.Namespace()
+	const nameSpaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+
+	data, err := ioutil.ReadFile(nameSpaceFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to getting config for obtaining pod namespace: %w", err)
+		return nil, fmt.Errorf("failed to read pod namespace file: %w", err)
 	}
+
+	namespace := string(data)
 
 	return &kubeService{
 		kubeNameSpace: namespace,
