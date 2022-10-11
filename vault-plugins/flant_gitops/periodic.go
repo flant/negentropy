@@ -108,11 +108,11 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 	}
 
 	if lastK8sFinishedCommit != lastPushedToK8sCommit {
-		b.Logger().Info(fmt.Sprintf("commit %s is still not finished at k8s, skipping periodic function", lastPushedToK8sCommit))
+		b.Logger().Info(fmt.Sprintf("commit %q is still not finished at k8s, skipping periodic function", lastPushedToK8sCommit))
 		return nil
 	}
 
-	b.Logger().Info(fmt.Sprintf("commit %s is finished at k8s, continue periodic function...", lastPushedToK8sCommit))
+	b.Logger().Info(fmt.Sprintf("commit %q is finished at k8s, continue periodic function...", lastPushedToK8sCommit))
 
 	return b.processGit(ctx, storage, lastK8sFinishedCommit)
 }
@@ -194,10 +194,10 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("unable to add queue manager task: %s", err)
+		return fmt.Errorf("unable to add queue manager task: %w", err)
 	}
 
-	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %s for commitHash: %s", taskUUID, commitHash))
+	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %q for commitHash: %q", taskUUID, commitHash))
 	// todo remove it
 	b.logTasks(ctx, storage, "before creating tasks")
 	err = taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
@@ -249,7 +249,7 @@ func collectSavedWorkingCommits(ctx context.Context, storage logical.Storage) (s
 	}
 	// checks
 	if !(lastPushedToK8sCommit == LastK8sFinishedCommit || lastStartedCommit == lastPushedToK8sCommit) {
-		return "", "", "", fmt.Errorf("read wrong combination of working commits: %s, %s, %s",
+		return "", "", "", fmt.Errorf("read wrong combination of working commits: %q, %q, %q",
 			lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit)
 	}
 	return lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, nil
