@@ -40,11 +40,13 @@ package flant_gitops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/sdk/logical"
+	trdl_task_manager "github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
@@ -82,11 +84,11 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 
 	if lastStartedCommit != lastPushedToK8sCommit {
 		// check conditions for change lastPushedTok8sCommit
-		cornerCase, err := b.updateLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+		cornerCase, isLastPushedCommitChanged, err := b.updateLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
 		if err != nil {
 			return err
 		}
-		if cornerCase {
+		if cornerCase || !isLastPushedCommitChanged { // corner case or still  lastStartedCommit != lastPushedToK8sCommit
 			return nil
 		}
 		// update values
@@ -115,26 +117,31 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 	return b.processGit(ctx, storage, lastK8sFinishedCommit)
 }
 
-// updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns true, if corner case
-func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (bool, error) {
+type (
+	isCornerCase = bool
+	isPushed     = bool
+)
+
+// updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns isCornerCase and isPushed
+func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (isCornerCase, isPushed, error) {
 	b.logTasks(ctx, storage, "before checking task for lastStartedCommit")
 	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 	if !exist { // corner case: unexpected vault crash happens: recreate task for lastStartedCommit
 		b.Logger().Warn(fmt.Sprintf("commit %q has no task, recreate tsk, and interrupt periodic function", lastStartedCommit))
 		err = b.createTask(ctx, storage, lastStartedCommit)
-		return true, err
+		return true, false, err
 	}
 	if !finished {
 		b.Logger().Info(fmt.Sprintf("commit %q is still not pushed to k8s, skipping periodic function", lastStartedCommit))
-		return false, nil
+		return false, false, nil
 	}
 	// task is finished, no matter is job at k8s or not: change  last_pushed_to_k8s_commit
 	b.Logger().Info(fmt.Sprintf("task run by commit %q is finished", lastStartedCommit))
 
-	return false, storeLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+	return false, true, storeLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
 }
 
 func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastPushedToK8sCommit string) error {
@@ -182,6 +189,10 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 	taskUUID, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
 		return b.processCommit(ctx, storage, commitHash)
 	})
+	if errors.Is(err, trdl_task_manager.ErrBusy) {
+		b.Logger().Warn(fmt.Sprintf("unable to add queue manager task: %s", err.Error()))
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("unable to add queue manager task: %s", err)
 	}
