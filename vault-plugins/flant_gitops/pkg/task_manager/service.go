@@ -88,15 +88,12 @@ func (s *service) readTaskStatus(task taskUUID) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	secret, err := cl.Logical().Read("task/" + task)
+	secret, err := cl.Logical().Read("gitops/task/" + task)
 	if err != nil {
 		return "", err
 	}
-	if secret == nil {
-		return "", consts.ErrNotFound // task may be created but have no statuses
-	}
-	if secret.Data == nil {
-		return "", fmt.Errorf("empty data in response: %#v", secret)
+	if secret == nil || secret.Data == nil {
+		return "", fmt.Errorf("empty response: %#v", secret)
 	}
 	return parse(secret.Data)
 }
