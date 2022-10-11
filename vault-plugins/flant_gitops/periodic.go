@@ -88,7 +88,7 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 		if err != nil {
 			return err
 		}
-		if cornerCase || isLastPushedCommitChanged {
+		if cornerCase || !isLastPushedCommitChanged { // corner case or still  lastStartedCommit != lastPushedToK8sCommit
 			return nil
 		}
 		// update values
