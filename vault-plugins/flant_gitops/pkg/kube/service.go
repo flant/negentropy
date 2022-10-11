@@ -74,8 +74,7 @@ type kubeService struct {
 var jobTemplate string
 
 func (k *kubeService) RunJob(ctx context.Context, hashCommit string, vaultsB64Json string) error {
-	specStr := strings.Replace(jobTemplate, "COMMIT_PLACEHOLDER", hashCommit, 1)
-	specStr = strings.Replace(specStr, "VAULTS_B64_PLACEHOLDER", vaultsB64Json, 1)
+	specStr := replacePlaceholders(jobTemplate, hashCommit, vaultsB64Json)
 
 	var spec batchv1.Job
 	err := yaml.Unmarshal([]byte(specStr), &spec)
@@ -117,4 +116,10 @@ func notFoundErr(err error, jobName string) bool {
 	}
 	msg := err.Error()
 	return strings.HasPrefix(msg, "jobs.batch") && strings.HasSuffix(msg, "not found") && strings.Contains(msg, jobName)
+}
+
+func replacePlaceholders(template string, hashCommit string, vaultsB64Json string) string {
+	specStr := strings.ReplaceAll(template, "COMMIT_PLACEHOLDER", hashCommit)
+	specStr = strings.ReplaceAll(specStr, "VAULTS_B64_PLACEHOLDER", vaultsB64Json)
+	return specStr
 }

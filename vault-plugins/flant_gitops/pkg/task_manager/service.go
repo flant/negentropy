@@ -70,8 +70,8 @@ func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
 		return false, false, nil
 	}
 	status, err := taskStatusProvider(task)
-	if errors.Is(err, consts.ErrNotFound) {
-		return false, false, nil
+	if errors.Is(err, consts.ErrNotFound) { // task may be created but have no statuses
+		return true, false, nil
 	}
 	if err != nil || tasks == nil {
 		return true, false, fmt.Errorf("getting task %q status: %w", task, err)
@@ -93,7 +93,7 @@ func (s *service) readTaskStatus(task taskUUID) (string, error) {
 		return "", err
 	}
 	if secret == nil {
-		return "", consts.ErrNotFound
+		return "", consts.ErrNotFound // task may be created but have no statuses
 	}
 	if secret.Data == nil {
 		return "", fmt.Errorf("empty data in response: %#v", secret)
