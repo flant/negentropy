@@ -15,9 +15,11 @@ vault:
     _default: "pd-standard-not-replicated"
   storage_size:
     _default: "10Gi"
+
 kafka:
   name:
     _default: "ng"
+
 resources:
   requests:
     cpu:
