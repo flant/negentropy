@@ -211,14 +211,14 @@ func (st Suite) WaitPrepareForSSHTesting(cfg CheckingEnvironment, maxAttempts in
 	f := func() error {
 		return lib.TryLoginByMultipassJWTToVault(cfg.UserMultipassJWT, lib.GetAuthVaultUrl())
 	}
-	return lib.Repeat(f, maxAttempts)
+	return tests.Repeat(f, maxAttempts)
 }
 
 func (st Suite) WaitPrepareForLoginTesting(cfg CheckingEnvironment, maxAttempts int) error {
 	_, multipassJWT := specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
 		cfg.User, "test", 100*time.Second, 1000*time.Second, []string{"ssh.open"})
 	f := func() error { return lib.TryLoginByMultipassJWTToVault(multipassJWT, lib.GetAuthVaultUrl()) }
-	return lib.Repeat(f, maxAttempts)
+	return tests.Repeat(f, maxAttempts)
 }
 
 type CheckingEnvironmentTeammate struct {

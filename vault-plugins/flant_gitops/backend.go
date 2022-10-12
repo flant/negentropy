@@ -11,6 +11,8 @@ import (
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
 	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
 
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
+	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
 	"github.com/flant/negentropy/vault-plugins/shared/client"
 )
 
@@ -18,8 +20,6 @@ type backend struct {
 	*framework.Backend
 	TasksManager              *tasks_manager.Manager
 	AccessVaultClientProvider client.VaultClientController
-
-	LastPeriodicTaskUUID string
 }
 
 var _ logical.Factory = Factory
@@ -31,7 +31,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	}
 
 	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
+		return nil, fmt.Errorf("Configuration passed into backend is nil")
 	}
 
 	if err := b.SetupBackend(ctx, conf); err != nil {
@@ -41,13 +41,13 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend(conf *logical.BackendConfig) (*backend, error) {
+func newBackend(_ *logical.BackendConfig) (*backend, error) {
 	b := &backend{
 		TasksManager:              tasks_manager.NewManager(),
 		AccessVaultClientProvider: client.NewVaultClientController(hclog.Default()),
 	}
 
-	b.Backend = &framework.Backend{
+	baseBackend := &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        backendHelp,
 
@@ -60,24 +60,22 @@ func newBackend(conf *logical.BackendConfig) (*backend, error) {
 				return err
 			}
 
-			if err := b.PeriodicTask(req); err != nil {
-				return err
-			}
-
-			return nil
+			return b.PeriodicTask(req.Storage)
 		},
-
-		Paths: framework.PathAppend(
-			configurePaths(b),
-			configureVaultRequestPaths(b),
-			b.TasksManager.Paths(),
-			git.CredentialsPaths(),
-			pgp.Paths(),
-			[]*framework.Path{
-				client.PathConfigure(b.AccessVaultClientProvider),
-			},
-		),
 	}
+
+	baseBackend.Paths = framework.PathAppend(
+		git_repository.ConfigurePaths(baseBackend),
+		vault.ConfigurePaths(baseBackend),
+		b.TasksManager.Paths(),
+		git.CredentialsPaths(),
+		pgp.Paths(),
+		[]*framework.Path{
+			client.PathConfigure(b.AccessVaultClientProvider),
+		},
+	)
+
+	b.Backend = baseBackend
 
 	return b, nil
 }

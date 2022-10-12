@@ -72,7 +72,7 @@ func (c *vaultClientController) GetApiConfig(ctx context.Context, storage logica
 }
 
 // init initialize api client by demand
-// if store don't contains configuration it may return ErrNotSetConf error
+// if store don't contain configuration it may return ErrNotSetConf error
 // it is normal case for just started and not configured plugin
 func (c *vaultClientController) init(storage logical.Storage) (*api.Client, error) {
 	logger := c.logger.Named("init")
@@ -162,7 +162,7 @@ func (c *vaultClientController) renewToken(storage logical.Storage) error {
 }
 
 // OnPeriodical must be called in periodical function
-// if store don't contains configuration it may return ErrNotSetConf error
+// if store don't contain configuration it may return ErrNotSetConf error
 // it is normal case
 func (c *vaultClientController) OnPeriodical(ctx context.Context, r *logical.Request) error {
 	logger := c.logger.Named("renew")
@@ -233,7 +233,7 @@ func (c *vaultClientController) setAccessConfig(ctx context.Context, storage log
 	// login in with new secret id in gen function and save config to storage
 	err = genNewSecretID(ctx, apiClient, storage, curConf, c.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("error replacing secret-id: %w", err)
 	}
 
 	return nil

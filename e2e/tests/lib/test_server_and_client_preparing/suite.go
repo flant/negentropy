@@ -23,9 +23,9 @@ import (
 	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
 
-	"github.com/flant/negentropy/e2e/tests/lib"
 	fip "github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
 type Suite struct {
@@ -480,7 +480,7 @@ func (s *Suite) DirectoryAtContainerNotExistOrEmpty(container *types.Container, 
 }
 
 func (s *Suite) DirectoryAtContainerNotExistOrEmptyWithRetry(container *types.Container, directoryPath string, maxAttempts int) error {
-	return lib.Repeat(func() error {
+	return tests.Repeat(func() error {
 		if s.DirectoryAtContainerNotExistOrEmpty(container, directoryPath) {
 			return nil
 		} else {
