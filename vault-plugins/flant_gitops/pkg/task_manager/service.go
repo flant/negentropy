@@ -84,7 +84,7 @@ func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
 }
 
 func (s *service) readTaskStatus(task taskUUID) (string, error) {
-	cl, err := s.accessVaultClientProvider.APIClient(s.storage)
+	cl, err := s.accessVaultClientProvider.APIClient()
 	if err != nil {
 		return "", err
 	}

@@ -80,7 +80,7 @@ func PathConfigure(c VaultClientController) *framework.Path {
 	}
 }
 
-func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &vaultAccessConfig{}
 	var errResp *logical.Response
 
@@ -136,7 +136,7 @@ func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, 
 
 	config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 
-	err = c.setAccessConfig(ctx, req.Storage, config)
+	err = c.setAccessConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}

@@ -106,7 +106,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	b.accessVaultProvider = client.NewVaultClientController(conf.Logger)
+	b.accessVaultProvider = client.NewVaultClientController(conf.StorageView, conf.Logger)
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		}
 
 		run("accessVaultProvider", func() error {
-			return b.accessVaultProvider.OnPeriodical(ctx, request)
+			return b.accessVaultProvider.OnPeriodical(ctx)
 		})
 
 		run("jwtController", func() error {

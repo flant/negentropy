@@ -39,7 +39,7 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 	var authLists map[string]*api.AuthMount
 	err := backoff.Retry(func() error {
 		var err error
-		client, err := a.vaultClientProvider.APIClient(nil)
+		client, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return nil
 		}

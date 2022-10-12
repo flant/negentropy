@@ -16,7 +16,7 @@ var period = time.Minute * 5
 
 func RunVaultPoliciesGarbageCollector(vaultClientProvider client.VaultClientController, logger hclog.Logger) {
 	for {
-		apiClient, err := vaultClientProvider.APIClient(nil)
+		apiClient, err := vaultClientProvider.APIClient()
 		switch {
 		case err != nil && !errors.Is(err, client.ErrNotInit):
 			logger.Error(fmt.Sprintf("error getting apiClient:%s", err.Error()))

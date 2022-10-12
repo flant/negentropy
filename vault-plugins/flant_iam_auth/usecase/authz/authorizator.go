@@ -538,7 +538,7 @@ func (a *Authorizator) createDynamicPolicy(p VaultPolicy) error {
 		return nil
 	}
 	err := backoff.Retry(func() error {
-		client, err := a.vaultClientProvider.APIClient(nil)
+		client, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}

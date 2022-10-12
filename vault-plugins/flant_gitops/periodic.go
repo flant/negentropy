@@ -270,7 +270,7 @@ func updateLastRunTimeStamp(ctx context.Context, storage logical.Storage, timeSt
 // processCommit aim action with retries
 func (b *backend) processCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
 	// there are retry inside BuildVaultsBase64Env
-	apiClient, err := b.AccessVaultClientProvider.APIClient(storage)
+	apiClient, err := b.AccessVaultClientProvider.APIClient()
 	if err != nil {
 		return err
 	}
