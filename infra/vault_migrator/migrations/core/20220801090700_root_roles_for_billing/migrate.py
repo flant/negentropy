@@ -17,7 +17,8 @@ roles = {'billing.cfo': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.special_billings.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.sku.manage': {'scope': 'tenant', 'tenant_is_optional': True},
          'billing.tariffs.manage': {'scope': 'tenant', 'tenant_is_optional': True},
-         'billing.teams.manage': {'scope': 'tenant', 'tenant_is_optional': True}
+         'billing.teams.manage': {'scope': 'tenant', 'tenant_is_optional': True},
+         'billing.statuses.manage': {'scope': 'tenant', 'tenant_is_optional': True}
          }
 
 
