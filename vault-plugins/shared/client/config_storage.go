@@ -11,7 +11,7 @@ import (
 
 func GetVaultClientConfig(ctx context.Context, storage logical.Storage) (*vaultAccessConfig, error) {
 	if storage == nil {
-		return nil, fmt.Errorf("%w: storage", consts.ErrNilPointer)
+		return nil, fmt.Errorf("storage: %w", consts.ErrNilPointer)
 	}
 	raw, err := storage.Get(ctx, storagePath)
 	if err != nil {
@@ -31,7 +31,7 @@ func GetVaultClientConfig(ctx context.Context, storage logical.Storage) (*vaultA
 
 func PutVaultClientConfig(ctx context.Context, conf *vaultAccessConfig, storage logical.Storage) error {
 	if storage == nil {
-		return fmt.Errorf("%w: storage", consts.ErrNilPointer)
+		return fmt.Errorf("storage: %w", consts.ErrNilPointer)
 	}
 	entry, err := logical.StorageEntryJSON(storagePath, conf)
 	if err != nil {

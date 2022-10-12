@@ -43,7 +43,7 @@ type Authorizator struct {
 	MountAccessor *vault.MountAccessorGetter
 
 	Logger              hclog.Logger
-	vaultClientProvider client.VaultClientController
+	vaultClientProvider client.AccessVaultClientController
 }
 
 func MakeSubject(data map[string]interface{}) model.Subject {
@@ -57,7 +57,7 @@ func MakeSubject(data map[string]interface{}) model.Subject {
 	}
 }
 
-func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.VaultClientController, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
+func NewAutorizator(txn *io.MemoryStoreTxn, vaultClientController client.AccessVaultClientController, aGetter *vault.MountAccessorGetter, logger hclog.Logger) *Authorizator {
 	return &Authorizator{
 		Logger: logger.Named("AuthoriZator"),
 

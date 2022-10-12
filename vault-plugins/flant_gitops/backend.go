@@ -19,7 +19,7 @@ import (
 type backend struct {
 	*framework.Backend
 	TasksManager              *tasks_manager.Manager
-	AccessVaultClientProvider client.VaultClientController
+	AccessVaultClientProvider client.AccessVaultClientController
 }
 
 var _ logical.Factory = Factory
@@ -42,9 +42,13 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 }
 
 func newBackend(c *logical.BackendConfig) (*backend, error) {
+	accessVaultClientProvider, err := client.NewAccessVaultClientController(c.StorageView, hclog.Default())
+	if err != nil {
+		return nil, err
+	}
 	b := &backend{
 		TasksManager:              tasks_manager.NewManager(),
-		AccessVaultClientProvider: client.NewVaultClientController(c.StorageView, hclog.Default()),
+		AccessVaultClientProvider: accessVaultClientProvider,
 	}
 
 	baseBackend := &framework.Backend{

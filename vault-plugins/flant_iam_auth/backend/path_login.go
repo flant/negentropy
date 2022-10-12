@@ -112,7 +112,7 @@ func (b *flantIamAuthBackend) pathLogin(ctx context.Context, req *logical.Reques
 		return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 	}
 
-	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(txn, b.accessVaultClientProvider, b.accessorGetter, logger)
 
 	logger.Debug("Start Authorize")
 	authzRes, err := authorizator.Authorize(authnRes, method, authSource, roleClaims)
@@ -183,7 +183,7 @@ func (b *flantIamAuthBackend) pathLoginRenew(ctx context.Context, req *logical.R
 		return logical.ErrorResponse(txt), nil
 	}
 
-	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(txn, b.accessVaultClientProvider, b.accessorGetter, logger)
 
 	logger.Debug("Start renew")
 	rawSubject := req.Auth.InternalData["subject"]

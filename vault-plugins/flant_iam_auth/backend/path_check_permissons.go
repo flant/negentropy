@@ -79,7 +79,7 @@ func (b *flantIamAuthBackend) сheckPermissionsHandler(ctx context.Context, req 
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
-	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(txn, b.accessVaultClientProvider, b.accessorGetter, logger)
 	return logical.RespondWithStatusCode(&logical.Response{
 		Data: map[string]interface{}{
 			"permissions": authorizator.CheckPermissions(methodName, *subject, roleClaims),

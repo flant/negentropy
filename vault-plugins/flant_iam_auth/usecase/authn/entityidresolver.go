@@ -37,7 +37,7 @@ type EntityIDResolver interface {
 
 type entityIDResolver struct {
 	logger              log.Logger
-	vaultClientProvider client.VaultClientController // do not use  *entity_api.EntityAPI because vaultClientProvider need successful Init before it can be used
+	vaultClientProvider client.AccessVaultClientController // do not use  *entity_api.EntityAPI because vaultClientProvider need successful Init before it can be used
 }
 
 func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryStoreTxn, storage logical.Storage) (*EntityIDOwner, error) {
@@ -231,7 +231,7 @@ func (r entityIDResolver) AvailableProjectsByEntityID(entityID EntityID, txn *io
 	return nil, fmt.Errorf("unexpected subjectType: `%s`", entityIDOwner.OwnerType)
 }
 
-func NewEntityIDResolver(logger log.Logger, vaultClientProvider client.VaultClientController) (EntityIDResolver, error) {
+func NewEntityIDResolver(logger log.Logger, vaultClientProvider client.AccessVaultClientController) (EntityIDResolver, error) {
 	return &entityIDResolver{
 		logger:              logger.Named("EntityIDResolver"),
 		vaultClientProvider: vaultClientProvider,

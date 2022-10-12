@@ -23,13 +23,17 @@ func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, er
 // Simple backend for test purposes (treat it like an example)
 type exampleBackend struct {
 	*framework.Backend
-	accessVaultController client.VaultClientController
+	accessVaultClientProvider client.AccessVaultClientController
 }
 
 func backend(c *logical.BackendConfig) *exampleBackend {
 	b := new(exampleBackend)
+	accessVaultClientProvider, err := client.NewAccessVaultClientController(c.StorageView, hclog.Default())
+	if err != nil {
+		panic(err)
+	}
 
-	b.accessVaultController = client.NewVaultClientController(c.StorageView, hclog.Default())
+	b.accessVaultClientProvider = accessVaultClientProvider
 
 	b.Backend = &framework.Backend{
 		BackendType:  logical.TypeCredential,
@@ -39,14 +43,14 @@ func backend(c *logical.BackendConfig) *exampleBackend {
 		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
 			// MUST be called in periodical function
 			// otherwise access token do not prolong
-			return b.accessVaultController.OnPeriodical(ctx)
+			return b.accessVaultClientProvider.OnPeriodical(ctx)
 		},
 
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				// NEED add /configure_vault_access path handler
 				// for set configuration
-				client.PathConfigure(b.accessVaultController),
+				client.PathConfigure(b.accessVaultClientProvider),
 			},
 
 			[]*framework.Path{
@@ -105,7 +109,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 	}
 
 	// APIClient
-	_, err = b.accessVaultController.APIClient()
+	_, err = b.accessVaultClientProvider.APIClient()
 	// 	_, err = b.accessVaultController.APIClient() may be return ErrNotSetConf error
 	// if plugin initialized first time and has not saved config
 	// its normal behavior. Because we set configuration
@@ -118,7 +122,7 @@ func (b *exampleBackend) SetupBackend(ctx context.Context, config *logical.Backe
 }
 
 func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiClient, err := b.accessVaultController.APIClient()
+	apiClient, err := b.accessVaultClientProvider.APIClient()
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +145,7 @@ func (b *exampleBackend) pathReadClientRole(ctx context.Context, req *logical.Re
 }
 
 func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiConf, err := b.accessVaultController.GetApiConfig(ctx)
+	apiConf, err := b.accessVaultClientProvider.GetApiConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +163,7 @@ func (b *exampleBackend) pathReadVaultApiConf(ctx context.Context, req *logical.
 
 // dont need in your backend use for test
 func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	apiClient, err := b.accessVaultController.APIClient()
+	apiClient, err := b.accessVaultClientProvider.APIClient()
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +173,12 @@ func (b *exampleBackend) pathReInit(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	err = b.accessVaultController.ReInit()
+	_, err = b.accessVaultClientProvider.(*client.VaultClientController).Init()
 	if err != nil {
 		return nil, err
 	}
 
-	apiClient, err = b.accessVaultController.APIClient()
+	apiClient, err = b.accessVaultClientProvider.APIClient()
 	if err != nil {
 		return nil, err
 	}

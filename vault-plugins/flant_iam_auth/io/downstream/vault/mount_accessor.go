@@ -12,14 +12,14 @@ import (
 )
 
 type MountAccessorGetter struct {
-	vaultClientProvider client.VaultClientController
+	vaultClientProvider client.AccessVaultClientController
 	path                string
 
 	mutex    sync.Mutex
 	accessor string
 }
 
-func NewMountAccessorGetter(vaultClientProvider client.VaultClientController, path string) *MountAccessorGetter {
+func NewMountAccessorGetter(vaultClientProvider client.AccessVaultClientController, path string) *MountAccessorGetter {
 	return &MountAccessorGetter{
 		path:                path,
 		vaultClientProvider: vaultClientProvider,

@@ -81,8 +81,8 @@ type flantIamAuthBackend struct {
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
 
-	jwtController       *njwt.Controller
-	accessVaultProvider client.VaultClientController
+	jwtController             *njwt.Controller
+	accessVaultClientProvider client.AccessVaultClientController
 
 	storage *sharedio.MemoryStore
 
@@ -106,7 +106,11 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 	b.jwtTypesValidators = map[string]openapi.Validator{}
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
 	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
-	b.accessVaultProvider = client.NewVaultClientController(conf.StorageView, conf.Logger)
+	accessVaultClientProvider, err := client.NewAccessVaultClientController(conf.StorageView, hclog.Default())
+	if err != nil {
+		return nil, err
+	}
+	b.accessVaultClientProvider = accessVaultClientProvider
 	mb, err := kafka.NewMessageBroker(context.TODO(), conf.StorageView, conf.Logger)
 	if err != nil {
 		return nil, err
@@ -116,8 +120,8 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		return nil, err
 	}
 
-	b.accessorGetter = vault.NewMountAccessorGetter(b.accessVaultProvider, "flant/")
-	entityApi := vault.NewVaultEntityDownstreamApi(b.accessVaultProvider, b.accessorGetter, conf.Logger)
+	b.accessorGetter = vault.NewMountAccessorGetter(b.accessVaultClientProvider, "flant/")
+	entityApi := vault.NewVaultEntityDownstreamApi(b.accessVaultClientProvider, b.accessorGetter, conf.Logger)
 
 	storage, err := sharedio.NewMemoryStore(schema, mb, conf.Logger)
 	if err != nil {
@@ -142,7 +146,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 
 		storage.RunKafkaSourceMainLoops()
 
-		go authz.RunVaultPoliciesGarbageCollector(b.accessVaultProvider, conf.Logger.Named("VaultPoliciesGarbageCollector"))
+		go authz.RunVaultPoliciesGarbageCollector(b.accessVaultClientProvider, conf.Logger.Named("VaultPoliciesGarbageCollector"))
 
 	} else {
 		logger.Info("first run Factory, skipping kafka operations on MemoryStore and running garbage collector")
@@ -181,7 +185,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		}
 
 		run("accessVaultProvider", func() error {
-			return b.accessVaultProvider.OnPeriodical(ctx)
+			return b.accessVaultClientProvider.OnPeriodical(ctx)
 		})
 
 		run("jwtController", func() error {
@@ -251,7 +255,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 			b.jwtController.ApiPaths(),
 
 			[]*framework.Path{
-				client.PathConfigure(b.accessVaultProvider),
+				client.PathConfigure(b.accessVaultClientProvider),
 			},
 			pathOIDC(b),
 			kafkaPaths(b, storage, conf.Logger),
@@ -282,7 +286,7 @@ func (b *flantIamAuthBackend) SetupBackend(ctx context.Context, config *logical.
 		return err
 	}
 
-	b.entityIDResolver, err = authn.NewEntityIDResolver(b.Backend.Logger(), b.accessVaultProvider)
+	b.entityIDResolver, err = authn.NewEntityIDResolver(b.Backend.Logger(), b.accessVaultClientProvider)
 	if err != nil {
 		return err
 	}

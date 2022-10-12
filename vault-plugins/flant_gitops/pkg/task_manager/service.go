@@ -29,10 +29,10 @@ type TaskService interface {
 
 type service struct {
 	storage                   logical.Storage
-	accessVaultClientProvider client.VaultClientController
+	accessVaultClientProvider client.AccessVaultClientController
 }
 
-func Service(storage logical.Storage, accessVaultClientProvider client.VaultClientController) TaskService {
+func Service(storage logical.Storage, accessVaultClientProvider client.AccessVaultClientController) TaskService {
 	return &service{
 		storage:                   storage,
 		accessVaultClientProvider: accessVaultClientProvider,
