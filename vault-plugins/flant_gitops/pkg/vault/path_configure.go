@@ -174,8 +174,7 @@ Processed vaults configuration of the flant_gitops backend.
 	configureHelpDesc = `
 The flant_gitops periodic function performs periodic run of configured command
 when a new commit arrives into the configured git repository. If processed vaults are set, 
-periodic function try to login specified vaults by issued cert, and pass to command list of
-vaults and client tokens.
+periodic function try to login specified vaults by issued cert, and collect list of vaults and client tokens.
 
 This is processed vaults configuration for the flant_gitops plugin. Plugin will not
 pass vaults with client tokens when configuration is not set.

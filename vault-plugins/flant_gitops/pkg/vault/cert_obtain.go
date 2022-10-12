@@ -11,9 +11,9 @@ type CertAndKey struct {
 	PrivateKeyPem string
 }
 
-// ObtainCertAndKey try got access to specific endpoint at vault
-// negentropyVaultClient is a client which has access to 'vault-cert-auth/issue/cert-auth'
-// at vault-cert-auth should be mounted 'pki' plugin
+// ObtainCertAndKey try got access to specific endpoint at vault;
+// negentropyVaultClient is a client which has access to 'vault-cert-auth/issue/cert-auth';
+// at vault-cert-auth should be mounted 'pki' plugin;
 // at vault-cert-auth should be created role 'cert-auth', example:
 // vault write  vault-cert-auth/roles/cert-auth allow_any_name='true' max_ttl='1h'
 func ObtainCertAndKey(negentropyVaultClient *api.Client, commonName string) (*CertAndKey, error) {
