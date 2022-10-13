@@ -1,5 +1,12 @@
-// run and control vault instance for testing purposes,
-//
+// run and control local vault instance for testing purposes,
+// for running needs inside folder `examples/conf`:
+// good.hcl - policy for access
+// one or more XXX.hcl - config for running vault instance
+// ca.crt - CA cert
+// tls.crt - used in XXX.hcl
+// tls.key - used in XXX.hcl
+
+// WARNING! port in XXX.hcl and  RunAndWaitVaultUp should be the same
 
 package tests
 
@@ -99,6 +106,7 @@ func RunAndWaitVaultUp(configPath string, port string, name string) Vault {
 		if outcode != 0 {
 			panic(fmt.Sprintf("vault server failed: %d \noutput:\n%s \nerrOutput:\n %s", outcode, output.String(), errOutput.String()))
 		}
+		println("HELLO !!!!")
 	}()
 	vault.Token = <-tokenChan
 	for {
@@ -183,7 +191,7 @@ func unseal(vault Vault, initOut []byte) (rootToken string) {
 
 // GotSecretIDAndRoleIDatApprole activates approle and returns secretID an roleID
 func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string, err error) {
-	_, err = RunVaultCommandAtVault(vault, "auth", "enable", "approle")
+	err = provideApprole(vault)
 	if err != nil {
 		return
 	}
@@ -227,4 +235,15 @@ func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string,
 		fmt.Printf("Got roleID: %s\n", roleID)
 	}
 	return
+}
+
+func provideApprole(vault Vault) error {
+	resp, err := RunVaultCommandAtVault(vault, "auth", "list")
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(string(resp), "approle/") {
+		_, err = RunVaultCommandAtVault(vault, "auth", "enable", "approle")
+	}
+	return err
 }
