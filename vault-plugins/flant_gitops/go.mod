@@ -8,20 +8,16 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hashicorp/go-hclog v1.2.1
-	github.com/hashicorp/vault v1.11.1
 	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
 	github.com/hashicorp/vault/sdk v0.5.3
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.8.0
 	github.com/tencentcloud/tencentcloud-sdk-go v3.0.171+incompatible // indirect
-	github.com/werf/logboek v0.5.4 // indirect
 	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210824164229-ed847e15b393
 )
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
-	github.com/mitchellh/cli v1.1.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
 	k8s.io/api v0.22.2
@@ -195,6 +191,7 @@ require (
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c // indirect
 	github.com/hashicorp/raft-snapshot v1.0.4 // indirect
 	github.com/hashicorp/serf v0.9.6 // indirect
+	github.com/hashicorp/vault v1.11.1 // indirect
 	github.com/hashicorp/vault-plugin-auth-alicloud v0.12.0 // indirect
 	github.com/hashicorp/vault-plugin-auth-azure v0.11.0 // indirect
 	github.com/hashicorp/vault-plugin-auth-centrify v0.12.0 // indirect
@@ -264,6 +261,7 @@ require (
 	github.com/michaelklishin/rabbit-hole/v2 v2.12.0 // indirect
 	github.com/miekg/dns v1.1.41 // indirect
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a // indirect
+	github.com/mitchellh/cli v1.1.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
@@ -308,6 +306,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da // indirect
 	github.com/sasha-s/go-deadlock v0.2.0 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sethvargo/go-limiter v0.7.1 // indirect
 	github.com/shirou/gopsutil v3.21.5+incompatible // indirect
@@ -323,6 +322,7 @@ require (
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vmware/govmomi v0.18.0 // indirect
+	github.com/werf/logboek v0.5.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect

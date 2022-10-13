@@ -185,7 +185,7 @@ func backend(conf *logical.BackendConfig, jwksIDGetter func() (string, error)) (
 		}
 
 		run("accessVaultProvider", func() error {
-			return b.accessVaultClientProvider.OnPeriodical(ctx)
+			return b.accessVaultClientProvider.UpdateOutdated(ctx)
 		})
 
 		run("jwtController", func() error {

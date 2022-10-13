@@ -56,7 +56,7 @@ func newBackend(c *logical.BackendConfig) (*backend, error) {
 		Help:        backendHelp,
 
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
-			if err := b.AccessVaultClientProvider.OnPeriodical(ctx); err != nil {
+			if err := b.AccessVaultClientProvider.UpdateOutdated(ctx); err != nil {
 				return err
 			}
 

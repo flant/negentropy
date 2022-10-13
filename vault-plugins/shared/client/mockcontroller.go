@@ -24,7 +24,7 @@ func (m *MockVaultClientController) ReInit() error {
 	panic("implement me") // nolint:panic_check
 }
 
-func (m *MockVaultClientController) OnPeriodical(context.Context) error {
+func (m *MockVaultClientController) UpdateOutdated(context.Context) error {
 	panic("implement me") // nolint:panic_check
 }
 

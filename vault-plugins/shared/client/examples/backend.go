@@ -43,7 +43,7 @@ func backend(c *logical.BackendConfig) *exampleBackend {
 		PeriodicFunc: func(ctx context.Context, request *logical.Request) error {
 			// MUST be called in periodical function
 			// otherwise access token do not prolong
-			return b.accessVaultClientProvider.OnPeriodical(ctx)
+			return b.accessVaultClientProvider.UpdateOutdated(ctx)
 		},
 
 		Paths: framework.PathAppend(

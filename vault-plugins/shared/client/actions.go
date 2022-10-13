@@ -56,7 +56,7 @@ func newAPIClient(accessConf *vaultAccessConfig) (*api.Client, error) {
 	return client, nil
 }
 
-func genNewSecretID(ctx context.Context, apiClient *api.Client, storage logical.Storage,
+func (c *VaultClientController) genNewSecretID(ctx context.Context, apiClient *api.Client, storage logical.Storage,
 	accessConf *vaultAccessConfig, logger hclog.Logger) error {
 	// login with current secret id if no login current
 	if apiClient.Token() == "" {
@@ -79,7 +79,7 @@ func genNewSecretID(ctx context.Context, apiClient *api.Client, storage logical.
 	accessConf.SecretID = newSecretID
 	accessConf.LastRenewTime = time.Now()
 
-	err = PutVaultClientConfig(ctx, accessConf, storage)
+	err = c.saveVaultClientConfig(ctx, accessConf)
 	if err != nil {
 		return err
 	}
