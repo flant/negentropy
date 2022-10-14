@@ -65,7 +65,13 @@ func NewAccessVaultClientController(storage logical.Storage, parentLogger hclog.
 		logger:  parentLogger.Named("ApiClientController"),
 		storage: storage,
 	}
-	// TODO get config and create client
+	err := c.initClient() // initialize apiClient
+	if errors.Is(err, ErrNotSetConf) {
+		return c, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -83,10 +89,10 @@ func (c *VaultClientController) GetApiConfig(ctx context.Context) (*VaultApiConf
 	}, nil
 }
 
-// Init initialize api client by demand
+// init initialize api client by demand
 // if store don't contain configuration it may return ErrNotSetConf error
 // it is normal case for just started and not configured plugin
-func (c *VaultClientController) Init() (*api.Client, error) {
+func (c *VaultClientController) initClient() error {
 	logger := c.logger.Named("init")
 	logger.Debug("started")
 	defer logger.Debug("exit")
@@ -94,25 +100,25 @@ func (c *VaultClientController) Init() (*api.Client, error) {
 	ctx := context.Background()
 	curConf, err := c.getVaultClientConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("getting access config: %w", err)
+		return fmt.Errorf("getting access config: %w", err)
 	}
 
 	apiClient, err := newAPIClient(curConf)
 	if err != nil {
-		return nil, fmt.Errorf("creating api client: %w", err)
+		return fmt.Errorf("creating api client: %w", err)
 	}
 
 	appRole := newAccessClient(apiClient, curConf, c.logger).AppRole()
 
 	auth, err := appRole.Login()
 	if err != nil {
-		return nil, fmt.Errorf("login: %w", err)
+		return fmt.Errorf("login: %w", err)
 	}
 
 	apiClient.SetToken(auth.ClientToken)
 	c.apiClient = apiClient
 	logger.Debug("normal finish")
-	return apiClient, nil
+	return nil
 }
 
 // APIClient getting vault api client for communicate between plugins and vault
@@ -121,17 +127,11 @@ func (c *VaultClientController) APIClient() (*api.Client, error) {
 	c.clientLock.RLock()
 	apiClient := c.apiClient
 	c.clientLock.RUnlock()
-
 	if apiClient == nil {
-		var err error
-		c.clientLock.Lock()
-		defer c.clientLock.Unlock()
-		apiClient, err = c.Init()
-		if err != nil {
-			return nil, fmt.Errorf("init and get apiClient: %w", err)
-		}
+		return nil, ErrNotSetConf
 	}
-	return apiClient, nil
+	clientCopy := *apiClient
+	return &clientCopy, nil
 }
 
 func (c *VaultClientController) renewToken(ctx context.Context) error {

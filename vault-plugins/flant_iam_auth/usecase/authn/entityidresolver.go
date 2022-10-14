@@ -37,7 +37,7 @@ type EntityIDResolver interface {
 
 type entityIDResolver struct {
 	logger              log.Logger
-	vaultClientProvider client.AccessVaultClientController // do not use  *entity_api.EntityAPI because vaultClientProvider need successful Init before it can be used
+	vaultClientProvider client.AccessVaultClientController // do not use  *entity_api.EntityAPI because vaultClientProvider need successful init before it can be used
 }
 
 func (r entityIDResolver) RevealEntityIDOwner(entityID EntityID, txn *io.MemoryStoreTxn, storage logical.Storage) (*EntityIDOwner, error) {
