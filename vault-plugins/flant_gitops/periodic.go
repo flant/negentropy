@@ -124,7 +124,6 @@ type (
 
 // updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns isCornerCase and isPushed
 func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (isCornerCase, isPushed, error) {
-	b.logTasks(ctx, storage, "before checking task for lastStartedCommit")
 	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
 	if err != nil {
 		return false, false, err
@@ -198,11 +197,7 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 	}
 
 	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %q for commitHash: %q", taskUUID, commitHash))
-	// todo remove it
-	b.logTasks(ctx, storage, "before creating tasks")
-	err = taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
-	b.logTasks(ctx, storage, "after creating tasks")
-	return err
+	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
 }
 
 // checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
@@ -262,8 +257,6 @@ func checkExceedingInterval(ctx context.Context, storage logical.Storage, interv
 	if err != nil {
 		return false, err
 	}
-	t := systemClock.Now().Unix()
-	fmt.Printf("%d\n", t)
 	if systemClock.Since(time.Unix(lastRunTimestamp, 0)) > interval {
 		result = true
 	}
@@ -307,15 +300,4 @@ func storeLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, ha
 
 func storeLastK8sFinishedCommit(ctx context.Context, storage logical.Storage, hashCommit string) error {
 	return util.PutString(ctx, storage, storageKeyLastK8sFinishedCommit, hashCommit)
-}
-
-// TODO REMOVE IT
-const storageKeyTasks = "commits_tasks"
-
-func (b *backend) logTasks(ctx context.Context, storage logical.Storage, description string) {
-	tasks, err := util.GetStringMap(ctx, storage, storageKeyTasks)
-	if err != nil {
-		b.Logger().Error(fmt.Sprintf("Getting tasks %q: %s", description, err.Error()))
-	}
-	b.Logger().Debug(fmt.Sprintf("Getting tasks %q: %#v", description, tasks))
 }
