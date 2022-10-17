@@ -130,8 +130,11 @@ func (c *VaultClientController) APIClient() (*api.Client, error) {
 	if apiClient == nil {
 		return nil, ErrNotSetConf
 	}
-	clientCopy := *apiClient
-	return &clientCopy, nil
+	clientCopy, err := api.NewClient(apiClient.CloneConfig())
+	if err != nil {
+		return nil, err
+	}
+	return clientCopy, nil
 }
 
 func (c *VaultClientController) renewToken(ctx context.Context) error {
