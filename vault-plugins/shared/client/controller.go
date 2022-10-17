@@ -134,6 +134,7 @@ func (c *VaultClientController) APIClient() (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	clientCopy.SetToken(apiClient.Token())
 	return clientCopy, nil
 }
 
