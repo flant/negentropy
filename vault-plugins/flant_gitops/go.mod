@@ -4,11 +4,10 @@ go 1.17
 
 require (
 	github.com/bitly/go-hostpool v0.1.0 // indirect
-	github.com/docker/docker v20.10.17+incompatible // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hashicorp/go-hclog v1.2.1
-	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
+	github.com/hashicorp/vault/api v1.7.2
 	github.com/hashicorp/vault/sdk v0.5.3
 	github.com/stretchr/testify v1.8.0
 	github.com/tencentcloud/tencentcloud-sdk-go v3.0.171+incompatible // indirect
@@ -100,6 +99,7 @@ require (
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
 	github.com/digitalocean/godo v1.7.5 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
+	github.com/docker/docker v20.10.10+incompatible // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/duosecurity/duo_api_golang v0.0.0-20190308151101-6c680f768e74 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
