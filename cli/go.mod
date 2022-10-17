@@ -8,7 +8,7 @@ require (
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/vault/api v1.7.2
+	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0

@@ -210,7 +210,7 @@ require (
 	github.com/hashicorp/vault-plugin-secrets-mongodbatlas v0.7.0 // indirect
 	github.com/hashicorp/vault-plugin-secrets-openldap v0.8.0 // indirect
 	github.com/hashicorp/vault-plugin-secrets-terraform v0.5.0 // indirect
-	github.com/hashicorp/vault/api v1.7.2 // indirect
+	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.1.0 // indirect
 	github.com/hashicorp/vault/sdk v0.5.3 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect

@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-memdb v1.3.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/vault v1.11.1
-	github.com/hashicorp/vault/api v1.7.2
+	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
 	github.com/hashicorp/vault/sdk v0.5.3
 	github.com/mitchellh/cli v1.1.2
 	github.com/onsi/ginkgo v1.16.5
