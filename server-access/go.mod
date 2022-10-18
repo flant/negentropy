@@ -7,14 +7,14 @@ require (
 	github.com/flant/negentropy/cli v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/gojuno/minimock/v3 v3.0.10
-	github.com/golang-migrate/migrate/v4 v4.15.2
+	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/otiai10/copy v1.7.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.12.0
+	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.8.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -61,7 +61,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
