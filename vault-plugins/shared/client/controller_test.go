@@ -18,7 +18,7 @@ import (
 
 func Test(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Vault entities")
+	RunSpecs(t, "accessVaultClientController")
 }
 
 var _ = Describe("VaultClientController", func() {
@@ -73,7 +73,7 @@ var _ = Describe("VaultClientController", func() {
 			It("vaultAccessConfig stored in storage has changed secret_id", func() {
 				controllerInternal, ok := controller.(*VaultClientController)
 				Expect(ok).To(BeTrue())
-				cfg, err := controllerInternal.getVaultClientConfig(context.Background())
+				cfg, err := getVaultClientConfig(context.Background(), controllerInternal.storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg).ToNot(BeNil())
 				Expect(cfg.APIURL).To(Equal(vault.Addr))
@@ -153,7 +153,7 @@ var _ = Describe("VaultClientController", func() {
 func revokeClientToken(controller AccessVaultClientController) {
 	cl, err := controller.APIClient()
 	Expect(err).ToNot(HaveOccurred())
-	_, err = cl.Logical().Write("/auth/token/revoke-self", nil)
+	err = cl.Auth().Token().RevokeSelf("" /*ignored*/)
 	Expect(err).ToNot(HaveOccurred())
 }
 

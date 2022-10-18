@@ -136,6 +136,8 @@ func (c *VaultClientController) HandleConfigureVaultAccess(ctx context.Context, 
 
 	config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	err = c.setAccessConfig(ctx, config)
 	if err != nil {
 		return nil, err
