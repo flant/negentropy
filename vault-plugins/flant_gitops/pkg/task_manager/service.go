@@ -29,10 +29,10 @@ type TaskService interface {
 
 type service struct {
 	storage                   logical.Storage
-	accessVaultClientProvider client.VaultClientController
+	accessVaultClientProvider client.AccessVaultClientController
 }
 
-func Service(storage logical.Storage, accessVaultClientProvider client.VaultClientController) TaskService {
+func Service(storage logical.Storage, accessVaultClientProvider client.AccessVaultClientController) TaskService {
 	return &service{
 		storage:                   storage,
 		accessVaultClientProvider: accessVaultClientProvider,
@@ -84,7 +84,7 @@ func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
 }
 
 func (s *service) readTaskStatus(task taskUUID) (string, error) {
-	cl, err := s.accessVaultClientProvider.APIClient(s.storage)
+	cl, err := s.accessVaultClientProvider.APIClient()
 	if err != nil {
 		return "", err
 	}

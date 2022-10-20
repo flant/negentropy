@@ -12,14 +12,14 @@ import (
 )
 
 type MountAccessorGetter struct {
-	vaultClientProvider client.VaultClientController
+	vaultClientProvider client.AccessVaultClientController
 	path                string
 
 	mutex    sync.Mutex
 	accessor string
 }
 
-func NewMountAccessorGetter(vaultClientProvider client.VaultClientController, path string) *MountAccessorGetter {
+func NewMountAccessorGetter(vaultClientProvider client.AccessVaultClientController, path string) *MountAccessorGetter {
 	return &MountAccessorGetter{
 		path:                path,
 		vaultClientProvider: vaultClientProvider,
@@ -39,7 +39,7 @@ func (a *MountAccessorGetter) MountAccessor() (string, error) {
 	var authLists map[string]*api.AuthMount
 	err := backoff.Retry(func() error {
 		var err error
-		client, err := a.vaultClientProvider.APIClient(nil)
+		client, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return nil
 		}

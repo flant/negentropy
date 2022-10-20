@@ -9,19 +9,19 @@ import (
 )
 
 type IdentityAPI struct {
-	vaultClientProvider client.VaultClientController
+	vaultClientProvider client.AccessVaultClientController
 	backoffGetter       func() backoff.BackOff
 	logger              hclog.Logger
 }
 
-func NewIdentityAPI(vaultClientProvider client.VaultClientController, logger hclog.Logger) *IdentityAPI {
+func NewIdentityAPI(vaultClientProvider client.AccessVaultClientController, logger hclog.Logger) *IdentityAPI {
 	return &IdentityAPI{
 		vaultClientProvider: vaultClientProvider,
 		logger:              logger,
 	}
 }
 
-func NewIdentityAPIWithBackOff(vaultClientProvider client.VaultClientController, backoffGetter func() backoff.BackOff) *IdentityAPI {
+func NewIdentityAPIWithBackOff(vaultClientProvider client.AccessVaultClientController, backoffGetter func() backoff.BackOff) *IdentityAPI {
 	return &IdentityAPI{
 		vaultClientProvider: vaultClientProvider,
 		backoffGetter:       backoffGetter,

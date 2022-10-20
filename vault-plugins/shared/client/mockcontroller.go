@@ -12,22 +12,22 @@ type MockVaultClientController struct {
 	Client *api.Client
 }
 
-func (m *MockVaultClientController) GetApiConfig(ctx context.Context, storage logical.Storage) (*VaultApiConf, error) {
+func (m *MockVaultClientController) GetApiConfig(context.Context) (*VaultApiConf, error) {
 	panic("implement me") // nolint:panic_check
 }
 
-func (m *MockVaultClientController) APIClient(storage logical.Storage) (*api.Client, error) {
+func (m *MockVaultClientController) APIClient() (*api.Client, error) {
 	return m.Client, nil
 }
 
-func (m *MockVaultClientController) ReInit(storage logical.Storage) error {
+func (m *MockVaultClientController) ReInit() error {
 	panic("implement me") // nolint:panic_check
 }
 
-func (m *MockVaultClientController) OnPeriodical(ctx context.Context, request *logical.Request) error {
+func (m *MockVaultClientController) UpdateOutdated(context.Context) error {
 	panic("implement me") // nolint:panic_check
 }
 
-func (m *MockVaultClientController) HandleConfigureVaultAccess(ctx context.Context, request *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (m *MockVaultClientController) HandleConfigureVaultAccess(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
 	panic("implement me") // nolint:panic_check
 }

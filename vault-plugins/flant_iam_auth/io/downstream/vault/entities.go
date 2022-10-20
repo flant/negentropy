@@ -13,12 +13,12 @@ import (
 )
 
 type VaultEntityDownstreamApi struct {
-	vaultClientProvider client.VaultClientController
+	vaultClientProvider client.AccessVaultClientController
 	mountAccessorGetter *MountAccessorGetter
 	logger              log.Logger
 }
 
-func NewVaultEntityDownstreamApi(vaultClientProvider client.VaultClientController, mountAccessorGetter *MountAccessorGetter, parenatLogger log.Logger) *VaultEntityDownstreamApi {
+func NewVaultEntityDownstreamApi(vaultClientProvider client.AccessVaultClientController, mountAccessorGetter *MountAccessorGetter, parenatLogger log.Logger) *VaultEntityDownstreamApi {
 	return &VaultEntityDownstreamApi{
 		vaultClientProvider: vaultClientProvider,
 		mountAccessorGetter: mountAccessorGetter,

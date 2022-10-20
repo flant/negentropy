@@ -12,7 +12,7 @@ type EntityAPI struct {
 
 func (a *EntityAPI) Create(name string) error {
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -27,7 +27,7 @@ func (a *EntityAPI) Create(name string) error {
 func (a *EntityAPI) DeleteByName(name string) error {
 	path := a.entityPath(name)
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func (a *EntityAPI) GetID(name string) (string, error) {
 
 	path := a.entityPath(name)
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return fmt.Errorf("get APIClient:%w", err)
 		}
@@ -80,7 +80,7 @@ func (a *EntityAPI) GetByName(name string) (map[string]interface{}, error) {
 
 	path := a.entityPath(name)
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (a *EntityAPI) GetByID(entityID string) (map[string]interface{}, error) {
 
 	path := fmt.Sprintf("/identity/entity/id/%s", entityID)
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
