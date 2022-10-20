@@ -64,6 +64,8 @@ var _ = Describe("flant_gitops", func() {
 
 	AfterSuite(func() {
 		testGitRepo.Clean()
+		confVault.Remove()
+		rootVault.Remove()
 	}, 1.0)
 
 	Describe("flant_gitops configuring and running ", func() {
@@ -239,14 +241,14 @@ var _ = Describe("flant_gitops", func() {
 				job, err := b.MockKubeService.GetFinishedJob(testGitRepo.CommitHashes[1])
 				Expect(err).ToNot(HaveOccurred())
 
-				checkedVaults := parse(job.VaultsB64Json)
+				checkedVaults := parse(job.VaultsB64Json, []tests.Vault{rootVault, confVault.Vault})
 
 				for _, v := range checkedVaults {
 					err := enableKV(v)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = tests.RunVaultCommandAtVault(v, "kv", "put", "kv/test", "my_key=my_value")
+					_, err = v.RunVaultCmd("kv", "put", "kv/test", "my_key=my_value")
 					Expect(err).ToNot(HaveOccurred())
-					out, err := tests.RunVaultCommandAtVault(v, "kv", "get", "kv/test")
+					out, err := v.RunVaultCmd("kv", "get", "kv/test")
 					Expect(err).ToNot(HaveOccurred())
 					found := false
 					for _, l := range strings.Split(string(out), "\n") {
@@ -265,7 +267,7 @@ var _ = Describe("flant_gitops", func() {
 
 // enableKV enables kv version 1 at kv
 func enableKV(v Vault) error {
-	out, err := tests.RunVaultCommandAtVault(v, "secrets", "list")
+	out, err := v.RunVaultCmd("secrets", "list")
 	if err != nil {
 		return err
 	}
@@ -275,11 +277,11 @@ func enableKV(v Vault) error {
 			return nil
 		}
 	}
-	_, err = tests.RunVaultCommandAtVault(v, "secrets", "enable", "-version=1", "kv")
+	_, err = v.RunVaultCmd("secrets", "enable", "-version=1", "kv")
 	return err
 }
 
-func parse(vaultsB64Json string) []Vault {
+func parse(vaultsB64Json string, originVaults []Vault) []Vault {
 	data, err := b64.StdEncoding.DecodeString(vaultsB64Json)
 	Expect(err).ToNot(HaveOccurred())
 	vaultsStr := strings.Trim(string(data), "'")
@@ -291,13 +293,26 @@ func parse(vaultsB64Json string) []Vault {
 	Expect(err).ToNot(HaveOccurred())
 	var result []Vault
 	for _, v := range vaults {
+		originVault, err := findVaultByName(originVaults, v.VaultName)
+		Expect(err).ToNot(HaveOccurred())
 		result = append(result, Vault{
-			Name:  v.VaultName,
-			Addr:  v.VaultUrl,
-			Token: v.VaultToken,
+			ContainerID: originVault.ContainerID,
+			Port:        originVault.Port,
+			Name:        v.VaultName,
+			Addr:        v.VaultUrl,
+			Token:       v.VaultToken,
 		})
 	}
 	return result
+}
+
+func findVaultByName(vaults []tests.Vault, name string) (*tests.Vault, error) {
+	for _, v := range vaults {
+		if v.Name == name {
+			return &v, nil
+		}
+	}
+	return nil, fmt.Errorf("vault with name %q is not found among %v", name, vaults)
 }
 
 type Vault = tests.Vault
@@ -316,9 +331,11 @@ type ConfVault struct {
 // activate and configure PKI at vault-cert-auth/roles/cert-auth
 // activate approle and create secretID and roleID
 func StartAndConfigureConfVault() (v ConfVault, err error) {
-	vault := tests.RunAndWaitVaultUp("examples/conf/vault-conf.hcl", "8201", "conf")
+	vault, err := tests.RunAndWaitVaultUp("examples/conf", "vault-conf.hcl", "conf")
 
-	confVault := ConfVault{Vault: vault}
+	Expect(err).ToNot(HaveOccurred())
+
+	confVault := ConfVault{Vault: *vault}
 
 	confVault.caPEM, err = applyPKI(confVault.Vault)
 	if err != nil {
@@ -335,7 +352,7 @@ func StartAndConfigureConfVault() (v ConfVault, err error) {
 
 // applyPKI enable PKI at conf vault - prepare everything for work flant_gitops and returns ca
 func applyPKI(vault Vault) (caPEM string, err error) {
-	_, err = tests.RunVaultCommandAtVault(vault, "secrets", "enable", "-path", "vault-cert-auth", "pki") // vault secrets enable -path=vault-cert-auth pki
+	_, err = vault.RunVaultCmd("secrets", "enable", "-path", "vault-cert-auth", "pki") // vault secrets enable -path=vault-cert-auth pki
 	if err != nil {
 		return
 	}
@@ -344,13 +361,13 @@ func applyPKI(vault Vault) (caPEM string, err error) {
 	// common_name="negentropy" \
 	// issuer_name="negentropy-2022"  \
 	// ttl=87600h > negentropy_2022_ca.crt
-	d, err := tests.RunVaultCommandAtVault(vault, "write", "-field=certificate", "vault-cert-auth/root/generate/internal", "common_name=negentropy", "issuer_name=negentropy-2022", "ttl=87600h")
+	d, err := vault.RunVaultCmd("write", "-field=certificate", "vault-cert-auth/root/generate/internal", "common_name=negentropy", "issuer_name=negentropy-2022", "ttl=87600h")
 	if err != nil {
 		return
 	}
 	caPEM = string(d)
 
-	_, err = tests.RunVaultCommandAtVault(vault, "write", "vault-cert-auth/roles/cert-auth", "allow_any_name=true",
+	_, err = vault.RunVaultCmd("write", "vault-cert-auth/roles/cert-auth", "allow_any_name=true",
 		"max_ttl=1h") // vault write  vault-cert-auth/roles/cert-auth allow_any_name='true' max_ttl='1h'
 	if err != nil {
 		return
@@ -363,26 +380,27 @@ func applyPKI(vault Vault) (caPEM string, err error) {
 // enabale auht/cert
 // configure it by ca of conf_vault pki
 func StartAndConfigureRootVault(confVaultPkiCa string) (v Vault, err error) {
-	rootVault := tests.RunAndWaitVaultUp("examples/conf/vault-root.hcl", "8203", "root")
+	rootVault, err := tests.RunAndWaitVaultUp("examples/conf", "vault-root.hcl", "root")
+	Expect(err).ToNot(HaveOccurred())
 
-	_, err = tests.RunVaultCommandAtVault(rootVault, "policy", "write", "good", "examples/conf/good.hcl")
+	_, err = rootVault.RunVaultCmd("policy", "write", "good", "etc/vault/good.hcl")
 	if err != nil {
 		return
 	}
 
-	_, err = tests.RunVaultCommandAtVault(rootVault, "auth", "enable", "cert") // vault auth enable cert
+	_, err = rootVault.RunVaultCmd("auth", "enable", "cert") // vault auth enable cert
 	if err != nil {
 		return
 	}
 
 	// vault write auth/cert/certs/negentropy display_name='negentropy' policies='good' certificate='CA'
-	_, err = tests.RunVaultCommandAtVault(rootVault, "write", "auth/cert/certs/negentropy",
+	_, err = rootVault.RunVaultCmd("write", "auth/cert/certs/negentropy",
 		"display_name=negentropy", "policies=good", "certificate="+confVaultPkiCa)
 	if err != nil {
 		return
 	}
 
-	return rootVault, nil
+	return *rootVault, nil
 }
 
 var backendLogLen int

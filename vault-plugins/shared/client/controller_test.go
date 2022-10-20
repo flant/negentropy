@@ -37,6 +37,10 @@ var _ = Describe("VaultClientController", func() {
 	vault = StartAndConfigureVault()
 	Expect(err).ToNot(HaveOccurred())
 
+	AfterSuite(func() {
+		vault.Remove()
+	})
+
 	Describe("Unconfigured start", func() {
 		Describe("Empty storage state", func() {
 			controller, err := NewAccessVaultClientController(&logical.InmemStorage{}, hclog.Default())
@@ -167,7 +171,9 @@ func isClientValid(cl *api.Client) error {
 
 // StartAndConfigureVault runs vault
 func StartAndConfigureVault() tests.Vault {
-	return tests.RunAndWaitVaultUp("examples/conf/vault.hcl", "8203", "root")
+	vault, err := tests.RunAndWaitVaultUp("examples/conf", "vault.hcl", "root")
+	Expect(err).ToNot(HaveOccurred())
+	return *vault
 }
 
 type (

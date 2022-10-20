@@ -8,7 +8,7 @@ require (
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/gojuno/minimock/v3 v3.0.10
 	github.com/golang-migrate/migrate/v4 v4.15.1
-	github.com/hashicorp/vault/api v1.7.3-0.20220727004326-09696daf9681
+	github.com/hashicorp/vault/api v1.7.2
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/otiai10/copy v1.7.0

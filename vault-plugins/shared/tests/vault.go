@@ -1,164 +1,241 @@
-// run and control local vault instance for testing purposes,
-// for running needs inside folder `examples/conf`:
+// run and control docker vault https instance for testing purposes (image=vault:1.11.4),
+// for running needs 'conf-folder':
 // good.hcl - policy for access
 // one or more XXX.hcl - config for running vault instance
 // ca.crt - CA cert
 // tls.crt - used in XXX.hcl
 // tls.key - used in XXX.hcl
 
-// WARNING! port in XXX.hcl and  RunAndWaitVaultUp should be the same
-
 package tests
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/hashicorp/vault/command"
-	"github.com/hashicorp/vault/sdk/physical"
-	physInmem "github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/mitchellh/cli"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/go-connections/nat"
 )
 
+// Vault represents docker container with standard vault
 type Vault struct {
-	Name  string
-	Addr  string
-	Token string
+	ContainerID string
+	Port        string
+	Token       string
+	Addr        string
+	Name        string
 }
 
-func RunVaultCommandAtVault(vault Vault, args ...string) ([]byte, error) {
-	err := os.Setenv("VAULT_ADDR", vault.Addr)
-	// needs drop to valid work other staff from hashicorp
-	defer os.Setenv("VAULT_ADDR", "") //nolint:errcheck
-	if err != nil {
-		return nil, err
+// Remove removes docker container
+func (v *Vault) Remove() {
+	ctx := context.Background()
+	if v == nil || v.ContainerID == "" {
+		return
 	}
-	err = os.Setenv("VAULT_TOKEN", vault.Token)
-	defer os.Setenv("VAULT_TOKEN", "") //nolint:errcheck
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return nil, err
+		println(err.Error())
 	}
-	err = os.Setenv("VAULT_CACERT", "examples/conf/ca.crt")
-	defer os.Setenv("VAULT_CACERT", "") //nolint:errcheck
+	err = cli.ContainerRemove(ctx, v.ContainerID, types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
+	})
 	if err != nil {
-		return nil, err
+		println(err.Error())
 	}
-	output, err := RunVaultCommandWithError(args...)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
 }
 
-var vaultCLiMutex = &sync.Mutex{}
-
-func RunVaultCommandWithError(args ...string) ([]byte, error) {
-	vaultCLiMutex.Lock()
-	defer vaultCLiMutex.Unlock()
-
-	var output bytes.Buffer
-	var errOutput bytes.Buffer
-
-	opts := &command.RunOptions{
-		Stdout: io.MultiWriter(os.Stdout, &output),
-		Stderr: io.MultiWriter(os.Stderr, &errOutput),
+func (v *Vault) RunVaultCmd(args ...string) ([]byte, error) {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("creating docker cli: %w", err)
 	}
 
-	rc := command.RunCustom(args, opts)
-	if rc != 0 {
-		return output.Bytes(), fmt.Errorf("vault failed with rc=%d:\n%s\n", rc, errOutput.String())
+	config := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+		Env:          []string{"VAULT_ADDR=https://127.0.0.1:" + v.Port, "VAULT_TOKEN=" + v.Token, "VAULT_CACERT=/etc/vault/ca.crt"},
+		Cmd:          append([]string{"vault"}, args...),
 	}
 
-	return output.Bytes(), nil
+	IDResp, err := cli.ContainerExecCreate(ctx, v.ContainerID, config)
+	if err != nil {
+		return nil, fmt.Errorf("executing vault cmd: %v: %w", args, err)
+	}
+	resp, err := cli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
+	if err != nil {
+		return nil, fmt.Errorf("collecting vault cmd output: %v: %w", args, err)
+	}
+	defer resp.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	_, err = stdcopy.StdCopy(&out, &errOut, resp.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading vault cmd output: %v: %w", args, err)
+	}
+	if errOut.Len() > 0 {
+		return nil, fmt.Errorf("executing %v: %s", args, errOut.String())
+	}
+
+	return out.Bytes(), nil
 }
 
-// RunAndWaitVaultUp run vault with specified config at specified port
-// port should be the same as at the config
-func RunAndWaitVaultUp(configPath string, port string, name string) Vault {
-	// this function is too complex due to data race problems
-	vault := Vault{
-		Name: name,
-		Addr: "https://127.0.0.1:" + port,
+// RunAndWaitVaultUp run docker instance vault
+// confFolderPath - relative path to 'conf-folder' (specified at the beginning)
+// hclFileName - short file name for vault configuration file in  'conf-folder'
+// vaultName - name for vault in code internals and docker-container name
+func RunAndWaitVaultUp(confFolderPath string, hclFileName string, vaultName string) (*Vault, error) {
+	confFolderFullPath, err := fullPath(confFolderPath)
+	if err != nil {
+		return nil, err
 	}
-	tokenChan := make(chan string)
-	go func() {
-		// run init and unseal
-		go func() {
-			for {
-				time.Sleep(1 * time.Second)
-				d, err := RunVaultCommandWithError("operator", "init", "-address="+vault.Addr, "-ca-cert=examples/conf/ca.crt")
-				if err != nil {
-					continue
-				}
-				tokenChan <- unseal(vault, d)
-				break
-			}
-		}()
-		srvcmd, output, errOutput := srvCmd()
-		outcode := srvcmd.Run([]string{"-config", configPath})
-		if outcode != 0 {
-			panic(fmt.Sprintf("vault server failed: %d \noutput:\n%s \nerrOutput:\n %s", outcode, output.String(), errOutput.String()))
-		}
-		println("HELLO !!!!")
-	}()
-	vault.Token = <-tokenChan
+	port, err := parsePort(confFolderPath, hclFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	containerID, err := runVaultContainer(confFolderFullPath, hclFileName, port, vaultName)
+	if err != nil {
+		return nil, err
+	}
+
+	vault := &Vault{
+		Name:        vaultName,
+		ContainerID: containerID,
+		Port:        string(port),
+		Addr:        "https://127.0.0.1:" + string(port),
+	}
+	// init+_unseal
 	for {
 		time.Sleep(1 * time.Second)
-		if _, err := RunVaultCommandAtVault(vault, "status"); err != nil {
+		out, err := vault.RunVaultCmd("operator", "init")
+		if err != nil {
+			fmt.Printf("%#v\n", err)
 			continue
 		}
+		vault.Token = unseal(*vault, out)
 		break
 	}
-	return vault
+	return vault, nil
 }
 
-// srvCmd returns configured vault server command for running server and
-// errOutput & output
-func srvCmd() (*command.ServerCommand, *bytes.Buffer, *bytes.Buffer) {
-	var output bytes.Buffer
-	var errOutput bytes.Buffer
-
-	runOpts := &command.RunOptions{
-		Stdout: io.MultiWriter(&output),
-		Stderr: io.MultiWriter(&errOutput),
+func parsePort(folderPath string, hclFileName string) (nat.Port, error) {
+	fileName := filepath.Join(folderPath, hclFileName)
+	data, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return "", fmt.Errorf("reading file: %s :%w", fileName, err)
 	}
+	for _, l := range strings.Split(string(data), "\n") {
+		if strings.Contains(l, "address") {
+			elems := strings.Split(l, "\"")
+			if len(elems) == 3 {
+				hostAndPort := strings.Split(elems[1], ":")
+				if len(hostAndPort) == 2 {
+					return nat.Port(hostAndPort[1]), nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("can't find substring like: `address = \"0.0.0.0:8300\"` in file: %s", fileName)
+}
 
-	serverCmdUi := &command.VaultUI{
-		Ui: &cli.ColoredUi{
-			ErrorColor: cli.UiColorRed,
-			WarnColor:  cli.UiColorYellow,
-			Ui: &cli.BasicUi{
-				Reader: bufio.NewReader(os.Stdin),
-				Writer: runOpts.Stdout,
+func fullPath(relativePath string) (string, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	fullpath := path.Join(pwd, relativePath)
+	fullpath, err = filepath.Abs(fullpath)
+	if err != nil {
+		return "", err
+	}
+	_, err = os.Stat(fullpath)
+	if err != nil {
+		return "", err
+	}
+	return fullpath, nil
+}
+
+// runVaultContainer runs vault container with port forwarding and with specified name
+func runVaultContainer(confFolderFullPath string, hclShortFileName string, port nat.Port, containerName string) (string, error) {
+	imageName := "vault:1.11.4"
+
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", fmt.Errorf("creating docker cli: %w", err)
+	}
+	reader, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	if err != nil {
+		return "", fmt.Errorf("pulling image: %w", err)
+	}
+	defer reader.Close()       // nolint:errcheck
+	io.Copy(os.Stdout, reader) // nolint:errcheck
+
+	// https://stackoverflow.com/questions/48470194/defining-a-mount-point-for-volumes-in-golang-docker-sdk
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: imageName,
+		// Volumes: map[string]struct{}{"/Users/admin/flant/negentropy/probs/docker/msg.txt:/msg.txt": {}},
+		Cmd: []string{"vault", "server", "-config", "/etc/vault/" + hclShortFileName},
+		Tty: false,
+		ExposedPorts: nat.PortSet{
+			port: struct{}{},
+		},
+	},
+		&container.HostConfig{
+			PortBindings: map[nat.Port][]nat.PortBinding{port: {{
+				HostIP:   "0.0.0.0",
+				HostPort: string(port),
+			}}},
+			Mounts: []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: confFolderFullPath,
+					Target: "/etc/vault",
+				},
 			},
+			CapAdd: []string{"IPC_LOCK"},
 		},
+		nil, nil, containerName)
+	if err != nil {
+		return "", fmt.Errorf("creating container: %w", err)
 	}
-	srvcmd := &command.ServerCommand{
-		BaseCommand: &command.BaseCommand{
-			UI: serverCmdUi,
-		},
-		PhysicalBackends: map[string]physical.Factory{
-			"inmem": physInmem.NewInmem,
-		},
-	}
+	go func() {
+		if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+			fmt.Printf("starting container: %s \n", err.Error())
+		}
+	}()
 
-	return srvcmd, &output, &errOutput
+	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitCondition("running"))
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return "", err
+		}
+	case <-statusCh:
+	}
+	return resp.ID, nil
 }
 
 // unseal vault using output of init command, returns root token, collected from  initOut
 func unseal(vault Vault, initOut []byte) (rootToken string) {
 	outs := strings.Split(string(initOut), "\n")
-	// remove garbage in case of debug
-	for i := range outs {
-		outs[i] = strings.ReplaceAll(outs[i], "\u001B[0m", "")
-	}
 	// collect keys
 	if len(outs) < 5 {
 		panic(fmt.Sprintf("not found 5 keys at:%s", string(initOut)))
@@ -176,7 +253,7 @@ func unseal(vault Vault, initOut []byte) (rootToken string) {
 	}
 	// unseal
 	for _, k := range shamir {
-		RunVaultCommandAtVault(vault, "operator", "unseal", k) //nolint:errcheck
+		vault.RunVaultCmd("operator", "unseal", k) //nolint:errcheck
 	}
 	// got root_key
 	for _, s := range outs {
@@ -195,11 +272,11 @@ func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string,
 	if err != nil {
 		return
 	}
-	_, err = RunVaultCommandAtVault(vault, "policy", "write", "good", "examples/conf/good.hcl")
+	_, err = vault.RunVaultCmd("policy", "write", "good", "/etc/vault/good.hcl")
 	if err != nil {
 		return
 	}
-	_, err = RunVaultCommandAtVault(vault, "write", "auth/approle/role/good", "secret_id_ttl=360h", "token_ttl=15m", "token_policies=good")
+	_, err = vault.RunVaultCmd("write", "auth/approle/role/good", "secret_id_ttl=360h", "token_ttl=15m", "token_policies=good")
 	if err != nil {
 		return
 	}
@@ -207,7 +284,7 @@ func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string,
 	var responseData []byte
 	var data map[string]interface{}
 	{ // secretID
-		responseData, err = RunVaultCommandAtVault(vault, "write", "-format", "json", "-f", "auth/approle/role/good/secret-id")
+		responseData, err = vault.RunVaultCmd("write", "-format", "json", "-f", "auth/approle/role/good/secret-id")
 		if err != nil {
 			return
 		}
@@ -222,7 +299,7 @@ func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string,
 	}
 
 	{ // roleID
-		responseData, err = RunVaultCommandAtVault(vault, "read", "-format", "json", "auth/approle/role/good/role-id")
+		responseData, err = vault.RunVaultCmd("read", "-format", "json", "auth/approle/role/good/role-id")
 		if err != nil {
 			return
 		}
@@ -238,12 +315,12 @@ func GotSecretIDAndRoleIDatApprole(vault Vault) (secretID string, roleID string,
 }
 
 func provideApprole(vault Vault) error {
-	resp, err := RunVaultCommandAtVault(vault, "auth", "list")
+	resp, err := vault.RunVaultCmd("auth", "list")
 	if err != nil {
 		return err
 	}
 	if !strings.Contains(string(resp), "approle/") {
-		_, err = RunVaultCommandAtVault(vault, "auth", "enable", "approle")
+		_, err = vault.RunVaultCmd("auth", "enable", "approle")
 	}
 	return err
 }

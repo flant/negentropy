@@ -1,8 +1,8 @@
 listener "tcp" {
-  address = "127.0.0.1:8203"
+  address = "0.0.0.0:8203"
   tls_disable = false
-  tls_cert_file = "examples/conf/tls.crt"
-  tls_key_file  = "examples/conf/tls.key"
+  tls_cert_file = "etc/vault/tls.crt"
+  tls_key_file  = "etc/vault/tls.key"
 }
 
 cluster_name = "root"
