@@ -18,7 +18,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -109,16 +108,14 @@ func RunAndWaitVaultUp(confFolderPath string, hclFileName string, vaultName stri
 		Addr:        "https://127.0.0.1:" + string(port),
 	}
 	// init+_unseal
-	for {
-		time.Sleep(1 * time.Second)
+	err = Repeat(func() error {
 		out, err := vault.RunVaultCmd("operator", "init")
 		if err != nil {
-			fmt.Printf("%#v\n", err)
-			continue
+			return err
 		}
 		vault.Token = unseal(*vault, out)
-		break
-	}
+		return nil
+	}, 300)
 	return vault, nil
 }
 
