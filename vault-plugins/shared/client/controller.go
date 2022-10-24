@@ -4,10 +4,14 @@
 // ErrNotSetConf
 // 2) there is a configuration in storage and a valid client, ready for using.
 // 3) there is a configuration in storage and invalid client
+// 4) there is a configuration in storage and nil client
 // From 1st state to 2nd controller goes during successful call of  HandleConfigureVaultAccess.
 // Any changes of role_id/secret_id/token - leads to updating client
-// From 2nd to 3rd - is an accident - vault was shouted down, and the token in client is outdated,
-// From 3rd to 2nd - by running UpdateOutdated, or during call constructor (NewAccessVaultClientController)
+// From 2nd to 3rd - is an accident - vault was shouted down, and after NewAccessVaultClientController it is created with client==nil
+// during call constructor it is impossible to create client due to vault is unready
+// From 2nd to 4rd - vault was frozen, token in client is outdated,
+// From 3rd to 2nd - by running UpdateOutdated,
+// From 4th to 2nd - by running UpdateOutdated or by APIClient
 
 package client
 
@@ -33,10 +37,10 @@ type AccessVaultClientController interface {
 	// just returns stored config
 	GetApiConfig(context.Context) (*VaultApiConf, error)
 	// APIClient returns prepared client or error;
-	// just return active client
+	// return active client if not nil, if nil - try get config and init client
 	APIClient() (*api.Client, error)
 	// UpdateOutdated runs periodical function for support workable state;
-	// take active client, update all obsolescent token etc, update configuration, update client
+	// take active client, update all obsolescent token etc, update client
 	UpdateOutdated(context.Context) error
 	// HandleConfigureVaultAccess serves requests for configuration;
 	// 1) make client based on given role_id/secret_id,
@@ -51,7 +55,7 @@ type VaultClientController struct {
 	storage logical.Storage
 
 	// protect apiClient and configuration from races
-	mutex     sync.RWMutex
+	mutex     sync.Mutex
 	apiClient *api.Client
 
 	logger hclog.Logger
@@ -59,6 +63,7 @@ type VaultClientController struct {
 
 // NewAccessVaultClientController returns uninitialized VaultClientController
 func NewAccessVaultClientController(storage logical.Storage, parentLogger hclog.Logger) (AccessVaultClientController, error) {
+	parentLogger.Debug("NewAccessVaultClientController1")
 	if storage == nil {
 		return nil, fmt.Errorf("storage: %w", consts.ErrNilPointer)
 	}
@@ -66,25 +71,14 @@ func NewAccessVaultClientController(storage logical.Storage, parentLogger hclog.
 		logger:  parentLogger.Named("ApiClientController"),
 		storage: storage,
 	}
-	conf, err := getVaultClientConfig(context.Background(), c.storage)
-	if errors.Is(err, ErrNotSetConf) {
-		return c, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	err = c.initClient(conf) // initialize apiClient
-	if err != nil {
-		return nil, err
-	}
 	return c, nil
 }
 
 // GetApiConfig get vault api access config (APIURL, APIHost, CaCert)
-// if configuration not found returns nil pointer
+// if configuration not found returns nil pointer and error
 func (c *VaultClientController) GetApiConfig(ctx context.Context) (*VaultApiConf, error) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	conf, err := getVaultClientConfig(ctx, c.storage)
 	if err != nil {
 		return nil, err
@@ -99,34 +93,46 @@ func (c *VaultClientController) GetApiConfig(ctx context.Context) (*VaultApiConf
 // init initialize api client by demand
 // if store don't contain configuration it may return ErrNotSetConf error
 // it is normal case for just started and not configured plugin
-func (c *VaultClientController) initClient(conf *vaultAccessConfig) error {
+func (c *VaultClientController) initClient(ctx context.Context) error {
 	logger := c.logger.Named("init")
 	logger.Debug("started")
-	defer logger.Debug("exit")
-
-	apiClient, err := conf.newAPIClient()
+	conf, err := getVaultClientConfig(ctx, c.storage)
 	if err != nil {
-		return fmt.Errorf("creating api client: %w", err)
+		return err
 	}
-
-	err = c.loginByApproleAndUpdateToken(apiClient, conf)
+	err = c.initClientForConfig(conf)
 	if err != nil {
-		return fmt.Errorf("login: %w", err)
+		return err
 	}
-
-	c.apiClient = apiClient
 	logger.Debug("normal finish")
 	return nil
 }
 
+func (c *VaultClientController) initClientForConfig(conf *vaultAccessConfig) error {
+	apiClient, err := conf.newAPIClient()
+	if err != nil {
+		return fmt.Errorf("creating api client: %w", err)
+	}
+	err = c.loginByApproleAndUpdateToken(apiClient, conf)
+	if err != nil {
+		return fmt.Errorf("login: %w", err)
+	}
+	c.apiClient = apiClient
+	return nil
+}
+
 // APIClient getting vault api client for communicate between plugins and vault
-// can be tried to get vault api client, by passing storage=nil
 func (c *VaultClientController) APIClient() (*api.Client, error) {
-	c.mutex.RLock()
+	c.mutex.Lock()
 	apiClient := c.apiClient
-	c.mutex.RUnlock()
+	c.mutex.Unlock()
 	if apiClient == nil {
-		return nil, ErrNotSetConf
+		err := c.initClient(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		apiClient = c.apiClient
+		return apiClient, nil
 	}
 	clientCopy, err := api.NewClient(apiClient.CloneConfig())
 	if err != nil {
@@ -137,15 +143,22 @@ func (c *VaultClientController) APIClient() (*api.Client, error) {
 }
 
 // UpdateOutdated must be called in periodical function
-// if storage don't contain configuration it warns and return
+// if storage don't contain configuration it warns and return nil
 func (c *VaultClientController) UpdateOutdated(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	logger := c.logger.Named("renew")
 	apiClient := c.apiClient
 	if apiClient == nil {
-		logger.Warn("not init client nothing to renew")
-		return nil
+		err := c.initClient(ctx)
+		if errors.Is(err, ErrNotSetConf) {
+			logger.Warn("not set config, skip any renew")
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		apiClient = c.apiClient
 	}
 
 	// always renew current token
@@ -185,7 +198,7 @@ func (c *VaultClientController) UpdateOutdated(ctx context.Context) error {
 }
 
 func (c *VaultClientController) setAccessConfig(ctx context.Context, conf *vaultAccessConfig) error {
-	err := c.initClient(conf)
+	err := c.initClientForConfig(conf)
 	if err != nil {
 		return err
 	}
