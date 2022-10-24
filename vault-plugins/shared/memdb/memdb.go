@@ -30,6 +30,8 @@ type Txn struct {
 	*hcmemdb.Txn
 
 	schema *DBSchema
+
+	skipInsertForeignKeysCheck bool
 }
 
 func NewMemDB(schema *DBSchema) (*MemDB, error) {
@@ -54,6 +56,11 @@ func (m *MemDB) Txn(write bool) *Txn {
 	return &Txn{Txn: mTxn, schema: m.schema}
 }
 
+// WithSkippingInsertForeignKeysCheck provides Insert transaction with turned off check
+func (t *Txn) WithSkippingInsertForeignKeysCheck() *Txn {
+	return &Txn{Txn: t.Txn, schema: t.schema, skipInsertForeignKeysCheck: true}
+}
+
 func (t *Txn) Insert(table string, objPtr interface{}) error {
 	return t.insert(table, objPtr, ActiveRecordMark)
 }
@@ -65,9 +72,11 @@ func (t *Txn) insert(table string, objPtr interface{}, allowedArchiveMark Archiv
 	if err != nil {
 		return fmt.Errorf("insert %#v: %w", objPtr, err)
 	}
-	err = t.checkForeignKeys(table, objPtr, allowedArchiveMark)
-	if err != nil {
-		return fmt.Errorf("insert %#v: %w", objPtr, err)
+	if !t.skipInsertForeignKeysCheck {
+		err := t.checkForeignKeys(table, objPtr, allowedArchiveMark)
+		if err != nil {
+			return fmt.Errorf("insert %#v: %w", objPtr, err)
+		}
 	}
 	return t.Txn.Insert(table, objPtr)
 }

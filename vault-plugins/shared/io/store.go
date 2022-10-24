@@ -343,7 +343,7 @@ func (ms *MemoryStore) Restore() error {
 		ms.logger.Warn("Kafka is not configured. Skipping restore")
 		return nil
 	}
-	txn := ms.MemDB.Txn(true)
+	txn := ms.MemDB.Txn(true).WithSkippingInsertForeignKeysCheck() // turn off checking due to possible compaction problems and restoring items with archived relations
 	ms.kafkaMutex.RLock()
 	defer ms.kafkaMutex.RUnlock()
 	for _, ks := range ms.kafkaSources {
