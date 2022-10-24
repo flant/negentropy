@@ -15,6 +15,7 @@ import (
 var period = time.Minute * 5
 
 func RunVaultPoliciesGarbageCollector(vaultClientProvider client.AccessVaultClientController, logger hclog.Logger) {
+	time.Sleep(time.Minute * 30) // time interval for vault starting
 	for {
 		apiClient, err := vaultClientProvider.APIClient()
 		switch {

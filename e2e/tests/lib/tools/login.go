@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -18,6 +19,10 @@ func LoginAccessToken(positiveCase bool, params map[string]interface{}, vaultAdd
 	secret, err := cl.Logical().Write("auth/flant/login", params)
 
 	if positiveCase {
+		if err != nil {
+			fmt.Printf("error = %s\n", err.Error())
+			fmt.Printf("secret = %#v\n", secret)
+		}
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(secret).ToNot(gomega.BeNil())
 		gomega.Expect(secret.Auth).ToNot(gomega.BeNil())

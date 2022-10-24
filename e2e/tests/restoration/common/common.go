@@ -15,21 +15,8 @@ import (
 	"github.com/docker/docker/client"
 
 	"github.com/flant/negentropy/e2e/tests/lib"
+	"github.com/flant/negentropy/vault-plugins/shared/tests"
 )
-
-func repeat(f func() error, maxAttempts int) error {
-	err := f()
-	counter := 1
-	for err != nil {
-		if counter > maxAttempts {
-			return fmt.Errorf("exceeded attempts, last err:%w", err)
-		}
-		counter++
-		time.Sleep(time.Second)
-		err = f()
-	}
-	return nil
-}
 
 type Suite struct {
 	dockerCli *client.Client
@@ -64,10 +51,17 @@ func NewVault(dockerCli *client.Client, containerName string, vaultName string) 
 }
 
 func (v *Vault) Unseal() error {
+	println("unsealing: ", v.VaultName)
 	for i := 0; i < 3; i++ {
-		executeCommandAtContainer(v.dockerCli, v.container, []string{
+		output := executeCommandAtContainer(v.dockerCli, v.container, []string{
 			"/bin/sh", "-c", "vault operator unseal " + v.UnsealKeys[i],
 		}, nil, []string{"VAULT_TOKEN=" + v.VaultToken})
+		println()
+		println("vault operator unseal " + v.UnsealKeys[i])
+		println()
+		for _, l := range output {
+			println(l)
+		}
 	}
 	return nil
 }
@@ -203,9 +197,9 @@ func (s *Suite) RestartVaults() {
 	s.authVault.TouchAUTH()
 
 	// wait plugins
-	DieOnErr(repeat(s.rootVault.TouchIAM, 10))
-	DieOnErr(repeat(s.rootVault.TouchAUTH, 10))
-	DieOnErr(repeat(s.authVault.TouchAUTH, 10))
+	DieOnErr(tests.Repeat(s.rootVault.TouchIAM, 10))
+	DieOnErr(tests.Repeat(s.rootVault.TouchAUTH, 10))
+	DieOnErr(tests.Repeat(s.authVault.TouchAUTH, 10))
 }
 
 func getContainerByName(dockerCli *client.Client, name string) (*types.Container, error) {
@@ -258,22 +252,10 @@ func executeCommandAtContainer(dockerCli *client.Client, container *types.Contai
 			resp.Conn.Write([]byte(input + "\n"))
 		}
 	}()
-
-	output := []string{}
-	var text string
-	for err == nil {
-		text, err = resp.Reader.ReadString('\n')
-		if text != "" {
-			output = append(output, text)
-		}
-	}
-
-	if err != nil && err.Error() == "EOF" {
-		fmt.Printf("command: \n %s \n ==> has been succeseed at  at container  %s \n", cmd, container.Names)
-		return output
-	}
+	defer resp.Close()
+	output, err := tests.ParseDockerOutput(resp.Reader)
 	DieOnErr(err)
-	return nil
+	return strings.Split(string(output), "\n")
 }
 
 const vaultsFilePath = "/tmp/vaults"

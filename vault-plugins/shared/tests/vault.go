@@ -9,7 +9,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -82,18 +80,7 @@ func (v *Vault) RunVaultCmd(args ...string) ([]byte, error) {
 	}
 	defer resp.Close()
 
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-
-	_, err = stdcopy.StdCopy(&out, &errOut, resp.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("reading vault cmd output: %v: %w", args, err)
-	}
-	if errOut.Len() > 0 {
-		return nil, fmt.Errorf("executing %v: %s", args, errOut.String())
-	}
-
-	return out.Bytes(), nil
+	return ParseDockerOutput(resp.Reader)
 }
 
 // RunAndWaitVaultUp run docker instance vault
