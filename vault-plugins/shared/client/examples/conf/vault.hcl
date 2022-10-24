@@ -1,5 +1,5 @@
 listener "tcp" {
-  address = "0.0.0.0:8203"
+  address = "0.0.0.0:8205"
   tls_disable = false
   tls_cert_file = "etc/vault/tls.crt"
   tls_key_file  = "etc/vault/tls.key"
@@ -7,7 +7,7 @@ listener "tcp" {
 
 cluster_name = "root"
 
-api_addr = "https://0.0.0.0:8203"
+api_addr = "https://0.0.0.0:8205"
 
 log_level = "debug"
 
