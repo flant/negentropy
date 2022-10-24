@@ -453,18 +453,14 @@ func TestRestoration(t *testing.T) {
 		t.Run("restoration_"+objectIdentifier, func(t *testing.T) { checker(iamClient, t) })
 	}
 
-	const doOrNot = true
-	if doOrNot {
-		t.Run("check restoration jwks/jwt and entity/entity_alias staff", func(t *testing.T) {
-			time.Sleep(time.Minute)
-			multipassJWT := store.getObject("multipass-jwt").(string)
-			secret := access_token_or_sapass_auth.Login(true, map[string]interface{}{
-				"method": "multipass", "jwt": multipassJWT,
-				"roles": []map[string]interface{}{},
-			}, lib.GetRootVaultUrl(), 10)
-			Expect(secret.ClientToken).ToNot(BeEmpty())
-		})
-	}
+	t.Run("check restoration jwks/jwt and entity/entity_alias staff", func(t *testing.T) {
+		multipassJWT := store.getObject("multipass-jwt").(string)
+		secret := access_token_or_sapass_auth.Login(true, map[string]interface{}{
+			"method": "multipass", "jwt": multipassJWT,
+			"roles": []map[string]interface{}{},
+		}, lib.GetRootVaultUrl(), 10)
+		Expect(secret.ClientToken).ToNot(BeEmpty())
+	})
 }
 
 func postToPlugin(vaultClient *http.Client, url string, payload map[string]interface{}) gjson.Result {
