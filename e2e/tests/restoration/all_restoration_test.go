@@ -347,21 +347,47 @@ func authMethodCreator(_ *http.Client, store store) (objectIdentifier, object, o
 	}
 }
 
+// policyCreator works with retry due to needs passing role through kafka
 func policyCreator(_ *http.Client, store store) (objectIdentifier, object, objectGetter) {
 	role := store.getObject("role").(model.Role)
 	authClient := lib.NewConfiguredIamAuthVaultClient()
-	policy := lib.NewPolicyAPI(authClient).Create(api.Params{}, url.Values{},
-		map[string]interface{}{
-			"name":         "policy_" + uuid.New(),
-			"rego":         "not_real_rego",
-			"roles":        []string{role.Name},
-			"claim_schema": "not_real_schema",
-		}).Get("policy")
+	var policy gjson.Result
+	err := api.Repeat(func() error {
+		var err error
+		defer func() {
+			rawErr := recover()
+			err = fmt.Errorf("%s", fmt.Sprint(rawErr))
+		}()
+		policy = lib.NewPolicyAPI(authClient).Create(api.Params{}, url.Values{},
+			map[string]interface{}{
+				"name":         "policy_" + uuid.New(),
+				"rego":         "not_real_rego",
+				"roles":        []string{role.Name},
+				"claim_schema": "not_real_schema",
+			}).Get("policy")
+		return err
+	}, 15)
+	Expect(err).ToNot(HaveOccurred())
 	return "policy", policy, func(_ *http.Client) gjson.Result {
 		authClient := lib.NewConfiguredIamAuthVaultClient()
-		return lib.NewPolicyAPI(authClient).Read(api.Params{
-			"policy": policy.Get("name").String(),
-		}, nil).Get("policy")
+		var result gjson.Result
+		// policyGetter works with retry due to needs passing policy through kafka main loop
+		err = api.Repeat(func() error {
+			var err error
+			defer func() {
+				rawErr := recover()
+				err = fmt.Errorf("%s", fmt.Sprint(rawErr))
+			}()
+			result = lib.NewPolicyAPI(authClient).Read(api.Params{
+				"policy": policy.Get("name").String(),
+			}, nil)
+			if len(result.String()) < 10 {
+				return fmt.Errorf("short answer: %q", result.String())
+			}
+			return err
+		}, 15)
+		Expect(err).ToNot(HaveOccurred())
+		return result
 	}
 }
 
@@ -371,11 +397,12 @@ var creators = []objectCreator{
 	serviceAccountCreator, serviceAccountPasswordCreator,
 	featureFlagCreator,
 	groupCreator, identitySharingCreator,
-	rolebindingCreator, rolebindingApprovalCreator,
+	roleCreator, rolebindingCreator, rolebindingApprovalCreator,
 	projectCreator,
 	serverCreator,
 	teamCreator, teammateCreator,
 	clientCreator, flantFlowProjectCreator,
+	replicaCreator,
 	authSourceCreator, authMethodCreator,
 	policyCreator,
 }
@@ -383,6 +410,7 @@ var creators = []objectCreator{
 func TestRestoration(t *testing.T) {
 	// to use e2e test libs
 	RegisterFailHandler(Fail)
+	defer GinkgoRecover()
 
 	checkers := map[objectIdentifier]objectChecker{}
 	s := common.Suite{}
@@ -403,32 +431,40 @@ func TestRestoration(t *testing.T) {
 				t.Fatalf("getter of %s returns very short result: %q", identifier, oldObj.String())
 			}
 			checkers[identifier] = func(iamClient *http.Client, t *testing.T) {
-				restoredObj := getter(iamClient)
+				var restoredObj gjson.Result
+				err := api.Repeat(func() error {
+					restoredObj = getter(iamClient)
+					if restoredObj.String() == "" {
+						return fmt.Errorf("empty gjson")
+					}
+					return nil
+				}, 10)
+				require.NoError(t, err)
 				require.JSONEq(t, oldObj.String(), restoredObj.String())
 			}
 
 		})
 		fmt.Println(identifier, "is created")
 	}
-	defer GinkgoRecover()
+
 	fmt.Println("=== restarting vaults ===")
 	s.RestartVaults()
 	for objectIdentifier, checker := range checkers {
 		t.Run("restoration_"+objectIdentifier, func(t *testing.T) { checker(iamClient, t) })
 	}
-	t.Run("check restoration jwks/jwt and entity/entity_alias staff",
-		func(t *testing.T) {
+
+	const doOrNot = true
+	if doOrNot {
+		t.Run("check restoration jwks/jwt and entity/entity_alias staff", func(t *testing.T) {
+			time.Sleep(time.Minute)
 			multipassJWT := store.getObject("multipass-jwt").(string)
-			//project := store.getObject("project").(model.Project)
-			println("==========")
-			println(multipassJWT)
-			println("==========")
-			vst := access_token_or_sapass_auth.Login(true, map[string]interface{}{
+			secret := access_token_or_sapass_auth.Login(true, map[string]interface{}{
 				"method": "multipass", "jwt": multipassJWT,
 				"roles": []map[string]interface{}{},
-			}, lib.GetRootVaultUrl(), 50).ClientToken
-			fmt.Printf("vst:%#v", vst)
+			}, lib.GetRootVaultUrl(), 10)
+			Expect(secret.ClientToken).ToNot(BeEmpty())
 		})
+	}
 }
 
 func postToPlugin(vaultClient *http.Client, url string, payload map[string]interface{}) gjson.Result {
