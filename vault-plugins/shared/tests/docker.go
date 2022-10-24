@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
