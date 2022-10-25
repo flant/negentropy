@@ -197,8 +197,8 @@ func (s *Suite) RestartVaults() error {
 		s.rootVault.Unseal,
 		s.authVault.Unseal,
 		// wait plugins
-		func() error { return tests.Repeat(s.rootVault.TouchIAM, 30) },
-		func() error { return tests.Repeat(s.authVault.TouchAUTH, 30) },
+		func() error { return tests.SlowRepeat(s.rootVault.TouchIAM, 30) },
+		func() error { return tests.SlowRepeat(s.authVault.TouchAUTH, 30) },
 	} {
 		if err := op(); err != nil {
 			return err

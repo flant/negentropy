@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/flant/negentropy/e2e/tests/lib/configure"
 	"io"
 	"net/http"
 	"net/url"
 	"testing"
 	"time"
 
+	vault_api "github.com/hashicorp/vault/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
@@ -410,7 +412,6 @@ var creators = []objectCreator{
 func TestRestoration(t *testing.T) {
 	// to use e2e test libs
 	RegisterFailHandler(Fail)
-	defer GinkgoRecover()
 
 	checkers := map[objectIdentifier]objectChecker{}
 	s := common.Suite{}
@@ -419,7 +420,20 @@ func TestRestoration(t *testing.T) {
 	store := newMemStore()
 
 	for _, creator := range creators {
+		//var (
+		//	identifier string
+		//	obj        interface{}
+		//	getter     objectGetter
+		//)
+		//{
+		//	defer func() {
+		//		err := recover()
+		//		if err != nil {
+		//			t.Fatalf("critical: %v", err)
+		//		}
+		//	}()
 		identifier, obj, getter := creator(iamClient, store)
+		//}
 		var oldObj gjson.Result
 		store.saveObject(obj, identifier)
 		t.Run("creating_"+identifier, func(t *testing.T) {
@@ -463,6 +477,15 @@ func TestRestoration(t *testing.T) {
 		}, lib.GetRootVaultUrl(), 10)
 		Expect(secret.ClientToken).ToNot(BeEmpty())
 	})
+
+	t.Run("check jwt/disable - jwt/enable", func(t *testing.T) {
+		rootVaultClient := configure.GetClientWithToken(lib.GetRootRootToken(), lib.GetRootVaultUrl())
+		authVaultClient := configure.GetClientWithToken(lib.GetAuthRootToken(), lib.GetAuthVaultUrl())
+
+		switchJwt(rootVaultClient, authVaultClient, false)
+		switchJwt(rootVaultClient, authVaultClient, true)
+	})
+
 }
 
 func postToPlugin(vaultClient *http.Client, url string, payload map[string]interface{}) gjson.Result {
@@ -484,4 +507,23 @@ func getFromPlugin(vaultClient *http.Client, url string) gjson.Result {
 	common.DieOnErr(err)
 	defer resp.Body.Close()
 	return gjson.Parse(string(data)).Get("data")
+}
+
+func switchJwt(rootVaultClient *vault_api.Client, authVaultClient *vault_api.Client, enable bool) {
+	action := "enable"
+	if !enable {
+		action = "disable"
+	}
+	var err error
+	_, err = rootVaultClient.Logical().Write(lib.IamPluginPath+"/jwt/"+action, nil)
+	if err != nil {
+		println(err.Error())
+		Expect(err).ToNot(HaveOccurred())
+	}
+
+	_, err = authVaultClient.Logical().Write(lib.IamAuthPluginPath+"/jwt/"+action, nil)
+	if err != nil {
+		println(err.Error())
+		Expect(err).ToNot(HaveOccurred())
+	}
 }

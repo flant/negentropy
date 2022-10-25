@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+// SlowRepeat for checks in case vaults should restore after down
+func SlowRepeat(f func() error, maxAttempts int) error {
+	return customizedRepeat(f, maxAttempts, time.Second*10)
+}
+
 // Repeat for checks in case data should go through kafka etc
 func Repeat(f func() error, maxAttempts int) error {
 	return customizedRepeat(f, maxAttempts, time.Second)
