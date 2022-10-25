@@ -448,7 +448,8 @@ func TestRestoration(t *testing.T) {
 	}
 
 	fmt.Println("=== restarting vaults ===")
-	s.RestartVaults()
+	err := s.RestartVaults()
+	Expect(err).ToNot(HaveOccurred())
 	for objectIdentifier, checker := range checkers {
 		t.Run("restoration_"+objectIdentifier, func(t *testing.T) { checker(iamClient, t) })
 	}

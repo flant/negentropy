@@ -49,7 +49,7 @@ services:
       - VAULT_ADDR=https://127.0.0.1:8300
       - VAULT_CACERT=/etc/vault-tls/ca.crt
       - VAULT_CLIENT_TIMEOUT=120s
-    #      - DEBUG=true
+#      - DEBUG=true
     command: vault server -config /etc/vault.hcl
     cap_add:
       - IPC_LOCK

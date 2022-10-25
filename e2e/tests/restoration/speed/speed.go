@@ -29,7 +29,10 @@ func main() {
 	for _, multiplier := range feedingMultipliers {
 		toFeed := multiplier - feedingAmmount
 		feed(toFeed)
-		s.RestartVaults()
+		err := s.RestartVaults()
+		if err != nil {
+			panic(err)
+		}
 		result = append(result, s.CollectMetrics(multiplier))
 		feedingAmmount += toFeed
 	}

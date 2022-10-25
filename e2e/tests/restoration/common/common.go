@@ -53,9 +53,12 @@ func NewVault(dockerCli *client.Client, containerName string, vaultName string) 
 func (v *Vault) Unseal() error {
 	println("unsealing: ", v.VaultName)
 	for i := 0; i < 3; i++ {
-		output := executeCommandAtContainer(v.dockerCli, v.container, []string{
+		output, err := executeCommandAtContainer(v.dockerCli, v.container, []string{
 			"/bin/sh", "-c", "vault operator unseal " + v.UnsealKeys[i],
 		}, nil, []string{"VAULT_TOKEN=" + v.VaultToken})
+		if err != nil {
+			return err
+		}
 		println()
 		println("vault operator unseal " + v.UnsealKeys[i])
 		println()
@@ -79,12 +82,16 @@ func (v *Vault) StartContainer() error {
 func (v *Vault) TouchIAM() error {
 	url := v.VaultURL + "/v1/flant/tenant/"
 	req, err := http.NewRequest("GET", url, nil)
-	DieOnErr(err)
+	if err != nil {
+		return err
+	}
 	req.Header["X-Vault-Token"] = []string{v.VaultToken}
 	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
-	DieOnErr(err)
+	if err != nil {
+		return err
+	}
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
 	}
@@ -94,12 +101,16 @@ func (v *Vault) TouchIAM() error {
 func (v *Vault) TouchAUTH() error {
 	url := v.VaultURL + "/v1/auth/flant/auth_method/multipass"
 	req, err := http.NewRequest("GET", url, nil)
-	DieOnErr(err)
+	if err != nil {
+		return err
+	}
 	req.Header["X-Vault-Token"] = []string{v.VaultToken}
 	client := lib.HttpClientWithoutInsequireVerifing()
 
 	resp, err := client.Do(req)
-	DieOnErr(err)
+	if err != nil {
+		return err
+	}
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("wrong response status:%d", resp.StatusCode)
 	}
@@ -172,34 +183,28 @@ func (s *Suite) CollectMetrics(caseFeedMultiplier int) RestorationDurationResult
 	}
 }
 
-func (s *Suite) RestartVaults() {
-	// stop containers
-	DieOnErr(s.rootVault.StopContainer())
-	DieOnErr(s.authVault.StopContainer())
-
-	// up containers
-	DieOnErr(s.rootVault.StartContainer())
-	DieOnErr(s.authVault.StartContainer())
-
-	time.Sleep(time.Second * 3)
-
-	// reader := bufio.NewReader(os.Stdin)
-	// fmt.Print("Check topics and press Enter")
-	// reader.ReadString('\n')
-
-	// unseal vaults
-	DieOnErr(s.rootVault.Unseal())
-	DieOnErr(s.authVault.Unseal())
-
-	// wake up plugins
-	s.rootVault.TouchIAM()
-	s.rootVault.TouchAUTH()
-	s.authVault.TouchAUTH()
-
-	// wait plugins
-	DieOnErr(tests.Repeat(s.rootVault.TouchIAM, 10))
-	DieOnErr(tests.Repeat(s.rootVault.TouchAUTH, 10))
-	DieOnErr(tests.Repeat(s.authVault.TouchAUTH, 10))
+func (s *Suite) RestartVaults() error {
+	for _, op := range []func() error{
+		// stop containers
+		s.rootVault.StopContainer,
+		s.authVault.StopContainer,
+		// up containers
+		s.rootVault.StartContainer,
+		s.authVault.StartContainer,
+		//  time to vaults up
+		func() error { time.Sleep(time.Second * 5); return nil },
+		// unseal vaults
+		s.rootVault.Unseal,
+		s.authVault.Unseal,
+		// wait plugins
+		func() error { return tests.Repeat(s.rootVault.TouchIAM, 30) },
+		func() error { return tests.Repeat(s.authVault.TouchAUTH, 30) },
+	} {
+		if err := op(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getContainerByName(dockerCli *client.Client, name string) (*types.Container, error) {
@@ -229,7 +234,7 @@ func DieOnErr(err error) {
 }
 
 func executeCommandAtContainer(dockerCli *client.Client, container *types.Container, cmd []string,
-	extraInputToSTDIN []string, envs []string) []string {
+	extraInputToSTDIN []string, envs []string) ([]string, error) {
 	ctx := context.Background()
 	config := types.ExecConfig{
 		AttachStdin:  true,
@@ -240,10 +245,14 @@ func executeCommandAtContainer(dockerCli *client.Client, container *types.Contai
 	}
 
 	IDResp, err := dockerCli.ContainerExecCreate(ctx, container.ID, config)
-	DieOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := dockerCli.ContainerExecAttach(ctx, IDResp.ID, types.ExecStartCheck{})
-	DieOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Close()
 
 	go func() {
@@ -254,8 +263,11 @@ func executeCommandAtContainer(dockerCli *client.Client, container *types.Contai
 	}()
 	defer resp.Close()
 	output, err := tests.ParseDockerOutput(resp.Reader)
-	DieOnErr(err)
-	return strings.Split(string(output), "\n")
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(string(output), "\n"), nil
 }
 
 const vaultsFilePath = "/tmp/vaults"
