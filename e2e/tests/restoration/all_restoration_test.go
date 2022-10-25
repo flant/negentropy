@@ -448,6 +448,7 @@ func TestRestoration(t *testing.T) {
 	}
 
 	fmt.Println("=== restarting vaults ===")
+	time.Sleep(time.Second * 15) // need to avoid "BUG authSelfKafkaSource don't restore some last items from kafka stored just before vault downing"
 	err := s.RestartVaults()
 	Expect(err).ToNot(HaveOccurred())
 	for objectIdentifier, checker := range checkers {
