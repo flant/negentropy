@@ -22,14 +22,6 @@ from migration import Migration
 from vault import Vault
 
 
-ENV_LIST = ['KAFKA_ENDPOINTS', 
-            'OIDC_URL', 
-            'KAFKA_USE_SSL',
-            'KAFKA_SSL_CA_PATH',
-            'KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH',
-            'KAFKA_SSL_CLIENT_CERTIFICATE_PATH']
-
-
 def load_migrations(directory):
     """ Return the migrations contained in the given directory and sort then ascending. """
     if not os.path.exists(directory) and os.path.isdir(directory):
@@ -179,25 +171,18 @@ def run_migrations(migrations: List[Migration], vaults: List[Vault], vault_filte
                     exit(1)
  
  
-def check_environment(env: List):
-    for v in env:
-        if v not in os.environ:
-            raise Exception(f"ERROR: {v} must be set")
- 
- 
 def production(args):
     """ setup production environment
 
     Args:
         args: args 
     """
-    
-    check_environment(ENV_LIST)
-    vaults_conf = os.environ.get('VAULTS')
+    vaults_conf = os.environ.get('VAULTS_B64_JSON')
     
     # we need to create a list of Vaults from dicts to continue work with them
     vaults = [Vault(**v) for v in vaults_conf]
     
+    migration_dir = 'infra/vault_migrator/migrations'
     upgrade_vaults(vaults, migration_dir)
 
 def local_env(args):
@@ -209,10 +194,8 @@ def local_env(args):
     
     # loading needed environment variables from local .env
     load_dotenv()
-    
-    check_environment(ENV_LIST)
    
-    vaults_conf = ast.literal_eval(os.environ.get('VAULTS'))
+    vaults_conf = ast.literal_eval(os.environ.get('VAULTS_B64_JSON'))
     
     # we need to create a list of Vaults from dicts to continue work with them
     vaults = [Vault(**v) for v in vaults_conf]

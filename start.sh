@@ -81,14 +81,14 @@ elif [[ $MODE == "local" ]]; then
 fi
 
 pip3 install virtualenv
-virtualenv scripts/environment
-source scripts/environment/bin/activate
-pip3 install -r scripts/requirements.txt
+python3 -m virtualenv infra/vault_migrator/environment
+source infra/vault_migrator/environment/bin/activate
+pip3 install -r infra/vault_migrator/requirements.txt
 export VAULT_CACERT=docker/vault/tls/ca.crt # used at vault.hvac to connect https://vault
 if [[ $MODE == "local" ]]; then
-  python3 scripts/start.py --mode $MODE --okta-uuid $OKTA_UUID --okta-email $OKTA_EMAIL
+  python3 infra/vault_migrator/migrator.py local --okta-uuid $OKTA_UUID --okta-email $OKTA_EMAIL
 else
-  python3 scripts/start.py --mode $MODE
+  python3 infra/vault_migrator/migrator.py local
 fi
 
 deactivate
