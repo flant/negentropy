@@ -47,7 +47,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 					"sudo rm -rf /tmp/flint",
 				}, []string{})
 				time.Sleep(time.Millisecond * 200)
-				Expect(d.DirectoryAtContainerNotExistOrEmptyWithRetry(d.TestClientContainer, "/tmp/flint", 13)).ToNot(HaveOccurred(),
+				Expect(d.DirectoryAtContainerNotExistOrEmptyWithRetry(d.TestClientContainer, "/tmp/flint", 3)).ToNot(HaveOccurred(),
 					"/tmp/flint files doesn't exist before start")
 
 				runningCliCmd := buildCliCmd(cfg)
@@ -74,7 +74,7 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 				Expect(d.CheckFileExistAtContainer(d.TestServerContainer, testFilePath, "f")).
 					ToNot(HaveOccurred(), "after run cli ssh - test file is created at server")
 
-				Expect(d.DirectoryAtContainerNotExistOrEmptyWithRetry(d.TestClientContainer, "/tmp/flint", 13)).ToNot(HaveOccurred(),
+				Expect(d.DirectoryAtContainerNotExistOrEmptyWithRetry(d.TestClientContainer, "/tmp/flint", 3)).ToNot(HaveOccurred(),
 					"/tmp/flint files doesn't exist after closing cli")
 
 				Expect(d.CheckFileExistAtContainer(d.TestClientContainer, "/tmp/flint", "d")).

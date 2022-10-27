@@ -296,7 +296,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 			"sudo rm -rf /tmp/flint",
 		}, []string{})
 		time.Sleep(time.Millisecond * 100)
-		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint", 13)).ToNot(HaveOccurred(),
+		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint", 3)).ToNot(HaveOccurred(),
 			"/tmp/flint files doesn't exist before start")
 
 		cfg := flant_iam_preparing.CheckingEnvironment{
@@ -331,7 +331,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 
 		writeLogToFile(output, fmt.Sprintf("cli.log"))
 
-		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint/flant", 13)).ToNot(HaveOccurred(),
+		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint/flant", 3)).ToNot(HaveOccurred(),
 			"/tmp/flint/flant files doesn't exist after closing cli")
 
 		Expect(s.CheckFileExistAtContainer(s.TestServerContainer, testFilePath, "f")).
@@ -340,7 +340,7 @@ var _ = Describe("Process of getting ssh access to server by a teammate", func()
 		Expect(s.CheckFileExistAtContainer(s.TestClientContainer, "/tmp/flint", "s")).
 			ToNot(HaveOccurred(), "after run cli ssh - tmp dir exists at client container")
 
-		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint", 13)).ToNot(HaveOccurred(),
+		Expect(s.DirectoryAtContainerNotExistOrEmptyWithRetry(s.TestClientContainer, "/tmp/flint", 3)).ToNot(HaveOccurred(),
 			"/tmp/flint is empty  after closing cli")
 	})
 
