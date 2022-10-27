@@ -52,7 +52,7 @@ shell:
     gox -osarch="linux/amd64" -gcflags "${GCFLAGS}" -ldflags "${LD_FLAGS}-X github.com/hashicorp/vault/sdk/version.GitCommit=${VAULT_GIT_COMMIT}" -output "bin/vault" -tags="vault musl" -gocmd="go" .
 ---
 image: migrations
-from: alpine:3.14.2
+from: ubuntu:22.04
 docker:
   WORKDIR: /app
 git:
@@ -67,7 +67,7 @@ git:
     - 'infra/vault_migrator/**/*'
 shell:
   beforeInstall:
-  - apk add bash curl ca-certificates gnupg jq py3-pip vim
+  - apt update && apt install -y bash curl ca-certificates gnupg jq python3-pip vim
   install:
   - python3 -m pip install -r /app/infra/vault_migrator/requirements.txt
   setup:
