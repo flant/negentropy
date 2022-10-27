@@ -1,5 +1,6 @@
 {{- define "globals" -}}
 {{- $_ := set . "kafka_name" (pluck .Values.werf.env .Values.kafka.name | first | default .Values.kafka.name._default) -}}
+{{- $_ := set . "kafka_ssl_path" (pluck .Values.werf.env .Values.kafka_ssl_path | first | default .Values.kafka_ssl_path._default) }}
 {{- $_ := set . "vault_port" (pluck .Values.werf.env .Values.vault.port | first | default .Values.vault.port._default) -}}
 {{- $_ := set . "vault_cluster_port" (pluck .Values.werf.env .Values.vault.cluster_port | first | default .Values.vault.cluster_port._default) -}}
 {{- $_ := set . "vault_data_path" (pluck .Values.werf.env .Values.vault.data_path | first | default .Values.vault.data_path._default) -}}
@@ -7,6 +8,7 @@
 {{- $_ := set . "vault_storage_size" (pluck .Values.werf.env .Values.vault.storage_size | first | default .Values.vault.storage_size._default) -}}
 {{- $_ := set . "vault_ha" (pluck .Values.werf.env .Values.vault.ha | first | default .Values.vault.ha._default) -}}
 {{- $_ := set . "vault_bucket" (  .Values.vault.bucket | dig .Values.werf.env .Values.vault.bucket._default) -}}
+{{- $_ := set . "oidc_url" (pluck .Values.werf.env .Values.oidc_url | first | default .Values.oidc_url._default) }}
 {{- end -}}
 
 {{- define "vault.env" -}}
@@ -87,6 +89,19 @@ capabilities:
   mountPath: {{ .vault_data_path }}
 {{- end -}}
 
+{{- define "vault.kafka.volumemounts" -}}
+- name: kafka-secrets
+  mountPath: {{ .kafka_ssl_path }}/user.crt
+  subPath: user.crt
+- name: kafka-secrets
+  mountPath: {{ .kafka_ssl_path }}/user.key
+  subPath: user.key
+- name: kafka-ca
+  mountPath: {{ .kafka_ssl_path }}/ca.crt
+  subPath: ca.crt
+{{- end -}}
+
+
 {{- define "vault.volumeclaimtemplate" -}}
 volumeClaimTemplates:
 - metadata:
@@ -140,4 +155,13 @@ lifecycle:
         # to this pod while it's terminating
         "sleep 5 && kill -SIGTERM $(pidof vault)",
       ]
+{{- end -}}
+
+{{- define "kafka.secret.volumes" -}}
+- name: kafka-ca
+  secret:
+    secretName: {{ printf "%s-cluster-ca-cert" .kafka_name }}
+- name: kafka-secrets
+  secret:
+    secretName: vault          
 {{- end -}}

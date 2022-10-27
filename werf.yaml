@@ -59,16 +59,19 @@ git:
 - add: /
   to: /app
   includePaths:
-  - scripts
-  - infra
+  - infra/vault_migrator
   stageDependencies:
     install:
-    - 'scripts/requirements.txt'
+    - 'infra/vault_migrator/requirements.txt'
+    setup:
+    - 'infra/vault_migrator/**/*'
 shell:
   beforeInstall:
   - apk add bash curl ca-certificates gnupg jq py3-pip vim
   install:
-  - python3 -m pip install -r /app/scripts/requirements.txt
+  - python3 -m pip install -r /app/infra/vault_migrator/requirements.txt
+  setup:
+  - rm -rf /app/infra/vault_migrator/.env
 ---
 image: vault-init
 from: google/cloud-sdk:400.0.0-alpine

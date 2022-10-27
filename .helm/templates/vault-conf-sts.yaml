@@ -63,6 +63,7 @@ spec:
 {{- include "vault.probes" . | nindent 10 }}
           volumeMounts:
 {{- include "vault.volumemounts" . | nindent 10 }}
+{{- include "vault.kafka.volumemounts" . | nindent 10 }}
           - mountPath: /vault/userconfig/tls
             name: {{ $vault_name }}-tls
             readOnly: true
@@ -79,6 +80,7 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ $vault_name }}-tls
+{{- include "kafka.secret.volumes" . | nindent 6 }}
 {{- include "vault.volumeclaimtemplate" . | nindent 2 }}
 ---
 apiVersion: v1

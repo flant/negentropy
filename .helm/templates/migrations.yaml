@@ -1,3 +1,4 @@
+{{- include "globals" . }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -18,7 +19,19 @@ spec:
         command:
         - sh
         - -c
-        - python3 scripts/migrate.py
+        - python3 /app/infra/vault_migrator/migrator.py production
         env:
         - name: VAULTS_B64_JSON
           value: {{ .Values.vaults_b64_json }}
+        - name: KAFKA_ENDPOINTS
+          value: {{ .kafka_name }}-kafka-bootstrap:9093
+        - name: OIDC_URL
+          value: {{ .oidc_url }}
+        - name: KAFKA_USE_SSL
+          value: 'true'
+        - name: KAFKA_SSL_CA_PATH
+          value: {{ .kafka_ssl_path }}/ca.crt
+        - name: KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH
+          value: {{ .kafka_ssl_path }}/user.key
+        - name: KAFKA_SSL_CLIENT_CERTIFICATE_PATH
+          value: {{ .kafka_ssl_path }}/user.crt
