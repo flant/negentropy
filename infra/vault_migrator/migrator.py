@@ -5,6 +5,7 @@ import ast
 import glob
 import importlib.machinery
 import os
+import base64
 
 from typing import List, Callable
 from dotenv import load_dotenv
@@ -177,10 +178,12 @@ def production(args):
     Args:
         args: args 
     """
-    vaults_conf = os.environ.get('VAULTS_B64_JSON')
+    # on production VAULTS_B64_JSON in base 64
+    vaults_list = os.environ.get('VAULTS_B64_JSON')
+    decoded_vaults_list = ast.literal_eval(base64.b64decode(vaults_list))
     
     # we need to create a list of Vaults from dicts to continue work with them
-    vaults = [Vault(**v) for v in vaults_conf]
+    vaults = [Vault(**v) for v in decoded_vaults_list]
     
     migration_dir = 'infra/vault_migrator/migrations'
     upgrade_vaults(vaults, migration_dir)
