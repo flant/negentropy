@@ -80,7 +80,7 @@ func PrepareUserAndMultipass(waitKafkaByTryLogin bool) (user *iam.User, multipas
 			if err == nil {
 				break
 			}
-			time.Sleep(time.Millisecond * 300)
+			time.Sleep(time.Millisecond * 100)
 		}
 		Expect(err).ToNot(HaveOccurred())
 	} else {
