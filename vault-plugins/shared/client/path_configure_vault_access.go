@@ -12,7 +12,7 @@ import (
 	backendutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 )
 
-func PathConfigure(c VaultClientController) *framework.Path {
+func PathConfigure(c AccessVaultClientController) *framework.Path {
 	return &framework.Path{
 		Pattern: `configure_vault_access$`,
 
@@ -80,7 +80,7 @@ func PathConfigure(c VaultClientController) *framework.Path {
 	}
 }
 
-func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (c *VaultClientController) HandleConfigureVaultAccess(ctx context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &vaultAccessConfig{}
 	var errResp *logical.Response
 
@@ -136,7 +136,9 @@ func (c *vaultClientController) HandleConfigureVaultAccess(ctx context.Context, 
 
 	config.ApproleMountPoint = strings.TrimSuffix(config.ApproleMountPoint, "/")
 
-	err = c.setAccessConfig(ctx, req.Storage, config)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	err = c.setAccessConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}

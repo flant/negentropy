@@ -24,9 +24,9 @@ func (m *mockTaskManagerService) CheckTask(ctx context.Context, commit hashCommi
 	return checkTask(ctx, m.storage, commit, m.readTaskStatus)
 }
 
-func NewMock(b *framework.Backend) func(logical.Storage, client.VaultClientController) TaskService {
+func NewMock(b *framework.Backend) func(logical.Storage, client.AccessVaultClientController) TaskService {
 	mock := &mockTaskManagerService{b: b}
-	return func(storage logical.Storage, _ client.VaultClientController) TaskService {
+	return func(storage logical.Storage, _ client.AccessVaultClientController) TaskService {
 		mock.storage = storage
 		return mock
 	}

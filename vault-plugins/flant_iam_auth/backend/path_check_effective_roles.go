@@ -62,7 +62,7 @@ func (b *flantIamAuthBackend) сheckEffectiveRolesHandler(ctx context.Context, r
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
-	authorizator := authz2.NewAutorizator(txn, b.accessVaultProvider, b.accessorGetter, logger)
+	authorizator := authz2.NewAutorizator(txn, b.accessVaultClientProvider, b.accessorGetter, logger)
 	effectiveRolesMap, err := authorizator.EffectiveRoleChecker.CheckEffectiveRoles(*subject, roles)
 	if err != nil {
 		logger.Error(err.Error())

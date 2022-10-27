@@ -19,7 +19,7 @@ import (
 type backend struct {
 	*framework.Backend
 	TasksManager              *tasks_manager.Manager
-	AccessVaultClientProvider client.VaultClientController
+	AccessVaultClientProvider client.AccessVaultClientController
 }
 
 var _ logical.Factory = Factory
@@ -41,10 +41,14 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	return b, nil
 }
 
-func newBackend(_ *logical.BackendConfig) (*backend, error) {
+func newBackend(c *logical.BackendConfig) (*backend, error) {
+	accessVaultClientProvider, err := client.NewAccessVaultClientController(c.StorageView, hclog.Default())
+	if err != nil {
+		return nil, err
+	}
 	b := &backend{
 		TasksManager:              tasks_manager.NewManager(),
-		AccessVaultClientProvider: client.NewVaultClientController(hclog.Default()),
+		AccessVaultClientProvider: accessVaultClientProvider,
 	}
 
 	baseBackend := &framework.Backend{
@@ -52,7 +56,7 @@ func newBackend(_ *logical.BackendConfig) (*backend, error) {
 		Help:        backendHelp,
 
 		PeriodicFunc: func(ctx context.Context, req *logical.Request) error {
-			if err := b.AccessVaultClientProvider.OnPeriodical(ctx, req); err != nil {
+			if err := b.AccessVaultClientProvider.UpdateOutdated(ctx); err != nil {
 				return err
 			}
 

@@ -152,11 +152,12 @@ function build_vault() {
 }
 
 function build_all() {
-  plugins=(flant_iam flant_iam_auth)
-  for i in "${plugins[@]}"
-  do
-    build_plugin "$i"
-  done
+#
+#  plugins=(flant_iam flant_iam_auth)
+#  for i in "${plugins[@]}"
+#  do
+#    build_plugin "$i"
+#  done
   build_authd
   build_cli
   build_server_accessd

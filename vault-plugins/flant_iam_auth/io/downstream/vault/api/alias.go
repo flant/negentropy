@@ -12,7 +12,7 @@ type AliasAPI struct {
 
 func (a *AliasAPI) Create(name string, entityID string, accessor string) error {
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func (a *AliasAPI) DeleteByName(name string, accessor string) error {
 func (a *AliasAPI) DeleteByID(id string) error {
 	path := a.idPath(id)
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func (a *AliasAPI) DeleteByID(id string) error {
 func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, error) {
 	var resp *api.Secret
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func (a *AliasAPI) FindAliasIDByName(name string, accessor string) (string, erro
 func (a *AliasAPI) FindAliasByName(name string, accessor string) (map[string]interface{}, error) {
 	var resp *api.Secret
 	op := func() error {
-		vaultClient, err := a.vaultClientProvider.APIClient(nil)
+		vaultClient, err := a.vaultClientProvider.APIClient()
 		if err != nil {
 			return err
 		}

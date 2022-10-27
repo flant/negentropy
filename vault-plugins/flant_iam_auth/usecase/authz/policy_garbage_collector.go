@@ -14,15 +14,15 @@ import (
 
 var period = time.Minute * 5
 
-func RunVaultPoliciesGarbageCollector(vaultClientProvider client.VaultClientController, logger hclog.Logger) {
+func RunVaultPoliciesGarbageCollector(vaultClientProvider client.AccessVaultClientController, logger hclog.Logger) {
 	for {
-		apiClient, err := vaultClientProvider.APIClient(nil)
+		apiClient, err := vaultClientProvider.APIClient()
 		switch {
-		case err != nil && !errors.Is(err, client.ErrNotInit):
+		case err != nil && !errors.Is(err, client.ErrNotSetConf):
 			logger.Error(fmt.Sprintf("error getting apiClient:%s", err.Error()))
 		case err == nil && apiClient == nil:
 			logger.Error("error getting apiClient is nil, but got nil apiClient")
-		case errors.Is(err, client.ErrNotInit):
+		case errors.Is(err, client.ErrNotSetConf):
 			logger.Debug(fmt.Sprintf("getting apiClient:%s", err.Error()))
 		}
 		if err == nil && apiClient != nil {

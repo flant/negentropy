@@ -1,8 +1,16 @@
 package client
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"math"
+	"net/http"
+	"strings"
 	"time"
+
+	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 const storagePath = "configure_vault_access"
@@ -46,4 +54,72 @@ func (c *vaultAccessConfig) Preferable(oldCfg *vaultAccessConfig) bool {
 		return true
 	}
 	return false
+}
+
+func (c *vaultAccessConfig) newAPIClient() (*api.Client, error) {
+	httpClient := api.DefaultConfig().HttpClient
+
+	if strings.HasPrefix(c.APIURL, "https://127.0.0.1:") ||
+		strings.HasPrefix(c.APIURL, "https://localhost:") {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true, // not_strictly_required_for_local_access
+		}
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig:     tlsConfig,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+	} else if c.CaCert != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(c.CaCert))
+		// Setup HTTPS client
+		tlsConfig := &tls.Config{
+			RootCAs:    caCertPool,
+			MinVersion: tls.VersionTLS12,
+		}
+		transport := &http.Transport{
+			TLSClientConfig:     tlsConfig,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+		httpClient.Transport = transport
+	}
+
+	clientConf := &api.Config{
+		Address:    c.APIURL,
+		HttpClient: httpClient,
+	}
+
+	client, err := api.NewClient(clientConf)
+	if err != nil {
+		return nil, err
+	}
+
+	client.AddHeader("host", c.APIHost)
+
+	return client, nil
+}
+
+func getVaultClientConfig(ctx context.Context, storage logical.Storage) (*vaultAccessConfig, error) {
+	raw, err := storage.Get(ctx, storagePath)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ErrNotSetConf
+	}
+
+	config := new(vaultAccessConfig)
+	if err := raw.DecodeJSON(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func saveVaultClientConfig(ctx context.Context, storage logical.Storage, conf *vaultAccessConfig) error {
+	entry, err := logical.StorageEntryJSON(storagePath, conf)
+	if err != nil {
+		return err
+	}
+
+	return storage.Put(ctx, entry)
 }

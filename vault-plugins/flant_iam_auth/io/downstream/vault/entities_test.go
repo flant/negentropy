@@ -23,7 +23,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, client2.VaultClientController, error) {
+func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, client2.AccessVaultClientController, error) {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		return nil, nil, nil, err
@@ -50,13 +50,13 @@ func getDownStreamApi() (*VaultEntityDownstreamApi, *io.MemoryStore, client2.Vau
 
 	storage, err := io.NewMemoryStore(schema, mb, hclog.NewNullLogger())
 
-	clientProvicer := &client2.MockVaultClientController{Client: client}
+	apiClientProvider := &client2.MockVaultClientController{Client: client}
 
 	return &VaultEntityDownstreamApi{
-		vaultClientProvider: clientProvicer,
-		mountAccessorGetter: NewMountAccessorGetter(clientProvicer, "token/"),
+		vaultClientProvider: apiClientProvider,
+		mountAccessorGetter: NewMountAccessorGetter(apiClientProvider, "token/"),
 		logger:              hclog.NewNullLogger(),
-	}, storage, clientProvicer, nil
+	}, storage, apiClientProvider, nil
 }
 
 func skipNoneDev(t *testing.T) {
