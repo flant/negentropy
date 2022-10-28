@@ -6,7 +6,6 @@ VERSION_KEY = 'migratorversion'
 UTC_LENGTH = 14
 
 multipass_file_path = "authd/dev/secret/authd.jwt"
-migration_dir = 'infra/vault_migrator/migrations'
 
 proto_team_uuid = '58df57d6-d75b-4889-a1cf-15d95e90198a'
 flant_tenant_uuid = "be0ba0d8-7be7-49c8-8609-c62ac1f14597"

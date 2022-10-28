@@ -14,7 +14,7 @@ import datetime
 import sys
 
 # TODO: vault secrets enable -path migrator database
-from config import MIGRATION_TEMPLATE, log, migration_dir
+from config import MIGRATION_TEMPLATE, log
 from errors import Error
 
 from utils import prepare_user_multipass_jwt, split_vaults, write_tokens_to_file, create_teammate_for_webdev, single_mode_code_run
@@ -179,7 +179,10 @@ def production(args):
         args: args 
     """
     # on production VAULTS_B64_JSON in base 64
-    vaults_list = os.environ.get('VAULTS_B64_JSON')
+    vaults_list = base64.b64decode(os.environ.get('VAULTS_B64_JSON'))
+    if not vaults_list:
+        log.info("The list of vaults is empty")
+        exit()
     decoded_vaults_list = ast.literal_eval(base64.b64decode(vaults_list))
     
     # we need to create a list of Vaults from dicts to continue work with them
