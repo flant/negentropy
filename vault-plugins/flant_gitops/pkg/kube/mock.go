@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -22,7 +23,7 @@ type Job struct {
 }
 
 // RunJob is a KubeService method
-func (m *MockKubeService) RunJob(_ context.Context, hashCommit string, vaultsB64Json string) error {
+func (m *MockKubeService) RunJob(ctx context.Context, hashCommit string, vaultsB64Json string, logger log.Logger) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.activeJobs[hashCommit] = Job{

@@ -274,18 +274,19 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 	if err != nil {
 		return err
 	}
-	vaultsEnvBase64Json, warnings, err := vault.BuildVaultsBase64Env(ctx, storage, apiClient)
+	vaultsEnvBase64Json, warnings, err := vault.BuildVaultsBase64Env(ctx, storage, apiClient, b.Logger())
 	if len(warnings) > 0 {
 		for _, w := range warnings {
 			b.Logger().Warn(w)
 		}
 	}
+	b.Logger().Debug("BuildVaultsBase64Env", "vaultsEnvBase64Json", vaultsEnvBase64Json)
 	err = backoff.Retry(func() error {
 		kubeService, err := kubeServiceProvider(ctx, storage)
 		if err != nil {
 			return err
 		}
-		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json)
+		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json, b.Logger())
 	}, sharedio.TwoMinutesBackoff())
 	return err
 }

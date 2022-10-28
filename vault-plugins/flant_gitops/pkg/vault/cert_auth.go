@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/cenkalti/backoff"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -126,11 +127,12 @@ func parsePublicCertificate(rawPem string) (*pem.Block, error) {
 // BuildVaultsBase64Env returns prepared value like: '[{"name":"vault-root-1", "url":"http://127.0.0.1:8200/", "token":"hvs.KqN6TSCyx9CFbTxCVCORwASN"}]'
 // encoded with Base64
 // if some vault doesn't response - one warnings is added to second returned value,
-func BuildVaultsBase64Env(ctx context.Context, storage logical.Storage, client *api.Client) (string, []string, error) {
+func BuildVaultsBase64Env(ctx context.Context, storage logical.Storage, client *api.Client, logger log.Logger) (string, []string, error) {
 	vaults, warnings, err := buildVaultsEnv(ctx, storage, client)
 	if err != nil {
 		return vaults, warnings, err
 	}
+	logger.Debug("built vaults json", "vaults", vaults)
 	vaultsBase64Json := b64.StdEncoding.EncodeToString([]byte(vaults))
 	return vaultsBase64Json, warnings, nil
 }

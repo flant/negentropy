@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,7 @@ type (
 )
 
 type KubeService interface {
-	RunJob(ctx context.Context, hashCommit string, vaultsB64Json string) error
+	RunJob(ctx context.Context, hashCommit string, vaultsB64Json string, logger log.Logger) error
 	CheckJob(ctx context.Context, hashCommit string) (exist, finished, error)
 }
 
@@ -73,9 +74,9 @@ type kubeService struct {
 //go:embed job_template.yaml
 var jobTemplate string
 
-func (k *kubeService) RunJob(ctx context.Context, hashCommit string, vaultsB64Json string) error {
+func (k *kubeService) RunJob(ctx context.Context, hashCommit string, vaultsB64Json string, logger log.Logger) error {
 	specStr := replacePlaceholders(jobTemplate, hashCommit, vaultsB64Json)
-
+	logger.Debug("replacePlaceholders", "spec", specStr)
 	var spec batchv1.Job
 	err := yaml.Unmarshal([]byte(specStr), &spec)
 	if err != nil {
