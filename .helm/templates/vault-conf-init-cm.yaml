@@ -68,6 +68,12 @@ data:
       vault write gitops/configure/git_repository git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="$INITIAL_LAST_SUCCESSFULL_COMMIT"
       vault read gitops/configure/git_repository
 
+      # Load VAULTS into gitops
+      VAULT_CACERT_DATA=$(cat $VAULT_CACERT | sed -z "s#\n#\\\n#g")
+      curl --fail --cacert "${VAULT_CACERT}" -X POST -H "X-Vault-Request: true" -H "X-Vault-Token: $(vault print token)" https://127.0.0.1:8200/v1/gitops/configure/vaults -H 'Content-Type: application/json' \
+       -d  "{\"vaults\":[{\"name\":\"vault-root\",\"url\":\"https://vault-root:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-auth\",\"url\":\"https://vault-auth:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"}]}"
+      vault read gitops/configure/vaults
+
       {{- if ne .Values.werf.env "production"}}
       echo "VAULT_TOKEN $VAULT_TOKEN" >> "$KEYFILE"
       {{- else }}
