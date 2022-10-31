@@ -167,7 +167,7 @@ func buildVaultsEnv(ctx context.Context, storage logical.Storage, client *api.Cl
 	if err != nil {
 		return "", nil, err
 	}
-	return fmt.Sprintf("'%s'", string(data)), warnings, nil
+	return string(data), warnings, nil
 }
 
 type vaultWithToken struct {

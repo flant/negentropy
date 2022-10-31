@@ -284,12 +284,11 @@ func enableKV(v Vault) error {
 func parse(vaultsB64Json string, originVaults []Vault) []Vault {
 	data, err := b64.StdEncoding.DecodeString(vaultsB64Json)
 	Expect(err).ToNot(HaveOccurred())
-	vaultsStr := strings.Trim(string(data), "'")
 	var vaults []struct {
 		vault.VaultConfiguration
 		VaultToken string `structs:"token" json:"token"`
 	}
-	err = json.Unmarshal([]byte(vaultsStr), &vaults)
+	err = json.Unmarshal(data, &vaults)
 	Expect(err).ToNot(HaveOccurred())
 	var result []Vault
 	for _, v := range vaults {
