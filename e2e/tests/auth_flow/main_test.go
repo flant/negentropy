@@ -72,7 +72,7 @@ func PrepareUserAndMultipass(waitKafkaByTryLogin bool) (user *iam.User, multipas
 		cl := configure.GetClientWithToken("", authVaultAddr)
 		cl.ClearToken()
 		var err error
-		for attempt := 0; attempt < 50; attempt++ {
+		for attempt := 0; attempt < 300; attempt++ {
 			_, err = cl.Logical().Write(lib.IamAuthPluginPath+"/login", map[string]interface{}{
 				"method": "multipass",
 				"jwt":    multipassJWT,

@@ -84,10 +84,10 @@ var _ = Describe("Process of getting ssh access to server by a cli", func() {
 				ValidPrincipals: principals,
 			}
 
-			s, err := cliVaultClient.SignPublicSSHCertificate(cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, serversUUIDs, sshRequest)
+			_, err = cliVaultClient.SignPublicSSHCertificate(cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, serversUUIDs, sshRequest)
 
 			Expect(err).ToNot(HaveOccurred())
-			fmt.Printf("principals: %s key: %#v\n", principals, s)
+			fmt.Printf("principals: %s\n", principals)
 		}
 	})
 })
