@@ -2,7 +2,9 @@ package io
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/hashicorp/go-hclog"
 
@@ -185,11 +187,10 @@ func RunRestorationLoopWITH_LOGS(newConsumer, runConsumer *kafka.Consumer, topic
 
 // returns metadata & last offset in topic
 // Note works only for 1 partition
-func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) (*kafka.Metadata, int64, error) {
-	edgeOffset := int64(0)
-	meta, err := consumer.GetMetadata(&topicName, false, -1)
+func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) (meta *kafka.Metadata, edgeOffset int64, err error) {
+	meta, err = getMetaDataWithRetry(consumer, topicName)
 	if err != nil {
-		return nil, 0, err
+		return
 	}
 
 	topicMeta := meta.Topics[topicName]
@@ -201,7 +202,7 @@ func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) 
 			len(topicMeta.Partitions))
 	}
 	for _, partition := range topicMeta.Partitions {
-		_, lastPartitionOffset, err := consumer.QueryWatermarkOffsets(topicName, partition.ID, -1)
+		lastPartitionOffset, err := queryWatermarkOffsetsWithRetry(consumer, topicName, partition)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -210,6 +211,32 @@ func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) 
 		}
 	}
 	return meta, edgeOffset, nil
+}
+
+func queryWatermarkOffsetsWithRetry(consumer *kafka.Consumer, topicName string, partition kafka.PartitionMetadata) (int64, error) {
+	var lastPartitionOffset int64
+	err := backoff.Retry(func() error {
+		var err error
+		_, lastPartitionOffset, err = consumer.QueryWatermarkOffsets(topicName, partition.ID, 500)
+		return err
+	}, thirtySecondsBackoff())
+	if err != nil {
+		return 0, fmt.Errorf("query watermark offsets for topic: %q at partition %q: %w", topicName, partition.ID, err)
+	}
+	return lastPartitionOffset, err
+}
+
+func getMetaDataWithRetry(consumer *kafka.Consumer, topicName string) (*kafka.Metadata, error) {
+	var meta *kafka.Metadata
+	err := backoff.Retry(func() error {
+		var err error
+		meta, err = consumer.GetMetadata(&topicName, false, 500)
+		return err
+	}, thirtySecondsBackoff())
+	if err != nil {
+		return nil, fmt.Errorf("getting metadata for topic: %q: %w", topicName, err)
+	}
+	return meta, nil
 }
 
 // LastAndEdgeOffsetsByRunConsumer
@@ -313,4 +340,10 @@ func setNewConsumerToBeginning(consumer *kafka.Consumer, topicName string, parti
 		return fmt.Errorf("assigning first message: %w", err)
 	}
 	return nil
+}
+
+func thirtySecondsBackoff() backoff.BackOff {
+	backoffRequest := backoff.NewExponentialBackOff()
+	backoffRequest.MaxElapsedTime = time.Second * 30
+	return backoffRequest
 }
