@@ -275,18 +275,9 @@ func LastAndEdgeOffsetsByRunConsumer(runConsumer *kafka.Consumer, newConsumer *k
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("assigning last message: %w", err)
 	}
-	ch := newConsumer.Events()
-	var msg *kafka.Message
-	for msg == nil {
-		fmt.Print("\n====== ENTER ENDLESS LOOP  ======\n\n")
-		ev := <-ch
-
-		switch e := ev.(type) {
-		case *kafka.Message:
-			msg = e
-		default:
-			return 0, 0, 0, fmt.Errorf("recieve not handled event %s", e.String())
-		}
+	msg, err := getMessageWitRetry(newConsumer)
+	if err != nil {
+		return 0, 0, 0, err
 	}
 
 	lastOffsetAtTopic := msg.TopicPartition.Offset
@@ -294,6 +285,40 @@ func LastAndEdgeOffsetsByRunConsumer(runConsumer *kafka.Consumer, newConsumer *k
 		return int64(lastOffsetAtTopic), 0, partition, nil
 	}
 	return 0, int64(nextOffset), partition, nil
+}
+
+func getMessageWitRetry(newConsumer *kafka.Consumer) (*kafka.Message, error) {
+	var msg *kafka.Message
+	err := backoff.Retry(func() error {
+		var err error
+		msg, err = getMessage(newConsumer)
+		return err
+	}, thirtySecondsBackoff())
+	if err != nil {
+		return nil, fmt.Errorf("getting message: %w", err)
+	}
+	return msg, nil
+}
+
+func getMessage(newConsumer *kafka.Consumer) (*kafka.Message, error) {
+	ch := newConsumer.Events()
+	timerCh := time.NewTimer(time.Millisecond * 100).C
+	var msg *kafka.Message
+	for msg == nil {
+		fmt.Print("\n====== ENTER ENDLESS LOOP  ======\n\n")
+		select {
+		case ev := <-ch:
+			switch e := ev.(type) {
+			case *kafka.Message:
+				msg = e
+			default:
+				return nil, fmt.Errorf("recieve not handled event %s", e.String())
+			}
+		case <-timerCh:
+			return nil, fmt.Errorf("out by timer 100ms")
+		}
+	}
+	return msg, nil
 }
 
 func LastOffsetByNewConsumer(consumer *kafka.Consumer, topicName string) (lastOffsetForRestoring int64, partition int32, err error) {
