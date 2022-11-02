@@ -278,6 +278,7 @@ func LastAndEdgeOffsetsByRunConsumer(runConsumer *kafka.Consumer, newConsumer *k
 	ch := newConsumer.Events()
 	var msg *kafka.Message
 	for msg == nil {
+		fmt.Print("\n====== ENTER ENDLESS LOOP  ======\n\n")
 		ev := <-ch
 
 		switch e := ev.(type) {
