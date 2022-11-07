@@ -71,7 +71,7 @@ data:
       # Load VAULTS into gitops
       VAULT_CACERT_DATA=$(cat $VAULT_CACERT | sed -z "s#\n#\\\n#g")
       curl --fail --cacert "${VAULT_CACERT}" -X POST -H "X-Vault-Request: true" -H "X-Vault-Token: $(vault print token)" https://127.0.0.1:8200/v1/gitops/configure/vaults -H 'Content-Type: application/json' \
-       -d  "{\"vaults\":[{\"name\":\"vault-root\",\"url\":\"https://vault-root:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-auth\",\"url\":\"https://vault-auth:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"}]}"
+       -d  "{\"vaults\":[{\"name\":\"vault-conf\",\"url\":\"https://vault-conf:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-root\",\"url\":\"https://vault-root:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-auth\",\"url\":\"https://vault-auth:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"}]}"
       vault read gitops/configure/vaults
 
       {{- if ne .Values.werf.env "production"}}
