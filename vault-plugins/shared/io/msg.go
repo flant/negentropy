@@ -321,40 +321,6 @@ func getMessage(newConsumer *kafka.Consumer) (*kafka.Message, error) {
 	return msg, nil
 }
 
-func LastOffsetByNewConsumer(consumer *kafka.Consumer, topicName string) (lastOffsetForRestoring int64, partition int32, err error) {
-	metaData, t, err := getNextWritingOffsetByMetaData(consumer, topicName)
-	if err != nil {
-		return 0, 0, err
-	}
-	partition = metaData.Topics[topicName].Partitions[0].ID
-	if t == 0 {
-		return 0, partition, nil
-	}
-
-	tp := kafka.TopicPartition{
-		Topic:     &topicName,
-		Partition: partition,
-		Offset:    kafka.OffsetTail(2),
-	}
-	err = consumer.Assign([]kafka.TopicPartition{tp})
-	if err != nil {
-		return 0, 0, fmt.Errorf("assigning last message: %w", err)
-	}
-	ch := consumer.Events()
-	var msg *kafka.Message
-	for msg == nil {
-		ev := <-ch
-		switch e := ev.(type) {
-		case *kafka.Message:
-			msg = e
-		default:
-			fmt.Printf("Collected from topic %s unsupported event: %#v\n", topicName, ev)
-		}
-	}
-	lastOffsetAtTopic := msg.TopicPartition.Offset
-	return int64(lastOffsetAtTopic), partition, nil
-}
-
 func setNewConsumerToBeginning(consumer *kafka.Consumer, topicName string, partition int32) error {
 	tp := kafka.TopicPartition{
 		Topic:     &topicName,
