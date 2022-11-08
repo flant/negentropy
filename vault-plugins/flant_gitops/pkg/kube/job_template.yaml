@@ -22,8 +22,8 @@ spec:
               VERSION=2.1.6
               OS=linux
               ARCH=amd64
-              [ "$GIT_COMMIT" = "COMMIT_PLACEHOLDER" ] && GIT_COMMIT="$GIT_BRANCH"
-              [ "$VAULTS_B64_JSON" = "VAULTS_B64_PLACEHOLDER" ] && VAULTS_B64_JSON="$(echo -n '[]'| base64)"
+              echo "$GIT_COMMIT" | grep -q PLACEHOLDER  && GIT_COMMIT="$GIT_BRANCH"
+              echo "$VAULTS_B64_JSON" | grep -q PLACEHOLDER && VAULTS_B64_JSON="$(echo -n '[]'| base64)"
               mkdir $HOME/bin &&
               export PATH=$PATH:$HOME/bin &&
               wget -O- "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${VERSION}/docker-credential-gcr_${OS}_${ARCH}-${VERSION}.tar.gz" | tar xz docker-credential-gcr &&
