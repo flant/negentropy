@@ -27,12 +27,16 @@ func NewObjectHandler(api *vault.VaultEntityDownstreamApi, parentLogger hclog.Lo
 	}
 }
 
-func (h *ObjectHandler) HandleAuthSource(txn *io.MemoryStoreTxn, source *model.AuthSource) error {
+func (h *ObjectHandler) HandleAuthSource(txn io.Txn, source *model.AuthSource) error {
 	l := h.logger
 	l.Debug("Handle auth source", source.Name)
-	usersRepo := iam_repo.NewUserRepository(txn)
+	storeTxn, ok := txn.(*io.MemoryStoreTxn)
+	if !ok {
+		return fmt.Errorf("CRITICAL CODE ERROR: expected passing type: *io.MemoryStoreTxn, actually passed: %T", txn)
+	}
+	usersRepo := iam_repo.NewUserRepository(storeTxn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
-	saRepo := iam_repo.NewServiceAccountRepository(txn)
+	saRepo := iam_repo.NewServiceAccountRepository(storeTxn)
 
 	err := usersRepo.Iter(func(user *iamrepos.User) (bool, error) {
 		l.Debug(fmt.Sprintf("Create new ea mem object for user %s and source %s", user.FullIdentifier, source.Name))
@@ -68,15 +72,23 @@ func (h *ObjectHandler) HandleAuthSource(txn *io.MemoryStoreTxn, source *model.A
 	})
 }
 
-func (h *ObjectHandler) HandleEntity(txn *io.MemoryStoreTxn, entity *model.Entity) error {
-	return h.processActions(h.vaultEntityDownstream.ProcessEntity(txn, entity))
+func (h *ObjectHandler) HandleEntity(txn io.Txn, entity *model.Entity) error {
+	storeTxn, ok := txn.(*io.MemoryStoreTxn)
+	if !ok {
+		return fmt.Errorf("CRITICAL CODE ERROR: expected passing type: *io.MemoryStoreTxn, actually passed: %T", txn)
+	}
+	return h.processActions(h.vaultEntityDownstream.ProcessEntity(storeTxn, entity))
 }
 
-func (h *ObjectHandler) HandleEntityAlias(txn *io.MemoryStoreTxn, entityAlias *model.EntityAlias) error {
-	return h.processActions(h.vaultEntityDownstream.ProcessEntityAlias(txn, entityAlias))
+func (h *ObjectHandler) HandleEntityAlias(txn io.Txn, entityAlias *model.EntityAlias) error {
+	storeTxn, ok := txn.(*io.MemoryStoreTxn)
+	if !ok {
+		return fmt.Errorf("CRITICAL CODE ERROR: expected passing type: *io.MemoryStoreTxn, actually passed: %T", txn)
+	}
+	return h.processActions(h.vaultEntityDownstream.ProcessEntityAlias(storeTxn, entityAlias))
 }
 
-func (h *ObjectHandler) DeletedAuthSource(txn *io.MemoryStoreTxn, uuid string) error {
+func (h *ObjectHandler) DeletedAuthSource(txn io.Txn, uuid string) error {
 	l := h.logger
 	l.Debug("Handle delete source", uuid)
 	eaRepo := repo.NewEntityAliasRepo(txn)
@@ -95,12 +107,12 @@ func (h *ObjectHandler) DeletedAuthSource(txn *io.MemoryStoreTxn, uuid string) e
 	return err
 }
 
-func (h *ObjectHandler) DeletedEntity(txn *io.MemoryStoreTxn, id string) error {
-	return h.processActions(h.vaultEntityDownstream.ProcessDeleteEntity(txn, id))
+func (h *ObjectHandler) DeletedEntity(_ io.Txn, id string) error {
+	return h.processActions(h.vaultEntityDownstream.ProcessDeleteEntity(id))
 }
 
-func (h *ObjectHandler) DeletedEntityAlias(txn *io.MemoryStoreTxn, id string) error {
-	actions, err := h.vaultEntityDownstream.ProcessDeleteEntityAlias(txn, id)
+func (h *ObjectHandler) DeletedEntityAlias(_ io.Txn, id string) error {
+	actions, err := h.vaultEntityDownstream.ProcessDeleteEntityAlias(id)
 	return h.processActions(actions, err)
 }
 
@@ -122,16 +134,16 @@ func (h *ObjectHandler) processActions(actions []io.DownstreamAPIAction, err err
 }
 
 type ModelHandler interface {
-	HandleAuthSource(txn *io.MemoryStoreTxn, user *model.AuthSource) error
-	HandleEntity(txn *io.MemoryStoreTxn, entity *model.Entity) error
-	HandleEntityAlias(txn *io.MemoryStoreTxn, entity *model.EntityAlias) error
+	HandleAuthSource(txn io.Txn, user *model.AuthSource) error
+	HandleEntity(txn io.Txn, entity *model.Entity) error
+	HandleEntityAlias(txn io.Txn, entity *model.EntityAlias) error
 
-	DeletedAuthSource(txn *io.MemoryStoreTxn, uuid string) error
-	DeletedEntity(txn *io.MemoryStoreTxn, uuid string) error
-	DeletedEntityAlias(txn *io.MemoryStoreTxn, uuid string) error
+	DeletedAuthSource(txn io.Txn, uuid string) error
+	DeletedEntity(txn io.Txn, uuid string) error
+	DeletedEntityAlias(txn io.Txn, uuid string) error
 }
 
-func HandleNewMessageSelfSource(txn *io.MemoryStoreTxn, handler ModelHandler, msg *sharedkafka.MsgDecoded) error {
+func HandleNewMessageSelfSource(txn io.Txn, handler ModelHandler, msg *sharedkafka.MsgDecoded) error {
 	isDelete := msg.IsDeleted()
 
 	var inputObject interface{}

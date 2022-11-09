@@ -6,12 +6,11 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type RestoreFunc func(io.Txn, sharedkafka.MsgDecoded) (bool, error)
 
-func HandleRestoreMessagesSelfSource(txn *memdb.Txn, msg sharedkafka.MsgDecoded, extraRestoreHandlers []RestoreFunc) error {
+func HandleRestoreMessagesSelfSource(txn io.Txn, msg sharedkafka.MsgDecoded, extraRestoreHandlers []RestoreFunc) error {
 	var inputObject interface{}
 	var table string
 

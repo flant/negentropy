@@ -29,7 +29,8 @@ func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
       "preliminary_announce_period": 86400000000000
    }
 }
-`)})
+`),
+	})
 
 	require.NoError(t, err)
 	require.True(t, handled)
