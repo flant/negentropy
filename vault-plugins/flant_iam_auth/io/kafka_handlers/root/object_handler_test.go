@@ -30,7 +30,7 @@ func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecod
 		defer txn.Abort()
 
 		objectHandler := NewObjectHandler(hclog.NewNullLogger())
-		err := HandleNewMessageIamRootSource(txn, objectHandler, msg)
+		err := HandleNewMessageIamRootSource(txn, objectHandler, *msg)
 		require.NoError(t, err)
 
 		err = txn.Commit()

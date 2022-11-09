@@ -71,11 +71,11 @@ func EntityAliasSchema() *memdb.DBSchema {
 }
 
 type EntityAliasRepo struct {
-	db        *io.MemoryStoreTxn
+	db        io.Txn
 	tableName string
 }
 
-func NewEntityAliasRepo(db *io.MemoryStoreTxn) *EntityAliasRepo {
+func NewEntityAliasRepo(db io.Txn) *EntityAliasRepo {
 	return &EntityAliasRepo{
 		db:        db,
 		tableName: model.EntityAliasType,

@@ -16,14 +16,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-// type SelfSourceMsgHandlerFactory func(store *io.MemoryStore, tx *io.MemoryStoreTxn) self.ModelHandler
-type SelfSourceMsgHandlerFactory func() self.ModelHandler
-
 type SelfKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
 
-	// handlerFactory SelfSourceMsgHandlerFactory
 	handler self.ModelHandler
 	logger  hclog.Logger
 
@@ -111,7 +107,11 @@ func (sks *SelfKafkaSource) restoreMsHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	err = self.HandleRestoreMessagesSelfSource(txn, splitted[0], decrypted, []self.RestoreFunc{
+	err = self.HandleRestoreMessagesSelfSource(txn, sharedkafka.MsgDecoded{
+		Type: splitted[0],
+		ID:   splitted[1],
+		Data: decrypted,
+	}, []self.RestoreFunc{
 		jwtkafka.SelfRestoreMessage,
 	})
 	if err != nil {

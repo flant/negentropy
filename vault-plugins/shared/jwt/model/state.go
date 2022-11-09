@@ -8,7 +8,6 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -129,7 +128,7 @@ func (s *StateRepo) SetLastRotationTime(t time.Time) error {
 	return s.put(st)
 }
 
-func HandleRestoreState(db *memdb.Txn, data []byte) error {
+func HandleRestoreState(db io.Txn, data []byte) error {
 	entry := &state{}
 	err := json.Unmarshal(data, entry)
 	if err != nil {

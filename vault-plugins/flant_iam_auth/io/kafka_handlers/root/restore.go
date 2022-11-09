@@ -5,13 +5,14 @@ import (
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func HandleRestoreMessagesRootSource(txn *memdb.Txn, objType string, data []byte) error {
+func HandleRestoreMessagesRootSource(txn io.Txn, msg sharedkafka.MsgDecoded) error {
 	var inputObject interface{}
 
-	switch objType {
+	switch msg.Type {
 	case iam_model.UserType:
 		inputObject = &iam_model.User{}
 	case iam_model.ServiceAccountType:
@@ -42,16 +43,11 @@ func HandleRestoreMessagesRootSource(txn *memdb.Txn, objType string, data []byte
 	default:
 		return nil
 	}
-	table := objType
-	err := json.Unmarshal(data, inputObject)
+	table := msg.Type
+	err := json.Unmarshal(msg.Data, inputObject)
 	if err != nil {
 		return err
 	}
 
-	err = txn.Insert(table, inputObject)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return txn.Insert(table, inputObject)
 }

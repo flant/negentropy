@@ -8,7 +8,6 @@ import (
 	hcmemdb "github.com/hashicorp/go-memdb"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 const (
@@ -100,7 +99,7 @@ func (s *ConfigRepo) Get() (*Config, error) {
 	return entry.Config, nil
 }
 
-func HandleRestoreConfig(db *memdb.Txn, data []byte) error {
+func HandleRestoreConfig(db io.Txn, data []byte) error {
 	entry := &configPairTableEntity{}
 	err := json.Unmarshal(data, entry)
 	if err != nil {

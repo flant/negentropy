@@ -15,8 +15,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-type RootSourceMsgHandlerFactory func(tx *io.MemoryStoreTxn) root.ModelHandler
-
 type RootKafkaSource struct {
 	kf        *sharedkafka.MessageBroker
 	decryptor *sharedkafka.Encrypter
@@ -28,14 +26,47 @@ type RootKafkaSource struct {
 	run           bool
 }
 
-func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelHandler, parentLogger hclog.Logger) *RootKafkaSource {
-	return &RootKafkaSource{
-		kf:        kf,
-		decryptor: sharedkafka.NewEncrypter(),
+// func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelHandler, parentLogger hclog.Logger) *RootKafkaSource {
+//	return &RootKafkaSource{
+//		kf:        kf,
+//		decryptor: sharedkafka.NewEncrypter(),
+//
+//		stopC:         make(chan struct{}),
+//		logger:        parentLogger.Named("authRootKafkaSource"),
+//		modelsHandler: modelsHandler,
+//	}
+// }
 
-		stopC:         make(chan struct{}),
-		logger:        parentLogger.Named("authRootKafkaSource"),
-		modelsHandler: modelsHandler,
+func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelHandler, parentLogger hclog.Logger) *io.KafkaSourceImpl {
+	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
+		return kf.PluginConfig.SelfTopicName
+	}
+	topicNameProvider := func(kf *sharedkafka.MessageBroker) string {
+		return kf.PluginConfig.RootTopicName
+	}
+	verifySign := func(signature []byte, messageValue []byte) error {
+		hashed := sha256.Sum256(messageValue)
+		return sharedkafka.VerifySignature(signature, kf.PluginConfig.RootPublicKey, hashed)
+	}
+	decrypt := func(encryptedMessageValue []byte, chunked bool) ([]byte, error) {
+		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
+	}
+	processRunMessage := func(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+		return root.HandleNewMessageIamRootSource(txn, modelsHandler, msg)
+	}
+
+	return &io.KafkaSourceImpl{
+		KafkaBroker:               kf,
+		StopC:                     make(chan struct{}),
+		Logger:                    parentLogger.Named("authRootKafkaSource"),
+		ProvideRunConsumerGroupID: runConsumerGroupIDProvider,
+		ProvideTopicName:          topicNameProvider,
+		VerifySign:                verifySign,
+		VerifyEncrypted:           false,
+		Decrypt:                   decrypt,
+		ProcessRunMessage:         processRunMessage,
+		ProcessRestoreMessage:     root.HandleRestoreMessagesRootSource,
+		Runnable:                  true,
 	}
 }
 
@@ -102,7 +133,13 @@ func (rk *RootKafkaSource) restoreMsgHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("wrong signature. Skipping message: %s in topic: %s at offset %d\n", msg.Key, *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 	}
 
-	return root.HandleRestoreMessagesRootSource(txn, splitted[0], decrypted)
+	return root.HandleRestoreMessagesRootSource(txn,
+		sharedkafka.MsgDecoded{
+			Type: splitted[0],
+			ID:   splitted[1],
+			Data: decrypted,
+		},
+	)
 }
 
 func (rk *RootKafkaSource) Run(store *io.MemoryStore) {
@@ -209,7 +246,7 @@ func (rk *RootKafkaSource) processMessage(source *sharedkafka.SourceInputMessage
 	defer tx.Abort()
 
 	rk.logger.Debug(fmt.Sprintf("Handle new message %s/%s", msg.Type, msg.ID), "type", msg.Type, "id", msg.ID)
-	err := root.HandleNewMessageIamRootSource(tx, rk.modelsHandler, msg)
+	err := root.HandleNewMessageIamRootSource(tx, rk.modelsHandler, *msg)
 	if err != nil {
 		rk.logger.Error(fmt.Sprintf("Error message handle %s/%s: %s", msg.Type, msg.ID, err), "type", msg.Type, "id", msg.ID, "err", err)
 		return backoff.Permanent(err)
