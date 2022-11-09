@@ -19,7 +19,12 @@ spec:
         command:
         - sh
         - -c
-        - python3 /app/infra/vault_migrator/migrator.py production
+        - REQUESTS_CA_BUNDLE=/etc/ssl/certs/negentropy-ca.pem python3 /app/infra/vault_migrator/migrator.py production
+        volumeMounts:
+        - name: vault-conf-tls
+          mountPath: /etc/ssl/certs/negentropy-ca.pem
+          subPath: ca.crt
+          readOnly: false
         env:
         - name: VAULTS_B64_JSON
           value: {{ .Values.vaults_b64_json }}
@@ -35,3 +40,8 @@ spec:
           value: {{ .kafka_ssl_path }}/user.key
         - name: KAFKA_SSL_CLIENT_CERTIFICATE_PATH
           value: {{ .kafka_ssl_path }}/user.crt
+      volumes:
+      - name: vault-conf-tls
+        secret:
+          defaultMode: 420
+          secretName: vault-conf-tls
