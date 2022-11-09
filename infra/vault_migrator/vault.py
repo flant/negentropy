@@ -11,7 +11,7 @@ from config import VERSION_KEY, log
 class Vault:
     """The Vault class for Negentropy vault control."""
 
-    def __init__(self, name: str, url: str = '', token: str = '', keys: List[str] = None ):
+    def __init__(self, name: str, url: str = '', token: str = '', keys: List[str] = None , vault_cacert: str = ''):
         """Creates a new Vault instance.
         :param name: Original name of vault. Eg: auth-2
         :type name: str
