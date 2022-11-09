@@ -1,6 +1,7 @@
 package io
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -49,6 +50,8 @@ type KafkaSourceImpl struct {
 	stopC chan struct{}
 	// is message loop run
 	run bool
+	// if true, Restoration loop skip processing message, Run loop on verify error just provide message
+	SkipRestorationOnWrongSignature bool
 }
 
 func (rk *KafkaSourceImpl) Name() string {
@@ -109,8 +112,11 @@ func (rk *KafkaSourceImpl) runMessageLoop(store *MemoryStore, consumer *kafka.Co
 
 func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kafka.Consumer, msg *kafka.Message) {
 	decoded, err := rk.decodeMessageAndCheck(msg)
+	if errors.Is(err, errWrongSignature) && rk.SkipRestorationOnWrongSignature {
+		rk.Logger.Debug(fmt.Sprintf("decoding and checking message: %s: message skiped", err.Error()))
+	}
 	if err != nil {
-		rk.Logger.Error("decoding and checking message:", err)
+		rk.Logger.Error(fmt.Sprintf("decoding and checking message: %s", err.Error()))
 		return
 	}
 
@@ -137,6 +143,8 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 		rk.Logger.Error(fmt.Sprintf("retries failed:%s", err.Error()))
 	}
 }
+
+var errWrongSignature = fmt.Errorf("wrong signature")
 
 func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*sharedkafka.MsgDecoded, error) {
 	result := &sharedkafka.MsgDecoded{}
@@ -173,7 +181,7 @@ func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*sharedkaf
 		}
 		err := rk.VerifySign(signature, result.Data)
 		if err != nil {
-			return nil, fmt.Errorf("wrong signature of: %q in topic %s at offset %d", string(msg.Key), *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
+			return nil, fmt.Errorf("%w: %q in topic %s at offset %d", errWrongSignature, string(msg.Key), *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 		}
 	}
 
@@ -204,6 +212,10 @@ func (rk *KafkaSourceImpl) Restore(txn *memdb.Txn) error {
 
 func (rk *KafkaSourceImpl) msgRestoreHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
 	decoded, err := rk.decodeMessageAndCheck(msg)
+	if errors.Is(err, errWrongSignature) && rk.SkipRestorationOnWrongSignature {
+		rk.Logger.Debug(fmt.Sprintf("decoding and checking message: %s: message skiped", err.Error()))
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
