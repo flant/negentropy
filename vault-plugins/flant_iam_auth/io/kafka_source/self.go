@@ -35,13 +35,12 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handler self.ModelHandler
 	}
 
 	return &io.KafkaSourceImpl{
+		NameOfSource:              "authSelfKafkaSource",
 		KafkaBroker:               kf,
-		StopC:                     make(chan struct{}),
 		Logger:                    parentLogger.Named("authSelfKafkaSource"),
 		ProvideRunConsumerGroupID: runConsumerGroupIDProvider,
 		ProvideTopicName:          topicNameProvider,
 		VerifySign:                verifySign,
-		VerifyEncrypted:           false,
 		Decrypt:                   decrypt,
 		ProcessRunMessage:         processRunMessage,
 		ProcessRestoreMessage:     processRestoreMessage,

@@ -96,13 +96,12 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 	}
 
 	return &io.KafkaSourceImpl{
+		NameOfSource:              "iamSelfKafkaSource",
 		KafkaBroker:               kf,
-		StopC:                     make(chan struct{}),
 		Logger:                    parentLogger.Named("iamSelfKafkaSource"),
 		ProvideRunConsumerGroupID: runConsumerGroupIDProvider,
 		ProvideTopicName:          topicNameProvider,
 		VerifySign:                verifySign,
-		VerifyEncrypted:           false,
 		Decrypt:                   decrypt,
 		ProcessRunMessage:         nil, // don't need as not runnable
 		ProcessRestoreMessage:     proccessRestoreMessage,

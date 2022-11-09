@@ -634,3 +634,24 @@ func testTables() map[string]*memdb.TableSchema {
 		},
 	}
 }
+
+func Test_FirstUnExisted(t *testing.T) {
+	txn, _ := prepareTxnWithParentU1(t)
+
+	p, err := txn.First(parentType, "id", u2)
+
+	require.NoError(t, err)
+	require.Nil(t, p)
+}
+
+func Test_DeleteUnExisted(t *testing.T) {
+	txn, _ := prepareTxnWithParentU1(t)
+	unexisted := &parent{
+		UUID:       u2,
+		Identifier: "parent2",
+	}
+
+	err := txn.Delete(parentType, unexisted)
+
+	require.ErrorIs(t, err, memdb.ErrNotFound)
+}

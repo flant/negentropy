@@ -29,13 +29,12 @@ func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelH
 	}
 
 	return &io.KafkaSourceImpl{
+		NameOfSource:              "authRootKafkaSource",
 		KafkaBroker:               kf,
-		StopC:                     make(chan struct{}),
 		Logger:                    parentLogger.Named("authRootKafkaSource"),
 		ProvideRunConsumerGroupID: runConsumerGroupIDProvider,
 		ProvideTopicName:          topicNameProvider,
 		VerifySign:                verifySign,
-		VerifyEncrypted:           false,
 		Decrypt:                   decrypt,
 		ProcessRunMessage:         processRunMessage,
 		ProcessRestoreMessage:     root.HandleRestoreMessagesRootSource,

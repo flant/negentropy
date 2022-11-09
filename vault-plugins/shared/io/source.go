@@ -21,23 +21,18 @@ type Txn interface {
 }
 
 type KafkaSourceImpl struct {
+	// name - should be unique in plugin
+	NameOfSource string
 	// broker connection
 	KafkaBroker *sharedkafka.MessageBroker
-	// stop chan for stop infinite loop
-	StopC chan struct{}
 	// Logger
 	Logger hclog.Logger
-	// is message loop run
-	run bool
 	// runConsumer GroupID
 	ProvideRunConsumerGroupID func(kf *sharedkafka.MessageBroker) string
 	// topicName
 	ProvideTopicName func(kf *sharedkafka.MessageBroker) string
-
 	// check msg signature
 	VerifySign func(signature []byte, messageValue []byte) error
-	// verify encrypted message
-	VerifyEncrypted bool
 	// Decrypt message
 	Decrypt func(encryptedMessageValue []byte, chunked bool) ([]byte, error)
 	// process MsgDecoded at normal reading loop
@@ -45,17 +40,24 @@ type KafkaSourceImpl struct {
 	// process MsgDecoded at restoration loop
 	ProcessRestoreMessage func(txn Txn, m sharedkafka.MsgDecoded) error
 
+	// what to set at SourceInputMessage at field IgnoreBody at usual message loop
+	IgnoreSourceInputMessageBody bool
+
 	// is Runnable
 	Runnable bool
+	// stop chan for stop infinite loop, created by Run method
+	stopC chan struct{}
+	// is message loop run
+	run bool
 }
 
 func (rk *KafkaSourceImpl) Name() string {
-	return rk.ProvideTopicName(rk.KafkaBroker)
+	return rk.NameOfSource
 }
 
 func (rk *KafkaSourceImpl) Stop() {
 	if rk.run {
-		rk.StopC <- struct{}{}
+		rk.stopC <- struct{}{}
 		rk.run = false
 	}
 }
@@ -64,6 +66,7 @@ func (rk *KafkaSourceImpl) Run(store *MemoryStore) {
 	if !rk.Runnable || rk.run {
 		return
 	}
+	rk.stopC = make(chan struct{})
 
 	rk.Logger.Debug("Watcher - start", "groupID", rk.ProvideRunConsumerGroupID(rk.KafkaBroker))
 	defer rk.Logger.Debug("Watcher - stop", "groupID", rk.ProvideRunConsumerGroupID(rk.KafkaBroker))
@@ -85,7 +88,7 @@ func (rk *KafkaSourceImpl) runMessageLoop(store *MemoryStore, consumer *kafka.Co
 
 	for {
 		select {
-		case <-rk.StopC:
+		case <-rk.stopC:
 			logger.Warn("Receive stop signal")
 			consumer.Unsubscribe() //nolint:errcheck
 			// c.Close()    // closing by DefferedClose()
@@ -117,6 +120,7 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 	if err != nil {
 		rk.Logger.Error(fmt.Sprintf("build source message failed: %s", err.Error()))
 	}
+	source.IgnoreBody = rk.IgnoreSourceInputMessageBody
 
 	operation := func() error {
 		txn := store.Txn(true)
@@ -167,13 +171,7 @@ func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*sharedkaf
 		if len(signature) == 0 {
 			return nil, fmt.Errorf("no signature found for: %q in topic %s at offset %d", string(msg.Key), *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 		}
-		var toVerify []byte
-		if rk.VerifyEncrypted {
-			toVerify = msg.Value
-		} else {
-			toVerify = result.Data
-		}
-		err := rk.VerifySign(signature, toVerify)
+		err := rk.VerifySign(signature, result.Data)
 		if err != nil {
 			return nil, fmt.Errorf("wrong signature of: %q in topic %s at offset %d", string(msg.Key), *msg.TopicPartition.Topic, msg.TopicPartition.Offset)
 		}
@@ -210,7 +208,7 @@ func (rk *KafkaSourceImpl) msgRestoreHandler(txn *memdb.Txn, msg *kafka.Message,
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s-%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
 
 	operation := func() error {
 		return rk.ProcessRestoreMessage(txn, *decoded)
