@@ -48,14 +48,14 @@ func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, parentLogger hc
 	}
 }
 
-func processMessage(txn sharedio.Txn, msg sharedkafka.MsgDecoded) error {
+func processMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
 	if msg.IsDeleted() {
 		return processDeletingMessage(txn, msg)
 	}
 	return processCUMessage(txn, msg)
 }
 
-func processCUMessage(txn sharedio.Txn, msg sharedkafka.MsgDecoded) error {
+func processCUMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
 	mpgn := &model.MultipassGenerationNumber{}
 
 	err := json.Unmarshal(msg.Data, mpgn)
@@ -66,7 +66,7 @@ func processCUMessage(txn sharedio.Txn, msg sharedkafka.MsgDecoded) error {
 	return txn.Insert(model.MultipassGenerationNumberType, mpgn)
 }
 
-func processDeletingMessage(txn sharedio.Txn, msg sharedkafka.MsgDecoded) error {
+func processDeletingMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
 	obj, err := txn.First(model.MultipassGenerationNumberType, repo.ID, msg.ID)
 	if err != nil {
 		return err

@@ -50,14 +50,14 @@ func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger
 	}
 }
 
-func processMessage(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+func processMessage(txn io.Txn, msg io.MsgDecoded) error {
 	if msg.IsDeleted() {
 		return processDeletingMessage(txn, msg)
 	}
 	return processCUMessage(txn, msg)
 }
 
-func processCUMessage(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+func processCUMessage(txn io.Txn, msg io.MsgDecoded) error {
 	jwks := &model.JWKS{}
 
 	err := json.Unmarshal(msg.Data, jwks)
@@ -68,7 +68,7 @@ func processCUMessage(txn io.Txn, msg sharedkafka.MsgDecoded) error {
 	return txn.Insert(model.JWKSType, jwks)
 }
 
-func processDeletingMessage(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+func processDeletingMessage(txn io.Txn, msg io.MsgDecoded) error {
 	obj, err := txn.First(model.JWKSType, "id", msg.ID)
 	if err != nil {
 		return err

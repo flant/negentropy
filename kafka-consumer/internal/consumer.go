@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -105,7 +106,7 @@ func (mks *NegentropyKafkaSource) Run() {
 		panic(err) // it is critical error for application which can be crashed
 	}
 	defer sharedkafka.DeferredСlose(runConsumer, mks.logger)
-	sharedkafka.RunMessageLoop(runConsumer, mks.msgHandler, mks.stopC, mks.logger)
+	io.RunMessageLoop(runConsumer, mks.msgHandler, mks.stopC, mks.logger)
 }
 
 func (mks *NegentropyKafkaSource) Stop() {

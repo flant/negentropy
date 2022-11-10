@@ -25,10 +25,10 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, handler self.ModelHandler
 	decrypt := func(encryptedMessageValue []byte, chunked bool) ([]byte, error) {
 		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
 	}
-	processRunMessage := func(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+	processRunMessage := func(txn io.Txn, msg io.MsgDecoded) error {
 		return self.HandleNewMessageSelfSource(txn, handler, &msg)
 	}
-	processRestoreMessage := func(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+	processRestoreMessage := func(txn io.Txn, msg io.MsgDecoded) error {
 		return self.HandleRestoreMessagesSelfSource(txn, msg, []self.RestoreFunc{
 			jwtkafka.SelfRestoreMessage,
 		})

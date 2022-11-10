@@ -12,7 +12,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ObjectHandler struct {
@@ -157,7 +156,7 @@ type ModelHandler interface {
 	HandleDeleteServiceAccount(txn io.Txn, uuid string) error
 }
 
-func HandleNewMessageIamRootSource(txn io.Txn, handler ModelHandler, msg kafka.MsgDecoded) error {
+func HandleNewMessageIamRootSource(txn io.Txn, handler ModelHandler, msg io.MsgDecoded) error {
 	isDelete := msg.IsDeleted()
 
 	var inputObject interface{}

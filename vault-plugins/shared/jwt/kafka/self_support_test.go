@@ -9,7 +9,6 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
@@ -18,7 +17,7 @@ func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
 	require.NoError(t, err)
 	txn := store.Txn(true)
 
-	handled, err := SelfRestoreMessage(txn.Txn, sharedkafka.MsgDecoded{
+	handled, err := SelfRestoreMessage(txn.Txn, io.MsgDecoded{
 		Type: model.JWTConfigType,
 		Data: []byte(`{
    "id": "jwt_config",

@@ -24,7 +24,7 @@ func NewRootKafkaSource(kf *sharedkafka.MessageBroker, modelsHandler root.ModelH
 	decrypt := func(encryptedMessageValue []byte, chunked bool) ([]byte, error) {
 		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
 	}
-	processRunMessage := func(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+	processRunMessage := func(txn io.Txn, msg io.MsgDecoded) error {
 		return root.HandleNewMessageIamRootSource(txn, modelsHandler, msg)
 	}
 

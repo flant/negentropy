@@ -12,7 +12,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-type RestoreFunc func(txn io.Txn, decoded sharedkafka.MsgDecoded) (handled bool, err error)
+type RestoreFunc func(txn io.Txn, decoded io.MsgDecoded) (handled bool, err error)
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, parentLogger log.Logger) *io.KafkaSourceImpl {
 	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
@@ -28,7 +28,7 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 	decrypt := func(encryptedMessageValue []byte, chunked bool) ([]byte, error) {
 		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
 	}
-	proccessRestoreMessage := func(txn io.Txn, m sharedkafka.MsgDecoded) error {
+	proccessRestoreMessage := func(txn io.Txn, m io.MsgDecoded) error {
 		for _, r := range restoreHandlers {
 			handled, err := r(txn, m)
 			if err != nil {

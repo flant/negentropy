@@ -6,10 +6,9 @@ import (
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func HandleRestoreMessagesRootSource(txn io.Txn, msg sharedkafka.MsgDecoded) error {
+func HandleRestoreMessagesRootSource(txn io.Txn, msg io.MsgDecoded) error {
 	var inputObject interface{}
 
 	switch msg.Type {

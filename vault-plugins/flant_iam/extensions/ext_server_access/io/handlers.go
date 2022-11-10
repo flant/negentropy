@@ -6,11 +6,10 @@ import (
 
 	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 // HandleServerAccessObjects try to handle kafka messages as ServerAccess objects
-func HandleServerAccessObjects(txn io.Txn, msg sharedkafka.MsgDecoded) (handled bool, err error) {
+func HandleServerAccessObjects(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
 	var object interface{}
 	switch msg.Type {
 	case ext_model.ServerType:

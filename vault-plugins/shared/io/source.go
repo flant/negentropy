@@ -37,9 +37,9 @@ type KafkaSourceImpl struct {
 	// Decrypt message
 	Decrypt func(encryptedMessageValue []byte, chunked bool) ([]byte, error)
 	// process MsgDecoded at normal reading loop
-	ProcessRunMessage func(txn Txn, m sharedkafka.MsgDecoded) error
+	ProcessRunMessage func(txn Txn, m MsgDecoded) error
 	// process MsgDecoded at restoration loop
-	ProcessRestoreMessage func(txn Txn, m sharedkafka.MsgDecoded) error
+	ProcessRestoreMessage func(txn Txn, m MsgDecoded) error
 
 	// what to set at SourceInputMessage at field IgnoreBody at usual message loop
 	IgnoreSourceInputMessageBody bool
@@ -120,11 +120,12 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 		return
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s-%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
 
 	source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 	if err != nil {
 		rk.Logger.Error(fmt.Sprintf("build source message failed: %s", err.Error()))
+		return
 	}
 	source.IgnoreBody = rk.IgnoreSourceInputMessageBody
 
@@ -146,8 +147,8 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 
 var errWrongSignature = fmt.Errorf("wrong signature")
 
-func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*sharedkafka.MsgDecoded, error) {
-	result := &sharedkafka.MsgDecoded{}
+func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*MsgDecoded, error) {
+	result := &MsgDecoded{}
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		return nil, fmt.Errorf("key %q has wong format", string(msg.Key))
@@ -206,11 +207,74 @@ func (rk *KafkaSourceImpl) Restore(txn *memdb.Txn) error {
 
 	defer sharedkafka.DeferredСlose(restorationConsumer, rk.Logger)
 	defer sharedkafka.DeferredСlose(runConsumer, rk.Logger)
-	return sharedkafka.RunRestorationLoop(restorationConsumer, runConsumer, rk.ProvideTopicName(rk.KafkaBroker),
+	return rk.RunRestorationLoop(restorationConsumer, runConsumer, rk.ProvideTopicName(rk.KafkaBroker),
 		txn, rk.msgRestoreHandler, rk.Logger)
 }
 
-func (rk *KafkaSourceImpl) msgRestoreHandler(txn *memdb.Txn, msg *kafka.Message, _ hclog.Logger) error {
+// RunRestorationLoop read from topic untill runConsumer and handle with handler each message.
+// runConsumer after using at RunRestorationLoop can be used, but need Subscribe(topic)
+func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer, runConsumer *kafka.Consumer, topicName string, txn Txn,
+	handler func(txn Txn, msg *kafka.Message, logger hclog.Logger) error, logger hclog.Logger) error {
+	logger = logger.Named("RunRestorationLoop")
+	logger.Debug("started", "topicName", topicName)
+	defer logger.Debug("exit")
+
+	var lastOffset, edgeOffset int64
+	var partition int32
+	var err error
+	if runConsumer != nil {
+		lastOffset, edgeOffset, partition, err = LastAndEdgeOffsetsByRunConsumer(runConsumer, newConsumer, topicName)
+		if err != nil {
+			return fmt.Errorf("getting offset by RunConsumer:%w", err)
+		}
+	} else {
+		lastOffset, partition, err = LastOffsetByNewConsumer(newConsumer, topicName)
+		if err != nil {
+			return fmt.Errorf("getting offset by newConsumer:%w", err)
+		}
+	}
+
+	if lastOffset == 0 && edgeOffset == 0 {
+		logger.Debug("normal finish: no messages", "topicName", topicName)
+		return nil
+	}
+	newConsumer.Unassign() // nolint:errcheck
+	err = setNewConsumerToBeginning(newConsumer, topicName, partition)
+	if err != nil {
+		return err
+	}
+
+	c := newConsumer.Events()
+	consumed := 0
+	for {
+		var msg *kafka.Message
+		ev := <-c
+
+		switch e := ev.(type) {
+		case *kafka.Message:
+			msg = e
+		default:
+			logger.Debug(fmt.Sprintf("Recieve not handled event %s", e.String()))
+			continue
+		}
+		currentMessageOffset := int64(msg.TopicPartition.Offset)
+		if edgeOffset > 0 && currentMessageOffset >= edgeOffset {
+			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d messages", topicName, consumed))
+			return nil
+		}
+		err := handler(txn, msg, logger)
+		consumed++
+		if err != nil {
+			return err
+		}
+		if lastOffset > 0 && currentMessageOffset == lastOffset {
+			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d", topicName, consumed))
+			return nil
+		}
+	}
+}
+
+func (rk *KafkaSourceImpl) msgRestoreHandler(txn Txn, msg *kafka.Message, _ hclog.Logger) error {
 	decoded, err := rk.decodeMessageAndCheck(msg)
 	if errors.Is(err, errWrongSignature) && rk.SkipRestorationOnWrongSignature {
 		rk.Logger.Debug(fmt.Sprintf("decoding and checking message: %s: message skiped", err.Error()))

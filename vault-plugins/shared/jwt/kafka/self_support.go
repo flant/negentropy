@@ -6,10 +6,9 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func SelfRestoreMessage(txn io.Txn, msg sharedkafka.MsgDecoded) (handled bool, err error) {
+func SelfRestoreMessage(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
 	switch msg.Type {
 	case model.JWTConfigType:
 		err := model.HandleRestoreConfig(txn, msg.Data)
