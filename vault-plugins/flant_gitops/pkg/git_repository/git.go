@@ -60,6 +60,9 @@ func (g gitService) getNewCommits(config *Configuration, edgeCommit gitCommitHas
 	// clone git repository and get head commit
 	g.logger.Debug(fmt.Sprintf("Cloning git repo %q branch %q", config.GitRepoUrl, config.GitBranch))
 	gitRepo, headCommit, err := g.cloneGit(config.GitRepoUrl, config.GitBranch)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cloning: %w", err)
+	}
 	// skip if already processed
 	if lastProcessedCommit == headCommit {
 		g.logger.Debug("Head commit not changed: no new commits")
@@ -93,7 +96,7 @@ func (g gitService) cloneGit(gitRepoUrl, gitBranch string) (*goGit.Repository, g
 
 	var gitRepo *goGit.Repository
 	if gitRepo, err = trdlGit.CloneInMemory(gitRepoUrl, cloneOptions); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("cloning in memeory: %w", err)
 	}
 
 	r, err := gitRepo.Head()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
@@ -30,12 +31,14 @@ type TaskService interface {
 type service struct {
 	storage                   logical.Storage
 	accessVaultClientProvider client.AccessVaultClientController
+	logger                    hclog.Logger
 }
 
-func Service(storage logical.Storage, accessVaultClientProvider client.AccessVaultClientController) TaskService {
+func Service(storage logical.Storage, accessVaultClientProvider client.AccessVaultClientController, parentLogger hclog.Logger) TaskService {
 	return &service{
 		storage:                   storage,
 		accessVaultClientProvider: accessVaultClientProvider,
+		logger:                    parentLogger.Named("task_server"),
 	}
 }
 
@@ -56,11 +59,12 @@ func saveTask(ctx context.Context, storage logical.Storage, task taskUUID, commi
 }
 
 func (s *service) CheckTask(ctx context.Context, commit hashCommit) (taskExist, taskIsFinished, error) {
-	return checkTask(ctx, s.storage, commit, s.readTaskStatus)
+	return checkTask(ctx, s.storage, commit, s.readTaskStatus, s.logger)
 }
 
 func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
-	taskStatusProvider func(task taskUUID) (string, error)) (taskExist, taskIsFinished, error) {
+	taskStatusProvider func(task taskUUID) (string, error), logger hclog.Logger) (taskExist, taskIsFinished, error) {
+	logger.Debug("start checking task status for commit", "hash_commit", commit)
 	tasks, err := util.GetStringMap(ctx, storage, storageKeyTasks)
 	if err != nil || tasks == nil {
 		return false, false, fmt.Errorf("getting tasks from storage: %w", err)
@@ -76,6 +80,8 @@ func checkTask(ctx context.Context, storage logical.Storage, commit hashCommit,
 	if err != nil || tasks == nil {
 		return true, false, fmt.Errorf("getting task %q status: %w", task, err)
 	}
+	logger.Debug("result checking task status for hash", "hash_commit", commit, "task_uuid",
+		task, "status", status)
 	finishedStatuses := map[string]struct{}{"SUCCEEDED": {}, "FAILED": {}, "CANCELED": {}}
 	if _, ok := finishedStatuses[status]; ok {
 		return true, true, nil
