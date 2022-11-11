@@ -71,10 +71,10 @@
 {{- end -}}
 
 {{- define "vault.securitycontext" -}}
-{{- if eq .Values.werf.env "production" -}}
+{{- if eq .Values.werf.env "production" }}
 readOnlyRootFilesystem: true
 runAsNonRoot: true
-{{- end -}}
+{{- end }}
 capabilities:
   add:
   - IPC_LOCK

@@ -36,3 +36,5 @@ kafka_ssl_path:
 oidc_url:
   _default: https://login.flant.com
 
+load_balancer:
+  dev: enabled
