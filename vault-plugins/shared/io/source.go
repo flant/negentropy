@@ -194,19 +194,22 @@ func (rk *KafkaSourceImpl) Restore(txn *memdb.Txn) error {
 		return fmt.Errorf("MultipassGenerationKafkaSource has unstopped main reading loop")
 	}
 
-	replicaName := rk.KafkaBroker.PluginConfig.SelfTopicName
-	groupID := replicaName
+	groupID := rk.ProvideRunConsumerGroupID(rk.KafkaBroker)
 	restorationConsumer, err := rk.KafkaBroker.GetRestorationReader()
 	if err != nil {
 		return err
 	}
-	runConsumer, err := rk.KafkaBroker.GetUnsubscribedRunConsumer(groupID)
-	if err != nil {
-		return err
+	defer sharedkafka.DeferredСlose(restorationConsumer, rk.Logger)
+
+	var runConsumer *kafka.Consumer
+	if rk.Runnable {
+		runConsumer, err = rk.KafkaBroker.GetUnsubscribedRunConsumer(groupID)
+		if err != nil {
+			return err
+		}
+		defer sharedkafka.DeferredСlose(runConsumer, rk.Logger)
 	}
 
-	defer sharedkafka.DeferredСlose(restorationConsumer, rk.Logger)
-	defer sharedkafka.DeferredСlose(runConsumer, rk.Logger)
 	return rk.RunRestorationLoop(restorationConsumer, runConsumer, rk.ProvideTopicName(rk.KafkaBroker),
 		txn, rk.msgRestoreHandler, rk.Logger)
 }

@@ -45,15 +45,15 @@ func LastOffsetByNewConsumer(consumer *kafka.Consumer, topicName string) (lastOf
 	return int64(lastOffsetAtTopic), partition, nil
 }
 
-func lastOffsetStorageKey(pluginSelfTopicName string, topicName string) string {
+func lastOffsetStorageKey(runConsumerGroupID string, topicName string) string {
 	// use this combination to have unique at vault instance
-	return fmt.Sprintf("%s-%s-offsetStoraegKey", pluginSelfTopicName, topicName)
+	return fmt.Sprintf("%s-%s-offsetStoraegKey", runConsumerGroupID, topicName)
 }
 
 // LastOffsetFromStorage returns -1 if nothing is  stored
-func LastOffsetFromStorage(ctx context.Context, storage logical.Storage, pluginSelfTopicName string,
+func LastOffsetFromStorage(ctx context.Context, storage logical.Storage, runConsumerGroupID string,
 	topicName string) (lastOffsetForRestoring int64, err error) {
-	key := lastOffsetStorageKey(pluginSelfTopicName, topicName)
+	key := lastOffsetStorageKey(runConsumerGroupID, topicName)
 	se, err := storage.Get(ctx, key)
 	if err != nil {
 		return 0, fmt.Errorf("getting last offset from storage: %w", err)
@@ -68,13 +68,13 @@ func LastOffsetFromStorage(ctx context.Context, storage logical.Storage, pluginS
 	return
 }
 
-func StoreLastOffsetToStorage(ctx context.Context, storage logical.Storage, pluginSelfTopicName string,
-	topicName string, lastOffsetForRestoring int64) (err error) {
+func StoreLastOffsetToStorage(ctx context.Context, storage logical.Storage, runConsumerGroupID string,
+	topicName string, lastOffsetForStoring int64) (err error) {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(lastOffsetForRestoring))
+	binary.BigEndian.PutUint64(b, uint64(lastOffsetForStoring))
 
 	err = storage.Put(ctx, &logical.StorageEntry{
-		Key:   lastOffsetStorageKey(pluginSelfTopicName, topicName),
+		Key:   lastOffsetStorageKey(runConsumerGroupID, topicName),
 		Value: b,
 	})
 	if err != nil {

@@ -190,14 +190,13 @@ func (s *Suite) RestartVaults() error {
 		s.authVault.StopContainer,
 		// up containers
 		s.rootVault.StartContainer,
+		s.authVault.StartContainer,
 		func() error { time.Sleep(time.Second * 5); return nil }, //  time to vaults up
 		s.rootVault.Unseal,
-		func() error { return tests.SlowRepeat(s.rootVault.TouchIAM, 50) },
-
-		s.authVault.StartContainer,
-		func() error { time.Sleep(time.Second * 5); return nil },
 		s.authVault.Unseal,
-		func() error { return tests.SlowRepeat(s.authVault.TouchAUTH, 50) },
+		func() error { time.Sleep(time.Second * 5); return nil },            //  time to vaults up
+		func() error { return tests.SlowRepeat(s.authVault.TouchAUTH, 50) }, // wait it first because of longer restoration of root vault due to two plugins on board
+		func() error { return tests.SlowRepeat(s.rootVault.TouchIAM, 50) },
 	} {
 		if err := op(); err != nil {
 			return err
