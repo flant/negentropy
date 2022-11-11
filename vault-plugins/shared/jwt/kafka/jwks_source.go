@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
@@ -14,7 +15,7 @@ import (
 
 const topicName = "jwks"
 
-func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *io.KafkaSourceImpl {
+func NewJWKSKafkaSource(storage logical.Storage, kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *io.KafkaSourceImpl {
 	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
 		return kf.PluginConfig.SelfTopicName
 	}
@@ -47,6 +48,8 @@ func NewJWKSKafkaSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger
 		IgnoreSourceInputMessageBody:    true, // this topic has unusual Commit mechanic
 		SkipRestorationOnWrongSignature: true, // this topic has unusual content
 		Runnable:                        true,
+		RestoreStrictlyTillRunConsumer:  true, // restore strictly to offset read by run consumer
+		Storage:                         storage,
 	}
 }
 

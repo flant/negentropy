@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/logical"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
@@ -14,7 +15,7 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
-func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *sharedio.KafkaSourceImpl {
+func NewMultipassGenerationSource(storage logical.Storage, kf *sharedkafka.MessageBroker, parentLogger hclog.Logger) *sharedio.KafkaSourceImpl {
 	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
 		return kf.PluginConfig.SelfTopicName
 	}
@@ -34,17 +35,19 @@ func NewMultipassGenerationSource(kf *sharedkafka.MessageBroker, parentLogger hc
 	}
 
 	return &sharedio.KafkaSourceImpl{
-		NameOfSource:                 "authMultipassKafkaSource",
-		KafkaBroker:                  kf,
-		Logger:                       parentLogger.Named("authMultipassKafkaSource"),
-		ProvideRunConsumerGroupID:    runConsumerGroupIDProvider,
-		ProvideTopicName:             topicNameProvider,
-		VerifySign:                   verifySign,
-		Decrypt:                      nil, // this common topic is not encrypted
-		ProcessRunMessage:            processMessage,
-		ProcessRestoreMessage:        processMessage,
-		IgnoreSourceInputMessageBody: true, // this topic has unusual Commit mechanic
-		Runnable:                     true,
+		NameOfSource:                   "authMultipassKafkaSource",
+		KafkaBroker:                    kf,
+		Logger:                         parentLogger.Named("authMultipassKafkaSource"),
+		ProvideRunConsumerGroupID:      runConsumerGroupIDProvider,
+		ProvideTopicName:               topicNameProvider,
+		VerifySign:                     verifySign,
+		Decrypt:                        nil, // this common topic is not encrypted
+		ProcessRunMessage:              processMessage,
+		ProcessRestoreMessage:          processMessage,
+		IgnoreSourceInputMessageBody:   true, // this topic has unusual Commit mechanic
+		Runnable:                       true,
+		RestoreStrictlyTillRunConsumer: true, // restore strictly to offset read by run consumer
+		Storage:                        storage,
 	}
 }
 
