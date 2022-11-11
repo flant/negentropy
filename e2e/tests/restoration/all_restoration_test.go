@@ -420,18 +420,6 @@ func TestRestoration(t *testing.T) {
 	store := newMemStore()
 
 	for _, creator := range creators {
-		//var (
-		//	identifier string
-		//	obj        interface{}
-		//	getter     objectGetter
-		//)
-		//{
-		//	defer func() {
-		//		err := recover()
-		//		if err != nil {
-		//			t.Fatalf("critical: %v", err)
-		//		}
-		//	}()
 		identifier, obj, getter := creator(iamClient, store)
 		//}
 		var oldObj gjson.Result
@@ -462,7 +450,7 @@ func TestRestoration(t *testing.T) {
 	}
 
 	fmt.Println("=== restarting vaults ===")
-	time.Sleep(time.Second * 15) // need to avoid "BUG authSelfKafkaSource don't restore some last items from kafka stored just before vault downing"
+
 	err := s.RestartVaults()
 	Expect(err).ToNot(HaveOccurred())
 	for objectIdentifier, checker := range checkers {

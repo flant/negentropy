@@ -7,8 +7,6 @@ import (
 
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
-	log "github.com/hashicorp/go-hclog"
-
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
@@ -105,7 +103,6 @@ func (pb *posixUserBuilder) buildPosixUser(ext *iam.Extension, objectID, objectT
 	homeDir := "/home/" + homeDirRelPath
 
 	passwordsRaw, ok := ext.Attributes["passwords"]
-	log.L().Info("password raw", "type", reflect.TypeOf(passwordsRaw)) // TODO: remove
 	if !ok {
 		return posixUser{}, fmt.Errorf("passwords field not found in server_access extension for %q", fullIdentifier)
 	}

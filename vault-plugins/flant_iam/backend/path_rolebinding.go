@@ -213,7 +213,6 @@ func (b *roleBindingBackend) handleCreate(expectID bool) framework.OperationFunc
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
 		}
-		b.Logger().Debug(fmt.Sprintf("passed TTL=%d", ttl)) // TODO REMOVE
 		var expiration int64 = 0
 		if ttl > 0 {
 			expiration = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
@@ -279,7 +278,6 @@ func (b *roleBindingBackend) handleUpdate() framework.OperationFunc {
 			b.Logger().Error(err.Error())
 			return backentutils.ResponseErr(req, err)
 		}
-		b.Logger().Debug(fmt.Sprintf("passed TTL=%d", ttl)) // TODO REMOVE
 		var expiration int64 = 0
 		if ttl > 0 {
 			expiration = time.Now().Add(time.Duration(ttl) * time.Second).Unix()

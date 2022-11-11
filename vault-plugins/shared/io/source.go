@@ -239,7 +239,6 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer *kafka.Consumer, txn T
 		if err != nil {
 			return fmt.Errorf("getting last offset from storage:%w", err)
 		}
-		logger.Debug("LastOffsetFromStorage", "topicName", topicName, "runConsumerID", runConsumerID, "lastProcessedOffset", lastProcessedOffset) // TODO REMOVE
 	} else {
 		lastProcessedOffset, partition, err = LastOffsetByNewConsumer(newConsumer, topicName)
 		if err != nil {
