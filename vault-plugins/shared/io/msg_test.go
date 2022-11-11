@@ -1,4 +1,4 @@
-package kafka
+package io
 
 import (
 	"context"
@@ -17,10 +17,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
-
-const serverKafka = "localhost:9093"
 
 type testCase struct {
 	countFilling  int64
@@ -42,12 +41,12 @@ func TestTableForLastAndEdgeOffsets(t *testing.T) {
 	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
 		t.Skip("manual or integration test. Requires kafka")
 	}
-	DoNotEncrypt = true // TODO remove
+	sharedkafka.DoNotEncrypt = true // TODO remove
 
 	for i := range testcases {
 		testcase := testcases[i]
 		fmt.Printf("====%#v===\n", testcase)
-		broker := messageBroker(t)
+		broker := initializesMessageBroker(t)
 		topic := broker.PluginConfig.SelfTopicName
 
 		err := tryWithTimeOut(5, func() <-chan struct{} {
@@ -175,8 +174,8 @@ func TestLastOffsetByNewConsumer(t *testing.T) {
 	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
 		t.Skip("manual or integration test. Requires kafka")
 	}
-	DoNotEncrypt = true // TODO remove
-	broker := messageBroker(t)
+	sharedkafka.DoNotEncrypt = true // TODO remove
+	broker := initializesMessageBroker(t)
 	topic := broker.PluginConfig.SelfTopicName
 	err := broker.CreateTopic(context.TODO(), topic, nil)
 	assert.NoError(t, err, "creating topic")
@@ -195,8 +194,8 @@ func TestLastOffsetByNewConsumerEmptyTopic(t *testing.T) {
 	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
 		t.Skip("manual or integration test. Requires kafka")
 	}
-	DoNotEncrypt = true // TODO remove
-	broker := messageBroker(t)
+	sharedkafka.DoNotEncrypt = true // TODO remove
+	broker := initializesMessageBroker(t)
 	topic := broker.PluginConfig.SelfTopicName
 	err := broker.CreateTopic(context.TODO(), topic, nil)
 	assert.NoError(t, err, "creating topic")
@@ -221,11 +220,11 @@ func tryWithTimeOut(seconds int, runner func() <-chan struct{}) error {
 	}
 }
 
-func fillTopic(t *testing.T, mb *MessageBroker, n int64) {
-	msgs := []Message{}
+func fillTopic(t *testing.T, mb *sharedkafka.MessageBroker, n int64) {
+	msgs := []sharedkafka.Message{}
 	for i := 0; i < int(n); i++ {
 		k := fmt.Sprintf("%d", i)
-		msgs = append(msgs, Message{
+		msgs = append(msgs, sharedkafka.Message{
 			Topic:   mb.PluginConfig.SelfTopicName,
 			Key:     k,
 			Value:   []byte(k),
@@ -239,7 +238,7 @@ func fillTopic(t *testing.T, mb *MessageBroker, n int64) {
 	}
 }
 
-func mainRead(t *testing.T, mb *MessageBroker, mainConsumer *kafka.Consumer, n int64) {
+func mainRead(t *testing.T, mb *sharedkafka.MessageBroker, mainConsumer *kafka.Consumer, n int64) {
 	ch := mainConsumer.Events()
 	counter := 0
 	for counter < int(n) {
@@ -248,7 +247,7 @@ func mainRead(t *testing.T, mb *MessageBroker, mainConsumer *kafka.Consumer, n i
 		switch e := ev.(type) {
 		case *kafka.Message:
 			msg = e
-			source, err := NewSourceInputMessage(mainConsumer, msg.TopicPartition)
+			source, err := sharedkafka.NewSourceInputMessage(mainConsumer, msg.TopicPartition)
 			if err != nil {
 				panic(err)
 			}
@@ -267,7 +266,9 @@ func mainRead(t *testing.T, mb *MessageBroker, mainConsumer *kafka.Consumer, n i
 	}
 }
 
-func messageBroker(t *testing.T) *MessageBroker {
+const serverKafka = "localhost:9094"
+
+func initializesMessageBroker(t *testing.T) *sharedkafka.MessageBroker {
 	storage := &logical.InmemStorage{}
 	key := "kafka.config"
 	pl := "kafka.plugin.config"
@@ -275,13 +276,13 @@ func messageBroker(t *testing.T) *MessageBroker {
 	pk, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	config := BrokerConfig{
+	config := sharedkafka.BrokerConfig{
 		Endpoints:            []string{serverKafka},
 		EncryptionPrivateKey: pk,
 		EncryptionPublicKey:  &pk.PublicKey,
 	}
 
-	plugin := PluginConfig{
+	plugin := sharedkafka.PluginConfig{
 		SelfTopicName: "topic_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_"),
 	}
 	d1, _ := json.Marshal(config)
@@ -289,7 +290,7 @@ func messageBroker(t *testing.T) *MessageBroker {
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: key, Value: d1})
 	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: pl, Value: d2})
 
-	mb, err := NewMessageBroker(context.TODO(), storage, hclog.NewNullLogger())
+	mb, err := sharedkafka.NewMessageBroker(context.TODO(), storage, hclog.NewNullLogger())
 	require.NoError(t, err)
 	return mb
 }

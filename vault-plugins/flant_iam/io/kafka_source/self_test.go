@@ -31,9 +31,15 @@ func TestInitial(t *testing.T) {
 	topic := "topic_kafka_source_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_")
 
 	config := kafka.BrokerConfig{
-		Endpoints:            []string{"localhost:9093"},
+		Endpoints:            []string{"localhost:9094"},
 		EncryptionPrivateKey: pk,
 		EncryptionPublicKey:  &pk.PublicKey,
+		SSLConfig: &kafka.SSLConfig{
+			UseSSL:                true,
+			CAPath:                "../../../../docker/kafka/ca.crt",
+			ClientPrivateKeyPath:  "../../../../docker/kafka/client.key",
+			ClientCertificatePath: "../../../../docker/kafka/client.crt",
+		},
 	}
 
 	plugin := kafka.PluginConfig{

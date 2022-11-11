@@ -1,27 +1,35 @@
 package kafka
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/jwt/model"
-	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-func SelfRestoreMessage(txn *memdb.Txn, objType string, data []byte) (handled bool, err error) {
-	switch objType {
+func SelfRestoreMessage(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
+	switch msg.Type {
 	case model.JWTConfigType:
-		err := model.HandleRestoreConfig(txn, data)
+		err := model.HandleRestoreConfig(txn, msg.Data)
 		if err != nil {
-			return false, fmt.Errorf("handling type=%s, raw=%s: %w", objType, string(data), err)
+			return false, fmt.Errorf("handling type=%s, raw=%s: %w", msg.Type, string(msg.Data), err)
 		}
 	case model.JWTStateType:
-		err := model.HandleRestoreState(txn, data)
+		err := model.HandleRestoreState(txn, msg.Data)
 		if err != nil {
-			return false, fmt.Errorf("handling type=%s, raw=%s: %w", objType, string(data), err)
+			return false, fmt.Errorf("handling type=%s, raw=%s: %w", msg.Type, string(msg.Data), err)
 		}
 	case model.JWKSType: // TODO - REMOVE
-		// TODO should this message be here or not?
-		// what to do after this message?
+		if len(msg.Data) == 0 {
+			// TODO think about how to process tombstone
+			// now it is a stub
+			return true, nil
+		}
+		err := HandleRestoreOwnJwks(txn, msg.Data)
+		if err != nil {
+			return false, fmt.Errorf("handling type=%s, raw=%s: %w", msg.Type, string(msg.Data), err)
+		}
 	default:
 		return false, nil
 	}
@@ -35,4 +43,14 @@ func WriteInSelfQueue(objType string) (handled bool) {
 	}
 
 	return false
+}
+
+func HandleRestoreOwnJwks(db io.Txn, data []byte) error {
+	entry := &model.JWKS{}
+	err := json.Unmarshal(data, entry)
+	if err != nil {
+		return fmt.Errorf("parsing: %q: %w", string(data), err)
+	}
+
+	return db.Insert(model.JWKSType, entry)
 }

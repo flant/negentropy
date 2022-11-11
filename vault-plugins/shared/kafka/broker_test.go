@@ -6,8 +6,12 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +52,7 @@ func TestTopicExistsTrue(t *testing.T) {
 	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
 		t.Skip("manual or integration test. Requires kafka")
 	}
-	broker := messageBroker(t)
+	broker := initializesMessageBroker(t)
 	topic := broker.PluginConfig.SelfTopicName
 	broker.CreateTopic(context.Background(), topic, nil) // nolint:errcheck
 
@@ -62,11 +66,40 @@ func TestTopicExistsFalse(t *testing.T) {
 	if os.Getenv("KAFKA_ON_LOCALHOST") != "true" {
 		t.Skip("manual or integration test. Requires kafka")
 	}
-	broker := messageBroker(t)
+	broker := initializesMessageBroker(t)
 	topic := "newer_exists"
 
 	r, err := broker.TopicExists(topic)
 	require.NoError(t, err)
 
 	require.Equal(t, false, r)
+}
+
+const serverKafka = "localhost:9094"
+
+func initializesMessageBroker(t *testing.T) *MessageBroker {
+	storage := &logical.InmemStorage{}
+	key := "kafka.config"
+	pl := "kafka.plugin.config"
+
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	config := BrokerConfig{
+		Endpoints:            []string{serverKafka},
+		EncryptionPrivateKey: pk,
+		EncryptionPublicKey:  &pk.PublicKey,
+	}
+
+	plugin := PluginConfig{
+		SelfTopicName: "topic_" + strings.ReplaceAll(time.Now().String()[11:23], ":", "_"),
+	}
+	d1, _ := json.Marshal(config)
+	d2, _ := json.Marshal(plugin)
+	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: key, Value: d1})
+	err = storage.Put(context.TODO(), &logical.StorageEntry{Key: pl, Value: d2})
+
+	mb, err := NewMessageBroker(context.TODO(), storage, hclog.NewNullLogger())
+	require.NoError(t, err)
+	return mb
 }

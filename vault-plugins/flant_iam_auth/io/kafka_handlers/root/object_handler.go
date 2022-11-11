@@ -12,7 +12,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
 type ObjectHandler struct {
@@ -25,7 +24,7 @@ func NewObjectHandler(parentLogger hclog.Logger) *ObjectHandler {
 	}
 }
 
-func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User) error {
+func (h *ObjectHandler) HandleUser(txn io.Txn, user *iam_model.User) error {
 	l := h.logger
 	l.Debug("Handle new user. Create entity object", "identifier", user.FullIdentifier)
 	entityRepo := repo.NewEntityRepo(txn)
@@ -67,7 +66,7 @@ func (h *ObjectHandler) HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User)
 	return nil
 }
 
-func (h *ObjectHandler) HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam_model.ServiceAccount) error {
+func (h *ObjectHandler) HandleServiceAccount(txn io.Txn, sa *iam_model.ServiceAccount) error {
 	entityRepo := repo.NewEntityRepo(txn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
 	authSourceRepo := repo.NewAuthSourceRepo(txn)
@@ -89,15 +88,15 @@ func (h *ObjectHandler) HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam_mod
 	return nil
 }
 
-func (h *ObjectHandler) HandleDeleteUser(txn *io.MemoryStoreTxn, uuid string) error {
+func (h *ObjectHandler) HandleDeleteUser(txn io.Txn, uuid string) error {
 	return h.deleteEntityWithAliases(txn, uuid)
 }
 
-func (h *ObjectHandler) HandleDeleteServiceAccount(txn *io.MemoryStoreTxn, uuid string) error {
+func (h *ObjectHandler) HandleDeleteServiceAccount(txn io.Txn, uuid string) error {
 	return h.deleteEntityWithAliases(txn, uuid)
 }
 
-func (h *ObjectHandler) HandleMultipass(txn *io.MemoryStoreTxn, mp *iam_model.Multipass) error {
+func (h *ObjectHandler) HandleMultipass(txn io.Txn, mp *iam_model.Multipass) error {
 	l := h.logger
 	l.Debug(fmt.Sprintf("Handle multipass %s", mp.UUID))
 	multipassGenRepo := repo.NewMultipassGenerationNumberRepository(txn)
@@ -120,13 +119,13 @@ func (h *ObjectHandler) HandleMultipass(txn *io.MemoryStoreTxn, mp *iam_model.Mu
 	return multipassGenRepo.Create(genNum)
 }
 
-func (h *ObjectHandler) HandleDeleteMultipass(txn *io.MemoryStoreTxn, uuid string) error {
+func (h *ObjectHandler) HandleDeleteMultipass(txn io.Txn, uuid string) error {
 	h.logger.Debug(fmt.Sprintf("Handle delete multipass multipass %s. Try to delete multipass gen number", uuid))
 	multipassGenRepo := repo.NewMultipassGenerationNumberRepository(txn)
 	return multipassGenRepo.Delete(uuid)
 }
 
-func (h *ObjectHandler) deleteEntityWithAliases(txn *io.MemoryStoreTxn, uuid string) error {
+func (h *ObjectHandler) deleteEntityWithAliases(txn io.Txn, uuid string) error {
 	// begin delete entity aliases
 	entityRepo := repo.NewEntityRepo(txn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
@@ -147,17 +146,17 @@ func (h *ObjectHandler) deleteEntityWithAliases(txn *io.MemoryStoreTxn, uuid str
 }
 
 type ModelHandler interface {
-	HandleUser(txn *io.MemoryStoreTxn, user *iam_model.User) error
-	HandleDeleteUser(txn *io.MemoryStoreTxn, uuid string) error
+	HandleUser(txn io.Txn, user *iam_model.User) error
+	HandleDeleteUser(txn io.Txn, uuid string) error
 
-	HandleMultipass(txn *io.MemoryStoreTxn, mp *iam_model.Multipass) error
-	HandleDeleteMultipass(txn *io.MemoryStoreTxn, uuid string) error
+	HandleMultipass(txn io.Txn, mp *iam_model.Multipass) error
+	HandleDeleteMultipass(txn io.Txn, uuid string) error
 
-	HandleServiceAccount(txn *io.MemoryStoreTxn, sa *iam_model.ServiceAccount) error
-	HandleDeleteServiceAccount(txn *io.MemoryStoreTxn, uuid string) error
+	HandleServiceAccount(txn io.Txn, sa *iam_model.ServiceAccount) error
+	HandleDeleteServiceAccount(txn io.Txn, uuid string) error
 }
 
-func HandleNewMessageIamRootSource(txn *io.MemoryStoreTxn, handler ModelHandler, msg *kafka.MsgDecoded) error {
+func HandleNewMessageIamRootSource(txn io.Txn, handler ModelHandler, msg io.MsgDecoded) error {
 	isDelete := msg.IsDeleted()
 
 	var inputObject interface{}

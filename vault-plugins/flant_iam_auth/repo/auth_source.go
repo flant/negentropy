@@ -44,12 +44,12 @@ var (
 )
 
 type AuthSourceRepo struct {
-	db          *io.MemoryStoreTxn
+	db          io.Txn
 	tableName   string
 	methodsRepo *AuthMethodRepo
 }
 
-func NewAuthSourceRepo(db *io.MemoryStoreTxn) *AuthSourceRepo {
+func NewAuthSourceRepo(db io.Txn) *AuthSourceRepo {
 	return &AuthSourceRepo{
 		db:          db,
 		tableName:   model.AuthSourceType,

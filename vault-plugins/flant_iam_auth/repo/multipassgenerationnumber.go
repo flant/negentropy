@@ -38,10 +38,10 @@ func MultipassGenerationNumberSchema() *memdb.DBSchema {
 }
 
 type MultipassGenerationNumberRepository struct {
-	db *io.MemoryStoreTxn // called "db" not to provoke transaction semantics
+	db io.Txn // called "db" not to provoke transaction semantics
 }
 
-func NewMultipassGenerationNumberRepository(tx *io.MemoryStoreTxn) *MultipassGenerationNumberRepository {
+func NewMultipassGenerationNumberRepository(tx io.Txn) *MultipassGenerationNumberRepository {
 	return &MultipassGenerationNumberRepository{
 		db: tx,
 	}

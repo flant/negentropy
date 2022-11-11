@@ -46,11 +46,11 @@ func EntitySchema() *memdb.DBSchema {
 }
 
 type EntityRepo struct {
-	db        *io.MemoryStoreTxn
+	db        io.Txn
 	tableName string
 }
 
-func NewEntityRepo(db *io.MemoryStoreTxn) *EntityRepo {
+func NewEntityRepo(db io.Txn) *EntityRepo {
 	return &EntityRepo{
 		db:        db,
 		tableName: model.EntityType,
