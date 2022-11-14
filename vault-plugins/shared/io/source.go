@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -15,6 +16,16 @@ import (
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
+
+type MsgDecoded struct {
+	Type string
+	ID   string
+	Data []byte
+}
+
+func (m *MsgDecoded) IsDeleted() bool {
+	return len(m.Data) == 0
+}
 
 type Txn interface {
 	Insert(table string, obj interface{}) error
@@ -36,7 +47,7 @@ type KafkaSourceImpl struct {
 	ProvideTopicName func(kf *sharedkafka.MessageBroker) string
 	// check msg signature, mandatory
 	VerifySign func(signature []byte, messageValue []byte) error
-	// Decrypt message
+	// Decrypt message, nil if topic not encrypted
 	Decrypt func(encryptedMessageValue []byte, chunked bool) ([]byte, error)
 	// process MsgDecoded at normal reading loop, if RestoreStrictlyTillRunConsumer=true,
 	// should be idempotent to situation when ProcessRestoreMessage works first on message
@@ -301,4 +312,77 @@ func (rk *KafkaSourceImpl) msgRestoreHandler(txn Txn, msg *kafka.Message, _ hclo
 	}
 
 	return backoff.Retry(operation, ThirtySecondsBackoff())
+}
+
+// returns metadata & last offset in topic
+// Note works only for 1 partition
+func getNextWritingOffsetByMetaData(consumer *kafka.Consumer, topicName string) (meta *kafka.Metadata, edgeOffset int64, err error) {
+	meta, err = getMetaDataWithRetry(consumer, topicName)
+	if err != nil {
+		return
+	}
+
+	topicMeta := meta.Topics[topicName]
+	if topicMeta.Topic == "" || len(topicMeta.Partitions) == 0 {
+		return nil, 0, fmt.Errorf("getMeta returns empty response, probably topic %s is not exists", topicName)
+	}
+	if len(topicMeta.Partitions) != 1 {
+		return nil, 0, fmt.Errorf("topic %s has %d partiotions, the program allows only 1 partition", topicName,
+			len(topicMeta.Partitions))
+	}
+	for _, partition := range topicMeta.Partitions {
+		lastPartitionOffset, err := queryWatermarkOffsetsWithRetry(consumer, topicName, partition)
+		if err != nil {
+			return nil, 0, err
+		}
+		if lastPartitionOffset > edgeOffset {
+			edgeOffset = lastPartitionOffset
+		}
+	}
+	return meta, edgeOffset, nil
+}
+
+func queryWatermarkOffsetsWithRetry(consumer *kafka.Consumer, topicName string, partition kafka.PartitionMetadata) (int64, error) {
+	var lastPartitionOffset int64
+	err := backoff.Retry(func() error {
+		var err error
+		_, lastPartitionOffset, err = consumer.QueryWatermarkOffsets(topicName, partition.ID, 500)
+		return err
+	}, thirtySecondsBackoff())
+	if err != nil {
+		return 0, fmt.Errorf("query watermark offsets for topic: %q at partition %q: %w", topicName, partition.ID, err)
+	}
+	return lastPartitionOffset, err
+}
+
+func getMetaDataWithRetry(consumer *kafka.Consumer, topicName string) (*kafka.Metadata, error) {
+	var meta *kafka.Metadata
+	err := backoff.Retry(func() error {
+		var err error
+		meta, err = consumer.GetMetadata(&topicName, false, 500)
+		return err
+	}, thirtySecondsBackoff())
+	if err != nil {
+		return nil, fmt.Errorf("getting metadata for topic: %q: %w", topicName, err)
+	}
+	return meta, nil
+}
+
+func setNewConsumerToBeginning(consumer *kafka.Consumer, topicName string, partition int32) error {
+	tp := kafka.TopicPartition{
+		Topic:     &topicName,
+		Partition: partition,
+		Offset:    kafka.OffsetBeginning,
+	}
+	err := consumer.Assign([]kafka.TopicPartition{tp})
+	if err != nil {
+		return fmt.Errorf("assigning first message: %w", err)
+	}
+	return nil
+}
+
+func thirtySecondsBackoff() backoff.BackOff {
+	backoffRequest := backoff.NewExponentialBackOff()
+	backoffRequest.MaxElapsedTime = time.Second * 30
+	return backoffRequest
 }
