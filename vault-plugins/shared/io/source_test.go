@@ -71,7 +71,6 @@ func TestKafkaSourceRunAndRestore(t *testing.T) {
 
 		start := time.Now()
 		ms := simpleMemstore(broker)
-		//maxMessageCounter := testcase.countMainRead
 		runConsumerCounter := int64(0)
 		mainReadDoneChan := make(chan struct{})
 		restoreConsumerCounter := int64(0)
@@ -235,9 +234,9 @@ func initializesMessageBroker(t *testing.T) *sharedkafka.MessageBroker {
 func simpleMemstore(kb *sharedkafka.MessageBroker) *MemoryStore {
 	ms, err := NewMemoryStore(
 		&memdb.DBSchema{
-			Tables: map[string]*memdb.TableSchema{"test": &memdb.TableSchema{
+			Tables: map[string]*memdb.TableSchema{"test": {
 				Name: "test",
-				Indexes: map[string]*hcmemdb.IndexSchema{"id": &hcmemdb.IndexSchema{
+				Indexes: map[string]*hcmemdb.IndexSchema{"id": {
 					Name:   "id",
 					Unique: true,
 					Indexer: &hcmemdb.StringFieldIndex{
