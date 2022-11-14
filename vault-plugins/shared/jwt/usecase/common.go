@@ -37,6 +37,8 @@ func (b *Depends) JwksRepo(db *sharedio.MemoryStoreTxn) (*model.JWKSRepo, error)
 	}
 
 	jwksId := utils.ShaEncode(id)
+	b.Logger.Debug("creating JwksRepo", "jwksId", jwksId)
+
 	return model.NewJWKSRepo(db, jwksId), nil
 }
 

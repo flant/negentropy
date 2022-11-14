@@ -344,7 +344,10 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 		m := mb.prepareMessage(msg)
 		err = p.Produce(m, nil)
 		if err != nil {
-			_ = p.AbortTransaction(ctx)
+			err2 := p.AbortTransaction(ctx)
+			if err2 != nil {
+				mb.Logger.Error("error aborting transaction: %w", err2)
+			}
 			return err
 		}
 	}
@@ -353,7 +356,10 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 		// source message offset commit
 		err = p.SendOffsetsToTransaction(ctx, source.TopicPartition, source.ConsumerMetadata)
 		if err != nil {
-			_ = p.AbortTransaction(ctx)
+			err2 := p.AbortTransaction(ctx)
+			if err2 != nil {
+				mb.Logger.Error("error aborting transaction: %w", err2)
+			}
 			return err
 		}
 	}
@@ -362,7 +368,10 @@ func (mb *MessageBroker) sendMessages(msgs []Message, source *SourceInputMessage
 
 	if err != nil {
 		if err.(kafka.Error).TxnRequiresAbort() {
-			_ = p.AbortTransaction(ctx)
+			err2 := p.AbortTransaction(ctx)
+			if err2 != nil {
+				mb.Logger.Error("error aborting transaction: %w", err2)
+			}
 			return err
 		} else if err.(kafka.Error).IsRetriable() {
 			mb.Logger.Info(fmt.Sprintf("got err.(kafka.Error).IsRetriable():%s, retry in 5 seconds", err.Error()))

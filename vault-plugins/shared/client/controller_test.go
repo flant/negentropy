@@ -171,7 +171,7 @@ func isClientValid(cl *api.Client) error {
 
 // StartAndConfigureVault runs vault
 func StartAndConfigureVault() tests.Vault {
-	vault, err := tests.RunAndWaitVaultUp("examples/conf", "vault.hcl", "root")
+	vault, err := tests.RunAndWaitVaultUp("examples/conf", "vault.hcl", "shared-test")
 	Expect(err).ToNot(HaveOccurred())
 	return *vault
 }

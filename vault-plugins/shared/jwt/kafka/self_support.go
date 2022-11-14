@@ -20,7 +20,7 @@ func SelfRestoreMessage(txn io.Txn, msg io.MsgDecoded) (handled bool, err error)
 		if err != nil {
 			return false, fmt.Errorf("handling type=%s, raw=%s: %w", msg.Type, string(msg.Data), err)
 		}
-	case model.JWKSType: // TODO - REMOVE
+	case model.JWKSType:
 		if len(msg.Data) == 0 {
 			// TODO think about how to process tombstone
 			// now it is a stub

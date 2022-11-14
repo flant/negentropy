@@ -107,3 +107,10 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
     - panic run (or not) in tests runs
     - panic at flant-gitops plugin  
       Check there is no panic with comment '// nolint:check_panic' at others places
+
+2) Each new category stored in memdb should be mentioned at:
+   - memdb schema
+   - ~kafka_destination/vault.go isValidObjectType()` func
+   - ~kafka_destination/metadata.go `isValidObjectType()` func
+   - ~kafka_source/self.go Restore() func (or ../root.go)
+   - checking of normal saving/restoration at e2e/tests/restoration/all_restoration_test.go

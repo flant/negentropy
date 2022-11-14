@@ -62,7 +62,7 @@ func (c *Encrypter) Encrypt(data []byte, pub *rsa.PublicKey) (env []byte, chunke
 }
 
 func (c *Encrypter) Decrypt(data []byte, priv *rsa.PrivateKey, chunked bool) ([]byte, error) {
-	if DoNotEncrypt {
+	if DoNotEncrypt || len(data) == 0 { // empty data decryption leads error "crypto/rsa: decryption error"
 		return data, nil
 	}
 	if !chunked {

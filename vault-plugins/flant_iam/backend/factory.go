@@ -121,7 +121,7 @@ func newBackend(ctx context.Context, conf *logical.BackendConfig) (logical.Backe
 
 		storage.AddKafkaSource(kafka_source.NewSelfKafkaSource(mb, restoreHandlers, conf.Logger))
 
-		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(mb, conf.Logger))
+		storage.AddKafkaSource(jwtkafka.NewJWKSKafkaSource(conf.StorageView, mb, conf.Logger))
 
 		err = storage.Restore()
 		if err != nil {

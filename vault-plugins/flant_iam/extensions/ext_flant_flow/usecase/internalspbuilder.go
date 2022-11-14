@@ -39,7 +39,6 @@ func (d internalProjectServicePackBuilder) OnCreateProject(project model.Project
 		sp := model.ServicePack{
 			ProjectUUID:      project.UUID,
 			Name:             model.InternalProject,
-			Version:          uuid.New(),
 			Rolebindings:     rbs,
 			IdentitySharings: nil,
 		}

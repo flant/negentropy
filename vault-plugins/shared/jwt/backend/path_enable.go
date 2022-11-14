@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -46,12 +47,12 @@ func (b *Backend) handleJWTEnableCreate(_ context.Context, _ *logical.Request, _
 
 	s, err := b.deps.KeyPairsService(txn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deps.KeyPairsService: %w", err)
 	}
 
 	err = s.EnableJwt()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("enableJwt: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {
@@ -71,12 +72,12 @@ func (b *Backend) handleJWTDisableCreate(_ context.Context, _ *logical.Request, 
 
 	s, err := b.deps.KeyPairsService(txn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deps.KeyPairsService: %w", err)
 	}
 
 	err = s.DisableJwt()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("disableJwt: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

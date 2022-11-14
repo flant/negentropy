@@ -144,6 +144,8 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 
 func registerServer(saPassword model.ServiceAccountPassword, tIdentifier string, pIdentifier string,
 	sIdentifier string, labels map[string]string) (model2.Server, model.MultipassJWT) {
+	err := lib.WaitDataReachFlantAuthPluginAtVault(40, lib.GetRootVaultUrl())
+	Expect(err).ToNot(HaveOccurred())
 	// get client just for tenants list
 	cl, err := pkg.VaultClientAuthorizedWithSAPass(lib.GetRootVaultUrl(), saPassword, nil)
 	Expect(err).ToNot(HaveOccurred())

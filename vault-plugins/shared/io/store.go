@@ -350,6 +350,7 @@ func (ms *MemoryStore) Restore() error {
 		ms.logger.Debug(fmt.Sprintf("kafka_source %#v start", ks))
 		err := ks.Restore(txn)
 		if err != nil {
+			logger.Error("restoring", "error", err.Error())
 			txn.Abort()
 			return err
 		}
