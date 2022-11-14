@@ -6,13 +6,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"strings"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
+	hcmemdb "github.com/hashicorp/go-memdb"
 
+	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
@@ -20,97 +21,80 @@ type DecryptedMessageProceeder interface {
 	ProceedMessage(msgBody []byte, msgKey []byte) error
 }
 
-type NegentropyKafkaSource struct {
-	kf                        *sharedkafka.MessageBroker
-	decryptor                 *sharedkafka.Encrypter
-	topicName                 string
-	groupID                   string
-	stopC                     chan struct{}
-	decryptedMessageProceeder DecryptedMessageProceeder
-	logger                    log.Logger
+type KafkaSource struct {
+	io.KafkaSourceImpl
+	// need for using KafkaSourceImpl
+	io.MemoryStore
 }
 
-func NewKafkaSource(kafkaConfig sharedkafka.BrokerConfig, topicName, groupID string,
-	parentLogger log.Logger, proceeder DecryptedMessageProceeder) (*NegentropyKafkaSource, error) {
+func (k *KafkaSource) Run() {
+	k.KafkaSourceImpl.Run(&k.MemoryStore)
+}
+
+func (k *KafkaSource) Stop() {
+	k.KafkaSourceImpl.Stop()
+}
+
+func NewKafkaSource(kafkaCFG sharedkafka.BrokerConfig, topicName, groupID string, parentLogger hclog.Logger, proceeder DecryptedMessageProceeder) *KafkaSource {
+	fakePluginCfg := sharedkafka.PluginConfig{
+		SelfTopicName: groupID, // need for valid committing reading
+	}
+
 	mb := &sharedkafka.MessageBroker{
-		Logger:      parentLogger.Named("mb"),
-		KafkaConfig: kafkaConfig,
+		Logger:       parentLogger.Named("mb"),
+		KafkaConfig:  kafkaCFG,
+		PluginConfig: fakePluginCfg,
 	}
 
-	return &NegentropyKafkaSource{
-		kf:                        mb,
-		decryptor:                 sharedkafka.NewEncrypter(),
-		logger:                    parentLogger.Named("negentropyKafkaSource"),
-		topicName:                 topicName,
-		groupID:                   groupID,
-		stopC:                     make(chan struct{}),
-		decryptedMessageProceeder: proceeder,
-	}, nil
+	ks := &io.KafkaSourceImpl{
+		NameOfSource: "outer-kafka-consumer",
+		KafkaBroker:  mb,
+		Logger:       parentLogger.Named("kafka-consumer"),
+		ProvideRunConsumerGroupID: func(kf *sharedkafka.MessageBroker) string {
+			return groupID
+		},
+		ProvideTopicName: func(kf *sharedkafka.MessageBroker) string {
+			return topicName
+		},
+		VerifySign: func(signature []byte, messageValue []byte) error {
+			hashed := sha256.Sum256(messageValue)
+			return sharedkafka.VerifySignature(signature, mb.EncryptionPublicKey(), hashed)
+		},
+		Decrypt: func(encryptedMessageValue []byte, chunked bool) ([]byte, error) {
+			return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, mb.EncryptionPrivateKey(), chunked)
+		},
+		ProcessRunMessage: func(_ io.Txn, msg io.MsgDecoded) error {
+			return proceeder.ProceedMessage([]byte(msg.Type+"/"+msg.ID), msg.Data)
+		},
+		IgnoreSourceInputMessageBody: true,
+		Runnable:                     true,
+	}
+
+	return &KafkaSource{
+		KafkaSourceImpl: *ks,
+		MemoryStore:     EmptyMemstore(mb, parentLogger.Named("memstore")),
+	}
 }
 
-func (mks *NegentropyKafkaSource) msgHandler(sourceConsumer *kafka.Consumer, msg *kafka.Message) {
-	logger := mks.logger.Named("msgHandler")
-	logger.Trace("started")
-	defer logger.Trace("exit")
-	splitted := strings.Split(string(msg.Key), "/")
-	if len(splitted) != 2 {
-		logger.Error(fmt.Sprintf("key has wong format: %s", string(msg.Key)))
-		return
-	}
-
-	var signature []byte
-	var chunked bool
-	for _, header := range msg.Headers {
-		switch header.Key {
-		case "signature":
-			signature = header.Value
-
-		case "chunked":
-			chunked = true
-		}
-	}
-
-	decrypted, err := mks.decryptor.Decrypt(msg.Value, mks.kf.EncryptionPrivateKey(), chunked)
+func EmptyMemstore(kb *sharedkafka.MessageBroker, logger hclog.Logger) io.MemoryStore {
+	ms, err := io.NewMemoryStore(
+		&memdb.DBSchema{
+			Tables: map[string]*memdb.TableSchema{"test": &memdb.TableSchema{
+				Name: "test",
+				Indexes: map[string]*hcmemdb.IndexSchema{"id": &hcmemdb.IndexSchema{
+					Name:   "id",
+					Unique: true,
+					Indexer: &hcmemdb.StringFieldIndex{
+						Field: "test",
+					},
+				}},
+			}},
+		}, kb, logger,
+	)
 	if err != nil {
-		logger.Error(fmt.Sprintf("err: %s", err.Error()))
-		return
+		panic(err)
 	}
-	hashed := sha256.Sum256(decrypted)
-	err = sharedkafka.VerifySignature(signature, mks.kf.EncryptionPublicKey(), hashed)
-	if err != nil {
-		logger.Error(fmt.Sprintf("err: %s", err.Error()))
-		return
-	}
-
-	err = mks.decryptedMessageProceeder.ProceedMessage(msg.Key, decrypted)
-	if err != nil {
-		logger.Error(fmt.Sprintf("key: %s err: %s", string(msg.Key), string(err.Error())))
-		return
-	} else {
-		logger.Debug("success", "key", string(msg.Key))
-	}
-
-	_, err = sourceConsumer.CommitMessage(msg)
-	if err != nil {
-		logger.Error(fmt.Sprintf("err: %s", err.Error()))
-		return
-	}
-	logger.Trace("normal finish")
-}
-
-func (mks *NegentropyKafkaSource) Run() {
-	mks.logger.Debug("Watcher - start", "topic", mks.topicName, "groupID", mks.groupID)
-	defer mks.logger.Debug("Watcher - stop", "topic", mks.topicName, "groupID", mks.groupID)
-	runConsumer, err := mks.kf.GetSubscribedRunConsumer(mks.groupID, mks.topicName)
-	if err != nil {
-		panic(err) // it is critical error for application which can be crashed
-	}
-	defer sharedkafka.DeferredСlose(runConsumer, mks.logger)
-	io.RunMessageLoop(runConsumer, mks.msgHandler, mks.stopC, mks.logger)
-}
-
-func (mks *NegentropyKafkaSource) Stop() {
-	mks.stopC <- struct{}{}
+	return *ms
 }
 
 func ParseRSAPubKey(publicKeyPEM string) (*rsa.PublicKey, error) {
