@@ -182,6 +182,12 @@ func buildVaultWithToken(v VaultConfiguration, certAndKey CertAndKey) (*vaultWit
 		return nil, err
 	}
 	secret, err := AuthorizeByCert(preparedClient)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Auth == nil {
+		return nil, fmt.Errorf("empty secret or auth")
+	}
 	return &vaultWithToken{
 		VaultConfiguration: v,
 		VaultToken:         secret.Auth.ClientToken,
