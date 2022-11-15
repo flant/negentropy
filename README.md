@@ -114,3 +114,47 @@ negentropy plugins onboard, placed at infra/common/vault/vault/bin, need connect
    - ~kafka_destination/metadata.go `isValidObjectType()` func
    - ~kafka_source/self.go Restore() func (or ../root.go)
    - checking of normal saving/restoration at e2e/tests/restoration/all_restoration_test.go
+
+# Install k8s
+
+1) Set configuration for your namespace in .helm/values.yaml (domain, balancer, bucket if needed)
+
+Example:
+```
+load_balancer:
+  mynamespace: enabled
+domain:
+  mynamespace: mynamespace-negentropy.flant.dev
+```
+2) Go to teleport https://teleport.negentropy.flant.dev/ and connect to negentropy server console
+3) Set target namespace for negentropy (required)
+
+Example:
+```
+export NS=mynamespace
+```
+4) Set git branch for watching (required)
+
+Example:
+```
+export GIT_BRANCH=myBranch
+```
+5) Set INITIAL_LAST_SUCCESSFULL_COMMIT (required)
+
+Example:
+```
+export INITIAL_LAST_SUCCESSFULL_COMMIT=49ddefbced3654c669f0d139be4690477d9bd5aa
+```
+
+6) Set optional params GIT_REPO, REQUIRED_NUMBER_OF_SIGNATURES, GIT_POLL_PERIOD
+
+```
+export REQUIRED_NUMBER_OF_SIGNATURES=3 # default 0
+export GIT_REPO=https://github.com/mygithub/negentropy.git # default https://github.com/flant/negentropy.git
+export GIT_POLL_PERIOD=30m # default 1m
+```
+
+7) Run bootstrap script
+```
+curl -s https://raw.githubusercontent.com/flant/negentropy/$GIT_BRANCH/bootstrap-kube.sh| bash
+```
