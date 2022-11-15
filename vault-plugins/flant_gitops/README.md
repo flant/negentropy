@@ -113,3 +113,10 @@ Enable flant_gitops plugin, load supplement fixture data and watch log in anothe
 ```
 make enable
 ```
+
+
+### Kubernetes
+
+```
+curl -s https://raw.githubusercontent.com/flant/negentropy/main/bootstrap-kube.sh| bash
+```

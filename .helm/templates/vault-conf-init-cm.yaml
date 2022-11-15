@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-conf-init
+data:
+  init.sh: |
+    #!/bin/bash
+    
+    set -e
+
+    cd /tmp
+    cat /etc/vault.hcl | sed 's/0.0.0.0:/127.0.0.1:/g' > /tmp/vault.hcl
+    vault server -config /tmp/vault.hcl > /tmp/vault.log 2>&1 &
+    vault=$!
+    echo "Wait until vault is auto-unsealed"
+    while ! curl -s $VAULT_ADDR/v1/sys/seal-status --connect-timeout 1 --cacert "${VAULT_CACERT}" ; do
+      sleep 2
+    done
+
+    # auto-init
+    status="$(vault status -format=json | jq -r .initialized)"
+    echo "Initialized: ${status}"
+    if [ "${status}" = "false" ]; then
+      # init
+      echo "Start init"
+      pki_path="vault-cert-auth"
+      namespace=$(cat /run/secrets/kubernetes.io/serviceaccount/namespace)
+      KEYFILE="$namespace-$(hostname)-recovery-keys-encrypted.txt"
+      vault_recovery_pgp_keys="$(find "/etc/recovery-pgp-keys/" -type f | tr '\n' ',' | sed 's/,$//g')"
+      recovery_shares="$(ls /etc/recovery-pgp-keys | wc -l)"
+      recovery_threshold="${recovery_shares}"
+      vault_init_out="$(vault operator init -recovery-shares="${recovery_shares}"  -recovery-threshold="${recovery_threshold}" -recovery-pgp-keys="${vault_recovery_pgp_keys}")"
+      export VAULT_TOKEN=$(echo "$vault_init_out" | grep "^Initial Root Token: " | awk '{print $4}')
+      echo "$vault_init_out" | grep "^Recovery Key " | awk '{print $4}' > "$KEYFILE"
+
+      # create PKI
+      if [ "$(vault secrets list -format=json| jq -r '."${pki_path}/"')" = null ]; then
+        echo "Create PKI"
+        vault secrets enable -path=${pki_path} --max-lease-ttl=87600h pki
+        vault write ${pki_path}/roles/cert-auth allow_any_name='true' max_ttl='1h'
+        #TODO check:
+        #if $(vault read ${pki_path}/cert/ca)
+        vault write ${pki_path}/root/generate/internal common_name='negentropy' ttl='87600h' >/dev/null 2>/dev/null
+      fi
+
+      # enable cert auth
+      until curl -sf https://127.0.0.1:8200/v1/${pki_path}/ca/pem -o vault-conf-ca.pem --cacert "${VAULT_CACERT}" ; do
+        echo "Retrieving CA"
+        sleep 2
+      done
+      vault auth enable cert
+      vault write auth/cert/certs/cert-auth display_name='cert-auth' policies='cert-auth' certificate=@vault-conf-ca.pem ttl='3600'
+      echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list", "sudo"]}' | vault policy write cert-auth -
+
+      #init gitops
+
+      vault auth enable approle
+      echo 'path "*" {capabilities = ["create", "read", "update", "delete", "list"]}' | vault policy write good -
+      vault write auth/approle/role/good secret_id_ttl=30m token_ttl=90s token_policies=good
+      vault secrets enable -path=gitops flant_gitops
+      secret_id="$(vault write -format=json -f auth/approle/role/good/secret-id | jq -r '.data.secret_id')"
+      role_id="$(vault read -format=json auth/approle/role/good/role-id | jq -r '.data.role_id')"
+
+      vault write gitops/configure_vault_access vault_addr="https://127.0.0.1:8200" vault_tls_server_name="localhost" role_name="good" secret_id_ttl="120m" approle_mount_point="auth/approle" secret_id="$secret_id" role_id="$role_id"
+
+      # NEED VALIDATION !
+      vault write gitops/configure/git_repository git_repo_url="$GIT_REPO" git_branch_name="$GIT_BRANCH" required_number_of_verified_signatures_on_commit="$REQUIRED_NUMBER_OF_SIGNATURES" git_poll_period="$GIT_POLL_PERIOD" initial_last_successful_commit="$INITIAL_LAST_SUCCESSFULL_COMMIT"
+      vault read gitops/configure/git_repository
+
+      # Load VAULTS into gitops
+      VAULT_CACERT_DATA=$(cat $VAULT_CACERT | sed ':a;N;$!ba;s/\n/\\n/g')
+      curl --fail --cacert "${VAULT_CACERT}" -X POST -H "X-Vault-Request: true" -H "X-Vault-Token: $(vault print token)" https://127.0.0.1:8200/v1/gitops/configure/vaults -H 'Content-Type: application/json' \
+       -d  "{\"vaults\":[{\"name\":\"vault-conf\",\"url\":\"https://vault-conf:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-root\",\"url\":\"https://vault-root:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"},{\"name\":\"vault-auth\",\"url\":\"https://vault-auth:8200\",\"vault_cacert\":\"${VAULT_CACERT_DATA}\"}]}"
+      vault read gitops/configure/vaults
+
+      {{- if ne .Values.werf.env "production"}}
+      echo "VAULT_TOKEN $VAULT_TOKEN" >> "$KEYFILE"
+      {{- else }}
+      vault token revoke -self
+      {{- end }}
+      until gsutil cp "$KEYFILE" gs://${BUCKET}/ ; do
+        sleep 2
+      done
+    fi
+    kill $vault
+    wait $vault

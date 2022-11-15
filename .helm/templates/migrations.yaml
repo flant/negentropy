@@ -1,0 +1,47 @@
+{{- include "globals" . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Chart.Name }}-migrate
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "10"
+spec:
+  template:
+    metadata:
+      name: {{ .Chart.Name }}-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migrations
+        image: {{ .Values.werf.image.migrations }}
+        command:
+        - sh
+        - -c
+        - REQUESTS_CA_BUNDLE=/etc/ssl/certs/negentropy-ca.pem python3 /app/infra/vault_migrator/migrator.py production
+        volumeMounts:
+        - name: vault-conf-tls
+          mountPath: /etc/ssl/certs/negentropy-ca.pem
+          subPath: ca.crt
+          readOnly: false
+        env:
+        - name: VAULTS_B64_JSON
+          value: {{ .Values.vaults_b64_json }}
+        - name: KAFKA_ENDPOINTS
+          value: {{ .kafka_name }}-kafka-bootstrap:9093
+        - name: OIDC_URL
+          value: {{ .oidc_url }}
+        - name: KAFKA_USE_SSL
+          value: 'true'
+        - name: KAFKA_SSL_CA_PATH
+          value: {{ .kafka_ssl_path }}/ca.crt
+        - name: KAFKA_SSL_CLIENT_PRIVATE_KEY_PATH
+          value: {{ .kafka_ssl_path }}/user.key
+        - name: KAFKA_SSL_CLIENT_CERTIFICATE_PATH
+          value: {{ .kafka_ssl_path }}/user.crt
+      volumes:
+      - name: vault-conf-tls
+        secret:
+          defaultMode: 420
+          secretName: vault-conf-tls

@@ -1,0 +1,42 @@
+vault:
+  bucket:
+    _default: "negentropy-dev-vault"
+  ha:
+    _default: false
+  port: 
+    _default: "8200"
+  cluster_port:
+    _default: "8201"
+  scheme:
+    _default: "http"
+  data_path:
+    _default: "/vault/data"
+  storage_class:
+    _default: "pd-standard-not-replicated"
+  storage_size:
+    _default: "10Gi"
+
+kafka:
+  name:
+    _default: "ng"
+
+resources:
+  requests:
+    cpu:
+      _default: 30m
+    memory:
+      _default: 64Mi
+  limits:
+    memory:
+      _default: 512Mi
+
+kafka_ssl_path:
+  _default: /etc/kafka_ssl
+
+oidc_url:
+  _default: https://login.flant.com
+
+load_balancer:
+  dev: enabled
+domain:
+  dev: negentropy.flant.dev

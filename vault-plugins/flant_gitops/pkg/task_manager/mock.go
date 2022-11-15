@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -21,12 +22,12 @@ func (m *mockTaskManagerService) SaveTask(ctx context.Context, task taskUUID, co
 }
 
 func (m *mockTaskManagerService) CheckTask(ctx context.Context, commit hashCommit) (taskExist, taskIsFinished, error) {
-	return checkTask(ctx, m.storage, commit, m.readTaskStatus)
+	return checkTask(ctx, m.storage, commit, m.readTaskStatus, hclog.NewNullLogger())
 }
 
-func NewMock(b *framework.Backend) func(logical.Storage, client.AccessVaultClientController) TaskService {
+func NewMock(b *framework.Backend) func(logical.Storage, client.AccessVaultClientController, hclog.Logger) TaskService {
 	mock := &mockTaskManagerService{b: b}
-	return func(storage logical.Storage, _ client.AccessVaultClientController) TaskService {
+	return func(storage logical.Storage, _ client.AccessVaultClientController, _ hclog.Logger) TaskService {
 		mock.storage = storage
 		return mock
 	}
