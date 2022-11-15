@@ -124,7 +124,7 @@ type (
 
 // updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns isCornerCase and isPushed
 func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (isCornerCase, isPushed, error) {
-	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, lastStartedCommit)
+	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).CheckTask(ctx, lastStartedCommit)
 	if err != nil {
 		return false, false, err
 	}
@@ -197,7 +197,7 @@ func (b *backend) createTask(ctx context.Context, storage logical.Storage, commi
 	}
 
 	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %q for commitHash: %q", taskUUID, commitHash))
-	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider).SaveTask(ctx, taskUUID, commitHash)
+	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).SaveTask(ctx, taskUUID, commitHash)
 }
 
 // checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
@@ -205,7 +205,7 @@ func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.S
 	if pushedToK8sCommit == lastK8sFinishedCommit {
 		return nil
 	}
-	_, taskFinished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider).CheckTask(ctx, pushedToK8sCommit)
+	_, taskFinished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).CheckTask(ctx, pushedToK8sCommit)
 	if err != nil {
 		return err
 	}
@@ -274,18 +274,19 @@ func (b *backend) processCommit(ctx context.Context, storage logical.Storage, ha
 	if err != nil {
 		return err
 	}
-	vaultsEnvBase64Json, warnings, err := vault.BuildVaultsBase64Env(ctx, storage, apiClient)
+	vaultsEnvBase64Json, warnings, err := vault.BuildVaultsBase64Env(ctx, storage, apiClient, b.Logger())
 	if len(warnings) > 0 {
 		for _, w := range warnings {
 			b.Logger().Warn(w)
 		}
 	}
+	b.Logger().Debug("BuildVaultsBase64Env", "vaultsEnvBase64Json", vaultsEnvBase64Json)
 	err = backoff.Retry(func() error {
 		kubeService, err := kubeServiceProvider(ctx, storage)
 		if err != nil {
 			return err
 		}
-		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json)
+		return kubeService.RunJob(ctx, hashCommit, vaultsEnvBase64Json, b.Logger())
 	}, sharedio.TwoMinutesBackoff())
 	return err
 }

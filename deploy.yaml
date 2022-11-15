@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+spec:
+  template:
+    metadata:
+      annotations:
+        "container.apparmor.security.beta.kubernetes.io/werf-converge": "unconfined"
+    spec:
+      restartPolicy: Never
+      serviceAccount: deploy
+      automountServiceAccountToken: true
+      containers:
+      - name: werf-converge
+        image: registry.werf.io/werf/werf
+        resources:
+          limits:
+            github.com/fuse: 1
+        args:
+          - "sh"
+          - "-ec"
+          - |
+            VERSION=2.1.6
+            OS=linux
+            ARCH=amd64
+            [ "$GIT_COMMIT" = "COMMIT_PLACEHOLDER" ] && GIT_COMMIT="$GIT_BRANCH"
+            [ "$VAULTS_B64_JSON" = "VAULTS_B64_PLACEHOLDER" ] && VAULTS_B64_JSON="$(echo -n '{}'| base64)"
+            mkdir $HOME/bin &&
+            export PATH=$PATH:$HOME/bin &&
+            wget -O- "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${VERSION}/docker-credential-gcr_${OS}_${ARCH}-${VERSION}.tar.gz" | tar xz docker-credential-gcr &&
+            chmod +x docker-credential-gcr &&
+            mv docker-credential-gcr $HOME/bin/ &&
+            docker-credential-gcr configure-docker --registries=europe-west1-docker.pkg.dev &&
+            git clone $GIT_REPO $HOME/negentropy &&
+            cd $HOME/negentropy &&
+            git checkout $GIT_COMMIT &&
+            werf converge --env=$WERF_NAMESPACE --auto-rollback=true --repo=europe-west1-docker.pkg.dev/negentropy-dev/negentropy-dev/negentropy --set vaults_b64_json=${VAULTS_B64_JSON}
+        env:
+          - name: GIT_COMMIT
+            value: COMMIT_PLACEHOLDER
+          - name: VAULTS_B64_JSON
+            value: VAULTS_B64_PLACEHOLDER
+          - name: WERF_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        envFrom:
+          -  configMapRef:
+               name: bootstrap

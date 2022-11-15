@@ -1,0 +1,36 @@
+{{- $lb := dig .Values.werf.env "disabled" .Values.load_balancer }}
+{{- if eq $lb "enabled" }}
+{{- include "globals" . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-root-lb
+  labels:
+    app: vault-root
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tcp
+    port: 443
+    protocol: TCP
+    targetPort: {{ .vault_port }}
+  selector:
+    app: vault-root
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-auth-lb
+  labels:
+    app: vault-auth
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tcp
+    port: 443
+    protocol: TCP
+    targetPort: {{ .vault_port }}
+  selector:
+    app: vault-auth
+{{- end }}

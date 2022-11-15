@@ -1,17 +1,8 @@
 Copyright (c) 2021-present Flant JSC
 
-Portions of this work are licensed as follows:
-
-* All content that resides under the "vault-plugins/" directory of this
-  repository is licensed under the license defined in "vault-plugins/LICENSE".
-* All content that resides under the "authd/" directory of this
-  repository is licensed under the license defined in "authd/LICENSE".
-* All content that resides under the "server-access/" directory of this
-  repository is licensed under the license defined in "authd/LICENSE".
-* All content that resides under the "kafka-consumer/" directory of this
-  repository is licensed under the license defined in "authd/LICENSE".
-* All content that resides under the "cli/" directory of this
-  repository is licensed under the license defined in "authd/LICENSE".
+Parts of this work are licensed as follows:
+* The contents of subfolders to which a special license applies contain 
+  that license in subfolder/LICENSE.
 * All client-side JavaScript (when served directly or after being compiled,
   arranged, augmented, or combined), is licensed under the "MIT Expat" license.
 * All third party components incorporated into the work are licensed under the

@@ -1,0 +1,88 @@
+{{- $vault_tag := "v1.11.1" }}
+---
+configVersion: 1
+project: negentropy
+deploy:
+  helmRelease: "[[ project ]]"
+  namespace: "[[ env ]]"
+---
+image: vault
+from: alpine:3.14.2
+import:
+- artifact: vault-build
+  add: /app/infra/common/vault/vault/bin/vault
+  to: /bin/vault
+  before: install
+---
+artifact: vault-build
+from: golang:1.17.12-alpine
+git:
+- add: /
+  to: /app
+  stageDependencies:
+    install:
+    - 'vault-plugins/**/go.mod'
+    setup:
+    - 'vault-plugins/**/*'
+- url: https://github.com/hashicorp/vault.git
+  to: /app/infra/common/vault/vault
+  tag: {{ $vault_tag }}
+shell:
+  beforeInstall:
+  - apk add bash git make musl-dev gcc patch
+  install:
+  - |
+    export CGO_ENABLED=1
+    cd /app/infra/common/vault/vault
+    go mod edit -require github.com/flant/negentropy/vault-plugins/shared@v0.0.1 -replace github.com/flant/negentropy/vault-plugins/shared@v0.0.1=/app/vault-plugins/shared
+    go mod edit -require github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_gitops@v0.0.0=/app/vault-plugins/flant_gitops
+    go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_iam@v0.0.0=/app/vault-plugins/flant_iam
+    go mod edit -require github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0 -replace github.com/flant/negentropy/vault-plugins/flant_iam_auth@v0.0.0=/app/vault-plugins/flant_iam_auth
+    patch -p1 < ../001_bucket_count.patch
+    patch -p1 < ../002_add_flant_plugins.patch
+    patch -p1 < ../003_add_loading_info_to_cfg.patch
+    patch -p1 < ../004_revert_MR#12747.patch
+    go mod tidy -e -go=1.16 && go mod tidy -e -go=1.17
+    make bootstrap
+  setup:
+  - |
+    export CGO_ENABLED=1
+    cd /app/infra/common/vault/vault
+    VAULT_GIT_COMMIT=$(git ls-remote -t https://github.com/hashicorp/vault.git refs/tags/{{ $vault_tag }}|awk '{print $1}')
+    gox -osarch="linux/amd64" -gcflags "${GCFLAGS}" -ldflags "${LD_FLAGS}-X github.com/hashicorp/vault/sdk/version.GitCommit=${VAULT_GIT_COMMIT}" -output "bin/vault" -tags="vault musl" -gocmd="go" .
+---
+image: migrations
+from: ubuntu:22.04
+docker:
+  WORKDIR: /app
+git:
+- add: /
+  to: /app
+  includePaths:
+  - infra/vault_migrator
+  stageDependencies:
+    install:
+    - 'infra/vault_migrator/requirements.txt'
+    setup:
+    - 'infra/vault_migrator/**/*'
+shell:
+  beforeInstall:
+  - apt update && apt install -y bash curl ca-certificates gnupg jq python3-pip vim
+  install:
+  - python3 -m pip install -r /app/infra/vault_migrator/requirements.txt
+  setup:
+  - rm -rf /app/infra/vault_migrator/.env
+---
+image: vault-init
+from: google/cloud-sdk:400.0.0-alpine
+import:
+- artifact: vault-build
+  add: /app/infra/common/vault/vault/bin/vault
+  to: /bin/vault
+  before: install
+git:
+- add: /infra/common/vault/recovery-pgp-keys
+  to: /etc/recovery-pgp-keys
+shell:
+  beforeInstall:
+  - apk add bash curl jq
