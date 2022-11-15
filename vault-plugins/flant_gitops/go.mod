@@ -9,7 +9,6 @@ require (
 	github.com/hashicorp/vault/api v1.7.2
 	github.com/hashicorp/vault/sdk v0.5.3
 	github.com/stretchr/testify v1.8.0
-	github.com/werf/vault-plugin-secrets-trdl v0.0.0-20210824164229-ed847e15b393
 )
 
 require (
@@ -17,6 +16,7 @@ require (
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
+	github.com/werf/trdl/server v0.0.0-20220621102857-26ad50d61a07
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.22.2
@@ -34,6 +34,8 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.9.1 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/djherbis/buffer v1.2.0 // indirect
+	github.com/djherbis/nio/v3 v3.0.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.10+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -125,3 +127,5 @@ require (
 )
 
 replace github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../shared
+
+replace github.com/theupdateframework/go-tuf => github.com/werf/third-party-go-tuf v0.0.0-20210420212757-8e2932fb01f2

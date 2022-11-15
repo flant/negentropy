@@ -19,7 +19,7 @@ type PathConfigureCallbacksSuite struct {
 }
 
 var fullValidConfiguration = &Configuration{
-	GitRepoUrl:    "https://github.com/werf/vault-plugin-secrets-trdl.git",
+	GitRepoUrl:    "https://github.com/werf/trdl.git",
 	GitBranch:     "master",
 	GitPollPeriod: time.Duration(60) * time.Second,
 	RequiredNumberOfVerifiedSignaturesOnCommit: 0,

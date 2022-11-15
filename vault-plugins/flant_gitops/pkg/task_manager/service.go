@@ -38,7 +38,7 @@ func Service(storage logical.Storage, accessVaultClientProvider client.AccessVau
 	return &service{
 		storage:                   storage,
 		accessVaultClientProvider: accessVaultClientProvider,
-		logger:                    parentLogger.Named("task_server"),
+		logger:                    parentLogger.Named("task_service"),
 	}
 }
 
