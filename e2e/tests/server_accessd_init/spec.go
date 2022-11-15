@@ -76,7 +76,7 @@ var _ = Describe("Process of server initializing by using server_accessd init", 
 		initCmd += fmt.Sprintf("--connection_hostname %s ", flant_iam_preparing.TestServerIdentifier)
 		initCmd += fmt.Sprintf("--store_multipass_to %s ", jwtPath)
 		s.ExecuteCommandAtContainer(s.TestServerContainer, []string{"/bin/bash", "-c", initCmd}, nil)
-		lib.WaitDataReachFlantAuthPlugin(40, lib.GetAuthVaultUrl())
+		lib.WaitDataReachFlantAuthPluginAtVault(40, lib.GetAuthVaultUrl())
 	})
 
 	It("check files are created, and got server registration info", func() {

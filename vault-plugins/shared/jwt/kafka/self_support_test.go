@@ -17,8 +17,9 @@ func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
 	require.NoError(t, err)
 	txn := store.Txn(true)
 
-	handled, err := SelfRestoreMessage(txn.Txn, model.JWTConfigType,
-		[]byte(`{
+	handled, err := SelfRestoreMessage(txn.Txn, io.MsgDecoded{
+		Type: model.JWTConfigType,
+		Data: []byte(`{
    "id": "jwt_config",
    "config": {
       "issuer": "https://auth.negentropy.flant.com/",
@@ -27,7 +28,8 @@ func Test_SelfRestoreMessage_JWTConfigType(t *testing.T) {
       "preliminary_announce_period": 86400000000000
    }
 }
-`))
+`),
+	})
 
 	require.NoError(t, err)
 	require.True(t, handled)

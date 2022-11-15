@@ -142,7 +142,7 @@ func GetAuthVaultUrl() string {
 	return u
 }
 
-func WaitDataReachFlantAuthPlugin(maxAttempts int, vaultUrl string) error {
+func WaitDataReachFlantAuthPluginAtVault(maxAttempts int, vaultUrl string) error {
 	rootIamClient := NewConfiguredIamVaultClient()
 	tenant := specs.CreateRandomTenant(NewTenantAPI(rootIamClient))
 	user := specs.CreateRandomUser(NewUserAPI(rootIamClient), tenant.UUID)

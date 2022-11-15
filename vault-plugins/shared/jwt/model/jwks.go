@@ -58,22 +58,24 @@ func JWKSTables() map[string]*hcmemdb.TableSchema {
 
 type JWKSRepo struct {
 	db          *io.MemoryStoreTxn
-	tableName   string
 	publisherId string
 }
 
 func NewJWKSRepo(db *io.MemoryStoreTxn, publisherId string) *JWKSRepo {
 	return &JWKSRepo{
 		db:          db,
-		tableName:   JWKSType,
 		publisherId: publisherId,
 	}
 }
 
 func (r *JWKSRepo) DeleteOwn() error {
-	return r.db.Delete(r.tableName, &JWKS{
+	err := r.db.Delete(JWKSType, &JWKS{
 		ID: r.publisherId,
 	})
+	if err != nil {
+		return fmt.Errorf("DeleteOwn:  r.publisherId=%s, err=%w", r.publisherId, err)
+	}
+	return nil
 }
 
 func (r *JWKSRepo) UpdateOwn(keySet *JSONWebKeySet) error {
@@ -90,11 +92,11 @@ func (r *JWKSRepo) UpdateOwn(keySet *JSONWebKeySet) error {
 
 	jwks.KeySet = keySet
 
-	return r.db.Insert(r.tableName, jwks)
+	return r.db.Insert(JWKSType, jwks)
 }
 
 func (r *JWKSRepo) GetOwn() (*JWKS, error) {
-	jwksRaw, err := r.db.First(r.tableName, PK, r.publisherId)
+	jwksRaw, err := r.db.First(JWKSType, PK, r.publisherId)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +127,7 @@ func (r *JWKSRepo) GetSet() ([]jose.JSONWebKey, error) {
 }
 
 func (r *JWKSRepo) Iter(action func(*JWKS) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, PK)
+	iter, err := r.db.Get(JWKSType, PK)
 	if err != nil {
 		return err
 	}

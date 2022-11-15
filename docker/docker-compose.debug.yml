@@ -19,6 +19,7 @@ services:
       - 8200:8200
     environment:
       - VAULT_ADDR=https://127.0.0.1:8200
+      - VAULT_CACERT=/etc/vault-tls/ca.crt
       - VAULT_CLIENT_TIMEOUT=120s
     command: --listen=:2345 --headless=true  --accept-multiclient --api-version=2 exec /bin/vault -- server -config /etc/vault.hcl
     cap_add:

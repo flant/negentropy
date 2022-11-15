@@ -45,20 +45,20 @@ func (a *VaultEntityDownstreamApi) ProcessObject(txn *io.MemoryStoreTxn, obj io.
 	return make([]io.DownstreamAPIAction, 0), nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessObjectDelete(ms *io.MemoryStore, txn *io.MemoryStoreTxn, obj io.MemoryStorableObject) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessObjectDelete(obj io.MemoryStorableObject) ([]io.DownstreamAPIAction, error) {
 	switch obj.ObjType() {
 	case model.EntityType:
 		entity, ok := obj.(*model.Entity)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to Entity")
 		}
-		return a.ProcessDeleteEntity(txn, entity.Name)
+		return a.ProcessDeleteEntity(entity.Name)
 	case model.EntityAliasType:
 		entityAlias, ok := obj.(*model.EntityAlias)
 		if !ok {
 			return nil, fmt.Errorf("does not cast to EntityAlias")
 		}
-		return a.ProcessDeleteEntityAlias(txn, entityAlias.Name)
+		return a.ProcessDeleteEntityAlias(entityAlias.Name)
 	}
 
 	return make([]io.DownstreamAPIAction, 0), nil
@@ -140,7 +140,7 @@ func (a *VaultEntityDownstreamApi) ProcessEntityAlias(txn *io.MemoryStoreTxn, en
 		return nil, fmt.Errorf("not found entity id for %s", entity.Name)
 	}
 
-	// getting mount accessor - identifer for mount point plugin
+	// getting mount accessor - identifier for mount point plugin
 	mountAccessor, err := a.mountAccessorGetter.MountAccessor()
 	if err != nil {
 		a.logger.Error(fmt.Sprintf("Cannot get mount accessor: %v", err), "name", entityAlias.Name, "err", err)
@@ -197,7 +197,7 @@ func (a *VaultEntityDownstreamApi) createEntityAliasInMemoryStoreIfNotExists(txn
 	return nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(txn *io.MemoryStoreTxn, entityName string) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(entityName string) ([]io.DownstreamAPIAction, error) {
 	action := io.NewVaultApiAction(func() error {
 		a.logger.Debug(fmt.Sprintf("Deleting entity with name %s", entityName), "entityName", entityName)
 		err := api.NewIdentityAPIWithBackOff(a.vaultClientProvider, io.FiveSecondsBackoff).EntityApi().DeleteByName(entityName)
@@ -214,7 +214,7 @@ func (a *VaultEntityDownstreamApi) ProcessDeleteEntity(txn *io.MemoryStoreTxn, e
 	return []io.DownstreamAPIAction{action}, nil
 }
 
-func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(txn *io.MemoryStoreTxn, entityAliasName string) ([]io.DownstreamAPIAction, error) {
+func (a *VaultEntityDownstreamApi) ProcessDeleteEntityAlias(entityAliasName string) ([]io.DownstreamAPIAction, error) {
 	// getting mount accessor - identifer for mount point plugin
 	mountAccessor, err := a.mountAccessorGetter.MountAccessor()
 	if err != nil {

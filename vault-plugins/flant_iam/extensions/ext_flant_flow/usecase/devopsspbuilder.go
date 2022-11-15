@@ -41,7 +41,6 @@ func (d devopsServicePackBuilder) OnCreateProject(project model.Project) error {
 		sp := model.ServicePack{
 			ProjectUUID:      project.UUID,
 			Name:             model.DevOps,
-			Version:          uuid.New(),
 			Rolebindings:     rbs,
 			IdentitySharings: []iam_model.IdentitySharingUUID{is.UUID},
 		}

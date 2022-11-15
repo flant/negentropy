@@ -16,11 +16,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
-func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecoded) (*io.MemoryStore, func(t *testing.T)) {
+func getHandler(t *testing.T, storage *io.MemoryStore, msg *io.MsgDecoded) (*io.MemoryStore, func(t *testing.T)) {
 	if storage == nil {
 		storage = tests.CreateTestStorage(t)
 	}
@@ -30,7 +29,7 @@ func getHandler(t *testing.T, storage *io.MemoryStore, msg *sharedkafka.MsgDecod
 		defer txn.Abort()
 
 		objectHandler := NewObjectHandler(hclog.NewNullLogger())
-		err := HandleNewMessageIamRootSource(txn, objectHandler, msg)
+		err := HandleNewMessageIamRootSource(txn, objectHandler, *msg)
 		require.NoError(t, err)
 
 		err = txn.Commit()

@@ -37,11 +37,11 @@ func AuthMethodSchema() *memdb.DBSchema {
 }
 
 type AuthMethodRepo struct {
-	db        *io.MemoryStoreTxn
+	db        io.Txn
 	tableName string
 }
 
-func NewAuthMethodRepo(db *io.MemoryStoreTxn) *AuthMethodRepo {
+func NewAuthMethodRepo(db io.Txn) *AuthMethodRepo {
 	return &AuthMethodRepo{
 		db:        db,
 		tableName: model.AuthMethodType,

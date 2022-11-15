@@ -291,7 +291,9 @@ func CreateRoleBinding(rolebindingAPI api.TestAPI, rb model.RoleBinding) model.R
 	var createPayload map[string]interface{}
 	json.Unmarshal(bytes, &createPayload) //nolint:errcheck
 	delete(createPayload, "valid_till")
-	createPayload["ttl"] = rb.ValidTill - time.Now().Unix()
+	if rb.ValidTill != 0 {
+		createPayload["ttl"] = rb.ValidTill - time.Now().Unix()
+	}
 	createData := rolebindingAPI.Create(params, url.Values{}, createPayload)
 	rawRoleBinding := createData.Get("role_binding")
 	data := []byte(rawRoleBinding.String())

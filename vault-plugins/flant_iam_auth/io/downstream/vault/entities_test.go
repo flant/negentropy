@@ -300,8 +300,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("not create entity alias 1", err)
 		}
 
-		txnProc := storage.Txn(true)
-		actions, err := downstream.ProcessObjectDelete(storage, txnProc, entity)
+		actions, err := downstream.ProcessObjectDelete(entity)
 
 		if len(actions) != 1 {
 			t.Fatal("must be return 1 action returns", len(actions))
@@ -330,7 +329,7 @@ func TestEntites_DeleteEntity(t *testing.T) {
 			t.Fatal("entity alias not deleted")
 		}
 
-		actions, err = downstream.ProcessObjectDelete(storage, txnProc, entity)
+		actions, err = downstream.ProcessObjectDelete(entity)
 
 		if len(actions) != 1 {
 			t.Fatal("must be return 1 action returns", len(actions))
@@ -408,8 +407,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("not create entity alias 1", err)
 		}
 
-		txnProc := storage.Txn(true)
-		actions, err := downstream.ProcessObjectDelete(storage, txnProc, entityAlias1)
+		actions, err := downstream.ProcessObjectDelete(entityAlias1)
 
 		if len(actions) != 1 {
 			t.Fatal("must be return 1 action returns", len(actions))
@@ -438,7 +436,7 @@ func TestEntites_DeleteEntityAlias(t *testing.T) {
 			t.Fatal("entity deleted")
 		}
 
-		actions, err = downstream.ProcessObjectDelete(storage, txnProc, entityAlias1)
+		actions, err = downstream.ProcessObjectDelete(entityAlias1)
 
 		if len(actions) != 1 {
 			t.Fatal("must be return 1 action returns", len(actions))

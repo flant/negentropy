@@ -3,6 +3,7 @@ package access_token_or_sapass_auth
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -193,6 +194,10 @@ func checkSecretResult(f func() (*api.Secret, error), positiveCase bool, attempt
 		time.Sleep(time.Millisecond * 20)
 	}
 	if positiveCase {
+		if err != nil {
+			fmt.Printf("err= %#v\n", err)
+			fmt.Printf("secret= %#v\n", secret)
+		}
 		Expect(err).ToNot(HaveOccurred())
 		Expect(secret).ToNot(BeNil())
 		Expect(secret.Auth).ToNot(BeNil())
