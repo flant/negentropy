@@ -38,5 +38,7 @@ oidc_url:
 
 load_balancer:
   dev: enabled
+  stage: enabled
 domain:
   dev: negentropy.flant.dev
+  stage: negentropy-stage.flant.dev
