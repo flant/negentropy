@@ -118,6 +118,12 @@ spec:
   - {{ printf "%s-0.%s.%s.svc.cluster.local" $vault_name $vault_name .Values.werf.namespace }}
 {{ end }}
   - {{ printf "%s.%s.svc.cluster.local" $vault_name .Values.werf.namespace }}
+  {{- if .Values.domain -}}
+  {{- $domain := pluck .Values.werf.env .Values.domain | first | default false }}
+  {{- if $domain }}
+  - {{ printf "%s.%s" $vault_name $domain }}
+  {{- end }}
+  {{- end }}
   ipAddresses:
   - 127.0.0.1
 ---
