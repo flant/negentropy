@@ -46,7 +46,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/sdk/logical"
-	trdl_task_manager "github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
+	trdl_task_manager "github.com/werf/trdl/server/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"

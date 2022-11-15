@@ -7,9 +7,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/git"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/tasks_manager"
+	"github.com/werf/trdl/server/pkg/git"
+	"github.com/werf/trdl/server/pkg/pgp"
+	"github.com/werf/trdl/server/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
@@ -47,7 +47,7 @@ func newBackend(c *logical.BackendConfig) (*backend, error) {
 		return nil, err
 	}
 	b := &backend{
-		TasksManager:              tasks_manager.NewManager(),
+		TasksManager:              tasks_manager.NewManager(c.Logger),
 		AccessVaultClientProvider: accessVaultClientProvider,
 	}
 

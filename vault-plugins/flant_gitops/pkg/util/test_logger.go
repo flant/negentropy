@@ -5,10 +5,41 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 )
+
+// Buffer is a goroutine safe bytes.Buffer
+type Buffer struct {
+	b bytes.Buffer
+	m sync.Mutex
+}
+
+func (b *Buffer) Read(p []byte) (n int, err error) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	return b.b.Read(p)
+}
+
+func (b *Buffer) Write(p []byte) (n int, err error) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	return b.b.Write(p)
+}
+
+func (b *Buffer) String() string {
+	b.m.Lock()
+	defer b.m.Unlock()
+	return b.b.String()
+}
+
+func (b *Buffer) Reset() {
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.b.Reset()
+}
 
 func NewTestLogger() *TestLogger {
 	logger := &TestLogger{}
@@ -18,7 +49,7 @@ func NewTestLogger() *TestLogger {
 
 type TestLogger struct {
 	Lines       []string
-	BytesBuffer bytes.Buffer
+	BytesBuffer Buffer
 
 	VaultLogger hclog.Logger
 }
@@ -37,8 +68,9 @@ func (logger *TestLogger) GetLines() []string {
 		newLines = append(newLines, scanner.Text())
 	}
 	logger.Lines = append(logger.Lines, newLines...)
-
-	return logger.Lines
+	var result []string
+	result = append(result, logger.Lines...)
+	return result
 }
 
 func (logger *TestLogger) Grep(text string) (bool, []string) {
@@ -72,6 +104,5 @@ func (logger *TestLogger) GetDataByMarkers(beginMark, endMark string) (bool, []b
 			panic("unexpected")
 		}
 	}
-
 	return false, nil
 }

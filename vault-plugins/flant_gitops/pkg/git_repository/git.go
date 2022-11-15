@@ -11,8 +11,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
-	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
-	"github.com/werf/vault-plugin-secrets-trdl/pkg/pgp"
+	trdlGit "github.com/werf/trdl/server/pkg/git"
+	"github.com/werf/trdl/server/pkg/pgp"
 )
 
 type gitCommitHash = string
@@ -172,7 +172,7 @@ func (g gitService) getFirstSignedCommit(gitRepo *goGit.Repository, commits []*g
 	}
 
 	for _, c := range commits {
-		err = trdlGit.VerifyCommitSignatures(gitRepo, *c, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit)
+		err = trdlGit.VerifyCommitSignatures(gitRepo, *c, trustedPGPPublicKeys, requiredNumberOfVerifiedSignaturesOnCommit, g.logger)
 		if err != nil {
 			g.logger.Debug(fmt.Sprintf("checking commit signing: %s: %s", *c, err.Error()))
 		}

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	trdlGit "github.com/werf/vault-plugin-secrets-trdl/pkg/git"
+	trdlGit "github.com/werf/trdl/server/pkg/git"
 )
 
 type TestGitRepo struct {
