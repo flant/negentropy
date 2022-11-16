@@ -26,4 +26,4 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run tests
-        run: find infra/main/vault_migrations/ -name '*.rego' -printf '%h\n' | sort -u | xargs opa test -v
+        run: find infra/vault_migrator/migrations/ -name '*.rego' -printf '%h\n' | sort -u | xargs opa test -v
