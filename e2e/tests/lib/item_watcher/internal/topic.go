@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func NewSummaryOfTopic(topicName string) *SummaryOfTopic {
+func NewSummaryOfTopic(topicName string, edgeTimestamp time.Time) *SummaryOfTopic {
 	return &SummaryOfTopic{
-		TopicName: topicName,
-		Summaries: map[Type]map[ItemKey]ItemSummary{},
+		EdgeTimestamp: edgeTimestamp,
+		TopicName:     topicName,
+		Summaries:     map[Type]map[ItemKey]ItemSummary{},
 	}
 }
 
@@ -28,12 +30,16 @@ type Type = string
 
 type SummaryOfTopic struct {
 	// todo mutex if will used not only for e2e
-	TopicName string
-	Summaries map[Type]map[ItemKey]ItemSummary
+	TopicName     string
+	EdgeTimestamp time.Time
+	Summaries     map[Type]map[ItemKey]ItemSummary
 }
 
 // ProceedMessage fill summary of topic by using msg
 func (s *SummaryOfTopic) ProceedMessage(msg io.MsgDecoded) error {
+	if msg.TimeStamp.Before(s.EdgeTimestamp) {
+		return nil // doesn't process
+	}
 	objectsOfType, mapExist := s.Summaries[msg.Type]
 	if !mapExist {
 		objectsOfType = map[ItemKey]ItemSummary{}

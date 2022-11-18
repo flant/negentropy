@@ -1,3 +1,4 @@
+// this app watch over kafka topics and collect information over message headers
 package main
 
 import (
@@ -44,14 +45,18 @@ func main() {
 	go func() {
 		server.RunServer()
 	}()
-
 	c := make(chan os.Signal, 1)
 
 	signal.Notify(c, os.Interrupt)
 
-	<-c
+	select {
+	case <-c:
+		log.Println("os.Interrupt")
+	case <-server.ShutDownRequest:
+		log.Println("shutdown request come")
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	server.Shutdown(ctx)
 	log.Println("shutting down")

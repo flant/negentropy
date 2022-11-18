@@ -29,9 +29,10 @@ type WatcherServer struct {
 
 	initialized bool
 	http.Server
-	kafkaCfg     sharedkafka.BrokerConfig
-	kafkaSources []*pkg.KafkaSource
-	summaries    []*SummaryOfTopic
+	kafkaCfg        sharedkafka.BrokerConfig
+	kafkaSources    []*pkg.KafkaSource
+	summaries       []*SummaryOfTopic
+	ShutDownRequest chan bool
 }
 
 func (s *WatcherServer) InitServer() error {
@@ -54,6 +55,7 @@ func (s *WatcherServer) InitServer() error {
 		WriteTimeout: 10 * time.Second,
 	}
 	s.Handler = s.buildRouter()
+	s.ShutDownRequest = make(chan bool)
 	s.initialized = true
 	return nil
 }
@@ -80,9 +82,9 @@ func (s *WatcherServer) Shutdown(ctx context.Context) {
 func (s *WatcherServer) buildAndRunKafkaSources() error {
 	groupID := "item-watcher-" + strings.ReplaceAll(time.Now().String()[11:23], ":", "-")
 	mb := pkg.MessageBroker(s.kafkaCfg, groupID, hclog.Default())
-	memstore := pkg.EmptyMemstore(mb, hclog.Default())
+	memstore := pkg.EmptyMemstore(mb, hclog.NewNullLogger())
 	for _, topic := range s.Topics {
-		topicSummary := NewSummaryOfTopic(topic)
+		topicSummary := NewSummaryOfTopic(topic, s.Edge)
 		s.summaries = append(s.summaries, topicSummary)
 		ks := pkg.NewKafkaSource(mb, memstore, topic, groupID, hclog.Default(), topicSummary)
 		s.kafkaSources = append(s.kafkaSources, ks)
@@ -95,6 +97,11 @@ func (s *WatcherServer) stopKafkaSources() {
 	for _, ks := range s.kafkaSources {
 		ks.Stop()
 	}
+}
+
+func (s *WatcherServer) shutDownHandler(writer http.ResponseWriter, _ *http.Request) {
+	io.WriteString(writer, "shutting down server")
+	s.ShutDownRequest <- true
 }
 
 type route struct {
@@ -111,6 +118,7 @@ func (s *WatcherServer) buildRouter() *mux.Router {
 		{"/summary/{topic}", s.topicSummaryHandler},
 		{"/summary/{topic}/{object_type}", s.objectTypeSummaryHandler},
 		{"/summary/{topic}/{object_type}/{id}", s.objectSummaryHandler},
+		{"/shutdown", s.shutDownHandler},
 	}
 
 	for _, route := range routes {
