@@ -18,9 +18,10 @@ import (
 )
 
 type MsgDecoded struct {
-	Type string
-	ID   string
-	Data []byte
+	Type      string
+	ID        string
+	TimeStamp time.Time
+	Data      []byte
 }
 
 func (m *MsgDecoded) IsDeleted() bool {
@@ -178,7 +179,7 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 var errWrongSignature = fmt.Errorf("wrong signature")
 
 func (rk *KafkaSourceImpl) decodeMessageAndCheck(msg *kafka.Message) (*MsgDecoded, error) {
-	result := &MsgDecoded{}
+	result := &MsgDecoded{TimeStamp: msg.Timestamp}
 	splitted := strings.Split(string(msg.Key), "/")
 	if len(splitted) != 2 {
 		return nil, fmt.Errorf("key %q has wong format", string(msg.Key))
