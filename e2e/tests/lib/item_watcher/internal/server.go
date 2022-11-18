@@ -157,7 +157,7 @@ func (s *WatcherServer) objectSummaryHandler(writer http.ResponseWriter, request
 	objectType := vars["object_type"]
 	topic := vars["topic"]
 	s.findAndHandleObjectTypeSummary(writer, request, func(writer http.ResponseWriter, request *http.Request, objectTypeSummary map[ItemKey]ItemSummary) {
-		objectSummary, exist := objectTypeSummary[objectID]
+		objectSummary, exist := objectTypeSummary[objectType+"/"+objectID]
 		if !exist {
 			writeNotFound(writer, fmt.Sprintf("object %q of type  %q not found at topic  %q\n", objectID, objectType, topic))
 			return
