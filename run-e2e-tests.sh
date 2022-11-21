@@ -32,4 +32,13 @@ echo DEBUG: AUTH_VAULT_INTERNAL_URL is $AUTH_VAULT_INTERNAL_URL
 
 go mod download
 
+# run watcher
+go run tests/lib/item_watcher/watcher.go &> /dev/null &
+
 go run github.com/onsi/ginkgo/ginkgo run ./...
+
+# watcher output & shutdown
+echo
+echo items:
+curl localhost:3333/report
+curl localhost:3333/shutdown

@@ -9,13 +9,20 @@ require (
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
+	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-hclog v1.2.1
+	github.com/hashicorp/go-memdb v1.3.3
 	github.com/hashicorp/vault/api v1.7.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
 	github.com/tidwall/gjson v1.14.1
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+require (
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	golang.org/x/tools v0.1.2 // indirect
 )
 
 require (
@@ -52,7 +59,6 @@ require (
 	github.com/go-openapi/strfmt v0.21.3 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-openapi/validate v0.22.0 // indirect
-	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -64,7 +70,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/entropy v0.1.0 // indirect
-	github.com/hashicorp/go-memdb v1.3.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
@@ -102,7 +107,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sethvargo/go-password v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
@@ -115,7 +120,6 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
-	golang.org/x/tools v0.1.2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220808131553-a91ffa7f803e // indirect
 	google.golang.org/grpc v1.48.0 // indirect
