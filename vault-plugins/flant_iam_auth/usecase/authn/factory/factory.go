@@ -195,7 +195,7 @@ func (f *AuthenticatorFactory) jwtValidator(ctx context.Context, method *model.A
 	// not cache multipass validator
 	// TODO flush cache when update JWKS
 	// TODO flush cache when update authsource (ie CAPEM)
-	if config.UUID != model.MultipassSourceUUID {
+	if config.Name != model.MultipassSourceName {
 		f.validators[method.Name] = validator
 	}
 

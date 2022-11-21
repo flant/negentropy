@@ -49,27 +49,27 @@ func getDeleteHandler(t *testing.T, obj io.MemoryStorableObject, storage *io.Mem
 	return getHandler(t, storage, msg)
 }
 
-func assertCreatedEntityWithAliases(t *testing.T, store *io.MemoryStore, sources []sourceForTest, obj io.MemoryStorableObject, uuid, fullUUID string) {
+func assertCreatedEntityWithAliases(t *testing.T, store *io.MemoryStore, sources []sourceForTest, obj io.MemoryStorableObject, subjectUUID, subjectFullIdentifier string) {
 	tx := store.Txn(false)
 	defer tx.Abort()
 
-	e, err := repo.NewEntityRepo(tx).GetByUserId(uuid)
+	e, err := repo.NewEntityRepo(tx).GetByUserId(subjectUUID)
 	require.NoError(t, err)
 
 	require.NotNil(t, e, "must save entity")
-	require.Equal(t, e.UserId, uuid)
-	require.Equal(t, e.Name, fullUUID, "must name same af full_id")
+	require.Equal(t, e.UserId, subjectUUID)
+	require.Equal(t, e.Name, subjectFullIdentifier, "must name same af full_id")
 
-	_, aliasesBySourceId := getAllAliases(t, tx, uuid)
+	_, aliasesBySourceName := getAllAliases(t, tx, subjectUUID)
 	for _, s := range sources {
 		eaName := s.expectedEaName(obj)
 		if eaName != "" {
-			require.Contains(t, aliasesBySourceId, s.source.UUID, "should create entity alias")
-			if aliasesBySourceId[s.source.UUID].Name != eaName {
-				require.Equal(t, aliasesBySourceId[s.source.UUID].Name, eaName, "should correct entity alias name")
+			require.Contains(t, aliasesBySourceName, s.source.Name, "should create entity alias")
+			if aliasesBySourceName[s.source.Name].Name != eaName {
+				require.Equal(t, aliasesBySourceName[s.source.Name].Name, eaName, "should correct entity alias name")
 			}
 		} else {
-			require.NotContains(t, aliasesBySourceId, s.source.UUID, "should does not create entity alias")
+			require.NotContains(t, aliasesBySourceName, s.source.Name, "should does not create entity alias")
 		}
 	}
 }
@@ -84,15 +84,15 @@ func insert(t *testing.T, s *io.MemoryStore, table string, o io.MemoryStorableOb
 
 func getAllAliases(t *testing.T, tx *io.MemoryStoreTxn, iamModelId string) ([]*model.EntityAlias, map[string]*model.EntityAlias) {
 	aliases := make([]*model.EntityAlias, 0)
-	aliasesBySourceId := map[string]*model.EntityAlias{}
+	aliasesBySourceName := map[string]*model.EntityAlias{}
 	err := repo.NewEntityAliasRepo(tx).GetAllForUser(iamModelId, func(a *model.EntityAlias) (bool, error) {
 		aliases = append(aliases, a)
-		aliasesBySourceId[a.SourceId] = a
+		aliasesBySourceName[a.SourceName] = a
 		return true, nil
 	})
 	require.NoError(t, err)
 
-	return aliases, aliasesBySourceId
+	return aliases, aliasesBySourceName
 }
 
 type sourceForTest struct {
@@ -109,7 +109,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "email",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s1",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -133,7 +132,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "full_id",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s2",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -157,7 +155,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "uuid",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s3",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -180,7 +177,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "enable sa uuid",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s4",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -208,7 +204,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "enable sa full_id",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s5",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -236,7 +231,6 @@ func generateSources(t *testing.T, store *io.MemoryStore) []sourceForTest {
 		{
 			name: "enable sa email",
 			source: &model.AuthSource{
-				UUID: utils.UUID(),
 				Name: "s6",
 
 				ParsedJWTPubKeys:     []crypto.PublicKey{"pubkey"},
@@ -321,8 +315,8 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 		title           string
 		obj             io.MemoryStorableObject
 		get             func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error)
-		fullId          func(io.MemoryStorableObject) string
-		id              func(io.MemoryStorableObject) string
+		fullIdProvider  func(io.MemoryStorableObject) string // provide full identifier of serviceAccount or user
+		uuidProvider    func(io.MemoryStorableObject) string // provide uuid of serviceaccount or user
 		amountOfAliases int
 	}{
 		{
@@ -339,10 +333,10 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
 				return iam_repo.NewUserRepository(tx).GetByID(id)
 			},
-			fullId: func(object io.MemoryStorableObject) string {
+			fullIdProvider: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.User).FullIdentifier
 			},
-			id: func(object io.MemoryStorableObject) string {
+			uuidProvider: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.User).UUID
 			},
 			amountOfAliases: 1,
@@ -364,10 +358,10 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 			get: func(tx *io.MemoryStoreTxn, id string) (io.MemoryStorableObject, error) {
 				return iam_repo.NewServiceAccountRepository(tx).GetByID(id)
 			},
-			fullId: func(object io.MemoryStorableObject) string {
+			fullIdProvider: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.ServiceAccount).FullIdentifier
 			},
-			id: func(object io.MemoryStorableObject) string {
+			uuidProvider: func(object io.MemoryStorableObject) string {
 				return object.(*iam_model.ServiceAccount).UUID
 			},
 			amountOfAliases: 2,
@@ -377,7 +371,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s with creates entity and entity aliases", c.title), func(t *testing.T) {
 			user := c.obj
-			uuid := c.id(user)
+			uuid := c.uuidProvider(user)
 
 			store, handler := getCreateUpdateHandler(t, user, nil)
 			handler(t)
@@ -393,7 +387,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 
 			require.NotNil(t, e, "must save entity")
 			require.Equal(t, e.UserId, uuid)
-			require.Equal(t, e.Name, c.fullId(user), "must name same af full_id")
+			require.Equal(t, e.Name, c.fullIdProvider(user), "must name same af full_id")
 
 			aliases, _ := getAllAliases(t, tx, uuid)
 
@@ -401,7 +395,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 
 			t.Run("creates entity aliases for all auth sources", func(t *testing.T) {
 				user := c.obj
-				uuid := c.id(user)
+				uuid := c.uuidProvider(user)
 
 				store, handler := getCreateUpdateHandler(t, user, nil)
 				sources := generateSources(t, store)
@@ -413,7 +407,7 @@ func TestRootMessageDispatcherCreate(t *testing.T) {
 				require.NotNil(t, "must save user in db")
 				tests.AssertDeepEqual(t, user, u)
 
-				assertCreatedEntityWithAliases(t, store, sources, user, uuid, c.fullId(user))
+				assertCreatedEntityWithAliases(t, store, sources, user, uuid, c.fullIdProvider(user))
 			})
 		})
 	}

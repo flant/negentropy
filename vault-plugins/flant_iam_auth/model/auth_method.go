@@ -25,8 +25,7 @@ const (
 type AuthMethod struct {
 	tokenutil.TokenParams
 
-	UUID       string `json:"uuid"` // ID
-	Name       string `json:"name"`
+	Name       string `json:"name"` // ID
 	MethodType string `json:"method_type"`
 	Source     string `json:"source"`
 
@@ -58,7 +57,7 @@ func (p *AuthMethod) ObjType() string {
 }
 
 func (p *AuthMethod) ObjId() string {
-	return p.UUID
+	return p.Name
 }
 
 func IsAuthMethod(expected string, methodsSet ...string) bool {

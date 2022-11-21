@@ -19,16 +19,9 @@ func AuthMethodSchema() *memdb.DBSchema {
 					ID: {
 						Name:   ID,
 						Unique: true,
-						Indexer: &hcmemdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ByName: {
-						Name: ByName,
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
-						Unique: true,
 					},
 				},
 			},
@@ -49,7 +42,7 @@ func NewAuthMethodRepo(db io.Txn) *AuthMethodRepo {
 }
 
 func (r *AuthMethodRepo) Get(name string) (*model.AuthMethod, error) {
-	raw, err := r.db.First(r.tableName, ByName, name)
+	raw, err := r.db.First(r.tableName, ID, name)
 	if err != nil {
 		return nil, err
 	}

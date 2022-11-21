@@ -17,7 +17,6 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	repo2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var entityAliasNames = map[string]bool{
@@ -198,7 +197,6 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	}
 
 	sourceForStore := &model.AuthSource{
-		UUID: utils.UUID(),
 		Name: sourceName,
 
 		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
@@ -236,9 +234,6 @@ func (b *flantIamAuthBackend) pathAuthSourceWrite(ctx context.Context, req *logi
 	existingSource, err := repo.Get(sourceName)
 	if err != nil {
 		return nil, err
-	}
-	if existingSource != nil {
-		sourceForStore.UUID = existingSource.UUID
 	}
 
 	nsInState, ok := d.GetOk("namespace_in_state")

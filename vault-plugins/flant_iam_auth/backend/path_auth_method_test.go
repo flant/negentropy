@@ -30,17 +30,6 @@ func assertAuthMethod(t *testing.T, b *flantIamAuthBackend, methodName string, e
 		t.Fatal(err)
 	}
 
-	if actual.UUID == "" {
-		t.Fatal("not set uuid")
-	}
-
-	uuid := actual.UUID
-	defer func() {
-		actual.UUID = uuid
-	}()
-
-	actual.UUID = ""
-
 	if diff := deep.Equal(expected, *actual); diff != nil {
 		t.Fatalf("Unexpected authMethod data: diff %#v\n", diff)
 	}
