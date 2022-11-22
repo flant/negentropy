@@ -41,4 +41,12 @@ go run github.com/onsi/ginkgo/ginkgo run ./...
 echo
 echo items:
 curl localhost:3333/report
+echo
+echo cleaning:
+curl localhost:3333/clean/auth_source.root
+curl localhost:3333/clean/auth_source.auth
+echo
+echo items after cleaning
+curl localhost:3333/report
+echo
 curl localhost:3333/shutdown
