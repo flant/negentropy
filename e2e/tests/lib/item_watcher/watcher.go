@@ -28,7 +28,7 @@ func main() {
 	}
 
 	server := internal.WatcherServer{
-		Edge: time.Now().Add(-100 * time.Hour), // todo remove it REMOVE IT!
+		Edge: time.Now(),
 		Topics: []internal.Topic{
 			{
 				Name: "auth_source.auth",
