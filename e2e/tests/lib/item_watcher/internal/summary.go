@@ -9,10 +9,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
-func NewSummaryOfTopic(topicName string, edgeTimestamp time.Time) *SummaryOfTopic {
+func NewSummaryOfTopic(topic Topic, edgeTimestamp time.Time) *SummaryOfTopic {
 	return &SummaryOfTopic{
 		EdgeTimestamp: edgeTimestamp,
-		TopicName:     topicName,
+		Topic:         topic,
 		Summaries:     map[Type]map[ItemKey]ItemSummary{},
 	}
 }
@@ -30,7 +30,7 @@ type Type = string
 
 type SummaryOfTopic struct {
 	// todo mutex if will used not only for e2e
-	TopicName     string
+	Topic         Topic
 	EdgeTimestamp time.Time
 	Summaries     map[Type]map[ItemKey]ItemSummary
 }
@@ -125,7 +125,7 @@ type ReportOfTopic struct {
 }
 
 func makeReportForTopic(summaryOfTopic SummaryOfTopic) ReportOfTopic {
-	result := ReportOfTopic{TopicName: summaryOfTopic.TopicName}
+	result := ReportOfTopic{TopicName: summaryOfTopic.Topic.Name}
 	for objectType, typeSummaries := range summaryOfTopic.Summaries {
 		typeReport := makeReportForType(objectType, typeSummaries)
 		result.Add(typeReport.Report)

@@ -192,3 +192,11 @@ func (r *PolicyRepository) Restore(name model.PolicyName) (*model.Policy, error)
 	}
 	return policy, nil
 }
+
+func (r *PolicyRepository) Erase(name model.PolicyName) error {
+	policy, err := r.GetByID(name)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(model.PolicyType, policy)
+}

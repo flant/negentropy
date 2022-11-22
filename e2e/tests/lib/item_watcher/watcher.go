@@ -1,9 +1,12 @@
-// this app watch over kafka topics and collect information over message headers
+// this app:
+//  1) watch over kafka topics and collect information over message headers
+//  2) clean topic by run /clean/{topic}
 package main
 
 import (
 	"context"
 	"flag"
+	"github.com/flant/negentropy/e2e/tests/lib"
 	"log"
 	"os"
 	"os/signal"
@@ -25,15 +28,52 @@ func main() {
 	}
 
 	server := internal.WatcherServer{
-		Edge: time.Now(),
-		Topics: []string{
-			"auth_source.auth",
-			"auth_source.root",
-			"jwks",
-			"multipass_generation_num",
-			"root_source",
-			"root_source.auth",
-			"root_source.root",
+		Edge: time.Now().Add(-100 * time.Hour), // todo remove it REMOVE IT!
+		Topics: []internal.Topic{
+			{
+				Name: "auth_source.auth",
+				Type: internal.AuthPluginSelfTopic,
+				OriginVault: &internal.Vault{
+					Url:       lib.GetAuthVaultUrl(),
+					RootToken: lib.GetAuthRootToken(),
+				},
+			},
+			{
+				Name: "auth_source.root",
+				Type: internal.AuthPluginSelfTopic,
+				OriginVault: &internal.Vault{
+					Url:       lib.GetRootVaultUrl(),
+					RootToken: lib.GetRootRootToken(),
+				},
+			},
+			{
+				Name:        "jwks",
+				Type:        internal.JwksTopic,
+				OriginVault: nil, // clean is not applicable
+			},
+			{
+				Name:        "multipass_generation_num",
+				Type:        internal.MultipassNumTopic,
+				OriginVault: nil, // clean is not applicable
+			},
+			{
+				Name: "root_source",
+				Type: internal.IamPluginSelfTopic,
+				OriginVault: &internal.Vault{
+					Url:       lib.GetRootVaultUrl(),
+					RootToken: lib.GetRootRootToken(),
+				},
+			},
+			{
+				Name:        "root_source.auth",
+				Type:        internal.AuthPluginRootReplicaTopic,
+				OriginVault: nil, // clean is not applicable
+			},
+			{
+				Name:        "root_source.root",
+				Type:        internal.AuthPluginRootReplicaTopic,
+				OriginVault: nil, // clean is not applicable
+			},
 		},
 		ListenAddress: *listenAddress,
 	}

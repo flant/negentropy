@@ -52,6 +52,17 @@ func (s *PolicyService) Delete(name model.PolicyName) error {
 	return s.repo.Delete(name, memdb.NewArchiveMark())
 }
 
+func (s *PolicyService) Erase(name model.PolicyName) error {
+	policy, err := s.repo.GetByID(name)
+	if err != nil {
+		return err
+	}
+	if policy.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return s.repo.Erase(name)
+}
+
 func (s *PolicyService) GetByID(name model.PolicyName) (*model.Policy, error) {
 	return s.repo.GetByID(name)
 }
