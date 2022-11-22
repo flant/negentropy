@@ -18,12 +18,27 @@ import (
 )
 
 type TopicName = string
+type TopicType = string
+
+type Vault struct {
+	Url       string
+	RootToken string
+}
+
+type Topic struct {
+	// TopicName to watch
+	Name TopicName
+	// TopicType allow to choose suitable cleaner
+	Type TopicType
+	// should be defined for using /clean/{topic}
+	OriginVault *Vault
+}
 
 type WatcherServer struct {
 	// edge timestamp - don't process messages before this timestamp
 	Edge time.Time
-	// topics to process
-	Topics []string
+	// topics to process,
+	Topics []Topic
 	// example : ":3333"
 	ListenAddress string
 
@@ -86,7 +101,7 @@ func (s *WatcherServer) buildAndRunKafkaSources() error {
 	for _, topic := range s.Topics {
 		topicSummary := NewSummaryOfTopic(topic, s.Edge)
 		s.summaries = append(s.summaries, topicSummary)
-		ks := pkg.NewKafkaSource(mb, memstore, topic, groupID, hclog.Default(), topicSummary)
+		ks := pkg.NewKafkaSource(mb, memstore, topic.Name, groupID, hclog.Default(), topicSummary)
 		s.kafkaSources = append(s.kafkaSources, ks)
 		go func() { ks.Run() }()
 	}
@@ -119,6 +134,7 @@ func (s *WatcherServer) buildRouter() *mux.Router {
 		{"/summary/{topic}/{object_type}", s.objectTypeSummaryHandler},
 		{"/summary/{topic}/{object_type}/{id}", s.objectSummaryHandler},
 		{"/shutdown", s.shutDownHandler},
+		{"/clean/{topic}", s.cleanTopicHandler},
 	}
 
 	for _, route := range routes {
@@ -178,7 +194,7 @@ func (s *WatcherServer) findAndHandleTopicSummary(writer http.ResponseWriter, re
 	vars := mux.Vars(request)
 	topic := vars["topic"]
 	for _, topicSummary := range s.summaries {
-		if topicSummary.TopicName == topic {
+		if topicSummary.Topic.Name == topic {
 			topicSummaryHandler(writer, request, *topicSummary)
 			return
 		}
@@ -192,10 +208,35 @@ func (s *WatcherServer) findAndHandleObjectTypeSummary(writer http.ResponseWrite
 	s.findAndHandleTopicSummary(writer, request, func(writer http.ResponseWriter, request *http.Request, topicSummary SummaryOfTopic) {
 		objectTypeSummary, exist := topicSummary.Summaries[objectType]
 		if !exist {
-			writeNotFound(writer, fmt.Sprintf("object_type %q not found at topic  %q\n", objectType, topicSummary.TopicName))
+			writeNotFound(writer, fmt.Sprintf("object_type %q not found at topic  %q\n", objectType, topicSummary.Topic.Name))
 		}
 		objectTypeSummaryHandler(writer, request, objectTypeSummary)
 	})
+}
+
+func (s *WatcherServer) cleanTopicHandler(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+	topic := vars["topic"]
+	for _, topicSummary := range s.summaries {
+		if topicSummary.Topic.Name == topic {
+			// clean
+			msgs, err := CleanTopic(topicSummary)
+			if err != nil && len(msgs) == 0 {
+				writeError(writer, err)
+				return
+			}
+			builder := strings.Builder{}
+			for _, msg := range msgs {
+				builder.WriteString(msg + "\n")
+			}
+			io.WriteString(writer, builder.String()+"\n")
+			if err != nil {
+				io.WriteString(writer, "errros: "+err.Error())
+			}
+			return
+		}
+	}
+	writeNotFound(writer, fmt.Sprintf("topic %q not found\n", topic))
 }
 
 func writeJson(writer http.ResponseWriter, data interface{}) {
@@ -210,6 +251,11 @@ func writeJson(writer http.ResponseWriter, data interface{}) {
 func writeNotFound(writer http.ResponseWriter, message string) {
 	writer.WriteHeader(http.StatusNotFound)
 	io.WriteString(writer, message)
+}
+
+func writeError(writer http.ResponseWriter, err error) {
+	writer.WriteHeader(http.StatusInternalServerError)
+	io.WriteString(writer, err.Error())
 }
 
 type Helper struct {

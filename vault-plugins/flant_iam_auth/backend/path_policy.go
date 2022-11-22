@@ -86,7 +86,7 @@ func (b policyBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		// Read, update, delete by uuid
+		// Read, update, delete by name
 		{
 			Pattern: "login_policy/" + framework.GenericNameRegex("name") + "$",
 			Fields: map[string]*framework.FieldSchema{
@@ -129,6 +129,23 @@ func (b policyBackend) paths() []*framework.Path {
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDelete(),
 					Summary:  "Deletes the policy by name.",
+				},
+			},
+		}, // Erase by name
+		{
+			Pattern: "login_policy/" + framework.GenericNameRegex("name") + "/erase$",
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeNameString,
+					Description: "Negentropy policy name",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleErase(),
+					Summary:  "Totally remove the policy by name.",
 				},
 			},
 		},
@@ -212,9 +229,9 @@ func (b *policyBackend) handleDelete() framework.OperationFunc {
 		tx := b.storage.Txn(true)
 		defer tx.Abort()
 
-		id := data.Get("name").(string)
+		name := data.Get("name").(string)
 
-		err := usecase.Policies(tx).Delete(id)
+		err := usecase.Policies(tx).Delete(name)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -229,11 +246,11 @@ func (b *policyBackend) handleDelete() framework.OperationFunc {
 func (b *policyBackend) handleRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		b.Logger().Debug("read policy", "path", req.Path)
-		id := data.Get("name").(string)
+		name := data.Get("name").(string)
 
 		tx := b.storage.Txn(false)
 
-		policy, err := usecase.Policies(tx).GetByID(id)
+		policy, err := usecase.Policies(tx).GetByID(name)
 		if err != nil {
 			return backentutils.ResponseErr(req, err)
 		}
@@ -266,5 +283,25 @@ func (b *policyBackend) handleList() framework.OperationFunc {
 			},
 		}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	}
+}
+
+func (b *policyBackend) handleErase() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("erase policy", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		name := data.Get("name").(string)
+
+		err := usecase.Policies(tx).Erase(name)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		}
+
+		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
 }

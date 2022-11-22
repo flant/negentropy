@@ -144,7 +144,7 @@ func pathAuthSourceList(b *flantIamAuthBackend) *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback:    b.pathAuthSourceList,
-				Summary:     "Delete authentication source.",
+				Summary:     "List authentication source.",
 				Description: confHelpDesc,
 			},
 		},
