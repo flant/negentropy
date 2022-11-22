@@ -37,8 +37,7 @@ const (
 )
 
 type AuthSource struct {
-	UUID                 string             `json:"uuid"` // ID
-	Name                 string             `json:"name"`
+	Name                 string             `json:"name"` // ID
 	OIDCDiscoveryURL     string             `json:"oidc_discovery_url"`
 	OIDCDiscoveryCAPEM   string             `json:"oidc_discovery_ca_pem"`
 	OIDCClientID         string             `json:"oidc_client_id"`
@@ -63,7 +62,7 @@ func (s *AuthSource) ObjType() string {
 }
 
 func (s *AuthSource) ObjId() string {
-	return s.UUID
+	return s.Name
 }
 
 func (s *AuthSource) AllowForSA() bool {

@@ -103,17 +103,12 @@ func assertAuthSourceErrorCases(t *testing.T, errorCases []struct {
 }
 
 func assertAuthSource(t *testing.T, b *flantIamAuthBackend, name string, expected *model.AuthSource) {
-	conf, err := repo2.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
+	authSource, err := repo2.NewAuthSourceRepo(b.storage.Txn(false)).Get(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if conf.UUID == "" {
-		t.Fatal("uuid must be not empty")
-	}
-
-	conf.UUID = ""
-	if diff := deep.Equal(expected, conf); diff != nil {
+	if diff := deep.Equal(expected, authSource); diff != nil {
 		t.Fatal(diff)
 	}
 }

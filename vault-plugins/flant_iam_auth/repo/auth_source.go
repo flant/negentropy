@@ -21,13 +21,6 @@ func AuthSourceSchema() *memdb.DBSchema {
 					ID: {
 						Name:   ID,
 						Unique: true,
-						Indexer: &hcmemdb.UUIDFieldIndex{
-							Field: "UUID",
-						},
-					},
-					ByName: {
-						Name:   ByName,
-						Unique: true,
 						Indexer: &hcmemdb.StringFieldIndex{
 							Field: "Name",
 						},
@@ -58,7 +51,7 @@ func NewAuthSourceRepo(db io.Txn) *AuthSourceRepo {
 }
 
 func (r *AuthSourceRepo) Get(name string) (*model.AuthSource, error) {
-	raw, err := r.db.First(r.tableName, ByName, name)
+	raw, err := r.db.First(r.tableName, ID, name)
 	if err != nil {
 		return nil, err
 	}

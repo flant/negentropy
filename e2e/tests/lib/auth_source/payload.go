@@ -5,7 +5,6 @@ import (
 	iam "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 type SourceForTest struct {
@@ -26,7 +25,6 @@ var (
 	JWTWithEaNameEmail = SourceForTest{
 		Name: "email",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s1",
 
 			JWTValidationPubKeys: []string{JWTPubKey},
@@ -49,7 +47,6 @@ var (
 	JWTWithEaNameFullID = SourceForTest{
 		Name: "full_id",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s2",
 
 			JWTValidationPubKeys: []string{JWTPubKey},
@@ -72,7 +69,6 @@ var (
 	JWTWithEaNameUUID = SourceForTest{
 		Name: "uuid",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s3",
 
 			JWTValidationPubKeys: []string{JWTPubKey},
@@ -94,7 +90,6 @@ var (
 	JWTWithEaNameUUIDEnableSa = SourceForTest{
 		Name: "enable sa uuid",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s4",
 
 			JWTValidationPubKeys: []string{JWTPubKey},
@@ -121,7 +116,6 @@ var (
 	JWTWithEaNameFullIDEnableSa = SourceForTest{
 		Name: "enable sa full_id",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s5",
 
 			JWTValidationPubKeys: []string{JWTPubKey},
@@ -148,7 +142,6 @@ var (
 	JWTWithEaNameEmailEnableSa = SourceForTest{
 		Name: "enable sa email",
 		Source: &model.AuthSource{
-			UUID: utils.UUID(),
 			Name: "s6",
 
 			JWTValidationPubKeys: []string{JWTPubKey},

@@ -39,7 +39,7 @@ func EntityAliasSchema() *memdb.DBSchema {
 								},
 
 								&hcmemdb.StringFieldIndex{
-									Field: "SourceId",
+									Field: "SourceName",
 								},
 							},
 						},
@@ -47,14 +47,14 @@ func EntityAliasSchema() *memdb.DBSchema {
 					ByName: {
 						Name: ByName,
 						Indexer: &hcmemdb.StringFieldIndex{
-							Field: "SourceId",
+							Field: "Name",
 						},
 					},
 
 					BySourceId: {
 						Name: BySourceId,
 						Indexer: &hcmemdb.StringFieldIndex{
-							Field: "Name",
+							Field: "SourceName",
 						},
 					},
 
@@ -95,7 +95,7 @@ func (r *EntityAliasRepo) GetBySource(sourceUUID string, action func(*model.Enti
 }
 
 func (r *EntityAliasRepo) GetForUser(id string, source *model.AuthSource) (*model.EntityAlias, error) {
-	return r.get(EntityAliasSource, id, source.UUID)
+	return r.get(EntityAliasSource, id, source.Name)
 }
 
 func (r *EntityAliasRepo) get(by string, vals ...interface{}) (*model.EntityAlias, error) {
@@ -206,7 +206,7 @@ func (r *EntityAliasRepo) iter(action func(alias *model.EntityAlias) (bool, erro
 }
 
 func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, eaName string) error {
-	sourceId := source.UUID
+	sourceName := source.Name
 
 	entityAlias, err := r.GetForUser(iamEntityId, source)
 	if err != nil {
@@ -215,9 +215,9 @@ func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, e
 
 	if entityAlias == nil {
 		entityAlias = &model.EntityAlias{
-			UUID:     utils.UUID(),
-			UserId:   iamEntityId,
-			SourceId: sourceId,
+			UUID:       utils.UUID(),
+			UserId:     iamEntityId,
+			SourceName: sourceName,
 		}
 	}
 

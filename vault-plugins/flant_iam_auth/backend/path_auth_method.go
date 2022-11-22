@@ -18,7 +18,6 @@ import (
 	jwt2 "github.com/flant/negentropy/vault-plugins/flant_iam_auth/usecase/authn/jwt"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var reservedMetadata = []string{"flantIamAuthMethod"}
@@ -286,7 +285,6 @@ func (b *flantIamAuthBackend) pathAuthMethodCreateUpdate(ctx context.Context, re
 			return nil, errors.New("auth method entry not found during update operation")
 		}
 		method = new(model.AuthMethod)
-		method.UUID = utils.UUID()
 		method.Name = methodName
 		method.MethodType = methodType
 	}
