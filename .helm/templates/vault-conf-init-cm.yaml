@@ -75,7 +75,7 @@ data:
       vault read gitops/configure/vaults
 
       {{- if ne .Values.werf.env "production"}}
-      echo "VAULT_TOKEN $VAULT_TOKEN" >> "$KEYFILE"
+      echo "VAULT_TOKEN=$VAULT_TOKEN" >> "$KEYFILE"
       {{- else }}
       vault token revoke -self
       {{- end }}
