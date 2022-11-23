@@ -20,27 +20,29 @@ func CleanTopic(summary *SummaryOfTopic) ([]string, error) {
 	switch summary.Topic.Type {
 	case AuthPluginSelfTopic:
 		return cleanAuthSelfTopic(summary)
+	case IamPluginSelfTopic:
+		return cleanIamSelfTopic(summary)
 	default:
-		return nil, fmt.Errorf("topic with type %q is not cleanable yet", summary.Topic.Type)
+		return nil, fmt.Errorf("topic with type %q is not cleanable", summary.Topic.Type)
 	}
 	return nil, nil
 }
 
 func cleanAuthSelfTopic(summary *SummaryOfTopic) ([]string, error) {
-	originVault := summary.Topic.OriginVault
-	if originVault == nil || originVault.RootToken == "" || originVault.Url == "" {
-		return nil, fmt.Errorf("empty origin vault: %#v", *originVault)
+	itemTypes := []Type{"auth_method", "auth_source", "policy"}         // what itemTypes should be deleted
+	erasers := []func(vaultClient *api.Client, item ItemSummary) error{ // should suit itemTypes
+		eraseAuthMethod, eraseAuthSource, erasePolicy,
 	}
-	vaultClient, err := clientWithToken(*originVault)
+	return cleanTopic(summary, itemTypes, erasers)
+}
+
+func cleanTopic(summary *SummaryOfTopic, itemTypes []Type, erasers []func(vaultClient *api.Client, item ItemSummary) error) ([]string, error) {
+	vaultClient, err := clientWithToken(summary)
 	if err != nil {
 		return nil, err
 	}
 	resultErr := multierror.Error{}
 	result := []string{}
-	itemTypes := []Type{"auth_method", "auth_source", "policy"}         // what itemTypes should be deleted
-	erasers := []func(vaultClient *api.Client, item ItemSummary) error{ // should suit itemTypes
-		eraseAuthMethod, eraseAuthSource, erasePolicy,
-	}
 	for i, eraser := range erasers {
 		itemType := itemTypes[i]
 		count, err := cleanItems(vaultClient, summary.Summaries[itemType], eraser)
@@ -48,7 +50,6 @@ func cleanAuthSelfTopic(summary *SummaryOfTopic) ([]string, error) {
 			resultErr.Errors = append(resultErr.Errors, err)
 		}
 		result = append(result, fmt.Sprintf("%s : deleted: %d", itemType, count))
-
 	}
 	return result, resultErr.ErrorOrNil()
 }
@@ -77,7 +78,12 @@ func eraseAuthSource(vaultClient *api.Client, sourceSummary ItemSummary) error {
 	return err
 }
 
-func clientWithToken(vault Vault) (*api.Client, error) {
+func clientWithToken(summary *SummaryOfTopic) (*api.Client, error) {
+	originVault := summary.Topic.OriginVault
+	if originVault == nil || originVault.RootToken == "" || originVault.Url == "" {
+		return nil, fmt.Errorf("empty origin vault: %#v", *originVault)
+	}
+
 	cfg := api.DefaultConfig()
 	transport := cfg.HttpClient.Transport.(*http.Transport)
 	transport.TLSClientConfig.InsecureSkipVerify = true
@@ -86,8 +92,8 @@ func clientWithToken(vault Vault) (*api.Client, error) {
 		return nil, err
 	}
 
-	cl.SetToken(vault.RootToken)
-	err = cl.SetAddress(vault.Url)
+	cl.SetToken(originVault.RootToken)
+	err = cl.SetAddress(originVault.Url)
 	if err != nil {
 		return nil, err
 	}
@@ -110,5 +116,36 @@ func erasePolicy(vaultClient *api.Client, policySummary ItemSummary) error {
 		}
 	}
 	_, err = vaultClient.Logical().Delete("auth/flant/login_policy/" + policyName + "/erase")
+	return err
+}
+
+// cleanIamSelfTopic
+func cleanIamSelfTopic(summary *SummaryOfTopic) ([]string, error) {
+	itemTypes := []Type{"tenant"}                                       // what itemTypes should be deleted
+	erasers := []func(vaultClient *api.Client, item ItemSummary) error{ // should suit itemTypes
+		eraseTenant,
+	}
+	return cleanTopic(summary, itemTypes, erasers)
+}
+
+func eraseTenant(vaultClient *api.Client, tenantSummary ItemSummary) error {
+	tenantKey := tenantSummary.Key // tenant/{tenant_uuid}
+	basePath := "flant/" + tenantKey
+	resp, err := vaultClient.Logical().Read(basePath)
+	if err != nil {
+		return err
+	}
+	tenantRaw := resp.Data["tenant"].(map[string]interface{})
+	if tenantRaw["origin"] == "flant_flow" {
+		splitted := strings.Split(tenantKey, "/")
+		basePath = "flant/client/" + splitted[1]
+	}
+	if tenantRaw["archiving_timestamp"] == json.Number("0") {
+		resp, err = vaultClient.Logical().Delete(basePath)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = vaultClient.Logical().Delete(basePath + "/erase")
 	return err
 }

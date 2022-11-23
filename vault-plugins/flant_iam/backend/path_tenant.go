@@ -147,6 +147,25 @@ func (b tenantBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Erase by uuid
+		{
+			Pattern: "tenant/" + uuid.Pattern("uuid") + "/erase$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleErase(),
+					Summary:  "Erase all of tenant by ID .",
+				},
+			},
+		},
+
 		// available roles based on FF
 		{
 			Pattern: "tenant/" + uuid.Pattern("uuid") + "/available_roles",
@@ -400,5 +419,25 @@ func (b *tenantBackend) handleRestore() framework.OperationFunc {
 			"tenant": tenant,
 		}}
 		return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+	}
+}
+
+func (b *tenantBackend) handleErase() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		b.Logger().Debug("erase tenant", "path", req.Path)
+		tx := b.storage.Txn(true)
+		defer tx.Abort()
+
+		id := data.Get("uuid").(string)
+
+		err := usecase.Tenants(tx, consts.OriginIAM).CascadeErase(id)
+		if err != nil {
+			return backentutils.ResponseErr(req, err)
+		}
+		if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+			return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+		}
+
+		return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 	}
 }

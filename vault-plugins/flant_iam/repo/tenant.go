@@ -243,3 +243,14 @@ func (r *TenantRepository) GetByIdentifier(identifier string) (*model.Tenant, er
 	}
 	return raw.(*model.Tenant), err
 }
+
+func (r *TenantRepository) CascadeErase(id model.TenantUUID) error {
+	tenant, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if tenant.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return r.db.CascadeDelete(model.TenantType, tenant)
+}

@@ -153,6 +153,23 @@ func (b clientBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Erase by uuid
+		{
+			Pattern: "client/" + uuid.Pattern("uuid") + "/erase$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a tenant",
+					Required:    true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.handleErase,
+					Summary:  "Erase all of tenant by ID .",
+				},
+			},
+		},
 		// Restore
 		{
 			Pattern: "client/" + uuid.Pattern("uuid") + "/restore" + "$",
@@ -335,4 +352,22 @@ func (b *clientBackend) handleRestore(_ context.Context, req *logical.Request, d
 		"client": client,
 	}}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+}
+
+func (b clientBackend) handleErase(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("erase client", "path", req.Path)
+	tx := b.storage.Txn(true)
+	defer tx.Abort()
+
+	id := data.Get("uuid").(string)
+
+	err := usecase.Clients(tx, b.getLiveConfig()).CascadeErase(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err := io.CommitWithLog(tx, b.Logger()); err != nil {
+		return nil, err
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }

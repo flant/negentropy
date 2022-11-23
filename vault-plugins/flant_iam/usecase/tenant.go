@@ -62,6 +62,17 @@ func (s *TenantService) Delete(id model.TenantUUID) error {
 	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
 }
 
+func (s *TenantService) CascadeErase(id model.TenantUUID) error {
+	stored, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if stored.Origin != s.Origin {
+		return consts.ErrBadOrigin
+	}
+	return s.repo.CascadeErase(id)
+}
+
 func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {
 	return s.repo.GetByID(id)
 }
