@@ -9,6 +9,7 @@ import (
 )
 
 func SelfRestoreMessage(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
+	// no deleted messages here
 	switch msg.Type {
 	case model.JWTConfigType:
 		err := model.HandleRestoreConfig(txn, msg.Data)

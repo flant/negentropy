@@ -47,14 +47,14 @@ func EntityAliasSchema() *memdb.DBSchema {
 					ByName: {
 						Name: ByName,
 						Indexer: &hcmemdb.StringFieldIndex{
-							Field: "Name",
+							Field: "SourceName",
 						},
 					},
 
 					BySourceId: {
 						Name: BySourceId,
 						Indexer: &hcmemdb.StringFieldIndex{
-							Field: "SourceName",
+							Field: "Name",
 						},
 					},
 
