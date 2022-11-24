@@ -34,8 +34,11 @@ go mod download
 
 # run watcher
 go run tests/lib/item_watcher/watcher.go &> /dev/null &
+sleep 30 # wait reading
 
 go run github.com/onsi/ginkgo/ginkgo run ./...
+
+sleep 30 # wait reading
 
 # watcher output & shutdown
 echo

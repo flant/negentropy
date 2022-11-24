@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
+	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 )
 
 type RestoreFunc func(io.Txn, io.MsgDecoded) (bool, error)
 
 func HandleRestoreMessagesSelfSource(txn io.Txn, msg io.MsgDecoded, extraRestoreHandlers []RestoreFunc) error {
-	var inputObject interface{}
-	var table string
-
 	for _, r := range extraRestoreHandlers {
 		handled, err := r(txn, msg)
 		if err != nil {
@@ -23,6 +21,12 @@ func HandleRestoreMessagesSelfSource(txn io.Txn, msg io.MsgDecoded, extraRestore
 			return nil
 		}
 	}
+
+	if msg.IsDeleted() {
+		return processDeleted(txn, msg)
+	}
+
+	var inputObject interface{}
 
 	// only write to mem storage
 	switch msg.Type {
@@ -41,17 +45,25 @@ func HandleRestoreMessagesSelfSource(txn io.Txn, msg io.MsgDecoded, extraRestore
 	default:
 		return nil
 	}
-	table = msg.Type
 
 	err := json.Unmarshal(msg.Data, inputObject)
 	if err != nil {
 		return err
 	}
 
-	err = txn.Insert(table, inputObject)
+	table := msg.Type
+
+	return txn.Insert(table, inputObject)
+}
+
+func processDeleted(txn io.Txn, msg io.MsgDecoded) error {
+	table := msg.Type
+	obj, err := txn.First(table, repo.ID, msg.ID)
 	if err != nil {
 		return err
 	}
-
-	return nil
+	if obj == nil {
+		return nil
+	}
+	return txn.Delete(table, obj)
 }
