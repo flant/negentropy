@@ -120,14 +120,15 @@ func (rk *KafkaSourceImpl) runMessageLoop(store *MemoryStore, consumer *kafka.Co
 		case ev := <-consumer.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
+				msgKey := string(e.Key)
 				err := rk.msgRunHandler(store, consumer, e)
 				// commit is provided through MemStore.Commit(...)
 				if errors.Is(err, errWrongSignature) && rk.SkipRestorationOnWrongSignature {
-					rk.Logger.Debug(fmt.Sprintf("%s: message skiped", err.Error()))
+					rk.Logger.Debug(fmt.Sprintf("%s: message %q skiped", err.Error(), msgKey))
 					err = nil
 				}
 				if err != nil {
-					rk.Logger.Error(fmt.Sprintf("msg: %s: %s", string(e.Key), err.Error()))
+					rk.Logger.Error(fmt.Sprintf("msg: %s: %s", msgKey, err.Error()))
 				}
 				if rk.RestoreStrictlyTillRunConsumer {
 					err = StoreLastOffsetToStorage(context.Background(),
@@ -291,7 +292,7 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(txn Txn, handler func(txn Txn, msg
 		err = handler(txn, msg, logger)
 		consumed++
 		if err != nil {
-			return err
+			return fmt.Errorf("key: %s, offset: %d: %w", msg.Key, msg.TopicPartition.Offset, err)
 		}
 		if currentMessageOffset == lastProcessedOffset {
 			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d", topicName, consumed))

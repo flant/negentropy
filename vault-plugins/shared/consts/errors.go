@@ -18,4 +18,5 @@ var (
 	ErrInvalidArg         = fmt.Errorf("invalid value of argument")
 	ErrNotConfigured      = fmt.Errorf("not configured")
 	ErrAccessForbidden    = fmt.Errorf("access forbidden")
+	ErrNotHandledObject   = fmt.Errorf("type is not handled yet")
 )

@@ -8,6 +8,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -15,6 +16,7 @@ import (
 type RestoreFunc func(txn io.Txn, decoded io.MsgDecoded) (handled bool, err error)
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, parentLogger log.Logger) *io.KafkaSourceImpl {
+	allRestoreHandlers := append(restoreHandlers, IamObjectsRestoreHandler)
 	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
 		return kf.PluginConfig.SelfTopicName
 	}
@@ -29,7 +31,7 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
 	}
 	proccessRestoreMessage := func(txn io.Txn, m io.MsgDecoded) error {
-		for _, r := range restoreHandlers {
+		for _, r := range allRestoreHandlers {
 			handled, err := r(txn, m)
 			if err != nil {
 				return err
@@ -39,60 +41,7 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 				return nil
 			}
 		}
-
-		// Fill here objects for unmarshalling
-		var inputObject interface{}
-		objectType := m.Type
-		switch objectType {
-		case model.ReplicaType:
-			inputObject = &model.Replica{}
-
-		case model.FeatureFlagType:
-			inputObject = &model.FeatureFlag{}
-
-		case model.GroupType:
-			inputObject = &model.Group{}
-
-		case model.ProjectType:
-			inputObject = &model.Project{}
-
-		case model.RoleType:
-			inputObject = &model.Role{}
-
-		case model.RoleBindingType:
-			inputObject = &model.RoleBinding{}
-
-		case model.ServiceAccountType:
-			inputObject = &model.ServiceAccount{}
-
-		case model.TenantType:
-			inputObject = &model.Tenant{}
-
-		case model.UserType:
-			inputObject = &model.User{}
-
-		case model.MultipassType:
-			inputObject = &model.Multipass{}
-
-		case model.ServiceAccountPasswordType:
-			inputObject = &model.ServiceAccountPassword{}
-
-		case model.IdentitySharingType:
-			inputObject = &model.IdentitySharing{}
-
-		case model.RoleBindingApprovalType:
-			inputObject = &model.RoleBindingApproval{}
-
-		default:
-			return fmt.Errorf("type= %s: is not implemented yet", objectType)
-		}
-
-		err := json.Unmarshal(m.Data, inputObject)
-		if err != nil {
-			return err
-		}
-
-		return txn.Insert(objectType, inputObject)
+		return fmt.Errorf("type= %s: %w", m.Type, consts.ErrNotHandledObject)
 	}
 
 	return &io.KafkaSourceImpl{
@@ -107,4 +56,60 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 		ProcessRestoreMessage:     proccessRestoreMessage,
 		Runnable:                  false, // no need run
 	}
+}
+
+func IamObjectsRestoreHandler(txn io.Txn, m io.MsgDecoded) (bool, error) {
+	// Fill here objects for unmarshalling
+	var inputObject interface{}
+	objectType := m.Type
+	switch objectType {
+	case model.ReplicaType:
+		inputObject = &model.Replica{}
+
+	case model.FeatureFlagType:
+		inputObject = &model.FeatureFlag{}
+
+	case model.GroupType:
+		inputObject = &model.Group{}
+
+	case model.ProjectType:
+		inputObject = &model.Project{}
+
+	case model.RoleType:
+		inputObject = &model.Role{}
+
+	case model.RoleBindingType:
+		inputObject = &model.RoleBinding{}
+
+	case model.ServiceAccountType:
+		inputObject = &model.ServiceAccount{}
+
+	case model.TenantType:
+		inputObject = &model.Tenant{}
+
+	case model.UserType:
+		inputObject = &model.User{}
+
+	case model.MultipassType:
+		inputObject = &model.Multipass{}
+
+	case model.ServiceAccountPasswordType:
+		inputObject = &model.ServiceAccountPassword{}
+
+	case model.IdentitySharingType:
+		inputObject = &model.IdentitySharing{}
+
+	case model.RoleBindingApprovalType:
+		inputObject = &model.RoleBindingApproval{}
+	}
+	err := json.Unmarshal(m.Data, inputObject)
+	if err != nil {
+		return false, err
+	}
+
+	err = txn.Insert(objectType, inputObject)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

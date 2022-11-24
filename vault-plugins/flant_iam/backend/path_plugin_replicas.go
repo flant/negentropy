@@ -4,17 +4,21 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 
+	ext_model_ff "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
+	ext_model "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_destination"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	backentutils "github.com/flant/negentropy/vault-plugins/shared/backent-utils"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
 type replicaBackend struct {
@@ -41,7 +45,7 @@ func (b replicaBackend) paths() []*framework.Path {
 				},
 			},
 		},
-		{
+		{ // create read delete
 			Pattern: "replica/" + framework.GenericNameRegex("replica_name"),
 			Fields: map[string]*framework.FieldSchema{
 				"replica_name": {
@@ -56,6 +60,14 @@ func (b replicaBackend) paths() []*framework.Path {
 				"public_key": {
 					Type:        framework.TypeString,
 					Description: "Public rsa key for encryption",
+				},
+				"send_current_state_at_start": {
+					Type:        framework.TypeBool,
+					Description: "Send state of negentropy at start of replication",
+				},
+				"show_archived_in_current_state_at_start": {
+					Type:        framework.TypeBool,
+					Description: "Send deleted items at start of replication, only valuable if  send_current_state_at_start",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -125,11 +137,15 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 	if err != nil {
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusBadRequest)
 	}
+	sendCurrentStateAtStart := data.Get("send_current_state_at_start").(bool)
+	showArchivedInCurrentStateAtStart := data.Get("show_archived_in_current_state_at_start").(bool)
 
 	r := &model.Replica{
-		Name:      replicaName,
-		TopicType: topicType,
-		PublicKey: pk,
+		Name:                              replicaName,
+		TopicType:                         topicType,
+		PublicKey:                         pk,
+		SendCurrentStateAtStart:           sendCurrentStateAtStart,
+		ShowArchivedInCurrentStateAtStart: showArchivedInCurrentStateAtStart && sendCurrentStateAtStart,
 	}
 
 	tx := b.storage.Txn(true)
@@ -149,7 +165,11 @@ func (b replicaBackend) handleReplicaCreate(ctx context.Context, req *logical.Re
 		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
 	}
 
-	b.addReplicaToReplications(*r)
+	err = b.addReplicaToReplications(*r)
+	if err != nil {
+		b.Logger().Error("addReplicaToReplications", "error", err.Error())
+		return backentutils.ResponseErr(req, err)
+	}
 
 	return &logical.Response{}, nil
 }
@@ -178,9 +198,11 @@ func (b replicaBackend) handleReplicaRead(ctx context.Context, req *logical.Requ
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"replica_name": replica.Name,
-			"type":         replica.TopicType,
-			"public_key":   strings.ReplaceAll(string(pemdata), "\n", "\\n"),
+			"replica_name":                replica.Name,
+			"type":                        replica.TopicType,
+			"public_key":                  strings.ReplaceAll(string(pemdata), "\n", "\\n"),
+			"send_current_state_at_start": replica.SendCurrentStateAtStart,
+			"show_archived_in_current_state_at_start": replica.ShowArchivedInCurrentStateAtStart,
 		},
 	}, nil
 }
@@ -221,15 +243,24 @@ func (b replicaBackend) handleReplicaDelete(ctx context.Context, req *logical.Re
 	return &logical.Response{}, err
 }
 
-func (b replicaBackend) addReplicaToReplications(replica model.Replica) {
+func (b replicaBackend) addReplicaToReplications(replica model.Replica) error {
+	var kafkaDestination io.KafkaDestination
 	switch replica.TopicType {
 	case kafka_destination.VaultTopicType:
-		b.storage.AddKafkaDestination(kafka_destination.NewVaultKafkaDestination(b.storage.GetKafkaBroker(), replica))
+		kafkaDestination = kafka_destination.NewVaultKafkaDestination(b.storage.GetKafkaBroker(), replica)
 	case kafka_destination.MetadataTopicType:
-		b.storage.AddKafkaDestination(kafka_destination.NewMetadataKafkaDestination(b.storage.GetKafkaBroker(), replica))
+		kafkaDestination = kafka_destination.NewMetadataKafkaDestination(b.storage.GetKafkaBroker(), replica)
 	default:
-		b.Logger().Debug("unknown replica type", "replicaName", replica.Name, "topicType", replica.TopicType)
+		return fmt.Errorf("unknown replica type, replicaName: %s, topicType: %s", replica.Name, replica.TopicType)
 	}
+	if replica.SendCurrentStateAtStart {
+		err := b.sendCurrentState(kafkaDestination, replica)
+		if err != nil {
+			return err
+		}
+	}
+	b.storage.AddKafkaDestination(kafkaDestination)
+	return nil
 }
 
 func (b replicaBackend) removeReplicaFromReplications(replica model.Replica) {
@@ -242,4 +273,63 @@ func (b replicaBackend) createTopicForReplica(ctx context.Context, replicaName s
 
 func (b replicaBackend) deleteTopicForReplica(ctx context.Context, replicaName string) error {
 	return b.storage.GetKafkaBroker().DeleteTopic(ctx, "root_source."+replicaName)
+}
+
+var typesToSend = []string{
+	model.RoleType,
+	model.FeatureFlagType,
+	model.TenantType,
+	model.ProjectType,
+	model.UserType,
+	model.GroupType,
+	model.ServiceAccountType,
+	model.ServiceAccountPasswordType,
+	model.IdentitySharingType,
+	model.MultipassType,
+	model.RoleBindingType,
+	model.RoleBindingApprovalType,
+	// ext server_access
+	ext_model.ServerType,
+	// ext flant_flow
+	ext_model_ff.TeamType,
+	ext_model_ff.TeammateType,
+	ext_model_ff.ServicePackType,
+}
+
+func (b replicaBackend) sendCurrentState(destination io.KafkaDestination, replica model.Replica) error {
+	ms := b.storage
+	txn := b.storage.Txn(false)
+	mb := ms.GetKafkaBroker()
+	for _, typeToSend := range typesToSend {
+		b.Logger().Info(fmt.Sprintf("start sending %q objects to %s", typesToSend, replica.Name))
+		counter := 0
+		iter, err := txn.Get(typeToSend, iam_repo.PK)
+		if err != nil {
+			return fmt.Errorf(fmt.Sprintf("sendCurrentState: type %q: %s", typesToSend, err.Error()))
+		}
+		for {
+			raw := iter.Next()
+			if raw == nil {
+				break
+			}
+			obj, isArchivable := raw.(memdb.Archivable)
+			if isArchivable && !replica.ShowArchivedInCurrentStateAtStart && obj.Archived() {
+				continue
+			}
+			storableObject, isStorable := raw.(io.MemoryStorableObject)
+			if isStorable {
+				msgs, err := destination.ProcessObject(ms, txn.Txn, storableObject)
+				if err != nil {
+					return fmt.Errorf(fmt.Sprintf("building kafka messages: type %q: %s", typesToSend, err.Error()))
+				}
+				err = mb.SendMessages(msgs, nil)
+				if err != nil {
+					return fmt.Errorf(fmt.Sprintf("sending kafka messages: type %q: %s", typesToSend, err.Error()))
+				}
+				counter++
+			}
+		}
+		b.Logger().Info(fmt.Sprintf("end sending %q objects to %s, send %d", typesToSend, replica.Name, counter))
+	}
+	return nil
 }
