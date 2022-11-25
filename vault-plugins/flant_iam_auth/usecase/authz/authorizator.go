@@ -206,6 +206,8 @@ func (a *Authorizator) Authorize(authnResult *authn2.Result, method *model.AuthM
 
 	a.Logger.Debug(fmt.Sprintf("Authn data populated %s", fullId))
 
+	strictTTLValues(authzRes, method.TokenTTL, method.TokenMaxTTL)
+
 	return authzRes, nil
 }
 
@@ -252,6 +254,10 @@ func (a *Authorizator) authorizeTokenOwner(subjectDescriptor string, method *mod
 // addDynamicPolicy build ONE vault policy for all roleClaims if all are allowed
 func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []model.RoleClaim, subject model.Subject, authMethod string) error {
 	loginItems := a.checkPermissions(authMethod, subject, roleClaims)
+	if len(loginItems) == 0 {
+		return nil
+	}
+
 	multiError := multierror.Error{}
 	allow := true
 	// TODO what about multifactor ?
@@ -291,9 +297,19 @@ func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []mod
 	if err != nil {
 		return err
 	}
-	authzRes.MaxTTL = maxTTL
-	authzRes.TTL = ttl
+
+	strictTTLValues(authzRes, ttl, maxTTL)
+
 	return nil
+}
+
+func strictTTLValues(authzRes *logical.Auth, ttl time.Duration, maxTTL time.Duration) {
+	if authzRes.TTL > ttl || authzRes.TTL == 0 {
+		authzRes.TTL = ttl
+	}
+	if authzRes.MaxTTL > maxTTL || authzRes.MaxTTL == 0 {
+		authzRes.MaxTTL = maxTTL
+	}
 }
 
 func (a *Authorizator) applyNegentropyPolicy(subject model.Subject, rc model.RoleClaim, negentropyPolicy model.Policy,
@@ -551,9 +567,13 @@ func (a *Authorizator) createDynamicPolicy(p VaultPolicy) error {
 }
 
 func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *io.MemoryStoreTxn, subject model.Subject) (*logical.Auth, error) {
+	err := checkAndUpdateTTL(auth)
+	if err != nil {
+		return nil, err
+	}
 	// check is user/sa still active
 	var owner memdb.Archivable
-	var err error
+
 	switch subject.Type {
 	case iam.UserType:
 		owner, err = iam_repo.NewUserRepository(txn).GetByID(subject.UUID)
@@ -574,10 +594,21 @@ func (a *Authorizator) Renew(method *model.AuthMethod, auth *logical.Auth, txn *
 		return nil, fmt.Errorf("need relogin: %w", err)
 	}
 	authzRes := *auth
-	authzRes.TTL = method.TokenTTL
-	authzRes.MaxTTL = method.TokenMaxTTL
-	authzRes.Period = method.TokenPeriod
 	return &authzRes, nil
+}
+
+func checkAndUpdateTTL(auth *logical.Auth) error {
+	maxTTLToSet := time.Until(auth.IssueTime.Add(auth.MaxTTL))
+
+	if maxTTLToSet < 0 {
+		return fmt.Errorf("token is expired")
+	}
+	newTTL := auth.TTL
+	if maxTTLToSet < auth.TTL {
+		newTTL = maxTTLToSet
+	}
+	auth.TTL = newTTL
+	return nil
 }
 
 func (a *Authorizator) seekAndValidatePolicy(roleName iam.RoleName, authMethod string) (*model.Policy, error) {
@@ -660,7 +691,7 @@ func (a *Authorizator) registerUsedRoleBindings(authRes *logical.Auth, loginItem
 func (a *Authorizator) checkRolebindings(auth *logical.Auth) error {
 	rawRolebindings, exists := auth.InternalData[rolebindingsOfAuth]
 	if !exists {
-		return fmt.Errorf("auth doesn't contains key :%q", rolebindingsOfAuth)
+		return nil // login was without any rolebindings
 	}
 	rawRolebindings2, ok := rawRolebindings.([]interface{})
 	if !ok {
