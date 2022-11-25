@@ -44,7 +44,7 @@ func (s *SummaryOfTopic) ProceedMessage(msg io.MsgDecoded) error {
 	if !mapExist {
 		objectsOfType = map[ItemKey]ItemSummary{}
 	}
-	key := msg.Type + "/" + msg.ID
+	key := msg.Key()
 	old, exist := objectsOfType[key]
 	if exist {
 		return s.processExist(objectsOfType, key, old, msg)

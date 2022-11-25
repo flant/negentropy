@@ -59,6 +59,11 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 }
 
 func IamObjectsRestoreHandler(txn io.Txn, m io.MsgDecoded) (bool, error) {
+	handled, err := io.HandleTombStone(txn, m)
+	if handled || err != nil {
+		return handled, err
+	}
+
 	// Fill here objects for unmarshalling
 	var inputObject interface{}
 	objectType := m.Type
@@ -102,7 +107,7 @@ func IamObjectsRestoreHandler(txn io.Txn, m io.MsgDecoded) (bool, error) {
 	case model.RoleBindingApprovalType:
 		inputObject = &model.RoleBindingApproval{}
 	}
-	err := json.Unmarshal(m.Data, inputObject)
+	err = json.Unmarshal(m.Data, inputObject)
 	if err != nil {
 		return false, err
 	}

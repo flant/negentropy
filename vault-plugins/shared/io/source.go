@@ -28,6 +28,10 @@ func (m *MsgDecoded) IsDeleted() bool {
 	return len(m.Data) == 0
 }
 
+func (m *MsgDecoded) Key() string {
+	return m.Type + "/" + m.ID
+}
+
 type Txn interface {
 	Insert(table string, obj interface{}) error
 	Delete(table string, obj interface{}) error
@@ -152,7 +156,7 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s", decoded.Key()))
 
 	source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 	if err != nil {
@@ -311,7 +315,7 @@ func (rk *KafkaSourceImpl) msgRestoreHandler(txn Txn, msg *kafka.Message, _ hclo
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s", decoded.Key()))
 
 	operation := func() error {
 		return rk.ProcessRestoreMessage(txn, *decoded)
@@ -378,4 +382,28 @@ func thirtySecondsBackoff() backoff.BackOff {
 	backoffRequest := backoff.NewExponentialBackOff()
 	backoffRequest.MaxElapsedTime = time.Second * 30
 	return backoffRequest
+}
+
+// HandleTombStone common handle of message contains tombstone, it checks is msgs tombstone, if true - try delete record from db
+// using:
+// handled, err := HandleTombStone(txn, msg)
+// if handled || err != nil {
+//     return err
+// }
+func HandleTombStone(db Txn, msg MsgDecoded) (bool, error) {
+	if !msg.IsDeleted() {
+		return false, nil
+	}
+	obj, err := db.First(msg.Type, "id", msg.ID)
+	if err != nil {
+		return false, fmt.Errorf("try get deleting object %q: %w", msg.Key(), err)
+	}
+	if obj == nil { // already is absent
+		return true, nil
+	}
+	err = db.Delete(msg.Type, obj)
+	if err != nil {
+		return false, fmt.Errorf("try delete object %q: %w", msg.Key(), err)
+	}
+	return true, nil
 }

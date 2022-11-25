@@ -1,4 +1,4 @@
-package internal
+package pkg
 
 import (
 	"crypto/rsa"
@@ -64,7 +64,7 @@ func NewKafkaSource(kafkaCFG sharedkafka.BrokerConfig, topicName, groupID string
 			return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, mb.EncryptionPrivateKey(), chunked)
 		},
 		ProcessRunMessage: func(_ io.Txn, msg io.MsgDecoded) error {
-			return proceeder.ProceedMessage([]byte(msg.Type+"/"+msg.ID), msg.Data)
+			return proceeder.ProceedMessage([]byte(msg.Key()), msg.Data)
 		},
 		IgnoreSourceInputMessageBody: true,
 		Runnable:                     true,

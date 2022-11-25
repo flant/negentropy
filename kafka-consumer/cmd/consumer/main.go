@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/flant/negentropy/kafka-consumer/internal"
+	"github.com/flant/negentropy/kafka-consumer/pkg"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
 
@@ -45,7 +46,7 @@ func main() {
 		httpURL := os.Getenv(httpUrl)
 		logger.Info(fmt.Sprintf("http gate url: %s", httpURL))
 
-		kfs := internal.NewKafkaSource(
+		kfs := pkg.NewKafkaSource(
 			*kafkaCFG,
 			kafkaTopic,
 			clientGroupID,
@@ -92,12 +93,12 @@ func collectKafkaBrokerCFG() (*sharedkafka.BrokerConfig, error) {
 	if useSSLraw == "true" {
 		useSSL = true
 	}
-	clientEncryptionPrivateKey, err := internal.ParseRSAPrivateKey(os.Getenv(clientEncryptionPrivateKey))
+	clientEncryptionPrivateKey, err := pkg.ParseRSAPrivateKey(os.Getenv(clientEncryptionPrivateKey))
 	if err != nil {
 		return nil, err
 	}
 
-	clientEncryptionPublicKey, err := internal.ParseRSAPubKey(os.Getenv(clientEncryptionPublicKey))
+	clientEncryptionPublicKey, err := pkg.ParseRSAPubKey(os.Getenv(clientEncryptionPublicKey))
 	if err != nil {
 		return nil, err
 	}
