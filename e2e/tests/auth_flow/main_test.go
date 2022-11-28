@@ -215,6 +215,7 @@ func createJwtAuthMethod(methodName, userClaim string, source auth_source.Source
 		"token_policies":  []string{"full"},
 		"token_type":      "default",
 		"token_ttl":       "1m",
+		"token_max_ttl":   "2m",
 		"method_type":     model.MethodTypeJWT,
 		"source":          source.Source.Name,
 		"user_claim":      userClaim,
@@ -235,6 +236,7 @@ func createMultipassAuthMethod(methodName string, payloadRewrite map[string]inte
 		"token_policies": []string{"full"},
 		"token_type":     "default",
 		"token_ttl":      "1m",
+		"token_max_ttl":  "2m",
 		"method_type":    model.MethodTypeMultipass,
 	}
 
@@ -309,6 +311,7 @@ var _ = BeforeSuite(func() {
 	jwtMethodName = tools.RandomStr()
 	createJwtAuthMethod(jwtMethodName, "uuid", auth_source.JWTWithEaNameEmail, map[string]interface{}{
 		"token_ttl":               tokenTTl.String(),
+		"token_max_ttl":           tokenTTl.String(),
 		"token_policies":          []string{methodReaderOnlyPolicyName},
 		"token_no_default_policy": true,
 	})
@@ -316,6 +319,7 @@ var _ = BeforeSuite(func() {
 	multipassMethodName = tools.RandomStr()
 	createMultipassAuthMethod(multipassMethodName, map[string]interface{}{
 		"token_ttl":               tokenTTl.String(),
+		"token_max_ttl":           tokenTTl.String(),
 		"token_policies":          []string{methodReaderOnlyPolicyName},
 		"token_no_default_policy": true,
 	})
