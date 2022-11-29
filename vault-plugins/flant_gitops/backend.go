@@ -3,13 +3,13 @@ package flant_gitops
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/werf/trdl/server/pkg/git"
 	"github.com/werf/trdl/server/pkg/pgp"
-	"github.com/werf/trdl/server/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
@@ -18,8 +18,8 @@ import (
 
 type backend struct {
 	*framework.Backend
-	TasksManager              *tasks_manager.Manager
 	AccessVaultClientProvider client.AccessVaultClientController
+	periodicTaskMutex         sync.Mutex
 }
 
 var _ logical.Factory = Factory
@@ -47,7 +47,6 @@ func newBackend(c *logical.BackendConfig) (*backend, error) {
 		return nil, err
 	}
 	b := &backend{
-		TasksManager:              tasks_manager.NewManager(c.Logger),
 		AccessVaultClientProvider: accessVaultClientProvider,
 	}
 
@@ -60,10 +59,6 @@ func newBackend(c *logical.BackendConfig) (*backend, error) {
 				return err
 			}
 
-			if err := b.TasksManager.PeriodicFunc(ctx, req); err != nil {
-				return err
-			}
-
 			return b.PeriodicTask(req.Storage)
 		},
 	}
@@ -71,7 +66,6 @@ func newBackend(c *logical.BackendConfig) (*backend, error) {
 	baseBackend.Paths = framework.PathAppend(
 		git_repository.ConfigurePaths(baseBackend),
 		vault.ConfigurePaths(baseBackend),
-		b.TasksManager.Paths(),
 		git.CredentialsPaths(),
 		pgp.Paths(),
 		[]*framework.Path{

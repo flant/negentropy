@@ -37,15 +37,9 @@ func (m *MockKubeService) RunJob(ctx context.Context, hashCommit string, vaultsB
 func (m *MockKubeService) CheckJob(_ context.Context, hashCommit string) (exist, finished, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	_, ok := m.activeJobs[hashCommit]
-	if !ok {
-		return false, false, nil
-	}
-	_, ok = m.finishedJobs[hashCommit]
-	if ok {
-		return true, true, nil
-	}
-	return true, false, nil
+	_, isActive := m.activeJobs[hashCommit]
+	_, isFinished := m.finishedJobs[hashCommit]
+	return isActive || isFinished, isFinished, nil
 }
 
 // FinishJob is a mock control function
