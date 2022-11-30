@@ -54,6 +54,9 @@ curl --location --request POST 'https://localhost:8300/v1/flant/replica/NAME' \
   * CLIENT_ENCRYPTION_PRIVATE_KEY: a private part of pair which was generated at early step and is saved at `./id_rsa`
   * CLIENT_ENCRYPTION_PUBLIC_KEY: public key from iam. Get it by `curl -k -s -H "X-Vault-Token: TOKEN" https://127.0.0.1:8300/v1/flant/kafka/public_key | jq -r .data.public_key`
   * HTTP_URL: https://localhost:9200/asdf
+  * HTTP_HEADER_NAME: header name which should be added to request to http gate (example: X-Token)
+  * HTTP_HEADER_VALUE: header value which should be added to request to http gate (example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57)
+
 ```
 - run rolebinding-watcher:
 ```

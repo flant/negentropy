@@ -16,18 +16,18 @@ import (
 
 // environments variables to pass params
 const (
-	kafkaEndpoints             = "KAFKA_ENDPOINTS"               // example: http://localhost:9094
-	kafkaUseSSL                = "KAFKA_USE_SSL"                 // example: true
-	kafkaCaPath                = "KAFKA_CA_PATH"                 // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
-	kafkaPrivateKeyPath        = "KAFKA_PRIVATE_KEY_PATH"        // example: /Users/admin/flant/negentropy/docker/kafka/client.key
-	kafkaPrivateCertPath       = "KAFKA_PRIVATE_CERT_PATH"       // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
-	clientTopic                = "CLIENT_TOPIC"                  // example: root_source.foobar
-	clientGroupID              = "CLIENT_GROUP_ID"               // example: foobar
-	clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY" // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
-	clientEncryptionPublicKey  = "CLIENT_ENCRYPTION_PUBLIC_KEY"  // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
-	httpUrl                    = "HTTP_URL"                      // example: localhost:9200/foobar
-	httpAuthHeaderName         = "HTTP_HEADER_NAME"              // example: X-Token
-	httpAuthHeaderValue        = "HTTP_HEADER_NAME"              // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
+	kafkaEndpoints             = "KAFKA_ENDPOINTS"                         // example: http://localhost:9094
+	kafkaUseSSL                = "KAFKA_USE_SSL"                           // example: true
+	kafkaCaPath                = "KAFKA_CA_PATH"                           // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
+	kafkaPrivateKeyPath        = "KAFKA_PRIVATE_KEY_PATH"                  // example: /Users/admin/flant/negentropy/docker/kafka/client.key
+	kafkaPrivateCertPath       = "KAFKA_PRIVATE_CERT_PATH"                 // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
+	clientTopic                = "CLIENT_TOPIC"                            // example: root_source.foobar
+	clientGroupID              = "CLIENT_GROUP_ID"                         // example: foobar
+	clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY"           // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
+	clientEncryptionPublicKey  = "CLIos.Getenv()ENT_ENCRYPTION_PUBLIC_KEY" // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
+	httpUrl                    = "HTTP_URL"                                // example: localhost:9200/foobar
+	httpAuthHeaderName         = "HTTP_HEADER_NAME"                        // example: X-Token
+	httpAuthHeaderValue        = "HTTP_HEADER_VALUE"                       // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
 )
 
 func main() {
@@ -76,7 +76,7 @@ CLIENT_ENCRYPTION_PUBLIC_KEY"               // example: -----BEGIN RSA PUBLIC KE
 
 HTTP_URL									// example: localhost:9200/foobar
 HTTP_HEADER_NAME                            // example: X-Token
-HTTP_HEADER_NAME                            // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
+HTTP_HEADER_VALUE                           // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
 
 	Find more information at https://flant.com
 `,
