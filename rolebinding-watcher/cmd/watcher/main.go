@@ -26,6 +26,8 @@ const (
 	clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY" // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
 	clientEncryptionPublicKey  = "CLIENT_ENCRYPTION_PUBLIC_KEY"  // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
 	httpUrl                    = "HTTP_URL"                      // example: localhost:9200/foobar
+	httpAuthHeaderName         = "HTTP_HEADER_NAME"              // example: X-Token
+	httpAuthHeaderValue        = "HTTP_HEADER_NAME"              // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
 )
 
 func main() {
@@ -52,7 +54,7 @@ func main() {
 		if httpURL == "" {
 			procceder = internal.PrintProceeder{Logger: logger}
 		} else {
-			procceder = internal.NewHTTPClient(httpURL)
+			procceder = internal.NewHTTPClient(httpURL, os.Getenv(httpAuthHeaderName), os.Getenv(httpAuthHeaderValue))
 		}
 		return daemon.Run(procceder)
 	}
@@ -62,16 +64,19 @@ func main() {
 		Short: "Flant negentropy rolebinding-watcher",
 		Long: `Flant integration negentropy rolebinding-watcher
 	Configure run by passing environment variables:
-KAFKA_ENDPOINTS                               // example: localhost:9094
+KAFKA_ENDPOINTS                             // example: localhost:9094
 KAFKA_USE_SSL                               // bool
 KAFKA_CA_PATH                               // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
 KAFKA_PRIVATE_KEY_PATH                      // example: /Users/admin/flant/negentropy/docker/kafka/client.key
 KAFKA_PRIVATE_CERT_PATH                     // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
 CLIENT_TOPIC                                // example: root_source.bush
 CLIENT_GROUP_ID                             // example: bush
-CLIENT_ENCRYPTION_PRIVATE_KEY               // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
-CLIENT_ENCRYPTION_PUBLIC_KEY"               // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
-HTTP_URL										// example: "localhost:9200/foobar
+CLIENT_ENCRYPTION_PRIVATE_KEY               // example: -----BEGIN RSA PRIVATE KEY-----\n ... it is a private part of key passed to iam to register replica
+CLIENT_ENCRYPTION_PUBLIC_KEY"               // example: -----BEGIN RSA PUBLIC KEY-----\n ... it is a public key from root-vault iam
+
+HTTP_URL									// example: localhost:9200/foobar
+HTTP_HEADER_NAME                            // example: X-Token
+HTTP_HEADER_NAME                            // example: hvs.ZeJ8kMSodrq3AQKBnvw6gw57
 
 	Find more information at https://flant.com
 `,

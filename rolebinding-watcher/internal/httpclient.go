@@ -13,8 +13,10 @@ import (
 )
 
 type HTTPClient struct {
-	Client *http.Client
-	URL    string
+	Client      *http.Client
+	URL         string
+	HeaderName  string
+	HeaderValue string
 }
 
 func (c *HTTPClient) ProceedUserEffectiveRole(userEffectiveRoles pkg.UserEffectiveRoles) error {
@@ -23,26 +25,37 @@ func (c *HTTPClient) ProceedUserEffectiveRole(userEffectiveRoles pkg.UserEffecti
 		return err
 	}
 	operation := func() error {
-		resp, err := c.Client.Post(c.URL, "application/json", bytes.NewReader(data))
+		resp, err := c.Post(c.URL, "application/json", bytes.NewReader(data))
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() // nolint: errcheck
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("wrong response: %d", resp.StatusCode)
 		}
 		return nil
 	}
 	err = backoff.Retry(operation, sharedio.ThirtySecondsBackoff())
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func NewHTTPClient(url string) *HTTPClient {
+func (c *HTTPClient) Post(url string, contentType string, body *bytes.Reader) (*http.Response, error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	if c.HeaderName != "" && c.HeaderValue != "" {
+		req.Header.Set(c.HeaderName, c.HeaderValue)
+	}
+	return c.Client.Do(req)
+}
+
+func NewHTTPClient(url string, headerName string, headerValue string) *HTTPClient {
 	return &HTTPClient{
-		Client: &http.Client{},
-		URL:    url,
+		Client:      &http.Client{},
+		URL:         url,
+		HeaderName:  headerName,
+		HeaderValue: headerValue,
 	}
 }
