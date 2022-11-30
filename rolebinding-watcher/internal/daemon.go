@@ -1,10 +1,10 @@
 package internal
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"time"
 
-	"crypto/sha256"
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/flant/negentropy/rolebinding-watcher/pkg"
@@ -13,7 +13,6 @@ import (
 	ext_sa_io "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/io"
 	ext_sa_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_server_access/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
-	iam_source "github.com/flant/negentropy/vault-plugins/flant_iam/io/kafka_source"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -90,7 +89,7 @@ func msgHandler(txn sharedio.Txn, msg sharedio.MsgDecoded) (err error) {
 		jwtkafka.SelfRestoreMessage,
 		ext_sa_io.HandleServerAccessObjects,
 		ext_ff_io.HandleFlantFlowObjects,
-		iam_source.IamObjectsRestoreHandler,
+		kafka_source.IamObjectsRestoreHandler,
 	} {
 		handled, err := r(txn, msg)
 		if err != nil {
@@ -106,7 +105,6 @@ func msgHandler(txn sharedio.Txn, msg sharedio.MsgDecoded) (err error) {
 
 func kafkaSource(mb *sharedkafka.MessageBroker, topicName string,
 	runConsumerID string, parentLogger hclog.Logger) *sharedio.KafkaSourceImpl {
-
 	return &sharedio.KafkaSourceImpl{
 		NameOfSource: "rolebinding-watcher-consumer",
 		KafkaBroker:  mb,
@@ -128,9 +126,7 @@ func kafkaSource(mb *sharedkafka.MessageBroker, topicName string,
 			parentLogger.Debug("message", "key", msg.Key())
 			return msgHandler(txn, msg)
 		},
-		ProcessRestoreMessage: func(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
-			return msgHandler(txn, msg)
-		},
+		ProcessRestoreMessage:        msgHandler,
 		IgnoreSourceInputMessageBody: true,
 		Runnable:                     true,
 	}

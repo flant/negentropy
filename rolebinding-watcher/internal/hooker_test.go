@@ -55,7 +55,8 @@ func Test_Rolebindings(t *testing.T) {
 		processor: &ChangesProcessor{
 			Logger:                     logger,
 			userEffectiveRoleProcessor: mock,
-		}}
+		},
+	}
 	hooker.RegisterHooks(store)
 
 	baseRolebinding := iam_model.RoleBinding{
@@ -71,12 +72,14 @@ func Test_Rolebindings(t *testing.T) {
 	baseUserEffectiveRoles := pkg.UserEffectiveRoles{
 		UserUUID: iam_fixtures.UserUUID1,
 		RoleName: iam_fixtures.RoleName1,
-		Tenants: []authz.EffectiveRoleTenantResult{authz.EffectiveRoleTenantResult{
+		Tenants: []authz.EffectiveRoleTenantResult{{
 			TenantUUID:       iam_fixtures.TenantUUID2,
 			TenantIdentifier: "tenant2",
 			TenantOptions:    map[string][]interface{}{},
-			Projects: []authz.EffectiveRoleProjectResult{authz.EffectiveRoleProjectResult{
-				ProjectUUID: iam_fixtures.ProjectUUID5, ProjectIdentifier: "pr5", ProjectOptions: map[string][]interface{}{}, RequireMFA: false, NeedApprovals: false},
+			Projects: []authz.EffectiveRoleProjectResult{
+				{
+					ProjectUUID: iam_fixtures.ProjectUUID5, ProjectIdentifier: "pr5", ProjectOptions: map[string][]interface{}{}, RequireMFA: false, NeedApprovals: false,
+				},
 			},
 		}},
 	}

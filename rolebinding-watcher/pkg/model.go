@@ -44,7 +44,7 @@ func (u *UserEffectiveRoles) Equal(other *UserEffectiveRoles) bool {
 		return false
 	}
 	if u.UserUUID != other.UserUUID ||
-		u.RoleName != u.RoleName ||
+		u.RoleName != other.RoleName ||
 		len(u.Tenants) != len(other.Tenants) {
 		return false
 	}

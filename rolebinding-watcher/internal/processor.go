@@ -24,8 +24,8 @@ type ChangesProcessor struct {
 }
 
 func (c *ChangesProcessor) UpdateUserEffectiveRoles(futureDB *io.MemoryStoreTxn, users map[pkg.UserUUID]struct{}, roles map[pkg.RoleName]struct{}) error {
-	//c.Logger.Info(fmt.Sprintf("users: %v", users)) // TODO REMOVE
-	//c.Logger.Info(fmt.Sprintf("roles: %v", roles)) // TODO REMOVE
+	// c.Logger.Info(fmt.Sprintf("users: %v", users)) // TODO REMOVE
+	// c.Logger.Info(fmt.Sprintf("roles: %v", roles)) // TODO REMOVE
 	service := pkg.UserEffectiveRolesService(futureDB)
 	for userUUID := range users {
 		newUsersEffectiveRoleResults, err := c.CalculateNewUserEffectiveRoles(futureDB, userUUID, makeSlice(roles))

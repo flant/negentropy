@@ -15,16 +15,18 @@ import (
 )
 
 // environments variables to pass params
-const kafkaEndpoints = "KAFKA_ENDPOINTS"                           // example: http://localhost:9094
-const kafkaUseSSL = "KAFKA_USE_SSL"                                // example: true
-const kafkaCaPath = "KAFKA_CA_PATH"                                // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
-const kafkaPrivateKeyPath = "KAFKA_PRIVATE_KEY_PATH"               // example: /Users/admin/flant/negentropy/docker/kafka/client.key
-const kafkaPrivateCertPath = "KAFKA_PRIVATE_CERT_PATH"             // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
-const clientTopic = "CLIENT_TOPIC"                                 // example: root_source.foobar
-const clientGroupID = "CLIENT_GROUP_ID"                            // example: foobar
-const clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY" // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
-const clientEncryptionPublicKey = "CLIENT_ENCRYPTION_PUBLIC_KEY"   // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
-const httpUrl = "HTTP_URL"                                         // example: localhost:9200/foobar
+const (
+	kafkaEndpoints             = "KAFKA_ENDPOINTS"               // example: http://localhost:9094
+	kafkaUseSSL                = "KAFKA_USE_SSL"                 // example: true
+	kafkaCaPath                = "KAFKA_CA_PATH"                 // example: /Users/admin/flant/negentropy/docker/kafka/ca.crt
+	kafkaPrivateKeyPath        = "KAFKA_PRIVATE_KEY_PATH"        // example: /Users/admin/flant/negentropy/docker/kafka/client.key
+	kafkaPrivateCertPath       = "KAFKA_PRIVATE_CERT_PATH"       // example: /Users/admin/flant/negentropy/docker/kafka/client.crt
+	clientTopic                = "CLIENT_TOPIC"                  // example: root_source.foobar
+	clientGroupID              = "CLIENT_GROUP_ID"               // example: foobar
+	clientEncryptionPrivateKey = "CLIENT_ENCRYPTION_PRIVATE_KEY" // example: "-----BEGIN RSA PRIVATE KEY-----\n ..." it is a private part of key passed to iam to register replica
+	clientEncryptionPublicKey  = "CLIENT_ENCRYPTION_PUBLIC_KEY"  // example: "-----BEGIN RSA PUBLIC KEY-----\n ..." it is a public key from root-vault iam
+	httpUrl                    = "HTTP_URL"                      // example: localhost:9200/foobar
+)
 
 func main() {
 	viper.SetDefault("author", "https://www.flant.com")
@@ -80,7 +82,6 @@ HTTP_URL										// example: "localhost:9200/foobar
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
 }
 
 func collectKafkaBrokerCFG() (*sharedkafka.BrokerConfig, error) {

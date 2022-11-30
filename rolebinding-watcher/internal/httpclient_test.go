@@ -18,7 +18,7 @@ func Test_HttpClient(t *testing.T) {
 		UserUUID: "00000000-0000-0000-0000-000000000001",
 		RoleName: "RoleName1",
 		Tenants: []authz.EffectiveRoleTenantResult{
-			authz.EffectiveRoleTenantResult{
+			{
 				TenantUUID:       "00000001-0000-0000-0000-000000000000",
 				TenantIdentifier: "tenant1",
 				TenantOptions:    map[string][]interface{}{},
@@ -26,13 +26,13 @@ func Test_HttpClient(t *testing.T) {
 					{
 						ProjectUUID:       "00000000-0100-0000-0000-000000000000",
 						ProjectIdentifier: "pr1",
-						ProjectOptions:    map[string][]interface{}{"o1": []interface{}{"data1"}},
+						ProjectOptions:    map[string][]interface{}{"o1": {"data1"}},
 						RequireMFA:        false,
 						NeedApprovals:     false,
-					}, authz.EffectiveRoleProjectResult{
+					}, {
 						ProjectUUID:       "00000000-0300-0000-0000-000000000000",
 						ProjectIdentifier: "pr3",
-						ProjectOptions:    map[string][]interface{}{"o1": []interface{}{"data1"}},
+						ProjectOptions:    map[string][]interface{}{"o1": {"data1"}},
 						RequireMFA:        false,
 						NeedApprovals:     false,
 					},

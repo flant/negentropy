@@ -9,8 +9,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
 )
 
-const userIndex = "user_index"
-const roleIndex = "role_Index"
+const (
+	userIndex = "user_index"
+	roleIndex = "role_Index"
+)
 
 func UserEffectiveRolesSchema() *memdb.DBSchema {
 	userIndexer := &hcmemdb.StringFieldIndex{
