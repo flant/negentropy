@@ -19,4 +19,5 @@ var (
 	ErrNotConfigured      = fmt.Errorf("not configured")
 	ErrAccessForbidden    = fmt.Errorf("access forbidden")
 	ErrNotHandledObject   = fmt.Errorf("type is not handled yet")
+	CriticalCodeError     = fmt.Errorf("CRITICAL ERROR AT CODE")
 )

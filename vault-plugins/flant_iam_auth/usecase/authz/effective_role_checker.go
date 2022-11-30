@@ -40,12 +40,75 @@ type EffectiveRoleTenantResult struct {
 	Projects         []EffectiveRoleProjectResult `json:"projects"`
 }
 
+func (r EffectiveRoleTenantResult) NotEqual(other EffectiveRoleTenantResult) bool {
+	return !r.Equal(other)
+}
+
+func (r EffectiveRoleTenantResult) Equal(other EffectiveRoleTenantResult) bool {
+	if r.TenantUUID != other.TenantUUID ||
+		r.TenantIdentifier != other.TenantIdentifier ||
+		len(r.TenantOptions) != len(other.TenantOptions) ||
+		len(r.Projects) != len(other.Projects) {
+		return false
+	}
+	for i := range r.Projects {
+		if r.Projects[i].NotEqual(other.Projects[i]) {
+			return false
+		}
+	}
+	for k := range r.TenantOptions {
+		if notEqual(r.TenantOptions[k], other.TenantOptions[k]) {
+			return false
+		}
+	}
+	return true
+}
+
+func notEqual(options []interface{}, otherOptions []interface{}) bool {
+	if len(options) != len(otherOptions) {
+		return true
+	}
+	for _, v1 := range options {
+		found := false
+		for _, v2 := range otherOptions {
+			if v1 == v2 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+	return false
+}
+
 type EffectiveRoleProjectResult struct {
 	ProjectUUID       iam_model.ProjectUUID    `json:"uuid"`
 	ProjectIdentifier string                   `json:"identifier"`
 	ProjectOptions    map[string][]interface{} `json:"project_options,omitempty"`
 	RequireMFA        bool                     `json:"require_mfa,omitempty"`
 	NeedApprovals     bool                     `json:"need_approvals,omitempty"`
+}
+
+func (r EffectiveRoleProjectResult) NotEqual(other EffectiveRoleProjectResult) bool {
+	return !r.Equal(other)
+}
+
+func (r EffectiveRoleProjectResult) Equal(other EffectiveRoleProjectResult) bool {
+	if r.ProjectUUID != other.ProjectUUID ||
+		r.ProjectIdentifier != other.ProjectIdentifier ||
+		r.RequireMFA != other.RequireMFA ||
+		r.NeedApprovals != other.NeedApprovals ||
+		len(r.ProjectOptions) != len(other.ProjectOptions) {
+		return false
+	}
+	for k := range r.ProjectOptions {
+		if notEqual(r.ProjectOptions[k], other.ProjectOptions[k]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *EffectiveRoleChecker) CheckEffectiveRoles(subject model.Subject, roles []iam_model.RoleName) ([]EffectiveRoleResult, error) {
@@ -87,6 +150,7 @@ func (c *EffectiveRoleChecker) buildEffectiveRoleResults(roleNames []iam_model.R
 			Tenants: tenantsResults,
 		})
 	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Role < result[j].Role })
 	return result, nil
 }
 
