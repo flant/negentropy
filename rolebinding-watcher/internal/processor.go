@@ -85,11 +85,11 @@ func makeSlice(set map[string]struct{}) []string {
 	return slice
 }
 
-type MockProceeder struct {
+type PrintProceeder struct {
 	Logger hclog.Logger
 }
 
-func (c MockProceeder) ProceedUserEffectiveRole(newUsersEffectiveRoles pkg.UserEffectiveRoles) error {
+func (c PrintProceeder) ProceedUserEffectiveRole(newUsersEffectiveRoles pkg.UserEffectiveRoles) error {
 	data, err := json.MarshalIndent(newUsersEffectiveRoles, "", "\t")
 	if err != nil {
 		return err

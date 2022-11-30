@@ -48,7 +48,7 @@ func main() {
 		logger.Info(fmt.Sprintf("http gate url: %s", httpURL))
 		var procceder internal.UserEffectiveRoleProcessor
 		if httpURL == "" {
-			procceder = internal.MockProceeder{Logger: logger}
+			procceder = internal.PrintProceeder{Logger: logger}
 		} else {
 			procceder = internal.NewHTTPClient(httpURL)
 		}
