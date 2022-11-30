@@ -8,35 +8,10 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
-	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-func createGroups(t *testing.T, repo *iam_repo.GroupRepository, groups ...model.Group) {
-	for _, group := range groups {
-		tmp := group
-		tmp.FullIdentifier = uuid.New()
-		err := repo.Create(&tmp)
-		require.NoError(t, err)
-	}
-}
-
-func groupFixture(t *testing.T, store *io.MemoryStore) {
-	gs := fixtures.Groups()
-	for i := range gs {
-		gs[i].Members = appendMembers(makeMemberNotations(model.UserType, gs[i].Users),
-			makeMemberNotations(model.ServiceAccountType, gs[i].ServiceAccounts),
-			makeMemberNotations(model.GroupType, gs[i].Groups))
-	}
-	tx := store.Txn(true)
-	repository := iam_repo.NewGroupRepository(tx)
-	createGroups(t, repository, gs...)
-	err := tx.Commit()
-	require.NoError(t, err)
-}
-
 func Test_ListGroups(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	groups, err := repository.List(fixtures.TenantUUID1, false)
@@ -53,7 +28,7 @@ func Test_ListGroups(t *testing.T) {
 }
 
 func Test_GetByID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	group, err := repository.GetByID(fixtures.GroupUUID1)
@@ -69,7 +44,7 @@ func Test_GetByID(t *testing.T) {
 }
 
 func Test_findDirectParentGroupsByUserUUID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	ids, err := repository.FindDirectParentGroupsByUserUUID(fixtures.UserUUID3)
@@ -79,7 +54,7 @@ func Test_findDirectParentGroupsByUserUUID(t *testing.T) {
 }
 
 func Test_findDirectParentGroupsByServiceAccountUUID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	ids, err := repository.FindDirectParentGroupsByServiceAccountUUID(fixtures.ServiceAccountUUID1)
@@ -89,7 +64,7 @@ func Test_findDirectParentGroupsByServiceAccountUUID(t *testing.T) {
 }
 
 func Test_findDirectParentGroupsByGroupUUID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	ids, err := repository.FindDirectParentGroupsByGroupUUID(fixtures.GroupUUID1)
@@ -99,7 +74,7 @@ func Test_findDirectParentGroupsByGroupUUID(t *testing.T) {
 }
 
 func Test_FindAllParentGroupsForUserUUID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	ids, err := repository.FindAllParentGroupsForUserUUID(fixtures.UserUUID1)
@@ -109,7 +84,7 @@ func Test_FindAllParentGroupsForUserUUID(t *testing.T) {
 }
 
 func Test_FindAllParentGroupsForServiceAccountUUID(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture).Txn(true)
 	repository := iam_repo.NewGroupRepository(tx)
 
 	ids, err := repository.FindAllParentGroupsForServiceAccountUUID(fixtures.ServiceAccountUUID1)

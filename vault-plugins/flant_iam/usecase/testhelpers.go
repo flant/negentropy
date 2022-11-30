@@ -12,6 +12,7 @@ import (
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
+	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
 func RunFixtures(t *testing.T, fixtures ...func(t *testing.T, store *io.MemoryStore)) *io.MemoryStore {
@@ -69,6 +70,86 @@ func RoleFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
 	repo := iam_repo.NewRoleRepository(tx)
 	createRoles(t, repo, fixtures.Roles()...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
+func createUsers(t *testing.T, repo *iam_repo.UserRepository, users ...model.User) {
+	for _, user := range users {
+		tmp := user
+		tmp.Version = uuid.New()
+		tmp.FullIdentifier = "user_" + uuid.New()
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func UserFixture(t *testing.T, store *io.MemoryStore) {
+	tx := store.Txn(true)
+	repo := iam_repo.NewUserRepository(tx)
+	createUsers(t, repo, fixtures.Users()...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
+func createServiceAccounts(t *testing.T, repo *iam_repo.ServiceAccountRepository, sas ...model.ServiceAccount) {
+	for _, sa := range sas {
+		tmp := sa
+		tmp.FullIdentifier = "service_account_" + uuid.New() // delete after bringing full identifiers to usecases
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func ServiceAccountFixture(t *testing.T, store *io.MemoryStore) {
+	tx := store.Txn(true)
+	repo := iam_repo.NewServiceAccountRepository(tx)
+	createServiceAccounts(t, repo, fixtures.ServiceAccounts()...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
+func createGroups(t *testing.T, repo *iam_repo.GroupRepository, groups ...model.Group) {
+	for _, group := range groups {
+		tmp := group
+		tmp.FullIdentifier = "group_" + uuid.New()
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func GroupFixture(t *testing.T, store *io.MemoryStore) {
+	gs := fixtures.Groups()
+	for i := range gs {
+		gs[i].Members = appendMembers(makeMemberNotations(model.UserType, gs[i].Users),
+			makeMemberNotations(model.ServiceAccountType, gs[i].ServiceAccounts),
+			makeMemberNotations(model.GroupType, gs[i].Groups))
+	}
+	tx := store.Txn(true)
+	repository := iam_repo.NewGroupRepository(tx)
+	createGroups(t, repository, gs...)
+	err := tx.Commit()
+	require.NoError(t, err)
+}
+
+func createRoleBindings(t *testing.T, repo *iam_repo.RoleBindingRepository, rbs ...model.RoleBinding) {
+	for _, rb := range rbs {
+		tmp := rb
+		err := repo.Create(&tmp)
+		require.NoError(t, err)
+	}
+}
+
+func RoleBindingFixture(t *testing.T, store *io.MemoryStore) {
+	rbs := fixtures.RoleBindings()
+	for i := range rbs {
+		rbs[i].Members = appendMembers(makeMemberNotations(model.UserType, rbs[i].Users),
+			makeMemberNotations(model.ServiceAccountType, rbs[i].ServiceAccounts),
+			makeMemberNotations(model.GroupType, rbs[i].Groups))
+	}
+	tx := store.Txn(true)
+	repo := iam_repo.NewRoleBindingRepository(tx)
+	createRoleBindings(t, repo, rbs...)
 	err := tx.Commit()
 	require.NoError(t, err)
 }

@@ -10,8 +10,8 @@ import (
 )
 
 func Test_collectAllRolesAndRoleBindings(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -28,8 +28,8 @@ func Test_collectAllRolesAndRoleBindings(t *testing.T) {
 }
 
 func Test_collectAllRoleBindingsForUser(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -44,8 +44,8 @@ func Test_collectAllRoleBindingsForUser(t *testing.T) {
 }
 
 func Test_CheckUserForProjectScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -71,8 +71,8 @@ func roleBindingsUUIDsFromEffectiveRoles(ers []EffectiveRole) []string {
 }
 
 func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -87,8 +87,8 @@ func Test_collectAllRoleBindingsForServiceAccount(t *testing.T) {
 }
 
 func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -106,8 +106,8 @@ func Test_CheckServiceAccountForProjectScopedRole(t *testing.T) {
 }
 
 func Test_CheckUserForTenantScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -125,8 +125,8 @@ func Test_CheckUserForTenantScopedRole(t *testing.T) {
 }
 
 func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -144,8 +144,8 @@ func Test_CheckServiceAccountForTenantScopedRole(t *testing.T) {
 }
 
 func Test_FindMembersWithProjectScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
@@ -161,8 +161,8 @@ func Test_FindMembersWithProjectScopedRole(t *testing.T) {
 }
 
 func Test_FindMembersWithTenantScopedRole(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture, RoleFixture, ProjectFixture,
-		roleBindingFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture, RoleFixture, ProjectFixture,
+		RoleBindingFixture).Txn(true)
 	rr := roleResolver{
 		roleInformer:         repo.NewRoleRepository(tx),
 		groupInformer:        repo.NewGroupRepository(tx),
