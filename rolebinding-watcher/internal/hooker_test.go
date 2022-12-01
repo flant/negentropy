@@ -33,7 +33,7 @@ type mockProceeder struct {
 }
 
 func (c *mockProceeder) ProceedUserEffectiveRole(newUsersEffectiveRoles pkg.UserEffectiveRoles) error {
-	fmt.Printf("call %v\n", newUsersEffectiveRoles.Key()) // TODO REMOVE
+	// fmt.Printf("call %v\n", newUsersEffectiveRoles.Key())
 	if c.SkipCheck {
 		return nil
 	}
@@ -280,6 +280,76 @@ func Test_Projects(t *testing.T) {
 		archivedProject.Archive(memdb.NewArchiveMark())
 
 		require.NoError(t, tx.Insert(iam_model.ProjectType, &archivedProject))
+		require.NoError(t, tx.Commit())
+
+		require.Nil(t, mock.CallsToDo())
+	})
+}
+
+func Test_Roles(t *testing.T) {
+	logger := hclog.NewNullLogger()
+	store, err := memStorage(nil, logger)
+	require.NoError(t, err)
+	mock := &mockProceeder{t: t, SkipCheck: true}
+	hooker := &Hooker{
+		Logger: logger,
+		processor: &ChangesProcessor{
+			Logger:                     logger,
+			userEffectiveRoleProcessor: mock,
+		},
+	}
+	hooker.RegisterHooks(store)
+	tx := RunFixtures(t, store, iam_usecase.TenantFixture, iam_usecase.UserFixture, iam_usecase.ServiceAccountFixture, iam_usecase.GroupFixture, iam_usecase.RoleFixture).Txn(true)
+	rolebinding := iam_model.RoleBinding{
+		UUID:        iam_fixtures.RbUUID1,
+		TenantUUID:  iam_fixtures.TenantUUID2,
+		Description: "not the copy of rb1",
+		Users:       []pkg.UserUUID{iam_fixtures.UserUUID5},
+		Roles: []iam_model.BoundRole{{
+			Name: iam_fixtures.RoleName2,
+		}},
+		AnyProject: true,
+	}
+	require.NoError(t, tx.Insert(iam_model.RoleBindingType, &rolebinding))
+	require.NoError(t, tx.Commit())
+
+	userEffectiveRoles := pkg.UserEffectiveRoles{
+		UserUUID: iam_fixtures.UserUUID5,
+		RoleName: iam_fixtures.RoleName1,
+		Tenants: []authz.EffectiveRoleTenantResult{{
+			TenantUUID:       iam_fixtures.TenantUUID2,
+			TenantIdentifier: "tenant2",
+		}},
+	}
+
+	t.Run("add role2 to role1", func(t *testing.T) {
+		mock.SkipCheck = false
+		mock.expectedCalls = []pkg.UserEffectiveRoles{userEffectiveRoles}
+		tx = store.Txn(true)
+		role2, err := iam_repo.NewRoleRepository(tx).GetByID(iam_fixtures.RoleName2)
+		require.NoError(t, err)
+		newRole2 := *role2 // need create new object
+		newRole2.IncludedRoles = append(newRole2.IncludedRoles, iam_model.IncludedRole{
+			Name: iam_fixtures.RoleName1,
+		})
+
+		require.NoError(t, tx.Insert(iam_model.RoleType, &newRole2))
+		require.NoError(t, tx.Commit())
+
+		require.Nil(t, mock.CallsToDo())
+	})
+
+	t.Run("remove role1 from role1", func(t *testing.T) {
+		uer := userEffectiveRoles
+		uer.Tenants = nil // it means role disappears for a user
+		mock.expectedCalls = []pkg.UserEffectiveRoles{uer}
+		tx = store.Txn(true)
+		role2, err := iam_repo.NewRoleRepository(tx).GetByID(iam_fixtures.RoleName2)
+		require.NoError(t, err)
+		newRole2 := *role2 // need create new object
+		newRole2.IncludedRoles = nil
+
+		require.NoError(t, tx.Insert(iam_model.RoleType, &newRole2))
 		require.NoError(t, tx.Commit())
 
 		require.Nil(t, mock.CallsToDo())

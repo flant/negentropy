@@ -3,9 +3,12 @@
 // Rolebinding: 1) New/Update/Archive - need be processed 2) Delete - doesn't matter as after archiving UserEffectiveRoles disappear
 // User: 1) New - new user hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this user can't have any Active Rolebinding
 // Tenant: 1) New - new tenant hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this tenant can't have any Active Rolebinding
-// Group: 1) New - new group hasn't any Rolebinding 2) Archive/Delete - this group can't have any Active Rolebinding 3) Update - if was changed set of users/or group it can change usereffectiveRoles, but if kafka will be compacted, new item can be not new, but edited
+// Group: 1) New - new group hasn't any Rolebinding 2) Archive/Delete - this group can't have any Active Rolebinding 3) Update - if was changed set of users/or group it can change usereffectiveRoles,
+//        but if kafka will be compacted, 'new item' can be not new, but edited
 //        need to be processed all roles which are on old and new group.
 // Project: 1) New/Archive - project can change userEffectiveRole under projectScopedRoles 2) Update/Delete doesn't produce any changes
+// Roles: 1) New/Archive/Delete doesn't affect 2) Change in IncludedRoles can produce changes at each child roles
+//        but if kafka will be compacted, 'new item' can be not new, but edited
 
 package internal
 
@@ -89,6 +92,9 @@ func collectUsers(txn *sharedio.MemoryStoreTxn, rbs []*iam_model.RoleBinding) (m
 	groupSet := map[iam_model.GroupUUID]struct{}{}
 	userSet := map[pkg.UserUUID]struct{}{}
 	for _, rb := range rbs {
+		if rb == nil {
+			continue
+		}
 		for _, g := range rb.Groups {
 			groupSet[g] = struct{}{}
 		}
@@ -237,7 +243,7 @@ func (h *Hooker) processRolebinding(txn *sharedio.MemoryStoreTxn, _ sharedio.Hoo
 	if err != nil {
 		return err
 	}
-	allPossibleChangedUsers, err := collectAllUsers(txn, newRolebinding, oldRolebinding)
+	allPossibleChangedUsers, err := collectUsers(txn, []*iam_model.RoleBinding{newRolebinding, oldRolebinding})
 	if err != nil {
 		return err
 	}
@@ -246,13 +252,6 @@ func (h *Hooker) processRolebinding(txn *sharedio.MemoryStoreTxn, _ sharedio.Hoo
 		return err
 	}
 	return h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
-}
-
-func (h *Hooker) processRole(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
-	h.Logger.Debug("call processRole")
-	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
-	// TODO
-	return nil
 }
 
 // add to roles all roles from rolebinding
@@ -276,20 +275,77 @@ func collectChildrenRoles(txn *sharedio.MemoryStoreTxn, rolebindings ...*iam_mod
 	return roles, nil
 }
 
-func collectAllUsers(txn *sharedio.MemoryStoreTxn, rolebindings ...*iam_model.RoleBinding) (map[pkg.UserUUID]struct{}, error) {
-	users := map[pkg.UserUUID]struct{}{}
-	repo := iam_repo.NewGroupRepository(txn)
-	for _, rolebinding := range rolebindings {
-		if rolebinding == nil {
-			continue
-		}
-		newUsers, _, err := repo.FindAllMembersFor(rolebinding.Users, nil, rolebinding.Groups)
-		if err != nil {
-			return nil, err
-		}
-		for userUUID := range newUsers {
-			users[userUUID] = struct{}{}
+func (h *Hooker) processRole(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, objNewRole interface{}) error {
+	h.Logger.Debug("call processRole")
+	newRole, ok := objNewRole.(*iam_model.Role)
+	if !ok {
+		return fmt.Errorf("%w: expected type *iam_model.Role, got: %T", consts.CriticalCodeError, objNewRole)
+	}
+	oldRole, err := iam_repo.NewRoleRepository(txn).GetByID(newRole.Name)
+	if errors.Is(err, consts.ErrNotFound) {
+		err = nil
+	}
+	if newRole.Archived() { // nothing happen
+		return nil
+	}
+	if oldRole == nil {
+		oldRole = &iam_model.Role{}
+	}
+	allPossibleChangedRoles, err := collectDiffRoles(txn, newRole.IncludedRoles, oldRole.IncludedRoles)
+	if err != nil {
+		return err
+	}
+	if len(allPossibleChangedRoles) == 0 {
+		return nil
+	}
+
+	rbs, err := iam_repo.NewRoleBindingRepository(txn).FindDirectRoleBindingsForRoles(newRole.Name)
+	if err != nil {
+		return err
+	}
+
+	var rolebindings []*iam_model.RoleBinding
+	for _, rb := range rbs {
+		rolebindings = append(rolebindings, rb)
+	}
+	allPossibleChangedUsers, err := collectUsers(txn, rolebindings)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Txn.Insert(newRole.ObjType(), newRole) // It's a dirty hack to get future state of DB TODO remake it with writing own store with hooks recieving old, new objects and future txn
+	if err != nil {
+		return err
+	}
+	return h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
+}
+
+// collectDiffRoles collects roles diff, which can produce changes through rolebindings, including child roles
+func collectDiffRoles(txn *sharedio.MemoryStoreTxn, newRoles []iam_model.IncludedRole, oldRoles []iam_model.IncludedRole) (map[pkg.RoleName]struct{}, error) {
+	roleDiff := map[pkg.RoleName]iam_model.IncludedRole{}
+	for _, nr := range newRoles {
+		roleDiff[nr.Name] = nr
+	}
+	for _, or := range oldRoles {
+		stored, has := roleDiff[or.Name]
+		if has && stored != or {
+			delete(roleDiff, or.Name)
+		} else {
+			roleDiff[or.Name] = or
 		}
 	}
-	return users, nil
+	// collect child
+	repo := iam_repo.NewRoleRepository(txn)
+	roles := map[pkg.RoleName]struct{}{}
+	for roleName := range roleDiff {
+		roles[roleName] = struct{}{}
+		childRoles, err := repo.FindAllChildrenRoles(roleName)
+		if err != nil {
+			return nil, fmt.Errorf("collecting child roles: %w", err)
+		}
+		for childRoleName := range childRoles {
+			roles[childRoleName] = struct{}{}
+		}
+	}
+	return roles, nil
 }
