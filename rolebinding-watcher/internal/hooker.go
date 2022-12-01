@@ -4,7 +4,9 @@
 // User: 1) New - new user hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this user can't have any Active Rolebinding
 // Tenant: 1) New - new tenant hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this tenant can't have any Active Rolebinding
 // Group: 1) New - new group hasn't any Rolebinding 2) Archive/Delete - this group can't have any Active Rolebinding 3) Update - if was changed set of users/or group it can change usereffectiveRoles, but if kafka will be compacted, new item can be not new, but edited
-// need to be processed all roles which are on old and new group.
+//        need to be processed all roles which are on old and new group.
+// Project: 1) New/Archive - project can change userEffectiveRole under projectScopedRoles 2) Update/Delete doesn't produce any changes
+
 package internal
 
 import (
@@ -48,11 +50,54 @@ func (h *Hooker) RegisterHooks(memstorage *sharedio.MemoryStore) {
 	})
 }
 
-func (h *Hooker) processProject(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
+func (h *Hooker) processProject(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, objNewProject interface{}) error {
 	h.Logger.Debug("call processProject")
-	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
-	// TODO
-	return nil
+	newProject, ok := objNewProject.(*iam_model.Project)
+	if !ok {
+		return fmt.Errorf("%w: expected type *iam_model.Project, got: %T", consts.CriticalCodeError, objNewProject)
+	}
+	oldProject, err := iam_repo.NewProjectRepository(txn).GetByID(newProject.UUID)
+	if errors.Is(err, consts.ErrNotFound) {
+		err = nil
+	}
+	if !((oldProject == nil && newProject.NotArchived()) || // new active project adding
+		(oldProject != nil && oldProject.NotArchived() && newProject.Archived())) { // archiving project
+		return nil // nothing happen
+	}
+	rbs, err := iam_repo.NewRoleBindingRepository(txn).List(newProject.TenantUUID, false)
+	if err != nil {
+		return fmt.Errorf("collecting tenant rolebindings: %w", err)
+	}
+	allPossibleChangedUsers, err := collectUsers(txn, rbs)
+	if err != nil {
+		return err
+	}
+	allPossibleChangedRoles, err := collectAllProjectScopedRolesFromRolebindings(txn, rbs)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Txn.Insert(newProject.ObjType(), newProject) // It's a dirty hack to get future state of DB TODO remake it with writing own store with hooks recieving old, new objects and future txn
+	if err != nil {
+		return err
+	}
+	return h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
+}
+
+func collectUsers(txn *sharedio.MemoryStoreTxn, rbs []*iam_model.RoleBinding) (map[pkg.UserUUID]struct{}, error) {
+	// collect all direct groups and users
+	groupSet := map[iam_model.GroupUUID]struct{}{}
+	userSet := map[pkg.UserUUID]struct{}{}
+	for _, rb := range rbs {
+		for _, g := range rb.Groups {
+			groupSet[g] = struct{}{}
+		}
+		for _, u := range rb.Users {
+			userSet[u] = struct{}{}
+		}
+	}
+	users, _, err := iam_repo.NewGroupRepository(txn).FindAllMembersFor(makeSlice(userSet), nil, makeSlice(groupSet))
+	return users, err
 }
 
 func (h *Hooker) processGroup(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, objNewGroup interface{}) error {
@@ -101,6 +146,14 @@ func collectAllRolesOfGroups(txn *sharedio.MemoryStoreTxn, groups []iam_model.Gr
 	}
 	// collect roles
 	rbs, err := iam_repo.NewRoleBindingRepository(txn).FindDirectRoleBindingsForGroups(makeSlice(allGroups)...)
+	roles, err := collectAllRolesFromRolebindings(txn, rbs)
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+func collectAllRolesFromRolebindings(txn *sharedio.MemoryStoreTxn, rbs map[iam_model.RoleBindingUUID]*iam_model.RoleBinding) (map[iam_model.RoleName]struct{}, error) {
 	roles := map[iam_model.RoleName]struct{}{}
 	roleRepo := iam_repo.NewRoleRepository(txn)
 	for _, rb := range rbs {
@@ -113,6 +166,27 @@ func collectAllRolesOfGroups(txn *sharedio.MemoryStoreTxn, groups []iam_model.Gr
 			}
 			for roleName := range childRoles {
 				roles[roleName] = struct{}{}
+			}
+		}
+	}
+	return roles, nil
+}
+
+func collectAllProjectScopedRolesFromRolebindings(txn *sharedio.MemoryStoreTxn, rbs []*iam_model.RoleBinding) (map[iam_model.RoleName]struct{}, error) {
+	roles := map[iam_model.RoleName]struct{}{}
+	roleRepo := iam_repo.NewRoleRepository(txn)
+	for _, rb := range rbs {
+		// range over roles
+		for _, role := range rb.Roles {
+			roles[role.Name] = struct{}{}
+			childRoles, err := roleRepo.FindAllChildrenRoles(role.Name)
+			if err != nil {
+				return nil, fmt.Errorf("collecting child roles: %w", err)
+			}
+			for roleName, role := range childRoles {
+				if role.Scope == iam_model.RoleScopeProject {
+					roles[roleName] = struct{}{}
+				}
 			}
 		}
 	}

@@ -1,11 +1,12 @@
 package pkg
 
 import (
+	hcmemdb "github.com/hashicorp/go-memdb"
+
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
-	hcmemdb "github.com/hashicorp/go-memdb"
 )
 
 const (
