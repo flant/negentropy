@@ -1,12 +1,11 @@
 package pkg
 
 import (
-	hcmemdb "github.com/hashicorp/go-memdb"
-
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
+	hcmemdb "github.com/hashicorp/go-memdb"
 )
 
 const (
@@ -78,4 +77,40 @@ func (r *UserEffectiveRolesRepository) Save(userEffectiveRoles *UserEffectiveRol
 
 func (r *UserEffectiveRolesRepository) Delete(userEffectiveRoles *UserEffectiveRoles) error {
 	return r.db.Delete(UserEffectiveRolesType, userEffectiveRoles)
+}
+
+func (r *UserEffectiveRolesRepository) ListRolesForUser(userID UserUUID) (map[RoleName]struct{}, error) {
+	roles := map[RoleName]struct{}{}
+	iter, err := r.db.Get(UserEffectiveRolesType, userIndex, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*UserEffectiveRoles)
+		roles[obj.RoleName] = struct{}{}
+	}
+	return roles, nil
+}
+
+func (r *UserEffectiveRolesRepository) ListUsersForRole(role RoleName) (map[UserUUID]struct{}, error) {
+	users := map[UserUUID]struct{}{}
+	iter, err := r.db.Get(UserEffectiveRolesType, roleIndex, role)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		obj := raw.(*UserEffectiveRoles)
+		users[obj.UserUUID] = struct{}{}
+	}
+	return users, nil
 }

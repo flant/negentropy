@@ -1,3 +1,10 @@
+// How it works
+// The main source of UserEffectiveRoles changes is Rolebinding,
+// Rolebinding: 1) New/Update/Archive - need be processed 2) Delete - doesn't matter as after archiving UserEffectiveRoles disappear
+// User: 1) New - new user hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this user can't have any Active Rolebinding
+// Tenant: 1) New - new tenant hasn't any Rolebinding 2) Update - doesn't change anything 3) Archive/Delete - this tenant can't have any Active Rolebinding
+// Group: 1) New - new group hasn't any Rolebinding 2) Archive/Delete - this group can't have any Active Rolebinding 3) Update - if was changed set of users/or group it can change usereffectiveRoles, but if kafka will be compacted, new item can be not new, but edited
+// need to be processed all roles which are on old and new group.
 package internal
 
 import (
@@ -6,6 +13,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
+	"github.com/flant/negentropy/rolebinding-watcher/pkg"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -20,18 +28,8 @@ type Hooker struct {
 func (h *Hooker) RegisterHooks(memstorage *sharedio.MemoryStore) {
 	memstorage.RegisterHook(sharedio.ObjectHook{
 		Events:     []sharedio.HookEvent{sharedio.HookEventInsert}, // only process insert, as use archiving for this item
-		ObjType:    iam_model.TenantType,
-		CallbackFn: h.processTenant,
-	})
-	memstorage.RegisterHook(sharedio.ObjectHook{
-		Events:     []sharedio.HookEvent{sharedio.HookEventInsert}, // only process insert, as use archiving for this item
 		ObjType:    iam_model.ProjectType,
 		CallbackFn: h.processProject,
-	})
-	memstorage.RegisterHook(sharedio.ObjectHook{
-		Events:     []sharedio.HookEvent{sharedio.HookEventInsert}, // only process insert, as use archiving for this item
-		ObjType:    iam_model.UserType,
-		CallbackFn: h.processUser,
 	})
 	memstorage.RegisterHook(sharedio.ObjectHook{
 		Events:     []sharedio.HookEvent{sharedio.HookEventInsert}, // only process insert, as use archiving for this item
@@ -50,13 +48,6 @@ func (h *Hooker) RegisterHooks(memstorage *sharedio.MemoryStore) {
 	})
 }
 
-func (h *Hooker) processTenant(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
-	h.Logger.Debug("call processTenant")
-	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
-	// TODO
-	return nil
-}
-
 func (h *Hooker) processProject(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
 	h.Logger.Debug("call processProject")
 	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
@@ -64,23 +55,99 @@ func (h *Hooker) processProject(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEve
 	return nil
 }
 
-func (h *Hooker) processUser(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
-	h.Logger.Debug("call processUser")
-	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
-	// TODO
-	return nil
+func (h *Hooker) processGroup(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, objNewGroup interface{}) error {
+	h.Logger.Debug("call processGroup")
+	newGroup, ok := objNewGroup.(*iam_model.Group)
+	if !ok {
+		return fmt.Errorf("%w: expected type *iam_model.Group, got: %T", consts.CriticalCodeError, objNewGroup)
+	}
+	oldGroup, err := iam_repo.NewGroupRepository(txn).GetByID(newGroup.UUID)
+	if errors.Is(err, consts.ErrNotFound) {
+		err = nil
+	}
+	if newGroup.Archived() { // nothing happen
+		return nil
+	}
+	if oldGroup == nil {
+		oldGroup = &iam_model.Group{}
+	}
+	// only changing group is processed - collect diff users of both group
+	allPossibleChangedUsers, err := collectUserDiff(txn, *newGroup, *oldGroup)
+	if err != nil {
+		return err
+	}
+
+	allPossibleChangedRoles, err := collectAllRolesOfGroups(txn, append(newGroup.Groups, oldGroup.Groups...))
+	if err != nil {
+		return err
+	}
+
+	err = txn.Txn.Insert(newGroup.ObjType(), newGroup) // It's a dirty hack to get future state of DB TODO remake it with writing own store with hooks recieving old, new objects and future txn
+	if err != nil {
+		return err
+	}
+	return h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
 }
 
-func (h *Hooker) processGroup(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
-	h.Logger.Debug("call processGroup")
-	h.Logger.Debug(fmt.Sprintf("%#v\n", obj))
-	// TODO
-	return nil
+func collectAllRolesOfGroups(txn *sharedio.MemoryStoreTxn, groups []iam_model.GroupUUID) (map[pkg.RoleName]struct{}, error) {
+	// build allGroupSet which rolebindings can produce changes
+	groupsSet := map[iam_model.GroupUUID]struct{}{}
+	for _, g := range groups {
+		groupsSet[g] = struct{}{}
+	}
+	allGroups, err := iam_repo.NewGroupRepository(txn).FindAllParentGroupsForGroupUUIDs(groupsSet)
+	if err != nil {
+		return nil, fmt.Errorf("collecting groups: %w", err)
+	}
+	// collect roles
+	rbs, err := iam_repo.NewRoleBindingRepository(txn).FindDirectRoleBindingsForGroups(makeSlice(allGroups)...)
+	roles := map[iam_model.RoleName]struct{}{}
+	roleRepo := iam_repo.NewRoleRepository(txn)
+	for _, rb := range rbs {
+		// range over roles
+		for _, role := range rb.Roles {
+			roles[role.Name] = struct{}{}
+			childRoles, err := roleRepo.FindAllChildrenRoles(role.Name)
+			if err != nil {
+				return nil, fmt.Errorf("collecting child roles: %w", err)
+			}
+			for roleName := range childRoles {
+				roles[roleName] = struct{}{}
+			}
+		}
+	}
+	return roles, nil
+}
+
+func collectUserDiff(txn *sharedio.MemoryStoreTxn, newGroup iam_model.Group, oldGroup iam_model.Group) (map[pkg.UserUUID]struct{}, error) {
+	groupDiff := map[iam_model.GroupUUID]struct{}{}
+	for _, ng := range newGroup.Groups {
+		groupDiff[ng] = struct{}{}
+	}
+	for _, og := range oldGroup.Groups {
+		if _, has := groupDiff[og]; has {
+			delete(groupDiff, og)
+		} else {
+			groupDiff[og] = struct{}{}
+		}
+	}
+
+	userDiff := map[pkg.UserUUID]struct{}{}
+	for _, nu := range newGroup.Users {
+		userDiff[nu] = struct{}{}
+	}
+	for _, ou := range oldGroup.Users {
+		if _, has := userDiff[ou]; has {
+			delete(userDiff, ou)
+		} else {
+			userDiff[ou] = struct{}{}
+		}
+	}
+	users, _, err := iam_repo.NewGroupRepository(txn).FindAllMembersFor(makeSlice(userDiff), nil, makeSlice(groupDiff))
+	return users, err
 }
 
 func (h *Hooker) processRolebinding(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, objNewRolebinding interface{}) error {
-	h.Logger.Debug("call processRolebinding")
-	h.Logger.Debug(fmt.Sprintf("new rolebinding %#v\n", objNewRolebinding))
 	newRolebinding, ok := objNewRolebinding.(*iam_model.RoleBinding)
 	if !ok {
 		return fmt.Errorf("%w: expected type *iam_model.RoleBinding, got: %T", consts.CriticalCodeError, objNewRolebinding)
@@ -104,11 +171,7 @@ func (h *Hooker) processRolebinding(txn *sharedio.MemoryStoreTxn, _ sharedio.Hoo
 	if err != nil {
 		return err
 	}
-	err = h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
-	if err != nil {
-		return err
-	}
-	return nil
+	return h.processor.UpdateUserEffectiveRoles(txn, allPossibleChangedUsers, allPossibleChangedRoles)
 }
 
 func (h *Hooker) processRole(txn *sharedio.MemoryStoreTxn, _ sharedio.HookEvent, obj interface{}) error {
@@ -139,8 +202,8 @@ func collectChildrenRoles(txn *sharedio.MemoryStoreTxn, rolebindings ...*iam_mod
 	return roles, nil
 }
 
-func collectAllUsers(txn *sharedio.MemoryStoreTxn, rolebindings ...*iam_model.RoleBinding) (map[iam_model.UserUUID]struct{}, error) {
-	users := map[iam_model.UserUUID]struct{}{}
+func collectAllUsers(txn *sharedio.MemoryStoreTxn, rolebindings ...*iam_model.RoleBinding) (map[pkg.UserUUID]struct{}, error) {
+	users := map[pkg.UserUUID]struct{}{}
 	repo := iam_repo.NewGroupRepository(txn)
 	for _, rolebinding := range rolebindings {
 		if rolebinding == nil {
