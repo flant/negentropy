@@ -3,7 +3,9 @@ module github.com/flant/negentropy/rolebinding-watcher
 go 1.17
 
 require (
-	github.com/flant/negentropy/kafka-consumer v0.0.1
+	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/flant/negentropy/authd v0.0.0
+	github.com/flant/negentropy/kafka-consumer v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1
@@ -19,7 +21,6 @@ require (
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/confluentinc/confluent-kafka-go v1.9.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.1.0 // indirect
@@ -77,6 +78,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -105,8 +107,10 @@ require (
 )
 
 replace (
+	github.com/flant/negentropy/authd v0.0.0 => ../authd
+	github.com/flant/negentropy/cli v0.0.0 => ../cli // indirect
 	github.com/flant/negentropy/e2e v0.0.0 => ../e2e // indirect
-	github.com/flant/negentropy/kafka-consumer v0.0.1 => ../kafka-consumer
+	github.com/flant/negentropy/kafka-consumer v0.0.0 => ../kafka-consumer
 	github.com/flant/negentropy/vault-plugins/flant_iam v0.0.0 => ../vault-plugins/flant_iam
 	github.com/flant/negentropy/vault-plugins/flant_iam_auth v0.0.0 => ../vault-plugins/flant_iam_auth
 	github.com/flant/negentropy/vault-plugins/shared v0.0.1 => ../vault-plugins/shared

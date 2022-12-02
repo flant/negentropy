@@ -3,7 +3,6 @@ package internal
 import (
 	"crypto/sha256"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -26,15 +25,17 @@ type Daemon struct {
 	logger     hclog.Logger
 }
 
-func (d *Daemon) Run(userEffectiveRoleProcessor UserEffectiveRoleProcessor) error {
+func (d *Daemon) Run(userEffectiveRoleProcessor UserEffectiveRoleProcessor) {
 	hooker := &Hooker{
 		Logger:    d.logger.Named("hooker"),
 		processor: &ChangesProcessor{userEffectiveRoleProcessor: userEffectiveRoleProcessor, Logger: d.logger},
 	}
 	hooker.RegisterHooks(d.memstorage)
-	d.memstorage.RunKafkaSourceMainLoops()
-	time.Sleep(time.Hour * 1000000) // TODO remake it
-	return nil
+	go d.memstorage.RunKafkaSourceMainLoops()
+}
+
+func (d *Daemon) Stop() {
+	d.memstorage.Close()
 }
 
 func NewDaemon(kafkaCFG sharedkafka.BrokerConfig, topicName string,

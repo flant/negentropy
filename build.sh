@@ -149,6 +149,7 @@ function build_rolebinding_watcher() {
     -w /go/src/app/rolebinding-watcher \
     -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
     -v $SCRIPTDIR/e2e:/go/src/app/e2e \
+    -v $SCRIPTDIR/authd:/go/src/app/authd \
     -v $SCRIPTDIR/kafka-consumer:/go/src/app/kafka-consumer \
     -v $SCRIPTDIR/rolebinding-watcher/build:/src/build \
     -v $SCRIPTDIR/rolebinding-watcher:/go/src/app/rolebinding-watcher \
