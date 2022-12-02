@@ -84,6 +84,8 @@ func Test_Rolebindings(t *testing.T) {
 		AnyProject: true,
 	}
 
+	emptyUser1Role1UER := emptyUserEffectiveRoles(iam_fixtures.UserUUID1, iam_fixtures.RoleName1)
+
 	baseUserEffectiveRoles := pkg.UserEffectiveRoles{
 		UserUUID: iam_fixtures.UserUUID1,
 		RoleName: iam_fixtures.RoleName1,
@@ -101,6 +103,31 @@ func Test_Rolebindings(t *testing.T) {
 
 	t.Run("new rolebinding", func(t *testing.T) {
 		mock.expectedCalls = []pkg.UserEffectiveRoles{baseUserEffectiveRoles}
+		tx = store.Txn(true)
+		rb := baseRolebinding
+
+		require.NoError(t, tx.Insert(iam_model.RoleBindingType, &rb))
+		require.NoError(t, tx.Commit())
+
+		require.Nil(t, mock.CallsToDo())
+	})
+
+	t.Run("add user2 to rolebinding", func(t *testing.T) {
+		uer := baseUserEffectiveRoles
+		uer.UserUUID = iam_fixtures.UserUUID2
+		mock.expectedCalls = []pkg.UserEffectiveRoles{uer}
+		tx = store.Txn(true)
+		rb := baseRolebinding
+		rb.Users = append(rb.Users, iam_fixtures.UserUUID2)
+
+		require.NoError(t, tx.Insert(iam_model.RoleBindingType, &rb))
+		require.NoError(t, tx.Commit())
+
+		require.Nil(t, mock.CallsToDo())
+	})
+
+	t.Run("remove user2 back from rolebinding", func(t *testing.T) {
+		mock.expectedCalls = []pkg.UserEffectiveRoles{emptyUserEffectiveRoles(iam_fixtures.UserUUID2, iam_fixtures.RoleName1)}
 		tx = store.Txn(true)
 		rb := baseRolebinding
 
@@ -137,9 +164,7 @@ func Test_Rolebindings(t *testing.T) {
 	})
 
 	t.Run("delete rolebinding", func(t *testing.T) {
-		uer := baseUserEffectiveRoles
-		uer.Tenants = nil // it means role disappears for a user
-		mock.expectedCalls = []pkg.UserEffectiveRoles{uer}
+		mock.expectedCalls = []pkg.UserEffectiveRoles{emptyUser1Role1UER}
 		tx = store.Txn(true)
 		rb := baseRolebinding
 		rb.Archive(memdb.NewArchiveMark())
@@ -188,7 +213,7 @@ func Test_Groups(t *testing.T) {
 		}},
 	}
 
-	t.Run("add user to group", func(t *testing.T) {
+	t.Run("add user5 to group", func(t *testing.T) {
 		mock.SkipCheck = false
 		mock.expectedCalls = []pkg.UserEffectiveRoles{userEffectiveRoles}
 		tx = store.Txn(true)
@@ -354,4 +379,11 @@ func Test_Roles(t *testing.T) {
 
 		require.Nil(t, mock.CallsToDo())
 	})
+}
+
+func emptyUserEffectiveRoles(userUUID iam_model.UserUUID, roleName iam_model.RoleName) pkg.UserEffectiveRoles {
+	return pkg.UserEffectiveRoles{
+		UserUUID: userUUID,
+		RoleName: roleName,
+	}
 }
