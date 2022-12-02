@@ -225,18 +225,12 @@ func (rk *KafkaSourceImpl) Restore(txn *memdb.Txn) error {
 		return fmt.Errorf("%s has unstopped main reading loop", rk.Name())
 	}
 
-	restorationConsumer, err := rk.KafkaBroker.GetRestorationReader()
-	if err != nil {
-		return err
-	}
-	defer sharedkafka.DeferredСlose(restorationConsumer, rk.Logger)
-
-	return rk.RunRestorationLoop(restorationConsumer, txn, rk.msgRestoreHandler, rk.Logger)
+	return rk.RunRestorationLoop(txn, rk.msgRestoreHandler, rk.Logger)
 }
 
 // RunRestorationLoop read from topic untill runConsumer or untill the end of topic
-func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer *kafka.Consumer, txn Txn,
-	handler func(txn Txn, msg *kafka.Message, logger hclog.Logger) error, logger hclog.Logger) error {
+func (rk *KafkaSourceImpl) RunRestorationLoop(txn Txn, handler func(txn Txn, msg *kafka.Message,
+	logger hclog.Logger) error, logger hclog.Logger) error {
 	logger = logger.Named("RunRestorationLoop")
 	topicName := rk.ProvideTopicName(rk.KafkaBroker)
 	logger.Debug("started", "topicName", topicName)
@@ -244,7 +238,6 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer *kafka.Consumer, txn T
 	runConsumerID := rk.ProvideRunConsumerGroupID(rk.KafkaBroker)
 
 	var lastProcessedOffset int64
-	var partition int32
 	var err error
 	if rk.RestoreStrictlyTillRunConsumer {
 		lastProcessedOffset, err = LastOffsetFromStorage(context.Background(), rk.Storage, runConsumerID, topicName)
@@ -252,11 +245,17 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer *kafka.Consumer, txn T
 			return fmt.Errorf("getting last offset from storage:%w", err)
 		}
 	} else {
-		lastProcessedOffset, partition, err = LastOffsetByNewConsumer(newConsumer, topicName)
+		newConsumer, err := rk.KafkaBroker.GetRestorationReader()
+		if err != nil {
+			return err
+		}
+
+		lastProcessedOffset, _, err = LastOffsetByNewConsumer(newConsumer, topicName)
 		if err != nil {
 			return fmt.Errorf("getting offset by newConsumer:%w", err)
 		}
-
+		defer sharedkafka.DeferredСlose(newConsumer, rk.Logger)
+		time.Sleep(time.Nanosecond) // to guarantee getting definitely new RestorationReader
 	}
 
 	if lastProcessedOffset <= 0 {
@@ -264,11 +263,16 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(newConsumer *kafka.Consumer, txn T
 		return nil
 	}
 
-	newConsumer.Unassign() // nolint:errcheck
-	err = setNewConsumerToBeginning(newConsumer, topicName, partition)
+	newConsumer, err := rk.KafkaBroker.GetRestorationReader()
 	if err != nil {
 		return err
 	}
+
+	err = newConsumer.Subscribe(topicName, nil)
+	if err != nil {
+		return err
+	}
+	defer sharedkafka.DeferredСlose(newConsumer, rk.Logger)
 
 	c := newConsumer.Events()
 	consumed := 0
@@ -367,19 +371,6 @@ func getMetaDataWithRetry(consumer *kafka.Consumer, topicName string) (*kafka.Me
 		return nil, fmt.Errorf("getting metadata for topic: %q: %w", topicName, err)
 	}
 	return meta, nil
-}
-
-func setNewConsumerToBeginning(consumer *kafka.Consumer, topicName string, partition int32) error {
-	tp := kafka.TopicPartition{
-		Topic:     &topicName,
-		Partition: partition,
-		Offset:    kafka.OffsetBeginning,
-	}
-	err := consumer.Assign([]kafka.TopicPartition{tp})
-	if err != nil {
-		return fmt.Errorf("assigning first message: %w", err)
-	}
-	return nil
 }
 
 func thirtySecondsBackoff() backoff.BackOff {
