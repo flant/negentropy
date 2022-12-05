@@ -470,7 +470,7 @@ func (mb *MessageBroker) CreateTopic(ctx context.Context, topic string, config m
 		ReplicationFactor: repFactor,
 		Config: map[string]string{
 			"min.insync.replicas": strconv.FormatInt(int64(inSyncReplicas), 10),
-			"cleanup.policy":      "compact, delete",
+			"cleanup.policy":      "compact",
 		},
 	}
 
