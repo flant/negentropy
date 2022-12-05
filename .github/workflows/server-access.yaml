@@ -1,0 +1,35 @@
+name: Releases server-access
+
+on: 
+  push:
+    tags:
+    - '*'
+
+jobs:
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: |
+          bash build.sh authd && \
+          bash build.sh cli && \
+          bash build.sh nss && \
+          bash build.sh server-accessd && \
+          mkdir -p /tmp/bin && cp cli/build/cli authd/build/authd server-access/flant-server-accessd/build/server-accessd server-access/server-access-nss/build/libnss_flantauth.so.2 /tmp/bin && \
+          cd /tmp && tar -czvf release.tar.gz bin
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          artifacts: "release.tar.gz"
