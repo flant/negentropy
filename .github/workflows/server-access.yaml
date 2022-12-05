@@ -25,11 +25,11 @@ jobs:
           bash build.sh nss && \
           bash build.sh server-accessd && \
           mkdir -p /tmp/bin && cp cli/build/cli authd/build/authd server-access/flant-server-accessd/build/server-accessd server-access/server-access-nss/build/libnss_flantauth.so.2 /tmp/bin && \
-          cd /tmp && tar -czvf release.tar.gz bin
+          cd /tmp && tar -czvf /tmp/server-access.tar.gz bin
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          artifacts: "release.tar.gz"
+          artifacts: "/tmp/server-access.tar.gz"
