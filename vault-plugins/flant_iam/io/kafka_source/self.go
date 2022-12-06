@@ -16,7 +16,7 @@ import (
 type RestoreFunc func(txn io.Txn, decoded io.MsgDecoded) (handled bool, err error)
 
 func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []RestoreFunc, parentLogger log.Logger) *io.KafkaSourceImpl {
-	allRestoreHandlers := append(restoreHandlers, IamObjectsRestoreHandler)
+	restoreHandlers = append(restoreHandlers, IamObjectsRestoreHandler)
 	runConsumerGroupIDProvider := func(kf *sharedkafka.MessageBroker) string {
 		return kf.PluginConfig.SelfTopicName
 	}
@@ -31,7 +31,7 @@ func NewSelfKafkaSource(kf *sharedkafka.MessageBroker, restoreHandlers []Restore
 		return sharedkafka.NewEncrypter().Decrypt(encryptedMessageValue, kf.EncryptionPrivateKey(), chunked)
 	}
 	proccessRestoreMessage := func(txn io.Txn, m io.MsgDecoded) error {
-		for _, r := range allRestoreHandlers {
+		for _, r := range restoreHandlers {
 			handled, err := r(txn, m)
 			if err != nil {
 				return err
