@@ -109,7 +109,7 @@ func kafkaSource(mb *sharedkafka.MessageBroker, topicName string,
 	return &sharedio.KafkaSourceImpl{
 		NameOfSource: "rolebinding-watcher-consumer",
 		KafkaBroker:  mb,
-		Logger:       parentLogger.Named("kafka-consumer"),
+		Logger:       parentLogger.Named("rolebinding-watcher"),
 		ProvideRunConsumerGroupID: func(kf *sharedkafka.MessageBroker) string {
 			return runConsumerID
 		},
