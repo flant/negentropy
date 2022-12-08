@@ -28,7 +28,7 @@ func identitySharingFixture(t *testing.T, store *io.MemoryStore) {
 }
 
 func Test_ListIdentitySharing(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture,
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture,
 		identitySharingFixture).Txn(true)
 	repo := iam_repo.NewIdentitySharingRepository(tx)
 
@@ -43,7 +43,7 @@ func Test_ListIdentitySharing(t *testing.T) {
 }
 
 func Test_ListForDestinationTenant(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture,
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture,
 		identitySharingFixture).Txn(true)
 	repo := iam_repo.NewIdentitySharingRepository(tx)
 
@@ -58,7 +58,7 @@ func Test_ListForDestinationTenant(t *testing.T) {
 }
 
 func Test_ListDestinationTenantsByGroupUUIDs(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture,
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture,
 		identitySharingFixture).Txn(true)
 	repo := iam_repo.NewIdentitySharingRepository(tx)
 
@@ -73,7 +73,7 @@ func Test_ListDestinationTenantsByGroupUUIDs(t *testing.T) {
 }
 
 func Test_ListDestinationTenantsByGroupUUIDs2(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture, serviceAccountFixture, groupFixture,
+	tx := RunFixtures(t, TenantFixture, UserFixture, ServiceAccountFixture, GroupFixture,
 		identitySharingFixture).Txn(true)
 	repo := iam_repo.NewIdentitySharingRepository(tx)
 

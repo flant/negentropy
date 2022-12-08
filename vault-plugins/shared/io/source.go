@@ -28,6 +28,10 @@ func (m *MsgDecoded) IsDeleted() bool {
 	return len(m.Data) == 0
 }
 
+func (m *MsgDecoded) Key() string {
+	return m.Type + "/" + m.ID
+}
+
 type Txn interface {
 	Insert(table string, obj interface{}) error
 	Delete(table string, obj interface{}) error
@@ -120,14 +124,15 @@ func (rk *KafkaSourceImpl) runMessageLoop(store *MemoryStore, consumer *kafka.Co
 		case ev := <-consumer.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
+				msgKey := string(e.Key)
 				err := rk.msgRunHandler(store, consumer, e)
 				// commit is provided through MemStore.Commit(...)
 				if errors.Is(err, errWrongSignature) && rk.SkipRestorationOnWrongSignature {
-					rk.Logger.Debug(fmt.Sprintf("%s: message skiped", err.Error()))
+					rk.Logger.Debug(fmt.Sprintf("%s: message %q skiped", err.Error(), msgKey))
 					err = nil
 				}
 				if err != nil {
-					rk.Logger.Error(fmt.Sprintf("msg: %s: %s", string(e.Key), err.Error()))
+					rk.Logger.Error(fmt.Sprintf("msg: %s: %s", msgKey, err.Error()))
 				}
 				if rk.RestoreStrictlyTillRunConsumer {
 					err = StoreLastOffsetToStorage(context.Background(),
@@ -151,7 +156,7 @@ func (rk *KafkaSourceImpl) msgRunHandler(store *MemoryStore, sourceConsumer *kaf
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s", decoded.Key()))
 
 	source, err := sharedkafka.NewSourceInputMessage(sourceConsumer, msg.TopicPartition)
 	if err != nil {
@@ -291,7 +296,7 @@ func (rk *KafkaSourceImpl) RunRestorationLoop(txn Txn, handler func(txn Txn, msg
 		err = handler(txn, msg, logger)
 		consumed++
 		if err != nil {
-			return err
+			return fmt.Errorf("key: %s, offset: %d: %w", msg.Key, msg.TopicPartition.Offset, err)
 		}
 		if currentMessageOffset == lastProcessedOffset {
 			logger.Info(fmt.Sprintf("topicName: %s - normal finish, consumed %d", topicName, consumed))
@@ -310,7 +315,7 @@ func (rk *KafkaSourceImpl) msgRestoreHandler(txn Txn, msg *kafka.Message, _ hclo
 		return fmt.Errorf("decoding and checking message: %w", err)
 	}
 
-	rk.Logger.Debug(fmt.Sprintf("got message: %s/%s", decoded.Type, decoded.ID))
+	rk.Logger.Debug(fmt.Sprintf("got message: %s", decoded.Key()))
 
 	operation := func() error {
 		return rk.ProcessRestoreMessage(txn, *decoded)
@@ -377,4 +382,28 @@ func thirtySecondsBackoff() backoff.BackOff {
 	backoffRequest := backoff.NewExponentialBackOff()
 	backoffRequest.MaxElapsedTime = time.Second * 30
 	return backoffRequest
+}
+
+// HandleTombStone common handle of message contains tombstone, it checks is msgs tombstone, if true - try delete record from db
+// using:
+// handled, err := HandleTombStone(txn, msg)
+// if handled || err != nil {
+//     return err
+// }
+func HandleTombStone(db Txn, msg MsgDecoded) (bool, error) {
+	if !msg.IsDeleted() {
+		return false, nil
+	}
+	obj, err := db.First(msg.Type, "id", msg.ID)
+	if err != nil {
+		return false, fmt.Errorf("try get deleting object %q: %w", msg.Key(), err)
+	}
+	if obj == nil { // already is absent
+		return true, nil
+	}
+	err = db.Delete(msg.Type, obj)
+	if err != nil {
+		return false, fmt.Errorf("try delete object %q: %w", msg.Key(), err)
+	}
+	return true, nil
 }

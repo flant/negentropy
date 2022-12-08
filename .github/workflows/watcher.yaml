@@ -1,4 +1,4 @@
-name: Plugins
+name: Watcher
 
 on:
   push:
@@ -7,16 +7,9 @@ on:
   pull_request:
 
 jobs:
-  plugins:
-    name: Tests
+  rego:
+    name: Watcher
     runs-on: ubuntu-latest
-    env:
-      GOFLAGS: -mod=readonly
-    strategy:
-      max-parallel: 6
-      fail-fast: false
-      matrix:
-        plugin: [ "shared", "flant_iam", "flant_iam_auth", "flant_gitops" ]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -31,17 +24,14 @@ jobs:
           # For more details, see:
           # https://github.com/actions/checkout/issues/299.
           ref: ${{ github.event.pull_request.head.sha }}
-      
-      - name: Check panics in vault_plugins
-        run: sh -c '! grep -r panic vault-plugins/ | grep -Ev "nolint\:panic\_check|\_test\.go|\/tests\/|vault"'
 
       - name: Install golang-ci lint
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.41.1
 
-      - name: Lint ${{ matrix.plugin }}
-        working-directory: vault-plugins/${{ matrix.plugin }}
-        run: ${GITHUB_WORKSPACE}/bin/golangci-lint --version; ${GITHUB_WORKSPACE}/bin/golangci-lint run ./... --config ../.golangci.yaml
+      - name: Lint Watcher
+        working-directory: rolebinding-watcher
+        run: ${GITHUB_WORKSPACE}/bin/golangci-lint --version; ${GITHUB_WORKSPACE}/bin/golangci-lint run ./... --config ../vault-plugins/.golangci.yaml
 
-      - name: Test ${{ matrix.plugin }}
-        working-directory: vault-plugins/${{ matrix.plugin }}
+      - name: Test Watcher
+        working-directory: rolebinding-watcher
         run: go test -race -vet=off ./...

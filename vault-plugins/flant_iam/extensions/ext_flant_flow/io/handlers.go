@@ -10,6 +10,11 @@ import (
 
 // HandleFlantFlowObjects try to handle kafka messages as flant_flow objects
 func HandleFlantFlowObjects(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
+	handled, err = io.HandleTombStone(txn, msg)
+	if handled || err != nil {
+		return handled, err
+	}
+
 	var object interface{}
 	switch msg.Type {
 	case ext_model.TeamType:

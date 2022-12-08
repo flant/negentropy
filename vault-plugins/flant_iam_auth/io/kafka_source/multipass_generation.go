@@ -10,7 +10,6 @@ import (
 
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/io"
 	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/model"
-	"github.com/flant/negentropy/vault-plugins/flant_iam_auth/repo"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
 	sharedkafka "github.com/flant/negentropy/vault-plugins/shared/kafka"
 )
@@ -52,8 +51,9 @@ func NewMultipassGenerationSource(storage logical.Storage, kf *sharedkafka.Messa
 }
 
 func processMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
-	if msg.IsDeleted() {
-		return processDeletingMessage(txn, msg)
+	handled, err := sharedio.HandleTombStone(txn, msg)
+	if handled || err != nil {
+		return err
 	}
 	return processCUMessage(txn, msg)
 }
@@ -67,15 +67,4 @@ func processCUMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
 	}
 
 	return txn.Insert(model.MultipassGenerationNumberType, mpgn)
-}
-
-func processDeletingMessage(txn sharedio.Txn, msg sharedio.MsgDecoded) error {
-	obj, err := txn.First(model.MultipassGenerationNumberType, repo.ID, msg.ID)
-	if err != nil {
-		return err
-	}
-	if obj == nil {
-		return nil
-	}
-	return txn.Delete(model.MultipassGenerationNumberType, obj)
 }

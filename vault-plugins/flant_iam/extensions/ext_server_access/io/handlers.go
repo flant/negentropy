@@ -10,6 +10,11 @@ import (
 
 // HandleServerAccessObjects try to handle kafka messages as ServerAccess objects
 func HandleServerAccessObjects(txn io.Txn, msg io.MsgDecoded) (handled bool, err error) {
+	handled, err = io.HandleTombStone(txn, msg)
+	if handled || err != nil {
+		return handled, err
+	}
+
 	var object interface{}
 	switch msg.Type {
 	case ext_model.ServerType:
