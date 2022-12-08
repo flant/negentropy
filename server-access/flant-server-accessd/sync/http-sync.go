@@ -54,6 +54,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = ApplyChanges(ctx, s.DB, uwg)
 		if err != nil {
+			println(err.Error())
 			log.Fatal(err)
 		}
 

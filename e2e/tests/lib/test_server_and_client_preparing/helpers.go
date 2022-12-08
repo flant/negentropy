@@ -33,6 +33,11 @@ func RunAndCheckServerAccessd(s Suite, posixUserName string, testServerUUID stri
 		return fmt.Errorf("folder:%s should be created, but got error: %w", path, err)
 	}
 	s.KillAllInstancesOfProcessAtContainer(s.TestServerContainer, s.ServerAccessdPath)
+	err = s.DeleteFileAtContainer(s.TestServerContainer, path+"/server-accessd.db")
+	if err != nil {
+		return fmt.Errorf("server-accessd.db: should be deleted, but got error: %w", err)
+	}
+
 	s.RunDaemonAtContainer(s.TestServerContainer, s.ServerAccessdPath, "server_accessd.log")
 	err = Try(10, func() error {
 		pidServerAccessd := s.FirstProcessPIDAtContainer(s.TestServerContainer, s.ServerAccessdPath)
