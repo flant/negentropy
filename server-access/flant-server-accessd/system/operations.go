@@ -80,36 +80,37 @@ func (s *SystemOperator) PurgeUserLegacy(username string) error {
 	}
 
 	// we can't parse /var/run/utmp directly, since its serialization format is platform-dependent
-	cmd := exec.Command("who", "-u")
+	cmd := exec.Command("ps", "-o", "pid", "-u", username)
+
 	out, err := cmd.Output()
 	if err != nil {
+		fmt.Println(err.Error())
+		fmt.Println(string(out))
 		return err
 	}
-
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	for scanner.Scan() {
 		line := scanner.Text()
-
+		fmt.Println(line)
 		fields := strings.Fields(line)
-		if len(fields) != 7 {
-			return fmt.Errorf(`"who" command output doesn't have 7 fields: %q`, line)
+		if len(fields) != 1 {
+			return fmt.Errorf(`"ps -o pid -u $USER" command output doesn't have 1 fields: %q`, line)
 		}
-
-		pidToKill, err := strconv.Atoi(fields[6])
+		if fields[0] == "PID" {
+			continue
+		}
+		pidToKill, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return err
 		}
+		process, err := os.FindProcess(pidToKill)
+		if err != nil {
+			return nil
+		}
 
-		if fields[0] == username {
-			process, err := os.FindProcess(pidToKill)
-			if err != nil {
-				return nil
-			}
-
-			err = process.Kill()
-			if err != nil {
-				return nil
-			}
+		err = process.Kill()
+		if err != nil {
+			return nil
 		}
 	}
 
