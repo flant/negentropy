@@ -19,8 +19,6 @@ const (
 	TenantUUIDGroupIdIndex     = "tenant_uuid_group_id"
 )
 
-type GroupObjectType string
-
 func GroupSchema() *memdb.DBSchema {
 	tenantUUIDGroupIdIndexer := []hcmemdb.Indexer{
 		&hcmemdb.StringFieldIndex{

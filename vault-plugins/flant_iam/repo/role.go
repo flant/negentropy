@@ -306,3 +306,35 @@ func (r *RoleRepository) FindAllAncestorsRoles(roleID model.RoleName) (map[model
 	}
 	return result, nil
 }
+
+func (r *RoleRepository) FindAllChildrenRoles(roleID model.RoleName) (map[model.RoleName]*model.Role, error) {
+	role, err := r.GetByID(roleID)
+	if err != nil {
+		return nil, fmt.Errorf("getting %q: %w", roleID, err)
+	}
+	result := map[model.RoleName]*model.Role{roleID: role}
+	if role.Archived() {
+		return result, nil
+	}
+	currentSet := map[model.RoleName]*model.Role{roleID: role}
+	for len(currentSet) != 0 {
+		nextSet := map[model.RoleName]*model.Role{}
+		for _, currentRole := range currentSet {
+			for _, candidate := range currentRole.IncludedRoles {
+				if _, found := result[candidate.Name]; !found && candidate.Name != roleID {
+					role, err = r.GetByID(candidate.Name)
+					if err != nil {
+						return nil, fmt.Errorf("getting %q: %w", candidate.Name, err)
+					}
+					if role.Archived() {
+						continue
+					}
+					result[candidate.Name] = role
+					nextSet[candidate.Name] = role
+				}
+			}
+		}
+		currentSet = nextSet
+	}
+	return result, nil
+}

@@ -8,30 +8,11 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
-	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
 
-func createUsers(t *testing.T, repo *iam_repo.UserRepository, users ...model.User) {
-	for _, user := range users {
-		tmp := user
-		tmp.Version = uuid.New()
-		tmp.FullIdentifier = uuid.New()
-		err := repo.Create(&tmp)
-		require.NoError(t, err)
-	}
-}
-
-func userFixture(t *testing.T, store *io.MemoryStore) {
-	tx := store.Txn(true)
-	repo := iam_repo.NewUserRepository(tx)
-	createUsers(t, repo, fixtures.Users()...)
-	err := tx.Commit()
-	require.NoError(t, err)
-}
-
 func Test_UserList(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture).Txn(true)
 	repo := iam_repo.NewUserRepository(tx)
 
 	users, err := repo.List(fixtures.TenantUUID1, false)
@@ -45,7 +26,7 @@ func Test_UserList(t *testing.T) {
 }
 
 func Test_forbidDoublingEmailAtTenant(t *testing.T) {
-	tx := RunFixtures(t, TenantFixture, userFixture).Txn(true)
+	tx := RunFixtures(t, TenantFixture, UserFixture).Txn(true)
 	repo := iam_repo.NewUserRepository(tx)
 	oldUser := fixtures.Users()[0]
 	extraUserWithSameEmail := &model.User{

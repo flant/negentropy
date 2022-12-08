@@ -138,6 +138,28 @@ function build_kafka_consumer() {
     go build -o /src/build/consumer cmd/consumer/main.go
 }
 
+function build_rolebinding_watcher() {
+  echo "Building rolebinding-watcher"
+
+  mkdir -p $SCRIPTDIR/rolebinding-watcher/build
+  mkdir -p /tmp/rolebinding-watcher-build
+
+  docker run --rm \
+    --platform=linux/amd64 \
+    -w /go/src/app/rolebinding-watcher \
+    -v $SCRIPTDIR/vault-plugins:/go/src/app/vault-plugins \
+    -v $SCRIPTDIR/e2e:/go/src/app/e2e \
+    -v $SCRIPTDIR/authd:/go/src/app/authd \
+    -v $SCRIPTDIR/kafka-consumer:/go/src/app/kafka-consumer \
+    -v $SCRIPTDIR/rolebinding-watcher/build:/src/build \
+    -v $SCRIPTDIR/rolebinding-watcher:/go/src/app/rolebinding-watcher \
+    -v /tmp/rolebinding-watcher-build:/go/pkg/mod \
+    -e GO111MODULE=on \
+    golang:1.17 \
+    go build -o /src/build/rolebinding-watcher cmd/watcher/main.go
+}
+
+
 function build_vault() {
 
   echo "Building vault"
@@ -164,6 +186,7 @@ function build_all() {
   build_nss
   build_oidc_mock
   build_kafka_consumer
+  build_rolebinding_watcher
   build_vault
 }
 
@@ -195,6 +218,10 @@ while [[ $# -gt 0 ]]; do
     ;;
     kafka-consumer)
     TARGET="kafka-consumer"
+    break
+    ;;
+    rolebinding-watcher)
+    TARGET="rolebinding-watcher"
     break
     ;;
     vault)
@@ -239,6 +266,10 @@ fi
 
 if [ "$TARGET" == "kafka-consumer" ]; then
   build_kafka_consumer
+fi
+
+if [ "$TARGET" == "rolebinding-watcher" ]; then
+  build_rolebinding_watcher
 fi
 
 if [ "$TARGET" == "vault" ]; then

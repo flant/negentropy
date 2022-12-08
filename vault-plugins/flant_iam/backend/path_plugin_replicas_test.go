@@ -179,3 +179,73 @@ func generateBackend(t *testing.T) (logical.Backend, logical.Storage) {
 
 	return b, config.StorageView
 }
+
+type node struct {
+	id         string
+	predessors []string
+}
+
+type linearIterator struct {
+	items []node
+}
+
+func (l *linearIterator) WatchCh() <-chan struct{} {
+	panic("not implemented")
+}
+
+func (l *linearIterator) Next() interface{} {
+	if len(l.items) == 0 {
+		return nil
+	}
+	var raw interface{} = l.items[0]
+	l.items = l.items[1:]
+	return raw
+}
+
+func Test_regularizedResultIterator(t *testing.T) {
+	iter := regularizedResultIterator{
+		Source: &linearIterator{items: []node{
+			{
+				id:         "a",
+				predessors: []string{"b", "c"},
+			},
+			{
+				id:         "b",
+				predessors: []string{"c", "d"},
+			},
+			{
+				id:         "c",
+				predessors: []string{"d"},
+			},
+			{
+				id:         "d",
+				predessors: []string{},
+			},
+			{
+				id:         "f",
+				predessors: []string{"a"},
+			},
+		}},
+		ObjectDescriptor: func(object interface{}) (objectID, []predecessorID) {
+			node := object.(node)
+			return node.id, node.predessors
+		},
+	}
+
+	actual := []string{}
+	counter := 0
+	for {
+		raw := iter.Next()
+		if raw == nil {
+			break
+		}
+		counter++
+		if counter > 5 {
+			t.Fatal("more then 5 calls Next()")
+		}
+		node := raw.(node)
+		actual = append(actual, node.id)
+	}
+	require.Equal(t, 5, counter)
+	require.Equal(t, []string{"d", "c", "b", "a", "f"}, actual)
+}
