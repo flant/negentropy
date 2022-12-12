@@ -6,11 +6,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/config"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/fixtures"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
+	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/uuid"
 )
@@ -65,4 +67,25 @@ func Test_TeammateList(t *testing.T) {
 	require.ElementsMatch(t, []string{
 		fixtures.TeammateUUID1, fixtures.TeammateUUID3,
 	}, ids)
+}
+
+func Test_TeammateEraseAfterDelete(t *testing.T) {
+	tx := runFixtures(t, teamFixture, teammateFixture).Txn(true)
+	teammateService := Teammates(tx, &config.FlantFlowConfig{
+		FlantTenantUUID: fixtures.FlantUUID,
+	})
+	err := teammateService.Delete(fixtures.TeammateUUID1)
+	require.NoError(t, err)
+	// ====
+	err = teammateService.Erase(fixtures.TeammateUUID1)
+	require.NoError(t, err)
+	// ====
+	// Checks teammate and user are erased
+	teammate, err := repo.NewTeammateRepository(tx).GetByID(fixtures.TeammateUUID1)
+	require.ErrorIs(t, err, consts.ErrNotFound)
+	require.Nil(t, teammate)
+
+	user, err := iam_repo.NewUserRepository(tx).GetByID(fixtures.TeammateUUID1)
+	require.ErrorIs(t, err, consts.ErrNotFound)
+	require.Nil(t, user)
 }

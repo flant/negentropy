@@ -161,7 +161,7 @@ func (b tenantBackend) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleErase(),
-					Summary:  "Erase all of tenant by ID .",
+					Summary:  "Erase all of tenant by ID.",
 				},
 			},
 		},

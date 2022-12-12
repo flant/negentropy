@@ -121,7 +121,7 @@ func (r *TeammateRepository) Delete(id iam_model.UserUUID, archiveMark memdb.Arc
 		return consts.ErrIsArchived
 	}
 
-	return r.db.Archive(model.TeammateType, teammate, archiveMark)
+	return r.db.CascadeArchive(model.TeammateType, teammate, archiveMark)
 }
 
 func (r *TeammateRepository) List(teamID model.TeamUUID, showArchived bool) ([]*model.Teammate, error) {
@@ -222,4 +222,15 @@ func (r *TeammateRepository) ListAll(showArchived bool) ([]*model.Teammate, erro
 		return nil, err
 	}
 	return list, nil
+}
+
+func (r *TeammateRepository) CascadeErase(id iam_model.UserUUID) error {
+	teammate, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if teammate.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return r.db.CascadeDelete(model.TeammateType, teammate)
 }
