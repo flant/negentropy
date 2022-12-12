@@ -135,12 +135,12 @@ func (t *Txn) CascadeArchive(table string, objPtr interface{}, archiveMark Archi
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
-	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archiveMark), ErrNotEmptyRelation)
+	err = t.WithSkippingInsertForeignKeysCheck().processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archiveMark), ErrNotEmptyRelation)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
 	a.Archive(archiveMark)
-	err = t.Insert(table, objPtr)
+	err = t.WithSkippingInsertForeignKeysCheck().Insert(table, objPtr)
 	if err != nil {
 		return fmt.Errorf("cascadeArchive:%w", err)
 	}
