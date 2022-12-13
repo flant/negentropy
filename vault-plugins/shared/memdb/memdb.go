@@ -2,11 +2,10 @@ package memdb
 
 import (
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"reflect"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
-
-	"github.com/flant/negentropy/vault-plugins/shared/utils"
 )
 
 var (
@@ -96,15 +95,15 @@ func (t *Txn) Delete(table string, objPtr interface{}) error {
 func (t *Txn) CascadeDelete(table string, objPtr interface{}) error {
 	err := t.checkCheckingRelations(table, objPtr)
 	if err != nil {
-		return fmt.Errorf("cascadeDelete:%w", err)
+		return fmt.Errorf("cascadeDelete(checkCheckingRelations):%w", err)
 	}
 	err = t.processRelations(t.schema.CascadeDeletes[table], objPtr, t.deleteChildren, ErrNotEmptyRelation)
 	if err != nil {
-		return fmt.Errorf("cascadeDelete:%w", err)
+		return fmt.Errorf("cascadeDelete(processRelations):%w", err)
 	}
 	err = t.Txn.Delete(table, objPtr)
 	if err != nil {
-		return fmt.Errorf("cascadeDelete:%w", err)
+		return fmt.Errorf("cascadeDelete(delete):%w", err)
 	}
 	return nil
 }
@@ -133,7 +132,7 @@ func (t *Txn) CascadeArchive(table string, objPtr interface{}, archiveMark Archi
 	}
 	err := t.checkCheckingRelations(table, objPtr)
 	if err != nil {
-		return fmt.Errorf("cascadeArchive:%w", err)
+		return fmt.Errorf("cascadeArchive(checkCheckingRelations):%w", err)
 	}
 	err = t.WithSkippingInsertForeignKeysCheck().processRelations(t.schema.CascadeDeletes[table], objPtr, t.archiveChildren(archiveMark), ErrNotEmptyRelation)
 	if err != nil {
@@ -255,7 +254,7 @@ func (t *Txn) processRelations(relations []Relation, objPtr interface{},
 	if valueIface.Type().Kind() != reflect.Ptr {
 		return fmt.Errorf("obj `%s` is not ptr", valueIface.Type())
 	}
-	errorCollector := utils.ErrorCollector{}
+	errorCollector := multierror.Error{}
 	for _, key := range relations {
 		field := valueIface.Elem().FieldByName(key.OriginalDataTypeFieldName)
 		if !field.IsValid() {
@@ -263,10 +262,10 @@ func (t *Txn) processRelations(relations []Relation, objPtr interface{},
 		}
 		checkedFieldValue := field.Interface()
 		if err := relationHandler(checkedFieldValue, key); err != nil {
-			errorCollector.Collect(err)
+			errorCollector.Errors = append(errorCollector.Errors, err)
 		}
 	}
-	if !errorCollector.Empty() {
+	if errorCollector.Len() > 0 {
 		return fmt.Errorf("%w:%s", relationHandlerError, errorCollector.Error())
 	}
 	return nil
@@ -301,7 +300,7 @@ func (t *Txn) checkRelationShouldBeEmpty(checkedFieldValue interface{}, key Rela
 }
 
 // parentObjectFiledValue should not be pointer
-func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) error {
+func (t *Txn) deleteChildren(parentObjectFieldValue interface{}, key Relation) error {
 	if key.indexIsSliceFieldIndex {
 		return nil
 	}
@@ -309,7 +308,7 @@ func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) e
 		// TODO CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer
 		return fmt.Errorf("CleanChildrenSliceIndexes not implemented yet for CustomTypeFieldIndexer")
 	}
-	iter, err := t.Get(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
+	iter, err := t.Get(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFieldValue)
 	if err != nil {
 		return fmt.Errorf("getting related record:%w", err)
 	}
@@ -318,14 +317,14 @@ func (t *Txn) deleteChildren(parentObjectFiledValue interface{}, key Relation) e
 		if relatedRecord == nil {
 			break
 		}
-		relatedRecord, err := t.First(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
+		relatedRecord, err := t.First(key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFieldValue)
 		if err != nil {
 			return fmt.Errorf("getting related record:%w", err)
 		}
 		err = t.CascadeDelete(key.RelatedDataType, relatedRecord)
 		if err != nil {
-			return fmt.Errorf("deleting related record: at table %q by index %q, value %q",
-				key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFiledValue)
+			return fmt.Errorf("deleting related record: at table %q by index %q, value %q: %w",
+				key.RelatedDataType, key.RelatedDataTypeFieldIndexName, parentObjectFieldValue, err)
 		}
 	}
 	return nil
