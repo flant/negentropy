@@ -3,9 +3,9 @@ package fixtures
 import "github.com/flant/negentropy/vault-plugins/flant_iam/model"
 
 const (
-	ShareUUID1 = "00000000-0000-0000-0000-010000000000"
-	ShareUUID2 = "00000000-0000-0000-0000-020000000000"
-	ShareUUID3 = "00000000-0000-0000-0000-030000000000"
+	ShareUUID1 = "00000000-0000-4000-A000-010000000000"
+	ShareUUID2 = "00000000-0000-4000-A000-020000000000"
+	ShareUUID3 = "00000000-0000-4000-A000-030000000000"
 )
 
 func IdentitySharings() []model.IdentitySharing {

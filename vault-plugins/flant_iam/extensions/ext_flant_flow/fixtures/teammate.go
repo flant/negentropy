@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	FlantUUID = "00000000-0000-0000-0000-000000000088"
+	FlantUUID = "00000000-0000-4000-A000-000000000088"
 
-	TeammateUUID1 = "00000000-0000-0000-0000-000000000001"
-	TeammateUUID2 = "00000000-0000-0000-0000-000000000002"
-	TeammateUUID3 = "00000000-0000-0000-0000-000000000003"
-	TeammateUUID4 = "00000000-0000-0000-0000-000000000004"
-	TeammateUUID5 = "00000000-0000-0000-0000-000000000005"
+	TeammateUUID1 = "00000000-0000-4000-A000-000000000101"
+	TeammateUUID2 = "00000000-0000-4000-A000-000000000102"
+	TeammateUUID3 = "00000000-0000-4000-A000-000000000103"
+	TeammateUUID4 = "00000000-0000-4000-A000-000000000104"
+	TeammateUUID5 = "00000000-0000-4000-A000-000000000105"
 )
 
 func Teammates() []model.FullTeammate {
@@ -26,9 +26,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID1,
-				Identifier:     "user1",
-				FullIdentifier: "user1@flant",
-				Email:          "user1@gmail.com",
+				Identifier:     "teammate1",
+				FullIdentifier: "teammate1@flant",
+				Email:          "teammate1@gmail.com",
 				Origin:         "flant_flow",
 				TenantUUID:     FlantUUID,
 				Language:       "english",
@@ -39,9 +39,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID2,
-				Identifier:     "user2",
-				FullIdentifier: "user2@flant",
-				Email:          "user2@gmail.com",
+				Identifier:     "teammate2",
+				FullIdentifier: "teammate2@flant",
+				Email:          "teammate2@gmail.com",
 				Origin:         "flant_flow",
 				TenantUUID:     FlantUUID,
 				Language:       "german",
@@ -52,9 +52,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID3,
-				Identifier:     "user3",
-				FullIdentifier: "user3@flant",
-				Email:          "user3@gmail.com",
+				Identifier:     "teammate3",
+				FullIdentifier: "teammate3@flant",
+				Email:          "teammate3@gmail.com",
 				Origin:         "flant_flow",
 				TenantUUID:     FlantUUID,
 				Language:       "russian",
@@ -65,9 +65,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID4,
-				Identifier:     "user4",
-				FullIdentifier: "user4@flant",
-				Email:          "user4@gmail.com",
+				Identifier:     "teammate4",
+				FullIdentifier: "teammate4@flant",
+				Email:          "teammate4@gmail.com",
 				Origin:         "flant_flow",
 				TenantUUID:     FlantUUID,
 				Language:       "french",
@@ -78,9 +78,9 @@ func Teammates() []model.FullTeammate {
 		{
 			User: iam_model.User{
 				UUID:           TeammateUUID5,
-				Identifier:     "user5",
-				FullIdentifier: "user5@flant",
-				Email:          "user5@gmail.com",
+				Identifier:     "teammate5",
+				FullIdentifier: "teammate5@flant",
+				Email:          "teammate5@gmail.com",
 				Origin:         "flant_flow",
 				TenantUUID:     FlantUUID,
 				Language:       "albanian",
@@ -96,7 +96,7 @@ func RandomTeammateCreatePayload(team model.Team) map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := teammatesSet[rand.Intn(len(teammatesSet))]
 
-	sample.Identifier = "Teammate_" + iam_uuid.New()
+	sample.Identifier = "teammate_" + iam_uuid.New()
 	sample.Email = fmt.Sprintf("%s@ex.com", RandomStr())
 	sample.TeamUUID = team.UUID
 	var role string

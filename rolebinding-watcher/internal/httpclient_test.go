@@ -15,22 +15,22 @@ import (
 func Test_HttpClient(t *testing.T) {
 	testURL := "/negentropy/backdoor"
 	userEffectiveRoles := pkg.UserEffectiveRoles{
-		UserUUID: "00000000-0000-0000-0000-000000000001",
+		UserUUID: "00000000-0000-4000-A000-000000000001",
 		RoleName: "RoleName1",
 		Tenants: []authz.EffectiveRoleTenantResult{
 			{
-				TenantUUID:       "00000001-0000-0000-0000-000000000000",
+				TenantUUID:       "00000001-0000-4000-A000-000000000000",
 				TenantIdentifier: "tenant1",
 				TenantOptions:    map[string][]interface{}{},
 				Projects: []authz.EffectiveRoleProjectResult{
 					{
-						ProjectUUID:       "00000000-0100-0000-0000-000000000000",
+						ProjectUUID:       "00000000-0100-4000-A000-000000000000",
 						ProjectIdentifier: "pr1",
 						ProjectOptions:    map[string][]interface{}{"o1": {"data1"}},
 						RequireMFA:        false,
 						NeedApprovals:     false,
 					}, {
-						ProjectUUID:       "00000000-0300-0000-0000-000000000000",
+						ProjectUUID:       "00000000-0300-4000-A000-000000000000",
 						ProjectIdentifier: "pr3",
 						ProjectOptions:    map[string][]interface{}{"o1": {"data1"}},
 						RequireMFA:        false,

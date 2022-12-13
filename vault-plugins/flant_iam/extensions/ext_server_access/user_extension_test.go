@@ -30,13 +30,13 @@ func checkDeepEqual(t *testing.T, expected, got interface{}) {
 }
 
 const (
-	tenantUUID1         = "00000001-0000-0000-0000-000000000000"
-	userUUID1           = "00000000-0000-0000-0000-000000000001"
+	tenantUUID1         = "00000001-0000-4000-A000-000000000000"
+	userUUID1           = "00000000-0000-4000-A000-000000000001"
 	roleName1           = "ssh.open"
 	roleName2           = "notSSH"
-	rbUUID1             = "00000000-0000-0001-0000-000000000000"
-	serviceAccountUUID1 = "00000000-0000-0000-0000-000000000011"
-	groupUUID1          = "00000000-0001-0000-0000-000000000000"
+	rbUUID1             = "00000000-0000-4001-A000-000000000000"
+	serviceAccountUUID1 = "00000000-0000-4000-A000-000000000011"
+	groupUUID1          = "00000000-0001-4000-A000-000000000000"
 )
 
 func prepareTenant(t *testing.T, txn *io.MemoryStoreTxn) *model.Tenant {

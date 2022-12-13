@@ -29,9 +29,9 @@ func Test_mapToEffectiveRoleResult(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, map[string]map[string]tenantResult{
-		"RoleName1": {"00000001-0000-0000-0000-000000000000": {projects: map[string]EffectiveRoleProjectResult{"57ce1d2f-3991-4563-8713-b3129c0f6d93": {ProjectUUID: "57ce1d2f-3991-4563-8713-b3129c0f6d93", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{"k1": {"v1"}}, RequireMFA: false, NeedApprovals: false}}, tenantOptions: map[string][]interface{}{}}},
-		"RoleName2": {"00000002-0000-0000-0000-000000000000": {projects: map[string]EffectiveRoleProjectResult{"00000000-0500-0000-0000-000000000000": {ProjectUUID: "00000000-0500-0000-0000-000000000000", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{}, RequireMFA: false, NeedApprovals: false}, "57ce1d2f-3991-4563-8713-b3129c0f6d93": {ProjectUUID: "57ce1d2f-3991-4563-8713-b3129c0f6d93", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{"k2": {"v2"}, "k3": {"v3_1"}}, RequireMFA: false, NeedApprovals: false}}, tenantOptions: map[string][]interface{}{"k3": {"v3_2", "v3_3"}, "k4": {"v4"}}}},
-		"RoleName8": {"00000001-0000-0000-0000-000000000000": {projects: map[string]EffectiveRoleProjectResult{}, tenantOptions: map[string][]interface{}{"k5": {"v5_1", "v5_2"}}}},
+		"RoleName1": {"00000001-0000-4000-A000-000000000000": {projects: map[string]EffectiveRoleProjectResult{"57ce1d2f-3991-4563-8713-b3129c0f6d93": {ProjectUUID: "57ce1d2f-3991-4563-8713-b3129c0f6d93", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{"k1": {"v1"}}, RequireMFA: false, NeedApprovals: false}}, tenantOptions: map[string][]interface{}{}}},
+		"RoleName2": {"00000002-0000-4000-A000-000000000000": {projects: map[string]EffectiveRoleProjectResult{"00000000-0500-4000-A000-000000000000": {ProjectUUID: "00000000-0500-4000-A000-000000000000", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{}, RequireMFA: false, NeedApprovals: false}, "57ce1d2f-3991-4563-8713-b3129c0f6d93": {ProjectUUID: "57ce1d2f-3991-4563-8713-b3129c0f6d93", ProjectIdentifier: "", ProjectOptions: map[string][]interface{}{"k2": {"v2"}, "k3": {"v3_1"}}, RequireMFA: false, NeedApprovals: false}}, tenantOptions: map[string][]interface{}{"k3": {"v3_2", "v3_3"}, "k4": {"v4"}}}},
+		"RoleName8": {"00000001-0000-4000-A000-000000000000": {projects: map[string]EffectiveRoleProjectResult{}, tenantOptions: map[string][]interface{}{"k5": {"v5_1", "v5_2"}}}},
 	},
 		results)
 }
