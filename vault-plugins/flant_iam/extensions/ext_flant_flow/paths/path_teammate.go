@@ -480,7 +480,7 @@ func (b *teammateBackend) handleListAll(_ context.Context, req *logical.Request,
 func (b teammateBackend) handleErase(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Logger().Debug("erase teammate", "path", req.Path)
 	id := data.Get("uuid").(string)
-	tx := b.storage.Txn(false)
+	tx := b.storage.Txn(true)
 
 	err := usecase.Teammates(tx, b.getLiveConfig()).Erase(id)
 	if err != nil {
