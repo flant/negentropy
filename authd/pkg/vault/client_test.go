@@ -1,7 +1,11 @@
 package vault
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 
@@ -64,4 +68,16 @@ func TestClient_RefreshJWT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Update should be successful. error (type %T): %v", err, err)
 	}
+}
+
+func Test_extractErrorMessage(t *testing.T) {
+	response := logical.Response{
+		Data: map[string]interface{}{"error": "test_message"},
+	}
+	data, err := json.Marshal(response)
+	require.NoError(t, err)
+
+	message := extractErrorMessage(bytes.NewBuffer(data))
+
+	require.Equal(t, message, "test_message")
 }
