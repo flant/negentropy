@@ -85,8 +85,9 @@ func (st *Suite) PrepareForLoginTesting() CheckingEnvironment {
 				Type: model.ServiceAccountType,
 				UUID: result.ServiceAccount.UUID,
 			}},
-			Projects:   []string{result.Project.UUID},
-			AnyProject: false,
+			// Projects:   []string{result.Project.UUID},
+			// AnyProject: false,
+			AnyProject: true,
 			Roles:      []model.BoundRole{{Name: RegisterServerRole, Options: map[string]interface{}{"max_ttl": "1600m", "ttl": "800m"}}},
 		})
 	fmt.Printf("Created rolebinding:%#v\n", result.ServiceAccountRoleBinding)
@@ -133,7 +134,13 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 
 	// register as a server 'test_server2' using serviceAccount & add connection info
 	result.TestServer2, _ = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
-	fmt.Printf("Created test-server2")
+	fmt.Printf("Created test-server2\n")
+
+	// create other project and register server at other project for checking --all-projects flag
+	otherProject := specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
+	fmt.Printf("Created other project:%#v\n", otherProject)
+	otherServer, _ := registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, otherProject.Identifier, "server_at_other_project", nil)
+	fmt.Printf("Created other-server:%#v\n", otherServer)
 
 	// create and get multipass for a user
 	_, result.UserMultipassJWT = specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
