@@ -266,7 +266,7 @@ func (a *Authorizator) addDynamicPolicy(authzRes *logical.Auth, roleClaims []mod
 			allow = false
 		}
 		if loginItem.err != nil {
-			multiError.Errors = append(multiError.Errors, loginItem.err)
+			multiError.Errors = append(multiError.Errors, fmt.Errorf("loginClaim: %v: %w", loginItem.loginClaim, loginItem.err))
 		}
 	}
 	if !allow || multiError.Len() > 0 {
