@@ -8,6 +8,7 @@ import (
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/model"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/extensions/ext_flant_flow/repo"
 	iam_model "github.com/flant/negentropy/vault-plugins/flant_iam/model"
+	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
 	"github.com/flant/negentropy/vault-plugins/shared/io"
 	"github.com/flant/negentropy/vault-plugins/shared/memdb"
@@ -17,6 +18,7 @@ type TeamService struct {
 	flantTenantUUID  iam_model.TenantUUID
 	repo             *repo.TeamRepository
 	teammateRepo     *repo.TeammateRepository
+	groupRepo        *iam_repo.GroupRepository
 	groupsController GroupsController
 	liveConfig       *config.FlantFlowConfig
 }
@@ -26,6 +28,7 @@ func Teams(db *io.MemoryStoreTxn, liveConfig *config.FlantFlowConfig) *TeamServi
 		flantTenantUUID:  liveConfig.FlantTenantUUID,
 		repo:             repo.NewTeamRepository(db),
 		teammateRepo:     repo.NewTeammateRepository(db),
+		groupRepo:        iam_repo.NewGroupRepository(db),
 		groupsController: NewGroupsController(db, liveConfig.FlantTenantUUID),
 		liveConfig:       liveConfig,
 	}
@@ -149,4 +152,23 @@ func (s *TeamService) Restore(id model.TeamUUID, fullRestore bool) (*model.Team,
 		return s.repo.Restore(id)
 	}
 	return s.repo.Restore(id)
+}
+
+func (s *TeamService) Erase(id model.TeamUUID) error {
+	team, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if team.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	// IAM.rolebindings for included groups - should be deleted before
+	// Delete all child IAM.group
+	for _, g := range team.Groups {
+		err = s.groupRepo.Erase(g.GroupUUID)
+		if err != nil {
+			return fmt.Errorf("erasing linked group: %v: %w", g, err)
+		}
+	}
+	return s.repo.Erase(id)
 }

@@ -60,6 +60,11 @@ func TeamSchema() *memdb.DBSchema {
 					RelatedDataType:               model.TeammateType,
 					RelatedDataTypeFieldIndexName: TeamForeignPK,
 				},
+				{
+					OriginalDataTypeFieldName:     "UUID",
+					RelatedDataType:               model.TeamType,
+					RelatedDataTypeFieldIndexName: ParentTeamIndex,
+				},
 			},
 		},
 		UniqueConstraints: map[memdb.DataType][]memdb.IndexName{
@@ -233,4 +238,15 @@ func (r *TeamRepository) GetByIdentifier(identifier string) (*model.Team, error)
 		return nil, consts.ErrNotFound
 	}
 	return raw.(*model.Team), err
+}
+
+func (r *TeamRepository) Erase(id model.TeamUUID) error {
+	team, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if team.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return r.db.Delete(model.TeamType, team)
 }

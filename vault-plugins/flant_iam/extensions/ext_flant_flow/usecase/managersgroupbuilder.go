@@ -115,7 +115,5 @@ func (d managersBuilder) OnDeleteTeam(team model.Team) (model.Team, error) {
 	if err != nil {
 		return team, err
 	}
-	groups := team.Groups
-	team.Groups = append(groups[:targetIdx], groups[targetIdx+1:]...) // nolint:gocritic
 	return team, nil
 }

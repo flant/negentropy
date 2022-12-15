@@ -169,5 +169,5 @@ func Test_DeleteRole_Failed(t *testing.T) {
 	err := (&RoleService{tx}).Delete(fixtures.RoleName1)
 
 	require.Error(t, err)
-	require.Equal(t, "archive:not empty relation error:relation should be empty: {\"RoleName1\" \"\"} found at table \"role\" by index \"included_roles_index\"", err.Error())
+	require.Equal(t, "archive:not empty relation error:1 error occurred:\n\t* relation should be empty: {\"RoleName1\" \"\"} found at table \"role\" by index \"included_roles_index\"\n\n", err.Error())
 }
