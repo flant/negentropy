@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -69,16 +70,22 @@ func (c *Client) LoginWithJWTAndClaims(ctx context.Context, jwt string, claimedR
 	}
 
 	resp, err := cl.RawRequestWithContext(ctx, req)
+	if resp != nil {
+		defer resp.Body.Close() // nolint: errcheck
+	}
 	if err != nil {
 		if resp == nil {
 			return nil, err
 		}
+		errMessage := extractErrorMessage(resp.Body)
 		if resp.StatusCode == http.StatusForbidden {
-			return nil, client_error.NewHTTPError(err, http.StatusForbidden, []string{"vault returns 403 status"})
+			if errMessage == "" {
+				errMessage = "vault returns 403 status"
+			}
+			return nil, client_error.NewHTTPError(err, http.StatusForbidden, []string{errMessage})
 		}
 		return nil, fmt.Errorf("%w: vault reponse: %v", err, resp.Body)
 	}
-	defer resp.Body.Close()
 
 	secret, err := api.ParseSecret(resp.Body)
 	if err != nil {
@@ -92,6 +99,14 @@ func (c *Client) LoginWithJWTAndClaims(ctx context.Context, jwt string, claimedR
 	logrus.Debugf("server after login: '%s', prepared: '%s'", cl.GetTargetServer(), c.PrepareServerAddr(cl.GetTargetServer()))
 	SecretDataSetString(secret, "server", c.PrepareServerAddr(cl.GetTargetServer()))
 	return secret, nil
+}
+
+func extractErrorMessage(responseBody io.Reader) string {
+	secret, err := api.ParseSecret(responseBody)
+	if err != nil || secret == nil || secret.Data == nil {
+		return ""
+	}
+	return secret.Data["error"].(string)
 }
 
 func (c *Client) CheckPendingLogin(token string) (interface{}, error) {

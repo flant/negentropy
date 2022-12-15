@@ -36,7 +36,7 @@ func RandomTenantCreatePayload() map[string]interface{} {
 	rand.Seed(time.Now().UnixNano())
 	sample := tenantSet[rand.Intn(len(tenantSet))]
 	return map[string]interface{}{
-		"identifier":    "Identifier_" + RandomStr(),
+		"identifier":    "tenant_" + RandomStr(),
 		"version":       sample.Version,
 		"language":      sample.Language,
 		"feature_flags": sample.FeatureFlags,

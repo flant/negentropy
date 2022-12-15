@@ -269,7 +269,7 @@ func CreateRoles(roleAPI api.TestAPI, roles ...model.Role) {
 }
 
 func CreateRandomProject(projectAPI api.TestAPI, tenantID model.TenantUUID) model.Project {
-	createPayload := fixtures.RandomGroupCreatePayload()
+	createPayload := fixtures.RandomProjectCreatePayload()
 	createPayload["tenant_uuid"] = tenantID
 	params := api.Params{
 		"tenant": tenantID,
