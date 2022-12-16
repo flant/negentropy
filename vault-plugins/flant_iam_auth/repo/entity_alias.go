@@ -71,14 +71,12 @@ func EntityAliasSchema() *memdb.DBSchema {
 }
 
 type EntityAliasRepo struct {
-	db        io.Txn
-	tableName string
+	db io.Txn
 }
 
 func NewEntityAliasRepo(db io.Txn) *EntityAliasRepo {
 	return &EntityAliasRepo{
-		db:        db,
-		tableName: model.EntityAliasType,
+		db: db,
 	}
 }
 
@@ -99,7 +97,7 @@ func (r *EntityAliasRepo) GetForUser(id string, source *model.AuthSource) (*mode
 }
 
 func (r *EntityAliasRepo) get(by string, vals ...interface{}) (*model.EntityAlias, error) {
-	raw, err := r.db.First(r.tableName, by, vals...)
+	raw, err := r.db.First(model.EntityAliasType, by, vals...)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +114,7 @@ func (r *EntityAliasRepo) get(by string, vals ...interface{}) (*model.EntityAlia
 }
 
 func (r *EntityAliasRepo) Put(source *model.EntityAlias) error {
-	return r.db.Insert(r.tableName, source)
+	return r.db.Insert(model.EntityAliasType, source)
 }
 
 var ErrEmptyEntityAliasName = fmt.Errorf("empty ea name")
@@ -159,11 +157,11 @@ func (r *EntityAliasRepo) DeleteByID(id string) error {
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(r.tableName, source)
+	return r.db.Delete(model.EntityAliasType, source)
 }
 
 func (r *EntityAliasRepo) List() ([]string, error) {
-	iter, err := r.db.Get(r.tableName, ID)
+	iter, err := r.db.Get(model.EntityAliasType, ID)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +179,7 @@ func (r *EntityAliasRepo) List() ([]string, error) {
 }
 
 func (r *EntityAliasRepo) iter(action func(alias *model.EntityAlias) (bool, error), key string, args interface{}) error {
-	iter, err := r.db.Get(r.tableName, key, args)
+	iter, err := r.db.Get(model.EntityAliasType, key, args)
 	if err != nil {
 		return err
 	}
@@ -223,5 +221,5 @@ func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, e
 
 	entityAlias.Name = eaName
 
-	return r.db.Insert(r.tableName, entityAlias)
+	return r.db.Insert(model.EntityAliasType, entityAlias)
 }

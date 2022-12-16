@@ -46,14 +46,12 @@ func EntitySchema() *memdb.DBSchema {
 }
 
 type EntityRepo struct {
-	db        io.Txn
-	tableName string
+	db io.Txn
 }
 
 func NewEntityRepo(db io.Txn) *EntityRepo {
 	return &EntityRepo{
-		db:        db,
-		tableName: model.EntityType,
+		db: db,
 	}
 }
 
@@ -78,7 +76,7 @@ func (r *EntityRepo) CreateForSA(sa *iam.ServiceAccount) error {
 }
 
 func (r *EntityRepo) get(by string, val string) (*model.Entity, error) {
-	raw, err := r.db.First(r.tableName, by, val)
+	raw, err := r.db.First(model.EntityType, by, val)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +108,11 @@ func (r *EntityRepo) putNew(name string, userId string) error {
 	}
 	entity.Name = name
 
-	return r.db.Insert(r.tableName, entity)
+	return r.db.Insert(model.EntityType, entity)
 }
 
 func (r *EntityRepo) Put(source *model.Entity) error {
-	return r.db.Insert(r.tableName, source)
+	return r.db.Insert(model.EntityType, source)
 }
 
 func (r *EntityRepo) DeleteForUser(id string) error {
@@ -122,5 +120,5 @@ func (r *EntityRepo) DeleteForUser(id string) error {
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(r.tableName, source)
+	return r.db.Delete(model.EntityType, source)
 }
