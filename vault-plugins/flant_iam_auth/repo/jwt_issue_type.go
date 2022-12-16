@@ -36,19 +36,17 @@ func JWTIssueTypeSchema() *memdb.DBSchema {
 }
 
 type JWTIssueTypeRepo struct {
-	db        *io.MemoryStoreTxn
-	tableName string
+	db *io.MemoryStoreTxn
 }
 
 func NewJWTIssueTypeRepo(db *io.MemoryStoreTxn) *JWTIssueTypeRepo {
 	return &JWTIssueTypeRepo{
-		db:        db,
-		tableName: model.JWTIssueTypeType,
+		db: db,
 	}
 }
 
 func (r *JWTIssueTypeRepo) Get(name string) (*model.JWTIssueType, error) {
-	raw, err := r.db.First(r.tableName, ByName, name)
+	raw, err := r.db.First(model.JWTIssueTypeType, ByName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +63,7 @@ func (r *JWTIssueTypeRepo) Get(name string) (*model.JWTIssueType, error) {
 }
 
 func (r *JWTIssueTypeRepo) Put(source *model.JWTIssueType) error {
-	return r.db.Insert(r.tableName, source)
+	return r.db.Insert(model.JWTIssueTypeType, source)
 }
 
 func (r *JWTIssueTypeRepo) Delete(name string) error {
@@ -73,11 +71,11 @@ func (r *JWTIssueTypeRepo) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(r.tableName, method)
+	return r.db.Delete(model.JWTIssueTypeType, method)
 }
 
 func (r *JWTIssueTypeRepo) Iter(action func(*model.JWTIssueType) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, ID)
+	iter, err := r.db.Get(model.JWTIssueTypeType, ID)
 	if err != nil {
 		return err
 	}

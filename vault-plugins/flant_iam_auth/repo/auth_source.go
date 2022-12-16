@@ -38,20 +38,18 @@ var (
 
 type AuthSourceRepo struct {
 	db          io.Txn
-	tableName   string
 	methodsRepo *AuthMethodRepo
 }
 
 func NewAuthSourceRepo(db io.Txn) *AuthSourceRepo {
 	return &AuthSourceRepo{
 		db:          db,
-		tableName:   model.AuthSourceType,
 		methodsRepo: NewAuthMethodRepo(db),
 	}
 }
 
 func (r *AuthSourceRepo) Get(name string) (*model.AuthSource, error) {
-	raw, err := r.db.First(r.tableName, ID, name)
+	raw, err := r.db.First(model.AuthSourceType, ID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +71,7 @@ func (r *AuthSourceRepo) Get(name string) (*model.AuthSource, error) {
 }
 
 func (r *AuthSourceRepo) Put(source *model.AuthSource) error {
-	return r.db.Insert(r.tableName, source)
+	return r.db.Insert(model.AuthSourceType, source)
 }
 
 func (r *AuthSourceRepo) Delete(name string) error {
@@ -100,11 +98,11 @@ func (r *AuthSourceRepo) Delete(name string) error {
 		return ErrSourceNotFound
 	}
 
-	return r.db.Delete(r.tableName, source)
+	return r.db.Delete(model.AuthSourceType, source)
 }
 
 func (r *AuthSourceRepo) Iter(withInternal bool, action func(*model.AuthSource) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, ID)
+	iter, err := r.db.Get(model.AuthSourceType, ID)
 	if err != nil {
 		return err
 	}

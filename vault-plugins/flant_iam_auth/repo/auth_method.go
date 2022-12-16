@@ -30,19 +30,17 @@ func AuthMethodSchema() *memdb.DBSchema {
 }
 
 type AuthMethodRepo struct {
-	db        io.Txn
-	tableName string
+	db io.Txn
 }
 
 func NewAuthMethodRepo(db io.Txn) *AuthMethodRepo {
 	return &AuthMethodRepo{
-		db:        db,
-		tableName: model.AuthMethodType,
+		db: db,
 	}
 }
 
 func (r *AuthMethodRepo) Get(name string) (*model.AuthMethod, error) {
-	raw, err := r.db.First(r.tableName, ID, name)
+	raw, err := r.db.First(model.AuthMethodType, ID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +69,7 @@ func (r *AuthMethodRepo) BySource(name string) ([]*model.AuthMethod, error) {
 }
 
 func (r *AuthMethodRepo) Put(source *model.AuthMethod) error {
-	return r.db.Insert(r.tableName, source)
+	return r.db.Insert(model.AuthMethodType, source)
 }
 
 func (r *AuthMethodRepo) Delete(name string) error {
@@ -79,11 +77,11 @@ func (r *AuthMethodRepo) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return r.db.Delete(r.tableName, method)
+	return r.db.Delete(model.AuthMethodType, method)
 }
 
 func (r *AuthMethodRepo) Iter(action func(*model.AuthMethod) (bool, error)) error {
-	iter, err := r.db.Get(r.tableName, ID)
+	iter, err := r.db.Get(model.AuthMethodType, ID)
 	if err != nil {
 		return err
 	}
