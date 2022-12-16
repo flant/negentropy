@@ -39,13 +39,14 @@ func (h *ObjectHandler) HandleAuthSource(txn io.Txn, source *model.AuthSource) e
 
 	err := usersRepo.Iter(func(user *iamrepos.User) (bool, error) {
 		l.Debug(fmt.Sprintf("Create new ea mem object for user %s and source %s", user.FullIdentifier, source.Name))
-		err := eaRepo.CreateForUser(user, source)
+		ea, err := eaRepo.CreateForUser(user, source)
 		if err != nil {
 			l.Error("Cannot create ea mem object for user and source", user.FullIdentifier, source.Name, err)
 			return false, err
 		}
 
-		l.Debug("Create new ea mem object for user and source", user.FullIdentifier)
+		l.Debug("Create new ea mem object for user and source", "userIdentifier", user.FullIdentifier,
+			"sourceName", source.Name, "eaUUID", ea.UUID)
 
 		return true, nil
 	})
@@ -60,13 +61,14 @@ func (h *ObjectHandler) HandleAuthSource(txn io.Txn, source *model.AuthSource) e
 
 	return saRepo.Iter(func(account *iamrepos.ServiceAccount) (bool, error) {
 		l.Debug("Create new ea mem object for SA and source", account.FullIdentifier, source.Name)
-		err := eaRepo.CreateForSA(account, source)
+		ea, err := eaRepo.CreateForSA(account, source)
 		if err != nil {
 			l.Error("Cannot create ea mem object for SA and source", account.FullIdentifier, source.Name, err)
 			return false, nil
 		}
 
-		l.Debug("Created new ea mem object for SA and source", account.FullIdentifier, source.Name)
+		l.Debug("Created new ea mem object for SA and source", "saIdentifier", account.FullIdentifier,
+			"sourceName", source.Name, "eaUUID", ea.UUID)
 		return true, nil
 	})
 }

@@ -43,8 +43,8 @@ func (h *ObjectHandler) HandleUser(txn io.Txn, user *iam_model.User) error {
 				"identifier", user.FullIdentifier, "source", source.Name)
 			return true, nil
 		}
-		l.Debug("Create entity alias for user and source", "identifier", user.FullIdentifier, "source", source.Name)
-		err := eaRepo.CreateForUser(user, source)
+		l.Debug("Creating entity alias for user and source", "identifier", user.FullIdentifier, "source", source.Name)
+		ea, err := eaRepo.CreateForUser(user, source)
 		if errors.Is(err, repo.ErrEmptyEntityAliasName) {
 			l.Debug("skipped creating entity alias for user and source, due to empty alias name error",
 				"identifier", user.FullIdentifier, "source", source.Name, "error", err.Error())
@@ -55,7 +55,7 @@ func (h *ObjectHandler) HandleUser(txn io.Txn, user *iam_model.User) error {
 			return false, err
 		}
 
-		l.Debug("Entity alias for user and source created", "identifier", user.FullIdentifier, "source", source.Name)
+		l.Debug("Entity alias for user and source created", "identifier", user.FullIdentifier, "source", source.Name, "entityAliasUUID", ea.UUID)
 		return true, nil
 	})
 
@@ -67,6 +67,7 @@ func (h *ObjectHandler) HandleUser(txn io.Txn, user *iam_model.User) error {
 }
 
 func (h *ObjectHandler) HandleServiceAccount(txn io.Txn, sa *iam_model.ServiceAccount) error {
+	l := h.logger
 	entityRepo := repo.NewEntityRepo(txn)
 	eaRepo := repo.NewEntityAliasRepo(txn)
 	authSourceRepo := repo.NewAuthSourceRepo(txn)
@@ -77,11 +78,11 @@ func (h *ObjectHandler) HandleServiceAccount(txn io.Txn, sa *iam_model.ServiceAc
 	}
 
 	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
-		err := eaRepo.CreateForSA(sa, source)
+		ea, err := eaRepo.CreateForSA(sa, source)
 		if err != nil {
 			return false, err
 		}
-
+		l.Debug("Entity alias for sa and source created", "identifier", sa.FullIdentifier, "source", source.Name, "entityAliasUUID", ea.UUID)
 		return true, nil
 	})
 

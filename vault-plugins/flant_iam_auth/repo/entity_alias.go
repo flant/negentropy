@@ -119,34 +119,29 @@ func (r *EntityAliasRepo) Put(source *model.EntityAlias) error {
 
 var ErrEmptyEntityAliasName = fmt.Errorf("empty ea name")
 
-func (r *EntityAliasRepo) CreateForUser(user *iam.User, source *model.AuthSource) error {
+func (r *EntityAliasRepo) CreateForUser(user *iam.User, source *model.AuthSource) (*model.EntityAlias, error) {
 	name, err := source.NameForUser(user)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if name == "" {
-		return fmt.Errorf("%w:for source %s and user {uuid:%q, full_identifier:%q, email:%q}, "+
+		return nil, fmt.Errorf("%w:for source %s and user {uuid:%q, full_identifier:%q, email:%q}, "+
 			"source EntityAliasName:%s", ErrEmptyEntityAliasName, source.Name, user.UUID, user.FullIdentifier, user.Email, source.EntityAliasName)
 	}
 
-	err = r.putNew(user.UUID, source, name)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.putNew(user.UUID, source, name)
 }
 
-func (r *EntityAliasRepo) CreateForSA(sa *iam.ServiceAccount, source *model.AuthSource) error {
+func (r *EntityAliasRepo) CreateForSA(sa *iam.ServiceAccount, source *model.AuthSource) (*model.EntityAlias, error) {
 	// skip no sa
 	if !source.AllowForSA() {
-		return nil
+		return nil, nil
 	}
 
 	name, err := source.NameForServiceAccount(sa)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return r.putNew(sa.UUID, source, name)
@@ -203,12 +198,12 @@ func (r *EntityAliasRepo) iter(action func(alias *model.EntityAlias) (bool, erro
 	return nil
 }
 
-func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, eaName string) error {
+func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, eaName string) (*model.EntityAlias, error) {
 	sourceName := source.Name
 
 	entityAlias, err := r.GetForUser(iamEntityId, source)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if entityAlias == nil {
@@ -221,5 +216,9 @@ func (r *EntityAliasRepo) putNew(iamEntityId string, source *model.AuthSource, e
 
 	entityAlias.Name = eaName
 
-	return r.db.Insert(model.EntityAliasType, entityAlias)
+	err = r.db.Insert(model.EntityAliasType, entityAlias)
+	if err != nil {
+		return nil, err
+	}
+	return entityAlias, nil
 }
