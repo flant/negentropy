@@ -27,10 +27,11 @@ func createTeams(t *testing.T, service *TeamService, teams ...model.Team) {
 
 func teamFixture(t *testing.T, store *io.MemoryStore) {
 	tx := store.Txn(true)
-	err := iam_repo.NewTenantRepository(tx).Create(&iam_model.Tenant{ArchiveMark: memdb.ArchiveMark{},
-		UUID:       fixtures.FlantUUID,
-		Version:    "new_version",
-		Identifier: "flant",
+	err := iam_repo.NewTenantRepository(tx).Create(&iam_model.Tenant{
+		ArchiveMark: memdb.ArchiveMark{},
+		UUID:        fixtures.FlantUUID,
+		Version:     "new_version",
+		Identifier:  "flant",
 	})
 	require.NoError(t, err)
 	teamService := Teams(tx, &config.FlantFlowConfig{

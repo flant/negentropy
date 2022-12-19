@@ -78,14 +78,15 @@ func (h *ObjectHandler) HandleServiceAccount(txn io.Txn, sa *iam_model.ServiceAc
 	}
 
 	err = authSourceRepo.Iter(true, func(source *model.AuthSource) (bool, error) {
-		ea, err := eaRepo.CreateForSA(sa, source)
-		if err != nil {
-			return false, err
+		if source.AllowForSA() {
+			ea, err := eaRepo.CreateForSA(sa, source)
+			if err != nil {
+				return false, err
+			}
+			l.Debug("Entity alias for sa and source created", "identifier", sa.FullIdentifier, "source", source.Name, "entityAliasUUID", ea.UUID)
 		}
-		l.Debug("Entity alias for sa and source created", "identifier", sa.FullIdentifier, "source", source.Name, "entityAliasUUID", ea.UUID)
 		return true, nil
 	})
-
 	return nil
 }
 

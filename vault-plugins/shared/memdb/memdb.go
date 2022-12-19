@@ -2,10 +2,10 @@ package memdb
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"reflect"
 
 	hcmemdb "github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/go-multierror"
 )
 
 var (

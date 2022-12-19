@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"

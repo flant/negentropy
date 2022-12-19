@@ -209,5 +209,5 @@ func Test_DeleteCustomTypeSliceFieldIndexerTXNFail(t *testing.T) {
 	err = txn.Delete(childTable, &child)
 
 	require.Error(t, err)
-	require.Equal(t, "delete:not empty relation error:relation should be empty: {{'\\x00' '\\x00'} \"u12\" \"\"} found at table \"test_table\" by index \"children_index\"", err.Error())
+	require.Equal(t, "delete:not empty relation error:1 error occurred:\n\t* relation should be empty: {{'\\x00' '\\x00'} \"u12\" \"\"} found at table \"test_table\" by index \"children_index\"\n\n", err.Error())
 }
