@@ -150,7 +150,7 @@ var _ = Describe("Team", func() {
 		}, nil).Get("team")
 		Expect(deletedTeamData.Get("archiving_timestamp").Int()).To(SatisfyAll(BeNumerically(">", 0)))
 		Expect(deletedTeamData.Map()).To(HaveKey("groups"))
-		Expect(deletedTeamData.Get("groups").Array()).To(HaveLen(0))
+		Expect(deletedTeamData.Get("groups").Array()).To(HaveLen(3))
 	})
 
 	It("can be listed", func() {
