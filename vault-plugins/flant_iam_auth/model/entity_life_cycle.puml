@@ -1,0 +1,43 @@
+@startuml
+autonumber
+participant kafka_root_source
+participant kafka_auth_self
+participant user
+participant entity_at_memdb
+participant entity_at_vault
+group standard working (main message loop)
+kafka_root_source -> user : kafka message with new or updated user
+user -> entity_at_memdb : handling user: \n creating entity at memdb
+entity_at_memdb -> kafka_auth_self : sending to kafka entity_object
+kafka_auth_self -> entity_at_vault : handling new entity_object at main message loop: \n 1) call to vault_api \n 2) collect 'name' from response
+entity_at_vault -> entity_at_memdb : store 'name' of entity_at_vault to \n suitable entity_at_memdb
+entity_at_memdb -> kafka_auth_self : messge with final entity_at_memdb
+end
+
+group restoration
+autonumber 101
+group restoration_loop
+kafka_root_source -> user : kafka message with new or updated user
+kafka_auth_self -> entity_at_memdb : handling new entity_object at restoration message loop: \n just put object to memdb
+note over entity_at_vault
+recreated by \n
+vault internals
+end note
+end
+group main message
+note across
+if enity_at_memdb is created ->
+there is final entity_at_memdb message at kafka_auth_self
+or
+new entity_object not handled by main message loop
+end note
+end
+end
+
+autonumber 201
+group deleting (main message loop))
+note across
+TODO
+end note
+end
+@enduml

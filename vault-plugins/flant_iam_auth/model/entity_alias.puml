@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/object-diagram
+legend
+each user (serviec_account) has own entity
+each auth_source has own entity_alias for each entity
+end legend
+
+object user
+object entity
+user --> entity
+
+diamond d
+entity --> d
+object auth_source
+auth_source --> d
+
+object entity_alias
+d -->entity_alias
+@enduml
+
