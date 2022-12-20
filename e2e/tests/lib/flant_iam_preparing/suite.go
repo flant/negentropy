@@ -129,18 +129,12 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	fmt.Printf("Created rolebinding:%#v\n", result.UserRolebinding)
 
 	// register as a server 'test_server' using serviceAccount & add connection info
-	result.TestServer, result.TestServerServiceAccountMultipassJWT = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier, serverLabels)
+	result.TestServer, result.TestServerServiceAccountMultipassJWT = RegisterServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier, serverLabels)
 	fmt.Printf("Created testServer Server:%#v\n", result.TestServer)
 
 	// register as a server 'test_server2' using serviceAccount & add connection info
-	result.TestServer2, _ = registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
+	result.TestServer2, _ = RegisterServer(result.ServiceAccountPassword, result.Tenant.Identifier, result.Project.Identifier, TestServerIdentifier2, serverLabels)
 	fmt.Printf("Created test-server2\n")
-
-	// create other project and register server at other project for checking --all-projects flag
-	otherProject := specs.CreateRandomProject(lib.NewProjectAPI(st.IamVaultClient), result.Tenant.UUID)
-	fmt.Printf("Created other project:%#v\n", otherProject)
-	otherServer, _ := registerServer(result.ServiceAccountPassword, result.Tenant.Identifier, otherProject.Identifier, "server_at_other_project", nil)
-	fmt.Printf("Created other-server:%#v\n", otherServer)
 
 	// create and get multipass for a user
 	_, result.UserMultipassJWT = specs.CreateUserMultipass(lib.NewUserMultipassAPI(st.IamVaultClient),
@@ -149,7 +143,7 @@ func (st *Suite) PrepareForSSHTesting() CheckingEnvironment {
 	return result
 }
 
-func registerServer(saPassword model.ServiceAccountPassword, tIdentifier string, pIdentifier string,
+func RegisterServer(saPassword model.ServiceAccountPassword, tIdentifier string, pIdentifier string,
 	sIdentifier string, labels map[string]string) (model2.Server, model.MultipassJWT) {
 	err := lib.WaitDataReachFlantAuthPluginAtVault(40, lib.GetRootVaultUrl())
 	Expect(err).ToNot(HaveOccurred())

@@ -15,6 +15,7 @@ import (
 	"github.com/flant/negentropy/e2e/tests/lib/flant_iam_preparing"
 	tsc "github.com/flant/negentropy/e2e/tests/lib/test_server_and_client_preparing"
 	"github.com/flant/negentropy/vault-plugins/flant_iam/backend/tests/specs"
+	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	api "github.com/flant/negentropy/vault-plugins/shared/tests"
 )
 
@@ -29,6 +30,7 @@ var _ = BeforeSuite(func() {
 	flantIamSuite.BeforeSuite()
 	Describe("configuring system", func() {
 		cfg = flantIamSuite.PrepareForSSHTesting()
+		prepareCheckingIssue484()
 		err := flantIamSuite.WaitPrepareForSSHTesting(cfg, 40)
 		Expect(err).ToNot(HaveOccurred())
 		testServerAndClientSuite.PrepareServerForSSHTesting(cfg)
@@ -123,18 +125,8 @@ var _ = Describe("Process of getting ssh access to server by a user", func() {
 		})
 
 		It("user loosing access after deleting project", func() {
-			// TODO it is prohibited now deleting project with child objects
-			//checkUserLoginForSignCert(true, cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, cfg.TestServer.UUID)
-			//
-			//projectApi := lib.NewProjectAPI(lib.NewConfiguredIamVaultClient())
-			//projectApi.Delete(api.Params{
-			//	"tenant":  cfg.TestServer.TenantUUID,
-			//	"project": cfg.TestServer.ProjectUUID,
-			//}, nil)
-			//
-			//waitKafkaFlow(cfg.TestServerServiceAccountMultipassJWT, false, 40)
-			//checkUserLoginForSignCert(false, cfg.TestServer.TenantUUID, cfg.TestServer.ProjectUUID, cfg.TestServer.UUID)
-			//
+			// Deleting project with child objects (including servers) is prohibited,
+			// so it is improbable case
 		})
 	})
 })
@@ -199,4 +191,26 @@ func waitKafkaFlow(multipassJWT string, waitSuccess bool, maxAttempts int) {
 	}
 	err := api.Repeat(f, maxAttempts)
 	Expect(err).ToNot(HaveOccurred())
+}
+
+// prepareCheckingIssue484 create another project with server and rolebinding for tenant scoped role,  for checking --all-projects flag
+func prepareCheckingIssue484() {
+	otherProject := specs.CreateRandomProject(lib.NewProjectAPI(flantIamSuite.IamVaultClient), cfg.Tenant.UUID)
+	fmt.Printf("Created other project:%#v\n", otherProject)
+	otherServer, _ := flant_iam_preparing.RegisterServer(cfg.ServiceAccountPassword, cfg.Tenant.Identifier, otherProject.Identifier, "server_at_other_project", nil)
+	fmt.Printf("Created other-server:%#v\n", otherServer)
+
+	tenantScopeRolebinding := specs.CreateRoleBinding(lib.NewRoleBindingAPI(flantIamSuite.IamVaultClient),
+		model.RoleBinding{
+			TenantUUID:  cfg.Tenant.UUID,
+			Version:     "",
+			Description: "rolebinbding over all tenant",
+			ValidTill:   10_000_000_000,
+			RequireMFA:  false,
+			Members:     cfg.Group.Members,
+			Projects:    nil,
+			AnyProject:  true,
+			Roles:       []model.BoundRole{{Name: "flant.client.manage", Options: map[string]interface{}{}}},
+		})
+	fmt.Printf("Created rolebinding:%#v\n", tenantScopeRolebinding)
 }
