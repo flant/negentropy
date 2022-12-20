@@ -216,10 +216,12 @@ func (v *vaultService) synchronizeSensitiveData(oldServers map[ext.ServerUUID]ex
 			if err != nil {
 				return nil, fmt.Errorf("synchronizeSensitiveData, collecting servers with sensitive data: %w", err)
 			}
-			for _, s := range servers {
-				oldServers[s.UUID] = s
+			if len(servers) != 0 { // in some cases servers returns as nil
+				for _, s := range servers {
+					oldServers[s.UUID] = s
+				}
+				result[safeServer.UUID] = oldServers[safeServer.UUID]
 			}
-			result[safeServer.UUID] = oldServers[safeServer.UUID]
 		} else {
 			result[safeServer.UUID] = oldS
 		}

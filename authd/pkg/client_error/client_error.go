@@ -44,7 +44,7 @@ func (e *HTTPError) ResponseHeaders() (int, map[string]string) {
 	}
 }
 
-func NewHTTPError(err error, status int, messages []string) error {
+func NewHTTPError(err error, status int, messages []string) *HTTPError {
 	return &HTTPError{
 		Cause:    err,
 		Messages: messages,
