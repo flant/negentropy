@@ -3,6 +3,7 @@ package pkg
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -222,6 +223,13 @@ func (vc *vaultClient) GetServersByTenantAndProject(tenantUUID iam.TenantUUID, p
 		TenantUUID:  tenantUUID,
 		ProjectUUID: projectUUID,
 	})
+	if errors.Is(err, consts.ErrAccessForbidden) {
+		// case:
+		// 1) user has access to project
+		// 2) there are some servers at project,
+		// 3) but user has not ssh.open for this project
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
