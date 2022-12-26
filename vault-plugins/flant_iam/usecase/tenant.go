@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"fmt"
+
 	"github.com/flant/negentropy/vault-plugins/flant_iam/model"
 	iam_repo "github.com/flant/negentropy/vault-plugins/flant_iam/repo"
 	"github.com/flant/negentropy/vault-plugins/shared/consts"
@@ -9,14 +11,16 @@ import (
 )
 
 type TenantService struct {
-	repo   *iam_repo.TenantRepository
-	Origin consts.ObjectOrigin
+	repo                *iam_repo.TenantRepository
+	identitySharingRepo *iam_repo.IdentitySharingRepository
+	Origin              consts.ObjectOrigin
 }
 
 func Tenants(db *io.MemoryStoreTxn, origin consts.ObjectOrigin) *TenantService {
 	return &TenantService{
-		repo:   iam_repo.NewTenantRepository(db),
-		Origin: origin,
+		repo:                iam_repo.NewTenantRepository(db),
+		identitySharingRepo: iam_repo.NewIdentitySharingRepository(db),
+		Origin:              origin,
 	}
 }
 
@@ -58,8 +62,28 @@ func (s *TenantService) Delete(id model.TenantUUID) error {
 	if stored.Origin != s.Origin {
 		return consts.ErrBadOrigin
 	}
+	archiveMark := memdb.NewArchiveMark()
+	// need to process sourced identity sharings first, due to it is checked relation
+	err = s.identitySharingRepo.DeleteAll(id, archiveMark)
+	if err != nil {
+		return fmt.Errorf("deleting identity sharings for source tenant: %w", err)
+	}
+	return s.repo.CascadeDelete(id, archiveMark)
+}
 
-	return s.repo.CascadeDelete(id, memdb.NewArchiveMark())
+func (s *TenantService) CascadeErase(id model.TenantUUID) error {
+	stored, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if stored.Origin != s.Origin {
+		return consts.ErrBadOrigin
+	}
+	err = s.identitySharingRepo.EraseAll(id)
+	if err != nil {
+		return fmt.Errorf("erasing identity sharings for source tenant: %w", err)
+	}
+	return s.repo.CascadeErase(id)
 }
 
 func (s *TenantService) GetByID(id model.TenantUUID) (*model.Tenant, error) {

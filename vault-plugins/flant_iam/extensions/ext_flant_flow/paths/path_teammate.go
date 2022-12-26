@@ -209,6 +209,24 @@ func (b teammateBackend) paths() []*framework.Path {
 				},
 			},
 		},
+		// Erase by uuid
+		{
+			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/" + uuid.Pattern("uuid") + "/erase$",
+			Fields: map[string]*framework.FieldSchema{
+				"uuid": {
+					Type:        framework.TypeNameString,
+					Description: "ID of a teammate",
+					Required:    true,
+				},
+			},
+			ExistenceCheck: b.handleExistence,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.checkBaseConfigured(b.handleErase),
+					Summary:  "Erase teammate by ID.",
+				},
+			},
+		},
 		// Restore
 		{
 			Pattern: "team/" + uuid.Pattern("team_uuid") + "/teammate/" + uuid.Pattern("uuid") + "/restore" + "$",
@@ -457,4 +475,24 @@ func (b *teammateBackend) handleListAll(_ context.Context, req *logical.Request,
 		},
 	}
 	return logical.RespondWithStatusCode(resp, req, http.StatusOK)
+}
+
+func (b teammateBackend) handleErase(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.Logger().Debug("erase teammate", "path", req.Path)
+	id := data.Get("uuid").(string)
+	tx := b.storage.Txn(true)
+
+	err := usecase.Teammates(tx, b.getLiveConfig()).Erase(id)
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+
+	if err != nil {
+		return backentutils.ResponseErr(req, err)
+	}
+	if err = io.CommitWithLog(tx, b.Logger()); err != nil {
+		return backentutils.ResponseErrMessage(req, err.Error(), http.StatusInternalServerError)
+	}
+
+	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
 }

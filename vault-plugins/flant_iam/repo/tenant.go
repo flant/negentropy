@@ -63,15 +63,15 @@ func TenantSchema() *memdb.DBSchema {
 		},
 		CascadeDeletes: map[memdb.DataType][]memdb.Relation{
 			model.TenantType: {
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: TenantForeignPK},
+				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.UserType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.IdentitySharingType, RelatedDataTypeFieldIndexName: DestinationTenantUUIDIndex},
-				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingApprovalType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountPasswordType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ServiceAccountType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.GroupType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.ProjectType, RelatedDataTypeFieldIndexName: TenantForeignPK},
-				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.MultipassType, RelatedDataTypeFieldIndexName: TenantForeignPK},
-				{OriginalDataTypeFieldName: "UUID", RelatedDataType: model.RoleBindingType, RelatedDataTypeFieldIndexName: TenantForeignPK},
 			},
 		},
 		CheckingRelations: map[memdb.DataType][]memdb.Relation{
@@ -242,4 +242,15 @@ func (r *TenantRepository) GetByIdentifier(identifier string) (*model.Tenant, er
 		return nil, consts.ErrNotFound
 	}
 	return raw.(*model.Tenant), err
+}
+
+func (r *TenantRepository) CascadeErase(id model.TenantUUID) error {
+	tenant, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if tenant.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return r.db.CascadeDelete(model.TenantType, tenant)
 }

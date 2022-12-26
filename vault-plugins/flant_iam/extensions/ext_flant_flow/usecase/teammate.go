@@ -257,3 +257,7 @@ func (s *TeammateService) makeDenormalizedFullTeammate(user *iam_model.User, tm 
 		TeamIdentifier: team.Identifier,
 	}, nil
 }
+
+func (s *TeammateService) Erase(id iam_model.UserUUID) error {
+	return s.repo.CascadeErase(id)
+}

@@ -117,8 +117,8 @@ func (r *IdentitySharingRepository) Delete(id model.IdentitySharingUUID,
 	return r.db.Archive(model.IdentitySharingType, sh, archiveMark)
 }
 
-func (r *IdentitySharingRepository) List(tenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
-	iter, err := r.db.Get(model.IdentitySharingType, SourceTenantUUIDIndex, tenantUUID)
+func (r *IdentitySharingRepository) List(sourceTenantUUID model.TenantUUID, showArchived bool) ([]*model.IdentitySharing, error) {
+	iter, err := r.db.Get(model.IdentitySharingType, SourceTenantUUIDIndex, sourceTenantUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -225,4 +225,32 @@ func (r *IdentitySharingRepository) ListDestinationTenantsByGroupUUIDs(groupUUID
 		}
 	}
 	return res, nil
+}
+
+func (r *IdentitySharingRepository) DeleteAll(sourceTenantUUID model.TenantUUID, archiveMark memdb.ArchiveMark) error {
+	shs, err := r.List(sourceTenantUUID, false)
+	if err != nil {
+		return err
+	}
+	for _, sh := range shs {
+		err = r.db.Archive(model.IdentitySharingType, sh, archiveMark)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *IdentitySharingRepository) EraseAll(sourceTenantUUID model.TenantUUID) error {
+	shs, err := r.List(sourceTenantUUID, true)
+	if err != nil {
+		return err
+	}
+	for _, sh := range shs {
+		err = r.db.Delete(model.IdentitySharingType, sh)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

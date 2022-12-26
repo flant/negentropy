@@ -41,15 +41,15 @@ go run github.com/onsi/ginkgo/ginkgo run ./...
 sleep 30 # wait reading
 
 # watcher output & shutdown
-echo
-echo items:
-curl localhost:3333/report
-echo
-echo cleaning:
-curl localhost:3333/clean/auth_source.root
-curl localhost:3333/clean/auth_source.auth
-echo
-echo items after cleaning
-curl localhost:3333/report
-echo
-curl localhost:3333/shutdown
+#echo
+#echo items:
+#curl localhost:3333/report
+#echo
+#echo cleaning:
+#curl localhost:3333/clean/auth_source.root
+#curl localhost:3333/clean/auth_source.auth
+#echo
+#echo items after cleaning
+#curl localhost:3333/report
+#echo
+#curl localhost:3333/shutdown

@@ -426,3 +426,14 @@ func (r *GroupRepository) findAllChildGroups(groupUUIDs map[model.GroupUUID]stru
 	}
 	return resultGroupsSet, nil
 }
+
+func (r *GroupRepository) Erase(id model.GroupUUID) error {
+	group, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if group.NotArchived() {
+		return consts.ErrIsNotArchived
+	}
+	return r.db.Delete(model.GroupType, group)
+}
