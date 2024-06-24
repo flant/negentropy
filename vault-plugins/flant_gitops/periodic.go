@@ -5,9 +5,9 @@
 // check statuses
 
 // The base of workflow consistency:
-// 1) new commit should go through last_started_commit -> {task for commit at task_manager} -> last_pushed_to_k8s_commit -> last_k8s_finished_commit
-// 2) changes last_started_commit -> last_pushed_to_k8s_commit -> last_k8s_finished_commit are written only in main goroutine
-// 3) action of created by commit task should finish as succeeded or failed
+// 1) new commit should go through last_started_commit -> last_pushed_to_k8s_commit -> last_k8s_finished_commit before next wil be taken
+// 2) new commit should go through last_started_commit -> actually pushed to k8s (not change last_pushed_to_k8s_commit) at one run of PeriodicTask
+// 3) changes last_started_commit -> last_pushed_to_k8s_commit -> last_k8s_finished_commit are written only in main goroutine
 // 4) job at kube should be eventually terminated (by success/failed/timed out)
 // trick: only one place to write data to storage
 
@@ -15,42 +15,31 @@
 // 1) last_started_commit = last_pushed_to_k8s_commit = last_k8s_finished_commit
 // 2) new  suitable commit at git
 
-// Conditions for change last_pushed_to_k8s_commit:
-// A) Normal task finish
-// A1) task for last_started_commit is finished with any status (SUCCEEDED/FAILED/CANCELED)
-// A2) kube has job with name last_started_commit
-// B) Abnormal task finish
-// B1) task for last_started_commit is finished with any status (SUCCEEDED/FAILED/CANCELED)
-// B2) kube doesn't have job with name last_started_commit
+// Condition for change last_pushed_to_k8s_commit: at k8s exists job with name of last_pushed_to_k8s_commit
 
-// Conditions for change  last_k8s_finished_commit:
-// A) Normal flow
-// A1) Kube has finished job with name last_pushed_to_k8s_commit
-// B) Abnormal flow
-// B1) Kube doesn't have job with name last_pushed_to_k8s_commit and has finished task for commit last_pushed_to_k8s_commit
+// Conditions for change  last_k8s_finished_commit: Kube has finished job with name last_pushed_to_k8s_commit
 
 // Corner cases:
-// 1) No task for last_started_commit (it can happen if vault was downed until task_manager returns uuid of placed task, or periodic function was late to store)
-// 2) ?
+// 1) Action of pushing to k8s was down without
+// 2) Action longs until next periodic task run
 
-// Deal with corner case: retry create task and finish periodic function
-// If it will be dublicate, it is just fail on attempts to place job with the same name at kube
+// Deal with corner case:
+// 1A) Check if job exists at k8s
+// 1B) If job not exists - recreate action
+// 2) mutex at PeriodicTask
 
 package flant_gitops
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/vault/sdk/logical"
-	trdl_task_manager "github.com/werf/trdl/server/pkg/tasks_manager"
 
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/git_repository"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/kube"
-	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/task_manager"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/util"
 	"github.com/flant/negentropy/vault-plugins/flant_gitops/pkg/vault"
 	sharedio "github.com/flant/negentropy/vault-plugins/shared/io"
@@ -58,9 +47,8 @@ import (
 
 // for testability
 var (
-	systemClock                util.Clock = util.NewSystemClock()
-	kubeServiceProvider                   = kube.NewKubeService
-	taskManagerServiceProvider            = task_manager.Service
+	systemClock         util.Clock = util.NewSystemClock()
+	kubeServiceProvider            = kube.NewKubeService
 )
 
 const (
@@ -72,37 +60,34 @@ const (
 )
 
 func (b *backend) PeriodicTask(storage logical.Storage) error {
+	b.periodicTaskMutex.Lock()
+	defer b.periodicTaskMutex.Unlock()
+
 	ctx := context.Background()
 
-	lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, storage)
+	lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit, err := b.collectSavedWorkingCommits(ctx, storage)
 	if err != nil {
 		return err
 	}
 
-	b.Logger().Info("got working commits hashes", "lastStartedCommit", lastStartedCommit,
-		"lastPushedToK8sCommit", lastPushedToK8sCommit, "lastK8sFinishedCommit", lastK8sFinishedCommit)
-
 	if lastStartedCommit != lastPushedToK8sCommit {
-		// check conditions for change lastPushedTok8sCommit
-		cornerCase, isLastPushedCommitChanged, err := b.updateLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+		b.Logger().Info("corner case detected: lastStartedCommit != lastPushedToK8sCommit")
+		err := b.checkAndUpdateLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
 		if err != nil {
 			return err
 		}
-		if cornerCase || !isLastPushedCommitChanged { // corner case or still  lastStartedCommit != lastPushedToK8sCommit
-			return nil
-		}
 		// update values
-		_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = collectSavedWorkingCommits(ctx, storage)
+		_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = b.collectSavedWorkingCommits(ctx, storage)
 		if err != nil {
 			return err
 		}
 	}
-
+	println("1111")
 	err = b.updateK8sFinishedCommit(ctx, storage, lastPushedToK8sCommit, lastK8sFinishedCommit)
 	if err != nil {
 		return err
 	}
-	_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = collectSavedWorkingCommits(ctx, storage)
+	_, lastPushedToK8sCommit, lastK8sFinishedCommit, err = b.collectSavedWorkingCommits(ctx, storage)
 	if err != nil {
 		return err
 	}
@@ -117,30 +102,28 @@ func (b *backend) PeriodicTask(storage logical.Storage) error {
 	return b.processGit(ctx, storage, lastK8sFinishedCommit)
 }
 
-type (
-	isCornerCase = bool
-	isPushed     = bool
-)
-
-// updateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit, returns isCornerCase and isPushed
-func (b *backend) updateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) (isCornerCase, isPushed, error) {
-	exist, finished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).CheckTask(ctx, lastStartedCommit)
+// checkAndUpdateLastPushedTok8sCommit check conditions for updating LastPushedTok8sCommit
+// check job at of k8s, if pushed -> just LastPushedTok8sCommit
+// if not pushed -> rerun action of pushing to k8s
+func (b *backend) checkAndUpdateLastPushedTok8sCommit(ctx context.Context, storage logical.Storage, lastStartedCommit string) error {
+	kubeService, err := kubeServiceProvider(ctx, storage)
 	if err != nil {
-		return false, false, err
+		return fmt.Errorf("kubeservice: %w", err)
 	}
-	if !exist { // corner case: unexpected vault crash happens: recreate task for lastStartedCommit
-		b.Logger().Warn(fmt.Sprintf("commit %q has no task, recreate tsk, and interrupt periodic function", lastStartedCommit))
-		err = b.createTask(ctx, storage, lastStartedCommit)
-		return true, false, err
+	exist, _, err := kubeService.CheckJob(ctx, lastStartedCommit)
+	if err != nil {
+		return fmt.Errorf("kubeservice.checkjob: %w", err)
 	}
-	if !finished {
-		b.Logger().Info(fmt.Sprintf("commit %q is still not pushed to k8s, skipping periodic function", lastStartedCommit))
-		return false, false, nil
+	if !exist { // corner case
+		b.Logger().Warn(fmt.Sprintf("commit %q is not at k8s, repushing job", lastStartedCommit))
+		err = b.processCommit(ctx, storage, lastStartedCommit)
+		if err != nil {
+			return fmt.Errorf("processCommit: %w", err)
+		}
+	} else {
+		b.Logger().Info("commit %q is at k8s")
 	}
-	// task is finished, no matter is job at k8s or not: change  last_pushed_to_k8s_commit
-	b.Logger().Info(fmt.Sprintf("task run by commit %q is finished", lastStartedCommit))
-
-	return false, true, storeLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
+	return storeLastPushedTok8sCommit(ctx, storage, lastStartedCommit)
 }
 
 func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastPushedToK8sCommit string) error {
@@ -175,29 +158,16 @@ func (b *backend) processGit(ctx context.Context, storage logical.Storage, lastP
 		return err
 	}
 
-	err = b.createTask(ctx, storage, *commitHash)
+	err = updateLastRunTimeStamp(ctx, storage, newTimeStamp)
 	if err != nil {
 		return err
 	}
 
-	return updateLastRunTimeStamp(ctx, storage, newTimeStamp)
-}
-
-// createTask creates task and store gotten task_uuid
-func (b *backend) createTask(ctx context.Context, storage logical.Storage, commitHash string) error {
-	taskUUID, err := b.TasksManager.RunTask(ctx, storage, func(ctx context.Context, storage logical.Storage) error {
-		return b.processCommit(ctx, storage, commitHash)
-	})
-	if errors.Is(err, trdl_task_manager.ErrBusy) {
-		b.Logger().Warn(fmt.Sprintf("unable to add queue manager task: %s", err.Error()))
-		return nil
-	}
+	err = b.processCommit(ctx, storage, *commitHash)
 	if err != nil {
-		return fmt.Errorf("unable to add queue manager task: %w", err)
+		return fmt.Errorf("processCommit: %w", err)
 	}
-
-	b.Logger().Debug(fmt.Sprintf("Added new task with uuid %q for commitHash: %q", taskUUID, commitHash))
-	return taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).SaveTask(ctx, taskUUID, commitHash)
+	return nil
 }
 
 // checkStatusPushedTok8sCommit checks is pushed commit finished at k8s and returns last finished at k8s commit
@@ -205,31 +175,26 @@ func (b *backend) updateK8sFinishedCommit(ctx context.Context, storage logical.S
 	if pushedToK8sCommit == lastK8sFinishedCommit {
 		return nil
 	}
-	_, taskFinished, err := taskManagerServiceProvider(storage, b.AccessVaultClientProvider, b.Logger()).CheckTask(ctx, pushedToK8sCommit)
-	if err != nil {
-		return err
-	}
 
 	kubeService, err := kubeServiceProvider(ctx, storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("kubeservice: %w", err)
 	}
 
-	jobExist, jobFinished, err := kubeService.CheckJob(ctx, pushedToK8sCommit)
+	_, jobFinished, err := kubeService.CheckJob(ctx, pushedToK8sCommit)
 	if err != nil {
-		return err
+		return fmt.Errorf("kubeservice.checkjob: %w", err)
 	}
 
-	if (taskFinished && !jobExist) || jobFinished {
+	if jobFinished {
 		return storeLastK8sFinishedCommit(ctx, storage, pushedToK8sCommit)
 	}
-
 	return nil
 }
 
 // collectSavedWorkingCommits gets, checks  and  returns : lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit
 // possible valid states: 1)  A, B, B  2) A, A, B 3) A, A, A
-func collectSavedWorkingCommits(ctx context.Context, storage logical.Storage) (string, string, string, error) {
+func (b *backend) collectSavedWorkingCommits(ctx context.Context, storage logical.Storage) (string, string, string, error) {
 	lastStartedCommit, err := util.GetString(ctx, storage, storageKeyLastStartedCommit)
 	if err != nil {
 		return "", "", "", err
@@ -238,16 +203,18 @@ func collectSavedWorkingCommits(ctx context.Context, storage logical.Storage) (s
 	if err != nil {
 		return "", "", "", err
 	}
-	LastK8sFinishedCommit, err := util.GetString(ctx, storage, storageKeyLastK8sFinishedCommit)
+	lastK8sFinishedCommit, err := util.GetString(ctx, storage, storageKeyLastK8sFinishedCommit)
 	if err != nil {
 		return "", "", "", err
 	}
 	// checks
-	if !(lastPushedToK8sCommit == LastK8sFinishedCommit || lastStartedCommit == lastPushedToK8sCommit) {
+	if !(lastPushedToK8sCommit == lastK8sFinishedCommit || lastStartedCommit == lastPushedToK8sCommit) {
 		return "", "", "", fmt.Errorf("read wrong combination of working commits: %q, %q, %q",
-			lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit)
+			lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit)
 	}
-	return lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, nil
+	b.Logger().Debug("working commits hashes", "lastStartedCommit", lastStartedCommit,
+		"lastPushedToK8sCommit", lastPushedToK8sCommit, "lastK8sFinishedCommit", lastK8sFinishedCommit)
+	return lastStartedCommit, lastPushedToK8sCommit, lastK8sFinishedCommit, nil
 }
 
 // checkExceedingInterval returns true if more than interval were spent

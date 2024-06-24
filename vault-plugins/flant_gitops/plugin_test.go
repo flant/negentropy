@@ -135,7 +135,7 @@ var _ = Describe("flant_gitops", func() {
 		Context("periodic function", func() {
 			It("flant_gitops run periodic functions without any new commits", func() {
 				ctx := context.Background()
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastStartedCommit).To(Equal(""))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
@@ -144,7 +144,7 @@ var _ = Describe("flant_gitops", func() {
 				err = b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})
 				Expect(err).ToNot(HaveOccurred())
 
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err = collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err = b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastStartedCommit).To(Equal(""))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
@@ -164,7 +164,7 @@ var _ = Describe("flant_gitops", func() {
 				err = b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})
 				Expect(err).ToNot(HaveOccurred())
 
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastStartedCommit).To(Equal(""))
 				Expect(lastPushedToK8sCommit).To(Equal(""))
@@ -181,7 +181,7 @@ var _ = Describe("flant_gitops", func() {
 				err := b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})
 				Expect(err).ToNot(HaveOccurred())
 
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				err = tests.FastRepeat(func() error {
 					if lastStartedCommit != testGitRepo.CommitHashes[1] { // change is here
@@ -211,7 +211,7 @@ var _ = Describe("flant_gitops", func() {
 				err := b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})
 				Expect(err).ToNot(HaveOccurred())
 
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(lastPushedToK8sCommit).To(Equal(testGitRepo.CommitHashes[1])) // change is here
@@ -228,7 +228,7 @@ var _ = Describe("flant_gitops", func() {
 				err = b.B.PeriodicFunc(ctx, &logical.Request{Storage: b.Storage})
 				Expect(err).ToNot(HaveOccurred())
 
-				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := collectSavedWorkingCommits(ctx, b.Storage)
+				lastStartedCommit, lastPushedToK8sCommit, LastK8sFinishedCommit, err := b.B.collectSavedWorkingCommits(ctx, b.Storage)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastStartedCommit).To(Equal(testGitRepo.CommitHashes[1]))
 				Expect(lastPushedToK8sCommit).To(Equal(testGitRepo.CommitHashes[1]))
